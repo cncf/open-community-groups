@@ -72,6 +72,73 @@ describe("image-field", () => {
     expect(element.value).to.equal("");
   });
 
+  it("hides the remove button when hide-remove-button is set", async () => {
+    // Render the image-field fixture without the remove button.
+    const element = await mountLitComponent("image-field", {
+      hideRemoveButton: true,
+      value: "https://example.com/image.png",
+    });
+
+    // Collect the rendered button labels.
+    const labels = [...element.querySelectorAll("button")].map((button) => button.textContent.trim());
+
+    // The remove button is not rendered while the upload control remains.
+    expect(labels).to.not.include("Remove image");
+    expect(element.textContent).to.include("Upload image");
+  });
+
+  it("keeps selected and dropped direct-upload files in the submitted field", async () => {
+    // Render the verification upload inside the form that owns its file submission.
+    const form = document.createElement("form");
+    document.body.append(form);
+    const element = await mountLitComponent("image-field", {
+      acceptedFormats: "image/png",
+      directUpload: true,
+      label: "Exported PNG",
+      name: "png",
+    });
+    form.append(element);
+    const input = element.querySelector('input[type="file"]');
+    const selectedFile = new File(["selected"], "selected-badge.png", { type: "image/png" });
+    const selectedFiles = new DataTransfer();
+    selectedFiles.items.add(selectedFile);
+
+    // Keep an empty file picker out of the parent form submission.
+    expect(input.hasAttribute("name")).to.equal(false);
+    expect(new FormData(form).has("png")).to.equal(false);
+
+    // Select a file through the native input.
+    input.files = selectedFiles.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await element.updateComplete;
+
+    expect(input.name).to.equal("png");
+    expect(new FormData(form).get("png").name).to.equal("selected-badge.png");
+
+    // Drop a replacement file and retain it in the same submitted input.
+    const droppedFiles = new DataTransfer();
+    droppedFiles.items.add(new File(["dropped"], "dropped-badge.png", { type: "image/png" }));
+    element._handleDrop({
+      dataTransfer: droppedFiles,
+      preventDefault() {},
+    });
+    await element.updateComplete;
+
+    expect(new FormData(form).get("png").name).to.equal("dropped-badge.png");
+    form.remove();
+  });
+
+  it("does not give direct-upload-only file inputs an empty name", async () => {
+    // Render an image field that uploads through its component endpoint.
+    const element = await mountLitComponent("image-field", {
+      label: "Banner",
+      name: "banner_image",
+    });
+
+    // Its temporary file picker is not included in parent form submissions.
+    expect(element.querySelector('input[type="file"]').hasAttribute("name")).to.equal(false);
+  });
+
   it("does not show the generic supported formats text for Open Graph images", async () => {
     // Mount an Open Graph image field with explicit format guidance.
     const element = await mountLitComponent("image-field", {

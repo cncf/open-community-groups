@@ -7,6 +7,7 @@ import {
 } from "/static/js/common/dom.js";
 import {
   closeAttendeeActionsDropdown,
+  closeAttendeeBadgeActionsDropdown,
   closeAttendeeEmailActionsDropdown,
   closeAttendeeRowActionMenus,
 } from "/static/js/dashboard/group/attendees/actions-menu.js";
@@ -21,8 +22,9 @@ const formId = "attendee-notification-form";
 const dataKey = "attendeeNotificationReady";
 const defaultNotificationErrorMessage =
   "Something went wrong while trying to send the email. Please try again later.";
-const attendeeEmailSelectionState = {
+const attendeeSelectionState = {
   active: false,
+  action: "email",
   eventId: "",
   selectedRecipients: new Map(),
 };
@@ -53,6 +55,7 @@ const getAttendeeEmailSelectionControls = (root) => ({
   clear: root.querySelector?.("[data-attendee-email-selection-clear]"),
   columns: root.querySelectorAll?.("[data-attendee-email-selection-column]") || [],
   count: root.querySelector?.("[data-attendee-email-selection-count]"),
+  headerAward: getElementById(root, "attendee-badge-actions-button"),
   headerSend: getElementById(root, "attendee-email-actions-button"),
   label: root.querySelector?.("[data-attendee-email-selection-label]"),
   send: root.querySelector?.("[data-attendee-email-selection-send]"),
@@ -82,7 +85,7 @@ const readRecipientFromElement = (element) => {
  * Return selected recipients in submission order.
  * @returns {Array<Object>} Selected recipients.
  */
-const getSelectedEmailRecipients = () => Array.from(attendeeEmailSelectionState.selectedRecipients.values());
+const getSelectedRecipients = () => Array.from(attendeeSelectionState.selectedRecipients.values());
 
 /**
  * Read one submitted HTMX parameter from FormData, URLSearchParams, or a plain object.
@@ -247,7 +250,11 @@ const openNotificationModal = (root, { allRecipientTotal = 0, eventId, recipient
 const syncEmailSelectionCheckboxes = (root) => {
   const { checkboxes } = getAttendeeEmailSelectionControls(root);
   checkboxes.forEach((checkbox) => {
-    checkbox.checked = attendeeEmailSelectionState.selectedRecipients.has(checkbox.value);
+    const eligibilityKey = attendeeSelectionState.action === "badge" ? "badgeEligible" : "emailEligible";
+    const eligible =
+      checkbox.dataset[eligibilityKey] === undefined || checkbox.dataset[eligibilityKey] === "true";
+    setElementHidden(checkbox, !eligible);
+    checkbox.checked = eligible && attendeeSelectionState.selectedRecipients.has(checkbox.value);
   });
 };
 
@@ -257,26 +264,22 @@ const syncEmailSelectionCheckboxes = (root) => {
  * @returns {void}
  */
 const renderEmailSelectionState = (root) => {
-  const { bar, checkboxes, columns, count, headerSend, label, send, start } =
+  const { bar, checkboxes, columns, count, headerAward, headerSend, label, send, start } =
     getAttendeeEmailSelectionControls(root);
   const currentEventId = start?.dataset.eventId || "";
 
-  if (
-    attendeeEmailSelectionState.eventId &&
-    currentEventId &&
-    attendeeEmailSelectionState.eventId !== currentEventId
-  ) {
-    attendeeEmailSelectionState.active = false;
-    attendeeEmailSelectionState.eventId = "";
-    attendeeEmailSelectionState.selectedRecipients.clear();
+  if (attendeeSelectionState.eventId && currentEventId && attendeeSelectionState.eventId !== currentEventId) {
+    attendeeSelectionState.active = false;
+    attendeeSelectionState.eventId = "";
+    attendeeSelectionState.selectedRecipients.clear();
   }
 
-  const active = attendeeEmailSelectionState.active;
+  const active = attendeeSelectionState.active;
   setElementHidden(bar, !active);
   columns.forEach((column) => setElementHidden(column, !active));
   syncEmailSelectionCheckboxes(root);
 
-  const selectedCount = attendeeEmailSelectionState.selectedRecipients.size;
+  const selectedCount = attendeeSelectionState.selectedRecipients.size;
   if (count) {
     count.textContent = String(selectedCount);
   }
@@ -286,15 +289,16 @@ const renderEmailSelectionState = (root) => {
   if (send) {
     send.disabled = !active || selectedCount === 0;
   }
-  if (headerSend) {
-    if (!("emailSelectionBaseDisabled" in headerSend.dataset)) {
-      headerSend.dataset.emailSelectionBaseDisabled = headerSend.disabled ? "true" : "false";
+  [headerAward, headerSend].forEach((headerAction) => {
+    if (!headerAction) return;
+    if (!("selectionBaseDisabled" in headerAction.dataset)) {
+      headerAction.dataset.selectionBaseDisabled = headerAction.disabled ? "true" : "false";
     }
-    const baseDisabled = headerSend.dataset.emailSelectionBaseDisabled === "true";
-    headerSend.disabled = baseDisabled || active;
-    headerSend.classList.toggle("opacity-50", baseDisabled || active);
-    headerSend.classList.toggle("cursor-not-allowed", baseDisabled || active);
-  }
+    const baseDisabled = headerAction.dataset.selectionBaseDisabled === "true";
+    headerAction.disabled = baseDisabled || active;
+    headerAction.classList.toggle("opacity-50", baseDisabled || active);
+    headerAction.classList.toggle("cursor-not-allowed", baseDisabled || active);
+  });
   if (!active) {
     checkboxes.forEach((checkbox) => {
       checkbox.checked = false;
@@ -309,14 +313,18 @@ const renderEmailSelectionState = (root) => {
  * @param {string} [eventId=""] Event id.
  * @returns {void}
  */
-const setEmailSelectionMode = (root, active, eventId = "") => {
-  if (eventId && attendeeEmailSelectionState.eventId && attendeeEmailSelectionState.eventId !== eventId) {
-    attendeeEmailSelectionState.selectedRecipients.clear();
+const setEmailSelectionMode = (root, active, eventId = "", action = "email") => {
+  if (
+    (eventId && attendeeSelectionState.eventId && attendeeSelectionState.eventId !== eventId) ||
+    attendeeSelectionState.action !== action
+  ) {
+    attendeeSelectionState.selectedRecipients.clear();
   }
-  attendeeEmailSelectionState.active = active;
-  attendeeEmailSelectionState.eventId = active ? eventId || attendeeEmailSelectionState.eventId : "";
+  attendeeSelectionState.active = active;
+  attendeeSelectionState.action = action;
+  attendeeSelectionState.eventId = active ? eventId || attendeeSelectionState.eventId : "";
   if (!active) {
-    attendeeEmailSelectionState.selectedRecipients.clear();
+    attendeeSelectionState.selectedRecipients.clear();
   }
   renderEmailSelectionState(root);
 };
@@ -327,7 +335,7 @@ const setEmailSelectionMode = (root, active, eventId = "") => {
  * @returns {void}
  */
 const clearEmailSelection = (root) => {
-  attendeeEmailSelectionState.selectedRecipients.clear();
+  attendeeSelectionState.selectedRecipients.clear();
   renderEmailSelectionState(root);
 };
 
@@ -342,9 +350,9 @@ const toggleEmailSelectionRecipient = (root, checkbox) => {
   if (!recipient) return;
 
   if (checkbox.checked) {
-    attendeeEmailSelectionState.selectedRecipients.set(recipient.id, recipient);
+    attendeeSelectionState.selectedRecipients.set(recipient.id, recipient);
   } else {
-    attendeeEmailSelectionState.selectedRecipients.delete(recipient.id);
+    attendeeSelectionState.selectedRecipients.delete(recipient.id);
   }
   renderEmailSelectionState(root);
 };
@@ -356,7 +364,8 @@ const toggleEmailSelectionRecipient = (root, checkbox) => {
  * @returns {void}
  */
 const startEmailSelection = (root, trigger) => {
-  setEmailSelectionMode(root, true, trigger.dataset.eventId || "");
+  const action = trigger.dataset.selectionAction === "badge" ? "badge" : "email";
+  setEmailSelectionMode(root, true, trigger.dataset.eventId || "", action);
   const firstCheckbox = root.querySelector("[data-attendee-email-selection-checkbox]");
   if (firstCheckbox instanceof HTMLElement) {
     firstCheckbox.focus();
@@ -369,13 +378,23 @@ const startEmailSelection = (root, trigger) => {
  * @returns {void}
  */
 const openNotificationFromSelection = (root) => {
-  const recipients = getSelectedEmailRecipients();
+  const recipients = getSelectedRecipients();
   if (recipients.length === 0) {
     return;
   }
 
+  if (attendeeSelectionState.action === "badge") {
+    const trigger = root.querySelector("[data-attendee-email-selection-send]");
+    document.querySelector("badge-award-modal")?.open({
+      eventId: attendeeSelectionState.eventId,
+      trigger,
+      userIds: recipients.map((recipient) => recipient.id),
+    });
+    return;
+  }
+
   openNotificationModal(root, {
-    eventId: attendeeEmailSelectionState.eventId,
+    eventId: attendeeSelectionState.eventId,
     recipients,
     scope: "selected",
   });
@@ -401,6 +420,7 @@ export const initializeAttendeeNotification = (root = document) => {
     if (openTrigger instanceof HTMLElement && !openTrigger.hasAttribute("disabled")) {
       event.stopPropagation();
       closeAttendeeActionsDropdown(root);
+      closeAttendeeBadgeActionsDropdown(root);
       closeAttendeeEmailActionsDropdown(root);
       closeAttendeeRowActionMenus(root);
       const scope = openTrigger.dataset.notificationScope === "selected" ? "selected" : "all";
@@ -477,6 +497,7 @@ export const initializeAttendeeEmailSelection = (root = document) => {
     if (startTrigger instanceof HTMLElement) {
       event.stopPropagation();
       closeAttendeeEmailActionsDropdown(root);
+      closeAttendeeBadgeActionsDropdown(root);
       closeAttendeeActionsDropdown(root);
       closeAttendeeRowActionMenus(root);
       startEmailSelection(root, startTrigger);
@@ -491,8 +512,12 @@ export const initializeAttendeeEmailSelection = (root = document) => {
 
     if (closestElementWithinRoot(event.target, "[data-attendee-email-selection-cancel]", root)) {
       event.preventDefault();
-      setEmailSelectionMode(root, false);
-      getElementById(root, "attendee-email-actions-button")?.focus();
+      const action = attendeeSelectionState.action;
+      setEmailSelectionMode(root, false, "", action);
+      getElementById(
+        root,
+        action === "badge" ? "attendee-badge-actions-button" : "attendee-email-actions-button",
+      )?.focus();
       return;
     }
 

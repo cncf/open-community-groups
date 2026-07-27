@@ -81,7 +81,7 @@ pub(crate) async fn enqueue_event_canceled_notification(
     // Fetch event full and attendee IDs concurrently
     let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
-        db.list_event_attendees_ids(group_id, event_id),
+        db.list_event_attendees_ids(group_id, event_id, false),
         db.list_event_waitlist_ids(group_id, event_id)
     )?;
 
@@ -213,7 +213,7 @@ pub(crate) async fn enqueue_event_rescheduled_notification(
     // Fetch event full and attendee IDs concurrently
     let (event_full, attendee_ids) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
-        db.list_event_attendees_ids(group_id, event_id)
+        db.list_event_attendees_ids(group_id, event_id, false)
     )?;
 
     // Combine attendee and speaker IDs
@@ -258,7 +258,7 @@ pub(crate) async fn enqueue_event_series_canceled_notifications(
         // Fetch event full and affected user IDs for this canceled occurrence
         let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
             db.get_event_full(community_id, group_id, *event_id),
-            db.list_event_attendees_ids(group_id, *event_id),
+            db.list_event_attendees_ids(group_id, *event_id, false),
             db.list_event_waitlist_ids(group_id, *event_id)
         )?;
 
@@ -589,8 +589,10 @@ mod tests {
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)
-            .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-            .returning(move |_, _| Ok(vec![shared_recipient_id, event_recipient_id]));
+            .withf(move |gid, eid, checked_in_only| {
+                *gid == group_id && *eid == event_id && !checked_in_only
+            })
+            .returning(move |_, _, _| Ok(vec![shared_recipient_id, event_recipient_id]));
         db.expect_list_event_waitlist_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
@@ -603,8 +605,10 @@ mod tests {
             .returning(move |_, _, _| Ok(related_event.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)
-            .withf(move |gid, eid| *gid == group_id && *eid == related_event_id)
-            .returning(move |_, _| Ok(vec![shared_recipient_id]));
+            .withf(move |gid, eid, checked_in_only| {
+                *gid == group_id && *eid == related_event_id && !checked_in_only
+            })
+            .returning(move |_, _, _| Ok(vec![shared_recipient_id]));
         db.expect_list_event_waitlist_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == related_event_id)
@@ -617,8 +621,10 @@ mod tests {
             .returning(move |_, _, _| Ok(test_event.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)
-            .withf(move |gid, eid| *gid == group_id && *eid == test_event_id)
-            .returning(move |_, _| Ok(vec![test_event_recipient_id]));
+            .withf(move |gid, eid, checked_in_only| {
+                *gid == group_id && *eid == test_event_id && !checked_in_only
+            })
+            .returning(move |_, _, _| Ok(vec![test_event_recipient_id]));
         db.expect_list_event_waitlist_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == test_event_id)
@@ -960,8 +966,10 @@ mod tests {
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)
-            .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-            .returning(move |_, _| Ok(vec![attendee_id, speaker_id]));
+            .withf(move |gid, eid, checked_in_only| {
+                *gid == group_id && *eid == event_id && !checked_in_only
+            })
+            .returning(move |_, _, _| Ok(vec![attendee_id, speaker_id]));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));

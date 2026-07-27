@@ -1,5 +1,6 @@
 //! Type definitions used across the application.
 
+pub mod badges;
 pub mod community;
 pub mod event;
 pub mod group;

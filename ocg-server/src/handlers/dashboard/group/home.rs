@@ -31,7 +31,7 @@ use crate::{
     types::permissions::GroupPermission,
 };
 
-use super::{events, logs, members, refunds, sponsors, team};
+use super::{badges, events, logs, members, refunds, sponsors, team};
 
 #[cfg(test)]
 mod tests;
@@ -60,8 +60,21 @@ pub(crate) async fn page(
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
     // Get site settings and user groups information
-    let (groups_by_community, site_settings) =
-        tokio::try_join!(db.list_user_groups(&user.user_id), db.get_site_settings())?;
+    let (can_manage_badges, groups_by_community, site_settings) = tokio::try_join!(
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::BadgesWrite
+        ),
+        db.list_user_groups(&user.user_id),
+        db.get_site_settings()
+    )?;
+
+    // Protect every badge-management dashboard tab consistently
+    if !can_manage_badges && matches!(&tab, Tab::Artwork | Tab::Awards | Tab::Badges) {
+        return Err(HandlerError::Forbidden);
+    }
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -75,6 +88,28 @@ pub(crate) async fn page(
                 has_subgroups,
                 stats,
             }))
+        }
+        Tab::Artwork => {
+            let template = badges::prepare_artwork_page(&db, group_id).await?;
+            Content::Artwork(Box::new(template))
+        }
+        Tab::Awards => {
+            let (_, template) = badges::prepare_awards_page(
+                &db,
+                group_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Awards(Box::new(template))
+        }
+        Tab::Badges => {
+            let (_, template) = badges::prepare_badges_page(
+                &db,
+                group_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Badges(Box::new(template))
         }
         Tab::Events => {
             let (_, template) = events::prepare_list_page(
@@ -166,6 +201,7 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
+        can_manage_badges,
         content,
         groups_by_community,
         messages: messages.into_iter().collect(),

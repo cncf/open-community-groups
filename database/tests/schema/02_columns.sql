@@ -1,9 +1,11 @@
+-- Tests database columns.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(71);
+select plan(77);
 
 -- ============================================================================
 -- TESTS
@@ -40,6 +42,71 @@ select columns_are('auth_session', array[
     'auth_session_id',
     'data',
     'expires_at'
+]);
+
+-- Test: badge columns should match expected
+select columns_are('badge', array[
+    'badge_id',
+    'created_at',
+    'criteria',
+    'description',
+    'group_id',
+    'image_file_name',
+    'name',
+    'tsdoc'
+]);
+
+-- Test: badge artwork columns should match expected
+select columns_are('badge_artwork', array[
+    'badge_artwork_id',
+    'created_at',
+    'file_name',
+    'group_id'
+]);
+
+-- Test: durable badge award queue columns should match expected
+select columns_are('badge_award_job', array[
+    'badge_award_job_id',
+    'accepted_count',
+    'actor_username',
+    'awarded_count',
+    'badge_snapshot',
+    'community_id',
+    'created_at',
+    'failure_count',
+    'group_id',
+    'next_attempt_at',
+    'next_recipient_offset',
+    'recipient_count',
+    'skipped_count',
+    'status',
+    'updated_at',
+
+    'actor_user_id',
+    'badge_id',
+    'claim_id',
+    'claimed_at',
+    'completed_at',
+    'error',
+    'event_id'
+]);
+
+-- Test: durable badge award recipient columns should match expected
+select columns_are('badge_award_job_recipient', array[
+    'badge_award_job_id',
+    'position',
+
+    'user_id'
+]);
+
+-- Test: badge status list columns should match expected
+select columns_are('badge_status_list', array[
+    'badge_status_list_id',
+    'allocation_offset',
+    'allocation_position',
+    'allocation_stride',
+    'created_at',
+    'group_id'
 ]);
 
 -- Test: cfs_submission columns should match expected
@@ -876,6 +943,28 @@ select columns_are('user', array[
     'title',
     'twitter_url',
     'website_url'
+]);
+
+-- Test: user badge columns should match expected
+select columns_are('user_badge', array[
+    'user_badge_id',
+    'awarded_at',
+    'badge_status_list_id',
+    'display_order',
+    'group_id',
+    'is_listed',
+    'snapshot',
+    'status_list_index',
+
+    'badge_id',
+    'event_id',
+    'identity_bound_at',
+    'identity_hash',
+    'identity_salt',
+    'revocation_reason',
+    'revoked_at',
+    'revoked_by_user_id',
+    'user_id'
 ]);
 
 -- ============================================================================

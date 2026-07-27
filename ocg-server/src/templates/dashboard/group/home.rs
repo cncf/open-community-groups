@@ -11,7 +11,7 @@ use crate::{
         auth::User,
         dashboard::{
             audit,
-            group::{analytics, events, members, refunds, settings, sponsors, team},
+            group::{analytics, badges, events, members, refunds, settings, sponsors, team},
         },
         filters,
         helpers::user_initials,
@@ -23,6 +23,8 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/home.html")]
 pub(crate) struct Page {
+    /// Whether the current user can open the protected badge surface.
+    pub can_manage_badges: bool,
     /// Main content section for the page.
     pub content: Content,
     /// Groups organized by community.
@@ -79,6 +81,12 @@ impl Page {
 pub(crate) enum Content {
     /// Analytics page.
     Analytics(Box<analytics::Page>),
+    /// Badge artwork page.
+    Artwork(Box<badges::ArtworkPage>),
+    /// Badge award history page.
+    Awards(Box<badges::AwardsPage>),
+    /// Badge definitions page.
+    Badges(Box<badges::BadgesPage>),
     /// Events management page.
     Events(Box<events::ListPage>),
     /// Audit logs page.
@@ -99,6 +107,21 @@ impl Content {
     /// Check if the content is the analytics page.
     fn is_analytics(&self) -> bool {
         matches!(self, Content::Analytics(_))
+    }
+
+    /// Check if the content is the badge artwork page.
+    fn is_artwork(&self) -> bool {
+        matches!(self, Content::Artwork(_))
+    }
+
+    /// Check if the content is the badge award history page.
+    fn is_awards(&self) -> bool {
+        matches!(self, Content::Awards(_))
+    }
+
+    /// Check if the content is the badges page.
+    fn is_badges(&self) -> bool {
+        matches!(self, Content::Badges(_))
     }
 
     /// Check if the content is the events page.
@@ -141,6 +164,9 @@ impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Analytics(template) => write!(f, "{}", template.render()?),
+            Content::Artwork(template) => write!(f, "{}", template.render()?),
+            Content::Awards(template) => write!(f, "{}", template.render()?),
+            Content::Badges(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
@@ -162,6 +188,12 @@ pub(crate) enum Tab {
     /// Analytics tab (default).
     #[default]
     Analytics,
+    /// Badge artwork tab.
+    Artwork,
+    /// Badge award history tab.
+    Awards,
+    /// Badge definitions tab.
+    Badges,
     /// Events management tab.
     Events,
     /// Audit logs tab.

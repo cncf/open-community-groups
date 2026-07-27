@@ -3,7 +3,7 @@
 # Group Dashboard Guide
 
 Use the Group Dashboard to run your group day to day. This is where organizers
-manage events, team coordination, member communication, and sponsors.
+manage events, badges, team coordination, member communication, and sponsors.
 
 If you are still selecting the right workspace, read
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).
@@ -23,6 +23,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
   - [Members: Communication](#members-communication)
   - [Sponsors: Reusable Profiles](#sponsors-reusable-profiles)
   - [Events: Operations Hub](#events-operations-hub)
+  - [Badges: Portable Recognition](#badges-portable-recognition)
   - [Refunds: Operational Queue](#refunds-operational-queue)
   - [Audit: Logs](#audit-logs)
 
@@ -37,6 +38,10 @@ Main areas:
 - [Team](/dashboard/group?tab=team ':ignore'): organizer membership and roles.
 - [Analytics](/dashboard/group?tab=analytics ':ignore'): group-level growth trends.
 - [Events](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
+- `Badges`: a main-menu section below `Events` with full-width
+  [Badges](/dashboard/group?tab=badges ':ignore'),
+  [Artwork](/dashboard/group?tab=artwork ':ignore'), and
+  [Awards](/dashboard/group?tab=awards ':ignore') tabs.
 - [Refunds](/dashboard/group?tab=refunds ':ignore'): refund review, processing, and recovery work.
 - [Members](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
 - [Sponsors](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.
@@ -282,6 +287,19 @@ For complete mechanics, continue to:
 
 To understand how attendees experience the published result, see
 [Public Site Guide](public-site.md).
+
+## Badges: Portable Recognition
+
+`Badges` is where groups create reusable badge definitions, manage artwork, and review active or
+revoked award history. Badge management requires badges write access, so Group Admins and Events
+Managers can use it while Viewers cannot.
+
+Awards can come from several parts of the group dashboard. Event attendee and contributor actions
+recognize confirmed attendees, hosts, and speakers, while accepted group team members can receive
+group-level awards from their Team row menu.
+
+For badge setup, eligibility rules, award flows, and revocation, follow the
+[Group Badge Management](badges.md#group-badge-management) section of the Badges Guide.
 
 ## Refunds: Operational Queue
 

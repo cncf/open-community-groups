@@ -271,6 +271,40 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route("/team", get(dashboard::group::team::list_page))
         .route_layer(check_selected_group_permission(GroupPermission::Read));
 
+    // Group badge management endpoints
+    let badges_management = Router::new()
+        .route("/artwork", get(dashboard::group::badges::artwork_page))
+        .route("/awards", get(dashboard::group::badges::awards_page))
+        .route(
+            "/badges",
+            get(dashboard::group::badges::badges_page).post(dashboard::group::badges::add),
+        )
+        .route(
+            "/badges/artwork",
+            post(dashboard::group::badges::add_artwork),
+        )
+        .route(
+            "/badges/artwork/{badge_artwork_id}",
+            delete(dashboard::group::badges::delete_artwork),
+        )
+        .route("/badges/award", post(dashboard::group::badges::award))
+        .route(
+            "/badges/awards/{user_badge_id}/revoke",
+            post(dashboard::group::badges::revoke),
+        )
+        .route("/badges/options", get(dashboard::group::badges::options))
+        .route(
+            "/badges/{badge_id}",
+            put(dashboard::group::badges::update).delete(dashboard::group::badges::delete),
+        )
+        .route(
+            "/events/{event_id}/badges/recipients",
+            get(dashboard::group::badges::recipients),
+        )
+        .route_layer(check_selected_group_permission(
+            GroupPermission::BadgesWrite,
+        ));
+
     // Group events management endpoints
     let events_management = Router::new()
         .route("/events/add", post(dashboard::group::events::add))
@@ -400,6 +434,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     // Setup router
     Router::new()
         .merge(dashboard_read)
+        .merge(badges_management)
         .merge(events_management)
         .merge(members_management)
         .merge(settings_management)
@@ -421,6 +456,20 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
     // Setup router
     Router::new()
         .route("/", get(dashboard::user::home::page))
+        .route("/badges", get(dashboard::user::badges::list_page))
+        .route("/badges/order", put(dashboard::user::badges::update_order))
+        .route(
+            "/badges/{user_badge_id}",
+            delete(dashboard::user::badges::revoke),
+        )
+        .route(
+            "/badges/{user_badge_id}/export",
+            get(dashboard::user::badges::export),
+        )
+        .route(
+            "/badges/{user_badge_id}/listing",
+            put(dashboard::user::badges::update_listing),
+        )
         .route("/events", get(dashboard::user::events::list_page))
         .route(
             "/events/{community_name}/{event_id}/attendance",

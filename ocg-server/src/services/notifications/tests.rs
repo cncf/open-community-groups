@@ -20,6 +20,9 @@ use super::{
     SmtpErrorKind,
 };
 
+/// Deployment base URL used by notification rendering tests.
+const TEST_BASE_URL: &str = "https://example.test";
+
 #[tokio::test]
 async fn test_notifications_manager_enqueue() {
     // Setup identifiers and data structures
@@ -62,9 +65,9 @@ async fn test_enqueue_worker_enqueue_due_notifications() {
 
     // Setup worker and enqueue due notifications
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        db,
     };
     let enqueued = worker.enqueue_due_notifications().await.unwrap();
 
@@ -84,9 +87,9 @@ async fn test_enqueue_worker_enqueue_due_notifications_error() {
 
     // Setup worker and enqueue due notifications
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        db,
     };
     let err = worker.enqueue_due_notifications().await.unwrap_err();
 
@@ -113,9 +116,9 @@ async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_error() {
 
     // Setup worker and execute loop
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: cancellation_token.clone(),
+        db,
     };
     worker.run().await;
 
@@ -142,9 +145,9 @@ async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_success() {
 
     // Setup worker and execute loop
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: cancellation_token.clone(),
+        db,
     };
     worker.run().await;
 
@@ -164,8 +167,8 @@ async fn test_delivery_recovery_worker_mark_stale_processing_notifications_unkno
 
     // Setup worker and recover stale processing notifications
     let worker = DeliveryRecoveryWorker {
-        db,
         cancellation_token: CancellationToken::new(),
+        db,
     };
     let recovered = worker.mark_stale_processing_notifications_unknown().await.unwrap();
 
@@ -192,8 +195,8 @@ async fn test_delivery_recovery_worker_run_stops_on_cancellation_after_success()
 
     // Setup worker and execute loop
     let worker = DeliveryRecoveryWorker {
-        db,
         cancellation_token: cancellation_token.clone(),
+        db,
     };
     worker.run().await;
 
@@ -242,9 +245,10 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification() 
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
-        db,
-        cfg: sample_email_config(None),
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -299,9 +303,10 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification_wi
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
-        db,
-        cfg: sample_email_config(None),
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -324,9 +329,10 @@ async fn test_delivery_worker_deliver_notification_no_pending_notifications() {
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
-        db,
-        cfg: sample_email_config(None),
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -370,9 +376,10 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
-        db,
-        cfg: sample_email_config(None),
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -423,6 +430,7 @@ async fn test_delivery_worker_deliver_notification_records_unknown_send_error() 
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
         db,
@@ -480,9 +488,10 @@ async fn test_delivery_worker_deliver_notification_requeues_retryable_send_error
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
-        db,
-        cfg: sample_email_config(None),
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -533,6 +542,7 @@ async fn test_delivery_worker_deliver_notification_returns_unknown_update_error(
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
         db,
@@ -577,15 +587,84 @@ async fn test_delivery_worker_deliver_notification_returns_update_error() {
 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
-        db,
-        cfg: sample_email_config(None),
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let err = worker.deliver_notification().await.unwrap_err();
 
     // Check result matches expectations
     assert!(err.to_string().contains("update error"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_badge_awarded() {
+    // Setup atomic database-enqueued template data with relative URLs
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::BadgeAwarded,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "badge": {
+                "criteria": "Attend the event",
+                "description": "Recognizes participation",
+                "image_file_name": "badge.png",
+                "issuer": {
+                    "community_id": "00000000-0000-0000-0000-000000000001",
+                    "community_name": "Test Community",
+                    "group_id": "00000000-0000-0000-0000-000000000002",
+                    "group_name": "Test Group"
+                },
+                "name": "Participant"
+            },
+            "dashboard_url": "/dashboard/user?tab=badges",
+            "theme": {"primary_color": "#000000"}
+        })),
+    };
+
+    // Prepare content with deployment-specific URL context
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check badge content and links are rendered from the typed template
+    assert_eq!(subject, "You earned the Participant badge");
+    assert!(body.contains("Recognizes participation"));
+    assert!(body.contains("Attend the event"));
+    assert!(body.contains("Test Group"));
+    assert!(body.contains("https://example.test/dashboard/user?tab=badges"));
+    assert!(body.contains("https://example.test/images/badges/badge.png"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_badge_revoked_omits_reason() {
+    // Setup atomic database-enqueued template data with a relative dashboard URL
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::BadgeRevoked,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(json!({
+            "badge_name": "Participant",
+            "dashboard_url": "/dashboard/user?tab=badges",
+            "group_name": "Test Group",
+            "revocation_reason": "private audit detail",
+            "theme": {"primary_color": "#000000"}
+        })),
+    };
+
+    // Prepare content with deployment-specific URL context
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check the public typed fields render without the private revocation reason
+    assert_eq!(subject, "Your Participant badge was revoked");
+    assert!(body.contains("permanently revoked"));
+    assert!(body.contains("Contact Test Group"));
+    assert!(body.contains("https://example.test/dashboard/user?tab=badges"));
+    assert!(!body.contains("private audit detail"));
 }
 
 #[test]
@@ -601,7 +680,7 @@ fn test_delivery_worker_prepare_content_email_verification() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Verify your email address");
@@ -622,7 +701,7 @@ fn test_delivery_worker_prepare_content_event_attendance_canceled() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Attendance canceled");
@@ -645,7 +724,7 @@ fn test_delivery_worker_prepare_content_event_custom() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Custom event subject");
@@ -669,7 +748,7 @@ fn test_delivery_worker_prepare_content_event_custom_legacy_template_data() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Custom event title");
@@ -690,7 +769,7 @@ fn test_delivery_worker_prepare_content_event_invitation() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "You have been invited to an event");
@@ -714,7 +793,7 @@ fn test_delivery_worker_prepare_content_event_published() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "New event published");
@@ -736,7 +815,7 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
@@ -770,7 +849,7 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
@@ -795,7 +874,7 @@ fn test_delivery_worker_prepare_content_event_reminder_speaker_only() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
@@ -817,7 +896,7 @@ fn test_delivery_worker_prepare_content_event_series_canceled() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Events canceled");
@@ -839,7 +918,7 @@ fn test_delivery_worker_prepare_content_event_series_published() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "New events published");
@@ -864,7 +943,7 @@ fn test_delivery_worker_prepare_content_speaker_series_welcome() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "You're speaking at upcoming events");
@@ -887,7 +966,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_joined() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "You joined the waiting list");
@@ -908,7 +987,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_left() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "You left the waiting list");
@@ -929,7 +1008,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "You moved off the waiting list");
@@ -954,7 +1033,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registratio
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "You moved off the waiting list");
@@ -982,7 +1061,7 @@ fn test_delivery_worker_prepare_content_event_welcome_omits_dashboard_cancellati
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Welcome to the event");
@@ -1005,7 +1084,7 @@ fn test_delivery_worker_prepare_content_event_welcome_renders_dashboard_cancella
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Welcome to the event");
@@ -1027,7 +1106,7 @@ fn test_delivery_worker_prepare_content_group_custom() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Custom group subject");
@@ -1051,7 +1130,7 @@ fn test_delivery_worker_prepare_content_group_custom_legacy_template_data() {
     };
 
     // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
     assert_eq!(subject, "Custom group title");
@@ -1072,7 +1151,7 @@ fn test_delivery_worker_prepare_content_missing_data() {
     };
 
     // Prepare content and expect an error
-    let err = DeliveryWorker::prepare_content(&notification).unwrap_err();
+    let err = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap_err();
 
     // Check error message
     assert!(err.to_string().contains("missing template data"));
@@ -1320,6 +1399,7 @@ fn sample_delivery_worker(cfg: EmailConfig, email_sender: DynEmailSender) -> Del
     let db: DynDB = Arc::new(MockDB::new());
 
     DeliveryWorker {
+        base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg,
         db,

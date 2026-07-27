@@ -1,9 +1,11 @@
+-- Tests database extensions and tables.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(69);
+select plan(75);
 
 -- ============================================================================
 -- TESTS
@@ -17,6 +19,11 @@ select has_extension('postgis');
 select has_table('attachment');
 select has_table('audit_log');
 select has_table('auth_session');
+select has_table('badge');
+select has_table('badge_artwork');
+select has_table('badge_award_job');
+select has_table('badge_award_job_recipient');
+select has_table('badge_status_list');
 select has_table('cfs_submission');
 select has_table('cfs_submission_label');
 select has_table('cfs_submission_rating');
@@ -81,6 +88,7 @@ select has_table('session_proposal_status');
 select has_table('session_speaker');
 select has_table('site');
 select has_table('user');
+select has_table('user_badge');
 
 -- ============================================================================
 -- CLEANUP

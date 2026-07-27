@@ -59,8 +59,11 @@ async fn test_list_page_success() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_team_members()
@@ -74,6 +77,15 @@ async fn test_list_page_success() {
     db.expect_list_group_roles()
         .times(1)
         .returning(move || Ok(vec![role.clone()]));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(move |_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -103,6 +115,8 @@ async fn test_list_page_success() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("At least one accepted admin is required."));
+    assert_eq!(body.matches("Award badge").count(), 1);
+    assert!(body.contains(&format!("data-user-ids=\"{}\"", member.user_id)));
 }
 
 #[tokio::test]
@@ -142,8 +156,11 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_team_members()
@@ -155,6 +172,15 @@ async fn test_list_page_with_pagination_params() {
     db.expect_list_group_roles()
         .times(1)
         .returning(move || Ok(vec![role.clone()]));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(move |_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -252,6 +278,15 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
             *cid == community_id
                 && *gid == group_id
                 && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(move |_, _, _, _| Ok(false));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
                 && permission == GroupPermission::TeamWrite
         })
         .returning(move |_, _, _, _| Ok(false));
@@ -281,6 +316,7 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
     .unwrap()
     .to_string();
     assert!(body.contains(&expected_tooltip));
+    assert!(!body.contains("Award badge"));
 }
 
 #[tokio::test]

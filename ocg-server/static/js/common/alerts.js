@@ -19,6 +19,7 @@ const REFRESH_BODY_EVENT = "refresh-body";
 export const getCommonAlertOptions = () => {
   return {
     position: "top-end",
+    topLayer: true,
     buttonsStyling: false,
     iconColor: "var(--color-primary-500)",
     backdrop: false,

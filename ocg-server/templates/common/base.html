@@ -115,9 +115,11 @@
       {# End content -#}
 
       {# Footer -#}
-      {% if !path.starts_with("/dashboard") && path != "/404" && path != "/docs" && path != "/log-in" && path != "/sign-up" && !path.contains("/check-in/") -%}
-        {% include "common/footer.html" -%}
-      {% endif -%}
+      {% block footer -%}
+        {% if !path.starts_with("/dashboard") && path != "/404" && path != "/docs" && path != "/log-in" && path != "/sign-up" && !path.contains("/check-in/") -%}
+          {% include "common/footer.html" -%}
+        {% endif -%}
+      {% endblock footer -%}
       {# End footer -#}
     </div>
 

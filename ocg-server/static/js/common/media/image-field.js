@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
@@ -19,6 +19,7 @@ const IMAGE_KIND = {
 };
 
 const IMAGE_TARGET = {
+  BADGE: "badge",
   OPEN_GRAPH: "open_graph",
 };
 
@@ -37,6 +38,12 @@ export class ImageField extends LitWrapper {
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
+   * @property {boolean} hideUploadButton - Whether to hide the secondary upload button.
+   * @property {boolean} hideRemoveButton - Whether to hide the remove image button.
+   * @property {string} acceptedFormats - Optional accepted file formats.
+   * @property {boolean} directUpload - Whether to submit the selected file with the parent form.
+   * @property {string} helpText - Optional replacement for the default help text.
+   * @property {string} submitLabel - Optional label for a form submit action.
    * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo", "open_graph").
    * @property {string} legend - Optional legend text displayed under the image preview area.
    */
@@ -49,6 +56,12 @@ export class ImageField extends LitWrapper {
     imageKind: { type: String, attribute: "image-kind" },
     previewBgClass: { type: String, attribute: "preview-bg-class" },
     helpPrefixText: { type: String, attribute: "help-prefix-text" },
+    hideUploadButton: { type: Boolean, attribute: "hide-upload-button" },
+    hideRemoveButton: { type: Boolean, attribute: "hide-remove-button" },
+    acceptedFormats: { type: String, attribute: "accepted-formats" },
+    directUpload: { type: Boolean, attribute: "direct-upload" },
+    helpText: { type: String, attribute: "help-text" },
+    submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
   };
@@ -66,8 +79,15 @@ export class ImageField extends LitWrapper {
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
     this.previewBgClass = "";
     this.helpPrefixText = "";
+    this.hideUploadButton = false;
+    this.hideRemoveButton = false;
+    this.acceptedFormats = "";
+    this.directUpload = false;
+    this.helpText = "";
+    this.submitLabel = "";
     this.target = "";
     this.legend = "";
+    this._directFileName = "";
   }
 
   get _valueInputId() {
@@ -88,14 +108,31 @@ export class ImageField extends LitWrapper {
     return typeof this.value === "string" && this.value.trim().length > 0;
   }
 
+  /** Return a dashboard-safe preview URL for unsaved badge artwork. */
+  get _previewUrl() {
+    if (this.target === IMAGE_TARGET.BADGE && this.value.startsWith("/images/badges/")) {
+      return this.value.replace("/images/badges/", "/images/");
+    }
+    return this.value;
+  }
+
   /**
    * Render either the selected image or the placeholder markup for the kind.
    */
   _renderPlaceholder(isWide) {
+    if (this.directUpload && this._directFileName) {
+      return html`
+        <div class="flex flex-col items-center justify-center gap-2 px-3 text-center">
+          <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
+          <p class="text-xs leading-snug text-stone-500">${this._directFileName}</p>
+        </div>
+      `;
+    }
+
     if (this._hasImage) {
       return html`
         <img
-          src=${this.value}
+          src=${this._previewUrl}
           alt="Image preview"
           class=${
             isWide
@@ -181,6 +218,18 @@ export class ImageField extends LitWrapper {
     if (!file) {
       return;
     }
+    if (this.directUpload) {
+      const input = getElementById(this, this._fileInputId);
+      if (!input) {
+        return;
+      }
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      input.files = dataTransfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
+    }
+
     this._uploadFile(file);
   }
 
@@ -193,6 +242,13 @@ export class ImageField extends LitWrapper {
     if (!file) {
       return;
     }
+
+    if (this.directUpload) {
+      this._directFileName = file.name;
+      this.requestUpdate();
+      return;
+    }
+
     await this._uploadFile(file, () => {
       input.value = "";
     });
@@ -248,6 +304,48 @@ export class ImageField extends LitWrapper {
     event.target.setCustomValidity(message);
   }
 
+  /** Render the direct-submit drop zone used when a parent form owns the upload. */
+  _renderDirectUploadField(acceptedFormats) {
+    return html`
+      <label for=${this._fileInputId} class="form-label">
+        ${this.label} ${this.required ? html`<span class="asterisk">*</span>` : ""}
+      </label>
+      <div class="mt-2">
+        <div
+          class="relative flex min-h-24 cursor-pointer items-center gap-4 rounded-lg border border-dashed border-stone-300 px-6 text-stone-600 transition-colors hover:border-primary-500 ${
+            this._isDragActive ? "border-primary-500 bg-primary-50" : ""
+          }"
+          role="button"
+          tabindex="0"
+          aria-label="Upload ${this.label}"
+          @click=${this._triggerFilePicker}
+          @keydown=${this._handlePreviewKeyDown}
+          @dragover=${this._handleDragOver}
+          @dragleave=${this._handleDragLeave}
+          @drop=${this._handleDrop}
+        >
+          <div class="svg-icon size-8 shrink-0 icon-image bg-stone-400" aria-hidden="true"></div>
+          <p class="text-sm">
+            <span class="font-semibold text-primary-600">Click to upload</span>
+            ${
+              this._directFileName
+                ? html`<span> ${this._directFileName}</span>`
+                : html`<span> or drag and drop a file</span>`
+            }
+          </p>
+          <input
+            type="file"
+            id=${this._fileInputId}
+            name=${this._directFileName ? this.name : nothing}
+            class="hidden"
+            accept=${acceptedFormats}
+            @change=${this._handleFileChange}
+          />
+        </div>
+      </div>
+    `;
+  }
+
   /**
    * Compose the upload UI and wire all interaction hooks.
    */
@@ -256,17 +354,29 @@ export class ImageField extends LitWrapper {
     const bannerLikeKinds = [IMAGE_KIND.BANNER];
     const isWide = bannerLikeKinds.includes(this.imageKind);
     const isOpenGraphTarget = this.target === IMAGE_TARGET.OPEN_GRAPH;
+    const isBadgeTarget = this.target === IMAGE_TARGET.BADGE;
     const removeDisabled = !this._hasImage || this._isUploading;
+    const submitDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
-    const helpText = isOpenGraphTarget
-      ? IMAGE_UPLOAD_MAX_SIZE_TEXT
-      : isWide
-        ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`
-        : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`;
+    const helpText =
+      this.helpText.trim() ||
+      (isOpenGraphTarget
+        ? IMAGE_UPLOAD_MAX_SIZE_TEXT
+        : isBadgeTarget
+          ? `Images must be 512 x 512 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} Supported formats: PNG, JPEG and WEBP.`
+          : isWide
+            ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`
+            : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`);
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
-    const acceptedFormats = isOpenGraphTarget
-      ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS
-      : DEFAULT_IMAGE_ACCEPTED_FORMATS;
+    const acceptedFormats =
+      this.acceptedFormats.trim() ||
+      (isOpenGraphTarget || isBadgeTarget
+        ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS
+        : DEFAULT_IMAGE_ACCEPTED_FORMATS);
+
+    if (this.directUpload) {
+      return this._renderDirectUploadField(acceptedFormats);
+    }
 
     return html`
       <label for=${this._fileInputId} class="form-label">
@@ -306,9 +416,9 @@ export class ImageField extends LitWrapper {
           <p class="form-legend hidden xl:block">${combinedHelpText}</p>
           <div class="flex flex-wrap gap-3 mb-1">
             <label
-              class="btn-primary btn-mini inline-flex items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
-                this._isUploading ? "opacity-75 pointer-events-none" : ""
-              }"
+              class="btn-primary btn-mini items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
+                this.hideUploadButton ? "hidden" : "inline-flex"
+              } ${this._isUploading ? "opacity-75 pointer-events-none" : ""}"
             >
               <input
                 type="file"
@@ -320,16 +430,36 @@ export class ImageField extends LitWrapper {
               />
               Upload image
             </label>
-            <button
-              type="button"
-              class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${
-                removeDisabled ? "cursor-not-allowed opacity-60" : "enabled:cursor-pointer"
-              }"
-              ?disabled=${removeDisabled}
-              @click=${this._handleRemove}
-            >
-              Remove image
-            </button>
+            ${
+              this.submitLabel
+                ? html`
+                    <button
+                      type="submit"
+                      class="btn-primary btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0"
+                      ?disabled=${submitDisabled}
+                      title=${submitDisabled ? "Upload an image first." : ""}
+                    >
+                      ${this.submitLabel}
+                    </button>
+                  `
+                : ""
+            }
+            ${
+              this.hideRemoveButton
+                ? ""
+                : html`
+                    <button
+                      type="button"
+                      class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${
+                        removeDisabled ? "cursor-not-allowed opacity-60" : "enabled:cursor-pointer"
+                      }"
+                      ?disabled=${removeDisabled}
+                      @click=${this._handleRemove}
+                    >
+                      Remove image
+                    </button>
+                  `
+            }
           </div>
         </div>
       </div>

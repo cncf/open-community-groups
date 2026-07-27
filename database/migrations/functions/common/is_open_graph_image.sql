@@ -16,4 +16,4 @@ returns boolean as $$
         and g.deleted = false
         and c.active = true
     );
-$$ language sql;
+$$ language sql stable;

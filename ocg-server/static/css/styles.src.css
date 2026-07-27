@@ -677,6 +677,7 @@ input:placeholder-shown {
 .icon-eye { --icon-url: url('/static/images/icons/eye.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
 .icon-caret-up-filled { --icon-url: url('/static/images/icons/caret_up_filled.svg'); }
+.icon-certificate { --icon-url: url('/static/images/icons/certificate.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
 .icon-check { --icon-url: url('/static/images/icons/check.svg'); }
 .icon-check-in { --icon-url: url('/static/images/icons/check_in.svg'); }
@@ -686,6 +687,7 @@ input:placeholder-shown {
 .icon-csv { --icon-url: url('/static/images/icons/csv.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
 .icon-docs { --icon-url: url('/static/images/icons/docs.svg'); }
+.icon-download { --icon-url: url('/static/images/icons/download.svg'); }
 .icon-drag { --icon-url: url('/static/images/icons/drag.svg'); }
 .icon-email { --icon-url: url('/static/images/icons/email.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }

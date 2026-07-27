@@ -53,6 +53,23 @@
 {% endmacro invitation_badge -%}
 {# End invitation badge -#}
 
+{# Badge award button -#}
+{# Used by event management surfaces for one eligible recipient. -#}
+{% macro recipient_award_button(event_id, user_id, extra_styles, menu_item = false) -%}
+  <button type="button"
+          class="{{ extra_styles }}"
+          data-badge-award-open
+          data-event-id="{{ event_id }}"
+          data-user-ids="{{ user_id }}"
+          {% if menu_item %}role="menuitem"{% endif %}>
+    {% if menu_item -%}
+      <div class="svg-icon size-4 icon-certificate shrink-0 bg-stone-500"></div>
+    {% endif -%}
+    {{ caller() }}
+  </button>
+{% endmacro recipient_award_button -%}
+{# End badge award button -#}
+
 {# Sold out corner ribbon -#}
 {# Used by public event pages and event cards for sold-out ribbons. -#}
 {% macro sold_out_corner_ribbon(remaining_capacity, capacity = None, label = "Sold out", container_classes = None, ribbon_classes = None, data_attrs = "", always_render = false, force_visible = false) -%}

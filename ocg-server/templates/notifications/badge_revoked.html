@@ -1,0 +1,26 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  Your {{ badge_name }} badge was revoked
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ group_name }} permanently revoked this credential.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-15">
+    Your <strong>{{ badge_name }}</strong> badge issued by <strong>{{ group_name }}</strong> on
+    <strong>Open Community Groups</strong> was permanently revoked.
+  </p>
+  <p class="default mb-30">
+    The credential remains available as history, but verification will report it as revoked.
+    Contact {{ group_name }} if you have questions.
+  </p>
+  {{ email::button(link = dashboard_url, text = "View your badges", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because {{ group_name }} revoked a badge it issued to you.
+{% endblock footer -%}

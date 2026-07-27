@@ -1,5 +1,8 @@
 //! Services modules.
 
+/// Open Badges credential service module.
+pub(crate) mod badges;
+
 /// Images service module.
 pub(crate) mod images;
 

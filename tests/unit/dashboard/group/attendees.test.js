@@ -520,6 +520,57 @@ describe("dashboard group attendees", () => {
     ).to.deep.equal(["user-1", "user-2"]);
   });
 
+  it("opens the shared badge modal for chosen badge-eligible attendees", () => {
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-badges",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+        {
+          email: "bo@example.test",
+          id: "user-2",
+          name: "Bo Chen",
+          username: "bchen",
+        },
+      ],
+    });
+    const start = document.querySelector("[data-attendee-email-selection-start]");
+    start.dataset.selectionAction = "badge";
+    const checkboxes = document.querySelectorAll("[data-attendee-email-selection-checkbox]");
+    checkboxes[0].dataset.badgeEligible = "true";
+    checkboxes[0].dataset.emailEligible = "false";
+    checkboxes[1].dataset.badgeEligible = "false";
+    checkboxes[1].dataset.emailEligible = "true";
+    const badgeHeader = document.createElement("button");
+    badgeHeader.id = "attendee-badge-actions-button";
+    document.getElementById("attendees-content")?.prepend(badgeHeader);
+    const modal = document.createElement("badge-award-modal");
+    let openInput;
+    modal.open = (input) => {
+      openInput = input;
+    };
+    document.body.append(modal);
+
+    initializeAttendeesUi();
+    start.click();
+
+    expect(checkboxes[0].classList.contains("hidden")).to.equal(false);
+    expect(checkboxes[1].classList.contains("hidden")).to.equal(true);
+    checkboxes[0].checked = true;
+    checkboxes[0].dispatchEvent(new Event("change", { bubbles: true }));
+    document.querySelector("[data-attendee-email-selection-send]")?.click();
+
+    expect(openInput.eventId).to.equal("event-badges");
+    expect(openInput.userIds).to.deep.equal(["user-1"]);
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      true,
+    );
+  });
+
   it("keeps selected attendees across table refreshes for the same event", () => {
     // Render the first attendee table page and select one attendee.
     document.body.innerHTML = attendeeSelectionMarkup({

@@ -232,6 +232,62 @@
         </ul>
       </div>
     </div>
+    <div class="group relative w-full lg:w-auto">
+      <button id="attendee-badge-actions-button"
+              type="button"
+              class="btn-primary-outline w-full lg:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
+                     {% if total == 0 || !can_manage_events || event.canceled -%}
+                       opacity-50 cursor-not-allowed
+                     {% endif -%}"
+              aria-haspopup="menu"
+              aria-controls="attendee-badge-actions-menu"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot award badges."
+              {% else if event.canceled -%}
+                disabled title="Canceled events cannot award badges."
+              {% else if total == 0 -%}
+                disabled title="No confirmed attendees with verified email addresses."
+              {% endif -%}>Award badge</button>
+      <div id="attendee-badge-actions-menu"
+           data-attendee-badge-actions-dropdown
+           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+        <ul class="py-2 text-sm text-stone-700" role="menu">
+          <li>
+            <button type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                    data-attendee-badge-recipients-open
+                    data-event-id="{{ event.event_id }}"
+                    data-recipient-scope="all-attendees">
+              <div class="svg-icon size-4 icon-certificate shrink-0 bg-stone-500"></div>
+              <span>All attendees</span>
+            </button>
+          </li>
+          <li>
+            <button type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                    data-attendee-badge-recipients-open
+                    data-event-id="{{ event.event_id }}"
+                    data-recipient-scope="checked-in-attendees">
+              <div class="svg-icon size-4 icon-certificate shrink-0 bg-stone-500"></div>
+              <span>Checked-in attendees</span>
+            </button>
+          </li>
+          <li>
+            <button type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                    data-attendee-email-selection-start
+                    data-event-id="{{ event.event_id }}"
+                    data-selection-action="badge">
+              <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+              <span>Choose attendees</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
     <div class="group relative">
       <button id="attendee-actions-button"
               type="button"
@@ -470,11 +526,13 @@
             {# Email selection -#}
             <td class="hidden px-3 xl:px-5 py-4 w-12"
                 data-attendee-email-selection-column>
-              {% if can_manage_events && !event.canceled && attendee.can_receive_attendee_email -%}
+              {% if can_manage_events && !event.canceled && (attendee.can_receive_attendee_email || attendee.status == "confirmed") -%}
                 <input type="checkbox"
                        class="checkbox-primary"
-                       aria-label="Select {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }} for email"
+                       aria-label="Select {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                        data-attendee-email-selection-checkbox
+                       data-badge-eligible="{{ attendee.status == "confirmed" }}"
+                       data-email-eligible="{{ attendee.can_receive_attendee_email }}"
                        data-recipient-email="{{ attendee.email }}"
                        data-recipient-id="{{ attendee.user.user_id }}"
                        data-recipient-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
@@ -720,6 +778,13 @@
                               <div class="svg-icon size-4 icon-email shrink-0 bg-stone-500"></div>
                               <span>Send email</span>
                             </button>
+                          </li>
+                        {% endif -%}
+                        {% if can_manage_events && !event.canceled && attendee.status == "confirmed" -%}
+                          <li>
+                            {% call badges::recipient_award_button(event_id = event.event_id, user_id = attendee.user.user_id, extra_styles = "flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left", menu_item = true) -%}
+                            <span>Award badge</span>
+                            {% endcall -%}
                           </li>
                         {% endif -%}
                         {% if can_manage_events && attendee.status == "confirmed" -%}

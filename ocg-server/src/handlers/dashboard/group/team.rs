@@ -225,9 +225,15 @@ pub(crate) async fn prepare_list_page(
     // Fetch group team members
     let filters: GroupTeamFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
-    let (results, roles, can_manage_team) = tokio::try_join!(
+    let (results, roles, can_award_badges, can_manage_team) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles(),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user_id,
+            GroupPermission::BadgesWrite
+        ),
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -252,6 +258,7 @@ pub(crate) async fn prepare_list_page(
         Some(message.to_string())
     };
     let template = team::ListPage {
+        can_award_badges,
         can_manage_team,
         manage_team_disabled_message,
         members: results.members,

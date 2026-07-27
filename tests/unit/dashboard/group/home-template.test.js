@@ -11,6 +11,28 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group home template", () => {
+  it("groups badge tabs below events in the main dashboard menu", async () => {
+    // Load the group dashboard shell before checking the navigation hierarchy.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the permission-gated section uses concise peer tab labels and routes.
+    const eventsSection = template.indexOf('dashboard::menu_title(text = "Events"');
+    const badgesSection = template.indexOf('dashboard::menu_title(text = "Badges"');
+    const membersSection = template.indexOf('dashboard::menu_title(text = "Members and sponsors"');
+    expect(eventsSection).to.be.greaterThan(-1);
+    expect(badgesSection).to.be.greaterThan(eventsSection);
+    expect(membersSection).to.be.greaterThan(badgesSection);
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/group?tab=badges")',
+    );
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Artwork", icon = "image", is_active = content.is_artwork() , href = "/dashboard/group?tab=artwork")',
+    );
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Awards", icon = "star", is_active = content.is_awards() , href = "/dashboard/group?tab=awards")',
+    );
+  });
+
   it("uses the shared dashboard menu shell", async () => {
     // Load the group dashboard shell template before checking menu layout.
     const template = normalizeWhitespace(await loadTemplate());
@@ -42,9 +64,7 @@ describe("dashboard group home template", () => {
     expect(template).to.include(
       'dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds")',
     );
-    expect(template).to.include(
-      "else if content.is_refunds() -%}refunds",
-    );
+    expect(template).to.include("else if content.is_refunds() -%}refunds");
     expect(template).not.to.include("refresh-group-refunds");
   });
 

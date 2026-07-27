@@ -1,5 +1,10 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import {
+  renderContributorActions,
+  renderContributorIdentity,
+  renderFeaturedContributorState,
+} from "/static/js/common/users/contributor-row.js";
 import "/static/js/common/users/selected-user-pill.js";
 import "/static/js/dashboard/event/sessions/speaker-modal.js";
 import {
@@ -24,6 +29,9 @@ export class SpeakersSelector extends LitWrapper {
    * @property {string} helpText - Optional helper text
    */
   static properties = {
+    additionalAwardUserIds: { type: Array, attribute: false },
+    awardsDisabled: { type: Boolean, attribute: "awards-disabled" },
+    canAwardBadges: { type: Boolean, attribute: "can-award-badges" },
     selectedSpeakers: { type: Array, attribute: "selected-speakers" },
     dashboardType: { type: String, attribute: "dashboard-type" },
     fieldNamePrefix: { type: String, attribute: "field-name-prefix" },
@@ -31,17 +39,26 @@ export class SpeakersSelector extends LitWrapper {
     label: { type: String },
     helpText: { type: String, attribute: "help-text" },
     disabled: { type: Boolean },
+    displayMode: { type: String, attribute: "display-mode" },
+    eventId: { type: String, attribute: "event-id" },
+    showAwardAll: { type: Boolean, attribute: "show-award-all" },
   };
 
   constructor() {
     super();
     this.selectedSpeakers = [];
+    this.additionalAwardUserIds = [];
+    this.awardsDisabled = false;
+    this.canAwardBadges = false;
     this.dashboardType = "group";
     this.fieldNamePrefix = "speakers";
     this.showAddButton = false;
     this.label = "Speakers";
     this.helpText = "Add speakers or presenters.";
     this.disabled = false;
+    this.displayMode = "chips";
+    this.eventId = "";
+    this.showAwardAll = false;
     this._openSpeakerModal = this._openSpeakerModal.bind(this);
     this._handleSpeakerSelected = this._handleSpeakerSelected.bind(this);
   }
@@ -159,6 +176,58 @@ export class SpeakersSelector extends LitWrapper {
     `;
   }
 
+  /** Renders event-level speakers as a simple editable table. */
+  _renderSpeakerTable(speakers) {
+    return html`
+      <div class="mt-4 overflow-visible">
+        <table class="w-full text-left text-sm text-stone-600" aria-label="Event speakers">
+          <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+            <tr>
+              <th scope="col" class="px-4 py-3">Name</th>
+              <th scope="col" class="w-40 px-4 py-3 text-center">Featured</th>
+              <th scope="col" class="w-[72px] px-4 py-3"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              speakers.length === 0
+                ? html`<tr class="border-b border-stone-200 bg-white">
+                    <td class="px-8 py-12 text-center text-stone-500" colspan="3">
+                      No event speakers added yet.
+                    </td>
+                  </tr>`
+                : repeat(
+                    speakers,
+                    (speaker, index) => `${speakerKey(speaker) || index}`,
+                    (speaker) => {
+                      return html`
+                        <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+                          <td class="px-4 py-3">${renderContributorIdentity(speaker)}</td>
+                          <td class="w-40 px-4 py-3 text-center">
+                            ${renderFeaturedContributorState(speaker.featured)}
+                          </td>
+                          <td class="px-4 py-3 text-right">
+                            ${renderContributorActions({
+                              actionLabel: "speaker",
+                              awardsDisabled: this.awardsDisabled,
+                              canAwardBadges: this.canAwardBadges,
+                              contributor: speaker,
+                              deleteDisabled: this.disabled,
+                              eventId: this.eventId,
+                              onDelete: () => this._removeSpeaker(speaker),
+                            })}
+                          </td>
+                        </tr>
+                      `;
+                    },
+                  )
+            }
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   /**
    * Renders hidden inputs for form submission.
    * @param {Array} speakers
@@ -183,26 +252,60 @@ export class SpeakersSelector extends LitWrapper {
 
   render() {
     const speakers = this._getSpeakers();
+    const awardUserIds = [
+      ...new Set(
+        [...speakers.map((speaker) => speaker.user_id), ...this.additionalAwardUserIds].filter(Boolean),
+      ),
+    ];
     return html`
       <div class="w-full">
         <div class="flex items-center justify-between gap-4 flex-wrap w-full">
           <label class="form-label m-0">${this.label}</label>
           ${
-            this.showAddButton
-              ? html`<button
-                  type="button"
-                  class="btn-secondary"
-                  @click=${this._openSpeakerModal}
-                  ?disabled=${this.disabled}
-                >
-                  Add speaker
-                </button>`
+            this.showAddButton || (this.showAwardAll && this.canAwardBadges && this.eventId)
+              ? html`<div class="flex items-center justify-end gap-3">
+                  ${
+                    this.showAwardAll && this.canAwardBadges && this.eventId
+                      ? html`<button
+                          type="button"
+                          class="btn-primary-outline"
+                          data-badge-award-open
+                          data-badge-award-all-speakers
+                          data-event-id=${this.eventId}
+                          data-user-ids=${awardUserIds.join(",")}
+                          title=${
+                            this.awardsDisabled ? "Save contributor changes before awarding badges." : ""
+                          }
+                          ?disabled=${this.awardsDisabled || awardUserIds.length === 0}
+                        >
+                          Award badge
+                        </button>`
+                      : ""
+                  }
+                  ${
+                    this.showAddButton
+                      ? html`<button
+                          type="button"
+                          class="btn-secondary"
+                          @click=${this._openSpeakerModal}
+                          ?disabled=${this.disabled}
+                        >
+                          Add speaker
+                        </button>`
+                      : ""
+                  }
+                </div>`
               : ""
           }
         </div>
 
         ${this.helpText ? html`<p class="text-sm text-stone-500 mt-1">${this.helpText}</p>` : ""}
-        ${this._renderSpeakerChips(speakers)} ${this._renderHiddenInputs(speakers)}
+        ${
+          this.displayMode === "table"
+            ? this._renderSpeakerTable(speakers)
+            : this._renderSpeakerChips(speakers)
+        }
+        ${this._renderHiddenInputs(speakers)}
 
         <session-speaker-modal
           dashboard-type=${this.dashboardType}

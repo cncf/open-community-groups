@@ -131,4 +131,25 @@ describe("dashboard group event add template", () => {
       '<div class="min-w-0"> <div class="space-y-12">',
     );
   });
+
+  it("uses editable contributor tables without award controls before creation", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      '<user-search-selector id="event-hosts-selector" field-name="hosts" dashboard-type="group" display-mode="table"',
+    );
+    expect(template).to.include(
+      '<speakers-selector id="event-speakers-selector" dashboard-type="group" display-mode="table"',
+    );
+    expect(template).to.include("Session-level speakers");
+    expect(template).to.include(
+      '<div class="mt-8 border-t border-stone-200 pt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-4 text-sm text-stone-500">',
+    );
+    expect(template).not.to.include(">Event Speakers<");
+    expect(template).to.include(
+      '<session-speakers-table id="session-speakers-table"></session-speakers-table>',
+    );
+    expect(template).not.to.include("can-award-badges");
+    expect(template).not.to.include("show-award-all");
+  });
 });

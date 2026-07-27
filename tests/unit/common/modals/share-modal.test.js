@@ -86,6 +86,24 @@ describe("share-modal", () => {
     expect(element.textContent).to.include("Share");
   });
 
+  it("renders the compact icon trigger variant", async () => {
+    const element = await mountLitComponent("share-modal", {
+      triggerLabel: "Share Speaker badge credential",
+      triggerVariant: "icon",
+      title: "Speaker badge",
+      url: "/badges/credentials/speaker",
+    });
+
+    const button = element.querySelector("button");
+
+    expect(button?.classList.contains("btn-tertiary")).to.equal(true);
+    expect(button?.getAttribute("aria-label")).to.equal(
+      "Share Speaker badge credential",
+    );
+    expect(button?.getAttribute("title")).to.equal("Share Speaker badge credential");
+    expect(button?.querySelector(".icon-share")?.classList.contains("size-3.5")).to.equal(true);
+  });
+
   it("opens and closes the modal while updating body scroll state", async () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {
@@ -102,6 +120,10 @@ describe("share-modal", () => {
     expect(document.body.style.overflow).to.equal("hidden");
     expect(document.body.dataset.modalOpenCount).to.equal("1");
     expect(document.body.querySelector('[role="dialog"]')).to.not.equal(null);
+    const copyButton = document.body.querySelector('[aria-label="Copy link"]');
+    expect(copyButton?.classList.contains("rounded-full")).to.equal(true);
+    expect(copyButton?.classList.contains("hover:bg-stone-200")).to.equal(true);
+    expect(copyButton?.querySelector(".icon-copy")?.classList.contains("size-4")).to.equal(true);
 
     // Escape closes the modal and releases body scrolling.
     element._handleKeydown({

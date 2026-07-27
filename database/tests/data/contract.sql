@@ -1356,6 +1356,225 @@ insert into cfs_submission_label (
 );
 
 -- ============================================================================
+-- BADGES
+-- ============================================================================
+
+-- Reusable artwork consumed by badge gallery JSON contracts
+insert into badge_artwork (
+    badge_artwork_id,
+    created_at,
+    file_name,
+    group_id
+) values (
+    '00000000-0000-0000-0000-00000000c0ba',
+    '2024-01-11 10:00:00+00',
+    'contract-badge.png',
+    '00000000-0000-0000-0000-00000000c021'
+);
+
+-- Definition consumed by group badge list JSON contracts
+insert into badge (
+    badge_id,
+    created_at,
+    criteria,
+    description,
+    group_id,
+    image_file_name,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000c0bb',
+    '2024-01-11 10:00:00+00',
+    'Attend the contract event',
+    'Recognizes contract event participation',
+    '00000000-0000-0000-0000-00000000c021',
+    'contract-badge.png',
+    'Contract Participant'
+);
+
+-- Stable list consumed by status-list JSON contracts
+insert into badge_status_list (
+    badge_status_list_id,
+    created_at,
+    group_id
+) values (
+    '00000000-0000-0000-0000-00000000c0bc',
+    '2024-01-11 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c021'
+);
+
+-- Active and revoked issuances cover required and nullable JSON fields
+insert into user_badge (
+    awarded_at,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+    user_badge_id,
+
+    badge_id,
+    event_id,
+    revocation_reason,
+    revoked_at,
+    revoked_by_user_id,
+    user_id
+) values
+    (
+        '2024-01-12 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c0bc',
+        0,
+        '00000000-0000-0000-0000-00000000c021',
+        true,
+        '{
+            "criteria": "Attend the contract event",
+            "description": "Recognizes contract event participation",
+            "image_file_name": "contract-badge.png",
+            "issuer": {
+                "community_id": "00000000-0000-0000-0000-00000000c001",
+                "community_name": "Contract Community",
+                "group_id": "00000000-0000-0000-0000-00000000c021",
+                "group_name": "Contract Group"
+            },
+            "name": "Contract Participant"
+        }'::jsonb,
+        7,
+        '00000000-0000-0000-0000-00000000c0bd',
+        '00000000-0000-0000-0000-00000000c0bb',
+        '00000000-0000-0000-0000-00000000c031',
+        null,
+        null,
+        null,
+        '00000000-0000-0000-0000-00000000c042'
+    ),
+    (
+        '2024-01-10 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c0bc',
+        1,
+        '00000000-0000-0000-0000-00000000c021',
+        false,
+        '{
+            "criteria": "Attend the contract event",
+            "description": "Recognizes contract event participation",
+            "image_file_name": "contract-badge.png",
+            "issuer": {
+                "community_id": "00000000-0000-0000-0000-00000000c001",
+                "community_name": "Contract Community",
+                "group_id": "00000000-0000-0000-0000-00000000c021",
+                "group_name": "Contract Group"
+            },
+            "name": "Contract Participant"
+        }'::jsonb,
+        11,
+        '00000000-0000-0000-0000-00000000c0be',
+        '00000000-0000-0000-0000-00000000c0bb',
+        null,
+        'contract revocation',
+        '2024-01-13 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '00000000-0000-0000-0000-00000000c042'
+    );
+
+-- Pending durable award consumed by Rust worker JSON contract tests
+insert into badge_award_job (
+    badge_award_job_id,
+    accepted_count,
+    actor_username,
+    badge_snapshot,
+    community_id,
+    group_id,
+    recipient_count,
+
+    actor_user_id,
+    badge_id,
+    event_id
+) values (
+    '00000000-0000-0000-0000-00000000c0bf',
+    1,
+    'contract-organizer',
+    '{
+        "criteria": "Attend the contract event",
+        "description": "Recognizes contract event participation",
+        "image_file_name": "contract-badge.png",
+        "issuer": {
+            "community_id": "00000000-0000-0000-0000-00000000c001",
+            "community_name": "Contract Community",
+            "group_id": "00000000-0000-0000-0000-00000000c021",
+            "group_name": "Contract Group"
+        },
+        "name": "Contract Participant"
+    }'::jsonb,
+    '00000000-0000-0000-0000-00000000c001',
+    '00000000-0000-0000-0000-00000000c021',
+    1,
+
+    '00000000-0000-0000-0000-00000000c041',
+    '00000000-0000-0000-0000-00000000c0bb',
+    '00000000-0000-0000-0000-00000000c031'
+);
+
+-- Pending recipient consumed by the badge award job contract checks
+insert into badge_award_job_recipient (badge_award_job_id, position, user_id)
+values (
+    '00000000-0000-0000-0000-00000000c0bf',
+    0,
+    '00000000-0000-0000-0000-00000000c042'
+);
+
+-- Dedicated subgroup status list backing the identity rebind mutation contract
+insert into badge_status_list (
+    badge_status_list_id,
+    created_at,
+    group_id
+) values (
+    '00000000-0000-0000-0000-00000000c0b8',
+    '2024-01-11 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c022'
+);
+
+-- Dedicated award with a stale identity binding mutated only by the Rust
+-- identity rebind contract test; the seeded hash covers a previous email
+insert into user_badge (
+    awarded_at,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+    user_badge_id,
+
+    identity_bound_at,
+    identity_hash,
+    identity_salt,
+    user_id
+) values (
+    '2024-01-12 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c0b8',
+    0,
+    '00000000-0000-0000-0000-00000000c022',
+    false,
+    '{
+        "criteria": "Attend the contract event",
+        "description": "Recognizes contract event participation",
+        "image_file_name": "contract-badge.png",
+        "issuer": {
+            "community_id": "00000000-0000-0000-0000-00000000c001",
+            "community_name": "Contract Community",
+            "group_id": "00000000-0000-0000-0000-00000000c022",
+            "group_name": "Contract Subgroup"
+        },
+        "name": "Contract Participant"
+    }'::jsonb,
+    3,
+    '00000000-0000-0000-0000-00000000c0b9',
+    '2024-01-12 11:00:00+00',
+    encode(digest('organizer.old@example.com' || '0123456789abcdef0123456789abcdef', 'sha256'), 'hex'),
+    '0123456789abcdef0123456789abcdef',
+    '00000000-0000-0000-0000-00000000c041'
+);
+
+-- ============================================================================
 -- PAGE VIEWS
 -- ============================================================================
 

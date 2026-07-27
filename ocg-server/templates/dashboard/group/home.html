@@ -22,6 +22,8 @@
   <script type="module"
           src="/static/js/dashboard/group/event-selector/selector.js"></script>
   <script type="module" src="/static/js/dashboard/group/attendees.js"></script>
+  <script type="module" src="/static/js/dashboard/group/badges.js"></script>
+  <script type="module" src="/static/js/dashboard/group/badge-award-modal.js"></script>
   <script type="module" src="/static/js/dashboard/group/event-add.js"></script>
   <script type="module" src="/static/js/dashboard/group/event-update.js"></script>
   <script type="module" src="/static/js/dashboard/group/events-list.js"></script>
@@ -91,6 +93,17 @@
   </div>
   {# End events -#}
 
+  {% if can_manage_badges -%}
+    {# Badges -#}
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+      {{ dashboard::menu_title(text = "Badges", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/group?tab=badges") -}}
+      {{ dashboard::menu_item(name = "Artwork", icon = "image", is_active = content.is_artwork() , href = "/dashboard/group?tab=artwork") -}}
+      {{ dashboard::menu_item(name = "Awards", icon = "star", is_active = content.is_awards() , href = "/dashboard/group?tab=awards") -}}
+    </div>
+    {# End badges -#}
+  {% endif -%}
+
   {# Members and sponsors -#}
   <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
     {{ dashboard::menu_title(text = "Members and sponsors", extra_styles = "py-1.5") -}}
@@ -119,7 +132,7 @@
        data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
        data-group-name="{{ current_selection.1.name }}"
        data-group-slug="{{ current_selection.1.public_slug() }}"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
+       hx-get="/dashboard/group/{%- if content.is_artwork() -%}artwork{%- else if content.is_awards() -%}awards{%- else if content.is_badges() -%}badges{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"
@@ -136,4 +149,5 @@
   {# End messages -#}
 
   <user-info-modal></user-info-modal>
+  <badge-award-modal></badge-award-modal>
 {% endblock dashboard_main -%}

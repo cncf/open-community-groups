@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 
 /// Authentication pages templates.
 pub(crate) mod auth;
+/// Public Open Badges templates.
+pub(crate) mod badges;
 /// Community site templates.
 pub(crate) mod community;
 /// Dashboard templates.
@@ -29,6 +31,10 @@ pub(crate) mod site;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum PageId {
+    /// Public badge credential page.
+    BadgeCredential,
+    /// Public badge verification page.
+    BadgeVerify,
     /// Event check-in page.
     CheckIn,
     /// Public community page.

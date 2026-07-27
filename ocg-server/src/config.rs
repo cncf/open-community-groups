@@ -20,6 +20,8 @@ use figment::{
 };
 use garde::rules::email::parse_email;
 use serde::{Deserialize, Serialize};
+use ssi_jwk::{JWK, Params};
+use ssi_verification_methods::ed25519_dalek::{SigningKey, VerifyingKey};
 use strum::AsRefStr;
 use tracing::instrument;
 
@@ -79,6 +81,15 @@ impl Config {
 
     /// Validate configuration consistency after loading from all sources.
     fn validate(&self) -> Result<()> {
+        // Require badge signing because public credentials and status lists are always mounted
+        let badges_cfg = self
+            .server
+            .badges
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("server.badges is required"))?;
+        badges_cfg.validate()?;
+
+        // Validate optional provider configuration
         if let Some(meetings_cfg) = &self.meetings
             && let Some(zoom_cfg) = &meetings_cfg.zoom
         {
@@ -381,10 +392,91 @@ pub(crate) struct HttpServerConfig {
     /// OIDC providers configuration.
     pub oidc: OidcConfig,
 
+    /// Badge credential signing and verification configuration required at startup.
+    pub badges: Option<BadgesConfig>,
     /// Optional cookie configuration.
     pub cookie: Option<CookieConfig>,
     /// Optional list of hostnames that should redirect to `base_url`.
     pub redirect_hosts: Option<Vec<String>>,
+}
+
+/// Badge credential signing and verification configuration.
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct BadgesConfig {
+    /// Active private key used to sign new credentials.
+    pub signing_key: BadgeSigningKeyConfig,
+
+    /// Previously published public keys retained for credential verification.
+    #[serde(default)]
+    pub verification_keys: Vec<BadgeVerificationKeyConfig>,
+}
+
+impl BadgesConfig {
+    /// Validate key identifiers and Ed25519 key material.
+    fn validate(&self) -> Result<()> {
+        // Validate the active private signing key
+        let mut key_ids = HashSet::new();
+        let signing_key = &self.signing_key;
+        validate_badge_key_id(&signing_key.key_id)?;
+        validate_ed25519_key(&signing_key.private_jwk, true)?;
+        key_ids.insert(&signing_key.key_id);
+
+        // Validate retained public keys and reject identifier collisions
+        for verification_key in &self.verification_keys {
+            validate_badge_key_id(&verification_key.key_id)?;
+            validate_ed25519_key(&verification_key.public_jwk, false)?;
+            if !key_ids.insert(&verification_key.key_id) {
+                bail!("server.badges contains duplicate key identifiers");
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Debug for BadgesConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BadgesConfig")
+            .field("signing_key", &self.signing_key)
+            .field("verification_keys", &self.verification_keys)
+            .finish()
+    }
+}
+
+/// Active Ed25519 signing key configuration.
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct BadgeSigningKeyConfig {
+    /// Stable URL-safe key identifier.
+    pub key_id: String,
+    /// Private Ed25519 JWK.
+    pub private_jwk: JWK,
+}
+
+impl fmt::Debug for BadgeSigningKeyConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BadgeSigningKeyConfig")
+            .field("key_id", &self.key_id)
+            .field("private_jwk", &REDACTED_CONFIG_VALUE)
+            .finish()
+    }
+}
+
+/// Retained Ed25519 verification key configuration.
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct BadgeVerificationKeyConfig {
+    /// Stable URL-safe key identifier.
+    pub key_id: String,
+    /// Public Ed25519 JWK.
+    pub public_jwk: JWK,
+}
+
+impl fmt::Debug for BadgeVerificationKeyConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BadgeVerificationKeyConfig")
+            .field("key_id", &self.key_id)
+            .field("public_jwk", &REDACTED_CONFIG_VALUE)
+            .finish()
+    }
 }
 
 /// Cookie settings configuration.
@@ -487,9 +579,133 @@ impl fmt::Debug for OidcProviderConfig {
     }
 }
 
+// Helpers.
+
+/// Validate a stable badge verification key identifier.
+fn validate_badge_key_id(key_id: &str) -> Result<()> {
+    // Check length, allowed characters, and identifier boundaries
+    let valid = (1..=64).contains(&key_id.len())
+        && key_id
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+        && key_id.as_bytes().first().is_some_and(u8::is_ascii_alphanumeric)
+        && key_id.as_bytes().last().is_some_and(u8::is_ascii_alphanumeric);
+
+    // Reject identifiers that cannot be used in stable public key URLs
+    if !valid {
+        bail!(
+            "server.badges key identifiers must be 1-64 lowercase URL-safe characters and start and end with a letter or digit"
+        );
+    }
+
+    Ok(())
+}
+
+/// Validate an Ed25519 JWK without including key material in errors.
+fn validate_ed25519_key(key: &JWK, require_private: bool) -> Result<()> {
+    // Require the expected JWK parameter family
+    let Params::OKP(params) = &key.params else {
+        bail!("server.badges keys must be Ed25519 JWKs");
+    };
+
+    // Validate the public key curve and material
+    if params.curve != "Ed25519" || params.public_key.0.len() != 32 {
+        bail!("server.badges keys must be Ed25519 JWKs");
+    }
+    let public_key: [u8; 32] = params
+        .public_key
+        .0
+        .as_slice()
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("server.badges keys must be Ed25519 JWKs"))?;
+    let public_key = VerifyingKey::from_bytes(&public_key)
+        .map_err(|_| anyhow::anyhow!("server.badges keys must be Ed25519 JWKs"))?;
+
+    // Require private key material for signing keys
+    if require_private && params.private_key.as_ref().is_none_or(|key| key.0.len() != 32) {
+        bail!("server.badges signing key must contain an Ed25519 private key");
+    }
+
+    // Verify any supplied private key matches the public key
+    if let Some(private_key) = &params.private_key {
+        let private_key: [u8; 32] = private_key.0.as_slice().try_into().map_err(|_| {
+            anyhow::anyhow!("server.badges signing key must contain an Ed25519 private key")
+        })?;
+        if SigningKey::from_bytes(&private_key).verifying_key() != public_key {
+            bail!("server.badges signing key public and private material must match");
+        }
+    }
+
+    // Reject private key material from verification-only keys
+    if !require_private && params.private_key.is_some() {
+        bail!("server.badges verification keys must contain public material only");
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_badges_config_rejects_invalid_keys() {
+        // Setup invalid identifiers, mismatched material, and duplicate identifiers
+        let private_jwk = JWK::generate_ed25519().unwrap();
+        let mut mismatched = private_jwk.clone();
+        let Params::OKP(params) = &mut mismatched.params else {
+            unreachable!();
+        };
+        params.public_key.0[0] ^= 1;
+        let public_jwk = private_jwk.to_public();
+
+        let invalid_id = BadgesConfig {
+            signing_key: BadgeSigningKeyConfig {
+                key_id: "Not Stable".to_string(),
+                private_jwk: private_jwk.clone(),
+            },
+            verification_keys: vec![],
+        };
+        let mismatched_key = BadgesConfig {
+            signing_key: BadgeSigningKeyConfig {
+                key_id: "active-2026".to_string(),
+                private_jwk: mismatched,
+            },
+            verification_keys: vec![],
+        };
+        let duplicate = BadgesConfig {
+            signing_key: BadgeSigningKeyConfig {
+                key_id: "active-2026".to_string(),
+                private_jwk,
+            },
+            verification_keys: vec![BadgeVerificationKeyConfig {
+                key_id: "active-2026".to_string(),
+                public_jwk,
+            }],
+        };
+        // Validate each inconsistent key configuration
+        let duplicate_result = duplicate.validate();
+        let invalid_id_result = invalid_id.validate();
+        let mismatched_key_result = mismatched_key.validate();
+
+        // Check every inconsistent configuration is rejected
+        assert!(duplicate_result.is_err());
+        assert!(invalid_id_result.is_err());
+        assert!(mismatched_key_result.is_err());
+    }
+
+    #[test]
+    fn test_config_rejects_missing_badges_configuration() {
+        // Remove the required badge configuration from an otherwise valid config
+        let mut cfg = sample_config();
+        cfg.server.badges = None;
+
+        // Validate the complete startup configuration
+        let result = cfg.validate();
+
+        // Check startup rejects a partially configured public badge service
+        assert_eq!(result.unwrap_err().to_string(), "server.badges is required");
+    }
 
     #[test]
     fn config_debug_redacts_sensitive_values() {
@@ -501,6 +717,7 @@ mod tests {
             format!("{:?}", cfg.images),
             format!("{:?}", cfg.meetings),
             format!("{:?}", cfg.payments),
+            format!("{:?}", cfg.server.badges),
             format!("{:?}", cfg.server.oauth2),
             format!("{:?}", cfg.server.oidc),
         ];
@@ -520,6 +737,7 @@ mod tests {
     // Helpers.
 
     fn sample_config() -> Config {
+        let badge_signing_key = JWK::generate_ed25519().unwrap();
         let mut oauth2 = HashMap::new();
         oauth2.insert(
             OAuth2Provider::GitHub,
@@ -580,6 +798,13 @@ mod tests {
                 },
                 oauth2,
                 oidc,
+                badges: Some(BadgesConfig {
+                    signing_key: BadgeSigningKeyConfig {
+                        key_id: "config-test".to_string(),
+                        private_jwk: badge_signing_key,
+                    },
+                    verification_keys: vec![],
+                }),
                 cookie: None,
                 redirect_hosts: None,
             },

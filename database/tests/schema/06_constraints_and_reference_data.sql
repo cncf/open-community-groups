@@ -1,9 +1,11 @@
+-- Tests database constraints and reference data.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(69);
+select plan(95);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,8 +19,41 @@ select plan(69);
 -- TESTS
 -- ============================================================================
 
--- Test: custom_notification table expected constraints exist
-select has_check('custom_notification');
+-- Test: badge definitions should preserve required text, length, and filename invariants
+select has_check('badge', 'badge_criteria_chk');
+select has_check('badge', 'badge_description_chk');
+select has_check('badge', 'badge_image_file_name_chk');
+select has_check('badge', 'badge_name_chk');
+
+-- Test: badge artwork should preserve route-safe filenames
+select has_check('badge_artwork', 'badge_artwork_file_name_chk');
+
+-- Test: durable award jobs should preserve ownership, progress, and terminal state invariants
+select col_has_check('badge_award_job', 'accepted_count');
+select col_has_check('badge_award_job', 'awarded_count');
+select col_has_check('badge_award_job', 'badge_snapshot');
+select col_has_check('badge_award_job', 'failure_count');
+select col_has_check('badge_award_job', 'next_recipient_offset');
+select col_has_check('badge_award_job', 'recipient_count');
+select col_has_check('badge_award_job', 'skipped_count');
+select has_check('badge_award_job', 'badge_award_job_claim_chk');
+select has_check('badge_award_job', 'badge_award_job_counts_chk');
+select has_check('badge_award_job', 'badge_award_job_status_chk');
+select has_check('badge_award_job', 'badge_award_job_terminal_chk');
+select col_has_check('badge_award_job_recipient', 'position');
+
+-- Test: status-list allocation should remain bounded and collision-free
+select has_check('badge_status_list', 'badge_status_list_allocation_offset_chk');
+select has_check('badge_status_list', 'badge_status_list_allocation_position_chk');
+select has_check('badge_status_list', 'badge_status_list_allocation_stride_chk');
+
+-- Test: badge awards should preserve issuance, status, and revocation invariants
+select has_check('user_badge', 'user_badge_active_user_chk');
+select has_check('user_badge', 'user_badge_identity_chk');
+select col_has_check('user_badge', 'display_order');
+select col_has_check('user_badge', 'revocation_reason');
+select col_has_check('user_badge', 'snapshot');
+select col_has_check('user_badge', 'status_list_index');
 
 -- Test: community table expected constraints exist
 select has_check('community', 'community_og_image_url_check');
@@ -28,6 +63,9 @@ select has_check(
     'community_redirect_settings',
     'community_redirect_settings_base_legacy_url_chk'
 );
+
+-- Test: custom_notification table expected constraints exist
+select has_check('custom_notification');
 
 -- Test: community redirect settings should accept absolute legacy origin URLs
 select lives_ok(
@@ -380,6 +418,8 @@ select results_eq(
 select results_eq(
     'select name, optional_notification from notification_kind order by name',
     $$ values
+        ('badge-awarded', false),
+        ('badge-revoked', false),
         ('cfs-submission-updated', false),
         ('community-team-invitation', false),
         ('email-verification', false),
@@ -493,12 +533,14 @@ select results_eq(
 select results_eq(
     'select community_role_id, group_permission_id from community_role_group_permission order by community_role_id, group_permission_id',
     $$ values
+        ('admin', 'group.badges.write'),
         ('admin', 'group.events.write'),
         ('admin', 'group.members.write'),
         ('admin', 'group.read'),
         ('admin', 'group.settings.write'),
         ('admin', 'group.sponsors.write'),
         ('admin', 'group.team.write'),
+        ('groups-manager', 'group.badges.write'),
         ('groups-manager', 'group.events.write'),
         ('groups-manager', 'group.members.write'),
         ('groups-manager', 'group.read'),
@@ -514,6 +556,7 @@ select results_eq(
 select results_eq(
     'select group_permission_id, display_name from group_permission order by group_permission_id',
     $$ values
+        ('group.badges.write', 'Badges Write'),
         ('group.events.write', 'Events Write'),
         ('group.members.write', 'Members Write'),
         ('group.read', 'Read'),
@@ -539,6 +582,8 @@ select results_eq(
 select results_eq(
     'select group_permission_id, group_role_id from group_role_group_permission order by group_permission_id, group_role_id',
     $$ values
+        ('group.badges.write', 'admin'),
+        ('group.badges.write', 'events-manager'),
         ('group.events.write', 'admin'),
         ('group.events.write', 'events-manager'),
         ('group.members.write', 'admin'),

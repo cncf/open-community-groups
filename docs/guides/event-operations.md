@@ -236,6 +236,11 @@ running the event program.
 
 This is where attendees understand who is running, organizing, and presenting the program.
 
+Existing hosts and speakers can also receive badges from their row menus. Bulk actions award a
+badge to all current hosts or to the deduplicated set of event-level and session-level speakers.
+Save host, speaker, and session changes before awarding. For the complete contributor award flow,
+see [Group Badge Management](badges.md#group-badge-management).
+
 ![Event hosts and speakers](../screenshots/dashboard-group-event-hosts.png)
 
 ### Sessions
@@ -409,11 +414,17 @@ This tab supports delivery-day execution. From here you can:
 - Open the attendee actions menu to generate a check-in QR code for on-site flow.
 - Cancel confirmed free attendance for future active events.
 - Open the attendee actions menu to invite attendees to free RSVP events.
+- Award badges to all attendees, checked-in attendees, selected attendees, or one attendee.
 - Send all-attendee or selected-attendee operational emails.
 - Download the attendee list or attendee answers as CSV.
 
 Manual check-in bypasses attendee self-check-in timing windows, but the person must already be
 registered as an attendee and the event must still be published or active.
+
+The `Award badge` menu opens the badge picker for the chosen attendee set. Selection mode keeps
+chosen attendees while you change table filters, sorting, or pages. For eligibility, duplicate
+award, and revocation behavior, see
+[Group Badge Management](badges.md#group-badge-management).
 
 `Cancel attendance` is available from confirmed attendee row actions for future, active events
 when the attendee does not have a paid ticket. OCG marks the attendance as canceled, notifies the

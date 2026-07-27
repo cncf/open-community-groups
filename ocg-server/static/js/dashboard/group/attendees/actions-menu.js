@@ -10,8 +10,10 @@ import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { attendeesRootSelector } from "/static/js/dashboard/group/attendees/shared.js";
 
 const attendeeActionsDropdownId = "attendee-actions-menu";
+const attendeeBadgeActionsDropdownId = "attendee-badge-actions-menu";
 const attendeeEmailActionsDropdownId = "attendee-email-actions-menu";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
+const attendeeBadgeActionsDropdownSelector = "[data-attendee-badge-actions-dropdown]";
 const attendeeEmailActionsDropdownSelector = "[data-attendee-email-actions-dropdown]";
 
 /**
@@ -21,6 +23,15 @@ const attendeeEmailActionsDropdownSelector = "[data-attendee-email-actions-dropd
  */
 export const closeAttendeeActionsDropdown = (root = document) => {
   setElementHidden(getElementById(root, attendeeActionsDropdownId), true);
+};
+
+/**
+ * Close the attendee badge actions dropdown.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+export const closeAttendeeBadgeActionsDropdown = (root = document) => {
+  setElementHidden(getElementById(root, attendeeBadgeActionsDropdownId), true);
 };
 
 /**
@@ -53,6 +64,16 @@ const toggleAttendeeActionsDropdown = (root = document) => {
 };
 
 /**
+ * Toggle the attendee badge actions dropdown.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+const toggleAttendeeBadgeActionsDropdown = (root = document) => {
+  const dropdown = getElementById(root, attendeeBadgeActionsDropdownId);
+  setElementHidden(dropdown, !isElementHidden(dropdown));
+};
+
+/**
  * Toggle the attendee email actions dropdown.
  * @param {Document|Element} [root=document] Query root.
  * @returns {void}
@@ -76,9 +97,20 @@ export const initializeAttendeeActionsMenu = (root = document) => {
     const trigger = closestElementWithinRoot(event.target, "#attendee-actions-button", root);
     if (trigger instanceof HTMLElement) {
       event.stopPropagation();
+      closeAttendeeBadgeActionsDropdown(root);
       closeAttendeeEmailActionsDropdown(root);
       closeAttendeeRowActionMenus(root);
       toggleAttendeeActionsDropdown(root);
+      return;
+    }
+
+    const badgeTrigger = closestElementWithinRoot(event.target, "#attendee-badge-actions-button", root);
+    if (badgeTrigger instanceof HTMLButtonElement && !badgeTrigger.disabled) {
+      event.stopPropagation();
+      closeAttendeeActionsDropdown(root);
+      closeAttendeeEmailActionsDropdown(root);
+      closeAttendeeRowActionMenus(root);
+      toggleAttendeeBadgeActionsDropdown(root);
       return;
     }
 
@@ -86,8 +118,19 @@ export const initializeAttendeeActionsMenu = (root = document) => {
     if (emailTrigger instanceof HTMLButtonElement && !emailTrigger.disabled) {
       event.stopPropagation();
       closeAttendeeActionsDropdown(root);
+      closeAttendeeBadgeActionsDropdown(root);
       closeAttendeeRowActionMenus(root);
       toggleAttendeeEmailActionsDropdown(root);
+      return;
+    }
+
+    const badgeMenuItem = closestElementWithinRoot(
+      event.target,
+      `${attendeeBadgeActionsDropdownSelector} button`,
+      root,
+    );
+    if (badgeMenuItem instanceof HTMLButtonElement) {
+      closeAttendeeBadgeActionsDropdown(root);
       return;
     }
 
@@ -118,11 +161,16 @@ export const initializeAttendeeActionsMenu = (root = document) => {
     if (!closestElementWithinRoot(event.target, attendeeEmailActionsDropdownSelector, root)) {
       closeAttendeeEmailActionsDropdown(root);
     }
+
+    if (!closestElementWithinRoot(event.target, attendeeBadgeActionsDropdownSelector, root)) {
+      closeAttendeeBadgeActionsDropdown(root);
+    }
   });
 
   root.addEventListener("keydown", (event) => {
     if (isEscapeEvent(event)) {
       closeAttendeeActionsDropdown(root);
+      closeAttendeeBadgeActionsDropdown(root);
       closeAttendeeEmailActionsDropdown(root);
       getElementById(root, "attendee-actions-button")?.focus();
     }
@@ -147,6 +195,7 @@ export const initializeAttendeeOutsideClickListener = () => {
     document.querySelectorAll(attendeesRootSelector).forEach((root) => {
       if (!root.contains(target)) {
         closeAttendeeActionsDropdown(root);
+        closeAttendeeBadgeActionsDropdown(root);
         closeAttendeeEmailActionsDropdown(root);
       }
     });

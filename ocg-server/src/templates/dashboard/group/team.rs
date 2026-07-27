@@ -21,6 +21,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/team_list.html")]
 pub(crate) struct ListPage {
+    /// Whether the current user can award badges.
+    pub can_award_badges: bool,
     /// Whether the current user can update team membership and roles.
     pub can_manage_team: bool,
     /// Tooltip shown when the current user cannot update team membership.
@@ -89,6 +91,13 @@ pub struct GroupTeamMember {
     pub role: Option<GroupRole>,
     /// Title held by the user.
     pub title: Option<String>,
+}
+
+impl GroupTeamMember {
+    /// Returns whether the member has the admin role.
+    pub(crate) fn is_admin(&self) -> bool {
+        matches!(self.role.as_ref(), Some(GroupRole::Admin))
+    }
 }
 
 /// Paginated group team response data.

@@ -1,0 +1,273 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+
+<section class="flex min-h-full min-w-0 grow flex-col"
+         aria-labelledby="group-badges-title"
+         data-group-badges>
+  <div>
+    <h1 id="group-badges-title"
+        class="text-xl font-medium text-stone-900 lg:text-2xl">Badges</h1>
+    <p class="m-0 mt-1 text-sm/6 text-stone-500">Create and manage recognition badges for your group.</p>
+  </div>
+  <div class="mb-5 mt-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="relative w-80 max-w-full 2xl:w-[30rem]">
+      <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+      </div>
+      <form id="badges-search-form"
+            method="get"
+            action="/dashboard/group"
+            hx-get="/dashboard/group/badges"
+            hx-ext="no-empty-vals"
+            hx-trigger="change, submit"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner">
+        <input type="hidden" name="tab" value="badges">
+        {% if let Some(limit) = limit -%}
+          <input type="hidden" name="limit" value="{{ limit }}">
+        {% endif -%}
+        <label for="badges-search" class="sr-only">Search badges</label>
+        <input id="badges-search"
+               class="input-primary peer w-full ps-9"
+               name="badges_query"
+               value="{{ query }}"
+               placeholder="Search badges"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false">
+        <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+          <button type="button"
+                  hx-get="/dashboard/group/badges"
+                  hx-trigger="click"
+                  hx-target="#dashboard-content"
+                  hx-indicator="#dashboard-spinner"
+                  hx-include="#badges-search-form input[type='hidden']"
+                  class="mt-0.5 cursor-pointer"
+                  aria-label="Clear badge search">
+            <div class="svg-icon size-5 icon-close bg-stone-400 hover:bg-stone-700"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+    <button class="btn-primary"
+            type="button"
+            data-badge-dialog-open="badge-add-dialog">Add badge</button>
+  </div>
+  <div class="mb-5 text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = badges.badges.len(), total = badges.total, label = "badge") }}
+  </div>
+  {% if badges.badges.is_empty() -%}
+    <div class="rounded-lg border border-dashed border-stone-300 p-8 text-center">
+      {% if query.is_empty() -%}
+        <h2 class="font-semibold">Create your first badge</h2>
+        <p class="mt-1 text-stone-600">Upload artwork first, then define what the badge recognizes.</p>
+      {% else -%}
+        <h2 class="font-semibold">No badges matched</h2>
+        <p class="mt-1 text-stone-600">Try a different search.</p>
+      {% endif -%}
+    </div>
+  {% else -%}
+    <div class="relative overflow-x-auto">
+      <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+             role="table"
+             aria-label="Badges list">
+        {# Table header -#}
+        <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+               role="rowgroup">
+          <tr>
+            <th scope="col" class="px-3 xl:px-5 py-3 xl:w-[35%]">Badge</th>
+            <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Description</th>
+            <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        {# End table header -#}
+        <tbody role="rowgroup">
+          {% for badge in badges.badges -%}
+            {# Badge row -#}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              {# Badge -#}
+              <td class="px-3 xl:px-5 py-4 min-w-[140px]">
+                <div class="flex items-center space-x-4 min-w-0">
+                  <img class="size-20 min-w-20 rounded-md object-cover"
+                       src="/images/badges/{{ badge.image_file_name }}"
+                       alt="{{ badge.name }} badge artwork"
+                       width="80"
+                       height="80">
+                  <div class="min-w-0">
+                    <div class="line-clamp-2 break-words font-medium text-stone-900">{{ badge.name }}</div>
+                  </div>
+                </div>
+              </td>
+              {# End badge -#}
+
+              {# Description -#}
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
+                <div class="line-clamp-2">{{ badge.description }}</div>
+              </td>
+              {# End description -#}
+
+              {# Actions -#}
+              <td class="px-3 xl:px-5 py-4 w-[112px]">
+                <div class="flex items-center justify-end gap-2">
+                  <div>
+                    <button class="btn-tertiary p-2"
+                            type="button"
+                            data-badge-dialog-open="badge-edit-{{ badge.badge_id }}"
+                            aria-label="Edit badge: {{ badge.name }}">
+                      <div class="svg-icon size-4 icon-pencil"></div>
+                    </button>
+                  </div>
+                  <div>
+                    <button id="delete-badge-{{ badge.badge_id }}"
+                            class="btn-tertiary p-2"
+                            type="button"
+                            hx-delete="/dashboard/group/badges/{{ badge.badge_id }}"
+                            hx-trigger="confirmed"
+                            hx-swap="none"
+                            hx-disabled-elt="this"
+                            data-confirm-action
+                            data-confirm-message="Delete {{ badge.name }}? Existing awards and credentials will remain available from their immutable snapshots."
+                            data-confirm-text="Delete badge"
+                            data-success-message="Badge deleted."
+                            data-error-message="The badge could not be deleted."
+                            aria-label="Delete badge: {{ badge.name }}">
+                      <div class="svg-icon size-4 icon-trash"></div>
+                    </button>
+                  </div>
+                </div>
+                <dialog id="badge-edit-{{ badge.badge_id }}"
+                        class="m-auto w-full max-w-2xl overflow-visible bg-transparent p-4 backdrop:bg-stone-950/35"
+                        aria-labelledby="badge-edit-{{ badge.badge_id }}-title">
+                  <div class="modal-panel w-full max-w-2xl">
+                    {{ badge_definition_form(id = badge.badge_id.to_string() , name = badge.name, description = badge.description, criteria = badge.criteria, image_file_name = badge.image_file_name.clone(), artwork = artwork, is_edit = true) -}}
+                  </div>
+                </dialog>
+              </td>
+              {# End actions -#}
+            </tr>
+            {# End badge row -#}
+          {% endfor -%}
+        </tbody>
+      </table>
+    </div>
+  {% endif -%}
+  {# Badge definitions pagination -#}
+  {% if badges.total > badges.badges.len() -%}
+    {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "badge-definitions-pagination-") }}
+  {% endif -%}
+  {# End badge definitions pagination -#}
+
+  <dialog id="badge-add-dialog"
+          class="m-auto w-full max-w-2xl overflow-visible bg-transparent p-4 backdrop:bg-stone-950/35"
+          aria-labelledby="badge-add-title">
+    <div class="modal-panel w-full max-w-2xl">
+      {{ badge_definition_form(id = "new", name = "", description = "", criteria = "", image_file_name = "".to_string() , artwork = artwork, is_edit = false) -}}
+    </div>
+  </dialog>
+</section>
+
+{# Badge definition form -#}
+{# Used by the add and edit badge dialogs. -#}
+{% macro badge_definition_form(id, name, description, criteria, image_file_name, artwork, is_edit) -%}
+  <form class="modal-card rounded-lg"
+        {% if is_edit -%}
+          hx-put="/dashboard/group/badges/{{ id }}"
+        {% else -%}
+          hx-post="/dashboard/group/badges"
+        {% endif -%}
+        hx-swap="none"
+        hx-disabled-elt="find button[type='submit']"
+        data-htmx-response
+        data-success-message="Badge saved."
+        data-error-message="The badge could not be saved.">
+    <div class="flex items-center justify-between rounded-t border-b border-stone-200 p-4 md:p-5">
+      {% if is_edit -%}
+        <h3 id="badge-edit-{{ id }}-title"
+            class="text-xl font-semibold text-stone-900">Edit {{ name }}</h3>
+      {% else -%}
+        <h3 id="badge-add-title" class="text-xl font-semibold text-stone-900">Add badge</h3>
+      {% endif -%}
+      {{ dashboard::modal_close_button(attrs = "data-badge-dialog-close") -}}
+    </div>
+    <div class="modal-body space-y-5 p-4 md:px-6 md:py-5">
+      <div>
+        <label for="badge-{{ id }}-name" class="form-label">
+          Name <span class="asterisk">*</span>
+        </label>
+        <input id="badge-{{ id }}-name"
+               class="input-primary mt-2"
+               name="name"
+               value="{{ name }}"
+               maxlength="200"
+               required>
+      </div>
+      <div>
+        <label for="badge-{{ id }}-description" class="form-label">
+          Description <span class="asterisk">*</span>
+        </label>
+        <textarea id="badge-{{ id }}-description"
+                  class="input-primary mt-2 min-h-28"
+                  name="description"
+                  maxlength="10000"
+                  required>{{ description }}</textarea>
+      </div>
+      <div>
+        <label for="badge-{{ id }}-criteria" class="form-label">
+          Criteria <span class="asterisk">*</span>
+        </label>
+        <textarea id="badge-{{ id }}-criteria"
+                  class="input-primary mt-2 min-h-28"
+                  name="criteria"
+                  maxlength="10000"
+                  required>{{ criteria }}</textarea>
+      </div>
+      <fieldset id="badge-{{ id }}-artwork">
+        <legend class="form-label">
+          Artwork <span class="asterisk">*</span>
+        </legend>
+        {% if artwork.is_empty() -%}
+          <p class="mt-2 rounded-md border border-dashed border-stone-300 p-4 text-sm text-stone-600">
+            Save artwork in the Artwork tab before continuing.
+          </p>
+        {% else -%}
+          <div class="mt-2 grid max-h-60 grid-cols-3 gap-3 overflow-y-auto p-1 sm:grid-cols-4">
+            {% for image in artwork -%}
+              <label class="relative cursor-pointer">
+                <input id="badge-{{ id }}-artwork-{{ loop.index0 }}"
+                       class="peer sr-only"
+                       type="radio"
+                       name="image_file_name"
+                       value="{{ image.file_name }}"
+                       required
+                       {% if image.file_name.as_str() == image_file_name.as_str() %}checked{% endif %}>
+                <span class="block rounded-xl border border-stone-200 bg-white p-2.5 transition hover:border-primary-300 hover:shadow-sm peer-checked:border-primary-400 peer-checked:ring-2 peer-checked:ring-primary-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2">
+                  <img class="aspect-square w-full rounded-md object-cover"
+                       src="/images/badges/{{ image.file_name }}"
+                       alt=""
+                       width="512"
+                       height="512"
+                       loading="lazy">
+                </span>
+                <span class="pointer-events-none absolute right-2 top-2 size-6 rounded-full border-2 border-stone-300 bg-white peer-checked:border-primary-500"
+                      aria-hidden="true"></span>
+                <span class="pointer-events-none absolute right-3.5 top-3.5 hidden size-3 rounded-full bg-primary-500 peer-checked:block"
+                      aria-hidden="true"></span>
+                <span class="sr-only">Badge artwork {{ loop.index }}</span>
+              </label>
+            {% endfor -%}
+          </div>
+        {% endif -%}
+      </fieldset>
+    </div>
+    <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+      <button class="btn-primary-outline" type="button" data-badge-dialog-close>Cancel</button>
+      <button class="btn-primary"
+              type="submit"
+              {% if artwork.is_empty() %}disabled title="Save artwork before continuing."{% endif %}>{% if is_edit %}Save{% else %}Add badge{% endif %}</button>
+    </div>
+  </form>
+{% endmacro badge_definition_form -%}
+{# End badge definition form -#}

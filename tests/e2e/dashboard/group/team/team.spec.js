@@ -114,6 +114,11 @@ test.describe("group dashboard team view", () => {
     const removeButton = pendingRow.locator(
       `#remove-member-${TEST_USER_IDS.pending1}`,
     );
+    await pendingRow
+      .locator(
+        'summary[aria-label="Open team member actions for E2E Pending One"]',
+      )
+      .click();
     await removeButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Are you sure you would like to delete this team member?",

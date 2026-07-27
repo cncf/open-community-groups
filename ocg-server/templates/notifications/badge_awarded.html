@@ -1,0 +1,30 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  Congratulations! You earned the {{ badge.name }} badge
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ badge.issuer.group_name }} awarded you a badge.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-15" style="font-size: 16px">
+    Congratulations! You earned the <strong>{{ badge.name }}</strong> badge issued by
+    <strong>{{ badge.issuer.group_name }}</strong> on <strong>Open Community Groups</strong>.
+  </p>
+  <p class="default mb-15">
+    <img src="{{ self.image_url() }}"
+         alt="{{ badge.name }} badge artwork"
+         width="160"
+         height="160">
+  </p>
+  <p class="default mb-15">{{ badge.description }}</p>
+  <p class="default mb-30"><strong>Criteria:</strong> {{ badge.criteria }}</p>
+  {{ email::button(link = dashboard_url, text = "Manage your badges", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because {{ badge.issuer.group_name }} awarded you a badge.
+{% endblock footer -%}

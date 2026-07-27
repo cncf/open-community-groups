@@ -28,15 +28,20 @@ use uuid::Uuid;
 use crate::{
     config::EmailConfig,
     db::{DBOperations, DynDB},
-    templates::notifications::{
-        CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventAttendanceCanceled,
-        EventCanceled, EventCustom, EventInvitation, EventPublished, EventRefundApproved,
-        EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
-        EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,
-        EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+    templates::{
+        helpers,
+        notifications::{
+            BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
+            EmailVerification, EventAttendanceCanceled, EventCanceled, EventCustom,
+            EventInvitation, EventPublished, EventRefundApproved, EventRefundRejected,
+            EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
+            EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted,
+            EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
+            SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+        },
     },
     types::{event::EventSummary, site::SiteSettings},
+    util::base_url_without_trailing_slash,
 };
 
 pub(crate) mod enqueue;
@@ -117,10 +122,13 @@ impl PgNotificationsManager {
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
     ) -> Self {
+        // Normalize the shared base URL before cloning it into workers
+        let base_url = base_url_without_trailing_slash(base_url).to_string();
+
         // Setup and run workers to enqueue due notifications
         for _ in 1..=NUM_ENQUEUE_WORKERS {
             let worker = EnqueueWorker {
-                base_url: base_url.to_string(),
+                base_url: base_url.clone(),
                 cancellation_token: cancellation_token.clone(),
                 db: db.clone(),
             };
@@ -143,6 +151,7 @@ impl PgNotificationsManager {
         // Setup and run workers to deliver notifications
         for _ in 1..=NUM_DELIVERY_WORKERS {
             let mut worker = DeliveryWorker {
+                base_url: base_url.clone(),
                 cancellation_token: cancellation_token.clone(),
                 cfg: cfg.clone(),
                 db: db.clone(),
@@ -248,6 +257,8 @@ impl DeliveryRecoveryWorker {
 
 /// Worker responsible for delivering notifications from the queue.
 struct DeliveryWorker {
+    /// Base URL used to make database-enqueued badge links absolute.
+    base_url: String,
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
     /// Email configuration for sending notifications.
@@ -301,7 +312,7 @@ impl DeliveryWorker {
         };
 
         // Prepare and send the notification
-        match Self::prepare_content(&notification) {
+        match Self::prepare_content(&notification, &self.base_url) {
             Ok((subject, body)) => match self
                 .send_email_with_retries(
                     &notification.email,
@@ -326,13 +337,37 @@ impl DeliveryWorker {
 
     /// Prepare the subject and body for a notification email.
     #[allow(clippy::too_many_lines)]
-    fn prepare_content(notification: &Notification) -> Result<(String, String)> {
+    fn prepare_content(notification: &Notification, base_url: &str) -> Result<(String, String)> {
+        // Load the queued data before dispatching to its typed renderer
         let template_data = notification
             .template_data
             .clone()
             .ok_or_else(|| anyhow!("missing template data"))?;
 
         let (subject, body) = match notification.kind {
+            NotificationKind::BadgeAwarded => {
+                // Complete deployment-specific URLs after typed deserialization
+                let mut template: BadgeAwarded = serde_json::from_value(template_data)?;
+                if template.dashboard_url.starts_with('/') {
+                    template.dashboard_url =
+                        helpers::absolute_url(base_url, &template.dashboard_url);
+                }
+                template.base_url = base_url.to_string();
+                let subject = format!("You earned the {} badge", template.badge.name);
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::BadgeRevoked => {
+                // Complete the deployment-specific dashboard URL after typed deserialization
+                let mut template: BadgeRevoked = serde_json::from_value(template_data)?;
+                if template.dashboard_url.starts_with('/') {
+                    template.dashboard_url =
+                        helpers::absolute_url(base_url, &template.dashboard_url);
+                }
+                let subject = format!("Your {} badge was revoked", template.badge_name);
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::CommunityTeamInvitation => {
                 let subject = "You have been invited to join a community team".to_string();
                 let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
@@ -777,6 +812,10 @@ pub(crate) struct Notification {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum NotificationKind {
+    /// Notification for a newly awarded badge.
+    BadgeAwarded,
+    /// Notification for a permanently revoked badge.
+    BadgeRevoked,
     /// Notification for a CFS submission update.
     CfsSubmissionUpdated,
     /// Notification for a community team invitation.
