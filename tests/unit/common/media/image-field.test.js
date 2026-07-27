@@ -103,6 +103,10 @@ describe("image-field", () => {
     const selectedFiles = new DataTransfer();
     selectedFiles.items.add(selectedFile);
 
+    // Keep an empty file picker out of the parent form submission.
+    expect(input.hasAttribute("name")).to.equal(false);
+    expect(new FormData(form).has("png")).to.equal(false);
+
     // Select a file through the native input.
     input.files = selectedFiles.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));

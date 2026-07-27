@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
@@ -336,7 +336,7 @@ export class ImageField extends LitWrapper {
           <input
             type="file"
             id=${this._fileInputId}
-            name=${this.name}
+            name=${this._directFileName ? this.name : nothing}
             class="hidden"
             accept=${acceptedFormats}
             @change=${this._handleFileChange}

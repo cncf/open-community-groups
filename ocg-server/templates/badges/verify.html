@@ -43,87 +43,87 @@
         </div>
         <div>
           <image-field class="block" label="Exported PNG" name="png" image-kind="logo" accepted-formats="image/png" direct-upload hide-remove-button>
-          </image-field>
-        </div>
-        <button class="btn-primary mx-auto block" type="submit">Verify badge</button>
-      </form>
-
-      <div class="mt-6" aria-live="polite">
-        {% if let Some(error) = &error -%}
-          <div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
-               role="alert">{{ error }}</div>
-        {% endif -%}
-        {% if let Some(result) = &verified -%}
-          <article class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div class="flex items-center gap-3 px-6 py-4
-                        {% if result.revoked %}
-                          bg-red-50 text-red-800
-                        {% else if result.superseded %}
-                          bg-amber-50 text-amber-800
-                        {% else %}
-                          bg-green-50 text-green-800
-                        {% endif %}">
-              {% if result.revoked -%}
-                <div class="flex size-5 items-center justify-center rounded-full bg-red-600"
-                     aria-hidden="true">
-                  <div class="svg-icon size-3 icon-close bg-white"></div>
-                </div>
-                <p class="text-sm font-semibold">Credential revoked</p>
-              {% else if result.superseded -%}
-                <div class="flex size-5 items-center justify-center rounded-full bg-amber-500"
-                     aria-hidden="true">
-                  <div class="svg-icon size-3 icon-warning bg-white"></div>
-                </div>
-                <p class="text-sm font-semibold">Authentic but superseded by a newer export</p>
-              {% else -%}
-                <div class="flex size-5 items-center justify-center rounded-full bg-green-600"
-                     aria-hidden="true">
-                  <div class="svg-icon size-3 icon-check bg-white"></div>
-                </div>
-                <p class="text-sm font-semibold">Valid and active</p>
-              {% endif -%}
-            </div>
-            <div class="grid gap-6 p-6 sm:grid-cols-[8rem_1fr]">
-              <img class="mx-auto aspect-square w-full max-w-32 rounded-lg object-cover sm:mx-0"
-                   src="{{ result.image_url }}"
-                   alt="{{ result.name }} badge artwork"
-                   width="512"
-                   height="512">
-              <div class="min-w-0">
-                <div>
-                  <h2 class="text-xl font-medium text-stone-900">{{ result.name }}</h2>
-                  <p class="mt-2 text-stone-600">{{ result.description }}</p>
-                </div>
-                <dl class="mt-6 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-[10rem_1fr]">
-                  {% if let Some(recipient_name) = &result.recipient_name -%}
-                    <div class="contents">
-                      <dt class="font-medium text-stone-500">Current recipient</dt>
-                      <dd class="text-stone-900">
-                        {{ recipient_name }}
-                      </dd>
-                    </div>
-                  {% endif -%}
-                  <div class="contents">
-                    <dt class="font-medium text-stone-500">Issuer</dt>
-                    <dd class="break-all">
-                      <a class="font-medium text-primary-600 hover:text-primary-700 hover:underline"
-                         href="{{ result.issuer }}">{{ result.issuer }}</a>
-                    </dd>
-                  </div>
-                  <div class="contents">
-                    <dt class="font-medium text-stone-500">Awarded</dt>
-                    <dd class="text-stone-900">
-                      <time datetime="{{ result.valid_from.to_rfc3339() }}">
-                        {{ result.valid_from.format("%B %-e, %Y") }}
-                      </time>
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-          </article>
-        {% endif -%}
+        </image-field>
       </div>
+      <button class="btn-primary mx-auto block" type="submit">Verify badge</button>
+    </form>
+
+    <div class="mt-6" aria-live="polite">
+      {% if let Some(error) = &error -%}
+        <div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
+             role="alert">{{ error }}</div>
+      {% endif -%}
+      {% if let Some(result) = &verified -%}
+        <article class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+          <div class="flex items-center gap-3 px-6 py-4
+                      {% if result.revoked %}
+                        bg-red-50 text-red-800
+                      {% else if result.superseded %}
+                        bg-amber-50 text-amber-800
+                      {% else %}
+                        bg-green-50 text-green-800
+                      {% endif %}">
+            {% if result.revoked -%}
+              <div class="flex size-5 items-center justify-center rounded-full bg-red-600"
+                   aria-hidden="true">
+                <div class="svg-icon size-3 icon-close bg-white"></div>
+              </div>
+              <p class="text-sm font-semibold">Credential revoked</p>
+            {% else if result.superseded -%}
+              <div class="flex size-5 items-center justify-center rounded-full bg-amber-500"
+                   aria-hidden="true">
+                <div class="svg-icon size-3 icon-warning bg-white"></div>
+              </div>
+              <p class="text-sm font-semibold">Authentic but superseded by a newer export</p>
+            {% else -%}
+              <div class="flex size-5 items-center justify-center rounded-full bg-green-600"
+                   aria-hidden="true">
+                <div class="svg-icon size-3 icon-check bg-white"></div>
+              </div>
+              <p class="text-sm font-semibold">Valid and active</p>
+            {% endif -%}
+          </div>
+          <div class="grid gap-6 p-6 sm:grid-cols-[8rem_1fr]">
+            <img class="mx-auto aspect-square w-full max-w-32 rounded-lg object-cover sm:mx-0"
+                 src="{{ result.image_url }}"
+                 alt="{{ result.name }} badge artwork"
+                 width="512"
+                 height="512">
+            <div class="min-w-0">
+              <div>
+                <h2 class="text-xl font-medium text-stone-900">{{ result.name }}</h2>
+                <p class="mt-2 text-stone-600">{{ result.description }}</p>
+              </div>
+              <dl class="mt-6 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-[10rem_1fr]">
+                {% if let Some(recipient_name) = &result.recipient_name -%}
+                  <div class="contents">
+                    <dt class="font-medium text-stone-500">Current recipient</dt>
+                    <dd class="text-stone-900">
+                      {{ recipient_name }}
+                    </dd>
+                  </div>
+                {% endif -%}
+                <div class="contents">
+                  <dt class="font-medium text-stone-500">Issuer</dt>
+                  <dd class="break-all">
+                    <a class="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                       href="{{ result.issuer }}">{{ result.issuer }}</a>
+                  </dd>
+                </div>
+                <div class="contents">
+                  <dt class="font-medium text-stone-500">Awarded</dt>
+                  <dd class="text-stone-900">
+                    <time datetime="{{ result.valid_from.to_rfc3339() }}">
+                      {{ result.valid_from.format("%B %-e, %Y") }}
+                    </time>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </article>
+      {% endif -%}
     </div>
-  </section>
+  </div>
+</section>
 {% endblock content -%}

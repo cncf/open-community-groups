@@ -62,28 +62,24 @@ test.describe("public badges", () => {
     expect(statusList.proof).toBeDefined();
   });
 
-  test("verifies active and revoked credential references", async ({ request }) => {
-    // Submit only an active opaque credential ID to the multipart endpoint.
-    const activeResponse = await request.post(buildE2eUrl("/badges/verify"), {
-      multipart: { credential: ACTIVE_CREDENTIAL_ID },
-    });
-    const activeResult = await activeResponse.text();
+  test("verifies active and revoked credential references", async ({ page }) => {
+    // Submit an active opaque credential ID through the browser form.
+    await navigateToPath(page, "/badges/verify");
+    await page.getByLabel("Credential URL or ID").fill(ACTIVE_CREDENTIAL_ID);
+    await page.getByRole("button", { name: "Verify badge" }).click();
 
-    expect(activeResponse.ok()).toBeTruthy();
-    expect(activeResult).toContain("Valid and active");
-    expect(activeResult).toMatch(/>\s*Host\s*</u);
+    await expect(page.getByText("Valid and active", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Host" })).toBeVisible();
 
     // Submit a revoked credential using its full public URL.
-    const revokedResponse = await request.post(buildE2eUrl("/badges/verify"), {
-      multipart: {
-        credential: buildE2eUrl(`/badges/credentials/${REVOKED_CREDENTIAL_ID}`),
-      },
-    });
-    const revokedResult = await revokedResponse.text();
+    await navigateToPath(page, "/badges/verify");
+    await page
+      .getByLabel("Credential URL or ID")
+      .fill(buildE2eUrl(`/badges/credentials/${REVOKED_CREDENTIAL_ID}`));
+    await page.getByRole("button", { name: "Verify badge" }).click();
 
-    expect(revokedResponse.ok()).toBeTruthy();
-    expect(revokedResult).toContain("Credential revoked");
-    expect(revokedResult).toMatch(/>\s*Speaker\s*</u);
+    await expect(page.getByText("Credential revoked", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Speaker" })).toBeVisible();
   });
 
   test("verifies an authenticated exported PNG", async ({ member1Page }) => {
