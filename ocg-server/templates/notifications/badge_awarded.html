@@ -10,8 +10,10 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default group mb-15"><strong>{{ badge.issuer.group_name }}</strong></p>
-  <p class="default big mb-15">Congratulations! You earned the <strong>{{ badge.name }}</strong> badge.</p>
+  <p class="default mb-15" style="font-size: 16px">
+    Congratulations! You earned the <strong>{{ badge.name }}</strong> badge issued by
+    <strong>{{ badge.issuer.group_name }}</strong> on <strong>Open Community Groups</strong>.
+  </p>
   <p class="default mb-15">
     <img src="{{ self.image_url() }}"
          alt="{{ badge.name }} badge artwork"

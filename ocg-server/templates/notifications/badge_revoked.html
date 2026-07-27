@@ -10,8 +10,10 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default group mb-15"><strong>{{ group_name }}</strong></p>
-  <p class="default big mb-15">Your <strong>{{ badge_name }}</strong> badge was permanently revoked.</p>
+  <p class="default mb-15">
+    Your <strong>{{ badge_name }}</strong> badge issued by <strong>{{ group_name }}</strong> on
+    <strong>Open Community Groups</strong> was permanently revoked.
+  </p>
   <p class="default mb-30">
     The credential remains available as history, but verification will report it as revoked.
     Contact {{ group_name }} if you have questions.
