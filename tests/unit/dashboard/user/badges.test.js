@@ -63,7 +63,7 @@ describe("user dashboard badges", () => {
 
     // Verify the profile listing cap is explained to the user.
     expect(template).to.include(
-      "Your profile modal displays the first 50 visible badges in the order shown here.",
+      "Your profile modal displays the first {{ max_public_profile_badges }} visible badges in the order shown here.",
     );
   });
 

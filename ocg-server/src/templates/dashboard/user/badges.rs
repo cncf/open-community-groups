@@ -12,4 +12,6 @@ use crate::types::badges::UserBadge;
 pub(crate) struct ListPage {
     /// Active badge awards in user-selected order.
     pub badges: Vec<UserBadge>,
+    /// Maximum number of badges rendered on a public profile.
+    pub max_public_profile_badges: usize,
 }

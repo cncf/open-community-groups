@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
+    handlers::{badges::USER_PROFILE_BADGES_LIMIT, error::HandlerError, extractors::CurrentUser},
     router::CACHE_CONTROL_NO_STORE,
     services::{
         badges::{BadgesManager, BadgesManagerError, png},
@@ -165,5 +165,6 @@ pub(crate) async fn prepare_list_page(db: &DynDB, user_id: Uuid) -> Result<ListP
     // Load only active awards owned by the dashboard user
     Ok(ListPage {
         badges: db.list_user_badges(user_id).await?,
+        max_public_profile_badges: USER_PROFILE_BADGES_LIMIT,
     })
 }

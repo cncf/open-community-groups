@@ -28,6 +28,8 @@ use crate::{
     util::compute_hash,
 };
 
+use super::USER_PROFILE_BADGES_LIMIT;
+
 #[tokio::test]
 async fn test_export_missing_artwork_returns_not_found() {
     // Setup an authenticated owner whose active award references missing artwork
@@ -264,11 +266,13 @@ async fn test_list_page_success() {
         .await
         .unwrap();
     let (parts, body) = response.into_parts();
-    let body = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
 
-    // Check the empty dashboard state renders as HTML
+    // Check the empty dashboard state renders the public profile limit
     assert_eq!(parts.status, StatusCode::OK);
-    assert!(!body.is_empty());
+    assert!(body.contains(&format!(
+        "Your profile modal displays the first {USER_PROFILE_BADGES_LIMIT} visible badges in the order shown here."
+    )));
 }
 
 #[tokio::test]

@@ -46,7 +46,7 @@ const ISSUER_KEY_CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 const STATUS_LIST_CACHE_CONTROL: &str = "public, max-age=600";
 
 /// Default and maximum number of badges returned by one public profile request.
-const USER_PROFILE_BADGES_LIMIT: usize = 50;
+pub(super) const USER_PROFILE_BADGES_LIMIT: usize = 50;
 
 // Pages handlers.
 
