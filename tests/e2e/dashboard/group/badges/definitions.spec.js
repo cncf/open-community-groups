@@ -83,6 +83,10 @@ test.describe("group badge definitions", () => {
       searchInput.press("Enter"),
     ]);
     await expect(searchInput).toHaveValue("");
+    await expect(dashboardContent.locator("[data-group-badges]")).toHaveAttribute(
+      "data-group-badges-ready",
+      "true",
+    );
 
     // Create a definition using seeded gallery artwork.
     await dashboardContent.getByRole("button", { name: "Add badge" }).click();
