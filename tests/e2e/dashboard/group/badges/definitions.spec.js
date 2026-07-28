@@ -44,6 +44,7 @@ test.describe("group badge definitions", () => {
     const searchInput = dashboardContent.getByRole("textbox", {
       name: "Search badges",
     });
+    const badgesRoot = dashboardContent.locator("[data-group-badges]");
 
     await searchInput.fill("Speaker");
     await Promise.all([
@@ -56,6 +57,7 @@ test.describe("group badge definitions", () => {
       ),
       searchInput.press("Enter"),
     ]);
+    await expect(badgesRoot).toHaveAttribute("data-group-badges-ready", "true");
     await expect(
       dashboardContent.getByRole("table", { name: "Badges list" }).getByText("Speaker", {
         exact: true,
@@ -67,8 +69,10 @@ test.describe("group badge definitions", () => {
       }),
     ).toHaveCount(0);
 
-    await expect(dashboardContent.getByRole("button", { name: "Clear badge search" })).toBeVisible();
-    await searchInput.fill("");
+    const clearSearchButton = dashboardContent.getByRole("button", {
+      name: "Clear badge search",
+    });
+    await expect(clearSearchButton).toBeVisible();
     await Promise.all([
       organizerGroupPage.waitForResponse((response) => {
         const responseUrl = new URL(response.url());
@@ -80,13 +84,10 @@ test.describe("group badge definitions", () => {
           response.ok()
         );
       }),
-      searchInput.press("Enter"),
+      clearSearchButton.click(),
     ]);
     await expect(searchInput).toHaveValue("");
-    await expect(dashboardContent.locator("[data-group-badges]")).toHaveAttribute(
-      "data-group-badges-ready",
-      "true",
-    );
+    await expect(badgesRoot).toHaveAttribute("data-group-badges-ready", "true");
 
     // Create a definition using seeded gallery artwork.
     await dashboardContent.getByRole("button", { name: "Add badge" }).click();

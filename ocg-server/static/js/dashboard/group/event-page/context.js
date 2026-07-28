@@ -91,10 +91,11 @@ export const createSessionsDateRangeSync =
  * @param {Object} config Pending-changes configuration.
  * @param {Document|Element} config.pageRoot Page root.
  * @param {string} config.confirmMessage Confirmation text shown on cancel.
- * @returns {void}
+ * @returns {{hasPendingChanges: () => boolean, refresh: () => void}}
+ * Pending-changes API.
  */
 export const initializeEventPagePendingChanges = ({ pageRoot, confirmMessage }) => {
-  initializePendingChangesAlert({
+  return initializePendingChangesAlert({
     alertId: "pending-changes-alert",
     formIds: collectExistingFormIds(EVENT_PAGE_FORM_IDS, pageRoot),
     cancelButtonId: "cancel-button",

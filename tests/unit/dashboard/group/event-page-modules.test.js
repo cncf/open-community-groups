@@ -22,12 +22,13 @@ import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 // Prepare the module under test.
 const sharedEventFormsMarkup = () => `
   <div id="pending-changes-alert"></div>
-  <form id="details-form"></form>
+  <form id="details-form">
+    <input id="name" name="name" />
+  </form>
   <form id="date-venue-form"></form>
   <form id="hosts-sponsors-form"></form>
   <form id="sessions-form"></form>
   <form id="cfs-form"></form>
-  <input id="name" />
   <input id="starts_at" />
   <input id="ends_at" />
   <input id="registration_starts_at" />
@@ -74,6 +75,7 @@ const mountUpdatePageShell = ({
   canManageEvents = false,
   eventCanceled = false,
   eventPast = false,
+  hasRelatedEvents = false,
   waitlistCount = "2",
 } = {}) => {
   document.body.innerHTML = `
@@ -94,6 +96,16 @@ const mountUpdatePageShell = ({
       <div class="inert-form" inert></div>
       <input id="capacity" value="" />
       <button id="update-event-button" type="button" data-waitlist-count="${waitlistCount}"></button>
+      <button id="publish-event-button"
+              type="button"
+              data-action-url="/dashboard/group/events/123/publish"
+              data-has-related-events="${String(hasRelatedEvents)}"
+              data-series-message="Publish this series?"
+              data-single-message="Publish this event?"
+              data-success-message="Published event"
+              data-series-success-message="Published events"
+              data-series-error-message="Publish series failed"
+              data-error-message="Publish failed"></button>
       <button id="cancel-button" type="button"></button>
     </div>
   `;
@@ -821,6 +833,85 @@ describe("event page modules", () => {
     expect(htmx.triggerCalls).to.deep.equal([
       ["#update-event-button", "confirmed"],
     ]);
+  });
+
+  it("publishes a clean event after confirmation", async () => {
+    // Mount and initialize a manageable draft event.
+    mountUpdatePageShell({ canManageEvents: true, waitlistCount: "0" });
+    initializeEventUpdatePage();
+    await waitForAnimationFrames();
+
+    // Request publication without changing the event forms.
+    document.getElementById("publish-event-button").click();
+    await waitForMicrotask();
+
+    // Clean events use the normal publish confirmation and request.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Publish this event?");
+    expect(htmx.triggerCalls).to.deep.equal([
+      [document.getElementById("publish-event-button"), "confirmed"],
+    ]);
+  });
+
+  it("asks to save pending changes instead of publishing the saved version", async () => {
+    // Mount and initialize a manageable draft event.
+    mountUpdatePageShell({ canManageEvents: true, waitlistCount: "0" });
+    let saveClicks = 0;
+    document
+      .getElementById("update-event-button")
+      .addEventListener("click", () => {
+        saveClicks += 1;
+      });
+    initializeEventUpdatePage();
+    await waitForAnimationFrames();
+
+    // Change a tracked event field before requesting publication.
+    const nameInput = document.getElementById("name");
+    nameInput.value = "Updated event";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await waitForAnimationFrames();
+    document.getElementById("publish-event-button").click();
+    await waitForMicrotask();
+
+    // Dirty events enter the existing save flow without publishing stale data.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal(
+      "This event has unsaved changes. Save them before publishing.",
+    );
+    expect(swal.calls[0].confirmButtonText).to.equal("Save changes");
+    expect(saveClicks).to.equal(1);
+    expect(htmx.triggerCalls).to.deep.equal([]);
+  });
+
+  it("publishes a clean recurring event with the selected series scope", async () => {
+    // Mount and initialize a recurring draft event.
+    mountUpdatePageShell({
+      canManageEvents: true,
+      hasRelatedEvents: true,
+      waitlistCount: "0",
+    });
+    swal.setNextResult({ isDenied: true });
+    initializeEventUpdatePage();
+    await waitForAnimationFrames();
+
+    // Select the series option from the publish confirmation.
+    const publishButton = document.getElementById("publish-event-button");
+    publishButton.click();
+    await waitForMicrotask();
+    const requestEvent = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      detail: {
+        elt: publishButton,
+        path: publishButton.dataset.actionUrl,
+      },
+    });
+    publishButton.dispatchEvent(requestEvent);
+
+    // Series publication uses the existing query-string contract.
+    expect(swal.calls[0].text).to.equal("Publish this series?");
+    expect(requestEvent.detail.path).to.equal(
+      "/dashboard/group/events/123/publish?scope=series",
+    );
   });
 
   it("scopes add page initialization to the provided root", () => {
