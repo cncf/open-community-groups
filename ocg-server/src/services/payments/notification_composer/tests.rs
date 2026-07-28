@@ -259,6 +259,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         timezone: chrono_tz::UTC,
         waitlist_count: 0,
         waitlist_enabled: false,
+        attendee_count: None,
         capacity: None,
         created_by_display_name: None,
         created_by_username: None,

@@ -34,6 +34,7 @@ fn event_full_to_summary_maps_event_fields() {
     let registration_starts_at = starts_at - Duration::days(14);
     let registration_ends_at = starts_at - Duration::hours(1);
     let event = EventFull {
+        attendee_count: 4,
         canceled: true,
         community: CommunitySummary {
             community_id,
@@ -77,6 +78,7 @@ fn event_full_to_summary_maps_event_fields() {
     };
     let summary = EventSummary::from(&event);
 
+    assert_eq!(summary.attendee_count, Some(4));
     assert!(summary.canceled);
     assert_eq!(summary.community_display_name, "Community Display");
     assert_eq!(summary.community_name, "community");
@@ -590,6 +592,7 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         waitlist_count: 0,
         waitlist_enabled: false,
 
+        attendee_count: None,
         capacity: None,
         created_by_display_name: None,
         created_by_username: None,

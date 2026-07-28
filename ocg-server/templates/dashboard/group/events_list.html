@@ -78,6 +78,7 @@
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Date</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Attendees</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
             <span class="sr-only">Actions</span>
           </th>
@@ -95,8 +96,8 @@
             {# xl: 5 columns (adds Date, Type) -#}
             <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
                 colspan="5">{% include "dashboard/placeholders/group_events_table.html" -%}</td>
-            {# 2xl: 6 columns (adds Location) -#}
-            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="6">
+            {# 2xl: 7 columns (adds Location, Attendees) -#}
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="7">
               {% include "dashboard/placeholders/group_events_table.html" -%}
             </td>
           </tr>
@@ -193,6 +194,20 @@
                 {% endif -%}
               </td>
               {# End status -#}
+
+              {# Attendees -#}
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(attendee_count) = event.attendee_count -%}
+                  {% if let Some(capacity) = event.capacity -%}
+                    {{ attendee_count }} / {{ capacity }}
+                  {% else -%}
+                    {{ attendee_count }}
+                  {% endif -%}
+                {% else -%}
+                  <span class="text-stone-400">-</span>
+                {% endif -%}
+              </td>
+              {# End attendees -#}
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[152px]">
@@ -364,6 +379,7 @@
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Date</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Attendees</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
             <span class="sr-only">Actions</span>
           </th>
@@ -381,8 +397,8 @@
             {# xl: 5 columns (adds Date, Type) -#}
             <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
                 colspan="5">{% include "dashboard/placeholders/events_past.html" -%}</td>
-            {# 2xl: 6 columns (adds Location) -#}
-            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="6">
+            {# 2xl: 7 columns (adds Location, Attendees) -#}
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="7">
               {% include "dashboard/placeholders/events_past.html" -%}
             </td>
           </tr>
@@ -479,6 +495,20 @@
                 {% endif -%}
               </td>
               {# End status -#}
+
+              {# Attendees -#}
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(attendee_count) = event.attendee_count -%}
+                  {% if let Some(capacity) = event.capacity -%}
+                    {{ attendee_count }} / {{ capacity }}
+                  {% else -%}
+                    {{ attendee_count }}
+                  {% endif -%}
+                {% else -%}
+                  <span class="text-stone-400">-</span>
+                {% endif -%}
+              </td>
+              {# End attendees -#}
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[152px]">

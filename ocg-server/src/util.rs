@@ -337,6 +337,7 @@ mod tests {
             test_event: false,
             timezone: Los_Angeles,
 
+            attendee_count: None,
             capacity: None,
             created_by_display_name: None,
             created_by_username: None,

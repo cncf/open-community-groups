@@ -733,6 +733,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         test_event: false,
         timezone: UTC,
 
+        attendee_count: None,
         capacity: None,
         created_by_display_name: None,
         created_by_username: None,

@@ -82,6 +82,8 @@ pub struct EventSummary {
     #[serde(default)]
     pub waitlist_enabled: bool,
 
+    /// Number of occupied attendee seats when available.
+    pub attendee_count: Option<i32>,
     /// Maximum capacity for the event.
     pub capacity: Option<i32>,
     /// Display name for the user who created the event, in dashboard views.
@@ -257,7 +259,7 @@ pub struct EventFull {
     /// Whether attendance requests require organizer approval.
     #[serde(default)]
     pub attendee_approval_required: bool,
-    /// Current number of event attendees.
+    /// Number of occupied attendee seats.
     #[serde(default)]
     pub attendee_count: i32,
     /// Whether the event has been canceled.
@@ -628,6 +630,7 @@ impl From<&EventFull> for EventSummary {
             waitlist_count: event.waitlist_count,
             waitlist_enabled: event.waitlist_enabled,
 
+            attendee_count: Some(event.attendee_count),
             capacity: event.capacity,
             created_by_display_name: None,
             created_by_username: None,

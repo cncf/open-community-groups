@@ -8,6 +8,7 @@ returns json as $$
     select (
         get_event_summary(p_community_id, p_group_id, p_event_id)::jsonb
         || jsonb_strip_nulls(jsonb_build_object(
+            'attendee_count', get_event_occupied_seat_count(p_event_id),
             'created_by_display_name', coalesce(u.name, u.username),
             'created_by_username', u.username,
             'delete_eligibility', get_event_delete_eligibility(p_group_id, p_event_id)

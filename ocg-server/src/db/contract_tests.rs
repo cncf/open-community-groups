@@ -76,6 +76,7 @@ use crate::{
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_activate_pre_registered_user_external_provider_deserializes() -> Result<()> {
+    // Setup the activation identity and external profile
     let db = contract_tests_db()?;
     let user_summary = UserSummary {
         email: "activation.contract@example.com".to_string(),
@@ -88,10 +89,13 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
             "contract-activation".to_string(),
         )),
     };
+
+    // Activate the pre-registered user through the Rust contract
     let user = db
         .activate_pre_registered_user_external_provider(&activation_id(), &user_summary)
         .await?;
 
+    // Check the registered external user fields
     assert!(user.email_verified);
     assert_eq!(user.name, "Contract Activation");
     assert_eq!(user.registration_status, "registered");
@@ -104,7 +108,10 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_award_badge_deserializes() -> Result<()> {
+    // Setup the contract database and badge recipient
     let db = contract_tests_db()?;
+
+    // Queue the badge award through the Rust contract
     let outcome = db
         .award_badge(
             organizer_id(),
@@ -118,6 +125,7 @@ async fn db_contracts_award_badge_deserializes() -> Result<()> {
         )
         .await?;
 
+    // Check the award queue outcome
     assert_eq!(outcome.queued_count, 1);
     assert_eq!(outcome.skipped_count, 0);
 
@@ -152,6 +160,7 @@ async fn db_contracts_badge_award_worker_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 #[allow(clippy::too_many_lines)]
 async fn db_contracts_badge_json_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
 
     // Read every badge JSON shape through its production database wrapper
@@ -202,7 +211,7 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
         .context("contract status list should exist")?;
     let user_badges = db.list_user_badges(attendee_id()).await?;
 
-    // Assert every required, optional, and revocation field
+    // Check every required, optional, and revocation field
     let snapshot = contract_badge_snapshot();
     assert_eq!(
         artwork,
@@ -328,7 +337,10 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<()> {
+    // Setup the contract database and attendance fixture
     let db = contract_tests_db()?;
+
+    // Cancel the attendee through the Rust contract
     let outcome = db
         .cancel_event_attendee_attendance(
             organizer_id(),
@@ -338,6 +350,7 @@ async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<
         )
         .await?;
 
+    // Check the prior status and waitlist outcome
     assert_eq!(outcome.left_status, EventAttendanceStatus::Attendee);
     assert!(outcome.promoted_user_ids.is_empty());
 
@@ -347,8 +360,10 @@ async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<()> {
-    // Claim the provider-complete durable refund from contract fixtures
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Claim the provider-complete durable refund from contract fixtures
     let refund = db
         .claim_event_purchase_refund(PaymentProvider::Stripe)
         .await?
@@ -375,12 +390,16 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_meeting_for_auto_end_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Claim the meeting eligible for automatic ending
     let candidate = db
         .claim_meeting_for_auto_end()
         .await?
         .expect("contract auto-end candidate should exist");
 
+    // Check the provider meeting contract
     assert_eq!(candidate.meeting_id, auto_end_meeting_id());
     assert_eq!(candidate.provider, MeetingProvider::Zoom);
     assert_eq!(candidate.provider_meeting_id, "contract-auto-end");
@@ -391,12 +410,16 @@ async fn db_contracts_claim_meeting_for_auto_end_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_meeting_out_of_sync_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Claim the meeting requiring provider synchronization
     let meeting = db
         .claim_meeting_out_of_sync()
         .await?
         .expect("contract meeting sync candidate should exist");
 
+    // Check synchronization inputs and claim metadata
     assert_eq!(meeting.duration, Some(Duration::from_hours(1)));
     assert_eq!(meeting.event_id, Some(sync_event_id()));
     assert_eq!(meeting.provider, MeetingProvider::Zoom);
@@ -413,6 +436,7 @@ async fn db_contracts_claim_meeting_out_of_sync_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
 
     // Claim the seeded notification through the production wrapper
@@ -441,9 +465,13 @@ async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> {
+    // Setup the contract database and free purchase fixture
     let db = contract_tests_db()?;
+
+    // Complete the free purchase through the Rust contract
     let purchase = db.complete_free_event_purchase(free_purchase_id()).await?;
 
+    // Check the completed purchase ownership fields
     assert_eq!(purchase.community_id, community_id());
     assert_eq!(purchase.event_id, ticketed_event_id());
     assert_eq!(purchase.user_id, free_buyer_id());
@@ -454,8 +482,10 @@ async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<()> {
-    // Queue a durable manual refund from deterministic contract data
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Queue a durable manual refund from deterministic contract data
     db.queue_event_refund_request_approval(
         organizer_id(),
         group_id(),
@@ -534,11 +564,15 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_cfs_submission_notification_data_deserializes() -> Result<()> {
+    // Setup the contract database and submission fixture
     let db = contract_tests_db()?;
+
+    // Load notification data through the Rust contract
     let data = db
         .get_cfs_submission_notification_data(event_id(), cfs_submission_id())
         .await?;
 
+    // Check the submission status and recipient fields
     assert_eq!(data.action_required_message, None);
     assert_eq!(data.status_id, "approved");
     assert_eq!(data.status_name, "Approved");
@@ -550,9 +584,13 @@ async fn db_contracts_get_cfs_submission_notification_data_deserializes() -> Res
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_full_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load the full community through the Rust contract
     let community = db.get_community_full(community_id()).await?;
 
+    // Check required and optional community fields
     assert!(community.active);
     assert_eq!(community.community_id, community_id());
     assert_eq!(
@@ -572,9 +610,13 @@ async fn db_contracts_get_community_full_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_recently_added_groups_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load recently added groups through the Rust contract
     let groups = db.get_community_recently_added_groups(community_id()).await?;
 
+    // Check both seeded groups are returned
     assert_eq!(groups.len(), 2);
     assert!(groups.iter().any(|group| group.group_id == group_id()));
     assert!(groups.iter().any(|group| group.group_id == subgroup_id()));
@@ -585,9 +627,13 @@ async fn db_contracts_get_community_recently_added_groups_deserializes() -> Resu
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_site_stats_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load public community statistics through the Rust contract
     let stats = db.get_community_site_stats(community_id()).await?;
 
+    // Check event and group totals deserialize as expected
     assert_eq!(stats.events, 2);
     assert_eq!(stats.events_attendees, 1);
     assert_eq!(stats.groups, 2);
@@ -599,9 +645,13 @@ async fn db_contracts_get_community_site_stats_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_stats_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load dashboard community statistics through the Rust contract
     let stats = db.get_community_stats(community_id()).await?;
 
+    // Check entity and page-view totals
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
     assert_eq!(stats.groups.total, 2);
@@ -617,9 +667,13 @@ async fn db_contracts_get_community_stats_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_summary_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load the community summary through the Rust contract
     let community = db.get_community_summary(community_id()).await?;
 
+    // Check identity and advertising fields
     assert_eq!(
         community.ad_banner_url.as_deref(),
         Some("https://example.com/community-ad-banner.png")
@@ -633,11 +687,15 @@ async fn db_contracts_get_community_summary_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_community_upcoming_events_deserializes() -> Result<()> {
+    // Setup the contract database and event kind filter
     let db = contract_tests_db()?;
+
+    // Load upcoming community events through the Rust contract
     let events = db
         .get_community_upcoming_events(community_id(), vec![EventKind::Hybrid])
         .await?;
 
+    // Check the matching event collection
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_id, event_id());
 
@@ -647,11 +705,15 @@ async fn db_contracts_get_community_upcoming_events_deserializes() -> Result<()>
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_attendance_deserializes() -> Result<()> {
+    // Setup the contract database and attendance identifiers
     let db = contract_tests_db()?;
+
+    // Load attendee state through the Rust contract
     let attendance = db
         .get_event_attendance(community_id(), event_id(), attendee_id())
         .await?;
 
+    // Check attendance and check-in state
     assert_eq!(attendance.status, EventAttendanceStatus::Attendee);
     assert!(attendance.is_checked_in);
 
@@ -661,9 +723,14 @@ async fn db_contracts_get_event_attendance_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_full_deserializes() -> Result<()> {
+    // Setup the contract database and event fixture
     let db = contract_tests_db()?;
+
+    // Load the full event through the Rust contract
     let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
 
+    // Check community and event details
+    assert_eq!(event.attendee_count, 1);
     assert_eq!(
         event.community.ad_banner_link_url.as_deref(),
         Some("https://example.com/community-ad")
@@ -683,6 +750,8 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     assert!(event.registration_questions_locked);
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
+
+    // Check host and organizer provider profiles
     assert_eq!(
         event.hosts[0].github_url.as_deref(),
         Some("https://github.com/contract-organizer")
@@ -699,12 +768,17 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_full_by_slug_deserializes() -> Result<()> {
+    // Setup the contract database and event slugs
     let db = contract_tests_db()?;
+
+    // Load the full event by slug through the Rust contract
     let event = db
         .get_event_full_by_slug(community_id(), "contract-group", "future-contract-event")
         .await?
         .expect("contract event should exist");
 
+    // Check the event and nested collection fields
+    assert_eq!(event.attendee_count, 1);
     assert_eq!(event.event_id, event_id());
     assert_eq!(event.name, "Future Contract Event");
     assert_eq!(event.sessions.len(), 1);
@@ -716,8 +790,10 @@ async fn db_contracts_get_event_full_by_slug_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_purchase_recovery_summary_deserializes() -> Result<()> {
-    // Load the deterministic purchase awaiting provider refund recovery
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load the deterministic purchase awaiting provider refund recovery
     let summary = db.get_event_purchase_summary(refund_recovery_purchase_id()).await?;
 
     // Check the recovery status crosses the SQL-to-Rust contract
@@ -730,8 +806,10 @@ async fn db_contracts_get_event_purchase_recovery_summary_deserializes() -> Resu
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_purchase_refund_deserializes() -> Result<()> {
-    // Load the deterministic post-finalization recovery record
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load the deterministic post-finalization recovery record
     let refund = db.get_event_purchase_refund(refund_recovery_purchase_id()).await?;
 
     // Check the required durable refund contract
@@ -765,8 +843,10 @@ async fn db_contracts_get_event_purchase_refund_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_purchase_refund_recovery_context_deserializes() -> Result<()> {
-    // Load group-scoped recovery context for the deterministic refund
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load group-scoped recovery context for the deterministic refund
     let context = db
         .get_event_purchase_refund_recovery_context(group_id(), refund_recovery_purchase_id())
         .await?;
@@ -786,9 +866,13 @@ async fn db_contracts_get_event_purchase_refund_recovery_context_deserializes() 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
+    // Setup the contract database and purchase fixture
     let db = contract_tests_db()?;
+
+    // Load the purchase summary through the Rust contract
     let summary = db.get_event_purchase_summary(summary_purchase_id()).await?;
 
+    // Check pricing, hold, status, and ticket fields
     assert_eq!(summary.amount_minor, 2500);
     assert_eq!(summary.currency_code, "USD");
     assert_eq!(summary.discount_amount_minor, 0);
@@ -804,11 +888,15 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_registration_questions_deserializes() -> Result<()> {
+    // Setup the contract database and event fixture
     let db = contract_tests_db()?;
+
+    // Load registration questions through the Rust contract
     let questions = db
         .get_event_registration_questions(community_id(), event_id())
         .await?;
 
+    // Check the question and option fields
     assert_eq!(questions.len(), 1);
     assert_eq!(questions[0].prompt, "Meal preference");
     assert_eq!(questions[0].options.len(), 1);
@@ -820,9 +908,13 @@ async fn db_contracts_get_event_registration_questions_deserializes() -> Result<
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
+    // Setup the contract database and event fixture
     let db = contract_tests_db()?;
+
+    // Load the event summary through the Rust contract
     let event = db.get_event_summary(community_id(), group_id(), event_id()).await?;
 
+    // Check required and computed event fields
     assert_eq!(event.event_id, event_id());
     assert!(event.has_registration_questions);
     assert_eq!(event.kind, EventKind::Hybrid);
@@ -834,9 +926,13 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_summary_by_id_deserializes() -> Result<()> {
+    // Setup the contract database and event identifier
     let db = contract_tests_db()?;
+
+    // Load the event summary by identifier
     let event = db.get_event_summary_by_id(community_id(), event_id()).await?;
 
+    // Check identity, kind, and name fields
     assert_eq!(event.event_id, event_id());
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.name, "Future Contract Event");
@@ -847,21 +943,31 @@ async fn db_contracts_get_event_summary_by_id_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_filters_options_deserializes() -> Result<()> {
+    // Setup the contract database and exploration scope
     let db = contract_tests_db()?;
+
+    // Load event filter options through the Rust contract
     let options = db
         .get_filters_options(Some("contract-community".to_string()), Some(Entity::Events))
         .await?;
 
+    // Check community and distance options
     assert_eq!(options.communities.len(), 1);
     assert_eq!(options.communities[0].value, "contract-community");
     assert!(!options.distance.is_empty());
+
+    // Check event category options
     let event_category = options.event_category.expect("event categories should be present");
     assert_eq!(event_category.len(), 1);
     assert_eq!(event_category[0].name, "Conference");
+
+    // Check group options
     let groups = options.groups.expect("groups should be present");
     assert_eq!(groups.len(), 2);
     assert!(groups.iter().any(|group| group.name == "Contract Group"));
     assert!(groups.iter().any(|group| group.name == "Contract Subgroup"));
+
+    // Check region options
     let region = options.region.expect("regions should be present");
     assert_eq!(region.len(), 1);
     assert_eq!(region[0].name, "North America");
@@ -872,9 +978,13 @@ async fn db_contracts_get_filters_options_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_full_deserializes() -> Result<()> {
+    // Setup the contract database and group fixtures
     let db = contract_tests_db()?;
+
+    // Load the parent group through the Rust contract
     let group = db.get_group_full(community_id(), group_id()).await?;
 
+    // Check the parent group and nested collections
     assert_eq!(
         group.community.ad_banner_link_url.as_deref(),
         Some("https://example.com/community-ad")
@@ -894,7 +1004,10 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
         Some("https://github.com/contract-organizer")
     );
 
+    // Load the subgroup through the same contract
     let subgroup = db.get_group_full(community_id(), subgroup_id()).await?;
+
+    // Check the subgroup parent relationship
     assert_eq!(
         subgroup
             .parent
@@ -910,12 +1023,16 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_full_by_slug_deserializes() -> Result<()> {
+    // Setup the contract database and group slug
     let db = contract_tests_db()?;
+
+    // Load the full group by slug through the Rust contract
     let group = db
         .get_group_full_by_slug(community_id(), "contract-group")
         .await?
         .expect("contract group should exist");
 
+    // Check the group and nested collection fields
     assert_eq!(group.group_id, group_id());
     assert_eq!(group.name, "Contract Group");
     assert_eq!(group.organizers.len(), 1);
@@ -928,7 +1045,10 @@ async fn db_contracts_get_group_full_by_slug_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_past_events_deserializes() -> Result<()> {
+    // Setup the contract database and event kind filter
     let db = contract_tests_db()?;
+
+    // Load past group events through the Rust contract
     let events = db
         .get_group_past_events(
             community_id(),
@@ -938,6 +1058,7 @@ async fn db_contracts_get_group_past_events_deserializes() -> Result<()> {
         )
         .await?;
 
+    // Check the matching past event
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_id, past_event_id());
     assert_eq!(events[0].kind, EventKind::Virtual);
@@ -948,12 +1069,16 @@ async fn db_contracts_get_group_past_events_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_payment_recipient_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture
     let db = contract_tests_db()?;
+
+    // Load the payment recipient through the Rust contract
     let payment_recipient = db
         .get_group_payment_recipient(community_id(), group_id())
         .await?
         .expect("contract group should have a payment recipient");
 
+    // Check provider and recipient identifiers
     assert_eq!(payment_recipient.provider, PaymentProvider::Stripe);
     assert_eq!(payment_recipient.recipient_id, "acct_contract_group");
 
@@ -963,9 +1088,13 @@ async fn db_contracts_get_group_payment_recipient_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_sponsor_deserializes() -> Result<()> {
+    // Setup the contract database and sponsor fixture
     let db = contract_tests_db()?;
+
+    // Load the group sponsor through the Rust contract
     let sponsor = db.get_group_sponsor(group_id(), group_sponsor_id()).await?;
 
+    // Check sponsor identity and visibility fields
     assert_eq!(sponsor.group_sponsor_id, group_sponsor_id());
     assert_eq!(sponsor.name, "Contract Sponsor");
     assert!(sponsor.featured);
@@ -976,9 +1105,13 @@ async fn db_contracts_get_group_sponsor_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture
     let db = contract_tests_db()?;
+
+    // Load dashboard group statistics through the Rust contract
     let stats = db.get_group_stats(community_id(), group_id(), false).await?;
 
+    // Check entity and page-view totals
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
     assert_eq!(stats.members.total, 1);
@@ -992,9 +1125,13 @@ async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture
     let db = contract_tests_db()?;
+
+    // Load the group summary through the Rust contract
     let group = db.get_group_summary(community_id(), group_id()).await?;
 
+    // Check group identity and community fields
     assert_eq!(group.group_id, group_id());
     assert_eq!(group.community_name, "contract-community");
     assert!(group.region.is_some());
@@ -1005,7 +1142,10 @@ async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_upcoming_events_deserializes() -> Result<()> {
+    // Setup the contract database and event kind filter
     let db = contract_tests_db()?;
+
+    // Load upcoming group events through the Rust contract
     let events = db
         .get_group_upcoming_events(
             community_id(),
@@ -1015,6 +1155,7 @@ async fn db_contracts_get_group_upcoming_events_deserializes() -> Result<()> {
         )
         .await?;
 
+    // Check the matching upcoming event
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_id, event_id());
     assert_eq!(events[0].kind, EventKind::Hybrid);
@@ -1025,9 +1166,13 @@ async fn db_contracts_get_group_upcoming_events_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_site_home_stats_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load homepage statistics through the Rust contract
     let stats = db.get_site_home_stats().await?;
 
+    // Check site event and group totals
     assert_eq!(stats.events, 2);
     assert_eq!(stats.events_attendees, 1);
     assert_eq!(stats.groups, 2);
@@ -1039,9 +1184,13 @@ async fn db_contracts_get_site_home_stats_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_site_recently_added_groups_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load recently added site groups through the Rust contract
     let groups = db.get_site_recently_added_groups().await?;
 
+    // Check both seeded groups are returned
     assert_eq!(groups.len(), 2);
     assert!(groups.iter().any(|group| group.group_id == group_id()));
     assert!(groups.iter().any(|group| group.group_id == subgroup_id()));
@@ -1052,9 +1201,13 @@ async fn db_contracts_get_site_recently_added_groups_deserializes() -> Result<()
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_site_settings_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load site settings through the Rust contract
     let settings = db.get_site_settings().await?;
 
+    // Check branding, theme, and identity fields
     assert_eq!(
         settings.copyright_notice.as_deref(),
         Some("Copyright Contract Site")
@@ -1073,9 +1226,13 @@ async fn db_contracts_get_site_settings_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_site_stats_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load site statistics through the Rust contract
     let stats = db.get_site_stats().await?;
 
+    // Check site entity totals
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
     assert_eq!(stats.groups.total, 2);
@@ -1087,9 +1244,13 @@ async fn db_contracts_get_site_stats_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_site_upcoming_events_deserializes() -> Result<()> {
+    // Setup the contract database and event kind filter
     let db = contract_tests_db()?;
+
+    // Load upcoming site events through the Rust contract
     let events = db.get_site_upcoming_events(vec![EventKind::Hybrid]).await?;
 
+    // Check the matching event collection
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_id, event_id());
 
@@ -1100,12 +1261,16 @@ async fn db_contracts_get_site_upcoming_events_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_user_by_email_for_external_auth_pre_registered_deserializes() -> Result<()>
 {
+    // Setup the contract database and normalized email lookup
     let db = contract_tests_db()?;
+
+    // Load the pre-registered user through the auth contract
     let user = db
         .get_user_by_email_for_external_auth("PRE-REGISTERED.CONTRACT@example.com")
         .await?
         .expect("contract pre-registered user should exist");
 
+    // Check pre-registration identity fields
     assert_eq!(user.user_id, pre_registered_id());
     assert_eq!(user.name, "");
     assert_eq!(user.registration_status, "pre-registered");
@@ -1116,12 +1281,16 @@ async fn db_contracts_get_user_by_email_for_external_auth_pre_registered_deseria
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_user_by_id_deserializes() -> Result<()> {
+    // Setup the contract database and user identifier
     let db = contract_tests_db()?;
+
+    // Load the user by identifier through the Rust contract
     let user = db
         .get_user_by_id(&attendee_id())
         .await?
         .expect("contract attendee should exist");
 
+    // Check account and provider profile fields
     assert!(user.email_verified);
     assert_eq!(user.email, "attendee.contract@example.com");
     assert_eq!(
@@ -1138,7 +1307,10 @@ async fn db_contracts_get_user_by_id_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_user_by_linuxfoundation_identity_for_external_auth_deserializes()
 -> Result<()> {
+    // Setup the contract database and provider identity
     let db = contract_tests_db()?;
+
+    // Load the user through the Linux Foundation auth contract
     let user = db
         .get_user_by_linuxfoundation_identity_for_external_auth(
             "https://issuer.example.com",
@@ -1147,6 +1319,7 @@ async fn db_contracts_get_user_by_linuxfoundation_identity_for_external_auth_des
         .await?
         .expect("contract LF provider user should exist");
 
+    // Check external account identity fields
     assert_eq!(user.email, "external-lookup.contract@example.com");
     assert_eq!(user.name, "");
     assert_eq!(user.user_id, external_lookup_id());
@@ -1158,12 +1331,16 @@ async fn db_contracts_get_user_by_linuxfoundation_identity_for_external_auth_des
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
+    // Setup the contract database and username lookup
     let db = contract_tests_db()?;
+
+    // Load the user by username through the Rust contract
     let user = db
         .get_user_by_username("contract-organizer")
         .await?
         .expect("contract organizer should exist");
 
+    // Check public user identity fields
     assert_eq!(user.name, "Contract Organizer");
     assert_eq!(user.user_id, organizer_id());
 
@@ -1173,11 +1350,15 @@ async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_leave_event_deserializes() -> Result<()> {
+    // Setup the contract database and attendee fixture
     let db = contract_tests_db()?;
+
+    // Leave the event through the Rust contract
     let outcome = db
         .leave_event(community_id(), mutation_event_id(), leaver_id())
         .await?;
 
+    // Check the prior status and waitlist outcome
     assert_eq!(outcome.left_status, EventAttendanceStatus::Attendee);
     assert!(outcome.promoted_user_ids.is_empty());
 
@@ -1187,9 +1368,13 @@ async fn db_contracts_leave_event_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_cfs_submission_statuses_for_review_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load review statuses through the Rust contract
     let statuses = db.list_cfs_submission_statuses_for_review().await?;
 
+    // Check status ordering and display fields
     assert_eq!(statuses.len(), 4);
     assert_eq!(statuses[0].cfs_submission_status_id, "approved");
     assert_eq!(statuses[0].display_name, "Approved");
@@ -1200,9 +1385,13 @@ async fn db_contracts_list_cfs_submission_statuses_for_review_deserializes() -> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_communities_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load communities through the Rust contract
     let communities = db.list_communities().await?;
 
+    // Check the seeded community summary
     assert_eq!(communities.len(), 1);
     assert_eq!(communities[0].community_id, community_id());
     assert_eq!(communities[0].name, "contract-community");
@@ -1213,6 +1402,7 @@ async fn db_contracts_list_communities_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_community_audit_logs_deserializes() -> Result<()> {
+    // Setup the contract database and audit filters
     let db = contract_tests_db()?;
     let filters = AuditLogFilters {
         limit: Some(10),
@@ -1220,8 +1410,11 @@ async fn db_contracts_list_community_audit_logs_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Load community audit logs through the Rust contract
     let output = db.list_community_audit_logs(community_id(), &filters).await?;
 
+    // Check pagination and audit actor fields
     assert_eq!(output.total, 1);
     assert_eq!(output.logs.len(), 1);
     assert_eq!(output.logs[0].action, "group_payment_recipient_updated");
@@ -1236,9 +1429,13 @@ async fn db_contracts_list_community_audit_logs_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_community_roles_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load community roles through the Rust contract
     let roles = db.list_community_roles().await?;
 
+    // Check role ordering and display fields
     assert_eq!(roles.len(), 3);
     assert_eq!(roles[0].community_role_id, "admin");
     assert_eq!(roles[0].display_name, "Admin");
@@ -1249,13 +1446,17 @@ async fn db_contracts_list_community_roles_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_community_team_members_deserializes() -> Result<()> {
+    // Setup the contract database and team filters
     let db = contract_tests_db()?;
     let filters = CommunityTeamFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load community team members through the Rust contract
     let output = db.list_community_team_members(community_id(), &filters).await?;
 
+    // Check accepted and pending team member rows
     assert_eq!(output.total, 2);
     assert_eq!(output.members.len(), 2);
     assert!(output.members[0].accepted);
@@ -1270,9 +1471,13 @@ async fn db_contracts_list_community_team_members_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_approved_cfs_submissions_deserializes() -> Result<()> {
+    // Setup the contract database and event fixture
     let db = contract_tests_db()?;
+
+    // Load approved submissions through the Rust contract
     let submissions = db.list_event_approved_cfs_submissions(event_id()).await?;
 
+    // Check proposal and speaker fields
     assert_eq!(submissions.len(), 1);
     assert_eq!(submissions[0].cfs_submission_id, cfs_submission_id());
     assert_eq!(submissions[0].session_proposal_id, session_proposal_id());
@@ -1285,9 +1490,13 @@ async fn db_contracts_list_event_approved_cfs_submissions_deserializes() -> Resu
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_categories_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load event categories through the Rust contract
     let categories = db.list_event_categories(community_id()).await?;
 
+    // Check the seeded category
     assert_eq!(categories.len(), 1);
     assert_eq!(categories[0].name, "Conference");
 
@@ -1297,9 +1506,13 @@ async fn db_contracts_list_event_categories_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_cfs_labels_deserializes() -> Result<()> {
+    // Setup the contract database and event fixture
     let db = contract_tests_db()?;
+
+    // Load event submission labels through the Rust contract
     let labels = db.list_event_cfs_labels(event_id()).await?;
 
+    // Check label color and name fields
     assert_eq!(labels.len(), 1);
     assert_eq!(labels[0].color, "#DBEAFE");
     assert_eq!(labels[0].name, "track / backend");
@@ -1310,6 +1523,7 @@ async fn db_contracts_list_event_cfs_labels_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_cfs_submissions_deserializes() -> Result<()> {
+    // Setup the contract database and submission filters
     let db = contract_tests_db()?;
     let filters = GroupCfsSubmissionsFilters {
         limit: Some(10),
@@ -1317,8 +1531,11 @@ async fn db_contracts_list_event_cfs_submissions_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Load event submissions through the Rust contract
     let output = db.list_event_cfs_submissions(event_id(), &filters).await?;
 
+    // Check submission pagination totals
     assert_eq!(output.total, 1);
     assert_eq!(output.submissions.len(), 1);
 
@@ -1328,9 +1545,13 @@ async fn db_contracts_list_event_cfs_submissions_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_event_kinds_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load event kinds through the Rust contract
     let kinds = db.list_event_kinds().await?;
 
+    // Check kind ordering and display fields
     assert_eq!(kinds.len(), 3);
     assert_eq!(kinds[0].event_kind_id, "hybrid");
     assert_eq!(kinds[0].display_name, "Hybrid");
@@ -1341,6 +1562,7 @@ async fn db_contracts_list_event_kinds_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_audit_logs_deserializes() -> Result<()> {
+    // Setup the contract database and scoped audit filters
     let db = contract_tests_db()?;
     let filters = AuditLogFilters {
         // Scope to the fixture action so refund mutation tests do not interfere
@@ -1350,8 +1572,11 @@ async fn db_contracts_list_group_audit_logs_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Load group audit logs through the Rust contract
     let output = db.list_group_audit_logs(group_id(), &filters).await?;
 
+    // Check pagination, actor, and resource fields
     assert_eq!(output.total, 1);
     assert_eq!(output.logs.len(), 1);
     assert_eq!(output.logs[0].action, "group_payment_recipient_updated");
@@ -1367,9 +1592,13 @@ async fn db_contracts_list_group_audit_logs_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_categories_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load group categories through the Rust contract
     let categories = db.list_group_categories(community_id()).await?;
 
+    // Check the seeded category
     assert_eq!(categories.len(), 1);
     assert_eq!(categories[0].name, "Technology");
 
@@ -1379,6 +1608,7 @@ async fn db_contracts_list_group_categories_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_events_deserializes() -> Result<()> {
+    // Setup database and pagination filters
     let db = contract_tests_db()?;
     let filters = EventsListFilters {
         limit: Some(10),
@@ -1387,11 +1617,23 @@ async fn db_contracts_list_group_events_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Load both dashboard event collections
     let events = db.list_group_events(group_id(), &filters).await?;
 
+    // Check collection totals
     assert_eq!(events.past.total, 1);
-    // Include the regular upcoming event and both upcoming test events
     assert_eq!(events.upcoming.total, 3);
+
+    // Check event capacity and occupied seats deserialize together
+    let event = events
+        .upcoming
+        .events
+        .iter()
+        .find(|event| event.event_id == event_id())
+        .expect("future contract event to be listed");
+    assert_eq!(event.attendee_count, Some(1));
+    assert_eq!(event.capacity, Some(100));
 
     Ok(())
 }
@@ -1399,13 +1641,17 @@ async fn db_contracts_list_group_events_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_members_deserializes() -> Result<()> {
+    // Setup the contract database and member filters
     let db = contract_tests_db()?;
     let filters = GroupMembersFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load group members through the Rust contract
     let output = db.list_group_members(group_id(), &filters).await?;
 
+    // Check pagination and member identity fields
     assert_eq!(output.total, 1);
     assert_eq!(output.members.len(), 1);
     assert_eq!(output.members[0].username, "contract-attendee");
@@ -1416,6 +1662,7 @@ async fn db_contracts_list_group_members_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
+    // Setup the contract database and refund filters
     let db = contract_tests_db()?;
     let filters = RefundsFilters {
         view: RefundsView::All,
@@ -1424,14 +1671,18 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
         offset: Some(0),
         ts_query: Some("buyer-refund-reject.contract@example.com".to_string()),
     };
+
+    // Load the filtered group refunds through the Rust contract
     let output = db.list_group_refunds(group_id(), &filters).await?;
 
+    // Check event options and refund pagination
     assert_eq!(output.events.len(), 1);
     assert_eq!(output.events[0].event_id, ticketed_event_id());
     assert_eq!(output.events[0].name, "Contract Ticketed Event");
     assert_eq!(output.refunds.len(), 1);
     assert_eq!(output.total, 1);
 
+    // Check required refund row fields
     let refund = &output.refunds[0];
     assert_eq!(refund.amount_minor, 2500);
     assert!(refund.created_at <= refund.updated_at);
@@ -1444,6 +1695,8 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     assert_eq!(refund.ticket_title, "Contract Paid Ticket");
     assert_eq!(refund.user_id, refund_reject_buyer_id());
     assert_eq!(refund.username, "contract-buyer-refund-reject");
+
+    // Check optional workflow and profile fields
     assert_eq!(refund.attempt_count, None);
     assert_eq!(refund.failure_message, None);
     assert_eq!(refund.kind.as_deref(), Some("refund-request-approval"));
@@ -1462,15 +1715,21 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_parent_options_deserializes() -> Result<()> {
+    // Setup the contract database and subgroup context
     let db = contract_tests_db()?;
+
+    // Load selectable parent options through the Rust contract
     let options = db
         .list_group_parent_options(community_id(), organizer_id(), Some(subgroup_id()))
         .await?;
+
+    // Select the seeded parent option
     let parent = options
         .iter()
         .find(|option| option.group_id == group_id())
         .expect("contract group should be a parent option");
 
+    // Check parent activity and selection fields
     assert!(parent.active);
     assert_eq!(parent.name, "Contract Group");
     assert!(!parent.is_current);
@@ -1482,9 +1741,13 @@ async fn db_contracts_list_group_parent_options_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_roles_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load group roles through the Rust contract
     let roles = db.list_group_roles().await?;
 
+    // Check role ordering and display fields
     assert_eq!(roles.len(), 3);
     assert_eq!(roles[0].group_role_id, "admin");
     assert_eq!(roles[0].display_name, "Admin");
@@ -1495,13 +1758,17 @@ async fn db_contracts_list_group_roles_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_sponsors_deserializes() -> Result<()> {
+    // Setup the contract database and sponsor filters
     let db = contract_tests_db()?;
     let filters = GroupSponsorsFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load group sponsors through the Rust contract
     let output = db.list_group_sponsors(group_id(), &filters, false).await?;
 
+    // Check pagination and sponsor fields
     assert_eq!(output.total, 1);
     assert_eq!(output.sponsors.len(), 1);
     assert_eq!(output.sponsors[0].group_sponsor_id, group_sponsor_id());
@@ -1516,13 +1783,17 @@ async fn db_contracts_list_group_sponsors_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_team_members_deserializes() -> Result<()> {
+    // Setup the contract database and team filters
     let db = contract_tests_db()?;
     let filters = GroupTeamFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load group team members through the Rust contract
     let output = db.list_group_team_members(group_id(), &filters).await?;
 
+    // Check accepted totals and member role fields
     assert_eq!(output.total, 1);
     assert_eq!(output.total_accepted, 1);
     assert_eq!(output.total_admins_accepted, 1);
@@ -1535,9 +1806,13 @@ async fn db_contracts_list_group_team_members_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_regions_deserializes() -> Result<()> {
+    // Setup the contract database and community fixture
     let db = contract_tests_db()?;
+
+    // Load regions through the Rust contract
     let regions = db.list_regions(community_id()).await?;
 
+    // Check the seeded region
     assert_eq!(regions.len(), 1);
     assert_eq!(regions[0].name, "North America");
 
@@ -1547,9 +1822,13 @@ async fn db_contracts_list_regions_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_session_kinds_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load session kinds through the Rust contract
     let kinds = db.list_session_kinds().await?;
 
+    // Check kind ordering and display fields
     assert_eq!(kinds.len(), 3);
     assert_eq!(kinds[0].session_kind_id, "hybrid");
     assert_eq!(kinds[0].display_name, "Hybrid");
@@ -1560,9 +1839,13 @@ async fn db_contracts_list_session_kinds_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_session_proposal_levels_deserializes() -> Result<()> {
+    // Setup the contract database
     let db = contract_tests_db()?;
+
+    // Load session proposal levels through the Rust contract
     let levels = db.list_session_proposal_levels().await?;
 
+    // Check level ordering and display fields
     assert_eq!(levels.len(), 3);
     assert_eq!(levels[0].session_proposal_level_id, "advanced");
     assert_eq!(levels[0].display_name, "Advanced");
@@ -1573,6 +1856,7 @@ async fn db_contracts_list_session_proposal_levels_deserializes() -> Result<()> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_audit_logs_deserializes() -> Result<()> {
+    // Setup the contract database and audit filters
     let db = contract_tests_db()?;
     let filters = AuditLogFilters {
         limit: Some(10),
@@ -1580,8 +1864,11 @@ async fn db_contracts_list_user_audit_logs_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Load user audit logs through the Rust contract
     let output = db.list_user_audit_logs(attendee_id(), &filters).await?;
 
+    // Check pagination, actor, and resource fields
     assert_eq!(output.total, 1);
     assert_eq!(output.logs.len(), 1);
     assert_eq!(output.logs[0].action, "event_attendee_invitation_rejected");
@@ -1597,13 +1884,17 @@ async fn db_contracts_list_user_audit_logs_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_cfs_submissions_deserializes() -> Result<()> {
+    // Setup the contract database and submission filters
     let db = contract_tests_db()?;
     let filters = UserCfsSubmissionsFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load user submissions through the Rust contract
     let output = db.list_user_cfs_submissions(attendee_id(), &filters).await?;
 
+    // Check submission pagination totals
     assert_eq!(output.total, 1);
     assert_eq!(output.submissions.len(), 1);
 
@@ -1613,9 +1904,13 @@ async fn db_contracts_list_user_cfs_submissions_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_communities_deserializes() -> Result<()> {
+    // Setup the contract database and user fixture
     let db = contract_tests_db()?;
+
+    // Load the user's communities through the Rust contract
     let communities = db.list_user_communities(&organizer_id()).await?;
 
+    // Check the seeded community membership
     assert_eq!(communities.len(), 1);
     assert_eq!(communities[0].community_id, community_id());
 
@@ -1625,9 +1920,13 @@ async fn db_contracts_list_user_communities_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_community_team_invitations_deserializes() -> Result<()> {
+    // Setup the contract database and invited user fixture
     let db = contract_tests_db()?;
+
+    // Load community team invitations through the Rust contract
     let invitations = db.list_user_community_team_invitations(waitlist_id()).await?;
 
+    // Check community and role fields
     assert_eq!(invitations.len(), 1);
     assert_eq!(invitations[0].community_id, community_id());
     assert_eq!(invitations[0].community_name, "contract-community");
@@ -1639,9 +1938,13 @@ async fn db_contracts_list_user_community_team_invitations_deserializes() -> Res
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
+    // Setup the contract database and invited user fixture
     let db = contract_tests_db()?;
+
+    // Load event invitations through the Rust contract
     let invitations = db.list_user_event_invitations(pre_registered_id()).await?;
 
+    // Check event invitation identity fields
     assert_eq!(invitations.len(), 1);
     assert_eq!(invitations[0].event_id, event_id());
     assert_eq!(invitations[0].event_name, "Future Contract Event");
@@ -1652,13 +1955,17 @@ async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_events_deserializes() -> Result<()> {
+    // Setup the contract database and event filters
     let db = contract_tests_db()?;
     let filters = UserEventsFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load the user's events through the Rust contract
     let output = db.list_user_events(attendee_id(), &filters).await?;
 
+    // Check attendance and registration question state
     assert_eq!(output.total, 1);
     assert_eq!(output.events.len(), 1);
     assert_eq!(
@@ -1669,10 +1976,14 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     assert!(output.events[0].event.has_registration_questions);
     assert_eq!(output.events[0].registration_questions.len(), 1);
     assert!(!output.events[0].registration_questions_pending());
+
+    // Load the persisted registration answers
     let answers = output.events[0]
         .registration_answers
         .as_ref()
         .expect("contract event should include registration answers");
+
+    // Check the single-select answer encoding
     assert_eq!(answers.answers.len(), 1);
     match &answers.answers[0].value {
         QuestionnaireAnswerValue::One(value) => {
@@ -1687,12 +1998,14 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_dashboard_groups_deserializes() -> Result<()> {
-    // Load the attendee's member and accepted team groups
+    // Setup the contract database and group filters
     let db = contract_tests_db()?;
     let filters = UserGroupsFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load the attendee's member and accepted team groups
     let output = db.list_user_dashboard_groups(attendee_id(), &filters).await?;
 
     // Check the member row contract
@@ -1721,9 +2034,13 @@ async fn db_contracts_list_user_dashboard_groups_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_group_team_invitations_deserializes() -> Result<()> {
+    // Setup the contract database and invited user fixture
     let db = contract_tests_db()?;
+
+    // Load group team invitations through the Rust contract
     let invitations = db.list_user_group_team_invitations(attendee_id()).await?;
 
+    // Check community, group, and role fields
     assert_eq!(invitations.len(), 1);
     assert_eq!(invitations[0].community_name, "contract-community");
     assert_eq!(invitations[0].group_id, claim_group_id());
@@ -1736,9 +2053,13 @@ async fn db_contracts_list_user_group_team_invitations_deserializes() -> Result<
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_groups_deserializes() -> Result<()> {
+    // Setup the contract database and user fixture
     let db = contract_tests_db()?;
+
+    // Load the user's organized groups through the Rust contract
     let output = db.list_user_groups(&organizer_id()).await?;
 
+    // Check the community and all seeded groups
     assert_eq!(output.len(), 1);
     assert_eq!(output[0].community.community_id, community_id());
     assert_eq!(output[0].groups.len(), 3);
@@ -1758,11 +2079,15 @@ async fn db_contracts_list_user_groups_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_pending_session_proposal_co_speaker_invitations_deserializes()
 -> Result<()> {
+    // Setup the contract database and invited speaker fixture
     let db = contract_tests_db()?;
+
+    // Load pending co-speaker invitations through the Rust contract
     let invitations = db
         .list_user_pending_session_proposal_co_speaker_invitations(waitlist_id())
         .await?;
 
+    // Check proposal and speaker fields
     assert_eq!(invitations.len(), 1);
     assert_eq!(
         invitations[0].session_proposal.session_proposal_id,
@@ -1780,13 +2105,17 @@ async fn db_contracts_list_user_pending_session_proposal_co_speaker_invitations_
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_session_proposals_deserializes() -> Result<()> {
+    // Setup the contract database and proposal filters
     let db = contract_tests_db()?;
     let filters = SessionProposalsFilters {
         limit: Some(10),
         offset: Some(0),
     };
+
+    // Load the user's session proposals through the Rust contract
     let output = db.list_user_session_proposals(attendee_id(), &filters).await?;
 
+    // Check proposal totals and co-speaker state
     assert_eq!(output.total, 2);
     assert_eq!(output.session_proposals.len(), 2);
     assert_eq!(output.session_proposals[0].title, "Contract Go Proposal");
@@ -1805,11 +2134,15 @@ async fn db_contracts_list_user_session_proposals_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_session_proposals_for_cfs_event_deserializes() -> Result<()> {
+    // Setup the contract database and call-for-sessions event
     let db = contract_tests_db()?;
+
+    // Load eligible user proposals through the Rust contract
     let proposals = db
         .list_user_session_proposals_for_cfs_event(attendee_id(), event_id())
         .await?;
 
+    // Check submission state and proposal fields
     assert_eq!(proposals.len(), 1);
     assert!(proposals[0].is_submitted);
     assert_eq!(proposals[0].session_proposal_id, session_proposal_id());
@@ -1878,6 +2211,7 @@ async fn db_contracts_lock_events_for_cancellation_serializes_rsvp() -> Result<(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<()> {
+    // Setup the contract database and checkout input
     let db = contract_tests_db()?;
     let input = PrepareEventCheckoutPurchaseInput {
         event_id: ticketed_event_id(),
@@ -1888,8 +2222,11 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
         discount_code: None,
         registration_answers: None,
     };
+
+    // Prepare the checkout purchase through the Rust contract
     let checkout = db.prepare_event_checkout_purchase(community_id(), &input).await?;
 
+    // Check event, purchase, and recipient fields
     assert_eq!(checkout.community_name, "contract-community");
     assert_eq!(checkout.event_id, ticketed_event_id());
     assert_eq!(checkout.event_slug, "contract-ticketed-event");
@@ -1907,8 +2244,10 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_queue_event_refund_request_approval_deserializes() -> Result<()> {
-    // Queue organizer approval using deterministic request fixtures
+    // Setup the contract database and refund request fixture
     let db = contract_tests_db()?;
+
+    // Queue organizer approval using deterministic request fixtures
     db.queue_event_refund_request_approval(
         organizer_id(),
         group_id(),
@@ -1934,7 +2273,10 @@ async fn db_contracts_queue_event_refund_request_approval_deserializes() -> Resu
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes() -> Result<()> {
+    // Setup the contract database and provider checkout references
     let db = contract_tests_db()?;
+
+    // Reconcile the provider checkout through the Rust contract
     let result = db
         .reconcile_event_purchase_for_checkout_session(
             PaymentProvider::Stripe,
@@ -1943,9 +2285,12 @@ async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes
         )
         .await?;
 
+    // Require the completed reconciliation outcome
     let ReconcileEventPurchaseResult::Completed(purchase) = result else {
         panic!("reconciliation should complete the purchase");
     };
+
+    // Check completed purchase ownership fields
     assert_eq!(purchase.community_id, community_id());
     assert_eq!(purchase.event_id, ticketed_event_id());
     assert_eq!(purchase.user_id, reconcile_buyer_id());
@@ -1956,6 +2301,7 @@ async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_refresh_user_badge_identity_deserializes() -> Result<()> {
+    // Setup the contract database and stale badge identity
     let db = contract_tests_db()?;
 
     // Rebind the stale seeded identity, repeat the current binding, and read
@@ -1993,7 +2339,10 @@ async fn db_contracts_refresh_user_badge_identity_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
+    // Setup the contract database and pending refund request
     let db = contract_tests_db()?;
+
+    // Reject the refund request through the Rust contract
     let purchase = db
         .reject_event_refund_request(
             organizer_id(),
@@ -2003,6 +2352,7 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
         )
         .await?;
 
+    // Check the returned purchase ownership fields
     assert_eq!(purchase.community_id, community_id());
     assert_eq!(purchase.event_id, ticketed_event_id());
     assert_eq!(purchase.user_id, refund_reject_buyer_id());
@@ -2013,6 +2363,7 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
+    // Setup the contract database and attendee filters
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
         attendance: None,
@@ -2024,8 +2375,11 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
         title: None,
         ts_query: None,
     };
+
+    // Search event attendees through the Rust contract
     let output = db.search_event_attendees(group_id(), event_id(), &filters).await?;
 
+    // Check attendee totals and registered user fields
     assert_eq!(output.all_attendees_email_recipient_total, 1);
     assert_eq!(output.total, 2);
     assert_eq!(output.attendees.len(), 2);
@@ -2051,6 +2405,8 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     assert!(output.attendees[0].can_receive_attendee_email);
     assert!(output.attendees[0].checked_in);
     assert!(output.attendees[0].registration_answers.is_some());
+
+    // Check the pending pre-registered attendee fields
     assert_eq!(
         output.attendees[1].email,
         "pre-registered.contract@example.com"
@@ -2065,6 +2421,7 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<()> {
+    // Setup the contract database and invitation request filters
     let db = contract_tests_db()?;
     let filters = InvitationRequestsFilters {
         limit: Some(10),
@@ -2074,10 +2431,13 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
         title: None,
         ts_query: None,
     };
+
+    // Search invitation requests through the Rust contract
     let output = db
         .search_event_invitation_requests(group_id(), event_id(), &filters)
         .await?;
 
+    // Check request status and user profile fields
     assert_eq!(output.total, 1);
     assert_eq!(output.invitation_requests.len(), 1);
     assert_eq!(
@@ -2100,6 +2460,7 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
+    // Setup the contract database and waitlist filters
     let db = contract_tests_db()?;
     let filters = WaitlistFilters {
         limit: Some(10),
@@ -2108,8 +2469,11 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
         title: None,
         ts_query: None,
     };
+
+    // Search the event waitlist through the Rust contract
     let output = db.search_event_waitlist(group_id(), event_id(), &filters).await?;
 
+    // Check waitlist totals, profile, and position fields
     assert_eq!(output.total, 1);
     assert_eq!(output.waitlist.len(), 1);
     assert_eq!(output.waitlist[0].user.user_id, waitlist_id());
@@ -2126,6 +2490,7 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_events_deserializes() -> Result<()> {
+    // Setup the contract database and event search filters
     let db = contract_tests_db()?;
     let filters = SearchEventsFilters {
         community: vec!["contract-community".to_string()],
@@ -2138,8 +2503,11 @@ async fn db_contracts_search_events_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Search events through the Rust contract
     let output = db.search_events(&filters).await?;
 
+    // Check result totals and map bounds
     assert_eq!(output.total, 1);
     assert_eq!(output.events.len(), 1);
     assert!(output.bbox.is_some());
@@ -2150,6 +2518,7 @@ async fn db_contracts_search_events_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_groups_deserializes() -> Result<()> {
+    // Setup the contract database and group search filters
     let db = contract_tests_db()?;
     let filters = SearchGroupsFilters {
         community: vec!["contract-community".to_string()],
@@ -2160,8 +2529,11 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Search groups through the Rust contract
     let output = db.search_groups(&filters).await?;
 
+    // Check result totals and map bounds
     assert_eq!(output.total, 2);
     assert_eq!(output.groups.len(), 2);
     assert!(output.bbox.is_some());
@@ -2172,9 +2544,13 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_user_deserializes() -> Result<()> {
+    // Setup the contract database and user query
     let db = contract_tests_db()?;
+
+    // Search users through the Rust contract
     let users = db.search_user("contract-att").await?;
 
+    // Check the matching public user fields
     assert_eq!(users.len(), 1);
     assert_eq!(users[0].user_id, attendee_id());
     assert_eq!(users[0].username, "contract-attendee");
@@ -2186,6 +2562,7 @@ async fn db_contracts_search_user_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_update_event_deserializes() -> Result<()> {
+    // Setup the contract database and event schedule
     let db = contract_tests_db()?;
     let starts_at = NaiveDate::from_ymd_opt(2099, 8, 1)
         .expect("date should be valid")
@@ -2209,7 +2586,11 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
 
         ..Default::default()
     };
+
+    // Serialize the event update for the database contract
     let payload = event.to_db_payload()?;
+
+    // Update the event through the Rust contract
     let promoted_user_ids = db
         .update_event(
             organizer_id(),
@@ -2220,6 +2601,7 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
         )
         .await?;
 
+    // Check no waitlisted users were promoted
     assert!(promoted_user_ids.is_empty());
 
     Ok(())
@@ -2228,6 +2610,7 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
+    // Setup the contract database and external profile update
     let db = contract_tests_db()?;
     let user_summary = UserSummary {
         email: "external-update-new.contract@example.com".to_string(),
@@ -2242,14 +2625,19 @@ async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
             "contract-external-update".to_string(),
         )),
     };
+
+    // Update external authentication through the Rust contract
     let user = db
         .update_user_external_auth(&external_update_id(), &user_summary)
         .await?;
 
+    // Check account identity and verification fields
     assert_eq!(user.email, "external-update-new.contract@example.com");
     assert!(user.email_verified);
     assert_eq!(user.name, "Contract External Update");
     assert_eq!(user.user_id, external_update_id());
+
+    // Check provider identities deserialize as expected
     assert_eq!(
         user.provider,
         Some(UserProvider {
