@@ -5,7 +5,7 @@
 {# Dashboard User Submissions List -#}
 {# Header -#}
 {{ dashboard::page_title(title = "Submissions", docs_href = "/docs#/guides/user-dashboard?id=submissions-track-and-respond",
-description = "Track and manage your call for speakers submissions.") -}}
+  description = "Track and manage your call for speakers submissions.") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
@@ -86,13 +86,13 @@ description = "Track and manage your call for speakers submissions.") -}}
                 {% endif -%}
                 <div class="mt-2 xl:hidden inline-flex items-center gap-2">
                   <span class="text-xs text-stone-400 uppercase">Status</span>
-                  {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                  {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase")) -}}
                 </div>
               </td>
               {# End proposal -#}
               {# Status -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
-                {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase")) -}}
               </td>
               {# End status -#}
               {# Updated date -#}
@@ -189,8 +189,8 @@ description = "Track and manage your call for speakers submissions.") -}}
     <div class="modal-card rounded-lg">
       {# Modal header -#}
       {{ dashboard::modal_header(title_id = "action-required-modal-title",
-            title = "Action required",
-            close_id = "close-action-required-modal") -}}
+        title = "Action required",
+        close_id = "close-action-required-modal") -}}
       {# End modal header -#}
       {# Modal body -#}
       <div class="modal-body p-4 md:p-8">

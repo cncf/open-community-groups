@@ -148,9 +148,7 @@
              name="description_short"
              class="input-primary"
              maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-             value="{% if let Some(description_short) = &group.description_short %}
-                      {{ description_short }}
-                    {% endif %}" />
+             value="{% if let Some(description_short) = &group.description_short %} {{ description_short }} {% endif %}" />
     </div>
     <p class="form-legend">
       Brief description for group listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
@@ -183,7 +181,7 @@
           aria-label="Clear location details">Clear location</button>
 {%- endlet %}
 {{ dashboard::form_title(title = "Location", description = "Optional location information for the group.",
-button = clear_location_button) -}}
+  button = clear_location_button) -}}
 
 <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
   {# Location search -#}

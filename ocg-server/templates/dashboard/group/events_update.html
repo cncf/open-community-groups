@@ -143,8 +143,7 @@
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
               hx-trigger="click, confirmed"
               hx-ext="no-empty-vals-keep-zero"
-              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
-                          {% if payments_ready %}, #payments-form{% endif %}"
+              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form {% if payments_ready %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
@@ -300,9 +299,7 @@
                    name="description_short"
                    class="input-primary"
                    maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                   value="{% if let Some(description_short) = &event.description_short %}
-                            {{ description_short }}
-                          {% endif %}" />
+                   value="{% if let Some(description_short) = &event.description_short %} {{ description_short }} {% endif %}" />
           </div>
           <p class="form-legend">
             Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
@@ -558,7 +555,7 @@
                    name="cfs_starts_at"
                    id="cfs_starts_at"
                    class="input-primary"
-                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
           </div>
           <p class="form-legend">When submissions open.</p>
         </div>
@@ -575,7 +572,7 @@
                    name="cfs_ends_at"
                    id="cfs_ends_at"
                    class="input-primary"
-                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
           </div>
           <p class="form-legend">When submissions close.</p>
         </div>
@@ -654,7 +651,7 @@
                      name="starts_at"
                      id="starts_at"
                      class="input-primary"
-                     value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                     value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
             </div>
             <p class="form-legend">When the event starts.</p>
           </div>
@@ -668,7 +665,7 @@
                      name="ends_at"
                      id="ends_at"
                      class="input-primary"
-                     value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                     value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
             </div>
             <p class="form-legend">When the event ends.</p>
           </div>
@@ -682,7 +679,7 @@
                      name="registration_starts_at"
                      id="registration_starts_at"
                      class="input-primary"
-                     value="{{ event.registration_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                     value="{{ event.registration_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
             </div>
             <p class="form-legend">Leave blank to allow registration immediately.</p>
           </div>
@@ -696,7 +693,7 @@
                      name="registration_ends_at"
                      id="registration_ends_at"
                      class="input-primary"
-                     value="{{ event.registration_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                     value="{{ event.registration_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}">
             </div>
             <p class="form-legend">
               Must be after the open date. Leave blank with an open date to close at event start.
@@ -747,8 +744,8 @@
                 aria-label="Clear location details">Clear location</button>
       {%- endlet %}
       {{ dashboard::form_title(title = "Venue Information",
-            description = "Location details for in-person and hybrid events.",
-            button = clear_location_button) -}}
+        description = "Location details for in-person and hybrid events.",
+        button = clear_location_button) -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Location search -#}
@@ -767,7 +764,7 @@
       {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
       <div class="mt-10 max-w-5xl">
         {% if meetings_enabled %}
-          <online-event-details id="online-event-details" kind="{{ event.kind }}" {% if event.is_past() %}event-past{% endif %}  {% if let Some(meeting_join_url) = &event.meeting_join_url %} meeting-join-url="{{ meeting_join_url }}" {% endif %}  {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %} meeting-join-instructions="{{ meeting_join_instructions|json }}" {% endif %}  {% if let Some(meeting_recording_url) = &event.meeting_recording_url %} meeting-recording-url="{{ meeting_recording_url }}" {% endif %} meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}" {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %} meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}" {% endif %}  {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %} meeting-recording-requested="{{ meeting_recording_requested }}" {% endif %}  {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}  {% if let Some(meeting_in_sync) = &event.meeting_in_sync %}  {% if meeting_in_sync %}meeting-in-sync="true"{% endif %}  {% endif %}  {% if let Some(meeting_password) = &event.meeting_password %} meeting-password="{{ meeting_password }}" {% endif %}  {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}  {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %} meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
+          <online-event-details id="online-event-details" kind="{{ event.kind }}" {% if event.is_past() %}event-past{% endif %}  {% if let Some(meeting_join_url) = &event.meeting_join_url %} meeting-join-url="{{ meeting_join_url }}" {% endif %}  {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %} meeting-join-instructions="{{ meeting_join_instructions|json }}" {% endif %}  {% if let Some(meeting_recording_url) = &event.meeting_recording_url %} meeting-recording-url="{{ meeting_recording_url }}" {% endif %} meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}" {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %} meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}" {% endif %}  {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %} meeting-recording-requested="{{ meeting_recording_requested }}" {% endif %}  {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}  {% if let Some(meeting_in_sync) = &event.meeting_in_sync %}  {% if meeting_in_sync %}meeting-in-sync="true"{% endif %}  {% endif %}  {% if let Some(meeting_password) = &event.meeting_password %} meeting-password="{{ meeting_password }}" {% endif %}  {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}  {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %} meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"></online-event-details>
         {% else %}
           <div class="space-y-6">
             <div class="grid grid-cols-1 gap-6">
@@ -885,7 +882,7 @@
     <div class="pb-12">
       {{ dashboard::form_title(title = "Sessions") -}}
       <div class="mt-10">
-        <sessions-section sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" {% if event.is_past() %}event-past{% endif %}  {% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
+        <sessions-section sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" {% if event.is_past() %}event-past{% endif %}  {% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
       </div>
     </div>
   </form>

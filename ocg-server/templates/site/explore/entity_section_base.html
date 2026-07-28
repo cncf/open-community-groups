@@ -24,7 +24,7 @@
   {# End header filters -#}
 
   {# Entity selector -#}
-  {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
+  {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref()) -}}
   {# End entity selector -#}
 
   <form id="{{ entity }}-form-mobile"
@@ -33,9 +33,7 @@
         hx-trigger="change"
         hx-target="#entity-section"
         hx-indicator="#loading-filters, #loading-filters-mobile"
-        hx-include="[name='ts_query'], [name='sort_by'],
-                    {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
-                    #view-mode-controls input[name='view_mode']:checked"
+        hx-include="[name='ts_query'], [name='sort_by'], {% if entity == Entity::Events %}[name='sort_direction'],{% endif %} #view-mode-controls input[name='view_mode']:checked"
         hx-ext="no-empty-vals">
     {% block filters_mobile -%}
     {% endblock filters_mobile -%}
@@ -66,7 +64,7 @@
     {# End header filters -#}
 
     {# Entity selector -#}
-    {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
+    {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref()) -}}
     {# End entity selector -#}
 
     <form id="{{ entity }}-form"
@@ -75,9 +73,7 @@
           hx-trigger="change"
           hx-target="#entity-section"
           hx-indicator="#loading-filters, #loading-filters-mobile"
-          hx-include="[name='ts_query'], [name='sort_by'],
-                      {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
-                      #view-mode-controls input[name='view_mode']:checked"
+          hx-include="[name='ts_query'], [name='sort_by'], {% if entity == Entity::Events %}[name='sort_direction'],{% endif %} #view-mode-controls input[name='view_mode']:checked"
           hx-ext="no-empty-vals">
       {% block filters_desktop -%}
       {% endblock filters_desktop -%}

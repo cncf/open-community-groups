@@ -5,7 +5,7 @@
 {# Dashboard User Groups List -#}
 {# Header -#}
 {{ dashboard::page_title(title = "My Groups", docs_href = "/docs#/guides/user-dashboard?id=my-groups",
-description = "Groups you belong to.") -}}
+  description = "Groups you belong to.") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
@@ -56,10 +56,10 @@ description = "Groups you belong to.") -}}
                 <div>Member since {{ item.joined_at.format("%b %d, %Y") }}</div>
                 <div class="flex flex-wrap gap-1.5">
                   {% if item.is_member -%}
-                    {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5") ) -}}
+                    {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5")) -}}
                   {% endif -%}
                   {% if item.is_team_member -%}
-                    {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5") ) -}}
+                    {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5")) -}}
                   {% endif -%}
                 </div>
               </div>
@@ -76,10 +76,10 @@ description = "Groups you belong to.") -}}
             <td class="hidden md:table-cell px-3 xl:px-5 py-4 w-48">
               <div class="flex flex-wrap gap-1.5">
                 {% if item.is_member -%}
-                  {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5")) -}}
                 {% endif -%}
                 {% if item.is_team_member -%}
-                  {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5")) -}}
                 {% endif -%}
               </div>
             </td>

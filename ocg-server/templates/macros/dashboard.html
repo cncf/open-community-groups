@@ -206,11 +206,7 @@
          rel="noopener noreferrer"
          hx-boost="false"
          class="group inline-flex size-7 shrink-0 self-center items-center justify-center rounded-full border border-primary-500 bg-white transition-colors hover:bg-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-300"
-         aria-label="{% if docs_aria_label.is_empty() -%}
-                       Open documentation
-                     {% else -%}
-                       {{ docs_aria_label }}
-                     {% endif -%}">
+         aria-label="{% if docs_aria_label.is_empty() -%} Open documentation {% else -%} {{ docs_aria_label }} {% endif -%}">
         <div class="svg-icon size-4 icon-question bg-primary-500 transition-colors group-hover:bg-white"></div>
       </a>
     </div>
@@ -256,10 +252,10 @@
   <div class="modal-panel p-4 max-w-2xl">
     <div class="modal-card rounded-lg">
       {{ modal_header(title_id = title_id,
-            title = title,
-            close_id = close_id,
-            subtitle = refund_review_subtitle,
-            align_items = "items-start") -}}
+        title = title,
+        close_id = close_id,
+        subtitle = refund_review_subtitle,
+        align_items = "items-start") -}}
       <form id="{{ id_prefix }}-form"
             hx-indicator="#dashboard-spinner"
             hx-disabled-elt="find button[type='submit']"
@@ -361,8 +357,7 @@
                  {% if is_active -%}
                    bg-primary-50 text-primary-700
                  {% endif -%}"
-          aria-pressed="{% if is_active -%}
-                          true{%- else -%}false{%- endif -%}">
+          aria-pressed="{% if is_active -%} true{%- else -%}false{%- endif -%}">
     <span class="flex size-4 shrink-0 items-center justify-center rounded-full border
                  {% if is_active -%}
                    border-primary-500

@@ -73,7 +73,8 @@
               <option value="">Select a proposal</option>
               {% for proposal in session_proposals -%}
                 <option value="{{ proposal.session_proposal_id }}"
-                        {% if proposal.is_submitted -%}disabled{%- endif %}>{{ proposal.title }}</option>
+                        {% if proposal.is_submitted -%}
+                        disabled{%- endif %}>{{ proposal.title }}</option>
               {% endfor -%}
             </select>
           </div>
@@ -102,7 +103,8 @@
                   type="button"
                   class="btn-primary-outline
                          {% if notice.is_some() -%}opacity-50 cursor-not-allowed{%- endif %}"
-                  {% if notice.is_some() -%}disabled{%- endif %}>Cancel</button>
+                  {% if notice.is_some() -%}
+                  disabled{%- endif %}>Cancel</button>
           <button id="cfs-submit-button"
                   type="submit"
                   class="btn-primary inline-flex items-center">

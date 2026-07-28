@@ -30,19 +30,19 @@
 {# Mobile -#}
 <div class="grid grid-cols-2 gap-x-0 gap-y-8 justify-around lg:hidden w-full mx-auto border border-dashed border-stone-200 rounded-lg py-6 bg-white">
   {# Group stats -#}
-  {{ stats_macros::stat_block(kind = "groups", title = "Groups", value = groups, extra_styles = Some("place-self-center w-[130px] -ms-4") ) -}}
+  {{ stats_macros::stat_block(kind = "groups", title = "Groups", value = groups, extra_styles = Some("place-self-center w-[130px] -ms-4")) -}}
   {# End group stats -#}
 
   {# Members stats -#}
-  {{ stats_macros::stat_block(kind = "members", title = "Members", value = groups_members, extra_styles = Some("place-self-center w-[130px]") ) -}}
+  {{ stats_macros::stat_block(kind = "members", title = "Members", value = groups_members, extra_styles = Some("place-self-center w-[130px]")) -}}
   {# End members stats -#}
 
   {# Events stats -#}
-  {{ stats_macros::stat_block(kind = "events", title = "Events", value = events, extra_styles = Some("place-self-center w-[130px] -ms-4") ) -}}
+  {{ stats_macros::stat_block(kind = "events", title = "Events", value = events, extra_styles = Some("place-self-center w-[130px] -ms-4")) -}}
   {# End events stats -#}
 
   {# Attendees stats -#}
-  {{ stats_macros::stat_block(kind = "attendees", title = "Attendees", value = events_attendees, extra_styles = Some("place-self-center w-[130px]") ) -}}
+  {{ stats_macros::stat_block(kind = "attendees", title = "Attendees", value = events_attendees, extra_styles = Some("place-self-center w-[130px]")) -}}
   {# End attendees stats -#}
 </div>
 {# End mobile -#}

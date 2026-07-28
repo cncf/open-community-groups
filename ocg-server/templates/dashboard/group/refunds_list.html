@@ -77,7 +77,7 @@
           crate::templates::dashboard::group::refunds::RefundsView::Attention,
           crate::templates::dashboard::group::refunds::RefundsView::Completed,
           crate::templates::dashboard::group::refunds::RefundsView::All
-          ] -%}
+        ] -%}
           <option value="{{ option }}" {% if view == *option -%} selected {% endif -%}>
             {% if *option == crate::templates::dashboard::group::refunds::RefundsView::Active -%}
               Active
@@ -345,8 +345,8 @@
     <div class="modal-panel p-4 max-w-2xl">
       <div class="modal-card rounded-lg">
         {{ dashboard::modal_header(title_id = "refund-recovery-modal-title",
-                title = "Complete refund recovery",
-                close_id = "close-refund-recovery-modal") -}}
+          title = "Complete refund recovery",
+          close_id = "close-refund-recovery-modal") -}}
         <form id="refund-recovery-form"
               hx-put="/dashboard/group/refunds/recovery"
               hx-indicator="#dashboard-spinner"

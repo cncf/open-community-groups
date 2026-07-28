@@ -70,7 +70,7 @@
           crate::templates::dashboard::group::attendees::AttendanceFilter::Active,
           crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled,
           crate::templates::dashboard::group::attendees::AttendanceFilter::All
-          ] -%}
+        ] -%}
           <option value="{{ option }}"
                   {% if attendance == *option -%}
                     selected
@@ -423,8 +423,8 @@
                   hx-indicator="#dashboard-spinner">
               {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
               {{ dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true) -}}
-              {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present) ) -}}
-              {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) ) -}}
+              {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present)) -}}
+              {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing)) -}}
             </form>
           </div>
           {% endcall -%}
@@ -474,8 +474,8 @@
                   hx-indicator="#dashboard-spinner">
               {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
               {{ dashboard::table_filter_option_button(label = "All attendees", name = "checked_in", value = "", is_active = checked_in.is_none() , is_clear_option = true) -}}
-              {{ dashboard::table_filter_option_button(label = "Checked in", name = "checked_in", value = "true", is_active = checked_in == Some(true) ) -}}
-              {{ dashboard::table_filter_option_button(label = "Not checked in", name = "checked_in", value = "false", is_active = checked_in == Some(false) ) -}}
+              {{ dashboard::table_filter_option_button(label = "Checked in", name = "checked_in", value = "true", is_active = checked_in == Some(true)) -}}
+              {{ dashboard::table_filter_option_button(label = "Not checked in", name = "checked_in", value = "false", is_active = checked_in == Some(false)) -}}
             </form>
           </div>
           {% endcall -%}
@@ -490,10 +490,10 @@
       {% if attendees.is_empty() -%}
         {# Empty state -#}
         {% let has_active_attendee_filters = (ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty())
-        || attendance == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled
-        || checked_in.is_some()
-        || event_ticket_type_ids.is_some()
-        || title.is_some() -%}
+          || attendance == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled
+          || checked_in.is_some()
+          || event_ticket_type_ids.is_some()
+          || title.is_some() -%}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% if has_active_attendee_filters -%}
@@ -644,23 +644,7 @@
                             {% endif %}">
                 <input type="checkbox"
                        class="sr-only peer check-in-toggle"
-                       aria-label="{% if attendee.status == "attendance-canceled" %}
-                                     Canceled attendance cannot be checked in
-                                   {% else if attendee.status == "invitation-rejected" %}
-                                     Rejected invitation cannot be checked in
-                                   {% else if attendee.status == "registration-questions-pending" %}
-                                     Pending registration cannot be checked in
-                                   {% else if attendee.status != "confirmed" %}
-                                     Pending invitation cannot be checked in
-                                   {% else if attendee.checked_in %}
-                                     Checked in
-                                   {% else if event.canceled %}
-                                     Canceled event check-in unavailable
-                                   {% else if !can_manage_events %}
-                                     Your role cannot manage check-in
-                                   {% else %}
-                                     Check in attendee
-                                   {% endif %}"
+                       aria-label="{% if attendee.status == "attendance-canceled" %} Canceled attendance cannot be checked in {% else if attendee.status == "invitation-rejected" %} Rejected invitation cannot be checked in {% else if attendee.status == "registration-questions-pending" %} Pending registration cannot be checked in {% else if attendee.status != "confirmed" %} Pending invitation cannot be checked in {% else if attendee.checked_in %} Checked in {% else if event.canceled %} Canceled event check-in unavailable {% else if !can_manage_events %} Your role cannot manage check-in {% else %} Check in attendee {% endif %}"
                        data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/check-in"
                        {% if attendee.checked_in %}checked{% endif %}
                        {% if attendee.status != "confirmed" || attendee.checked_in || !can_manage_events || event.canceled %}
@@ -892,10 +876,10 @@
       </div>
     {%- endlet %}
     {{ dashboard::modal_header(title_id = "attendee-answers-modal-title",
-        title = "Registration answers",
-        close_id = "close-attendee-answers-modal",
-        subtitle = attendee_answers_subtitle,
-        align_items = "items-start") -}}
+      title = "Registration answers",
+      close_id = "close-attendee-answers-modal",
+      subtitle = attendee_answers_subtitle,
+      align_items = "items-start") -}}
     <div id="attendee-answers-content" class="modal-body p-4 md:p-6"></div>
     <div class="flex items-center justify-end border-t border-stone-200 p-4 md:p-5">
       <button id="cancel-attendee-answers-modal"
@@ -946,8 +930,8 @@
   <div class="modal-panel p-4 max-w-2xl">
     <div class="modal-card rounded-lg modal-overflow-visible">
       {{ dashboard::modal_header(title_id = "attendee-invitation-modal-title",
-            title = "Invite attendee",
-            close_id = "close-attendee-invitation-modal") -}}
+        title = "Invite attendee",
+        close_id = "close-attendee-invitation-modal") -}}
       <div class="modal-body p-4 md:p-8 modal-overflow-visible">
         <form id="attendee-invitation-form"
               hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
@@ -1001,8 +985,8 @@
     <div class="modal-card rounded-lg">
       {# Modal header -#}
       {{ dashboard::modal_header(title_id = "attendee-notification-modal-title",
-            title = "Send email",
-            close_id = "close-attendee-notification-modal") -}}
+        title = "Send email",
+        close_id = "close-attendee-notification-modal") -}}
       {# End modal header -#}
 
       {# Modal body -#}
@@ -1168,7 +1152,7 @@
   include_sort = true,
   include_title = true,
   include_ts_query = true
-  ) -%}
+) -%}
   {% if include_attendance -%}
     <input type="hidden" name="attendance" value="{{ attendance }}">
   {% endif -%}

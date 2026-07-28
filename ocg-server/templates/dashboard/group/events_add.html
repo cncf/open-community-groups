@@ -49,8 +49,7 @@
               class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
               hx-ext="no-empty-vals-keep-zero"
-              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
-                          {% if payments_ready %}, #payments-form{% endif %}"
+              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form {% if payments_ready %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
@@ -629,8 +628,8 @@
                       aria-label="Clear location details">Clear location</button>
             {%- endlet %}
             {{ dashboard::form_title(title = "Venue Information",
-                        description = "Location details for in-person and hybrid events.",
-                        button = clear_location_button) -}}
+              description = "Location details for in-person and hybrid events.",
+              button = clear_location_button) -}}
 
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
               {# Location search -#}
