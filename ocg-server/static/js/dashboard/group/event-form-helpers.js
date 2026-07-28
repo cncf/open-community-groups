@@ -83,21 +83,6 @@ const setTags = (tags) => {
 };
 
 /**
- * Sets registration required toggle and hidden input.
- * @param {boolean} isRequired Whether registration is required
- */
-const setRegistrationRequired = (isRequired) => {
-  const toggle = getElementById(document, "toggle_registration_required");
-  const hidden = getElementById(document, "registration_required");
-  if (toggle) {
-    toggle.checked = !!isRequired;
-  }
-  if (hidden) {
-    hidden.value = isRequired ? "true" : "false";
-  }
-};
-
-/**
  * @typedef {object} RegistrationQuestionPayload
  * @property {string} [kind] Question type
  * @property {{label?: string}[]} [options] Selectable options
@@ -501,7 +486,6 @@ export {
   setGalleryImages,
   setHosts,
   setPaymentCurrencyCode,
-  setRegistrationRequired,
   setRegistrationQuestions,
   setSessions,
   setSponsors,

@@ -619,7 +619,6 @@ async fn test_preview_uses_submitted_payload_without_event_db_calls() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let body = concat!(
         "kind_id=virtual",
-        "&registration_required=true",
         "&timezone=Europe%2FMadrid",
         "&waitlist_enabled=false",
         "&sessions%5B0%5D%5Bname%5D=Opening%20session",

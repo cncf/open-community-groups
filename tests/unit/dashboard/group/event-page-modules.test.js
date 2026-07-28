@@ -33,8 +33,6 @@ const sharedEventFormsMarkup = () => `
   <input id="ends_at" />
   <input id="registration_starts_at" />
   <input id="registration_ends_at" />
-  <input id="toggle_registration_required" type="checkbox" />
-  <input id="registration_required" type="hidden" value="false" />
   <input id="toggle_test_event" type="checkbox" />
   <input id="test_event" type="hidden" value="false" />
   <input id="toggle_event_reminder_enabled" type="checkbox" />
@@ -138,26 +136,18 @@ describe("event page modules", () => {
     initializeEventAddPage();
 
     // Read the add page toggles and hidden fields.
-    const registrationToggle = document.getElementById(
-      "toggle_registration_required",
-    );
     const testEventToggle = document.getElementById("toggle_test_event");
     const reminderToggle = document.getElementById(
       "toggle_event_reminder_enabled",
     );
 
     // Update the checkbox state before asserting the new state.
-    registrationToggle.checked = true;
-    registrationToggle.dispatchEvent(new Event("change", { bubbles: true }));
     testEventToggle.checked = true;
     testEventToggle.dispatchEvent(new Event("change", { bubbles: true }));
     reminderToggle.checked = true;
     reminderToggle.dispatchEvent(new Event("change", { bubbles: true }));
 
     // Verify initializes the add page and syncs boolean hidden fields.
-    expect(document.getElementById("registration_required").value).to.equal(
-      "true",
-    );
     expect(document.getElementById("test_event").value).to.equal("true");
     expect(document.getElementById("event_reminder_enabled").value).to.equal(
       "true",
@@ -918,8 +908,8 @@ describe("event page modules", () => {
     // Render the DOM fixture for scoping add page initialization to the provided.
     document.body.innerHTML = `
       <div id="outside">
-        <input id="toggle_registration_required" type="checkbox" checked />
-        <input id="registration_required" type="hidden" value="outside" />
+        <input id="toggle_test_event" type="checkbox" checked />
+        <input id="test_event" type="hidden" value="outside" />
       </div>
       <div id="page-root">
         <div data-event-page="add">
@@ -937,19 +927,15 @@ describe("event page modules", () => {
     initializeEventAddPage(pageRoot);
 
     // Read controls from the scoped add page root.
-    const scopedToggle = pageRoot.querySelector(
-      "#toggle_registration_required",
-    );
+    const scopedToggle = pageRoot.querySelector("#toggle_test_event");
     scopedToggle.checked = true;
     scopedToggle.dispatchEvent(new Event("change", { bubbles: true }));
 
     // Verify scopes add page initialization to the provided root.
-    expect(pageRoot.querySelector("#registration_required").value).to.equal(
-      "true",
+    expect(pageRoot.querySelector("#test_event").value).to.equal("true");
+    expect(document.querySelector("#outside #test_event").value).to.equal(
+      "outside",
     );
-    expect(
-      document.querySelector("#outside #registration_required").value,
-    ).to.equal("outside");
   });
 
   it("reconfigures ticketing editors to use scoped page dependencies", async () => {

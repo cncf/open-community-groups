@@ -25,7 +25,6 @@ const mountPreviewPage = ({ testEvent = false } = {}) => {
           <input name="capacity" value="" />
           <input name="meetup_url" value="https://meetup.example/events/draft" />
           <input name="luma_url" value="https://luma.example/draft" />
-          <input name="toggle_registration_required" value="on" />
           <input id="test_event"
                  name="test_event"
                  type="hidden"
@@ -130,7 +129,6 @@ describe("event preview", () => {
     expect(payload.get("ticket_types[0][price_windows][0][price]")).to.equal(
       null,
     );
-    expect(payload.get("toggle_registration_required")).to.equal(null);
     expect(payload.get("starts_at")).to.equal("2026-06-01T18:30:00");
     expect(payload.get("timezone")).to.equal("PDT");
     expect(payload.get("sessions[0][starts_at]")).to.equal(

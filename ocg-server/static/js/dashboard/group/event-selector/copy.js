@@ -9,7 +9,6 @@ import {
   setHosts,
   setPaymentCurrencyCode,
   setRegistrationQuestions,
-  setRegistrationRequired,
   setSessions,
   setSponsors,
   setTags,
@@ -80,7 +79,6 @@ export const applyCopiedEventDetails = async (details) => {
   updateMarkdownContent(details.description);
   setTextValue("capacity", details.capacity);
   setEventReminderEnabled(details.event_reminder_enabled !== false);
-  setRegistrationRequired(details.registration_required === true);
   setRegistrationQuestions(details.registration_questions);
   // Clear mutually exclusive enrollment state before dependent sync runs.
   setAttendeeApprovalRequired(false);

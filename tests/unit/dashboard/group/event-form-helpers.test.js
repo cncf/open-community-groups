@@ -8,7 +8,6 @@ import {
   setEventReminderEnabled,
   setGalleryImages,
   setHosts,
-  setRegistrationRequired,
   setSessions,
   setSponsors,
   setTags,
@@ -103,31 +102,22 @@ describe("event form helpers", () => {
     expect(tagsUpdated).to.equal(1);
   });
 
-  it("syncs registration and reminder toggles with their hidden fields", () => {
-    // Render the DOM fixture for syncing registration and reminder toggles.
+  it("syncs the reminder toggle with its hidden field", () => {
+    // Render the DOM fixture for syncing the reminder toggle.
     document.body.innerHTML = `
-      <input id="toggle_registration_required" type="checkbox" />
-      <input id="registration_required" type="hidden" value="false" />
       <input id="toggle_event_reminder_enabled" type="checkbox" />
       <input id="event_reminder_enabled" type="hidden" value="false" />
     `;
 
-    // Registration and reminder toggles are wired to hidden fields.
-    setRegistrationRequired(true);
-    setEventReminderEnabled(false);
+    // Sync the reminder toggle to its hidden field.
+    setEventReminderEnabled(true);
 
-    // Registration and reminder toggles update their hidden fields.
-    expect(
-      document.getElementById("toggle_registration_required").checked,
-    ).to.equal(true);
-    expect(document.getElementById("registration_required").value).to.equal(
-      "true",
-    );
+    // Verify the reminder toggle and hidden field.
     expect(
       document.getElementById("toggle_event_reminder_enabled").checked,
-    ).to.equal(false);
+    ).to.equal(true);
     expect(document.getElementById("event_reminder_enabled").value).to.equal(
-      "false",
+      "true",
     );
   });
 

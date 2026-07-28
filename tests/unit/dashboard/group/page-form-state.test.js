@@ -303,13 +303,13 @@ describe("page form state helpers", () => {
   it("syncs checkbox toggles into hidden boolean inputs", () => {
     // Render the visible checkbox and the hidden field submitted with the form.
     document.body.innerHTML = `
-      <input id="toggle_registration_required" type="checkbox" />
-      <input id="registration_required" type="hidden" value="false" />
+      <input id="toggle_test_event" type="checkbox" />
+      <input id="test_event" type="hidden" value="false" />
     `;
 
     // Track the hidden input and callback values after binding the toggle.
-    const toggle = document.getElementById("toggle_registration_required");
-    const hiddenInput = document.getElementById("registration_required");
+    const toggle = document.getElementById("toggle_test_event");
+    const hiddenInput = document.getElementById("test_event");
     const seenValues = [];
 
     // Wire the visible checkbox to the hidden boolean input.
@@ -331,13 +331,13 @@ describe("page form state helpers", () => {
   it("binds boolean toggle changes once per checkbox", () => {
     // Render the visible checkbox and hidden field.
     document.body.innerHTML = `
-      <input id="toggle_registration_required" type="checkbox" />
-      <input id="registration_required" type="hidden" value="false" />
+      <input id="toggle_test_event" type="checkbox" />
+      <input id="test_event" type="hidden" value="false" />
     `;
 
     // Bind the same toggle twice with separate callbacks.
-    const toggle = document.getElementById("toggle_registration_required");
-    const hiddenInput = document.getElementById("registration_required");
+    const toggle = document.getElementById("toggle_test_event");
+    const hiddenInput = document.getElementById("test_event");
     const seenValues = [];
     bindBooleanToggle({
       toggle,

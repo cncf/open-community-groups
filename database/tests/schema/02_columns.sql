@@ -306,7 +306,6 @@ select columns_are('event', array[
     'published_by',
     'registration_ends_at',
     'registration_questions',
-    'registration_required',
     'registration_starts_at',
     'starts_at',
     'tags',

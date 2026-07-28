@@ -283,7 +283,6 @@ begin
         payment_currency_code = v_payment_currency_code,
         photos_urls = v_event_photos_urls,
         registration_ends_at = v_registration_ends_at,
-        registration_required = (p_event->>'registration_required')::boolean,
         registration_questions = v_registration_questions,
         registration_starts_at = v_registration_starts_at,
         starts_at = v_new_starts_at,

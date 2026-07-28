@@ -205,8 +205,6 @@ describe("event-selector", () => {
       <input id="capacity" />
       <input id="toggle_event_reminder_enabled" type="checkbox" />
       <input id="event_reminder_enabled" type="hidden" />
-      <input id="toggle_registration_required" type="checkbox" />
-      <input id="registration_required" type="hidden" />
       <input id="meetup_url" />
       <input id="luma_url" />
       <select id="payment_currency_code">
@@ -308,7 +306,6 @@ describe("event-selector", () => {
       description: "Long description",
       capacity: 300,
       event_reminder_enabled: true,
-      registration_required: true,
       meetup_url: "https://meetup.com/cloud-native-malaga",
       luma_url: "https://luma.com/cloud-native-malaga",
       meeting_join_instructions: "Use your registration name when joining.",
@@ -381,12 +378,6 @@ describe("event-selector", () => {
       document.getElementById("toggle_event_reminder_enabled")?.checked,
     ).to.equal(true);
     expect(document.getElementById("event_reminder_enabled")?.value).to.equal(
-      "true",
-    );
-    expect(
-      document.getElementById("toggle_registration_required")?.checked,
-    ).to.equal(true);
-    expect(document.getElementById("registration_required")?.value).to.equal(
       "true",
     );
     expect(document.getElementById("meetup_url")?.value).to.equal(

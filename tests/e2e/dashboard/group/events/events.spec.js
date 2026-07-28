@@ -1859,7 +1859,6 @@ test.describe("group dashboard events view", () => {
           required: true,
         },
       ],
-      registrationRequired: true,
       startsAt: "2030-10-05T10:00",
       speakers: [
         {
@@ -1928,7 +1927,6 @@ test.describe("group dashboard events view", () => {
           required: true,
         },
       ],
-      registrationRequired: true,
       startsAt: "2030-10-08T14:00",
       speakers: [
         {
@@ -1978,15 +1976,6 @@ test.describe("group dashboard events view", () => {
         values.description,
       );
       await organizerGroupPage.locator("#capacity").fill(values.capacity);
-      if (values.registrationRequired) {
-        await organizerGroupPage
-          .locator("#toggle_registration_required")
-          .check({ force: true });
-      } else {
-        await organizerGroupPage
-          .locator("#toggle_registration_required")
-          .uncheck({ force: true });
-      }
       if (values.testEvent) {
         await organizerGroupPage
           .locator("#toggle_test_event")
@@ -2193,9 +2182,6 @@ test.describe("group dashboard events view", () => {
     await expect(organizerGroupPage.locator("#capacity")).toHaveValue(
       updatedValues.capacity,
     );
-    await expect(
-      organizerGroupPage.locator("#registration_required"),
-    ).toHaveValue(String(updatedValues.registrationRequired));
     await expect(organizerGroupPage.locator("#test_event")).toHaveValue(
       String(updatedValues.testEvent),
     );

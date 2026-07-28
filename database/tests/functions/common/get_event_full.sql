@@ -293,7 +293,6 @@ insert into event (
     logo_url,
     banner_url,
     capacity,
-    registration_required,
     meeting_in_sync,
     meeting_join_instructions,
     location,
@@ -333,7 +332,6 @@ insert into event (
     'https://example.com/event-logo.png',
     'https://example.com/event-banner.png',
     500,
-    true,
     true,
     'Use your registration name when joining.',
     ST_SetSRID(
@@ -1030,7 +1028,6 @@ select is(
         "published_at": 1714564800,
         "registration_questions": [],
         "registration_questions_locked": false,
-        "registration_required": true,
         "starts_at": 1718438400,
         "tags": ["technology", "conference", "workshops"],
         "venue_address": "123 Main St",

@@ -339,9 +339,6 @@ pub(crate) struct Event {
     /// Whether the registration questions section was submitted.
     #[garde(skip)]
     pub registration_questions_present: Option<bool>,
-    /// Whether registration is required.
-    #[garde(skip)]
-    pub registration_required: Option<bool>,
     /// Registration start time.
     #[garde(skip)]
     pub registration_starts_at: Option<NaiveDateTime>,
