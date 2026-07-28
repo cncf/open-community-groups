@@ -48,7 +48,8 @@ use crate::{
                 waitlist::WaitlistFilters,
             },
             user::{
-                events::UserEventsFilters, session_proposals::SessionProposalsFilters,
+                events::UserEventsFilters, groups::UserGroupsFilters,
+                session_proposals::SessionProposalsFilters,
                 submissions::CfsSubmissionsFilters as UserCfsSubmissionsFilters,
             },
         },
@@ -1679,6 +1680,40 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
         }
         QuestionnaireAnswerValue::Many(_) => panic!("expected single-select answer"),
     }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_dashboard_groups_deserializes() -> Result<()> {
+    // Load the attendee's member and accepted team groups
+    let db = contract_tests_db()?;
+    let filters = UserGroupsFilters {
+        limit: Some(10),
+        offset: Some(0),
+    };
+    let output = db.list_user_dashboard_groups(attendee_id(), &filters).await?;
+
+    // Check the member row contract
+    assert_eq!(output.groups.len(), 2);
+    assert_eq!(output.total, 2);
+    assert_eq!(output.groups[0].group.group_id, group_id());
+    assert_eq!(
+        output.groups[0].group.community_display_name,
+        "Contract Community"
+    );
+    assert_eq!(output.groups[0].group.name, "Contract Group");
+    assert!(output.groups[0].is_member);
+    assert!(!output.groups[0].is_team_member);
+    assert_eq!(output.groups[0].joined_at.timestamp(), 1_704_276_000);
+
+    // Check the accepted team-only row contract
+    assert_eq!(output.groups[1].group.group_id, subgroup_id());
+    assert_eq!(output.groups[1].group.name, "Contract Subgroup");
+    assert!(!output.groups[1].is_member);
+    assert!(output.groups[1].is_team_member);
+    assert_eq!(output.groups[1].joined_at.timestamp(), 1_704_362_400);
 
     Ok(())
 }

@@ -20,6 +20,9 @@ test.describe("user dashboard home", () => {
       member1Page.locator('a[hx-get="/dashboard/user?tab=events"]'),
     ).toContainText("My Events");
     await expect(
+      member1Page.locator('a[hx-get="/dashboard/user?tab=groups"]'),
+    ).toContainText("My Groups");
+    await expect(
       member1Page.locator('a[hx-get="/dashboard/user?tab=account"]'),
     ).toContainText("Profile");
     await expect(

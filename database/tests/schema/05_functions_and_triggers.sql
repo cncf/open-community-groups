@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(331);
+select plan(332);
 
 -- ============================================================================
 -- VARIABLES
@@ -261,6 +261,7 @@ select has_function('list_user_badges', array['uuid']::name[]);
 select has_function('list_user_cfs_submissions', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_communities', array['uuid']::name[]);
 select has_function('list_user_community_team_invitations', array['uuid']::name[]);
+select has_function('list_user_dashboard_groups', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_event_invitations', array['uuid']::name[]);
 select has_function('list_user_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_group_team_invitations', array['uuid']::name[]);

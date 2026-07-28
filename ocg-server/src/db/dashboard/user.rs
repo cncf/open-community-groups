@@ -12,6 +12,7 @@ use crate::{
         audit::{AuditLogFilters, AuditLogsOutput},
         user::{
             events::{UserEventsFilters, UserEventsOutput},
+            groups::{UserGroupsFilters, UserGroupsOutput},
             invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
             session_proposals::{
                 PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
@@ -104,6 +105,13 @@ pub(crate) trait DBDashboardUser {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<CommunityTeamInvitation>>;
+
+    /// Lists groups where the user is a member or accepted team member.
+    async fn list_user_dashboard_groups(
+        &self,
+        user_id: Uuid,
+        filters: &UserGroupsFilters,
+    ) -> Result<UserGroupsOutput>;
 
     /// Lists all pending organizer-created event invitations for the user.
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
@@ -395,6 +403,20 @@ where
         self.fetch_json_one(
             "select list_user_community_team_invitations($1::uuid)",
             &[&user_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::list_user_dashboard_groups`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_user_dashboard_groups(
+        &self,
+        user_id: Uuid,
+        filters: &UserGroupsFilters,
+    ) -> Result<UserGroupsOutput> {
+        self.fetch_json_one(
+            "select list_user_dashboard_groups($1::uuid, $2::jsonb)",
+            &[&user_id, &Json(filters)],
         )
         .await
     }
