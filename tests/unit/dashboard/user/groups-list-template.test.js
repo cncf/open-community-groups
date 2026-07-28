@@ -50,10 +50,10 @@ describe("dashboard user groups list template", () => {
     expect(template).to.include("{% if item.is_member -%}");
     expect(template).to.include("{% if item.is_team_member -%}");
     expect(template).to.include(
-      'badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5") )',
+      'badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5"))',
     );
     expect(template).to.include(
-      'badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5") )',
+      'badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5"))',
     );
   });
 

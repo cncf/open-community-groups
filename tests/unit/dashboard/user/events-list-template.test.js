@@ -53,10 +53,10 @@ describe("dashboard user events list template", () => {
       "{% if let Some(attendance_status_label) = item.attendance_status_label() -%}",
     );
     expect(template).to.include(
-      '{{ badges::status_badge(label = attendance_status_label, extra_styles = Some("uppercase") ) -}}',
+      '{{ badges::status_badge(label = attendance_status_label, extra_styles = Some("uppercase")) -}}',
     );
     expect(template).to.include(
-      '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5") ) -}}',
+      '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}',
     );
   });
 });
