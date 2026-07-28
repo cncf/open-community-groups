@@ -630,7 +630,7 @@ fn test_delivery_worker_prepare_content_badge_awarded() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check badge content and links are rendered from the typed template
-    assert_eq!(subject, "You earned the Participant badge");
+    assert_eq!(subject, "[Test Group] You earned the Participant badge");
     assert!(body.contains("Recognizes participation"));
     assert!(body.contains("Attend the event"));
     assert!(body.contains("Test Group"));
@@ -660,11 +660,57 @@ fn test_delivery_worker_prepare_content_badge_revoked_omits_reason() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check the public typed fields render without the private revocation reason
-    assert_eq!(subject, "Your Participant badge was revoked");
+    assert_eq!(subject, "[Test Group] Your Participant badge was revoked");
     assert!(body.contains("permanently revoked"));
     assert!(body.contains("Contact Test Group"));
     assert!(body.contains("https://example.test/dashboard/user?tab=badges"));
     assert!(!body.contains("private audit detail"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_cfs_submission_updated() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::CfsSubmissionUpdated,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_cfs_submission_updated_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Notification Group] Submission update: Reminder Event"
+    );
+    assert!(body.contains("Reminder Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_community_team_invitation() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::CommunityTeamInvitation,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_community_team_invitation_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Test Community] You have been invited to join a community team"
+    );
+    assert!(body.contains("Test Community"));
 }
 
 #[test]
@@ -704,11 +750,31 @@ fn test_delivery_worker_prepare_content_event_attendance_canceled() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Attendance canceled");
+    assert_eq!(subject, "[Notification Group] Attendance canceled");
     assert!(body.contains("Your attendance for"));
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Open My Events"));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_canceled() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventCanceled,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Notification Group] Event canceled");
+    assert!(body.contains("Reminder Event"));
 }
 
 #[test]
@@ -772,7 +838,10 @@ fn test_delivery_worker_prepare_content_event_invitation() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "You have been invited to an event");
+    assert_eq!(
+        subject,
+        "[Notification Group] You have been invited to an event"
+    );
     assert!(body.contains("Invitation Event"));
     assert!(body.contains("Review invitation"));
     assert!(body.contains("LF SSO"));
@@ -796,10 +865,70 @@ fn test_delivery_worker_prepare_content_event_published() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "New event published");
+    assert_eq!(subject, "[Notification Group] New event published");
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
     assert!(body.contains("Test Community community"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_refund_approved() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventRefundApproved,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Notification Group] Refund approved");
+    assert!(body.contains("Reminder Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_refund_rejected() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventRefundRejected,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Notification Group] Refund request update");
+    assert!(body.contains("Reminder Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_refund_requested() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventRefundRequested,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Notification Group] Refund requested");
+    assert!(body.contains("Reminder Event"));
 }
 
 #[test]
@@ -818,7 +947,10 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
+    assert_eq!(
+        subject,
+        "[Notification Group] Reminder: Reminder Event starts in 24 hours"
+    );
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Use your registration name when joining."));
     assert!(body.contains("If you can no longer attend"));
@@ -852,7 +984,10 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
+    assert_eq!(
+        subject,
+        "[Notification Group] Reminder: Reminder Event starts in 24 hours"
+    );
     assert!(body.contains("Reminder Event"));
     assert!(body.contains(
         "https://example.test/test-community/group/notification-group/event/reminder-event"
@@ -877,10 +1012,33 @@ fn test_delivery_worker_prepare_content_event_reminder_speaker_only() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
+    assert_eq!(
+        subject,
+        "[Notification Group] Reminder: Reminder Event starts in 24 hours"
+    );
     assert!(body.contains("You can review this event from the My Events section"));
     assert!(!body.contains("If you can no longer attend"));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_rescheduled() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventRescheduled,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Notification Group] Event rescheduled");
+    assert!(body.contains("Reminder Event"));
 }
 
 #[test]
@@ -899,7 +1057,7 @@ fn test_delivery_worker_prepare_content_event_series_canceled() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Events canceled");
+    assert_eq!(subject, "[Notification Group] Events canceled");
     assert!(body.contains("2 events from"));
     assert!(body.contains("Series Event One"));
     assert!(body.contains("Series Event Two"));
@@ -921,36 +1079,13 @@ fn test_delivery_worker_prepare_content_event_series_published() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "New events published");
+    assert_eq!(subject, "[Notification Group] New events published");
     assert!(body.contains("2 new events"));
     assert!(body.contains("Series Event One"));
     assert!(body.contains("Series Event Two"));
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
     assert!(body.contains("Test Community community"));
-}
-
-#[test]
-fn test_delivery_worker_prepare_content_speaker_series_welcome() {
-    // Setup notification
-    let notification = Notification {
-        attachments: vec![],
-        delivery_claimed_at: sample_delivery_claimed_at(),
-        email: "user@example.test".to_string(),
-        kind: NotificationKind::SpeakerSeriesWelcome,
-        notification_id: Uuid::new_v4(),
-        template_data: Some(sample_event_series_template_data()),
-    };
-
-    // Prepare content
-    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
-
-    // Check content matches expectations
-    assert_eq!(subject, "You're speaking at upcoming events");
-    assert!(body.contains("2 events with"));
-    assert!(body.contains("Join five minutes early for speaker setup."));
-    assert!(body.contains("Series Event One"));
-    assert!(body.contains("Series Event Two"));
 }
 
 #[test]
@@ -969,7 +1104,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_joined() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "You joined the waiting list");
+    assert_eq!(subject, "[Notification Group] You joined the waiting list");
     assert!(body.contains("You have been added to the waiting list"));
     assert!(body.contains("Waitlist Event"));
 }
@@ -990,7 +1125,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_left() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "You left the waiting list");
+    assert_eq!(subject, "[Notification Group] You left the waiting list");
     assert!(body.contains("You have left the waiting list"));
     assert!(body.contains("Waitlist Event"));
 }
@@ -1011,7 +1146,10 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "You moved off the waiting list");
+    assert_eq!(
+        subject,
+        "[Notification Group] You moved off the waiting list"
+    );
     assert!(body.contains("You are now registered"));
     assert!(body.contains("View event"));
     assert!(!body.contains("Open My Events"));
@@ -1036,7 +1174,10 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registratio
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "You moved off the waiting list");
+    assert_eq!(
+        subject,
+        "[Notification Group] You moved off the waiting list"
+    );
     assert!(body.contains("Open My Events"));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
     assert!(!body.contains(
@@ -1064,7 +1205,7 @@ fn test_delivery_worker_prepare_content_event_welcome_omits_dashboard_cancellati
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Welcome to the event");
+    assert_eq!(subject, "[Notification Group] Welcome to the event");
     assert!(!body.contains("cancel your attendance from the My"));
     assert!(!body.contains("Open My Events"));
 }
@@ -1087,7 +1228,7 @@ fn test_delivery_worker_prepare_content_event_welcome_renders_dashboard_cancella
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Welcome to the event");
+    assert_eq!(subject, "[Notification Group] Welcome to the event");
     assert!(body.contains("cancel your attendance from the My"));
     assert!(body.contains("Open My Events"));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
@@ -1139,6 +1280,49 @@ fn test_delivery_worker_prepare_content_group_custom_legacy_template_data() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_group_team_invitation() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::GroupTeamInvitation,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_group_custom_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Hello Group] You have been invited to join a group team"
+    );
+    assert!(body.contains("Hello Group"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_group_welcome() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::GroupWelcome,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_group_custom_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Hello Group] Welcome to the group");
+    assert!(body.contains("Hello Group"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_missing_data() {
     // Setup notification
     let notification = Notification {
@@ -1155,6 +1339,52 @@ fn test_delivery_worker_prepare_content_missing_data() {
 
     // Check error message
     assert!(err.to_string().contains("missing template data"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_speaker_series_welcome() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::SpeakerSeriesWelcome,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_series_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(
+        subject,
+        "[Notification Group] You're speaking at upcoming events"
+    );
+    assert!(body.contains("2 events with"));
+    assert!(body.contains("Join five minutes early for speaker setup."));
+    assert!(body.contains("Series Event One"));
+    assert!(body.contains("Series Event Two"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_speaker_welcome() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::SpeakerWelcome,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "[Notification Group] You're speaking at an event");
+    assert!(body.contains("Reminder Event"));
 }
 
 #[tokio::test]
@@ -1373,9 +1603,43 @@ fn test_lettre_email_sender_uses_wrapper_tls_for_submissions_port() {
 
 // Helpers.
 
+/// Sample template payload for CFS submission update notifications.
+fn sample_cfs_submission_updated_template_data() -> serde_json::Value {
+    let mut payload = sample_event_reminder_template_data();
+    let object = payload
+        .as_object_mut()
+        .expect("CFS submission update payload is an object");
+    object.insert("status_name".to_string(), json!("Accepted"));
+    payload
+}
+
+/// Sample template payload for community team invitation notifications.
+fn sample_community_team_invitation_template_data() -> serde_json::Value {
+    json!({
+        "community_name": "Test Community",
+        "link": "https://example.test/dashboard/user?tab=invitations",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
 /// Create a deterministic delivery claim timestamp.
 fn sample_delivery_claimed_at() -> DateTime<Utc> {
     DateTime::from_timestamp(1_735_689_600, 0).unwrap()
+}
+
+/// Create a sample worker with mock dependencies.
+fn sample_delivery_worker(cfg: EmailConfig, email_sender: DynEmailSender) -> DeliveryWorker {
+    let db: DynDB = Arc::new(MockDB::new());
+
+    DeliveryWorker {
+        base_url: "https://example.test".to_string(),
+        cancellation_token: CancellationToken::new(),
+        cfg,
+        db,
+        email_sender,
+    }
 }
 
 /// Create a sample email configuration with an optional recipients whitelist.
@@ -1391,19 +1655,6 @@ fn sample_email_config(rcpts_whitelist: Option<Vec<String>>) -> EmailConfig {
         },
 
         rcpts_whitelist,
-    }
-}
-
-/// Create a sample worker with mock dependencies.
-fn sample_delivery_worker(cfg: EmailConfig, email_sender: DynEmailSender) -> DeliveryWorker {
-    let db: DynDB = Arc::new(MockDB::new());
-
-    DeliveryWorker {
-        base_url: "https://example.test".to_string(),
-        cancellation_token: CancellationToken::new(),
-        cfg,
-        db,
-        email_sender,
     }
 }
 
