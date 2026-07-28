@@ -11,14 +11,15 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 use anyhow::{Context, Result};
 use clap::Parser;
 use deadpool_postgres::Runtime;
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres_openssl::MakeTlsConnector;
-use tokio::{net::TcpListener, signal, sync::RwLock, time};
+use ocg_common::{
+    db::tls_connector,
+    runtime::{setup_logging, shutdown_signal},
+};
+use tokio::{net::TcpListener, sync::RwLock, time};
 use tracing::{error, info};
-use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{Config, HttpServerConfig, LogFormat},
+    config::{Config, HttpServerConfig},
     db::PgDB,
 };
 
@@ -46,7 +47,10 @@ struct Args {
 async fn main() -> Result<()> {
     // Load configuration and initialize logging
     let cfg = setup_config()?;
-    setup_logging(&cfg.log.format);
+    setup_logging(
+        &cfg.log.format,
+        &format!("{}=debug", env!("CARGO_CRATE_NAME")),
+    );
 
     // Setup the database connection used to load redirect mappings
     let db = setup_db(&cfg)?;
@@ -93,60 +97,12 @@ fn setup_config() -> Result<Config> {
 /// Configure the database pool used by the redirector.
 fn setup_db(cfg: &Config) -> Result<PgDB> {
     // Build the TLS connector used by the Postgres pool
-    let mut builder = SslConnector::builder(SslMethod::tls())?;
-    builder.set_verify(SslVerifyMode::NONE);
+    let connector = tls_connector(cfg.db.tls.as_ref())?;
 
     // Create the pool with the configured TLS connector
-    let connector = MakeTlsConnector::new(builder.build());
-    let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
+    let pool = cfg.db.connection.create_pool(Some(Runtime::Tokio1), connector)?;
 
     Ok(PgDB::new(pool))
-}
-
-/// Configure tracing based on the configured log format.
-fn setup_logging(log_format: &LogFormat) {
-    // Build the shared subscriber configuration first
-    let ts = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with_file(true)
-        .with_line_number(true);
-
-    // Select the configured output formatter
-    match log_format {
-        LogFormat::Json => ts.json().init(),
-        LogFormat::Pretty => ts.init(),
-    }
-}
-
-/// Returns a future that completes when the program receives a shutdown signal.
-async fn shutdown_signal() {
-    // Setup ctrl+c signal handler
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install ctrl+c signal handler");
-    };
-
-    #[cfg(unix)]
-    // Setup terminate signal handler (Unix only)
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install terminate signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    // Wait for either ctrl+c or terminate signal
-    tokio::select! {
-        () = ctrl_c => {},
-        () = terminate => {},
-    }
 }
 
 /// Spawns the periodic redirect map refresh task.

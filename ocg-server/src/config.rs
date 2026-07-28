@@ -13,12 +13,12 @@ use std::{
 };
 
 use anyhow::{Result, bail};
-use deadpool_postgres::Config as DbConfig;
 use figment::{
     Figment,
     providers::{Env, Format, Serialized, Yaml},
 };
 use garde::rules::email::parse_email;
+use ocg_common::config::{DbConfig, LogConfig};
 use serde::{Deserialize, Serialize};
 use ssi_jwk::{JWK, Params};
 use ssi_verification_methods::ed25519_dalek::{SigningKey, VerifyingKey};
@@ -81,6 +81,9 @@ impl Config {
 
     /// Validate configuration consistency after loading from all sources.
     fn validate(&self) -> Result<()> {
+        // Validate database transport security before starting dependent services
+        self.db.validate()?;
+
         // Require badge signing because public credentials and status lists are always mounted
         let badges_cfg = self
             .server
@@ -359,23 +362,6 @@ impl fmt::Debug for SmtpConfig {
     }
 }
 
-/// Logging configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) struct LogConfig {
-    /// Log output format.
-    pub format: LogFormat,
-}
-
-/// Supported log output formats.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum LogFormat {
-    /// JSON log format.
-    Json,
-    /// Human-readable log format.
-    Pretty,
-}
-
 /// HTTP server configuration settings.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub(crate) struct HttpServerConfig {
@@ -646,6 +632,9 @@ fn validate_ed25519_key(key: &JWK, require_private: bool) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use deadpool_postgres::Config as DeadpoolDbConfig;
+    use ocg_common::config::LogFormat;
+
     use super::*;
 
     #[test]
@@ -695,20 +684,7 @@ mod tests {
     }
 
     #[test]
-    fn test_config_rejects_missing_badges_configuration() {
-        // Remove the required badge configuration from an otherwise valid config
-        let mut cfg = sample_config();
-        cfg.server.badges = None;
-
-        // Validate the complete startup configuration
-        let result = cfg.validate();
-
-        // Check startup rejects a partially configured public badge service
-        assert_eq!(result.unwrap_err().to_string(), "server.badges is required");
-    }
-
-    #[test]
-    fn config_debug_redacts_sensitive_values() {
+    fn test_config_debug_redacts_sensitive_values() {
         // Setup config with sentinel secret values
         let cfg = sample_config();
         let outputs = [
@@ -732,6 +708,19 @@ mod tests {
             }
             assert!(output.contains(REDACTED_CONFIG_VALUE));
         }
+    }
+
+    #[test]
+    fn test_config_rejects_missing_badges_configuration() {
+        // Remove the required badge configuration from an otherwise valid config
+        let mut cfg = sample_config();
+        cfg.server.badges = None;
+
+        // Validate the complete startup configuration
+        let result = cfg.validate();
+
+        // Check startup rejects a partially configured public badge service
+        assert_eq!(result.unwrap_err().to_string(), "server.badges is required");
     }
 
     // Helpers.
@@ -830,10 +819,16 @@ mod tests {
     }
 
     fn sample_db_config() -> DbConfig {
-        let mut cfg = DbConfig::new();
-        cfg.password = Some("db-password-sensitive-value".to_string());
-        cfg.url = Some("postgres://user:db-url-sensitive-value@db.example.test/ocg".to_string());
-        cfg
+        let url = "postgres://user:db-url-sensitive-value@db.example.test/ocg";
+        let mut connection = DeadpoolDbConfig::new();
+        connection.password = Some("db-password-sensitive-value".to_string());
+        connection.url = Some(url.to_string());
+
+        DbConfig {
+            connection,
+
+            tls: None,
+        }
     }
 
     fn sensitive_values() -> [&'static str; 10] {

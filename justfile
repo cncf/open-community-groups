@@ -41,6 +41,18 @@ source_dir := justfile_directory()
 pg command *args:
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" {{ command }} {{ args }}
 
+# Common
+
+# Format and lint shared crate code.
+common-fmt-and-lint:
+    cargo fmt
+    cargo check -p ocg-common
+    cargo clippy -p ocg-common --all-targets --all-features -- --deny warnings
+
+# Run shared crate tests.
+common-tests:
+    cargo test -p ocg-common
+
 # Database
 
 # Connect to main database.

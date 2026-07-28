@@ -102,6 +102,31 @@ command: ['sh', '-c', 'until pg_isready; do echo waiting for database; sleep 2; 
 {{- end -}}
 
 {{/*
+Validate database TLS configuration consistency
+*/}}
+{{- define "chart.validateDbConfig" -}}
+{{- $sslMode := lower (.Values.db.sslMode | default "") -}}
+{{- $tls := .Values.db.tls | default dict -}}
+{{- $tlsCaCert := $tls.caCert | default "" -}}
+{{- $tlsMode := $tls.mode | default "none" -}}
+{{- if not (has $sslMode (list "disable" "prefer" "require")) -}}
+{{- fail "db.sslMode must be one of disable, prefer or require" -}}
+{{- end -}}
+{{- if not (has $tlsMode (list "none" "verify-ca" "verify-full")) -}}
+{{- fail "db.tls.mode must be one of none, verify-ca or verify-full" -}}
+{{- end -}}
+{{- if and (eq $tlsMode "none") $tlsCaCert -}}
+{{- fail "db.tls.caCert requires db.tls.mode verify-ca or verify-full" -}}
+{{- end -}}
+{{- if and (ne $tlsMode "none") (not $tlsCaCert) -}}
+{{- fail "db.tls.caCert is required when db.tls.mode enables certificate verification" -}}
+{{- end -}}
+{{- if and (ne $tlsMode "none") (ne $sslMode "require") -}}
+{{- fail "db.sslMode must be require when db.tls.mode enables certificate verification" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Renders a value that contains template.
 Usage:
 {{ include "chart.tplvalues.render" ( dict "value" .Values.path.to.the.Value "context" $) }}

@@ -14,17 +14,16 @@ use activity_tracker::ActivityTrackerDB;
 use anyhow::{Context, Result};
 use clap::Parser;
 use deadpool_postgres::Runtime;
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres_openssl::MakeTlsConnector;
-use tokio::{net::TcpListener, signal};
+use ocg_common::{
+    db::tls_connector,
+    runtime::{setup_logging, shutdown_signal},
+};
+use tokio::net::TcpListener;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, info};
-use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{
-        Config, HttpServerConfig, ImageStorageConfig, LogFormat, MeetingsConfig, PaymentsConfig,
-    },
+    config::{Config, HttpServerConfig, ImageStorageConfig, MeetingsConfig, PaymentsConfig},
     db::{DynDB, PgDB, pool as db_pool},
     services::{
         badges::start_badge_award_workers,
@@ -102,7 +101,10 @@ impl BackgroundTasks {
 async fn main() -> Result<()> {
     // Load configuration and initialize logging
     let cfg = setup_config()?;
-    setup_logging(&cfg.log.format);
+    setup_logging(
+        &cfg.log.format,
+        &format!("{}=debug", env!("CARGO_CRATE_NAME")),
+    );
 
     // Setup shared worker coordination and core infrastructure
     let background_tasks = BackgroundTasks::new();
@@ -219,12 +221,10 @@ fn setup_config() -> Result<Config> {
 /// Configure the database pool.
 fn setup_db(cfg: &Config) -> Result<Arc<PgDB>> {
     // Build the TLS connector used by the Postgres pool
-    let mut builder = SslConnector::builder(SslMethod::tls())?;
-    builder.set_verify(SslVerifyMode::NONE);
+    let connector = tls_connector(cfg.db.tls.as_ref())?;
 
     // Create the Postgres connection pool and wrap it in our database abstraction
-    let connector = MakeTlsConnector::new(builder.build());
-    let db_cfg = db_pool::config_with_defaults(&cfg.db);
+    let db_cfg = db_pool::config_with_defaults(&cfg.db.connection);
     let pool = db_cfg.create_pool(Some(Runtime::Tokio1), connector)?;
     let db = Arc::new(PgDB::new(pool));
 
@@ -236,24 +236,6 @@ fn setup_image_storage(cfg: &Config, db: Arc<PgDB>) -> DynImageStorage {
     match &cfg.images {
         ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db)),
         ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
-    }
-}
-
-/// Configure tracing based on the configured log format.
-fn setup_logging(log_format: &LogFormat) {
-    // Build the shared subscriber configuration first
-    let ts = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with_file(true)
-        .with_line_number(true);
-
-    // Select the configured output formatter
-    match log_format {
-        LogFormat::Json => ts.json().init(),
-        LogFormat::Pretty => ts.init(),
     }
 }
 
@@ -289,36 +271,6 @@ fn setup_payments_manager(
         payments_provider,
         server_cfg.clone(),
     ))
-}
-
-/// Returns a future that completes when the program receives a shutdown signal.
-///
-/// Handles both ctrl+c and terminate signals for graceful shutdown.
-async fn shutdown_signal() {
-    // Setup ctrl+c signal handler
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install ctrl+c signal handler");
-    };
-
-    #[cfg(unix)]
-    // Setup terminate signal handler on Unix
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install terminate signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    // Wait for either ctrl+c or terminate signal
-    tokio::select! {
-        () = ctrl_c => {},
-        () = terminate => {},
-    }
 }
 
 /// Start meetings workers for the enabled providers.

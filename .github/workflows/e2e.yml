@@ -27,6 +27,7 @@ jobs:
               - 'Cargo.toml'
               - 'database/**'
               - 'docs/**'
+              - 'ocg-common/**'
               - 'ocg-server/**'
               - 'tests/e2e/**'
       - name: Mark manual run as e2e-relevant

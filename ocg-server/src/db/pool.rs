@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use deadpool_postgres::{Config, ManagerConfig, PoolConfig, RecyclingMethod};
+use deadpool_postgres::{Config as DeadpoolDbConfig, ManagerConfig, PoolConfig, RecyclingMethod};
 
 /// Default maximum number of database connections in the server pool.
 const DB_POOL_MAX_SIZE: usize = 25;
@@ -14,7 +14,7 @@ const DB_POOL_RECYCLE_TIMEOUT: Duration = Duration::from_secs(5);
 const DB_POOL_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Apply server defaults to the database pool configuration.
-pub(crate) fn config_with_defaults(cfg: &Config) -> Config {
+pub(crate) fn config_with_defaults(cfg: &DeadpoolDbConfig) -> DeadpoolDbConfig {
     let mut cfg = cfg.clone();
 
     // Reset session state when recycling connections
@@ -35,8 +35,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn config_with_defaults_applies_missing_defaults() {
-        let cfg = config_with_defaults(&Config::new());
+    fn test_config_with_defaults_applies_missing_defaults() {
+        let cfg = config_with_defaults(&DeadpoolDbConfig::new());
 
         let manager = cfg.manager.expect("manager config should be set");
         assert_eq!(manager.recycling_method, RecyclingMethod::Clean);
@@ -48,8 +48,8 @@ mod tests {
     }
 
     #[test]
-    fn config_with_defaults_preserves_configured_values() {
-        let mut cfg = Config::new();
+    fn test_config_with_defaults_preserves_configured_values() {
+        let mut cfg = DeadpoolDbConfig::new();
         cfg.manager = Some(ManagerConfig {
             recycling_method: RecyclingMethod::Clean,
         });
