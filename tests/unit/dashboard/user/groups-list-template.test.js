@@ -50,10 +50,10 @@ describe("dashboard user groups list template", () => {
     expect(template).to.include("{% if item.is_member -%}");
     expect(template).to.include("{% if item.is_team_member -%}");
     expect(template).to.include(
-      'badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5"))',
+      'badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5") )',
     );
     expect(template).to.include(
-      'badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5"))',
+      'badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5") )',
     );
   });
 
@@ -65,7 +65,9 @@ describe("dashboard user groups list template", () => {
     expect(template).to.include("disabled");
     expect(template).to.include('title="Team memberships cannot be left from My Groups."');
     expect(template).to.include('<span class="sr-only">Actions</span>');
-    expect(template).to.include('aria-label="Open group actions"');
+    expect(template).to.include('aria-label="Open group actions for {{ item.group.name }}"');
     expect(template).to.include("data-actions-menu");
+    expect(template).not.to.include('role="menu"');
+    expect(template).not.to.include('role="menuitem"');
   });
 });

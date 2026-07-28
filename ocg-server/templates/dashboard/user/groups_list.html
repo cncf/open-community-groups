@@ -5,7 +5,7 @@
 {# Dashboard User Groups List -#}
 {# Header -#}
 {{ dashboard::page_title(title = "My Groups", docs_href = "/docs#/guides/user-dashboard?id=my-groups",
-  description = "Groups you belong to.") -}}
+description = "Groups you belong to.") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
@@ -56,10 +56,10 @@
                 <div>Member since {{ item.joined_at.format("%b %d, %Y") }}</div>
                 <div class="flex flex-wrap gap-1.5">
                   {% if item.is_member -%}
-                    {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5")) -}}
+                    {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5") ) -}}
                   {% endif -%}
                   {% if item.is_team_member -%}
-                    {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5")) -}}
+                    {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5") ) -}}
                   {% endif -%}
                 </div>
               </div>
@@ -76,10 +76,10 @@
             <td class="hidden md:table-cell px-3 xl:px-5 py-4 w-48">
               <div class="flex flex-wrap gap-1.5">
                 {% if item.is_member -%}
-                  {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5")) -}}
+                  {{ badges::common_badge(content = "Member", extra_styles = Some("px-2.5 py-0.5") ) -}}
                 {% endif -%}
                 {% if item.is_team_member -%}
-                  {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5")) -}}
+                  {{ badges::common_badge(content = "Team member", extra_styles = Some("px-2.5 py-0.5") ) -}}
                 {% endif -%}
               </div>
             </td>
@@ -89,12 +89,12 @@
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
               <details data-actions-menu class="group relative inline-flex justify-end">
                 <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
-                         aria-label="Open group actions"
-                         title="Open group actions">
+                         aria-label="Open group actions for {{ item.group.name }}"
+                         title="Open group actions for {{ item.group.name }}">
                   <div class="svg-icon size-4 icon-vertical-dots"></div>
                 </summary>
                 <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                  <ul class="py-2 text-sm text-stone-700" role="menu">
+                  <ul class="py-2 text-sm text-stone-700">
                     <li>
                       <button id="leave-group-{{ item.group.group_id }}"
                               {% if item.is_member -%}
@@ -102,7 +102,6 @@
                               {% else -%}
                                 disabled title="Team memberships cannot be left from My Groups."
                               {% endif -%}
-                              role="menuitem"
                               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
                               type="button">
                         <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>

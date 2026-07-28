@@ -15,18 +15,6 @@ const groupId = TEST_GROUP_IDS.community1.alpha;
 /** Returns the public membership container for the current group page. */
 const getMembershipContainer = (page) => page.locator("#membership-container");
 
-/** Waits until the public membership widget resolves. */
-const waitForMembershipState = async (page) => {
-  await Promise.race([
-    getMembershipContainer(page).locator("#join-btn").waitFor({
-      state: "visible",
-    }),
-    getMembershipContainer(page).locator("#leave-btn").waitFor({
-      state: "visible",
-    }),
-  ]);
-};
-
 /** Leaves the public group when the reusable user is already a member. */
 const leavePublicGroup = async (page) => {
   const leaveButton = getMembershipContainer(page).locator("#leave-btn");
@@ -45,7 +33,29 @@ const leavePublicGroup = async (page) => {
   await expect(getMembershipContainer(page).locator("#join-btn")).toBeVisible();
 };
 
+/** Waits until the public membership widget resolves. */
+const waitForMembershipState = async (page) => {
+  await Promise.race([
+    getMembershipContainer(page).locator("#join-btn").waitFor({
+      state: "visible",
+    }),
+    getMembershipContainer(page).locator("#leave-btn").waitFor({
+      state: "visible",
+    }),
+  ]);
+};
+
 test.describe("user dashboard my groups view", () => {
+  test("empty state explains when the user has no groups", async ({ pending1Page }) => {
+    // Load My Groups for a user without a group relationship
+    await navigateToPath(pending1Page, "/dashboard/user?tab=groups");
+    const dashboardContent = pending1Page.locator("#dashboard-content");
+
+    // Verify the empty result remains explicit
+    await expect(dashboardContent).toContainText("0 groups");
+    await expect(dashboardContent).toContainText("You don't belong to any groups yet.");
+  });
+
   test("header user menu navigates to My Groups", async ({ member1Page }) => {
     // Load another user dashboard tab before using the global menu
     await navigateToPath(member1Page, "/dashboard/user?tab=events");
@@ -96,8 +106,8 @@ test.describe("user dashboard my groups view", () => {
     );
 
     // Leave through the row actions menu
-    await groupRow.getByLabel("Open group actions").click();
-    await groupRow.getByRole("menuitem", { name: "Leave group" }).click();
+    await groupRow.getByLabel(`Open group actions for ${TEST_GROUP_NAMES.alpha}`).click();
+    await groupRow.getByRole("button", { name: "Leave group" }).click();
     await expect(pending2Page.locator(".swal2-popup")).toContainText(
       "Are you sure you want to leave this group?",
     );
@@ -123,8 +133,8 @@ test.describe("user dashboard my groups view", () => {
     });
 
     // Open the actions menu and verify the membership-only action is unavailable
-    await groupRow.getByLabel("Open group actions").click();
-    const leaveButton = groupRow.getByRole("menuitem", { name: "Leave group" });
+    await groupRow.getByLabel(`Open group actions for ${TEST_GROUP_NAMES.alpha}`).click();
+    const leaveButton = groupRow.getByRole("button", { name: "Leave group" });
     await expect(groupRow.locator("td").getByText("Team member", { exact: true })).toBeVisible();
     await expect(leaveButton).toBeDisabled();
     await expect(leaveButton).toHaveAttribute("title", "Team memberships cannot be left from My Groups.");
