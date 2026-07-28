@@ -353,7 +353,9 @@ impl DeliveryWorker {
                         helpers::absolute_url(base_url, &template.dashboard_url);
                 }
                 template.base_url = base_url.to_string();
-                let subject = format!("You earned the {} badge", template.badge.name);
+                let base_subject = format!("You earned the {} badge", template.badge.name);
+                let subject =
+                    Self::scoped_subject(&template.badge.issuer.group_name, &base_subject);
                 let body = template.render()?;
                 (subject, body)
             }
@@ -364,19 +366,24 @@ impl DeliveryWorker {
                     template.dashboard_url =
                         helpers::absolute_url(base_url, &template.dashboard_url);
                 }
-                let subject = format!("Your {} badge was revoked", template.badge_name);
-                let body = template.render()?;
-                (subject, body)
-            }
-            NotificationKind::CommunityTeamInvitation => {
-                let subject = "You have been invited to join a community team".to_string();
-                let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
+                let base_subject = format!("Your {} badge was revoked", template.badge_name);
+                let subject = Self::scoped_subject(&template.group_name, &base_subject);
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::CfsSubmissionUpdated => {
                 let template: CfsSubmissionUpdated = serde_json::from_value(template_data)?;
-                let subject = format!("Submission update: {}", template.event.name);
+                let base_subject = format!("Submission update: {}", template.event.name);
+                let subject = Self::scoped_subject(&template.event.group_name, &base_subject);
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::CommunityTeamInvitation => {
+                let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(
+                    &template.community_name,
+                    "You have been invited to join a community team",
+                );
                 let body = template.render()?;
                 (subject, body)
             }
@@ -387,14 +394,15 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::EventAttendanceCanceled => {
-                let subject = "Attendance canceled".to_string();
                 let template: EventAttendanceCanceled = serde_json::from_value(template_data)?;
+                let subject =
+                    Self::scoped_subject(&template.event.group_name, "Attendance canceled");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventCanceled => {
-                let subject = "Event canceled".to_string();
                 let template: EventCanceled = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(&template.event.group_name, "Event canceled");
                 let body = template.render()?;
                 (subject, body)
             }
@@ -405,80 +413,92 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::EventInvitation => {
-                let subject = "You have been invited to an event".to_string();
                 let template: EventInvitation = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(
+                    &template.event.group_name,
+                    "You have been invited to an event",
+                );
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventPublished => {
-                let subject = "New event published".to_string();
                 let template: EventPublished = serde_json::from_value(template_data)?;
+                let subject =
+                    Self::scoped_subject(&template.event.group_name, "New event published");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventRefundApproved => {
-                let subject = "Refund approved".to_string();
                 let template: EventRefundApproved = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(&template.event.group_name, "Refund approved");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventRefundRejected => {
-                let subject = "Refund request update".to_string();
                 let template: EventRefundRejected = serde_json::from_value(template_data)?;
+                let subject =
+                    Self::scoped_subject(&template.event.group_name, "Refund request update");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventRefundRequested => {
-                let subject = "Refund requested".to_string();
                 let template: EventRefundRequested = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(&template.event.group_name, "Refund requested");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventReminder => {
                 let template: EventReminder = serde_json::from_value(template_data)?;
-                let subject = format!("Reminder: {} starts in 24 hours", template.event.name);
+                let base_subject = format!("Reminder: {} starts in 24 hours", template.event.name);
+                let subject = Self::scoped_subject(&template.event.group_name, &base_subject);
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventRescheduled => {
-                let subject = "Event rescheduled".to_string();
                 let template: EventRescheduled = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(&template.event.group_name, "Event rescheduled");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventSeriesCanceled => {
-                let subject = "Events canceled".to_string();
                 let template: EventSeriesCanceled = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(&template.group_name, "Events canceled");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventSeriesPublished => {
-                let subject = "New events published".to_string();
                 let template: EventSeriesPublished = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(&template.group_name, "New events published");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventWaitlistJoined => {
-                let subject = "You joined the waiting list".to_string();
                 let template: EventWaitlistJoined = serde_json::from_value(template_data)?;
+                let subject =
+                    Self::scoped_subject(&template.event.group_name, "You joined the waiting list");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventWaitlistLeft => {
-                let subject = "You left the waiting list".to_string();
                 let template: EventWaitlistLeft = serde_json::from_value(template_data)?;
+                let subject =
+                    Self::scoped_subject(&template.event.group_name, "You left the waiting list");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventWaitlistPromoted => {
-                let subject = "You moved off the waiting list".to_string();
                 let template: EventWaitlistPromoted = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(
+                    &template.event.group_name,
+                    "You moved off the waiting list",
+                );
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventWelcome => {
-                let subject = "Welcome to the event".to_string();
                 let template: EventWelcome = serde_json::from_value(template_data)?;
+                let subject =
+                    Self::scoped_subject(&template.event.group_name, "Welcome to the event");
                 let body = template.render()?;
                 (subject, body)
             }
@@ -489,14 +509,17 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::GroupTeamInvitation => {
-                let subject = "You have been invited to join a group team".to_string();
                 let template: GroupTeamInvitation = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(
+                    &template.group.name,
+                    "You have been invited to join a group team",
+                );
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::GroupWelcome => {
-                let subject = "Welcome to the group".to_string();
                 let template: GroupWelcome = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(&template.group.name, "Welcome to the group");
                 let body = template.render()?;
                 (subject, body)
             }
@@ -508,14 +531,18 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::SpeakerSeriesWelcome => {
-                let subject = "You're speaking at upcoming events".to_string();
                 let template: SpeakerSeriesWelcome = serde_json::from_value(template_data)?;
+                let subject = Self::scoped_subject(
+                    &template.group_name,
+                    "You're speaking at upcoming events",
+                );
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::SpeakerWelcome => {
-                let subject = "You're speaking at an event".to_string();
                 let template: SpeakerWelcome = serde_json::from_value(template_data)?;
+                let subject =
+                    Self::scoped_subject(&template.event.group_name, "You're speaking at an event");
                 let body = template.render()?;
                 (subject, body)
             }
@@ -551,6 +578,11 @@ impl DeliveryWorker {
                 self.db.mark_notification_delivery_unknown(notification, &error).await
             }
         }
+    }
+
+    /// Builds an email subject prefixed with its community or group scope.
+    fn scoped_subject(scope: &str, subject: &str) -> String {
+        format!("[{scope}] {subject}")
     }
 
     /// Send an email to the specified address with the given subject and body.
