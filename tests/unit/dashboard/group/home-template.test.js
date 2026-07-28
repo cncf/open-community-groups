@@ -56,11 +56,14 @@ describe("dashboard group home template", () => {
     );
   });
 
-  it("exposes the refunds tab without globally refreshing its partial", async () => {
+  it("gates the refunds tab without globally refreshing its partial", async () => {
     // Load the group dashboard shell template before checking refund navigation.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the menu includes refunds without intercepting refund action events globally.
+    // Verify payment readiness controls the menu without intercepting refund action events globally.
+    expect(template).to.include(
+      '{% if payments_ready -%} {{ dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds") -}} {% endif -%}',
+    );
     expect(template).to.include(
       'dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds")',
     );

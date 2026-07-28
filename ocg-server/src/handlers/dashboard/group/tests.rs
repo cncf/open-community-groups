@@ -16,6 +16,33 @@ use crate::{
     services::notifications::MockNotificationsManager,
 };
 
+use super::payments_ready;
+
+#[test]
+fn test_payments_ready_returns_false_without_config() {
+    let payment_recipient = sample_group_payment_recipient();
+
+    assert!(!payments_ready(Some(&payment_recipient), None));
+}
+
+#[test]
+fn test_payments_ready_returns_false_without_recipient() {
+    let payments_cfg = sample_payments_cfg();
+
+    assert!(!payments_ready(None, Some(&payments_cfg)));
+}
+
+#[test]
+fn test_payments_ready_returns_true_for_matching_provider() {
+    let payment_recipient = sample_group_payment_recipient();
+    let payments_cfg = sample_payments_cfg();
+
+    assert!(payments_ready(
+        Some(&payment_recipient),
+        Some(&payments_cfg)
+    ));
+}
+
 #[tokio::test]
 async fn test_select_community_forbidden_when_user_has_no_groups_in_community() {
     // Setup identifiers and data structures

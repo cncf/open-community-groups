@@ -21,6 +21,69 @@ use crate::{
 };
 
 #[tokio::test]
+async fn test_list_page_forbids_group_without_payments_setup() {
+    // Setup a readable group with server payments but no payment recipient
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and missing group recipient expectations
+    let mut db = MockDB::new();
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(None));
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_list_group_refunds().never();
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .never()
+        .withf(move |_, _, _, permission| permission == GroupPermission::EventsWrite);
+
+    // Request the refunds partial with incomplete payment setup
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_cfg(sample_payments_cfg())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group/refunds")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the partial fails before loading refund data
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
 #[allow(clippy::too_many_lines)]
 async fn test_list_page_renders_filtered_refund_workflows() {
     // Setup identifiers and filtered refund output
@@ -83,6 +146,10 @@ async fn test_list_page_renders_filtered_refund_workflows() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -115,6 +182,7 @@ async fn test_list_page_renders_filtered_refund_workflows() {
 
     // Request the filtered refunds partial
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_cfg(sample_payments_cfg())
         .build()
         .await;
     let request = Request::builder()
@@ -321,6 +389,10 @@ async fn test_list_page_rejects_invalid_pagination_limit() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -333,6 +405,7 @@ async fn test_list_page_rejects_invalid_pagination_limit() {
 
     // Request a page size outside the validated dashboard range
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_cfg(sample_payments_cfg())
         .build()
         .await;
     let request = Request::builder()

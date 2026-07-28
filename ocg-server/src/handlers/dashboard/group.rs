@@ -10,12 +10,14 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    config::PaymentsConfig,
     db::DynDB,
     handlers::{
         auth::{SELECTED_GROUP_ID_KEY, SelectedGroupPolicy, sync_selected_community_and_group},
         error::HandlerError,
         extractors::CurrentUser,
     },
+    types::payments::GroupPaymentRecipient,
 };
 
 #[cfg(test)]
@@ -35,6 +37,18 @@ pub(crate) mod sponsors;
 pub(crate) mod submissions;
 pub(crate) mod team;
 pub(crate) mod waitlist;
+
+/// Checks whether group payments match the configured server provider.
+pub(crate) fn payments_ready(
+    payment_recipient: Option<&GroupPaymentRecipient>,
+    payments_cfg: Option<&PaymentsConfig>,
+) -> bool {
+    matches!(
+        (payment_recipient, payments_cfg),
+        (Some(payment_recipient), Some(payments_cfg))
+            if payment_recipient.provider == payments_cfg.provider()
+    )
+}
 
 /// Sets the selected community and auto-selects the first group in session.
 #[instrument(skip_all, err)]

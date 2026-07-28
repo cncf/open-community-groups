@@ -40,10 +40,11 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, NavigationLinks},
-        payments::GroupPaymentRecipient,
         permissions::GroupPermission,
     },
 };
+
+use super::payments_ready;
 
 mod recurrence;
 
@@ -792,16 +793,4 @@ fn event_payload_uses_ticketing(event_payload: &serde_json::Value) -> bool {
 /// Parses dashboard event action query parameters.
 fn parse_event_action_query(raw_query: Option<&str>) -> Result<EventActionQuery, HandlerError> {
     Ok(serde_qs_config().deserialize_str(raw_query.unwrap_or_default())?)
-}
-
-/// Checks whether group payments are ready for ticketed events.
-fn payments_ready(
-    payment_recipient: Option<&GroupPaymentRecipient>,
-    payments_cfg: Option<&PaymentsConfig>,
-) -> bool {
-    matches!(
-        (payment_recipient, payments_cfg),
-        (Some(payment_recipient), Some(payments_cfg))
-            if payment_recipient.provider == payments_cfg.provider()
-    )
 }

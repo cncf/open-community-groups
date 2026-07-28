@@ -13,6 +13,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    config::PaymentsConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -27,6 +28,8 @@ use crate::{
     },
     validation::{MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, trimmed_non_empty},
 };
+
+use super::payments_ready;
 
 #[cfg(test)]
 mod tests;
@@ -44,8 +47,19 @@ pub(crate) async fn list_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Require payments configured for the selected group and server
+    let payment_recipient = if payments_cfg.is_some() {
+        db.get_group_payment_recipient(community_id, group_id).await?
+    } else {
+        None
+    };
+    if !payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()) {
+        return Err(HandlerError::Forbidden);
+    }
+
     // Prepare list page content
     let (filters, template) = prepare_list_page(
         &db,

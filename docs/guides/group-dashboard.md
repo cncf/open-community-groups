@@ -42,7 +42,8 @@ Main areas:
   [Badges](/dashboard/group?tab=badges ':ignore'),
   [Artwork](/dashboard/group?tab=artwork ':ignore'), and
   [Awards](/dashboard/group?tab=awards ':ignore') tabs.
-- [Refunds](/dashboard/group?tab=refunds ':ignore'): refund review, processing, and recovery work.
+- [Refunds](/dashboard/group?tab=refunds ':ignore'): refund review, processing, and recovery work
+  for groups with payments set up.
 - [Members](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
 - [Sponsors](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.
 - [Logs](/dashboard/group?tab=logs ':ignore'): read-only audit trail for group dashboard actions.
@@ -307,6 +308,9 @@ For badge setup, eligibility rules, award flows, and revocation, follow the
 provider processing into one operational list. It includes checkout-only refunds
 that may not have a corresponding attendee row, as well as completed and rejected
 history.
+
+The tab is available when the server has a payments provider configured and the
+group has a payment recipient for that provider.
 
 Use the views to focus the list:
 
