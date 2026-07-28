@@ -323,6 +323,48 @@ test.describe("group dashboard events view", () => {
     ).toBeVisible();
   });
 
+  test("organizer sees attendee count and capacity for capped events", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the events list at the width where the attendees column is visible.
+    await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    // Find the seeded event with two occupied seats and a capacity of 100.
+    const upcomingEventsTable = organizerGroupPage.getByRole("table", {
+      name: "Upcoming events list",
+    });
+    const cappedEventRow = upcomingEventsTable.getByRole("row", {
+      name: new RegExp(TEST_EVENT_NAMES.alpha[0], "u"),
+    });
+
+    // Verify the attendee count is displayed alongside the event capacity.
+    await expect(
+      cappedEventRow.getByRole("cell", { name: "2 / 100", exact: true }),
+    ).toBeVisible();
+  });
+
+  test("organizer sees attendee count without capacity for uncapped events", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the events list at the width where the attendees column is visible.
+    await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    // Find the seeded event without a capacity limit.
+    const upcomingEventsTable = organizerGroupPage.getByRole("table", {
+      name: "Upcoming events list",
+    });
+    const uncappedEventRow = upcomingEventsTable.getByRole("row", {
+      name: new RegExp(TEST_EVENT_NAMES.alpha[1], "u"),
+    });
+
+    // Verify the attendee count is displayed without a capacity suffix.
+    await expect(
+      uncappedEventRow.getByRole("cell", { name: "0", exact: true }),
+    ).toBeVisible();
+  });
+
   test("organizer sees the expected add and edit event form tabs", async ({
     organizerGroupPage,
   }) => {
