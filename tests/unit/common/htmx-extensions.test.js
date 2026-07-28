@@ -231,8 +231,8 @@ describe("htmx extensions", () => {
   it("excludes named parameters matching a custom hx-exclude selector", () => {
     document.body.innerHTML = `
       <form id="details-form">
-        <input type="checkbox" name="toggle_registration_required" checked>
-        <input type="hidden" name="registration_required" value="true">
+        <input type="checkbox" name="toggle_test_event" checked>
+        <input type="hidden" name="test_event" value="true">
         <input type="text" name="name" value="Spring meetup">
       </form>
       <button
@@ -244,8 +244,8 @@ describe("htmx extensions", () => {
       </button>
     `;
     const parameters = {
-      toggle_registration_required: "required",
-      registration_required: "true",
+      toggle_test_event: "enabled",
+      test_event: "true",
       name: "Spring meetup",
     };
 
@@ -257,7 +257,7 @@ describe("htmx extensions", () => {
     });
 
     expect(parameters).to.deep.equal({
-      registration_required: "true",
+      test_event: "true",
       name: "Spring meetup",
     });
   });

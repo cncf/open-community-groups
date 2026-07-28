@@ -89,7 +89,6 @@ returns json as $$
             'photos_urls', e.photos_urls,
             'published_at', floor(extract(epoch from e.published_at)),
             'registration_ends_at', floor(extract(epoch from e.registration_ends_at)),
-            'registration_required', e.registration_required,
             'registration_starts_at', floor(extract(epoch from e.registration_starts_at)),
             'starts_at', floor(extract(epoch from e.starts_at)),
             'tags', e.tags,

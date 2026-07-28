@@ -399,8 +399,6 @@ pub struct EventFull {
     /// Registration end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub registration_ends_at: Option<DateTime<Utc>>,
-    /// Whether registration is required.
-    pub registration_required: Option<bool>,
     /// Registration start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub registration_starts_at: Option<DateTime<Utc>>,

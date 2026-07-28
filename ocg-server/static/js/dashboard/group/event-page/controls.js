@@ -295,11 +295,6 @@ const initializeCommonEventPageToggles = ({
   bindDisabledCfsToggle = false,
 }) => {
   bindBooleanToggle({
-    toggle: getElementById(pageRoot, "toggle_registration_required"),
-    hiddenInput: getElementById(pageRoot, "registration_required"),
-  });
-
-  bindBooleanToggle({
     toggle: getElementById(pageRoot, "toggle_test_event"),
     hiddenInput: getElementById(pageRoot, "test_event"),
   });

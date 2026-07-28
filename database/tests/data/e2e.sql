@@ -206,7 +206,7 @@ insert into event (
     event_kind_id, group_id, published, starts_at, ends_at,
     venue_name, venue_address, venue_city, venue_state, venue_country_name,
     venue_country_code, venue_zip_code, location, banner_url, logo_url, capacity,
-    registration_required, tags, meetup_url, meeting_join_url, photos_urls
+    tags, meetup_url, meeting_join_url, photos_urls
 ) values (
     '55555555-5555-5555-5555-555555555501',
     'Upcoming In-Person Event',
@@ -231,7 +231,6 @@ insert into event (
     '/static/images/e2e/event-banner.svg',
     '/static/images/e2e/event-logo.svg',
     100,
-    true,
     '{"meetup", "tech", "networking"}',
     'https://www.meetup.com/test-group/events/123456789/',
     'https://zoom.us/j/1234567890',
@@ -550,7 +549,7 @@ insert into event (
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
-    capacity, registration_required, waitlist_enabled
+    capacity, waitlist_enabled
 ) values (
     '55555555-5555-5555-5555-555555555521',
     'Full Event With Waitlist',
@@ -564,7 +563,6 @@ insert into event (
     now() + interval '60 days',
     now() + interval '60 days 2 hours',
     1,
-    true,
     true
 ), (
     '55555555-5555-5555-5555-555555555526',
@@ -579,7 +577,6 @@ insert into event (
     now() + interval '59 days',
     now() + interval '59 days 2 hours',
     1,
-    true,
     true
 );
 
@@ -595,7 +592,6 @@ insert into event (
     name,
     published,
     registration_questions,
-    registration_required,
     slug,
     starts_at,
     timezone
@@ -611,7 +607,6 @@ values (
     'Event Cancellation Lifecycle',
     true,
     '[{"id":"57555555-5555-5555-5555-555555555527","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb,
-    true,
     'alpha-event-cancellation-lifecycle',
     now() + interval '62 days',
     'UTC'
@@ -626,7 +621,6 @@ values (
     'Canceled Invitation History',
     true,
     '[]'::jsonb,
-    true,
     'alpha-canceled-invitation-history',
     now() + interval '63 days',
     'UTC'
@@ -656,7 +650,7 @@ insert into event (
 insert into event (
     event_id, name, slug, description, description_short, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
-    capacity, registration_required, registration_questions
+    capacity, registration_questions
 ) values (
     '55555555-5555-5555-5555-555555555525',
     'Registration Answers Lab',
@@ -671,7 +665,6 @@ insert into event (
     now() + interval '80 days',
     now() + interval '80 days 2 hours',
     60,
-    true,
     '[
         {
             "id": "57555555-5555-5555-5555-555555555501",
@@ -717,7 +710,7 @@ insert into event (
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, payment_currency_code, published, starts_at, ends_at,
-    registration_required, waitlist_enabled
+    waitlist_enabled
 ) values (
     '55555555-5555-5555-5555-555555555522',
     'Ticketed Draft Event',
@@ -731,7 +724,6 @@ insert into event (
     true,
     now() + interval '90 days',
     now() + interval '90 days 3 hours',
-    true,
     false
 ), (
     '55555555-5555-5555-5555-555555555523',
@@ -746,7 +738,6 @@ insert into event (
     true,
     now() + interval '95 days',
     now() + interval '95 days 2 hours',
-    true,
     false
 );
 
@@ -754,7 +745,7 @@ insert into event (
 insert into event (
     event_id, name, slug, description, description_short, timezone,
     event_category_id, event_kind_id, group_id, payment_currency_code, published,
-    test_event, starts_at, ends_at, capacity, registration_required,
+    test_event, starts_at, ends_at, capacity,
     waitlist_enabled, attendee_approval_required, registration_starts_at,
     registration_ends_at, registration_questions
 ) values (
@@ -773,7 +764,6 @@ insert into event (
     now() + interval '100 days',
     now() + interval '100 days 2 hours',
     null,
-    true,
     false,
     false,
     now() - interval '10 days',
@@ -795,7 +785,6 @@ insert into event (
     now() + interval '101 days',
     now() + interval '101 days 2 hours',
     null,
-    true,
     false,
     false,
     now() + interval '1 day',
@@ -817,7 +806,6 @@ insert into event (
     now() + interval '102 days',
     now() + interval '102 days 2 hours',
     null,
-    true,
     false,
     false,
     now() - interval '1 day',
@@ -839,7 +827,6 @@ insert into event (
     now() + interval '103 days',
     now() + interval '103 days 2 hours',
     null,
-    true,
     false,
     false,
     null,
@@ -861,7 +848,6 @@ insert into event (
     now() + interval '104 days',
     now() + interval '104 days 2 hours',
     null,
-    true,
     false,
     true,
     null,
@@ -884,7 +870,6 @@ insert into event (
     now() + interval '105 days 2 hours',
     1,
     true,
-    true,
     false,
     null,
     now() - interval '1 day',
@@ -905,7 +890,6 @@ insert into event (
     now() + interval '106 days',
     now() + interval '106 days 2 hours',
     null,
-    true,
     false,
     false,
     null,
@@ -927,7 +911,6 @@ insert into event (
     now() - interval '1 day',
     now() + interval '30 days',
     null,
-    true,
     false,
     false,
     now() - interval '10 days',
@@ -949,7 +932,6 @@ insert into event (
     now() + interval '107 days',
     now() + interval '107 days 2 hours',
     null,
-    true,
     false,
     false,
     null,
@@ -971,7 +953,6 @@ insert into event (
     now() + interval '108 days',
     now() + interval '108 days 2 hours',
     null,
-    true,
     false,
     false,
     null,
@@ -993,7 +974,6 @@ insert into event (
     now() + interval '109 days',
     now() + interval '109 days 2 hours',
     null,
-    true,
     false,
     false,
     null,

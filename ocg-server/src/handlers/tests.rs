@@ -641,7 +641,6 @@ pub(crate) fn sample_event_form() -> GroupEventForm {
         banner_url: Some("https://example.test/banner.png".to_string()),
         capacity: Some(100),
         description_short: Some("Short".to_string()),
-        registration_required: Some(true),
         waitlist_enabled: Some(false),
         ..Default::default()
     }
@@ -677,7 +676,6 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
         ends_at: Some(starts_at + chrono::Duration::hours(1)),
         latitude: Some(37.0),
         longitude: Some(-122.0),
-        registration_required: Some(true),
         starts_at: Some(starts_at),
         venue_address: Some("123 Main St".to_string()),
         venue_city: Some("San Francisco".to_string()),
