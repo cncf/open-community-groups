@@ -22,7 +22,7 @@ use crate::{
     auth::User as AuthUser,
     config::{
         BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig,
-        PaymentsConfig,
+        PaymentsConfig, PaymentsStripeConfig,
     },
     db::{
         BBox, DynDB,
@@ -91,7 +91,10 @@ use crate::{
             GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary,
             GroupSponsor, GroupSummary,
         },
-        payments::{EventPurchaseStatus, EventPurchaseSummary},
+        payments::{
+            EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentMode,
+            PaymentProvider,
+        },
         permissions::{CommunityPermission, GroupPermission},
         site::{SiteSettings, Theme},
         user::{User as TemplateUser, UserSummary},
@@ -920,6 +923,14 @@ pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
     }
 }
 
+/// Sample Stripe payment recipient used in group dashboard tests.
+pub(crate) fn sample_group_payment_recipient() -> GroupPaymentRecipient {
+    GroupPaymentRecipient {
+        provider: PaymentProvider::Stripe,
+        recipient_id: "acct_test".to_string(),
+    }
+}
+
 /// Sample group region definition reused across tests.
 pub(crate) fn sample_group_region() -> GroupRegion {
     GroupRegion {
@@ -1068,6 +1079,16 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
 
         reviewed_at: None,
     }
+}
+
+/// Sample Stripe payments configuration used in handler tests.
+pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
+    PaymentsConfig::Stripe(PaymentsStripeConfig {
+        mode: PaymentMode::Test,
+        publishable_key: "pk_test".to_string(),
+        secret_key: "sk_test".to_string(),
+        webhook_secret: "whsec_test".to_string(),
+    })
 }
 
 /// Sample pending co-speaker invitation used in user dashboard tests.

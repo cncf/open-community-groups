@@ -31,7 +31,7 @@ use crate::{
     types::permissions::GroupPermission,
 };
 
-use super::{badges, events, logs, members, refunds, sponsors, team};
+use super::{badges, events, logs, members, payments_ready, refunds, sponsors, team};
 
 #[cfg(test)]
 mod tests;
@@ -59,8 +59,8 @@ pub(crate) async fn page(
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
-    // Get site settings and user groups information
-    let (can_manage_badges, groups_by_community, site_settings) = tokio::try_join!(
+    // Load dashboard context
+    let (can_manage_badges, groups_by_community, payment_recipient, site_settings) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -68,11 +68,16 @@ pub(crate) async fn page(
             GroupPermission::BadgesWrite
         ),
         db.list_user_groups(&user.user_id),
+        db.get_group_payment_recipient(community_id, group_id),
         db.get_site_settings()
     )?;
+    let payments_ready = payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref());
 
-    // Protect every badge-management dashboard tab consistently
+    // Protect restricted dashboard tabs before preparing their content
     if !can_manage_badges && matches!(&tab, Tab::Artwork | Tab::Awards | Tab::Badges) {
+        return Err(HandlerError::Forbidden);
+    }
+    if !payments_ready && matches!(&tab, Tab::Refunds) {
         return Err(HandlerError::Forbidden);
     }
 
@@ -207,6 +212,7 @@ pub(crate) async fn page(
         messages: messages.into_iter().collect(),
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),
+        payments_ready,
         selected_community_id: community_id,
         selected_group_id: group_id,
         site_settings,

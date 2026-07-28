@@ -35,6 +35,8 @@ pub(crate) struct Page {
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// Whether the selected group can use the configured payments provider.
+    pub payments_ready: bool,
     /// Currently selected community ID.
     pub selected_community_id: Uuid,
     /// Currently selected group ID.
