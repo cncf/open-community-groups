@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="512"
+     height="512"
+     viewBox="0 0 660 660"
+     role="img"
+     aria-label="Open Community Groups">
+  <g fill="none" stroke="#000" stroke-linecap="square">
+    <g stroke-width="16">
+      <path d="M330 260V120"/>
+      <path d="M379.5 280.5 477 183"/>
+      <path d="M400 330H523"/>
+      <path d="m379.5 379.5 95.5 95.5"/>
+      <path d="M330 400V539"/>
+      <path d="m280.5 379.5-95.5 95.5"/>
+      <path d="M260 330H137"/>
+      <path d="M280.5 280.5 185 185"/>
+      <path d="m356.8 265.3 37.5-90.5"/>
+      <path d="m394.7 303.2 90.5-37.5"/>
+      <path d="m394.7 356.8 90.5 37.5"/>
+      <path d="m356.8 394.7 37.5 90.5"/>
+      <path d="m303.2 394.7-37.5 90.5"/>
+      <path d="m265.3 356.8-90.5 37.5"/>
+      <path d="m265.3 303.2-90.5-37.5"/>
+      <path d="m303.2 265.3-37.5-90.5"/>
+    </g>
+
+    <circle cx="330" cy="330" r="57" stroke-width="28"/>
+
+    <g stroke-width="22">
+      <circle cx="330" cy="76" r="34"/>
+      <circle cx="507" cy="153" r="34"/>
+      <circle cx="568" cy="330" r="34"/>
+      <circle cx="507" cy="507" r="34"/>
+      <circle cx="330" cy="584" r="34"/>
+      <circle cx="153" cy="507" r="34"/>
+      <circle cx="92" cy="330" r="34"/>
+      <circle cx="153" cy="153" r="34"/>
+    </g>
+
+    <g fill="#000" stroke="none">
+      <circle cx="407" cy="144" r="28"/>
+      <circle cx="516" cy="253" r="28"/>
+      <circle cx="516" cy="407" r="28"/>
+      <circle cx="407" cy="516" r="28"/>
+      <circle cx="253" cy="516" r="28"/>
+      <circle cx="144" cy="407" r="28"/>
+      <circle cx="144" cy="253" r="28"/>
+      <circle cx="253" cy="144" r="28"/>
+    </g>
+
+    <circle cx="330" cy="330" r="20" fill="#000" stroke="none"/>
+  </g>
+</svg>

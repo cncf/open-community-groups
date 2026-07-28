@@ -42,6 +42,12 @@
     {% if let Some(favicon_url) = &site_settings.favicon_url -%}
       <link rel="icon" href="{{ favicon_url }}" sizes="any">
 
+    {% else -%}
+      <link rel="icon"
+            href="/static/images/favicon.svg"
+            type="image/svg+xml"
+            sizes="any">
+
     {% endif -%}
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
