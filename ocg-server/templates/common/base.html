@@ -24,18 +24,18 @@
     {#- OG tags #}
     {% block open_graph_meta -%}
       {{ meta::open_graph(title = "Open Community Groups" ,
-            description = &site_settings.title,
-            url = "",
-            image_url = &site_settings.og_image_url,
-            image_alt = "Open Community Groups") -}}
+        description = &site_settings.title,
+        url = "",
+        image_url = &site_settings.og_image_url,
+        image_alt = "Open Community Groups") -}}
     {% endblock open_graph_meta -%}
     {#- End OG tags  #}
 
     {#- Twitter tags #}
     {% block twitter_meta -%}
       {{ meta::twitter(title = "Open Community Groups" ,
-            description = &site_settings.title,
-            image_url = &site_settings.og_image_url) -}}
+        description = &site_settings.title,
+        image_url = &site_settings.og_image_url) -}}
     {% endblock twitter_meta -%}
     {#- End Twitter tags #}
 

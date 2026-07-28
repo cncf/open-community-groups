@@ -52,123 +52,123 @@
             {# Member -#}
             {% let member_image_attr -%}
             {% if let Some(photo_url) = &member.photo_url -%}image-url="{{ photo_url }}"{% endif -%}
-          {%- endlet %}
-          {% let member_placeholder -%}{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}{%- endlet %}
-        {% let member_display_name -%}{{ member.name.as_deref() |assigned_or(member.username) }}{%- endlet %}
-      {{ team::member_identity_cell(image_attr = member_image_attr,
-            placeholder = member_placeholder,
-            display_name = member_display_name,
-            username = member.username,
-            show_username = member.name.is_some() ,
+        {%- endlet %}
+        {% let member_placeholder -%}{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}{%- endlet %}
+      {% let member_display_name -%}{{ member.name.as_deref() |assigned_or(member.username) }}{%- endlet %}
+    {{ team::member_identity_cell(image_attr = member_image_attr,
+      placeholder = member_placeholder,
+      display_name = member_display_name,
+      username = member.username,
+      show_username = member.name.is_some() ,
       accepted = member.accepted) -}}
-      {# End member -#}
+    {# End member -#}
 
-      {# Position -#}
-      <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0">
-        <div class="flex flex-col space-y-1">
-          <div class="font-medium text-stone-900 truncate">{{ member.company|assigned_or("-") }}</div>
-          {% if let Some(title) = &member.title -%}
-            <div class="text-xs text-stone-600 truncate">{{ title }}</div>
-          {% endif -%}
-        </div>
-      </td>
-      {# End Position -#}
-
-      {# Role -#}
-      <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-        {% if let Some(role) = &member.role -%}
-          {% if can_manage_team -%}
-            <form hx-put="/dashboard/group/team/{{ member.user_id }}/role"
-                  hx-target="#dashboard-content"
-                  hx-indicator="#dashboard-spinner"
-                  hx-disabled-elt="find select">
-              {% if member.accepted && role.to_string() == "admin" && total_admins_accepted == 1 -%}
-                <select name="role"
-                        class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem] opacity-50 cursor-not-allowed"
-                        aria-label="Role"
-                        data-team-role-select
-                        disabled
-                        title="At least one accepted admin is required.">
-                  {% for role_option in roles -%}
-                    <option value="{{ role_option.group_role_id }}"
-                            {% if role.to_string() == role_option.group_role_id -%}
-                              selected
-                            {% endif -%}>{{ role_option.display_name }}</option>
-                  {% endfor -%}
-                </select>
-              {% else -%}
-                <select name="role"
-                        class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem]"
-                        aria-label="Role"
-                        data-team-role-select>
-                  {% for role_option in roles -%}
-                    <option value="{{ role_option.group_role_id }}"
-                            {% if role.to_string() == role_option.group_role_id -%}
-                              selected
-                            {% endif -%}>{{ role_option.display_name }}</option>
-                  {% endfor -%}
-                </select>
-              {% endif -%}
-            </form>
-          {% else -%}
-            {{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5") ) -}}
-          {% endif -%}
+    {# Position -#}
+    <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0">
+      <div class="flex flex-col space-y-1">
+        <div class="font-medium text-stone-900 truncate">{{ member.company|assigned_or("-") }}</div>
+        {% if let Some(title) = &member.title -%}
+          <div class="text-xs text-stone-600 truncate">{{ title }}</div>
         {% endif -%}
-      </td>
-      {# End role -#}
+      </div>
+    </td>
+    {# End Position -#}
 
-      {# Actions -#}
-      <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
-        <details data-actions-menu class="group relative inline-block text-left">
-          <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
-                   aria-label="Open team member actions for {{ member.name.as_deref() |assigned_or(member.username) }}"
-                   title="Open team member actions">
-            <div class="svg-icon size-4 icon-vertical-dots"></div>
-          </summary>
-          <div class="dropdown absolute z-10 end-0 top-8 w-[210px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-            <ul class="py-2 text-sm text-stone-700" role="menu">
-              {% if can_award_badges && member.accepted -%}
-                <li>
-                  <button type="button"
-                          data-badge-award-open
-                          data-user-ids="{{ member.user_id }}"
-                          role="menuitem"
-                          class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                    <div class="svg-icon size-4 icon-certificate shrink-0 bg-stone-500"></div>
-                    <span>Award badge</span>
-                  </button>
-                </li>
-              {% endif -%}
+    {# Role -#}
+    <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+      {% if let Some(role) = &member.role -%}
+        {% if can_manage_team -%}
+          <form hx-put="/dashboard/group/team/{{ member.user_id }}/role"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="find select">
+            {% if member.accepted && role.to_string() == "admin" && total_admins_accepted == 1 -%}
+              <select name="role"
+                      class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem] opacity-50 cursor-not-allowed"
+                      aria-label="Role"
+                      data-team-role-select
+                      disabled
+                      title="At least one accepted admin is required.">
+                {% for role_option in roles -%}
+                  <option value="{{ role_option.group_role_id }}"
+                          {% if role.to_string() == role_option.group_role_id -%}
+                            selected
+                          {% endif -%}>{{ role_option.display_name }}</option>
+                {% endfor -%}
+              </select>
+            {% else -%}
+              <select name="role"
+                      class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem]"
+                      aria-label="Role"
+                      data-team-role-select>
+                {% for role_option in roles -%}
+                  <option value="{{ role_option.group_role_id }}"
+                          {% if role.to_string() == role_option.group_role_id -%}
+                            selected
+                          {% endif -%}>{{ role_option.display_name }}</option>
+                {% endfor -%}
+              </select>
+            {% endif -%}
+          </form>
+        {% else -%}
+          {{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5")) -}}
+        {% endif -%}
+      {% endif -%}
+    </td>
+    {# End role -#}
+
+    {# Actions -#}
+    <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+      <details data-actions-menu class="group relative inline-block text-left">
+        <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                 aria-label="Open team member actions for {{ member.name.as_deref() |assigned_or(member.username) }}"
+                 title="Open team member actions">
+          <div class="svg-icon size-4 icon-vertical-dots"></div>
+        </summary>
+        <div class="dropdown absolute z-10 end-0 top-8 w-[210px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+          <ul class="py-2 text-sm text-stone-700" role="menu">
+            {% if can_award_badges && member.accepted -%}
               <li>
-                <button id="remove-member-{{ member.user_id }}"
-                        hx-delete="/dashboard/group/team/{{ member.user_id }}/delete"
-                        hx-target="#dashboard-content"
-                        hx-indicator="#dashboard-spinner"
-                        hx-trigger="confirmed"
-                        data-confirm-action
-                        data-confirm-message="Are you sure you would like to delete this team member?"
-                        data-confirm-text="Yes"
-                        data-success-message="You have successfully deleted the team member."
-                        data-error-message="Something went wrong deleting this team member. Please try again later."
+                <button type="button"
+                        data-badge-award-open
+                        data-user-ids="{{ member.user_id }}"
                         role="menuitem"
-                        class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
-                        {% if !can_manage_team -%}
-                          disabled title="{{ self.manage_team_disabled_message() }}"
-                        {% else if member.accepted && member.is_admin() && total_admins_accepted == 1 -%}
-                          disabled title="At least one accepted admin is required."
-                        {% endif -%}>
-                  <div class="svg-icon size-4 icon-trash shrink-0 bg-stone-500"></div>
-                  <span>Delete</span>
+                        class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                  <div class="svg-icon size-4 icon-certificate shrink-0 bg-stone-500"></div>
+                  <span>Award badge</span>
                 </button>
               </li>
-            </ul>
-          </div>
-        </details>
-      </td>
-      {# End actions -#}
-    </tr>
-    {# End member row -#}
-  {% endfor -%}
+            {% endif -%}
+            <li>
+              <button id="remove-member-{{ member.user_id }}"
+                      hx-delete="/dashboard/group/team/{{ member.user_id }}/delete"
+                      hx-target="#dashboard-content"
+                      hx-indicator="#dashboard-spinner"
+                      hx-trigger="confirmed"
+                      data-confirm-action
+                      data-confirm-message="Are you sure you would like to delete this team member?"
+                      data-confirm-text="Yes"
+                      data-success-message="You have successfully deleted the team member."
+                      data-error-message="Something went wrong deleting this team member. Please try again later."
+                      role="menuitem"
+                      class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
+                      {% if !can_manage_team -%}
+                        disabled title="{{ self.manage_team_disabled_message() }}"
+                      {% else if member.accepted && member.is_admin() && total_admins_accepted == 1 -%}
+                        disabled title="At least one accepted admin is required."
+                      {% endif -%}>
+                <div class="svg-icon size-4 icon-trash shrink-0 bg-stone-500"></div>
+                <span>Delete</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </details>
+    </td>
+    {# End actions -#}
+  </tr>
+  {# End member row -#}
+{% endfor -%}
 {% endif -%}
 </tbody>
 </table>

@@ -42,8 +42,8 @@
 {% macro image_field(label, name, image_kind, target = "", legend = "", help_prefix_text = "", value_attr = "", field_class = "col-span-full", input_class = "", extra_attrs = "") -%}
   <div class="{{ field_class }}">
     <image-field {% if !input_class.is_empty() %}class="{{ input_class }}"{% endif %} label="{{ label }}" name="{{ name }}" {{ value_attr|safe }} image-kind="{{ image_kind }}" {% if !help_prefix_text.is_empty() %}help-prefix-text="{{ help_prefix_text }}"{% endif %} {% if !target.is_empty() %}target="{{ target }}"{% endif %} {% if !legend.is_empty() %}legend="{{ legend }}"{% endif %} {{ extra_attrs|safe }}>
-  </image-field>
-</div>
+    </image-field>
+  </div>
 {% endmacro image_field -%}
 {# End image upload field -#}
 
@@ -90,10 +90,10 @@
     {% if !label_text.is_empty() -%}
       <label for="tags" class="form-label">{{ label_text }}</label>
       <div class="mt-2">
-      {% endif -%}
-      <multiple-inputs field-name="tags" input-type="text" {{ items_attr|safe }} max-length="{{ crate::validation::MAX_LEN_TAG }}" label="Tag" legend="{{ legend }}">
-      </multiple-inputs>
-      {% if !label_text.is_empty() -%}
+    {% endif -%}
+    <multiple-inputs field-name="tags" input-type="text" {{ items_attr|safe }} max-length="{{ crate::validation::MAX_LEN_TAG }}" label="Tag" legend="{{ legend }}">
+    </multiple-inputs>
+    {% if !label_text.is_empty() -%}
       </div>
     {% endif -%}
   </div>

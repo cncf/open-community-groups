@@ -128,31 +128,31 @@
        target="_blank"
        rel="noopener noreferrer"
        class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full transition-all hover:border-primary-300 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-    {% else -%}
-      <div class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full transition-all hover:border-primary-300 hover:shadow-sm">
+  {% else -%}
+    <div class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full transition-all hover:border-primary-300 hover:shadow-sm">
+  {% endif -%}
+    <div class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden">
+      <img src="{{ logo_url }}"
+           alt="{{ name }} logo"
+           class="size-13 md:size-16 object-contain"
+           width="auto"
+           height="auto"
+           loading="lazy" />
+      <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+        <div class="svg-icon size-6 bg-amber-500 icon-handshake"></div>
+      </div>
+    </div>
+    <div class="leading-tight min-w-0">
+      <div class="text-sm md:text-base font-semibold text-stone-900 truncate">{{ name }}</div>
+      {% if with_level -%}
+        <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">{{ level }}</div>
       {% endif -%}
-      <div class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden">
-        <img src="{{ logo_url }}"
-             alt="{{ name }} logo"
-             class="size-13 md:size-16 object-contain"
-             width="auto"
-             height="auto"
-             loading="lazy" />
-        <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
-          <div class="svg-icon size-6 bg-amber-500 icon-handshake"></div>
-        </div>
-      </div>
-      <div class="leading-tight min-w-0">
-        <div class="text-sm md:text-base font-semibold text-stone-900 truncate">{{ name }}</div>
-        {% if with_level -%}
-          <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">{{ level }}</div>
-        {% endif -%}
-      </div>
-      {% if let Some(website_url) = &website_url -%}
+    </div>
+    {% if let Some(website_url) = &website_url -%}
       </a>
     {% else -%}
-    </div>
-  {% endif -%}
+      </div>
+    {% endif -%}
 {% endmacro sponsor_badge -%}
 {# End sponsor badge -#}
 
@@ -246,11 +246,11 @@
       {% if let Some(message) = &action_required_message -%}
         <span class="relative inline-flex">
           <button type="button"
-                  class="inline-flex items-center justify-center size-5 border rounded-full {{ submission_status_action_required_icon_button_styles(status_id = status_id.to_string() ) }}"
+                  class="inline-flex items-center justify-center size-5 border rounded-full {{ submission_status_action_required_icon_button_styles(status_id = status_id.to_string()) }}"
                   data-action="open-action-required-modal"
                   data-action-required-message="{{ message }}"
                   aria-label="View action required details">
-            <div class="svg-icon size-2.5 icon-info {{ submission_status_action_required_icon_styles(status_id = status_id.to_string() ) }}">
+            <div class="svg-icon size-2.5 icon-info {{ submission_status_action_required_icon_styles(status_id = status_id.to_string()) }}">
             </div>
           </button>
         </span>

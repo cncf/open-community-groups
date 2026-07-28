@@ -5,7 +5,7 @@
 {# Dashboard Group Event Submissions List -#}
 {# Header -#}
 {{ dashboard::page_title(title = "Submissions", docs_href = "/docs#/guides/event-operations?id=submissions",
-description = "Review and manage call for speakers submissions.") -}}
+  description = "Review and manage call for speakers submissions.") -}}
 {# End header -#}
 
 {# Refresh trigger -#}
@@ -144,7 +144,7 @@ description = "Review and manage call for speakers submissions.") -}}
               {# End proposal -#}
               {# Status -#}
               <td class="px-3 xl:px-5 py-4">
-                {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase")) -}}
               </td>
               {# End status -#}
               {# Ratings -#}
@@ -186,16 +186,8 @@ description = "Review and manage call for speakers submissions.") -}}
                         {% endif -%}
                         data-action="open-cfs-submission-modal"
                         data-submission='{{ submission|json }}'
-                        data-proposal-description-html='{% if let Some(description) = &submission.session_proposal.description %}
-                                                          {{ description|md_to_html|json }}
-                                                        {% else %}
-                                                          ""
-                                                        {% endif %}'
-                        title="{% if can_manage_events -%}
-                                 Review submission
-                               {% else -%}
-                                 Your role cannot manage events.
-                               {% endif -%}">
+                        data-proposal-description-html='{% if let Some(description) = &submission.session_proposal.description %} {{ description|md_to_html|json }} {% else %} "" {% endif %}'
+                        title="{% if can_manage_events -%} Review submission {% else -%} Your role cannot manage events. {% endif -%}">
                   <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
                 </button>
               </td>

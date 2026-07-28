@@ -19,16 +19,16 @@
 
 {% block open_graph_meta -%}
   {{ meta::open_graph(title = self.preview_title() ,
-  description = self.preview_description(),
-  url = self.canonical_url(),
-  image_url = self.open_graph_image_url(),
-  image_alt = &event.group.name) -}}
+    description = self.preview_description(),
+    url = self.canonical_url(),
+    image_url = self.open_graph_image_url(),
+    image_alt = &event.group.name) -}}
 {% endblock open_graph_meta -%}
 
 {% block twitter_meta -%}
   {{ meta::twitter(title = self.preview_title() ,
-  description = self.preview_description(),
-  image_url = self.open_graph_image_url()) -}}
+    description = self.preview_description(),
+    image_url = self.open_graph_image_url()) -}}
 {% endblock twitter_meta -%}
 
 {% block scripts -%}
@@ -62,15 +62,15 @@
       {# Status badge -#}
       {% if event.canceled -%}
         {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
-                capacity = event.capacity,
-                label = "Canceled",
-                always_render = true,
-                force_visible = true) -}}
+          capacity = event.capacity,
+          label = "Canceled",
+          always_render = true,
+          force_visible = true) -}}
       {% else -%}
         {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
-                capacity = event.capacity,
-                data_attrs = "data-availability-sold-out-ribbon",
-                always_render = true) -}}
+          capacity = event.capacity,
+          data_attrs = "data-availability-sold-out-ribbon",
+          always_render = true) -}}
       {% endif -%}
       {# End status badge -#}
 
@@ -177,7 +177,7 @@
                   </span>
                 </div>
                 <div class="flex flex-wrap items-center gap-1.5">
-                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -}}
                   {% if event.test_event -%}
                     {{ badges::test_event_badge() -}}
                   {% endif -%}
@@ -281,436 +281,435 @@
                     </div>
                     <div class="mt-2 text-base text-stone-600">{{ start_tz.format("%I:%M %p %Z") }}</div>
                   {% endmatch -%}
-                {% else -%}
-                  <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
-                {% endif -%}
-                <div data-registration-window-message-container
-                     {% if let Some(message) = &registration_window_message %}title="{{ message }}"{% endif %}
-                     class="{% if registration_window_message.is_none() -%}
-                              hidden
-                            {% endif -%}
-                            -mx-4 -mb-4 mt-auto flex min-w-0 items-center gap-2 border-t border-stone-200 bg-stone-50 px-4 py-2 text-xs/5 font-semibold text-stone-600">
-                  <div class="svg-icon hidden size-3.5 shrink-0 bg-stone-500 sm:block icon-calendar"></div>
-                  <span data-registration-window-message-display class="min-w-0 truncate">
-                    {% if let Some(message) = registration_window_message -%}
-                      {{ message }}
-                    {% endif -%}
-                  </span>
-                </div>
+{% else -%}
+  <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
+{% endif -%}
+<div data-registration-window-message-container
+     {% if let Some(message) = &registration_window_message %}title="{{ message }}"{% endif %}
+     class="{% if registration_window_message.is_none() -%}
+              hidden
+            {% endif -%}
+            -mx-4 -mb-4 mt-auto flex min-w-0 items-center gap-2 border-t border-stone-200 bg-stone-50 px-4 py-2 text-xs/5 font-semibold text-stone-600">
+  <div class="svg-icon hidden size-3.5 shrink-0 bg-stone-500 sm:block icon-calendar"></div>
+  <span data-registration-window-message-display class="min-w-0 truncate">
+    {% if let Some(message) = registration_window_message -%}
+      {{ message }}
+    {% endif -%}
+  </span>
+</div>
+</div>
+</div>
+</div>
+{# End event date -#}
+{# Location -#}
+<div class="border border-stone-200 rounded-lg p-4 bg-white h-full flex flex-col">
+  <div class="flex items-center justify-between mb-4 min-h-[25px]">
+    <div class="text-base/3 uppercase font-semibold text-stone-400">Location</div>
+  </div>
+  <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px]">
+    {% if event.kind != EventKind::Virtual %}
+      {% if event.latitude.is_some() && event.longitude.is_some() %}
+        {# Use event-specific location #}
+        {% let location_text = self.event.location(70) -%}
+        {% let location_text_small = self.event.location(35) -%}
+        {{ maps::map_with_modal(base_id = "event", lat = event.latitude.unwrap() , lng = event.longitude.unwrap(), overlay_text = location_text, small_overlay_text = location_text_small, modal_title = event.name|demoji) -}}
+      {% else -%}
+        {% let location_text = self.event.location(70) -%}
+        {% let location_text_small = self.event.location(35) -%}
+        {% if location_text.is_some() %}
+          <div class="relative h-full w-full">
+            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+            </div>
+            {% if let Some(text) = &location_text %}
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block">
+                {{ text }}
               </div>
+            {% endif %}
+            {% if let Some(text) = &location_text_small %}
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden">
+                {{ text }}
+              </div>
+            {% endif %}
+          </div>
+        {% else -%}
+          <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+            </div>
+            <div class="relative flex w-full items-center justify-center">
+              <div class="text-xl font-semibold text-stone-700 text-center">Location not provided</div>
             </div>
           </div>
-          {# End event date -#}
-          {# Location -#}
-          <div class="border border-stone-200 rounded-lg p-4 bg-white h-full flex flex-col">
-            <div class="flex items-center justify-between mb-4 min-h-[25px]">
-              <div class="text-base/3 uppercase font-semibold text-stone-400">Location</div>
-            </div>
-            <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px]">
-              {% if event.kind != EventKind::Virtual %}
-                {% if event.latitude.is_some() && event.longitude.is_some() %}
-                  {# Use event-specific location #}
-                  {% let location_text = self.event.location(70) -%}
-                  {% let location_text_small = self.event.location(35) -%}
-                  {{ maps::map_with_modal(base_id = "event", lat = event.latitude.unwrap() , lng = event.longitude.unwrap(), overlay_text = location_text, small_overlay_text = location_text_small, modal_title = event.name|demoji) -}}
-                {% else -%}
-                  {% let location_text = self.event.location(70) -%}
-                  {% let location_text_small = self.event.location(35) -%}
-                  {% if location_text.is_some() %}
-                    <div class="relative h-full w-full">
-                      <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                      </div>
-                      {% if let Some(text) = &location_text %}
-                        <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block">
-                          {{ text }}
-                        </div>
-                      {% endif %}
-                      {% if let Some(text) = &location_text_small %}
-                        <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden">
-                          {{ text }}
-                        </div>
-                      {% endif %}
-                    </div>
-                  {% else -%}
-                    <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-                      <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                      </div>
-                      <div class="relative flex w-full items-center justify-center">
-                        <div class="text-xl font-semibold text-stone-700 text-center">Location not provided</div>
-                      </div>
-                    </div>
-                  {% endif -%}
-                {% endif -%}
-              {% else -%}
-                <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-                  <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
-                       style="background-image: url('/static/images/virtual_event.png')"></div>
-                  <div class="relative flex w-full items-center justify-center">
-                    <div class="text-xl font-semibold text-stone-700 text-center">Virtual event</div>
-                  </div>
-                </div>
-              {% endif -%}
-            </div>
-          </div>
-
-          {# End location -#}
+        {% endif -%}
+      {% endif -%}
+    {% else -%}
+      <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+        <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+             style="background-image: url('/static/images/virtual_event.png')"></div>
+        <div class="relative flex w-full items-center justify-center">
+          <div class="text-xl font-semibold text-stone-700 text-center">Virtual event</div>
         </div>
       </div>
-      {# End event date and location -#}
+    {% endif -%}
+  </div>
+</div>
 
-      {# Call for Speakers -#}
-      {% if event.cfs_is_enabled() && !event.canceled -%}
-        <div class="pb-4">
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
-            Call for Speakers
-          </div>
-          {% if let Some(cfs_description) = &event.cfs_description -%}
-            <div class="text-stone-500 text-sm/6 markdown">{{ cfs_description|md_to_html|safe }}</div>
-          {% endif -%}
-          {% if let Some(cfs_starts_at) = &event.cfs_starts_at -%}
-            {% let cfs_start_tz = cfs_starts_at.with_timezone(event.timezone) -%}
-            {% if let Some(cfs_ends_at) = &event.cfs_ends_at -%}
-              {% let cfs_end_tz = cfs_ends_at.with_timezone(event.timezone) -%}
-              <div class="text-lg text-stone-700 pt-9">
-                <span class="uppercase text-stone-500 me-2">Submissions open:</span>
-                <span class="font-semibold">{{ cfs_start_tz.format("%b %-e, %l:%M %p") }} - {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %G") }}</span>
-              </div>
-            {% endif -%}
-          {% endif -%}
-          <div class="pt-6">
-            {% if event.cfs_is_open() -%}
-              <button id="open-cfs-modal"
-                      hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/cfs-modal"
-                      hx-target="#cfs-modal-root"
-                      hx-swap="innerHTML"
-                      class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center"
-                      hx-disabled-elt="#open-cfs-modal">Submit session proposal</button>
-            {% else -%}
-              <button type="button"
-                      class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center opacity-50 cursor-not-allowed"
-                      {% if event.cfs_is_upcoming() -%}
-                      title="Call for Speakers will open soon"
-                      {% elif event.cfs_is_closed() -%}
-                      title="Call for Speakers is now closed"
-                      {%- endif -%}
-                      disabled>Submit session proposal</button>
-            {% endif -%}
-          </div>
-          <div id="cfs-modal"
-               role="dialog"
-               aria-modal="true"
-               aria-labelledby="cfs-modal-title"
-               class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
-            <div id="overlay-cfs-modal"
-                 class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-            <div class="modal-panel p-4 max-w-2xl">
-              <div class="modal-card rounded-lg modal-overflow-visible">
-                <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-                  <h3 id="cfs-modal-title" class="text-xl font-semibold text-stone-900">Submit a proposal</h3>
-                  <button id="close-cfs-modal"
-                          type="button"
-                          class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-                    <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-                    <span class="sr-only">Close modal</span>
-                  </button>
-                </div>
-                <div id="cfs-modal-root"
-                     class="modal-body p-4 md:p-6 space-y-6 modal-overflow-visible"></div>
-              </div>
-            </div>
-          </div>
+{# End location -#}
+</div>
+</div>
+{# End event date and location -#}
+
+{# Call for Speakers -#}
+{% if event.cfs_is_enabled() && !event.canceled -%}
+  <div class="pb-4">
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
+      Call for Speakers
+    </div>
+    {% if let Some(cfs_description) = &event.cfs_description -%}
+      <div class="text-stone-500 text-sm/6 markdown">{{ cfs_description|md_to_html|safe }}</div>
+    {% endif -%}
+    {% if let Some(cfs_starts_at) = &event.cfs_starts_at -%}
+      {% let cfs_start_tz = cfs_starts_at.with_timezone(event.timezone) -%}
+      {% if let Some(cfs_ends_at) = &event.cfs_ends_at -%}
+        {% let cfs_end_tz = cfs_ends_at.with_timezone(event.timezone) -%}
+        <div class="text-lg text-stone-700 pt-9">
+          <span class="uppercase text-stone-500 me-2">Submissions open:</span>
+          <span class="font-semibold">{{ cfs_start_tz.format("%b %-e, %l:%M %p") }} - {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %G") }}</span>
         </div>
       {% endif -%}
-      {# End Call for Speakers -#}
-
-      {% if let Some(ad_banner_url) = &event.community.ad_banner_url -%}
-        {{ ui::floating_advertisement_banner(alt = event.community.display_name.clone() + " advertisement",
-        image_url = ad_banner_url,
-        link_url = event.community.ad_banner_link_url.as_deref()
-        ) -}}
+    {% endif -%}
+    <div class="pt-6">
+      {% if event.cfs_is_open() -%}
+        <button id="open-cfs-modal"
+                hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/cfs-modal"
+                hx-target="#cfs-modal-root"
+                hx-swap="innerHTML"
+                class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center"
+                hx-disabled-elt="#open-cfs-modal">Submit session proposal</button>
+      {% else -%}
+        <button type="button"
+                class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center opacity-50 cursor-not-allowed"
+                {% if event.cfs_is_upcoming() -%}
+                title="Call for Speakers will open soon"
+                {% elif event.cfs_is_closed() -%}
+                title="Call for Speakers is now closed"
+                {%- endif -%}
+                disabled>Submit session proposal</button>
       {% endif -%}
-
-      {# Event description -#}
-      <div>
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
-          About this event
-        </div>
-        <div class="text-stone-500 text-sm/6 markdown"
-             data-ocg-remove-broken-images>{{ event.description|md_to_html|safe }}</div>
-        {% let meeting_join_instructions = event.meeting_join_instructions -%}
-        {% let meeting_join_url = event.meeting_join_url -%}
-        {% let meeting_recording_url = event.meeting_recording_public_url -%}
-        {% let has_instructions = meeting_join_instructions.is_some() -%}
-        {% let has_join = meeting_join_url.is_some() -%}
-        {% let has_recording = meeting_recording_url.is_some() -%}
-        {% let show_join_instructions = has_instructions && !event.is_past() && !event.canceled -%}
-        {% let show_join_link = has_join && !event.is_past() && !event.canceled -%}
-        {% let show_recording_link = has_recording && event.is_past() -%}
-        {% if show_join_instructions || show_join_link || show_recording_link -%}
-          <div data-meeting-details
-               data-has-recording="{{ show_recording_link }}"
-               class="{% if !show_recording_link %}
-                        hidden
-                      {% endif %}
-                      mt-6 sm:mt-8">
-            <div class="border border-stone-200 bg-stone-50 rounded-lg px-4 pt-4 pb-6 sm:px-5 sm:pt-5 sm:pb-7">
-              <div class="flex items-center gap-2 mb-6">
-                <div class="svg-icon size-4 bg-stone-700 icon-meeting"></div>
-                <div class="text-sm font-semibold uppercase tracking-wide text-stone-700">Meeting details</div>
-              </div>
-              {% if show_join_instructions -%}
-                {% if let Some(meeting_join_instructions) = &meeting_join_instructions -%}
-                  <div class="text-sm text-stone-700 whitespace-pre-line mb-4">{{ meeting_join_instructions }}</div>
-                {% endif -%}
-              {% endif -%}
-              {% if show_join_link || show_recording_link -%}
-                <div class="text-sm text-stone-700 mb-6">
-                  {% if show_join_link -%}
-                    Use the link below to join the session.
-                  {% else -%}
-                    Use the link below to watch the recording.
-                  {% endif -%}
-                </div>
-              {% endif -%}
-              <div class="flex flex-wrap items-center gap-3 mt-1">
-                {% if show_join_link -%}
-                  {% if let Some(meeting_join_url) = &meeting_join_url -%}
-                    <div data-join-link-always>
-                      <a href="{{ meeting_join_url }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
-                        <div class="svg-icon size-3 icon-meeting"></div>
-                        <span>Meeting link</span>
-                      </a>
-                    </div>
-                  {% endif -%}
-                {% endif -%}
-                {% if show_recording_link -%}
-                  {% if let Some(meeting_recording_url) = &meeting_recording_url -%}
-                    <a href="{{ meeting_recording_url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
-                      <div class="svg-icon size-3 icon-recording"></div>
-                      <span>View recording</span>
-                    </a>
-                  {% endif -%}
-                {% endif -%}
-              </div>
-            </div>
+    </div>
+    <div id="cfs-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="cfs-modal-title"
+         class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+      <div id="overlay-cfs-modal"
+           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+      <div class="modal-panel p-4 max-w-2xl">
+        <div class="modal-card rounded-lg modal-overflow-visible">
+          <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+            <h3 id="cfs-modal-title" class="text-xl font-semibold text-stone-900">Submit a proposal</h3>
+            <button id="close-cfs-modal"
+                    type="button"
+                    class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+              <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+              <span class="sr-only">Close modal</span>
+            </button>
           </div>
-        {% endif -%}
+          <div id="cfs-modal-root"
+               class="modal-body p-4 md:p-6 space-y-6 modal-overflow-visible"></div>
+        </div>
       </div>
-      {# End event description -#}
-
-      {# Tags -#}
-      {% if let Some(tags) = &event.tags -%}
-        {% if !tags.is_empty() -%}
-          <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-              Tags
-            </div>
-            <div class="flex flex-wrap gap-2">
-              {% for tag in tags -%}
-                <span class="inline-block max-w-full truncate px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
-              {% endfor -%}
-            </div>
-          </div>
-        {% endif -%}
-      {% endif -%}
-      {# End tags -#}
-
-      {# Sessions section -#}
-      {% if !event.sessions.is_empty() -%}
-        {% let days_count = event.sessions.len() -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Agenda
-          </div>
-
-          {# Single-day agenda -#}
-          {% if days_count == 1 -%}
-            {% for day in event.sessions -%}
-              <ol class="relative border-s border-stone-200">
-                {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
-              </ol>
-            {% endfor -%}
-            {# End single-day agenda -#}
-          {% else -%}
-            {# Multi-day agenda -#}
-            <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-1">
-              {% for day in event.sessions -%}
-                <li>
-                  <button type="button"
-                          data-day-tab="day-{{ loop.index0 }}"
-                          data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
-                          class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
-                    <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
-                    <span class="inline md:hidden">{{ day.0.format("%e %b") }}</span>
-                  </button>
-                </li>
-              {% endfor -%}
-            </ul>
-
-            {% for day in event.sessions -%}
-              <div data-day-content="day-{{ loop.index0 }}"
-                   {% if !loop.first -%}
-                     hidden
-                   {% endif -%}
-                   class="pt-10">
-                <ol class="relative border-s border-stone-200">
-                  {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
-                </ol>
-              </div>
-            {% endfor -%}
-            {# End multi-day agenda -#}
-          {% endif -%}
-        </div>
-      {% endif -%}
-      {# End sessions section -#}
-
-      {# Hosts section -#}
-      {% if !event.hosts.is_empty() -%}
-        <div class="hidden has-[user-chip]:block">
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Hosts
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
-              {% for host in legacy_hosts -%}
-                {% if host.name.is_some() -%}
-                  <user-chip user='{{ host|json }}' display-modal></user-chip>
-                {% endif -%}
-              {% endfor -%}
-            {% endif -%}
-            {% for host in event.hosts -%}
-              {% if host.name.is_some() -%}
-                <user-chip user='{{ host|json }}' display-modal></user-chip>
-              {% endif -%}
-            {% endfor -%}
-          </div>
-        </div>
-      {% else -%}
-        {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
-          {% if !legacy_hosts.is_empty() -%}
-            <div class="hidden has-[user-chip]:block">
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-                Hosts
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {% for host in legacy_hosts -%}
-                  {% if host.name.is_some() -%}
-                    <user-chip user='{{ host|json }}' display-modal></user-chip>
-                  {% endif -%}
-                {% endfor -%}
-              </div>
-            </div>
-          {% endif -%}
-        {% endif -%}
-      {% endif -%}
-      {# End hosts section -#}
-
-      {# Event speakers section -#}
-      {% if !event.speakers.is_empty() -%}
-        <div class="featured-speakers-section hidden has-[user-chip]:block">
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Featured speakers
-          </div>
-          <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4">
-            {% for speaker in event.speakers -%}
-              {% if speaker.featured && speaker.user.name.is_some() -%}
-                <user-chip user='{{ speaker.user|json }}' featured display-modal></user-chip>
-              {% endif -%}
-            {% endfor -%}
-          </div>
-        </div>
-
-        <div class="hidden has-[user-chip]:block">
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Speakers
-          </div>
-          <div class="regular-speakers-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
-              {% for speaker in legacy_speakers -%}
-                {% if speaker.name.is_some() -%}
-                  <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
-                {% endif -%}
-              {% endfor -%}
-            {% endif -%}
-            {% for speaker in event.speakers -%}
-              {% if !speaker.featured && speaker.user.name.is_some() -%}
-                <user-chip user='{{ speaker.user|json }}' display-modal></user-chip>
-              {% endif -%}
-            {% endfor -%}
-          </div>
-        </div>
-      {% else -%}
-        {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
-          {% if !legacy_speakers.is_empty() -%}
-            <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-                Speakers
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {% for speaker in legacy_speakers -%}
-                  {% if speaker.name.is_some() -%}
-                    <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
-                  {% endif -%}
-                {% endfor -%}
-              </div>
-            </div>
-          {% endif -%}
-        {% endif -%}
-      {% endif -%}
-      {# End event speakers section -#}
-
-      {# Organizers section -#}
-      {% if !event.organizers.is_empty() -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Organizers
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for organizer in event.organizers -%}
-              {% if organizer.name.is_some() -%}
-                <user-chip user='{{ organizer|json }}' display-modal></user-chip>
-              {% endif -%}
-            {% endfor -%}
-          </div>
-        </div>
-      {% endif -%}
-      {# End organizers section -#}
-
-      {# Sponsors section -#}
-      {% if !event.sponsors.is_empty() -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Sponsors
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for sponsor in event.sponsors -%}
-              {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url, level = sponsor.level, with_level = true) -}}
-            {% endfor -%}
-          </div>
-        </div>
-      {% endif -%}
-      {# End sponsors section -#}
-
-      {# Gallery -#}
-      {% if let Some(photos_urls) = &event.photos_urls -%}
-        {% if !photos_urls.is_empty() -%}
-          <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-              Gallery
-            </div>
-            <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
-          </div>
-        {% endif -%}
-      {% endif -%}
-      {# End gallery -#}
     </div>
   </div>
+{% endif -%}
+{# End Call for Speakers -#}
+
+{% if let Some(ad_banner_url) = &event.community.ad_banner_url -%}
+  {{ ui::floating_advertisement_banner(alt = event.community.display_name.clone() + " advertisement",
+    image_url = ad_banner_url,
+    link_url = event.community.ad_banner_link_url.as_deref()) -}}
+{% endif -%}
+
+{# Event description -#}
+<div>
+  <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
+    About this event
+  </div>
+  <div class="text-stone-500 text-sm/6 markdown"
+       data-ocg-remove-broken-images>{{ event.description|md_to_html|safe }}</div>
+  {% let meeting_join_instructions = event.meeting_join_instructions -%}
+  {% let meeting_join_url = event.meeting_join_url -%}
+  {% let meeting_recording_url = event.meeting_recording_public_url -%}
+  {% let has_instructions = meeting_join_instructions.is_some() -%}
+  {% let has_join = meeting_join_url.is_some() -%}
+  {% let has_recording = meeting_recording_url.is_some() -%}
+  {% let show_join_instructions = has_instructions && !event.is_past() && !event.canceled -%}
+  {% let show_join_link = has_join && !event.is_past() && !event.canceled -%}
+  {% let show_recording_link = has_recording && event.is_past() -%}
+  {% if show_join_instructions || show_join_link || show_recording_link -%}
+    <div data-meeting-details
+         data-has-recording="{{ show_recording_link }}"
+         class="{% if !show_recording_link %}
+                  hidden
+                {% endif %}
+                mt-6 sm:mt-8">
+      <div class="border border-stone-200 bg-stone-50 rounded-lg px-4 pt-4 pb-6 sm:px-5 sm:pt-5 sm:pb-7">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="svg-icon size-4 bg-stone-700 icon-meeting"></div>
+          <div class="text-sm font-semibold uppercase tracking-wide text-stone-700">Meeting details</div>
+        </div>
+        {% if show_join_instructions -%}
+          {% if let Some(meeting_join_instructions) = &meeting_join_instructions -%}
+            <div class="text-sm text-stone-700 whitespace-pre-line mb-4">{{ meeting_join_instructions }}</div>
+          {% endif -%}
+        {% endif -%}
+        {% if show_join_link || show_recording_link -%}
+          <div class="text-sm text-stone-700 mb-6">
+            {% if show_join_link -%}
+              Use the link below to join the session.
+            {% else -%}
+              Use the link below to watch the recording.
+            {% endif -%}
+          </div>
+        {% endif -%}
+        <div class="flex flex-wrap items-center gap-3 mt-1">
+          {% if show_join_link -%}
+            {% if let Some(meeting_join_url) = &meeting_join_url -%}
+              <div data-join-link-always>
+                <a href="{{ meeting_join_url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
+                  <div class="svg-icon size-3 icon-meeting"></div>
+                  <span>Meeting link</span>
+                </a>
+              </div>
+            {% endif -%}
+          {% endif -%}
+          {% if show_recording_link -%}
+            {% if let Some(meeting_recording_url) = &meeting_recording_url -%}
+              <a href="{{ meeting_recording_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
+                <div class="svg-icon size-3 icon-recording"></div>
+                <span>View recording</span>
+              </a>
+            {% endif -%}
+          {% endif -%}
+        </div>
+      </div>
+    </div>
+  {% endif -%}
+</div>
+{# End event description -#}
+
+{# Tags -#}
+{% if let Some(tags) = &event.tags -%}
+  {% if !tags.is_empty() -%}
+    <div>
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+        Tags
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% for tag in tags -%}
+          <span class="inline-block max-w-full truncate px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
+        {% endfor -%}
+      </div>
+    </div>
+  {% endif -%}
+{% endif -%}
+{# End tags -#}
+
+{# Sessions section -#}
+{% if !event.sessions.is_empty() -%}
+  {% let days_count = event.sessions.len() -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Agenda
+    </div>
+
+    {# Single-day agenda -#}
+    {% if days_count == 1 -%}
+      {% for day in event.sessions -%}
+        <ol class="relative border-s border-stone-200">
+          {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
+        </ol>
+      {% endfor -%}
+      {# End single-day agenda -#}
+    {% else -%}
+      {# Multi-day agenda -#}
+      <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-1">
+        {% for day in event.sessions -%}
+          <li>
+            <button type="button"
+                    data-day-tab="day-{{ loop.index0 }}"
+                    data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
+                    class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+              <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
+              <span class="inline md:hidden">{{ day.0.format("%e %b") }}</span>
+            </button>
+          </li>
+        {% endfor -%}
+      </ul>
+
+      {% for day in event.sessions -%}
+        <div data-day-content="day-{{ loop.index0 }}"
+             {% if !loop.first -%}
+               hidden
+             {% endif -%}
+             class="pt-10">
+          <ol class="relative border-s border-stone-200">
+            {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
+          </ol>
+        </div>
+      {% endfor -%}
+      {# End multi-day agenda -#}
+    {% endif -%}
+  </div>
+{% endif -%}
+{# End sessions section -#}
+
+{# Hosts section -#}
+{% if !event.hosts.is_empty() -%}
+  <div class="hidden has-[user-chip]:block">
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Hosts
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
+        {% for host in legacy_hosts -%}
+          {% if host.name.is_some() -%}
+            <user-chip user='{{ host|json }}' display-modal></user-chip>
+          {% endif -%}
+        {% endfor -%}
+      {% endif -%}
+      {% for host in event.hosts -%}
+        {% if host.name.is_some() -%}
+          <user-chip user='{{ host|json }}' display-modal></user-chip>
+        {% endif -%}
+      {% endfor -%}
+    </div>
+  </div>
+{% else -%}
+  {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
+    {% if !legacy_hosts.is_empty() -%}
+      <div class="hidden has-[user-chip]:block">
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+          Hosts
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for host in legacy_hosts -%}
+            {% if host.name.is_some() -%}
+              <user-chip user='{{ host|json }}' display-modal></user-chip>
+            {% endif -%}
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+  {% endif -%}
+{% endif -%}
+{# End hosts section -#}
+
+{# Event speakers section -#}
+{% if !event.speakers.is_empty() -%}
+  <div class="featured-speakers-section hidden has-[user-chip]:block">
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Featured speakers
+    </div>
+    <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for speaker in event.speakers -%}
+        {% if speaker.featured && speaker.user.name.is_some() -%}
+          <user-chip user='{{ speaker.user|json }}' featured display-modal></user-chip>
+        {% endif -%}
+      {% endfor -%}
+    </div>
+  </div>
+
+  <div class="hidden has-[user-chip]:block">
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Speakers
+    </div>
+    <div class="regular-speakers-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
+        {% for speaker in legacy_speakers -%}
+          {% if speaker.name.is_some() -%}
+            <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
+          {% endif -%}
+        {% endfor -%}
+      {% endif -%}
+      {% for speaker in event.speakers -%}
+        {% if !speaker.featured && speaker.user.name.is_some() -%}
+          <user-chip user='{{ speaker.user|json }}' display-modal></user-chip>
+        {% endif -%}
+      {% endfor -%}
+    </div>
+  </div>
+{% else -%}
+  {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
+    {% if !legacy_speakers.is_empty() -%}
+      <div>
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+          Speakers
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for speaker in legacy_speakers -%}
+            {% if speaker.name.is_some() -%}
+              <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
+            {% endif -%}
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+  {% endif -%}
+{% endif -%}
+{# End event speakers section -#}
+
+{# Organizers section -#}
+{% if !event.organizers.is_empty() -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Organizers
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for organizer in event.organizers -%}
+        {% if organizer.name.is_some() -%}
+          <user-chip user='{{ organizer|json }}' display-modal></user-chip>
+        {% endif -%}
+      {% endfor -%}
+    </div>
+  </div>
+{% endif -%}
+{# End organizers section -#}
+
+{# Sponsors section -#}
+{% if !event.sponsors.is_empty() -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Sponsors
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for sponsor in event.sponsors -%}
+        {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url, level = sponsor.level, with_level = true) -}}
+      {% endfor -%}
+    </div>
+  </div>
+{% endif -%}
+{# End sponsors section -#}
+
+{# Gallery -#}
+{% if let Some(photos_urls) = &event.photos_urls -%}
+  {% if !photos_urls.is_empty() -%}
+    <div>
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+        Gallery
+      </div>
+      <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
+    </div>
+  {% endif -%}
+{% endif -%}
+{# End gallery -#}
+</div>
+</div>
 </div>
 
 {# User info modal -#}
@@ -743,7 +742,7 @@
     </div>
     <div class="flex flex-col sm:flex-row items-start gap-2">
       <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
-      {{ badges::event_badge(kind = session.kind, extra_styles = Some("mt-1 md:mt-1.5") ) -}}
+      {{ badges::event_badge(kind = session.kind, extra_styles = Some("mt-1 md:mt-1.5")) -}}
     </div>
     {% if let Some(location) = &session.location -%}
       <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>

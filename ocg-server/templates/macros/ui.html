@@ -56,9 +56,7 @@
   <div class="fixed bottom-0.5 left-1/2 z-50 hidden w-full max-w-[95%] -translate-x-1/2 translate-y-[150%] transition-transform duration-500 ease-in-out md:block lg:max-w-4xl"
        data-ad-banner="floating"
        data-ad-banner-image-url="{{ image_url }}"
-       data-ad-banner-link-url="{% if let Some(link_url) = &link_url %}
-                                  {{ link_url }}
-                                {% endif %}">
+       data-ad-banner-link-url="{% if let Some(link_url) = &link_url %} {{ link_url }} {% endif %}">
     <div class="rounded-lg border border-stone-300 bg-white p-4 shadow-[0_0_28px_rgb(0_0_0_/_0.22)]">
       {% if let Some(link_url) = &link_url -%}
         <a href="{{ link_url }}"

@@ -128,7 +128,7 @@
                     {# Mobile type and date -#}
                     <div class="block xl:hidden mt-1.5 space-y-1.5">
                       <div class="flex flex-wrap items-center gap-1.5">
-                        {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                        {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -}}
                         {% if event.test_event -%}
                           {{ badges::test_event_badge() -}}
                         {% endif -%}
@@ -175,7 +175,7 @@
               {# Event Type -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
                 <div class="flex flex-wrap items-center gap-1.5">
-                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -}}
                   {% if event.test_event -%}
                     {{ badges::test_event_badge() -}}
                   {% endif -%}
@@ -274,64 +274,64 @@
                         {# Publish/unpublish button -#}
                         {% if event.published && !event.canceled -%}
                           {{ event_scoped_action(event = event,
-                                                    can_manage_events = can_manage_events,
-                                                    action = "unpublish",
-                                                    htmx_method = "put",
-                                                    icon = "power",
-                                                    label = "Unpublish",
-                                                    disabled_title = "Your role cannot unpublish events.",
-                                                    series_message = "This event is part of a recurring series. What would you like to unpublish?",
-                                                    single_message = "Unpublish this event? Existing attendees and ticket purchases will be retained.",
-                                                    success_message = "You have successfully unpublished the event.",
-                                                    series_success_message = "You have successfully unpublished the events.",
-                                                    series_error_message = "An error occurred unpublishing these events. Please try again later.",
-                                                    error_message = "An error occurred unpublishing this event. Please try again later.") -}}
+                            can_manage_events = can_manage_events,
+                            action = "unpublish",
+                            htmx_method = "put",
+                            icon = "power",
+                            label = "Unpublish",
+                            disabled_title = "Your role cannot unpublish events.",
+                            series_message = "This event is part of a recurring series. What would you like to unpublish?",
+                            single_message = "Unpublish this event? Existing attendees and ticket purchases will be retained.",
+                            success_message = "You have successfully unpublished the event.",
+                            series_success_message = "You have successfully unpublished the events.",
+                            series_error_message = "An error occurred unpublishing these events. Please try again later.",
+                            error_message = "An error occurred unpublishing this event. Please try again later.") -}}
                         {% elif !event.canceled -%}
                           {{ event_scoped_action(event = event,
-                                                    can_manage_events = can_manage_events,
-                                                    action = "publish",
-                                                    htmx_method = "put",
-                                                    icon = "check",
-                                                    label = "Publish",
-                                                    disabled_title = "Your role cannot publish events.",
-                                                    series_message = "This event is part of a recurring series. What would you like to publish?",
-                                                    single_message = "Are you sure you wish to publish this event?",
-                                                    success_message = "You have successfully published the event.",
-                                                    series_success_message = "You have successfully published the events.",
-                                                    series_error_message = "An error occurred publishing these events. Please try again later.",
-                                                    error_message = "An error occurred publishing this event. Please try again later.") -}}
+                            can_manage_events = can_manage_events,
+                            action = "publish",
+                            htmx_method = "put",
+                            icon = "check",
+                            label = "Publish",
+                            disabled_title = "Your role cannot publish events.",
+                            series_message = "This event is part of a recurring series. What would you like to publish?",
+                            single_message = "Are you sure you wish to publish this event?",
+                            success_message = "You have successfully published the event.",
+                            series_success_message = "You have successfully published the events.",
+                            series_error_message = "An error occurred publishing these events. Please try again later.",
+                            error_message = "An error occurred publishing this event. Please try again later.") -}}
                         {% endif -%}
                         {# End publish/unpublish button -#}
                         {# Cancel button -#}
                         {% if !event.canceled -%}
                           {{ event_scoped_action(event = event,
-                                                    can_manage_events = can_manage_events,
-                                                    action = "cancel",
-                                                    htmx_method = "put",
-                                                    icon = "cancel",
-                                                    label = "Cancel",
-                                                    disabled_title = "Your role cannot cancel events.",
-                                                    series_message = "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?",
-                                                    single_message = "Cancel this event? This cannot be undone. All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
-                                                    success_message = "You have successfully canceled the event.",
-                                                    series_success_message = "You have successfully canceled the events.",
-                                                    series_error_message = "Something went wrong canceling these events. Please try again later.",
-                                                    error_message = "Something went wrong canceling this event. Please try again later.") -}}
+                            can_manage_events = can_manage_events,
+                            action = "cancel",
+                            htmx_method = "put",
+                            icon = "cancel",
+                            label = "Cancel",
+                            disabled_title = "Your role cannot cancel events.",
+                            series_message = "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?",
+                            single_message = "Cancel this event? This cannot be undone. All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
+                            success_message = "You have successfully canceled the event.",
+                            series_success_message = "You have successfully canceled the events.",
+                            series_error_message = "Something went wrong canceling these events. Please try again later.",
+                            error_message = "Something went wrong canceling this event. Please try again later.") -}}
                         {% endif -%}
                         {# End cancel button -#}
                         {{ event_scoped_action(event = event,
-                                                can_manage_events = can_manage_events,
-                                                action = "delete",
-                                                htmx_method = "delete",
-                                                icon = "trash",
-                                                label = "Delete",
-                                                disabled_title = "Your role cannot delete events.",
-                                                series_message = "This event is part of a recurring series. What would you like to delete?",
-                                                single_message = "Delete this event? This removes it from the dashboard and cannot be undone.",
-                                                success_message = "You have successfully deleted the event.",
-                                                series_success_message = "You have successfully deleted the events.",
-                                                series_error_message = "Something went wrong deleting these events. Please try again later.",
-                                                error_message = "Something went wrong deleting this event. Please try again later.") -}}
+                          can_manage_events = can_manage_events,
+                          action = "delete",
+                          htmx_method = "delete",
+                          icon = "trash",
+                          label = "Delete",
+                          disabled_title = "Your role cannot delete events.",
+                          series_message = "This event is part of a recurring series. What would you like to delete?",
+                          single_message = "Delete this event? This removes it from the dashboard and cannot be undone.",
+                          success_message = "You have successfully deleted the event.",
+                          series_success_message = "You have successfully deleted the events.",
+                          series_error_message = "Something went wrong deleting these events. Please try again later.",
+                          error_message = "Something went wrong deleting this event. Please try again later.") -}}
                       </ul>
                     </div>
                     {# End dropdown actions -#}
@@ -429,7 +429,7 @@
                     {# Mobile type and date -#}
                     <div class="block xl:hidden mt-1.5 space-y-1.5">
                       <div class="flex flex-wrap items-center gap-1.5">
-                        {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                        {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -}}
                         {% if event.test_event -%}
                           {{ badges::test_event_badge() -}}
                         {% endif -%}
@@ -476,7 +476,7 @@
               {# Event Type -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
                 <div class="flex flex-wrap items-center gap-1.5">
-                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -}}
                   {% if event.test_event -%}
                     {{ badges::test_event_badge() -}}
                   {% endif -%}
@@ -573,18 +573,18 @@
                       <ul class="py-2 text-sm text-stone-700"
                           aria-labelledby="dropdownDefaultButton">
                         {{ event_scoped_action(event = event,
-                                                can_manage_events = can_manage_events,
-                                                action = "delete",
-                                                htmx_method = "delete",
-                                                icon = "trash",
-                                                label = "Delete",
-                                                disabled_title = "Your role cannot delete events.",
-                                                series_message = "This event is part of a recurring series. What would you like to delete?",
-                                                single_message = "Delete this event? This removes it from the dashboard and cannot be undone.",
-                                                success_message = "You have successfully deleted the event.",
-                                                series_success_message = "You have successfully deleted the events.",
-                                                series_error_message = "Something went wrong deleting these events. Please try again later.",
-                                                error_message = "Something went wrong deleting this event. Please try again later.") -}}
+                          can_manage_events = can_manage_events,
+                          action = "delete",
+                          htmx_method = "delete",
+                          icon = "trash",
+                          label = "Delete",
+                          disabled_title = "Your role cannot delete events.",
+                          series_message = "This event is part of a recurring series. What would you like to delete?",
+                          single_message = "Delete this event? This removes it from the dashboard and cannot be undone.",
+                          success_message = "You have successfully deleted the event.",
+                          series_success_message = "You have successfully deleted the events.",
+                          series_error_message = "Something went wrong deleting these events. Please try again later.",
+                          error_message = "Something went wrong deleting this event. Please try again later.") -}}
                       </ul>
                     </div>
                     {# End dropdown actions -#}
@@ -624,7 +624,7 @@
   series_success_message,
   series_error_message,
   error_message
-  ) -%}
+) -%}
   <li>
     <button id="{{ action }}-event-{{ event.event_id }}"
             type="button"

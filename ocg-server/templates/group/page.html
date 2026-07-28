@@ -19,16 +19,16 @@
 
 {% block open_graph_meta -%}
   {{ meta::open_graph(title = self.preview_title() ,
-  description = self.preview_description(),
-  url = self.canonical_url(),
-  image_url = self.open_graph_image_url(),
-  image_alt = &group.name) -}}
+    description = self.preview_description(),
+    url = self.canonical_url(),
+    image_url = self.open_graph_image_url(),
+    image_alt = &group.name) -}}
 {% endblock open_graph_meta -%}
 
 {% block twitter_meta -%}
   {{ meta::twitter(title = self.preview_title() ,
-  description = self.preview_description(),
-  image_url = self.open_graph_image_url()) -}}
+    description = self.preview_description(),
+    image_url = self.open_graph_image_url()) -}}
 {% endblock twitter_meta -%}
 
 {% block scripts -%}
@@ -209,7 +209,7 @@
                           {{ start_tz.format("%B %e, %G") }}
                         </div>
                         <div class="mt-2 text-base text-stone-600">{{ start_tz.format("%I:%M %p %Z") }}</div>
-                      {% endmatch -%}
+                    {% endmatch -%}
                     </div>
                   {% else -%}
                     <div class="text-xl xl:text-3xl font-semibold text-stone-800 truncate">
@@ -217,256 +217,255 @@
                     </div>
                   {% endif -%}
 
-                {% else -%}
-                  <div class="flex flex-col gap-3 relative">
-                    <div class="h-4 w-3/5 rounded bg-stone-100"></div>
-                    <div class="h-2 w-1/2 rounded bg-stone-100"></div>
-                    <div class="flex justify-end mt-2">
-                      <div class="h-3 w-1/5 rounded bg-stone-100"></div>
-                    </div>
+{% else -%}
+  <div class="flex flex-col gap-3 relative">
+    <div class="h-4 w-3/5 rounded bg-stone-100"></div>
+    <div class="h-2 w-1/2 rounded bg-stone-100"></div>
+    <div class="flex justify-end mt-2">
+      <div class="h-3 w-1/5 rounded bg-stone-100"></div>
+    </div>
 
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <div class="text-xl font-semibold text-stone-700 text-center">No upcoming events scheduled</div>
-                    </div>
-                  </div>
-                {% endif -%}
-              </div>
-            </div>
-          </div>
-          {# End next event section -#}
-
-          {# Location and map section -#}
-          <div class="border border-stone-200 rounded-lg flex flex-col bg-white">
-            {# Location details -#}
-            <div class="flex flex-col p-4 h-full">
-              <div class="flex items-center justify-between mb-4 min-h-[25px]">
-                <div class="text-base/3 uppercase font-semibold text-stone-400">Location</div>
-              </div>
-              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px]">
-                {% if let Some(lat) = &group.latitude %}
-                  {% if let Some(lng) = &group.longitude %}
-                    {% let location_text = self.group.location(70) -%}
-                    {% let location_text_small = self.group.location(35) -%}
-                    {{ maps::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -}}
-                  {% else -%}
-                    <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-                      <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                      </div>
-                      <div class="relative flex w-full items-center justify-center">
-                        <div class="text-xl font-semibold text-stone-700">Location not provided</div>
-                      </div>
-                    </div>
-                  {% endif -%}
-                {% else -%}
-                  <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-                    <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                    </div>
-                    <div class="relative flex w-full items-center justify-center">
-                      <div class="text-xl font-semibold text-stone-700">Location not provided</div>
-                    </div>
-                  </div>
-                {% endif -%}
-              </div>
-            </div>
-            {# End location details -#}
-          </div>
-
-          {# End location and map section -#}
-        </div>
-      </div>
-      {# End next event and location -#}
-
-      {% if let Some(ad_banner_url) = &group.community.ad_banner_url -%}
-        {{ ui::floating_advertisement_banner(alt = group.community.display_name.clone() + " advertisement",
-        image_url = ad_banner_url,
-        link_url = group.community.ad_banner_link_url.as_deref()
-        ) -}}
-      {% endif -%}
-
-      {# Group description -#}
-      {% if let Some(description) = &group.description -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
-            About this group
-          </div>
-          <div class="text-stone-500 text-sm/6 markdown"
-               data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
-        </div>
-      {% endif -%}
-      {# End group description -#}
-
-      {# Parent group section -#}
-      {% if let Some(parent) = &group.parent -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Parent group
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <a href="/{{ parent.community_name }}/group/{{ parent.public_slug() }}"
-               hx-boost="true"
-               hx-target="body"
-               class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
-              {{ ui::logo(logo_url = parent.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
-              <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ parent.name|demoji }}</span>
-            </a>
-          </div>
-        </div>
-      {% endif -%}
-      {# End parent group section -#}
-
-      {# Subgroups section -#}
-      {% if !group.subgroups.is_empty() -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Subgroups
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {% for subgroup in group.subgroups -%}
-              <a href="/{{ subgroup.community_name }}/group/{{ subgroup.public_slug() }}"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
-                {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
-                <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ subgroup.name|demoji }}</span>
-              </a>
-            {% endfor -%}
-          </div>
-        </div>
-      {% endif -%}
-      {# End subgroups section -#}
-
-      {# Tags -#}
-      {% if let Some(tags) = &group.tags -%}
-        {% if !tags.is_empty() -%}
-          <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-              Tags
-            </div>
-            <div class="flex flex-wrap gap-2">
-              {% for tag in tags -%}
-                <span class="inline-block max-w-full truncate px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
-              {% endfor -%}
-            </div>
-          </div>
-        {% endif -%}
-      {% endif -%}
-      {# End tags -#}
-
-      {# Next events section -#}
-      {% if !upcoming_events.is_empty() -%}
-        <div>
-          <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Upcoming Events</div>
-            {# See all events on desktop -#}
-            <div class="hidden justify-self-end md:flex">
-              <a href="{{ self.upcoming_events_link() }}"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="btn-secondary-anchor ms-4">See all events</a>
-            </div>
-            {# End see all events on desktop -#}
-          </div>
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-            {% for event in upcoming_events -%}
-              {% if loop.index0 < 6 -%}
-                {{- event|safe -}}
-              {% endif -%}
-            {% endfor -%}
-          </div>
-          {# See all events on mobile -#}
-          <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-            <a href="{{ self.upcoming_events_link() }}"
-               hx-boost="true"
-               hx-target="body"
-               class="btn-secondary-anchor">See all events</a>
-          </div>
-          {# End see all events on mobile -#}
-        </div>
-      {% endif -%}
-      {# End next events section -#}
-
-      {# Past events section -#}
-      {% if !past_events.is_empty() -%}
-        <div>
-          <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Past Events</div>
-            {# See all events on desktop -#}
-            <div class="hidden justify-self-end md:flex">
-              <a href="{{ self.past_events_link() }}"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="btn-secondary-anchor ms-4">See all events</a>
-            </div>
-            {# End see all events on desktop -#}
-          </div>
-          <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2">
-            {% for event in past_events -%}
-              {% if loop.index0 < 6 -%}
-                {{- event|safe -}}
-              {% endif -%}
-            {% endfor -%}
-          </div>
-          {# See all events on mobile -#}
-          <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-            <a href="{{ self.past_events_link() }}"
-               hx-boost="true"
-               hx-target="body"
-               class="btn-secondary-anchor">See all events</a>
-          </div>
-          {# End see all events on mobile -#}
-        </div>
-      {% endif -%}
-      {# End past events section -#}
-
-      {# Organizers section -#}
-      {% if !group.organizers.is_empty() -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Organizers
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for organizer in group.organizers -%}
-              {% if organizer.name.is_some() -%}
-                <user-chip user='{{ organizer|json }}' display-modal></user-chip>
-              {% endif -%}
-            {% endfor -%}
-          </div>
-        </div>
-      {% endif -%}
-      {# End organizers section -#}
-
-      {# Sponsors section -#}
-      {% if !group.sponsors.is_empty() -%}
-        <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-            Sponsors
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for sponsor in group.sponsors -%}
-              {% if sponsor.featured -%}
-                {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -}}
-              {% endif -%}
-            {% endfor -%}
-          </div>
-        </div>
-      {% endif -%}
-      {# End sponsors section -#}
-
-      {# Photo gallery -#}
-      {% if let Some(photos_urls) = &group.photos_urls -%}
-        {% if !photos_urls.is_empty() -%}
-          <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-              Gallery
-            </div>
-            <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
-          </div>
-        {% endif -%}
-      {% endif -%}
-      {# End photo gallery -#}
-
+    <div class="absolute inset-0 flex items-center justify-center">
+      <div class="text-xl font-semibold text-stone-700 text-center">No upcoming events scheduled</div>
     </div>
   </div>
+{% endif -%}
+</div>
+</div>
+</div>
+{# End next event section -#}
+
+{# Location and map section -#}
+<div class="border border-stone-200 rounded-lg flex flex-col bg-white">
+  {# Location details -#}
+  <div class="flex flex-col p-4 h-full">
+    <div class="flex items-center justify-between mb-4 min-h-[25px]">
+      <div class="text-base/3 uppercase font-semibold text-stone-400">Location</div>
+    </div>
+    <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px]">
+      {% if let Some(lat) = &group.latitude %}
+        {% if let Some(lng) = &group.longitude %}
+          {% let location_text = self.group.location(70) -%}
+          {% let location_text_small = self.group.location(35) -%}
+          {{ maps::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -}}
+        {% else -%}
+          <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+            <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+            </div>
+            <div class="relative flex w-full items-center justify-center">
+              <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+            </div>
+          </div>
+        {% endif -%}
+      {% else -%}
+        <div class="relative flex h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+          </div>
+          <div class="relative flex w-full items-center justify-center">
+            <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+          </div>
+        </div>
+      {% endif -%}
+    </div>
+  </div>
+  {# End location details -#}
+</div>
+
+{# End location and map section -#}
+</div>
+</div>
+{# End next event and location -#}
+
+{% if let Some(ad_banner_url) = &group.community.ad_banner_url -%}
+  {{ ui::floating_advertisement_banner(alt = group.community.display_name.clone() + " advertisement",
+    image_url = ad_banner_url,
+    link_url = group.community.ad_banner_link_url.as_deref()) -}}
+{% endif -%}
+
+{# Group description -#}
+{% if let Some(description) = &group.description -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
+      About this group
+    </div>
+    <div class="text-stone-500 text-sm/6 markdown"
+         data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
+  </div>
+{% endif -%}
+{# End group description -#}
+
+{# Parent group section -#}
+{% if let Some(parent) = &group.parent -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Parent group
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <a href="/{{ parent.community_name }}/group/{{ parent.public_slug() }}"
+         hx-boost="true"
+         hx-target="body"
+         class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+        {{ ui::logo(logo_url = parent.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+        <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ parent.name|demoji }}</span>
+      </a>
+    </div>
+  </div>
+{% endif -%}
+{# End parent group section -#}
+
+{# Subgroups section -#}
+{% if !group.subgroups.is_empty() -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Subgroups
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for subgroup in group.subgroups -%}
+        <a href="/{{ subgroup.community_name }}/group/{{ subgroup.public_slug() }}"
+           hx-boost="true"
+           hx-target="body"
+           class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+          {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+          <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ subgroup.name|demoji }}</span>
+        </a>
+      {% endfor -%}
+    </div>
+  </div>
+{% endif -%}
+{# End subgroups section -#}
+
+{# Tags -#}
+{% if let Some(tags) = &group.tags -%}
+  {% if !tags.is_empty() -%}
+    <div>
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+        Tags
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% for tag in tags -%}
+          <span class="inline-block max-w-full truncate px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
+        {% endfor -%}
+      </div>
+    </div>
+  {% endif -%}
+{% endif -%}
+{# End tags -#}
+
+{# Next events section -#}
+{% if !upcoming_events.is_empty() -%}
+  <div>
+    <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Upcoming Events</div>
+      {# See all events on desktop -#}
+      <div class="hidden justify-self-end md:flex">
+        <a href="{{ self.upcoming_events_link() }}"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-secondary-anchor ms-4">See all events</a>
+      </div>
+      {# End see all events on desktop -#}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+      {% for event in upcoming_events -%}
+        {% if loop.index0 < 6 -%}
+          {{- event|safe -}}
+        {% endif -%}
+      {% endfor -%}
+    </div>
+    {# See all events on mobile -#}
+    <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+      <a href="{{ self.upcoming_events_link() }}"
+         hx-boost="true"
+         hx-target="body"
+         class="btn-secondary-anchor">See all events</a>
+    </div>
+    {# End see all events on mobile -#}
+  </div>
+{% endif -%}
+{# End next events section -#}
+
+{# Past events section -#}
+{% if !past_events.is_empty() -%}
+  <div>
+    <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Past Events</div>
+      {# See all events on desktop -#}
+      <div class="hidden justify-self-end md:flex">
+        <a href="{{ self.past_events_link() }}"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-secondary-anchor ms-4">See all events</a>
+      </div>
+      {# End see all events on desktop -#}
+    </div>
+    <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2">
+      {% for event in past_events -%}
+        {% if loop.index0 < 6 -%}
+          {{- event|safe -}}
+        {% endif -%}
+      {% endfor -%}
+    </div>
+    {# See all events on mobile -#}
+    <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+      <a href="{{ self.past_events_link() }}"
+         hx-boost="true"
+         hx-target="body"
+         class="btn-secondary-anchor">See all events</a>
+    </div>
+    {# End see all events on mobile -#}
+  </div>
+{% endif -%}
+{# End past events section -#}
+
+{# Organizers section -#}
+{% if !group.organizers.is_empty() -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Organizers
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for organizer in group.organizers -%}
+        {% if organizer.name.is_some() -%}
+          <user-chip user='{{ organizer|json }}' display-modal></user-chip>
+        {% endif -%}
+      {% endfor -%}
+    </div>
+  </div>
+{% endif -%}
+{# End organizers section -#}
+
+{# Sponsors section -#}
+{% if !group.sponsors.is_empty() -%}
+  <div>
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+      Sponsors
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for sponsor in group.sponsors -%}
+        {% if sponsor.featured -%}
+          {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -}}
+        {% endif -%}
+      {% endfor -%}
+    </div>
+  </div>
+{% endif -%}
+{# End sponsors section -#}
+
+{# Photo gallery -#}
+{% if let Some(photos_urls) = &group.photos_urls -%}
+  {% if !photos_urls.is_empty() -%}
+    <div>
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+        Gallery
+      </div>
+      <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
+    </div>
+  {% endif -%}
+{% endif -%}
+{# End photo gallery -#}
+
+</div>
+</div>
 </div>
 
 {# User info modal -#}

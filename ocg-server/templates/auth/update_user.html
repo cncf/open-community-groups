@@ -95,92 +95,92 @@
         {# Photo URL -#}
         <div class="col-span-full">
           <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = &user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="logo" target="logo">
-        </image-field>
-      </div>
-      {# End photo URL -#}
-
-      {# Bio -#}
-      <div class="col-span-full">
-        <label for="bio" class="form-label">Bio</label>
-        <div class="mt-2">
-          <textarea id="bio"
-                    name="bio"
-                    rows="6"
-                    maxlength="{{ crate::validation::MAX_LEN_BIO }}"
-                    class="input-primary">{% if let Some(bio) = &user.bio -%}{{ bio }}{% endif %}</textarea>
+          </image-field>
         </div>
-        <p class="form-legend">
-          A description about yourself and your background. Max {{ crate::validation::MAX_LEN_BIO }} characters.
-        </p>
-      </div>
-      {# End bio -#}
+        {# End photo URL -#}
 
-      {# Interests -#}
-      <div class="col-span-full xl:col-span-3">
-        <label for="interests" class="form-label">Interests (topics and technologies you're interested in)</label>
-        <div class="mt-2">
-          <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = &user.interests -%}{{ interests|json }}{%- endif -%}">
-          </multiple-inputs>
+        {# Bio -#}
+        <div class="col-span-full">
+          <label for="bio" class="form-label">Bio</label>
+          <div class="mt-2">
+            <textarea id="bio"
+                      name="bio"
+                      rows="6"
+                      maxlength="{{ crate::validation::MAX_LEN_BIO }}"
+                      class="input-primary">{% if let Some(bio) = &user.bio -%}{{ bio }}{% endif %}</textarea>
+          </div>
+          <p class="form-legend">
+            A description about yourself and your background. Max {{ crate::validation::MAX_LEN_BIO }} characters.
+          </p>
         </div>
+        {# End bio -#}
+
+        {# Interests -#}
+        <div class="col-span-full xl:col-span-3">
+          <label for="interests" class="form-label">Interests (topics and technologies you're interested in)</label>
+          <div class="mt-2">
+            <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = &user.interests -%}{{ interests|json }}{%- endif -%}">
+            </multiple-inputs>
+          </div>
+        </div>
+        {# End interests -#}
       </div>
-      {# End interests -#}
     </div>
-  </div>
-  {# End Personal Details section -#}
+    {# End Personal Details section -#}
 
-  {# Location section -#}
-  <div class="border-b border-stone-900/10 pb-12">
-    {{ dashboard::form_title(title = "Location", description = "Optional location information.") -}}
-    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      {# City -#}
-      <div class="col-span-3">
-        <label for="city" class="form-label">City</label>
-        <div class="mt-2">
-          <input type="text"
-                 name="city"
-                 id="city"
-                 maxlength="{{ crate::validation::MAX_LEN_S }}"
-                 value="{%- if let Some(city) = &user.city -%}{{ city }}{%- endif -%}"
-                 class="input-primary"
-                 autocomplete="off"
-                 autocorrect="off"
-                 autocapitalize="off"
-                 spellcheck="false">
+    {# Location section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::form_title(title = "Location", description = "Optional location information.") -}}
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# City -#}
+        <div class="col-span-3">
+          <label for="city" class="form-label">City</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="city"
+                   id="city"
+                   maxlength="{{ crate::validation::MAX_LEN_S }}"
+                   value="{%- if let Some(city) = &user.city -%}{{ city }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+          <p class="form-legend">The city where you're based. Max {{ crate::validation::MAX_LEN_S }} characters.</p>
         </div>
-        <p class="form-legend">The city where you're based. Max {{ crate::validation::MAX_LEN_S }} characters.</p>
-      </div>
-      {# End city -#}
+        {# End city -#}
 
-      {# Country -#}
-      <div class="col-span-3">
-        <label for="country" class="form-label">Country</label>
-        <div class="mt-2">
-          <input type="text"
-                 name="country"
-                 id="country"
-                 maxlength="{{ crate::validation::MAX_LEN_S }}"
-                 value="{%- if let Some(country) = &user.country -%}{{ country }}{%- endif -%}"
-                 class="input-primary"
-                 autocomplete="off"
-                 autocorrect="off"
-                 autocapitalize="off"
-                 spellcheck="false">
+        {# Country -#}
+        <div class="col-span-3">
+          <label for="country" class="form-label">Country</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="country"
+                   id="country"
+                   maxlength="{{ crate::validation::MAX_LEN_S }}"
+                   value="{%- if let Some(country) = &user.country -%}{{ country }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+          <p class="form-legend">Your country of residence. Max {{ crate::validation::MAX_LEN_S }} characters.</p>
         </div>
-        <p class="form-legend">Your country of residence. Max {{ crate::validation::MAX_LEN_S }} characters.</p>
+        {# End country -#}
       </div>
-      {# End country -#}
     </div>
-  </div>
-  {# End Location section -#}
+    {# End Location section -#}
 
-  {# Social links section -#}
-  <div class="border-b border-stone-900/10 pb-12">
-    {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
-    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      {% let website_value -%}value="{%- if let Some(website_url) = &user.website_url -%}{{ website_url }}{%- endif -%}"{%- endlet %}
-    {% let linkedin_value -%}value="{%- if let Some(linkedin_url) = &user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"{%- endlet %}
-  {% let bluesky_value -%}value="{%- if let Some(bluesky_url) = &user.bluesky_url -%}{{ bluesky_url }}{%- endif -%}"{%- endlet %}
-{% let twitter_value -%}value="{%- if let Some(twitter_url) = &user.twitter_url -%}{{ twitter_url }}{%- endif -%}"{%- endlet %}
+    {# Social links section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {% let website_value -%}value="{%- if let Some(website_url) = &user.website_url -%}{{ website_url }}{%- endif -%}"{%- endlet %}
+      {% let linkedin_value -%}value="{%- if let Some(linkedin_url) = &user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"{%- endlet %}
+    {% let bluesky_value -%}value="{%- if let Some(bluesky_url) = &user.bluesky_url -%}{{ bluesky_url }}{%- endif -%}"{%- endlet %}
+  {% let twitter_value -%}value="{%- if let Some(twitter_url) = &user.twitter_url -%}{{ twitter_url }}{%- endif -%}"{%- endlet %}
 {% let facebook_value -%}value="{%- if let Some(facebook_url) = &user.facebook_url -%}{{ facebook_url }}{%- endif -%}"{%- endlet %}
 {% let github_value -%}value="{%- if let Some(github_url) = &user.github_url -%}{{ github_url }}{%- endif -%}"{%- endlet %}
 

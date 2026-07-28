@@ -150,8 +150,8 @@
                   hx-indicator="#dashboard-spinner">
               {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_title = false) -}}
               {{ dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true) -}}
-              {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present) ) -}}
-              {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) ) -}}
+              {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present)) -}}
+              {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing)) -}}
             </form>
           </div>
           {% endcall -%}
@@ -310,7 +310,7 @@
   include_sort = true,
   include_title = true,
   include_ts_query = true
-  ) -%}
+) -%}
   {% if include_limit -%}
     {% if let Some(limit) = limit -%}
       <input type="hidden" name="limit" value="{{ limit }}">

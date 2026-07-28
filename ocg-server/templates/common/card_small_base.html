@@ -1,7 +1,8 @@
 {# Common Card Small Base -#}
 <a href="{% block href %}{% endblock %}"
    class="group flex h-full min-w-0 select-none rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-   {% block anchor_attributes %}{% endblock %}>
+   {% block anchor_attributes %}
+   {% endblock %}>
   <article class="card-hover-border relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border border-stone-200 bg-white transition-all hover:border-primary-300 hover:shadow-sm">
     {% block corner_badge %}{% endblock %}
 
