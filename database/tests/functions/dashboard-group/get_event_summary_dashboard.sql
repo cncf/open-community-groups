@@ -1,3 +1,5 @@
+-- Tests dashboard event summary information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -105,6 +107,10 @@ insert into event (
     null
 );
 
+-- Confirmed attendee for the created event
+insert into event_attendee (event_id, user_id)
+values (:'event1ID', :'user1ID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -114,19 +120,23 @@ select is(
     get_event_summary_dashboard(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb,
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
         || jsonb_build_object(
+            'attendee_count', 1,
             'created_by_display_name', 'Creator User',
             'created_by_username', 'creator',
-            'delete_eligibility', 'allowed'
+            'delete_eligibility', 'cancel-first'
         ),
     'Should extend the shared event summary with dashboard information'
 );
 
--- Should match the shared event summary when dashboard information is unavailable
+-- Should include attendee count for events without creator metadata
 select is(
     get_event_summary_dashboard(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb
-        || jsonb_build_object('delete_eligibility', 'allowed'),
-    'Should match the shared event summary when dashboard information is unavailable'
+        || jsonb_build_object(
+            'attendee_count', 0,
+            'delete_eligibility', 'allowed'
+        ),
+    'Should include attendee count for events without creator metadata'
 );
 
 -- ============================================================================

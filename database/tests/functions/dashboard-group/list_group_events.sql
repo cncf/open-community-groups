@@ -1,3 +1,5 @@
+-- Tests listing group events for dashboard administration.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -287,6 +289,7 @@ select is(
         "past": {
             "events": [
                 {
+                    "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
@@ -316,6 +319,7 @@ select is(
         "upcoming": {
             "events": [
                 {
+                    "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
@@ -344,6 +348,7 @@ select is(
                     "created_by_username": "creator"
                 },
                 {
+                    "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
@@ -391,6 +396,7 @@ select is(
         "upcoming": {
             "events": [
                 {
+                    "attendee_count": 0,
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
