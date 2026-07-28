@@ -57,16 +57,30 @@ export const fillMarkdownEditor = async (page, editorId, value) => {
 
 export const uploadImageField = async (page, fieldName, filePath) => {
   const imageField = page.locator(`image-field[name="${fieldName}"]`);
-
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/images") &&
-        response.status() === 201,
-    ),
-    imageField.locator('input[type="file"]').setInputFiles(filePath),
-  ]);
+  const cropper = imageField.locator("image-cropper");
+  if ((await cropper.count()) > 0) {
+    await imageField.locator('input[type="file"]').setInputFiles(filePath);
+    await expect(cropper.getByRole("dialog")).toBeVisible();
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/images") &&
+          response.status() === 201,
+      ),
+      cropper.getByRole("button", { name: "Apply crop" }).click(),
+    ]);
+  } else {
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/images") &&
+          response.status() === 201,
+      ),
+      imageField.locator('input[type="file"]').setInputFiles(filePath),
+    ]);
+  }
 
   await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(
     /\/images\//,

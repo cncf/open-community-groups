@@ -1,17 +1,25 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
-import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { getElementById } from "/static/js/common/dom.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
+import { getElementById } from "/static/js/common/dom.js";
+import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { ImageCropper } from "/static/js/common/media/image-cropper.js";
 import {
+  CROP_IMAGE_ACCEPTED_FORMATS,
+  CROP_IMAGE_SUPPORTED_FORMATS_TEXT,
   DEFAULT_IMAGE_ACCEPTED_FORMATS,
   getImageUploadErrorMessage,
+  IMAGE_UPLOAD_ERROR_DETAILS,
   IMAGE_UPLOAD_MAX_SIZE_TEXT,
   IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT,
   OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS,
+  OPEN_GRAPH_IMAGE_SUPPORTED_FORMATS_TEXT,
   uploadImageFile,
 } from "/static/js/common/media/image-upload.js";
 import "/static/js/common/svg-spinner.js";
 
+const ANIMATED_IMAGE_ERROR_MESSAGE =
+  "Animated images cannot be cropped because their animation would be lost. " +
+  "Choose a static SVG, PNG, JPEG or WEBP image.";
 const IMAGE_KIND = {
   AVATAR: "avatar",
   BANNER: "banner",
@@ -22,6 +30,8 @@ const IMAGE_TARGET = {
   BADGE: "badge",
   OPEN_GRAPH: "open_graph",
 };
+const SVG_ANIMATION_PATTERN =
+  /<(?:animate|animateMotion|animateTransform|discard|set)[\s/>]|@keyframes|(?:^|[;{"'\s])(?:-webkit-)?animation(?:-name)?\s*:/i;
 
 /**
  * ImageField renders upload controls with drag-and-drop support and a preview.
@@ -41,10 +51,11 @@ export class ImageField extends LitWrapper {
    * @property {boolean} hideUploadButton - Whether to hide the secondary upload button.
    * @property {boolean} hideRemoveButton - Whether to hide the remove image button.
    * @property {string} acceptedFormats - Optional accepted file formats.
+   * @property {string} cropTarget - Optional client-side crop dimension target.
    * @property {boolean} directUpload - Whether to submit the selected file with the parent form.
    * @property {string} helpText - Optional replacement for the default help text.
    * @property {string} submitLabel - Optional label for a form submit action.
-   * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo", "open_graph").
+   * @property {string} target - Upload target and default crop dimension target.
    * @property {string} legend - Optional legend text displayed under the image preview area.
    */
   static properties = {
@@ -59,11 +70,13 @@ export class ImageField extends LitWrapper {
     hideUploadButton: { type: Boolean, attribute: "hide-upload-button" },
     hideRemoveButton: { type: Boolean, attribute: "hide-remove-button" },
     acceptedFormats: { type: String, attribute: "accepted-formats" },
+    cropTarget: { type: String, attribute: "crop-target" },
     directUpload: { type: Boolean, attribute: "direct-upload" },
     helpText: { type: String, attribute: "help-text" },
     submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
+    _pendingUploadFile: { state: true },
   };
 
   constructor() {
@@ -74,20 +87,30 @@ export class ImageField extends LitWrapper {
     this.required = false;
     this.inputId = "";
     this.imageKind = IMAGE_KIND.AVATAR;
-    this._isUploading = false;
+    this._filePickerTrigger = null;
+    this._filePreparationToken = 0;
     this._isDragActive = false;
+    this._isUploading = false;
+    this._pendingUploadFile = null;
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
     this.previewBgClass = "";
     this.helpPrefixText = "";
     this.hideUploadButton = false;
     this.hideRemoveButton = false;
     this.acceptedFormats = "";
+    this.cropTarget = "";
     this.directUpload = false;
     this.helpText = "";
     this.submitLabel = "";
     this.target = "";
     this.legend = "";
     this._directFileName = "";
+  }
+
+  /** Invalidate pending file preparation when the field leaves the document. */
+  disconnectedCallback() {
+    this._filePreparationToken += 1;
+    super.disconnectedCallback();
   }
 
   get _valueInputId() {
@@ -104,6 +127,10 @@ export class ImageField extends LitWrapper {
     return `${this._uniqueId}-file`;
   }
 
+  get _cropperId() {
+    return `${this._uniqueId}-cropper`;
+  }
+
   get _hasImage() {
     return typeof this.value === "string" && this.value.trim().length > 0;
   }
@@ -114,6 +141,17 @@ export class ImageField extends LitWrapper {
       return this.value.replace("/images/badges/", "/images/");
     }
     return this.value;
+  }
+
+  /** Size and format guidance matching the formats the field actually accepts. */
+  get _uploadErrorDetails() {
+    if (this.target === IMAGE_TARGET.OPEN_GRAPH || this.target === IMAGE_TARGET.BADGE) {
+      return `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${OPEN_GRAPH_IMAGE_SUPPORTED_FORMATS_TEXT}`;
+    }
+    if (ImageCropper.hasRequiredSize(this.cropTarget || this.target)) {
+      return `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${CROP_IMAGE_SUPPORTED_FORMATS_TEXT}`;
+    }
+    return IMAGE_UPLOAD_ERROR_DETAILS;
   }
 
   /**
@@ -159,10 +197,11 @@ export class ImageField extends LitWrapper {
   /**
    * Open the native file picker when the preview tile is activated.
    */
-  _triggerFilePicker() {
+  _triggerFilePicker(event) {
     if (this._isUploading) {
       return;
     }
+    this._filePickerTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     const input = getElementById(this, this._fileInputId);
     input?.click();
   }
@@ -175,7 +214,7 @@ export class ImageField extends LitWrapper {
       return;
     }
     event.preventDefault();
-    this._triggerFilePicker();
+    this._triggerFilePicker(event);
   }
 
   /**
@@ -208,7 +247,7 @@ export class ImageField extends LitWrapper {
   /**
    * Accept dropped files and initiate the upload flow.
    */
-  _handleDrop(event) {
+  async _handleDrop(event) {
     if (this._isUploading) {
       return;
     }
@@ -230,7 +269,7 @@ export class ImageField extends LitWrapper {
       return;
     }
 
-    this._uploadFile(file);
+    await this._processFile(file, undefined, event.currentTarget);
   }
 
   /**
@@ -245,13 +284,51 @@ export class ImageField extends LitWrapper {
 
     if (this.directUpload) {
       this._directFileName = file.name;
+      this._filePickerTrigger = null;
       this.requestUpdate();
       return;
     }
 
-    await this._uploadFile(file, () => {
-      input.value = "";
-    });
+    const focusOrigin =
+      this._filePickerTrigger ||
+      this.querySelector("[data-image-upload-trigger]:not(.hidden)") ||
+      this.querySelector("[data-image-upload-preview]");
+    this._filePickerTrigger = null;
+    await this._processFile(
+      file,
+      () => {
+        input.value = "";
+      },
+      focusOrigin,
+    );
+  }
+
+  /**
+   * Crop files with mandatory dimensions before starting the upload.
+   */
+  async _processFile(file, resetCallback, focusOrigin = null) {
+    const preparationToken = ++this._filePreparationToken;
+    const cropper = getElementById(this, this._cropperId);
+    const isAnimated = cropper ? await isAnimatedImage(file) : false;
+    if (preparationToken !== this._filePreparationToken) {
+      return;
+    }
+    if (isAnimated) {
+      showErrorAlert(ANIMATED_IMAGE_ERROR_MESSAGE, true);
+      resetCallback?.();
+      return;
+    }
+
+    const preparedFile = cropper ? await cropper.edit(file, { focusOrigin }) : file;
+    if (preparationToken !== this._filePreparationToken) {
+      return;
+    }
+    if (!preparedFile) {
+      resetCallback?.();
+      return;
+    }
+
+    await this._uploadFile(preparedFile, resetCallback);
   }
 
   /**
@@ -260,18 +337,40 @@ export class ImageField extends LitWrapper {
   async _uploadFile(file, resetCallback) {
     this._isUploading = true;
     this.requestUpdate();
+    let uploadSucceeded = false;
 
     try {
       const imageUrl = await uploadImageFile(file, { target: this.target });
+      this._pendingUploadFile = null;
       this.setValue(imageUrl);
+      uploadSucceeded = true;
     } catch (error) {
-      showErrorAlert(getImageUploadErrorMessage("image", error.message), true);
+      this._pendingUploadFile = file;
+      showErrorAlert(getImageUploadErrorMessage("image", error.message, this._uploadErrorDetails), true);
     } finally {
       this._isUploading = false;
       if (typeof resetCallback === "function") {
         resetCallback();
       }
       this.requestUpdate();
+    }
+
+    return uploadSucceeded;
+  }
+
+  /** Retry a failed upload without asking the user to repeat the crop. */
+  async _retryUpload() {
+    if (this._isUploading || !this._pendingUploadFile) {
+      return;
+    }
+
+    const uploadSucceeded = await this._uploadFile(this._pendingUploadFile);
+    if (uploadSucceeded) {
+      await this.updateComplete;
+      const focusTarget =
+        this.querySelector("[data-image-upload-trigger]:not(.hidden)") ||
+        this.querySelector("[data-image-upload-preview]");
+      focusTarget?.focus();
     }
   }
 
@@ -355,24 +454,31 @@ export class ImageField extends LitWrapper {
     const isWide = bannerLikeKinds.includes(this.imageKind);
     const isOpenGraphTarget = this.target === IMAGE_TARGET.OPEN_GRAPH;
     const isBadgeTarget = this.target === IMAGE_TARGET.BADGE;
+    const cropTarget = this.cropTarget || this.target;
     const removeDisabled = !this._hasImage || this._isUploading;
     const submitDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
+    const requiresCropping = ImageCropper.hasRequiredSize(cropTarget);
+    const supportedFormatsText = requiresCropping
+      ? CROP_IMAGE_SUPPORTED_FORMATS_TEXT
+      : IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT;
     const helpText =
       this.helpText.trim() ||
       (isOpenGraphTarget
         ? IMAGE_UPLOAD_MAX_SIZE_TEXT
         : isBadgeTarget
-          ? `Images must be 512 x 512 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} Supported formats: PNG, JPEG and WEBP.`
+          ? `Images must be 512 x 512 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${OPEN_GRAPH_IMAGE_SUPPORTED_FORMATS_TEXT}`
           : isWide
-            ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`
-            : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`);
+            ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${supportedFormatsText}`
+            : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${supportedFormatsText}`);
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
     const acceptedFormats =
       this.acceptedFormats.trim() ||
       (isOpenGraphTarget || isBadgeTarget
         ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS
-        : DEFAULT_IMAGE_ACCEPTED_FORMATS);
+        : requiresCropping
+          ? CROP_IMAGE_ACCEPTED_FORMATS
+          : DEFAULT_IMAGE_ACCEPTED_FORMATS);
 
     if (this.directUpload) {
       return this._renderDirectUploadField(acceptedFormats);
@@ -392,6 +498,7 @@ export class ImageField extends LitWrapper {
           role="button"
           tabindex="0"
           aria-label="Upload image"
+          data-image-upload-preview
           @click=${this._triggerFilePicker}
           @keydown=${this._handlePreviewKeyDown}
           @dragover=${this._handleDragOver}
@@ -415,21 +522,43 @@ export class ImageField extends LitWrapper {
         <div class="flex flex-1 flex-col justify-between gap-3">
           <p class="form-legend hidden xl:block">${combinedHelpText}</p>
           <div class="flex flex-wrap gap-3 mb-1">
-            <label
+            <button
+              type="button"
               class="btn-primary btn-mini items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
                 this.hideUploadButton ? "hidden" : "inline-flex"
               } ${this._isUploading ? "opacity-75 pointer-events-none" : ""}"
+              data-image-upload-trigger
+              aria-label="Upload image for ${this.label}"
+              aria-disabled=${this._isUploading ? "true" : "false"}
+              @click=${this._triggerFilePicker}
             >
-              <input
-                type="file"
-                id=${this._fileInputId}
-                class="hidden"
-                accept=${acceptedFormats}
-                @change=${this._handleFileChange}
-                ?disabled=${this._isUploading}
-              />
               Upload image
-            </label>
+            </button>
+            <input
+              type="file"
+              id=${this._fileInputId}
+              class="hidden"
+              accept=${acceptedFormats}
+              @change=${this._handleFileChange}
+              ?disabled=${this._isUploading}
+            />
+            ${
+              this._pendingUploadFile
+                ? html`
+                    <button
+                      type="button"
+                      class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${
+                        this._isUploading ? "opacity-75 pointer-events-none" : ""
+                      }"
+                      aria-label="Retry upload for ${this.label}"
+                      aria-disabled=${this._isUploading ? "true" : "false"}
+                      @click=${this._retryUpload}
+                    >
+                      Retry upload
+                    </button>
+                  `
+                : nothing
+            }
             ${
               this.submitLabel
                 ? html`
@@ -475,8 +604,62 @@ export class ImageField extends LitWrapper {
         aria-hidden="true"
         @invalid=${this._handleValueInvalid}
       />
+      ${
+        requiresCropping
+          ? html`
+              <image-cropper id=${this._cropperId} .label=${this.label} .target=${cropTarget}></image-cropper>
+            `
+          : nothing
+      }
     `;
   }
 }
+
+/** Return whether a PNG container declares an animation control chunk. */
+const hasPngAnimation = (bytes) => {
+  // APNG requires the acTL chunk to appear before the first IDAT data chunk.
+  const header = new TextDecoder("latin1").decode(bytes);
+  const animationIndex = header.indexOf("acTL");
+  const dataIndex = header.indexOf("IDAT");
+  return animationIndex !== -1 && (dataIndex === -1 || animationIndex < dataIndex);
+};
+
+/** Return whether an SVG source declares animation. */
+const hasSvgAnimation = (source) => SVG_ANIMATION_PATTERN.test(source);
+
+/** Return whether a WebP container declares animation frames. */
+const hasWebpAnimation = (bytes) =>
+  // Animated WebP requires a leading VP8X chunk with the animation flag set.
+  bytes.length > 20 &&
+  readChunkType(bytes, 0) === "RIFF" &&
+  readChunkType(bytes, 8) === "WEBP" &&
+  readChunkType(bytes, 12) === "VP8X" &&
+  (bytes[20] & 0x02) !== 0;
+
+/** Return whether cropping the file would discard declared animation frames. */
+const isAnimatedImage = async (file) => {
+  const fileName = file.name.toLowerCase();
+  const fileType = file.type.toLowerCase();
+  if (fileType === "image/gif" || fileName.endsWith(".gif")) {
+    return true;
+  }
+
+  const isPng = fileType === "image/png" || fileType === "image/apng" || /\.a?png$/.test(fileName);
+  const isSvg = fileType === "image/svg+xml" || fileName.endsWith(".svg");
+  const isWebp = fileType === "image/webp" || fileName.endsWith(".webp");
+  if (isSvg) {
+    return hasSvgAnimation(await file.text());
+  }
+  if (!isPng && !isWebp) {
+    return false;
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return isPng ? hasPngAnimation(bytes) : hasWebpAnimation(bytes);
+};
+
+/** Read a four-byte image container marker. */
+const readChunkType = (bytes, offset) =>
+  String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
 
 customElements.define("image-field", ImageField);

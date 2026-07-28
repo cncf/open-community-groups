@@ -220,7 +220,7 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
     {% let ad_banner_value -%}value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}"{%- endlet %}
-  {{ form_fields::image_field(label = "Banner Image", name = "ad_banner_url", image_kind = "banner", help_prefix_text = "Size recommended 2400 x 300 px.", value_attr = ad_banner_value) -}}
+  {{ form_fields::image_field(label = "Banner Image", name = "ad_banner_url", image_kind = "banner", crop_target = "ad_banner", help_prefix_text = "Size required 2400 x 300 px.", value_attr = ad_banner_value) -}}
   {# End ad banner -#}
 
   {# Ad banner link URL -#}

@@ -39,9 +39,9 @@
 
 {# Image upload field -#}
 {# Used by community, group, event, sponsor, and settings forms. -#}
-{% macro image_field(label, name, image_kind, target = "", legend = "", help_prefix_text = "", value_attr = "", field_class = "col-span-full", input_class = "", extra_attrs = "") -%}
+{% macro image_field(label, name, image_kind, target = "", crop_target = "", legend = "", help_prefix_text = "", value_attr = "", field_class = "col-span-full", input_class = "", extra_attrs = "") -%}
   <div class="{{ field_class }}">
-    <image-field {% if !input_class.is_empty() %}class="{{ input_class }}"{% endif %} label="{{ label }}" name="{{ name }}" {{ value_attr|safe }} image-kind="{{ image_kind }}" {% if !help_prefix_text.is_empty() %}help-prefix-text="{{ help_prefix_text }}"{% endif %} {% if !target.is_empty() %}target="{{ target }}"{% endif %} {% if !legend.is_empty() %}legend="{{ legend }}"{% endif %} {{ extra_attrs|safe }}>
+    <image-field {% if !input_class.is_empty() %}class="{{ input_class }}"{% endif %} label="{{ label }}" name="{{ name }}" {{ value_attr|safe }} image-kind="{{ image_kind }}" {% if !help_prefix_text.is_empty() %}help-prefix-text="{{ help_prefix_text }}"{% endif %} {% if !target.is_empty() %}target="{{ target }}"{% endif %} {% if !crop_target.is_empty() %}crop-target="{{ crop_target }}"{% endif %} {% if !legend.is_empty() %}legend="{{ legend }}"{% endif %} {{ extra_attrs|safe }}>
     </image-field>
   </div>
 {% endmacro image_field -%}
