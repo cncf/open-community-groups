@@ -1,4 +1,9 @@
-import { showConfirmAlert } from "/static/js/common/alerts.js";
+import {
+  confirmAction,
+  confirmSeriesAction,
+  handleHtmxResponse,
+  showConfirmAlert,
+} from "/static/js/common/alerts.js";
 import {
   getElementById,
   initializeMatchingRoots,
@@ -59,6 +64,7 @@ export const initializeEventUpdatePage = (root = document) => {
     onlineEventDetails,
   } = controls;
   const updateEventButton = getElementById(pageRoot, "update-event-button");
+  const publishEventButton = getElementById(pageRoot, "publish-event-button");
   const locationSearchField = queryOne("location-search-field");
   const inertForm = queryOne(".inert-form");
   const capacityInput = getElementById(pageRoot, "capacity");
@@ -181,7 +187,7 @@ export const initializeEventUpdatePage = (root = document) => {
       isCfsFieldLocked: (field) => field?.dataset?.locked === "true",
     });
 
-  initializeEventPagePendingChanges({
+  const pendingChanges = initializeEventPagePendingChanges({
     pageRoot,
     confirmMessage: "You have pending changes. If you continue, unsaved changes will be lost.",
   });
@@ -189,6 +195,77 @@ export const initializeEventUpdatePage = (root = document) => {
   initializeEventPreview({
     pageRoot,
   });
+
+  if (publishEventButton) {
+    publishEventButton.addEventListener("click", async () => {
+      if (pendingChanges.hasPendingChanges()) {
+        const shouldSave = await confirmAction({
+          message: "This event has unsaved changes. Save them before publishing.",
+          confirmText: "Save changes",
+          cancelText: "Cancel",
+        });
+        if (shouldSave) {
+          updateEventButton?.click();
+        }
+        return;
+      }
+
+      let scope = "this";
+      if (publishEventButton.dataset.hasRelatedEvents === "true") {
+        scope = await confirmSeriesAction({
+          message: publishEventButton.dataset.seriesMessage,
+          confirmText: "Only this event",
+          denyText: "All in series",
+        });
+        if (!scope) {
+          return;
+        }
+      } else {
+        const confirmed = await confirmAction({
+          message: publishEventButton.dataset.singleMessage,
+          confirmText: "Yes",
+        });
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      const actionUrl = publishEventButton.dataset.actionUrl;
+      publishEventButton.dataset.requestPath = scope === "series" ? `${actionUrl}?scope=series` : actionUrl;
+      publishEventButton.dataset.requestScope = scope;
+      htmx.trigger(publishEventButton, "confirmed");
+    });
+
+    publishEventButton.addEventListener("htmx:configRequest", (event) => {
+      if (event.detail.elt.id !== publishEventButton.id) {
+        return;
+      }
+
+      if (publishEventButton.dataset.requestPath) {
+        event.detail.path = publishEventButton.dataset.requestPath;
+      }
+    });
+
+    publishEventButton.addEventListener("htmx:afterRequest", (event) => {
+      if (event.detail.elt.id !== publishEventButton.id) {
+        return;
+      }
+
+      const isSeriesRequest = publishEventButton.dataset.requestScope === "series";
+      delete publishEventButton.dataset.requestPath;
+      delete publishEventButton.dataset.requestScope;
+
+      handleHtmxResponse({
+        xhr: event.detail?.xhr,
+        successMessage: isSeriesRequest
+          ? publishEventButton.dataset.seriesSuccessMessage
+          : publishEventButton.dataset.successMessage,
+        errorMessage: isSeriesRequest
+          ? publishEventButton.dataset.seriesErrorMessage
+          : publishEventButton.dataset.errorMessage,
+      });
+    });
+  }
 
   if (!updateEventButton) {
     return;

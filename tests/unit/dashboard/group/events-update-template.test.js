@@ -68,6 +68,16 @@ describe("dashboard group event update template", () => {
     expect(template).to.include('class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"');
     expect(template).to.include('id="event-preview-button"');
     expect(template).to.include('id="event-public-page-link"');
+    expect(template).to.include('id="publish-event-button"');
+    expect(template).to.include('hx-put="/dashboard/group/events/{{ event.event_id }}/publish"');
+    expect(template).to.include('data-has-related-events="{{ event.has_related_events }}"');
+    expect(template).to.include('disabled title="This event is already published."');
+    expect(template.indexOf("{% if event.canceled -%}")).to.be.lessThan(
+      template.indexOf("{% else if event.published -%}"),
+    );
+    expect(template.indexOf('id="publish-event-button"')).to.be.greaterThan(
+      template.indexOf('id="event-public-page-link"'),
+    );
     expect(template).to.include(
       'class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"',
     );

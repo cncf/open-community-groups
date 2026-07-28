@@ -93,6 +93,34 @@
             <span>Public page</span>
           </button>
         {% endif -%}
+        <button id="publish-event-button"
+                type="button"
+                hx-put="/dashboard/group/events/{{ event.event_id }}/publish"
+                hx-trigger="confirmed"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="#publish-event-button, #update-event-button"
+                data-action-url="/dashboard/group/events/{{ event.event_id }}/publish"
+                data-has-related-events="{{ event.has_related_events }}"
+                data-series-message="This event is part of a recurring series. What would you like to publish?"
+                data-single-message="Are you sure you wish to publish this event?"
+                data-success-message="You have successfully published the event."
+                data-series-success-message="You have successfully published the events."
+                data-series-error-message="An error occurred publishing these events. Please try again later."
+                data-error-message="An error occurred publishing this event. Please try again later."
+                class="group btn-primary inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                {% if event.canceled -%}
+                  disabled title="Canceled events cannot be published."
+                {% else if event.published -%}
+                  disabled title="This event is already published."
+                {% else if !can_manage_events -%}
+                  disabled title="Your role cannot publish events."
+                {% else -%}
+                  title="Publish"
+                {% endif -%}>
+          <div class="svg-icon size-3 icon-check shrink-0 bg-white"></div>
+          <span>Publish</span>
+        </button>
       </div>
     </div>
     {% if !can_manage_events -%}
