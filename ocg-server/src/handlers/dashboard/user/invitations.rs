@@ -12,19 +12,14 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpServerConfig, PaymentsConfig},
-    db::{DBExt, DynDB, dashboard::user::AcceptEventAdmissionOfferResult},
+    config::PaymentsConfig,
+    db::DynDB,
     handlers::{
         auth::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
         error::HandlerError,
-        extractors::{CurrentUser, ValidatedForm},
-    },
-    services::notifications::enqueue::{
-        enqueue_event_welcome_notification,
-        enqueue_reconciled_non_ticketed_waitlist_promotion_notification,
+        extractors::CurrentUser,
     },
     templates::dashboard::user::invitations,
-    types::questionnaire::OptionalQuestionnaireAnswersForm,
 };
 
 #[cfg(test)]
@@ -68,68 +63,6 @@ pub(crate) async fn accept_community_team_invitation(
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
-/// Accepts an exact non-ticketed organizer admission offer.
-#[instrument(skip_all, err)]
-pub(crate) async fn accept_event_admission_offer(
-    CurrentUser(user): CurrentUser,
-    messages: Messages,
-    State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(server_cfg): State<HttpServerConfig>,
-    Path(admission_offer_id): Path<Uuid>,
-    ValidatedForm(input): ValidatedForm<OptionalQuestionnaireAnswersForm>,
-) -> Result<impl IntoResponse, HandlerError> {
-    let accept_result = db
-        .as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Accept the exact offer with any claim-time registration answers
-                let accept_result = tx
-                    .accept_event_admission_offer(
-                        user.user_id,
-                        admission_offer_id,
-                        input.registration_answers,
-                        payments_cfg.as_ref().map(PaymentsConfig::provider),
-                    )
-                    .await?;
-
-                let AcceptEventAdmissionOfferResult::Accepted(accepted_offer) = accept_result
-                else {
-                    return Ok(accept_result);
-                };
-
-                // Enqueue the welcome notification
-                enqueue_event_welcome_notification(
-                    tx,
-                    &server_cfg,
-                    accepted_offer.community_id,
-                    accepted_offer.event_id,
-                    user.user_id,
-                    true,
-                )
-                .await?;
-
-                Ok(accept_result)
-            })
-        })
-        .await?;
-
-    // Return offer conflicts before reporting successful acceptance
-    if let AcceptEventAdmissionOfferResult::Conflict(conflict) = accept_result {
-        return Ok((
-            StatusCode::CONFLICT,
-            axum::Json(serde_json::json!({
-                "conflict": conflict,
-            })),
-        )
-            .into_response());
-    }
-
-    messages.success("Event invitation accepted.");
-
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
-}
-
 /// Accepts a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_group_team_invitation(
@@ -158,38 +91,15 @@ pub(crate) async fn decline_event_admission_offer(
     messages: Messages,
     State(db): State<DynDB>,
     State(payments_cfg): State<Option<PaymentsConfig>>,
-    State(server_cfg): State<HttpServerConfig>,
     Path(admission_offer_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve the configured payment provider before transactional work
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-
-    // Decline the offer and enqueue non-ticketed waitlist promotions atomically
-    db.as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Decline the offer and collect any waitlist promotions
-                let outcome = tx
-                    .decline_event_admission_offer(
-                        user.user_id,
-                        admission_offer_id,
-                        payment_provider,
-                    )
-                    .await?;
-
-                // Enqueue required non-ticketed waitlist promotions before committing
-                enqueue_reconciled_non_ticketed_waitlist_promotion_notification(
-                    tx,
-                    &server_cfg,
-                    outcome.community_id,
-                    outcome.group_id,
-                    outcome.event_id,
-                    outcome.non_ticketed_promoted_user_ids,
-                )
-                .await
-            })
-        })
-        .await?;
+    // Decline the admission offer and reconcile released inventory
+    db.decline_event_admission_offer(
+        user.user_id,
+        admission_offer_id,
+        payments_cfg.as_ref().map(PaymentsConfig::provider),
+    )
+    .await?;
     messages.success("Event offer declined.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))

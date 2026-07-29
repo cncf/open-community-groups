@@ -2,7 +2,7 @@ import { handleHtmxResponse, showErrorAlert, showInfoAlert } from "/static/js/co
 import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 import { hasHtmxTrigger } from "/static/js/common/htmx-triggers.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
-import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
+import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 import { isSuccessfulXHRStatus, parseJsonText } from "/static/js/common/utils.js";
 
@@ -100,9 +100,9 @@ const handleAfterRequest = (event) => {
 
     // Non-redirect claims finish locally and then refresh the invitation list.
     showInfoAlert(
-      target.elements.namedItem("event_ticket_type_id")
-        ? "Your ticket has been claimed."
-        : "Your event invitation has been accepted.",
+      target.dataset.isSimpleRsvp === "true"
+        ? "Your RSVP has been confirmed."
+        : "Your ticket has been claimed.",
     );
     refreshInvitations();
     return;
@@ -177,11 +177,21 @@ const handleConfigRequest = (event) => {
 };
 
 /**
- * Closes visible offer modals when Escape is pressed.
+ * Contains focus and closes visible offer modals from keyboard input.
  * @param {KeyboardEvent} event Keyboard event.
  * @returns {void}
  */
 const handleKeydown = (event) => {
+  if (event.key === "Tab") {
+    for (const modal of document.querySelectorAll("[data-user-event-offer-dialog]")) {
+      if (modal instanceof HTMLElement && !isElementHidden(modal)) {
+        trapModalFocus(event, modal);
+        return;
+      }
+    }
+    return;
+  }
+
   if (!isEscapeEvent(event)) {
     return;
   }

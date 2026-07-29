@@ -12,7 +12,7 @@ use crate::{
     templates::event::SessionProposal,
     types::{
         event::{
-            EventAttendanceInfo, EventAttendanceStatus, EventFull, EventLeaveOutcome, EventSummary,
+            EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome, EventSummary,
         },
         payments::PaymentProvider,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
@@ -54,13 +54,13 @@ pub(crate) trait DBEvent {
     /// Ensures the event exists in the community and is active.
     async fn ensure_event_is_active(&self, community_id: Uuid, event_id: Uuid) -> Result<()>;
 
-    /// Returns the user's attendance details and check-in status for an event.
-    async fn get_event_attendance(
+    /// Returns the user's enrollment details and check-in status for an event.
+    async fn get_event_enrollment(
         &self,
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
-    ) -> Result<EventAttendanceInfo>;
+    ) -> Result<EventEnrollmentState>;
 
     /// Retrieves detailed event information.
     async fn get_event_full_by_slug(
@@ -167,12 +167,12 @@ where
             ));
         }
 
-        // Decode the remaining outcomes as attendance statuses
-        let status = outcome.parse().map_err(|_| {
-            anyhow::anyhow!("unknown attendance outcome returned by database: {outcome}")
+        // Decode the remaining outcomes as enrollment statuses
+        let enrollment_status = outcome.parse().map_err(|_| {
+            anyhow::anyhow!("unknown enrollment outcome returned by database: {outcome}")
         })?;
 
-        Ok(AttendEventResult::Attendance(status))
+        Ok(AttendEventResult::Enrollment(enrollment_status))
     }
 
     /// [`DBEvent::check_in_event`]
@@ -201,16 +201,16 @@ where
         .await
     }
 
-    /// [`DBEvent::get_event_attendance`]
+    /// [`DBEvent::get_event_enrollment`]
     #[instrument(skip(self), err)]
-    async fn get_event_attendance(
+    async fn get_event_enrollment(
         &self,
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
-    ) -> Result<EventAttendanceInfo> {
+    ) -> Result<EventEnrollmentState> {
         self.fetch_json_one(
-            "select get_event_attendance($1::uuid, $2::uuid, $3::uuid)",
+            "select get_event_enrollment($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &event_id, &user_id],
         )
         .await
@@ -320,8 +320,8 @@ pub(crate) enum AttendEventConflict {
 /// Result of registering public event attendance.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum AttendEventResult {
-    /// Attendance was registered or queued.
-    Attendance(EventAttendanceStatus),
     /// Attendance could not be registered.
     Conflict(AttendEventConflict),
+    /// Enrollment was registered or queued.
+    Enrollment(EventEnrollmentStatus),
 }

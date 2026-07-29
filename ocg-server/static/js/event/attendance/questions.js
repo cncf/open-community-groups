@@ -145,7 +145,8 @@ export const isCompletingRegistrationQuestions = (button) =>
 export const isWaitlistJoinAction = (meta) =>
   !meta.attendeeApprovalRequired &&
   meta.waitlistEnabled &&
-  (meta.isTicketed ? !meta.ticketPurchaseAvailable && meta.hasSoldOutTicketTypes : meta.isSoldOut);
+  !meta.ticketPurchaseAvailable &&
+  meta.hasSoldOutTicketTypes;
 
 /**
  * Returns true when the attendance container has unanswered event questions.

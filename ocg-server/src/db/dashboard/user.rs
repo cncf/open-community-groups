@@ -2,7 +2,6 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -39,15 +38,6 @@ pub(crate) trait DBDashboardUser {
         actor_user_id: Uuid,
         community_id: Uuid,
     ) -> Result<()>;
-
-    /// Accepts an exact non-ticketed organizer admission offer.
-    async fn accept_event_admission_offer(
-        &self,
-        actor_user_id: Uuid,
-        admission_offer_id: Uuid,
-        registration_answers: Option<QuestionnaireAnswers>,
-        payment_provider: Option<PaymentProvider>,
-    ) -> Result<AcceptEventAdmissionOfferResult>;
 
     /// Accepts a pending group team invitation.
     async fn accept_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid)
@@ -190,14 +180,14 @@ pub(crate) trait DBDashboardUser {
     /// Permanently revokes a badge owned by the user.
     async fn revoke_user_badge(&self, actor_user_id: Uuid, user_badge_id: Uuid) -> Result<()>;
 
-    /// Submits registration question answers for a user's event and returns whether it became confirmed.
+    /// Submits registration question answers for a user's event.
     async fn submit_event_registration_answers(
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
-    ) -> Result<bool>;
+    ) -> Result<()>;
 
     /// Updates a session proposal for the user.
     async fn update_session_proposal(
@@ -247,37 +237,6 @@ where
             &[&actor_user_id, &community_id],
         )
         .await
-    }
-
-    /// [`DBDashboardUser::accept_event_admission_offer`].
-    #[instrument(skip(self, registration_answers), err)]
-    async fn accept_event_admission_offer(
-        &self,
-        actor_user_id: Uuid,
-        admission_offer_id: Uuid,
-        registration_answers: Option<QuestionnaireAnswers>,
-        payment_provider: Option<PaymentProvider>,
-    ) -> Result<AcceptEventAdmissionOfferResult> {
-        let output: AcceptEventAdmissionOfferOutput = self
-            .fetch_json_one(
-                "
-                select accept_event_admission_offer(
-                    $1::uuid,
-                    $2::uuid,
-                    $3::jsonb,
-                    $4::text
-                )
-                ",
-                &[
-                    &actor_user_id,
-                    &admission_offer_id,
-                    &registration_answers.as_ref().map(Json),
-                    &payment_provider.map(|provider| provider.to_string()),
-                ],
-            )
-            .await?;
-
-        Ok(output.into())
     }
 
     /// [`DBDashboardUser::accept_group_team_invitation`]
@@ -618,8 +577,8 @@ where
         community_id: Uuid,
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
-    ) -> Result<bool> {
-        self.fetch_scalar_one(
+    ) -> Result<()> {
+        self.execute(
             "select submit_event_registration_answers($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
             &[
                 &actor_user_id,
@@ -694,58 +653,9 @@ where
     }
 }
 
-/// Scope returned after accepting an exact event admission offer.
-#[derive(Debug, Clone, Copy, Deserialize)]
-pub(crate) struct AcceptedEventAdmissionOffer {
-    /// Community containing the accepted offer's event.
-    pub community_id: Uuid,
-    /// Event associated with the accepted offer.
-    pub event_id: Uuid,
-}
-
-/// Conflict returned while accepting an event admission offer.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum AcceptEventAdmissionOfferConflict {
-    /// The selected admission offer is no longer claimable.
-    AdmissionOfferUnavailable,
-}
-
-/// Result of accepting an event admission offer.
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum AcceptEventAdmissionOfferResult {
-    /// The offer was accepted.
-    Accepted(AcceptedEventAdmissionOffer),
-    /// The offer could not be accepted.
-    Conflict(AcceptEventAdmissionOfferConflict),
-}
-
-impl From<AcceptEventAdmissionOfferOutput> for AcceptEventAdmissionOfferResult {
-    /// Converts database offer acceptance output into the caller-facing result.
-    fn from(output: AcceptEventAdmissionOfferOutput) -> Self {
-        match output {
-            AcceptEventAdmissionOfferOutput::Accepted(accepted) => Self::Accepted(accepted),
-            AcceptEventAdmissionOfferOutput::Conflict { conflict } => Self::Conflict(conflict),
-        }
-    }
-}
-
 /// Co-speaker identifier for a session proposal.
 #[derive(Debug, Clone)]
 pub(crate) struct SessionProposalCoSpeakerUser {
     /// Optional co-speaker user identifier.
     pub co_speaker_user_id: Option<Uuid>,
-}
-
-/// Database output returned after accepting an event admission offer.
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum AcceptEventAdmissionOfferOutput {
-    /// The offer was accepted.
-    Accepted(AcceptedEventAdmissionOffer),
-    /// The offer could not be accepted.
-    Conflict {
-        /// Conflict kind.
-        conflict: AcceptEventAdmissionOfferConflict,
-    },
 }

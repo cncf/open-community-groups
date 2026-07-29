@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-/// Discount type supported by ticketed events.
+/// Discount type supported by event admission tiers.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventDiscountType {
@@ -125,7 +125,7 @@ pub enum PaymentProvider {
     Stripe,
 }
 
-/// Discount code configuration for a ticketed event.
+/// Discount code configuration for event admission.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct EventDiscountCode {

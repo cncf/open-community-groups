@@ -1,6 +1,7 @@
 import { showConfirmAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { closestElement, isElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
   getAttendanceContainer,
@@ -183,6 +184,23 @@ export const handleAttendanceClick = (event) => {
  * @returns {void}
  */
 export const handleAttendanceKeydown = (event) => {
+  if (event.key === "Tab") {
+    for (const container of document.querySelectorAll(ATTENDANCE_CONTAINER_SELECTOR)) {
+      if (!(container instanceof HTMLElement)) {
+        continue;
+      }
+
+      for (const role of ["registration-modal", "refund-modal", "ticket-modal"]) {
+        const modal = getAttendanceControl(container, role);
+        if (modal && !isElementHidden(modal)) {
+          trapModalFocus(event, modal);
+          return;
+        }
+      }
+    }
+    return;
+  }
+
   if (!isEscapeEvent(event)) {
     return;
   }

@@ -45,7 +45,7 @@ begin
             and ao.event_ticket_type_id = p_event_ticket_type_id
             and ao.status in ('checkout_pending', 'pending')
             and ao.user_id = p_user_id
-            and (ao.expires_at is null or ao.expires_at > current_timestamp)
+            and ao.expires_at > current_timestamp
        ) then
         raise exception 'admission offer is no longer available';
     end if;

@@ -86,11 +86,6 @@ returns json as $$
                 join event_ticket_type ett on ett.event_ticket_type_id = ep.event_ticket_type_id
                 where ett.event_id = e.event_id
             ),
-            'is_ticketed', exists (
-                select 1
-                from event_ticket_type ett
-                where ett.event_id = e.event_id
-            ),
             'photos_urls', e.photos_urls,
             'published_at', floor(extract(epoch from e.published_at)),
             'registration_ends_at', floor(extract(epoch from e.registration_ends_at)),

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(48);
+select plan(29);
 
 -- ============================================================================
 -- VARIABLES
@@ -441,7 +441,7 @@ insert into event (
     true
 );
 
--- Unticketed event used for ticketing payload validation checks
+-- Event used for admission-tier payload validation checks
 insert into event (
     event_id,
     group_id,
@@ -454,9 +454,9 @@ insert into event (
 ) values (
     :'event22ID',
     :'group1ID',
-    'Ticketing Payload Event',
-    'ticketing-payload',
-    'Unticketed event used for ticketing payload validation checks',
+    'Admission Payload Event',
+    'admission-payload',
+    'Event used for admission-tier payload validation checks',
     'UTC',
     :'category1ID',
     'virtual'
@@ -916,6 +916,47 @@ insert into event_purchase (
     :'questionsHoldUserID'
 );
 
+-- Every event uses ticket inventory. Seed a default free tier for events that
+-- are not exercising an explicit ticket configuration in this test
+insert into event_ticket_type (
+    active,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    true,
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for the default ticket tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select
+    0,
+    gen_random_uuid(),
+    ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- Event Attendees (for capacity validation and waitlist promotion tests)
 insert into event_attendee (event_id, user_id) values
     (:'event13ID', :'user2ID'),
@@ -952,15 +993,34 @@ values (
 );
 
 -- Event Waitlist (for waitlist promotion tests)
-insert into event_waitlist (event_id, user_id, created_at) values
-    (:'event13ID', :'user3ID', current_timestamp),
-    (:'event15ID', :'user4ID', current_timestamp),
-    (:'event15ID', :'user5ID', current_timestamp + interval '1 minute'),
-    (:'event16ID', :'user1ID', current_timestamp + interval '2 minutes'),
-    (:'event17ID', :'user4ID', current_timestamp + interval '3 minutes'),
-    (:'event17ID', :'user5ID', current_timestamp + interval '4 minutes'),
-    (:'event20ID', :'user4ID', current_timestamp + interval '5 minutes'),
-    (:'event23ID', :'user5ID', current_timestamp + interval '6 minutes');
+insert into event_waitlist (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    user_id
+)
+select
+    waitlisted.created_at,
+    waitlisted.event_id,
+    (
+        select ett.event_ticket_type_id
+        from event_ticket_type ett
+        where ett.event_id = waitlisted.event_id
+        order by ett."order", ett.event_ticket_type_id
+        limit 1
+    ),
+    waitlisted.user_id
+from (
+    values
+        (:'event13ID'::uuid, :'user3ID'::uuid, current_timestamp),
+        (:'event15ID'::uuid, :'user4ID'::uuid, current_timestamp),
+        (:'event15ID'::uuid, :'user5ID'::uuid, current_timestamp + interval '1 minute'),
+        (:'event16ID'::uuid, :'user1ID'::uuid, current_timestamp + interval '2 minutes'),
+        (:'event17ID'::uuid, :'user4ID'::uuid, current_timestamp + interval '3 minutes'),
+        (:'event17ID'::uuid, :'user5ID'::uuid, current_timestamp + interval '4 minutes'),
+        (:'event20ID'::uuid, :'user4ID'::uuid, current_timestamp + interval '5 minutes'),
+        (:'event23ID'::uuid, :'user5ID'::uuid, current_timestamp + interval '6 minutes')
+) as waitlisted(event_id, user_id, created_at);
 
 -- Tier-specific FIFO queue promoted after ticket capacity increases
 insert into event_waitlist (
@@ -976,17 +1036,28 @@ insert into event_waitlist (
 );
 
 -- Event invitation requests (for attendee approval transition tests)
-insert into event_invitation_request (event_id, user_id)
-values (:'event24ID', :'user5ID');
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    user_id
+)
+select
+    :'event24ID',
+    ett.event_ticket_type_id,
+    :'user5ID'
+from event_ticket_type ett
+where ett.event_id = :'event24ID'
+order by ett."order", ett.event_ticket_type_id
+limit 1;
 
 -- Test-only overloads keep existing calls focused while supplying server payment configuration.
 create function update_event_with_payments(uuid, uuid, uuid, jsonb)
-returns json as $$
+returns void as $$
     select update_event($1, $2, $3, $4, null, 'stripe');
 $$ language sql;
 
 create function update_event_with_payments(uuid, uuid, uuid, jsonb, jsonb)
-returns json as $$
+returns void as $$
     select update_event($1, $2, $3, $4, $5, 'stripe');
 $$ language sql;
 
@@ -1114,7 +1185,7 @@ select lives_ok(
     'Should allow unrelated edits after payment setup is lost'
 );
 
--- Should throw error when discount codes remain without ticket types
+-- Should reject removing every ticket type
 select throws_ok(
     $$select update_event_with_payments(
         null::uuid,
@@ -1130,8 +1201,8 @@ select throws_ok(
             "ticket_types": null
         }'::jsonb
     )$$,
-    'discount_codes require positive ticket pricing',
-    'Should throw error when discount codes remain after ticket types are cleared'
+    'events require at least one ticket type',
+    'Should reject removing every ticket type'
 );
 
 -- Should throw error when a ticket type identifier belongs to another event
@@ -1277,15 +1348,15 @@ select throws_ok(
     'Should reject discount codes whose identifiers belong to another event'
 );
 
--- Should throw error when ticketed events omit payment_currency_code
+-- Should throw an error when paid tiers omit payment_currency_code
 select throws_ok(
     $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000011'::uuid,
         '{
-            "name": "Ticketing Payload Event",
-            "description": "Unticketed event used for ticketing payload validation checks",
+            "name": "Admission Payload Event",
+            "description": "Event used for admission-tier payload validation checks",
             "timezone": "UTC",
             "category_id": "3a3c0000-0000-0000-0000-000000000001",
             "kind_id": "virtual",
@@ -1310,15 +1381,15 @@ select throws_ok(
     'Should reject paid-capable events when payment_currency_code is omitted'
 );
 
--- Should allow waitlists for ticketed events
+-- Should allow waitlists with paid admission tiers
 select lives_ok(
     $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000011'::uuid,
         '{
-            "name": "Ticketing Payload Event",
-            "description": "Unticketed event used for ticketing payload validation checks",
+            "name": "Admission Payload Event",
+            "description": "Event used for admission-tier payload validation checks",
             "timezone": "UTC",
             "category_id": "3a3c0000-0000-0000-0000-000000000001",
             "kind_id": "virtual",
@@ -1341,7 +1412,7 @@ select lives_ok(
             "waitlist_enabled": true
         }'::jsonb
     )$$,
-    'Should allow ticketed events when waitlist_enabled stays true'
+    'Should allow paid-tier events when waitlist_enabled stays true'
 );
 
 -- Should reject disabling attendee approval while invitation requests are pending
@@ -1513,403 +1584,6 @@ select throws_ok(
     )$$,
     'discount codes with redemptions cannot be removed; deactivate them instead',
     'Should reject removing discount codes that already have redemptions'
-);
-
--- Should throw error when capacity is reduced below attendee count
-select throws_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000004'::uuid,
-        '{"name": "Capacity Validation Event", "description": "Test", "timezone": "America/New_York", "category_id": "3a3c0000-0000-0000-0000-000000000001", "kind_id": "in-person", "capacity": 2, "starts_at": "2030-02-10T10:00:00"}'::jsonb
-    )$$,
-    'event capacity (2) cannot be less than current number of attendees (3)',
-    'Should throw error when capacity is reduced below attendee count'
-);
-
--- Should allow saving an event already over capacity from accepted manual invitations
-select lives_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000014'::uuid,
-        '{"name": "Manual Invite Over Capacity Event", "description": "Saved while over capacity", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000001", "kind_id": "in-person", "capacity": 2, "starts_at": "2030-02-12T10:00:00"}'::jsonb
-    )$$,
-    'Should allow saving an event already over capacity from accepted manual invitations'
-);
-
-select is(
-    (select description from event where event_id = :'eventOverCapacityID'::uuid),
-    'Saved while over capacity',
-    'Should persist updates when over-capacity event capacity is unchanged'
-);
-
--- Should reject ticketing conversion when the event already has attendees
-select throws_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Capacity Validation Event",
-            "description": "Ticketed capacity validation",
-            "timezone": "America/New_York",
-            "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "capacity": 100,
-            "payment_currency_code": "USD",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000035",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 2500,
-                            "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000055"
-                        }
-                    ],
-                    "seats_total": 2,
-                    "title": "General"
-                }
-            ]
-        }'::jsonb
-    )$$,
-    'ticketed events require an empty attendee list',
-    'Should reject ticketing conversion before ticket-derived capacity can undercount attendees'
-);
-
--- Should succeed when capacity equals attendee count
-select lives_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000004'::uuid,
-        '{"name": "Capacity Validation Event", "description": "Test capacity equals", "timezone": "America/New_York", "category_id": "3a3c0000-0000-0000-0000-000000000001", "kind_id": "in-person", "capacity": 3, "starts_at": "2030-02-10T10:00:00"}'::jsonb
-    )$$,
-    'Should succeed when capacity equals attendee count'
-);
-
--- Should succeed when capacity exceeds attendee count
-select lives_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000004'::uuid,
-        '{"name": "Capacity Validation Event", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "3a3c0000-0000-0000-0000-000000000001", "kind_id": "in-person", "capacity": 100, "starts_at": "2030-02-10T10:00:00"}'::jsonb
-    )$$,
-    'Should succeed when capacity exceeds attendee count'
-);
-
--- Should promote waitlisted users when increasing capacity on a waitlist-enabled event
-select is(
-    update_event_with_payments(
-        null::uuid,
-        :'group1ID'::uuid,
-        :'event15ID'::uuid,
-        '{
-            "name": "Waitlist Promotion Event",
-            "description": "Test capacity promotion",
-            "timezone": "America/New_York",
-            "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "capacity": 5,
-            "starts_at": "2030-03-01T10:00:00",
-            "ends_at": "2030-03-01T12:00:00",
-            "waitlist_enabled": true
-        }'::jsonb
-    )::jsonb,
-    format('["%s","%s"]', :'user4ID', :'user5ID')::jsonb,
-    'Should return promoted waitlist user ids when capacity increase opens seats'
-);
-
--- Should move promoted users into attendees and empty the waitlist
-select is(
-    (
-        select jsonb_build_object(
-            'attendees', (
-                select jsonb_agg(user_id order by user_id)
-                from event_attendee
-                where event_id = :'event15ID'::uuid
-            ),
-            'waitlist', (
-                select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
-                from event_waitlist
-                where event_id = :'event15ID'::uuid
-            )
-        )
-    ),
-    format(
-        '{"attendees":["%s","%s","%s","%s","%s"],"waitlist":[]}',
-        :'user1ID', :'user2ID', :'user3ID', :'user4ID', :'user5ID'
-    )::jsonb,
-    'Should move promoted waitlist users into attendees when capacity increases'
-);
-
--- Should reject ticketing conversion when attendees already exist, even if the event also has a waitlist
-select throws_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000009'::uuid,
-        '{
-            "name": "Ticketing Conversion Event",
-            "description": "Published event used to verify ticketing conversion does not promote waitlist users",
-            "timezone": "America/New_York",
-            "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "capacity": 99,
-            "ends_at": "2030-04-01T12:00:00",
-            "payment_currency_code": "USD",
-            "starts_at": "2030-04-01T10:00:00",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000045",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 2500,
-                            "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000046"
-                        }
-                    ],
-                    "seats_total": 2,
-                    "title": "General admission"
-                }
-            ]
-        }'::jsonb
-    )$$,
-    'ticketed events require an empty attendee list',
-    'Should reject ticketing conversion when attendees and queued users still exist'
-);
-
--- Should reject ticketing conversion when the event already has a waitlist
-select throws_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000012'::uuid,
-        '{
-            "name": "Ticketing Waitlist Event",
-            "description": "Published event used for ticketing conversion waitlist checks",
-            "timezone": "UTC",
-            "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "capacity": 99,
-            "ends_at": "2030-05-01T12:00:00",
-            "payment_currency_code": "USD",
-            "starts_at": "2030-05-01T10:00:00",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000051",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 2500,
-                            "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000052"
-                        }
-                    ],
-                    "seats_total": 2,
-                    "title": "General admission"
-                }
-            ]
-        }'::jsonb
-    )$$,
-    'ticketed events cannot have existing event-level waitlist entries',
-    'Should reject ticketing conversion when queued users already exist'
-);
-
--- Should reject ticketing conversion when the event already has attendees
-select throws_ok(
-    $$select update_event_with_payments(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000004'::uuid,
-        '{
-            "name": "Capacity Validation Event",
-            "description": "Published event for attendee floor validation checks",
-            "timezone": "America/New_York",
-            "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "in-person",
-            "capacity": 99,
-            "ends_at": "2030-02-10T12:00:00",
-            "payment_currency_code": "USD",
-            "starts_at": "2030-02-10T10:00:00",
-            "ticket_types": [
-                {
-                    "active": true,
-                    "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000053",
-                    "order": 1,
-                    "price_windows": [
-                        {
-                            "amount_minor": 2500,
-                            "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000054"
-                        }
-                    ],
-                    "seats_total": 3,
-                    "title": "General admission"
-                }
-            ]
-        }'::jsonb
-    )$$,
-    'ticketed events require an empty attendee list',
-    'Should reject ticketing conversion when confirmed attendees already exist'
-);
-
--- Should keep the event unticketed when attendee-based conversion is rejected
-select is(
-    list_event_ticket_types(:'event14ID'::uuid),
-    null,
-    'Should leave ticket types untouched when attendee-based conversion is rejected'
-);
-
--- Should keep attendees and waitlist unchanged when rejected conversion leaves the event untouched
-select is(
-    (
-        select jsonb_build_object(
-            'attendees', (
-                select jsonb_agg(user_id order by user_id)
-                from event_attendee
-                where event_id = :'event20ID'::uuid
-            ),
-            'waitlist', (
-                select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
-                from event_waitlist
-                where event_id = :'event20ID'::uuid
-            )
-        )
-    ),
-    format(
-        '{"attendees":["%s"],"waitlist":["%s"]}',
-        :'user1ID', :'user4ID'
-    )::jsonb,
-    'Should leave existing waitlist entries untouched when ticketing conversion is rejected'
-);
-
--- Should promote waitlisted users for a published event when capacity increases
-select is(
-    update_event_with_payments(
-        null::uuid,
-        :'group1ID'::uuid,
-        :'event13ID'::uuid,
-        format(
-            '{
-                "name": "Published Waitlist Event",
-                "description": "Published event for waitlist promotion checks",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "capacity": 2,
-                "starts_at": "2030-02-01T10:00:00",
-                "waitlist_enabled": true
-            }',
-            :'category1ID'
-        )::jsonb
-    )::jsonb,
-    format('["%s"]', :'user3ID')::jsonb,
-    'Should return promoted waitlist user ids when a published event gains capacity'
-);
-
--- Should move promoted users into attendees for a published event
-select is(
-    (
-        select jsonb_build_object(
-            'attendees', (
-                select jsonb_agg(user_id order by user_id)
-                from event_attendee
-                where event_id = :'event13ID'::uuid
-            ),
-            'waitlist', (
-                select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
-                from event_waitlist
-                where event_id = :'event13ID'::uuid
-            )
-        )
-    ),
-    format(
-        '{"attendees":["%s","%s"],"waitlist":[]}',
-        :'user2ID', :'user3ID'
-    )::jsonb,
-    'Should move promoted users into attendees when a published event gains capacity'
-);
-
--- Should continue promoting queued users when waitlist is disabled for new joins
-select is(
-    update_event_with_payments(
-        null::uuid,
-        :'group1ID'::uuid,
-        :'event16ID'::uuid,
-        format(
-            '{
-                "name": "Waitlist Disabled Event",
-                "description": "Published event for disabled waitlist promotion checks",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "capacity": 3,
-                "starts_at": "2030-02-16T10:00:00",
-                "waitlist_enabled": false
-            }',
-            :'category1ID'
-        )::jsonb
-    )::jsonb,
-    format('["%s"]', :'user1ID')::jsonb,
-    'Should promote existing waitlist users even when waitlist is disabled for new joins'
-);
-
--- Should leave the queue empty after promoting existing users with waitlist disabled
-select is(
-    (select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb) from event_waitlist where event_id = :'event16ID'::uuid),
-    '[]'::jsonb,
-    'Should empty the remaining waitlist after promotion when waitlist is disabled'
-);
-
--- Should promote all queued users when capacity becomes unlimited
-select is(
-    update_event_with_payments(
-        null::uuid,
-        :'group1ID'::uuid,
-        :'event17ID'::uuid,
-        format(
-            '{
-                "name": "Unlimited Event",
-                "description": "Published event for unlimited capacity promotion checks",
-                "timezone": "UTC",
-                "category_id": "%s",
-                "kind_id": "in-person",
-                "capacity": null,
-                "starts_at": "2030-02-17T10:00:00",
-                "waitlist_enabled": false
-            }',
-            :'category1ID'
-        )::jsonb
-    )::jsonb,
-    format('["%s","%s"]', :'user4ID', :'user5ID')::jsonb,
-    'Should promote the full queue when capacity becomes unlimited'
-);
-
--- Should empty the queue when capacity becomes unlimited
-select is(
-        (
-            select jsonb_build_object(
-                'attendees', (
-                    select jsonb_agg(user_id order by user_id)
-                    from event_attendee
-                    where event_id = :'event17ID'::uuid
-                ),
-                'waitlist', (
-                    select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
-                    from event_waitlist
-                    where event_id = :'event17ID'::uuid
-                )
-            )
-        ),
-    format(
-        '{"attendees":["%s","%s","%s"],"waitlist":[]}',
-        :'user2ID', :'user4ID', :'user5ID'
-    )::jsonb,
-    'Should move all waitlisted users into attendees when capacity becomes unlimited'
 );
 
 -- Should reconcile a public ticket queue after tier capacity increases
@@ -2088,13 +1762,28 @@ select lives_ok(
             "category_id": "3a3c0000-0000-0000-0000-000000000001",
             "kind_id": "virtual",
             "discount_codes": null,
-            "ticket_types": null
+            "ticket_types": [
+                {
+                    "active": true,
+                    "availability": "public",
+                    "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000033",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 0,
+                            "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000034"
+                        }
+                    ],
+                    "seats_total": 10,
+                    "title": "General"
+                }
+            ]
         }'::jsonb
     )$$,
     'Should clear payment-only configuration with the final positive price'
 );
 
--- Should persist the provider-free configuration after ticket removal
+-- Should persist the provider-free configuration with its free ticket tier
 select results_eq(
     $$
         select
@@ -2104,8 +1793,8 @@ select results_eq(
         from event e
         where event_id = '3a3c0000-0000-0000-0000-000000000008'::uuid
     $$,
-    $$ values (null::text, 0::int, 0::int) $$,
-    'Should persist provider-free configuration after ticket removal'
+    $$ values (null::text, 0::int, 1::int) $$,
+    'Should persist provider-free configuration with its free ticket tier'
 );
 
 -- ============================================================================

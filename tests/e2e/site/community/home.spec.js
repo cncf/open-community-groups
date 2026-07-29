@@ -144,14 +144,14 @@ test.describe("community home page", () => {
       ).toBeVisible();
     });
 
-    test("ticketed seeded event cards show price badges", async ({ page }) => {
+    test("paid seeded event cards show price badges", async ({ page }) => {
       // Skip price badge assertions when payments are disabled.
       test.skip(
         !E2E_PAYMENTS_ENABLED,
         "Payments are disabled in this environment.",
       );
 
-      // Target ticketed in-person and virtual event cards.
+      // Target paid in-person and virtual event cards.
       const inPersonCard = page
         .getByRole("link")
         .filter({ hasText: TEST_EVENT_NAMES.gamma[0] })
@@ -161,7 +161,7 @@ test.describe("community home page", () => {
         .filter({ hasText: TEST_EVENT_NAMES.beta[1] })
         .first();
 
-      // Verify ticketed event cards show their starting prices.
+      // Verify paid event cards show their starting prices.
       await expect(inPersonCard).toContainText("From USD 20.00");
       await expect(virtualCard).toContainText("From USD 15.00");
     });

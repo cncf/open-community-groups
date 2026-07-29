@@ -255,6 +255,23 @@ insert into session (
     'virtual'
 );
 
+-- Every update fixture uses the unified ticket inventory
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+select gen_random_uuid(), e.event_id, 1, coalesce(e.capacity, 100), 'General Admission'
+from event e
+where e.group_id = :'group1ID';
+
+-- Current free prices for the unified ticket inventory
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+)
+select gen_random_uuid(), 0, ett.event_ticket_type_id
+from event_ticket_type ett
+join event e using (event_id)
+where e.group_id = :'group1ID';
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -516,7 +533,7 @@ select is(
     jsonb_build_object(
         'banner_mobile_url', 'https://example.com/banner-mobile.jpg',
         'banner_url', 'https://example.com/banner.jpg',
-        'capacity', 150,
+        'capacity', 100,
         'description', 'Updated description for past event',
         'description_short', 'Updated short description',
         'ends_at', '2020-01-02 12:30:00+00'::timestamptz,

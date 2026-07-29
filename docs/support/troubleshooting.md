@@ -87,9 +87,10 @@ Check event editor completeness:
 4. Meeting constraints are satisfied when automatic meeting is requested.
 5. CFS rules are valid if CFS is enabled.
 
-For ticketed events also verify:
+For every event also verify:
 
-1. The event has at least one ticket type configured.
+1. The event has at least one ticket type configured. The last tier cannot be
+   removed.
 2. Every ticket type has a `Public` or `Invitation only` availability value.
 3. Each ticket type has at least one complete price window.
 4. Free-only ticketing has no event currency or discount codes.
@@ -124,7 +125,7 @@ Private tier names and prices do not appear on the public event page.
 
 Check that:
 
-1. You completed an RSVP or ticket with this account.
+1. You completed a ticket with this account.
 2. Event is published and not canceled.
 3. Check-in window is open:
    - Opens 2 hours before start.

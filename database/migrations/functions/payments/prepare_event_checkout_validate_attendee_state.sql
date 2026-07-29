@@ -15,7 +15,7 @@ begin
     and user_id = p_user_id;
 
     if v_attendee_status = 'confirmed' then
-        raise exception 'user is already attending this ticketed event';
+        raise exception 'user is already attending this event';
     end if;
 
     if v_attendee_status in ('invitation-pending', 'invitation-rejected') then

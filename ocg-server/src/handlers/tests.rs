@@ -705,18 +705,19 @@ pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         event_id,
         event_name: "Test Event".to_string(),
+        event_ticket_type_id: Uuid::new_v4(),
+        expires_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
         group_name: "Test Group".to_string(),
+        is_simple_rsvp: false,
+        ticket_title: "General admission".to_string(),
         timezone: UTC,
 
         amount_minor: None,
         currency_code: None,
-        event_ticket_type_id: None,
-        expires_at: None,
         registration_answers: None,
         registration_questions: vec![],
         resume_checkout_url: None,
         starts_at: Some(Utc.with_ymd_and_hms(2024, 2, 1, 12, 0, 0).unwrap()),
-        ticket_title: None,
     }
 }
 
@@ -742,7 +743,6 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         group_slug: "def5678".to_string(),
         has_registration_questions: false,
         has_related_events: false,
-        is_ticketed: false,
         kind: EventKind::Virtual,
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Sample Event".to_string(),
@@ -1083,6 +1083,8 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
     InvitationRequest {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         invitation_request_status: crate::types::event::EventInvitationRequestStatus::Pending,
+        requested_event_ticket_type_id: Some(Uuid::new_v4()),
+        requested_ticket_title: Some("General admission".to_string()),
         user: sample_dashboard_user_profile(
             user_id,
             "requesting-user",
@@ -1097,8 +1099,6 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
         offer_expires_at: None,
         offered_event_ticket_type_id: None,
         offered_ticket_title: None,
-        requested_event_ticket_type_id: None,
-        requested_ticket_title: None,
         reviewed_at: None,
     }
 }
@@ -1340,8 +1340,8 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
     }
 }
 
-/// Sample ticketed event payload for dashboard group event form tests.
-pub(crate) fn sample_ticketed_event_body() -> String {
+/// Sample paid event payload for dashboard group event form tests.
+pub(crate) fn sample_paid_event_body() -> String {
     let event_form = sample_event_form();
 
     format!(
@@ -1461,6 +1461,8 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
 
     WaitlistEntry {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        event_ticket_type_id: Uuid::new_v4(),
+        ticket_title: "General admission".to_string(),
         user: sample_dashboard_user_profile(
             user_id,
             "waitlisted-user",
@@ -1471,9 +1473,7 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
         ),
         admission_offer_id: None,
         admission_offer_status: None,
-        event_ticket_type_id: None,
         offer_expires_at: None,
-        ticket_title: None,
         waitlist_position: Some(1),
     }
 }

@@ -307,7 +307,7 @@ test.describe("user dashboard invitations view", () => {
     }
   });
 
-  test("accepting an event invitation removes it from the user dashboard", async ({
+  test("claiming an event invitation through checkout removes it from the user dashboard", async ({
     organizerGroupPage,
     pending1Page,
   }) => {
@@ -330,27 +330,37 @@ test.describe("user dashboard invitations view", () => {
     const eventInvitationRow = dashboardContent.locator("tr", {
       hasText: "Upcoming Virtual Event",
     });
-    const acceptEventInvitationButton =
-      eventInvitationRow.getByTitle("Approve");
+    const claimEventInvitationButton =
+      eventInvitationRow.getByTitle("Claim offer");
 
     try {
-      // Verify accepting an event invitation removes it from the dashboard.
+      // Verify the invitation is exposed as a checkout-owned RSVP offer.
       await expect(
         dashboardContent.getByText("Event Invitations", { exact: true }),
       ).toBeVisible();
       await expect(eventInvitationRow).toContainText("Platform Ops Meetup");
-      await expect(acceptEventInvitationButton).toBeVisible();
+      await expect(claimEventInvitationButton).toBeVisible();
 
-      // Click the approve event invitation button.
+      // Open the offer claim modal.
+      await claimEventInvitationButton.click();
+      const claimModal = pending1Page.getByRole("dialog", {
+        name: "Claim offer",
+      });
+      await expect(claimModal).toBeVisible();
+
+      // Complete the free offer through the unified checkout endpoint.
       await Promise.all([
         pending1Page.waitForResponse(
           (response) =>
-            response.request().method() === "PUT" &&
+            response.request().method() === "POST" &&
             response.ok() &&
-            response.url().includes("/dashboard/user/invitations/event/") &&
-            response.url().endsWith("/accept"),
+            response
+              .url()
+              .includes(`/event/${TEST_EVENT_IDS.alpha.two}/checkout`),
         ),
-        acceptEventInvitationButton.click(),
+        claimModal
+          .getByRole("button", { name: "Claim offer", exact: true })
+          .click(),
       ]);
 
       // Reload the invited user dashboard.
@@ -372,6 +382,69 @@ test.describe("user dashboard invitations view", () => {
         TEST_EVENT_IDS.alpha.two,
         TEST_USER_IDS.pending1,
       );
+    }
+  });
+
+  test("claiming a waitlist offer completes through checkout", async ({
+    member2Page,
+    organizerGroupPage,
+  }) => {
+    const eventId = TEST_EVENT_IDS.alpha.dashboardWaitlist;
+
+    try {
+      // Free the only seat so reconciliation promotes the seeded waitlist entry.
+      await clearEventAttendeeState(
+        organizerGroupPage,
+        eventId,
+        TEST_USER_IDS.organizer1,
+      );
+
+      // Open the promoted user's invitations and target the waitlist offer.
+      await openUserDashboardPath(
+        "/dashboard/user?tab=invitations",
+        member2Page,
+      );
+      const dashboardContent = member2Page.locator("#dashboard-content");
+      const offerRow = dashboardContent.locator("tr", {
+        hasText: "Dashboard Waitlist Table Lab",
+      });
+      await expect(offerRow).toContainText("Waiting list offer");
+
+      // Claim the promoted seat through the unified checkout endpoint.
+      await offerRow.getByTitle("Claim offer").click();
+      const claimModal = member2Page.getByRole("dialog", {
+        name: "Claim offer",
+      });
+      await expect(claimModal).toBeVisible();
+      await Promise.all([
+        member2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            response.ok() &&
+            response.url().includes(`/event/${eventId}/checkout`),
+        ),
+        claimModal
+          .getByRole("button", { name: "Claim offer", exact: true })
+          .click(),
+      ]);
+      await expect(offerRow).toHaveCount(0);
+    } finally {
+      // Restore the seeded full-event state for repeatable local runs.
+      await clearEventAttendeeState(
+        organizerGroupPage,
+        eventId,
+        TEST_USER_IDS.member2,
+      );
+      const restoreResponse = await organizerGroupPage.request.post(
+        buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
+        { form: {} },
+      );
+      expect(restoreResponse.ok()).toBeTruthy();
+      const restoreWaitlistResponse = await member2Page.request.post(
+        buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
+        { form: {} },
+      );
+      expect(restoreWaitlistResponse.ok()).toBeTruthy();
     }
   });
 
@@ -398,7 +471,10 @@ test.describe("user dashboard invitations view", () => {
     const eventInvitationRow = dashboardContent.locator("tr", {
       hasText: "Upcoming Virtual Event",
     });
-    const rejectEventInvitationButton = eventInvitationRow.getByTitle("Reject");
+    const rejectEventInvitationButton = eventInvitationRow.getByRole("button", {
+      exact: true,
+      name: "Decline offer for Upcoming Virtual Event",
+    });
 
     try {
       // Verify rejecting an event invitation removes it from the dashboard.
@@ -411,7 +487,7 @@ test.describe("user dashboard invitations view", () => {
       // Click the reject event invitation button.
       await rejectEventInvitationButton.click();
       await expect(pending1Page.locator(".swal2-popup")).toContainText(
-        "Are you sure you would like to reject this invitation?",
+        "Are you sure you would like to decline this offer?",
       );
 
       // Click Yes.
@@ -420,8 +496,10 @@ test.describe("user dashboard invitations view", () => {
           (response) =>
             response.request().method() === "PUT" &&
             response.ok() &&
-            response.url().includes("/dashboard/user/invitations/event/") &&
-            response.url().endsWith("/reject"),
+            response
+              .url()
+              .includes("/dashboard/user/invitations/event-offers/") &&
+            response.url().endsWith("/decline"),
         ),
         pending1Page.getByRole("button", { name: "Yes" }).click(),
       ]);

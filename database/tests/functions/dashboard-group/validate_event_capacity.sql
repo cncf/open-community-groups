@@ -248,14 +248,14 @@ select lives_ok(
     'Should accept update capacity equal to the current attendee count'
 );
 
--- Should count pending registration rows as attendees during capacity validation
+-- Should exclude pending registration rows without an active checkout hold
 select throws_ok(
     format(
         $$select validate_event_capacity('{"capacity": 0}'::jsonb, null::jsonb, '%s'::uuid)$$,
         :'eventQuestionsID'
     ),
-    'event capacity (0) cannot be less than current number of attendees (2)',
-    'Should count pending registration rows as attendees during capacity validation'
+    'event capacity (0) cannot be less than current number of attendees (1)',
+    'Should exclude pending registration rows without an active checkout hold'
 );
 
 -- Should allow manual invitation seats above event capacity

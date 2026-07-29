@@ -644,7 +644,7 @@
                     </div>
                   {% endif -%}
                 </div>
-              {% else if attendee.status == "registration-questions-pending" && event.is_ticketed() -%}
+              {% else if attendee.status == "registration-questions-pending" -%}
                 {{ badges::invitation_badge(label = "Pending checkout", with_border = true) -}}
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-2">
@@ -1036,18 +1036,28 @@
                  class="mt-4 text-sm text-stone-700"></div>
           </div>
 
-          {% if event.is_ticketed() -%}
-            <div>
-              <label for="attendee-invitation-ticket-type" class="form-label">
-                Ticket type <span class="asterisk">*</span>
-              </label>
-              <div class="mt-2">
-                <select id="attendee-invitation-ticket-type"
-                        name="event_ticket_type_id"
-                        class="select-primary"
-                        required>
-                  <option value="">Select ticket type</option>
-                  {% if let Some(ticket_types) = &event.ticket_types -%}
+          <div>
+            {% if let Some(ticket_types) = &event.ticket_types -%}
+              {% if ticket_types.len() == 1 -%}
+                <div class="form-label">Admission tier</div>
+                <p class="mt-2 text-sm text-stone-700">{{ ticket_types[0].title }}</p>
+                {% if !ticket_types[0].active || ticket_types[0].sold_out || ticket_types[0].current_price.is_none() -%}
+                  <p data-attendee-invitation-ticket-empty
+                     class="form-legend text-amber-800">
+                    No ticket types can be assigned. Add seats or activate a ticket type with a current
+                    price before sending an invitation.
+                  </p>
+                {% endif -%}
+              {% else -%}
+                <label for="attendee-invitation-ticket-type" class="form-label">
+                  Ticket type <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2">
+                  <select id="attendee-invitation-ticket-type"
+                          name="event_ticket_type_id"
+                          class="select-primary"
+                          required>
+                    <option value="">Select ticket type</option>
                     {% for ticket_type in ticket_types -%}
                       {% if ticket_type.active && !ticket_type.sold_out && ticket_type.current_price.is_some() -%}
                         <option value="{{ ticket_type.event_ticket_type_id }}">
@@ -1060,17 +1070,17 @@
                         </option>
                       {% endif -%}
                     {% endfor -%}
-                  {% endif -%}
-                </select>
-              </div>
-              <p data-attendee-invitation-ticket-empty
-                 class="form-legend hidden text-amber-800">
-                No ticket types can be assigned. Add capacity or activate a ticket type with a current
-                price before sending an invitation.
-              </p>
-              <p class="form-legend">The selected ticket is reserved when the invitation is sent.</p>
-            </div>
-          {% endif -%}
+                  </select>
+                </div>
+                <p data-attendee-invitation-ticket-empty
+                   class="form-legend hidden text-amber-800">
+                  No ticket types can be assigned. Add seats or activate a ticket type with a current
+                  price before sending an invitation.
+                </p>
+              {% endif -%}
+            {% endif -%}
+            <p class="form-legend">The admission tier is reserved when the invitation is sent.</p>
+          </div>
 
           <div class="mt-auto bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-lg p-4 text-sm">
             When <span class="font-semibold">inviting by email</span>, the email address must match the primary email on the invitee's LF account.

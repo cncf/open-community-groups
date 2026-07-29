@@ -423,6 +423,22 @@ values
     (:'eventTicketTypePendingCheckoutID', :'eventPendingCheckoutID', 1, 100, 'General admission'),
     (:'refundProgressTicketTypeID', :'refundProgressEventID', 1, 100, 'Refund progress');
 
+-- Events without explicit ticket fixtures use default admission tiers
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
 -- Discount codes
 insert into event_discount_code (
     event_discount_code_id,
@@ -568,7 +584,7 @@ insert into admission_offer (
     null,
     null,
     :'eventQuestionsID',
-    null,
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventQuestionsID' limit 1),
     '2029-01-01 00:00:00+00',
     'organizer_invitation',
     'pending',

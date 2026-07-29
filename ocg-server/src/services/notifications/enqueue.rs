@@ -14,8 +14,7 @@ use crate::{
         payloads::{
             build_event_attendance_canceled_notification, build_event_canceled_notification,
             build_event_published_notification, build_event_rescheduled_notification,
-            build_event_waitlist_promoted_notification, build_event_welcome_notification,
-            build_speaker_welcome_notification, should_send_waitlist_promoted_notification,
+            build_speaker_welcome_notification,
         },
     },
     templates::notifications::{
@@ -36,7 +35,6 @@ pub(crate) async fn enqueue_event_attendance_cancellation_notifications(
     community_id: Uuid,
     event_id: Uuid,
     canceled_user_id: Uuid,
-    promoted_user_ids: Vec<Uuid>,
 ) -> Result<()> {
     // Fetch notification context after the attendance mutation
     let (event, site_settings) =
@@ -46,22 +44,6 @@ pub(crate) async fn enqueue_event_attendance_cancellation_notifications(
     let notification = build_event_attendance_canceled_notification(
         &event,
         canceled_user_id,
-        server_cfg,
-        &site_settings,
-    )?;
-    db.enqueue_notification(&notification).await?;
-
-    // Skip promotion notifications when no attendee was promoted
-    if promoted_user_ids.is_empty()
-        || !should_send_waitlist_promoted_notification(&event, &promoted_user_ids)
-    {
-        return Ok(());
-    }
-
-    // Build and enqueue the waitlist promotion notification
-    let notification = build_event_waitlist_promoted_notification(
-        &event,
-        promoted_user_ids,
         server_cfg,
         &site_settings,
     )?;
@@ -412,103 +394,6 @@ pub(crate) async fn enqueue_event_series_published_notifications(
         };
         db.enqueue_notification(&notification).await?;
     }
-
-    Ok(())
-}
-
-/// Enqueues waitlist promotion notifications when an update opens capacity.
-pub(crate) async fn enqueue_event_waitlist_promoted_notification(
-    db: &dyn DBOperations,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_id: Uuid,
-    before: &EventSummary,
-    promoted_user_ids: Vec<Uuid>,
-) -> Result<()> {
-    if promoted_user_ids.is_empty() || before.test_event {
-        return Ok(());
-    }
-
-    // Fetch notification context and updated event summary concurrently
-    let (site_settings, event) = tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary(community_id, group_id, event_id)
-    )?;
-    if !should_send_waitlist_promoted_notification(&event, &promoted_user_ids) {
-        return Ok(());
-    }
-
-    // Build and enqueue the waitlist promotion notification
-    let notification = build_event_waitlist_promoted_notification(
-        &event,
-        promoted_user_ids,
-        server_cfg,
-        &site_settings,
-    )?;
-    db.enqueue_notification(&notification).await?;
-
-    Ok(())
-}
-
-/// Enqueues the event welcome notification after attendance becomes confirmed.
-pub(crate) async fn enqueue_event_welcome_notification(
-    db: &dyn DBOperations,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    event_id: Uuid,
-    user_id: Uuid,
-    include_dashboard_link: bool,
-) -> Result<()> {
-    // Fetch notification context after the attendance mutation
-    let (event, site_settings) =
-        load_event_notification_context(db, community_id, event_id).await?;
-
-    // Build and enqueue the attendee welcome notification
-    let notification = build_event_welcome_notification(
-        &event,
-        user_id,
-        server_cfg,
-        &site_settings,
-        include_dashboard_link,
-    )?;
-    db.enqueue_notification(&notification).await?;
-
-    Ok(())
-}
-
-/// Enqueues the required promotion notification for users promoted from a non-ticketed waitlist.
-pub(crate) async fn enqueue_reconciled_non_ticketed_waitlist_promotion_notification(
-    db: &dyn DBOperations,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_id: Uuid,
-    non_ticketed_promoted_user_ids: Vec<Uuid>,
-) -> Result<()> {
-    if non_ticketed_promoted_user_ids.is_empty() {
-        return Ok(());
-    }
-
-    // Validate the reconciliation contract inside the caller's transaction
-    let event = db.get_event_summary(community_id, group_id, event_id).await?;
-    anyhow::ensure!(
-        !event.is_ticketed(),
-        "ticketed event returned non-ticketed waitlist promotions"
-    );
-    if !should_send_waitlist_promoted_notification(&event, &non_ticketed_promoted_user_ids) {
-        return Ok(());
-    }
-    let site_settings = db.get_site_settings().await?;
-
-    // Enqueue the required promotion notification before the transaction commits
-    let notification = build_event_waitlist_promoted_notification(
-        &event,
-        non_ticketed_promoted_user_ids,
-        server_cfg,
-        &site_settings,
-    )?;
-    db.enqueue_notification(&notification).await?;
 
     Ok(())
 }
@@ -1048,48 +933,6 @@ mod tests {
                 .expect("event rescheduled notification to deserialize");
         assert_eq!(template.event.event_id, event_id);
     }
-
-    #[tokio::test]
-    async fn test_enqueue_reconciled_non_ticketed_promotion_rejects_ticketed_event() {
-        // Setup a ticketed event with an invalid non-ticketed promotion outcome
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let promoted_user_id = Uuid::new_v4();
-        let event = EventSummary {
-            is_ticketed: true,
-            ..sample_event_summary(event_id, group_id)
-        };
-
-        // Setup the database mock to stop before loading notification context
-        let mut db = MockDB::new();
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
-            })
-            .return_once(move |_, _, _| Ok(event));
-        db.expect_get_site_settings().never();
-        db.expect_enqueue_notification().never();
-
-        // Attempt to enqueue the invalid promotion outcome
-        let result = enqueue_reconciled_non_ticketed_waitlist_promotion_notification(
-            &db,
-            &sample_server_cfg(),
-            community_id,
-            group_id,
-            event_id,
-            vec![promoted_user_id],
-        )
-        .await;
-
-        // Check the contract violation is rejected before notification enqueueing
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "ticketed event returned non-ticketed waitlist promotions"
-        );
-    }
-
     // Helpers.
 
     /// Asserts that a recipient group exists for the exact event ids.

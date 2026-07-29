@@ -7,47 +7,129 @@ create or replace function decline_event_admission_offer(
 returns json as $$
 declare
     v_community_id uuid;
+    v_event_discount_code_id uuid;
     v_event_id uuid;
     v_event_name text;
     v_event_ticket_type_id uuid;
     v_group_id uuid;
     v_group_name text;
     v_organizer_user_id uuid;
-    v_promoted_user_ids uuid[];
     v_recipient_name text;
     v_source text;
     v_theme jsonb;
     v_ticket_title text;
-    v_user_id uuid;
 begin
-    -- Release the owned offer and any linked checkout reservation
+    -- Resolve immutable offer identifiers before taking lifecycle locks
     select
-        released.community_id,
-        released.event_id,
-        released.event_ticket_type_id,
-        released.group_id,
-        released.organizer_user_id,
-        released.promoted_user_ids,
-        released.source,
-        released.user_id
+        ao.event_id,
+        ao.event_ticket_type_id
+    into
+        v_event_id,
+        v_event_ticket_type_id
+    from admission_offer ao
+    where ao.admission_offer_id = p_admission_offer_id
+    and ao.user_id = p_actor_user_id;
+
+    if not found then
+        raise exception 'admission offer is no longer available';
+    end if;
+
+    -- Lock the event and ticket inventory before user enrollment state
+    select
+        g.community_id,
+        e.group_id
     into
         v_community_id,
+        v_group_id
+    from event e
+    join "group" g using (group_id)
+    where e.event_id = v_event_id
+    for update of e;
+
+    if not found then
+        raise exception 'admission offer is no longer available';
+    end if;
+
+    perform 1
+    from event_ticket_type ett
+    where ett.event_id = v_event_id
+    order by ett.event_ticket_type_id
+    for update of ett;
+
+    -- Expire stale reservations before selecting the requested offer
+    perform reconcile_event_enrollment(
         v_event_id,
         v_event_ticket_type_id,
-        v_group_id,
-        v_organizer_user_id,
-        v_promoted_user_ids,
-        v_source,
-        v_user_id
-    from release_event_admission_offer(
-        p_admission_offer_id,
-        'declined',
-        null,
-        p_actor_user_id,
         p_configured_provider
-    ) released;
+    );
 
-    -- Load immutable notification context after the offer release succeeds
+    perform pg_advisory_xact_lock(
+        hashtext(v_event_id::text),
+        hashtext(p_actor_user_id::text)
+    );
+
+    -- Lock and validate the active user-owned offer
+    select
+        ao.organizer_user_id,
+        ao.source
+    into
+        v_organizer_user_id,
+        v_source
+    from admission_offer ao
+    where ao.admission_offer_id = p_admission_offer_id
+    and ao.event_id = v_event_id
+    and ao.status in ('checkout_pending', 'pending')
+    and ao.expires_at > current_timestamp
+    and ao.user_id = p_actor_user_id
+    for update of ao;
+
+    if not found then
+        raise exception 'admission offer is no longer available';
+    end if;
+
+    -- Expire any linked checkout and release its discount and attendee hold
+    select ep.event_discount_code_id
+    into v_event_discount_code_id
+    from event_purchase ep
+    where ep.admission_offer_id = p_admission_offer_id
+    and ep.status = 'pending'
+    for update of ep;
+
+    if found then
+        update event_purchase
+        set
+            hold_expires_at = current_timestamp,
+            status = 'expired',
+            updated_at = current_timestamp
+        where admission_offer_id = p_admission_offer_id
+        and status = 'pending';
+
+        if v_event_discount_code_id is not null then
+            perform release_event_discount_code_availability(v_event_discount_code_id);
+        end if;
+
+        perform release_event_checkout_attendee_hold(v_event_id, p_actor_user_id);
+    end if;
+
+    -- Persist the recipient decision and fill the released tier seat
+    update admission_offer
+    set
+        status = 'declined',
+        updated_at = current_timestamp
+    where admission_offer_id = p_admission_offer_id
+    and status in ('checkout_pending', 'pending');
+
+    if not found then
+        raise exception 'admission offer is no longer available';
+    end if;
+
+    perform reconcile_event_enrollment(
+        v_event_id,
+        v_event_ticket_type_id,
+        p_configured_provider
+    );
+
+    -- Load immutable notification context after the release succeeds
     select
         e.name,
         g.name,
@@ -62,17 +144,15 @@ begin
         v_ticket_title
     from event e
     join "group" g using (group_id)
-    join admission_offer ao
-        on ao.admission_offer_id = p_admission_offer_id
-    join "user" u on u.user_id = v_user_id
+    join admission_offer ao on ao.admission_offer_id = p_admission_offer_id
+    join event_ticket_type ett using (event_ticket_type_id)
+    join "user" u on u.user_id = p_actor_user_id
     left join lateral (
         select site.theme
         from site
         order by site.created_at desc
         limit 1
     ) s on true
-    left join event_ticket_type ett
-        on ett.event_ticket_type_id = v_event_ticket_type_id
     where e.event_id = v_event_id;
 
     -- Notify the assigning organizer when one owns the released offer
@@ -89,7 +169,7 @@ begin
                 'recipient_name', v_recipient_name,
                 'theme', v_theme,
                 'ticket_title', v_ticket_title,
-                'user_id', v_user_id
+                'user_id', p_actor_user_id
             ),
             '[]'::jsonb,
             array[v_organizer_user_id]
@@ -105,24 +185,23 @@ begin
         end,
         p_actor_user_id,
         'user',
-        v_user_id,
+        p_actor_user_id,
         v_community_id,
         v_group_id,
         v_event_id,
-        jsonb_strip_nulls(jsonb_build_object(
+        jsonb_build_object(
             'admission_offer_id', p_admission_offer_id,
             'event_id', v_event_id,
             'event_ticket_type_id', v_event_ticket_type_id,
-            'user_id', v_user_id
-        ))
+            'user_id', p_actor_user_id
+        )
     );
 
-    -- Return reconciliation context for required non-ticketed promotion notifications
+    -- Return the user dashboard refresh context
     return json_build_object(
         'community_id', v_community_id,
         'event_id', v_event_id,
-        'group_id', v_group_id,
-        'non_ticketed_promoted_user_ids', coalesce(v_promoted_user_ids, array[]::uuid[])
+        'group_id', v_group_id
     );
 end;
 $$ language plpgsql;

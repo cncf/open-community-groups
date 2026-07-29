@@ -1,15 +1,18 @@
+-- Tests routing event attendance into checkout, approval, or a ticket waitlist.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(77);
+select plan(65);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '5e020000-0000-0000-0000-000000000001'
+\set duplicateWaitlistUserID '5e020000-0000-0000-0000-000000000055'
 \set eventCanceledID '5e020000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e020000-0000-0000-0000-000000000003'
 \set eventDeletedID '5e020000-0000-0000-0000-000000000004'
@@ -91,6 +94,8 @@ select plan(77);
 \set ticketWaitlistActivePurchasePriceWindowID '5e020000-0000-0000-0000-000000000050'
 \set ticketWaitlistActivePurchaseTypeID '5e020000-0000-0000-0000-000000000051'
 \set ticketWaitlistActivePurchaseUserID '5e020000-0000-0000-0000-000000000052'
+\set ticketExpiredPurchaseID '5e020000-0000-0000-0000-000000000053'
+\set ticketExpiredPurchaseUserID '5e020000-0000-0000-0000-000000000054'
 
 -- ============================================================================
 -- SEED DATA
@@ -225,6 +230,14 @@ insert into "user" (
     'User Ten',
     'registered'
 ), (
+    :'duplicateWaitlistUserID',
+    'duplicate-waitlist-hash',
+    'duplicate-waitlist@example.com',
+    true,
+    'duplicate-waitlist',
+    'Duplicate Waitlist',
+    'registered'
+), (
     :'activeApprovalOfferUserID',
     'active-approval-offer-hash',
     'active-approval-offer@example.com',
@@ -279,6 +292,14 @@ insert into "user" (
     true,
     'ticket-waitlist-active-purchase',
     'Ticket Waitlist Active Purchase',
+    'registered'
+), (
+    :'ticketExpiredPurchaseUserID',
+    'ticket-expired-purchase-hash',
+    'ticket-expired-purchase@example.com',
+    true,
+    'ticket-expired-purchase',
+    'Ticket Expired Purchase',
     'registered'
 ), (
     :'questionsAttendeeUserID',
@@ -973,13 +994,77 @@ insert into event (
     true
 );
 
+-- Events without a specialized ticket fixture use a default free tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for the default ticket tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- Event attendees
 insert into event_attendee (event_id, user_id, status)
 values
     (:'eventFullNoWaitlistID', :'user1ID', 'confirmed'),
     (:'eventFullWaitlistID', :'user1ID', 'confirmed'),
-    (:'eventQuestionsFullWaitlistID', :'questionsSeatUserID', 'confirmed'),
-    (:'eventQuestionsID', :'questionsPendingUserID', 'registration-questions-pending');
+    (:'eventQuestionsFullWaitlistID', :'questionsSeatUserID', 'confirmed');
+
+-- Confirmed attendees own capacity through completed purchases
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+)
+select
+    0,
+    null,
+    0,
+    ea.event_id,
+    ett.event_ticket_type_id,
+    'completed',
+    ett.title,
+    ea.user_id
+from event_attendee ea
+join lateral (
+    select ett.event_ticket_type_id, ett.title
+    from event_ticket_type ett
+    where ett.event_id = ea.event_id
+    order by ett."order", ett.event_ticket_type_id
+    limit 1
+) ett on true
+where ea.status = 'confirmed';
 
 -- Canceled attendees exercising capacity checks during a new RSVP
 insert into event_attendee (
@@ -1007,16 +1092,17 @@ insert into event_attendee (
     :'user10ID'
 );
 
--- Stale canceled attendee row for accepted approval-request rejoin tests
-insert into event_attendee (event_id, user_id, registration_answers, status)
-values (
-    :'eventQuestionsApprovalID',
-    :'questionsRejoinConflictUserID',
-    format(
-        '{"answers": [{"question_id": "%s", "value": "Stale answer"}]}',
-        :'questionID'
-    )::jsonb,
-    'invitation-canceled'
+-- Dedicated queue row for duplicate-join FIFO coverage
+insert into event_waitlist (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    '2001-01-01 00:00:00+00',
+    :'eventTicketedID',
+    :'ticketTypeID',
+    :'duplicateWaitlistUserID'
 );
 
 -- Existing organizer invitation decisions
@@ -1024,11 +1110,7 @@ insert into event_attendee (event_id, user_id, manually_invited, status)
 values
     (:'eventOKID', :'user3ID', true, 'invitation-canceled'),
     (:'eventFullWaitlistID', :'user3ID', false, 'invitation-canceled'),
-    (:'eventFullNoWaitlistID', :'user5ID', true, 'invitation-pending'),
     (:'eventFullNoWaitlistID', :'user6ID', true, 'invitation-rejected'),
-    (:'eventRegistrationClosedID', :'user8ID', true, 'invitation-pending'),
-    (:'eventRegistrationOpenUntilStartID', :'user9ID', true, 'invitation-pending'),
-    (:'eventTicketedID', :'user9ID', true, 'invitation-pending'),
     (:'eventTicketedID', :'user10ID', false, 'registration-questions-pending');
 
 -- Pending free checkout that must not be confirmable through the RSVP endpoint
@@ -1119,6 +1201,29 @@ insert into event_purchase (
     :'ticketWaitlistActivePurchaseUserID'
 );
 
+-- Expired free checkout retried through the simple RSVP path
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    0,
+    null,
+    :'eventTicketAvailableID',
+    :'ticketExpiredPurchaseID',
+    :'ticketAvailableTypeID',
+    current_timestamp - interval '10 minutes',
+    'pending',
+    'Available admission',
+    :'ticketExpiredPurchaseUserID'
+);
+
 -- Active ticket offer that blocks a duplicate approval request
 insert into admission_offer (
     admission_offer_id,
@@ -1164,6 +1269,7 @@ insert into event_purchase (
 -- Event invitation requests
 insert into event_invitation_request (
     event_id,
+    event_ticket_type_id,
     user_id,
     created_at,
     status,
@@ -1173,6 +1279,7 @@ insert into event_invitation_request (
 values
     (
         :'eventInviteOnlyID',
+        (select event_ticket_type_id from event_ticket_type where event_id = :'eventInviteOnlyID' limit 1),
         :'user3ID',
         '2024-01-01 00:00:00+00',
         'accepted',
@@ -1181,26 +1288,11 @@ values
     ),
     (
         :'eventInviteOnlyID',
+        (select event_ticket_type_id from event_ticket_type where event_id = :'eventInviteOnlyID' limit 1),
         :'user4ID',
         '2024-01-02 00:00:00+00',
         'rejected',
         '2024-01-02 01:00:00+00',
-        :'user1ID'
-    ),
-    (
-        :'eventQuestionsApprovalID',
-        :'questionsRejoinInsertUserID',
-        '2024-01-03 00:00:00+00',
-        'accepted',
-        '2024-01-03 01:00:00+00',
-        :'user1ID'
-    ),
-    (
-        :'eventQuestionsApprovalID',
-        :'questionsRejoinConflictUserID',
-        '2024-01-04 00:00:00+00',
-        'accepted',
-        '2024-01-04 01:00:00+00',
         :'user1ID'
     );
 
@@ -1208,43 +1300,46 @@ values
 -- TESTS
 -- ============================================================================
 
--- Should reactivate canceled attendance through a new RSVP
+-- Should prepare checkout without rewriting canceled attendance history
 select is(
     attend_event(:'communityID'::uuid, :'eventReactivationID'::uuid, :'user10ID'::uuid),
-    'attendee',
-    'Should reactivate canceled attendance through a new RSVP'
+    'pending-payment',
+    'Should prepare checkout for a user with canceled attendance history'
 );
 
--- Should clear canceled attendance metadata after the new RSVP
+-- Should preserve canceled attendance metadata until checkout completes
 select results_eq(
     format($$
         select
-            attendance_canceled_at,
+            attendance_canceled_at is not null,
             attendance_canceled_by_user_id,
             status
         from event_attendee
         where event_id = %L::uuid
         and user_id = %L::uuid
     $$, :'eventReactivationID', :'user10ID'),
-    $$ values (null::timestamptz, null::uuid, 'confirmed'::text) $$,
-    'Should clear canceled attendance metadata after the new RSVP'
+    format(
+        $$ values (true, %L::uuid, 'attendance-canceled'::text) $$,
+        :'user10ID'
+    ),
+    'Should preserve canceled attendance metadata before checkout'
 );
 
--- Should register a normal attendee when capacity allows
+-- Should send direct enrollment through checkout when capacity allows
 select is(
     attend_event(:'communityID'::uuid, :'eventOKID'::uuid, :'user1ID'::uuid),
-    'attendee',
-    'Returns attendee when the user gets a confirmed seat'
+    'pending-payment',
+    'Returns pending payment before the free checkout completion step'
 );
 
--- Should reject direct RSVP enrollment for ticketed events
+-- Should require a tier when the event cannot auto-select one
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventTicketedID', :'user2ID'
     ),
-    'ticketed events must be purchased before attending',
-    'Rejects direct RSVP enrollment for ticketed events'
+    'ticket type is required',
+    'Requires a selected ticket tier'
 );
 
 -- Should reject approval requests with an active admission offer
@@ -1273,27 +1368,11 @@ select throws_ok(
     'Should reject approval requests with an active purchase'
 );
 
--- Should require a ticket type for public ticket approval requests
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventTicketApprovalID', :'user3ID'
-    ),
-    'ticket type is required',
-    'Should require a ticket type for public ticket approval requests'
-);
-
--- Should create a public ticket approval request
+-- Should auto-select the sole public tier for an approval request
 select is(
-    attend_event(
-        :'communityID'::uuid,
-        :'eventTicketApprovalID'::uuid,
-        :'user3ID'::uuid,
-        null,
-        :'ticketApprovalTypeID'::uuid
-    ),
+    attend_event(:'communityID'::uuid, :'eventTicketApprovalID'::uuid, :'user3ID'::uuid),
     'pending-approval',
-    'Should create a public ticket approval request'
+    'Should create a request for the sole public tier'
 );
 
 -- Should retain the requested public ticket tier
@@ -1308,7 +1387,30 @@ select is(
     'Should retain the requested public ticket tier'
 );
 
--- Should reject private ticket approval requests that select a ticket type
+-- Should create a generic request for a fully private event
+select is(
+    attend_event(
+        :'communityID'::uuid,
+        :'eventTicketPrivateSelectionID'::uuid,
+        :'ticketPrivateSelectionUserID'::uuid
+    ),
+    'pending-approval',
+    'Should create a generic request for a fully private event'
+);
+
+-- Should keep a generic private request unscoped until organizer review
+select ok(
+    exists (
+        select 1
+        from event_invitation_request
+        where event_id = :'eventTicketPrivateSelectionID'::uuid
+        and event_ticket_type_id is null
+        and user_id = :'ticketPrivateSelectionUserID'::uuid
+    ),
+    'Should keep a generic private request unscoped until organizer review'
+);
+
+-- Should reject attendee selection of an invitation-only tier
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid,null,%L::uuid)',
@@ -1317,68 +1419,71 @@ select throws_ok(
         :'ticketPrivateSelectionUserID',
         :'ticketPrivateSelectionTypeID'
     ),
-    'private ticket requests cannot select a ticket type',
-    'Should reject private ticket approval requests that select a ticket type'
+    'ticket type is required',
+    'Should reject attendee selection of an invitation-only tier'
 );
 
+-- Should prepare checkout while the selected tier has seats
 select is(
     attend_event(
-        :'communityID'::uuid,
-        :'eventTicketPrivateApprovalID'::uuid,
-        :'user5ID'::uuid
-    ),
-    'pending-approval',
-    'Should create a generic private ticket approval request'
-);
-
-select is(
-    (
-        select event_ticket_type_id
-        from event_invitation_request
-        where event_id = :'eventTicketPrivateApprovalID'::uuid
-        and user_id = :'user5ID'::uuid
-    ),
-    null,
-    'Should leave generic private ticket requests unassigned'
-);
-
--- Should reject waitlist joins while the selected ticket tier still has seats
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid,null,%L::uuid)',
         :'communityID',
         :'eventTicketAvailableID',
         :'ticketAvailableUserID',
+        null,
         :'ticketAvailableTypeID'
     ),
-    'ticket type is still available',
-    'Should reject waitlist joins while the selected ticket tier still has seats'
+    'pending-payment',
+    'Should prepare checkout while the selected tier has seats'
 );
 
--- Should reject waitlist joins when sold-out ticket tiers have waitlists disabled
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid,null,%L::uuid)',
+-- Should report unavailable capacity when a sold-out tier has no waitlist
+select is(
+    attend_event(
         :'communityID',
         :'eventTicketSoldOutNoWaitlistID',
         :'ticketSoldOutNoWaitlistUserID',
+        null,
         :'ticketSoldOutNoWaitlistTypeID'
     ),
-    'ticket type is sold out',
-    'Should reject waitlist joins when sold-out ticket tiers have waitlists disabled'
+    'event-capacity-unavailable',
+    'Should report unavailable capacity when a sold-out tier has no waitlist'
 );
 
--- Should reject waitlist joins with an active purchase
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid,null,%L::uuid)',
+-- Should resume an active free checkout instead of joining the waitlist
+select is(
+    attend_event(
         :'communityID',
         :'eventTicketWaitlistActivePurchaseID',
         :'ticketWaitlistActivePurchaseUserID',
+        null,
         :'ticketWaitlistActivePurchaseTypeID'
     ),
-    'user already has an active purchase for this event',
-    'Should reject waitlist joins with an active purchase'
+    'pending-payment',
+    'Should resume an active free checkout instead of joining the waitlist'
+);
+
+-- Should retry after expiring a stale free checkout hold
+select is(
+    attend_event(
+        :'communityID',
+        :'eventTicketAvailableID',
+        :'ticketExpiredPurchaseUserID',
+        null,
+        :'ticketAvailableTypeID'
+    ),
+    'pending-payment',
+    'Should retry after expiring a stale free checkout hold'
+);
+
+-- Should mark the stale free checkout hold expired before retrying
+select is(
+    (
+        select status
+        from event_purchase
+        where event_purchase_id = :'ticketExpiredPurchaseID'
+    ),
+    'expired',
+    'Should mark the stale free checkout hold expired before retrying'
 );
 
 -- Should join a sold-out public ticket tier waitlist
@@ -1406,14 +1511,29 @@ select is(
     'Should retain the selected waitlist ticket tier'
 );
 
--- Should reject duplicate joins to the same ticket tier
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid,null,%L::uuid)',
-        :'communityID', :'eventTicketedID', :'user2ID', :'ticketTypeID'
+-- Should make duplicate joins to the same tier idempotent
+select is(
+    attend_event(
+        :'communityID',
+        :'eventTicketedID',
+        :'duplicateWaitlistUserID',
+        null,
+        :'ticketTypeID'
     ),
-    'user is already on the waiting list for this ticket type',
-    'Should reject duplicate joins to the same ticket tier'
+    'waitlisted',
+    'Should keep duplicate joins to the same tier idempotent'
+);
+
+-- Should retain the waitlist FIFO timestamp after a duplicate join
+select is(
+    (
+        select created_at
+        from event_waitlist
+        where event_id = :'eventTicketedID'::uuid
+        and user_id = :'duplicateWaitlistUserID'::uuid
+    ),
+    '2001-01-01 00:00:00+00'::timestamptz,
+    'Should retain waitlist FIFO priority after a duplicate join'
 );
 
 -- Should move an existing waitlist user to another sold-out tier
@@ -1435,7 +1555,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid,null,%L::uuid)',
         :'communityID', :'eventTicketedID', :'user4ID', :'ticketPrivateTypeID'
     ),
-    'ticket type is not publicly available',
+    'ticket type is required',
     'Should reject invitation-only ticket waitlist joins'
 );
 
@@ -1445,15 +1565,8 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventTicketedID', :'user10ID'
     ),
-    'ticketed events must be purchased before attending',
-    'Rejects unpaid pending ticket checkout rows through direct RSVP'
-);
-
--- Should preserve legacy organizer invitation acceptance on ticketed events
-select is(
-    attend_event(:'communityID'::uuid, :'eventTicketedID'::uuid, :'user9ID'::uuid),
-    'attendee',
-    'Allows legacy organizer invitations to be accepted on ticketed events'
+    'user already has an active purchase for this event',
+    'Rejects a second enrollment attempt with an active checkout'
 );
 
 -- Should reject attendee registration before the registration window opens
@@ -1486,29 +1599,14 @@ select throws_ok(
     'Rejects attendee registration after an open-only registration window reaches the event start'
 );
 
--- Should allow manually invited attendees after the registration window closes
-select is(
-    attend_event(:'communityID'::uuid, :'eventRegistrationClosedID'::uuid, :'user8ID'::uuid),
-    'attendee',
-    'Allows manually invited attendees to accept after the registration window closes'
-);
-
--- Should allow manually invited attendees after open-only registration reaches event start
-select is(
-    attend_event(:'communityID'::uuid, :'eventRegistrationOpenUntilStartID'::uuid, :'user9ID'::uuid),
-    'attendee',
-    'Allows manually invited attendees to accept after an open-only registration window reaches the event start'
-);
-
--- Should create an attendee row after a successful RSVP
+-- Should not create attendance before checkout completes
 select ok(
-    exists(
+    not exists(
         select 1
         from event_attendee
         where event_id = :'eventOKID'::uuid and user_id = :'user1ID'::uuid
-        and manually_invited = false
     ),
-    'Creates non-manually invited event_attendee row after confirmed RSVP'
+    'Does not create event_attendee before checkout'
 );
 
 -- Should discard submitted answers when the event has no registration questions
@@ -1522,8 +1620,8 @@ select is(
             :'ignoredQuestionID'
         )::jsonb
     ),
-    'attendee',
-    'Returns attendee when questionless event receives ignored answers'
+    'pending-payment',
+    'Returns pending payment when questionless event receives ignored answers'
 );
 
 select is(
@@ -1540,9 +1638,32 @@ select is(
 -- Should allow attendance for a capacity-limited event with an open seat
 select is(
     attend_event(:'communityID'::uuid, :'eventFullNoWaitlistID'::uuid, :'user2ID'::uuid),
-    'attendee',
-    'Returns attendee when a capacity-limited event still has room'
+    'pending-payment',
+    'Returns pending payment when a capacity-limited event still has room'
 );
+
+-- Simulate the checkout completion that consumes the final seat
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+)
+select
+    0,
+    null,
+    0,
+    ett.event_id,
+    ett.event_ticket_type_id,
+    'completed',
+    ett.title,
+    :'user2ID'
+from event_ticket_type ett
+where ett.event_id = :'eventFullNoWaitlistID';
 
 -- Should reject RSVP when the event is full and waitlist is disabled
 select is(
@@ -1587,39 +1708,11 @@ select throws_ok(
     'Rejects duplicate RSVP for a confirmed attendee'
 );
 
--- Should confirm a pending organizer invitation even when the event is full
-select is(
-    attend_event(:'communityID'::uuid, :'eventFullNoWaitlistID'::uuid, :'user5ID'::uuid),
-    'attendee',
-    'Returns attendee when accepting a pending organizer invitation'
-);
-
-select is(
-    (
-        select status
-        from event_attendee
-        where event_id = :'eventFullNoWaitlistID'::uuid
-        and user_id = :'user5ID'::uuid
-    ),
-    'confirmed',
-    'Converts the pending organizer invitation into confirmed attendance'
-);
-
-select ok(
-    (
-        select manually_invited
-        from event_attendee
-        where event_id = :'eventFullNoWaitlistID'::uuid
-        and user_id = :'user5ID'::uuid
-    ),
-    'Keeps accepted organizer invitations marked as manually invited'
-);
-
--- Should confirm a rejected organizer invitation even when the event is full
+-- Should apply capacity checks after a rejected organizer invitation
 select is(
     attend_event(:'communityID'::uuid, :'eventFullNoWaitlistID'::uuid, :'user6ID'::uuid),
-    'attendee',
-    'Returns attendee when reversing a rejected organizer invitation'
+    'event-capacity-unavailable',
+    'Returns unavailable capacity after a rejected organizer invitation'
 );
 
 select is(
@@ -1629,15 +1722,15 @@ select is(
         where event_id = :'eventFullNoWaitlistID'::uuid
         and user_id = :'user6ID'::uuid
     ),
-    'confirmed',
-    'Converts the rejected organizer invitation into confirmed attendance'
+    'invitation-rejected',
+    'Preserves rejected organizer invitation history'
 );
 
 -- Should allow RSVP after an organizer invitation was canceled
 select is(
     attend_event(:'communityID'::uuid, :'eventOKID'::uuid, :'user3ID'::uuid),
-    'attendee',
-    'Returns attendee after a canceled organizer invitation'
+    'pending-payment',
+    'Returns pending payment after a canceled organizer invitation'
 );
 
 select is(
@@ -1647,18 +1740,18 @@ select is(
         where event_id = :'eventOKID'::uuid
         and user_id = :'user3ID'::uuid
     ),
-    'confirmed',
-    'Converts the canceled organizer invitation into confirmed attendance'
+    'invitation-canceled',
+    'Preserves canceled organizer invitation history before checkout'
 );
 
 select ok(
-    not (
+    (
         select manually_invited
         from event_attendee
         where event_id = :'eventOKID'::uuid
         and user_id = :'user3ID'::uuid
     ),
-    'Clears manually invited when a canceled invitation is reused by a normal RSVP'
+    'Preserves manually invited metadata before checkout'
 );
 
 -- Should place the user on the waitlist when the event is full and waitlist is enabled
@@ -1765,79 +1858,14 @@ select is(
     'Should create only a waitlist row when joining a question-enabled waitlist without answers'
 );
 
--- Should recreate attendance when an accepted request no longer has an attendee row
-select is(
-    attend_event(:'communityID'::uuid, :'eventInviteOnlyID'::uuid, :'user3ID'::uuid),
-    'attendee',
-    'Returns attendee when an accepted requester rejoins'
-);
-
--- Should create an attendee row for an accepted requester who rejoins
-select ok(
-    exists(
-        select 1
-        from event_attendee
-        where event_id = :'eventInviteOnlyID'::uuid and user_id = :'user3ID'::uuid
-    ),
-    'Creates attendee row when an accepted requester rejoins'
-);
-
--- Should store answers when an accepted requester rejoins after cancellation
-select is(
-    attend_event(
-        :'questionsCommunityID'::uuid,
-        :'eventQuestionsApprovalID'::uuid,
-        :'questionsRejoinInsertUserID'::uuid,
-        format(
-            '{"answers": [{"question_id": "%s", "value": "Rejoin answer"}]}',
-            :'questionID'
-        )::jsonb
-    ),
-    'attendee',
-    'Should allow accepted requesters to rejoin question-enabled events'
-);
-
-select is(
-    (
-        select registration_answers
-        from event_attendee
-        where event_id = :'eventQuestionsApprovalID'::uuid
-        and user_id = :'questionsRejoinInsertUserID'::uuid
-    ),
+-- Should require accepted requests to continue through their admission offer
+select throws_ok(
     format(
-        '{"answers": [{"question_id": "%s", "value": "Rejoin answer"}]}',
-        :'questionID'
-    )::jsonb,
-    'Should store answers when accepted requesters rejoin after cancellation'
-);
-
--- Should replace stale answers when an accepted requester reuses a canceled row
-select is(
-    attend_event(
-        :'questionsCommunityID'::uuid,
-        :'eventQuestionsApprovalID'::uuid,
-        :'questionsRejoinConflictUserID'::uuid,
-        format(
-            '{"answers": [{"question_id": "%s", "value": "Updated rejoin answer"}]}',
-            :'questionID'
-        )::jsonb
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventInviteOnlyID', :'user3ID'
     ),
-    'attendee',
-    'Should allow accepted requesters to reuse canceled attendee rows'
-);
-
-select is(
-    (
-        select registration_answers
-        from event_attendee
-        where event_id = :'eventQuestionsApprovalID'::uuid
-        and user_id = :'questionsRejoinConflictUserID'::uuid
-    ),
-    format(
-        '{"answers": [{"question_id": "%s", "value": "Updated rejoin answer"}]}',
-        :'questionID'
-    )::jsonb,
-    'Should replace stale answers when accepted requesters reuse canceled attendee rows'
+    'invitation request was already accepted for this event',
+    'Rejects a new enrollment attempt for an accepted request'
 );
 
 -- Should create a pending invitation request when approval is required
@@ -1889,14 +1917,11 @@ select throws_ok(
     'Rejects users whose invitation request was rejected'
 );
 
--- Should reject duplicate waitlist joins
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventFullWaitlistID', :'user2ID'
-    ),
-    'user is already on the waiting list for this event',
-    'Rejects duplicate waitlist joins'
+-- Should keep duplicate waitlist joins idempotent
+select is(
+    attend_event(:'communityID'::uuid, :'eventFullWaitlistID'::uuid, :'user2ID'::uuid),
+    'waitlisted',
+    'Keeps duplicate waitlist joins idempotent'
 );
 
 -- Should reject unpublished events
@@ -1949,61 +1974,15 @@ select throws_ok(
     'Rejects events from inactive groups'
 );
 
--- Should start registration-question completion from a pending attendee
-select is(
-    (
-        select status
-        from event_attendee
-        where event_id = :'eventQuestionsID'::uuid
-        and user_id = :'questionsPendingUserID'::uuid
-    ),
-    'registration-questions-pending',
-    'Should start registration-question completion from a pending attendee'
-);
-
--- Should confirm pending registration-question attendees with valid answers
+-- The handler validates questions before the checkout route
 select is(
     attend_event(
         :'questionsCommunityID'::uuid,
         :'eventQuestionsID'::uuid,
-        :'questionsPendingUserID'::uuid,
-        format(
-            '{"answers": [{"question_id": "%s", "value": "Pending answer"}]}',
-            :'questionID'
-        )::jsonb
+        :'questionsAttendeeUserID'::uuid
     ),
-    'attendee',
-    'Should confirm pending registration-question attendees with valid answers'
-);
-
--- Should store answers when confirming pending registration-question attendees
-select is(
-    (
-        select jsonb_build_object(
-            'registration_answers',
-            registration_answers,
-            'status',
-            status
-        )
-        from event_attendee
-        where event_id = :'eventQuestionsID'::uuid
-        and user_id = :'questionsPendingUserID'::uuid
-    ),
-    format(
-        '{"registration_answers":{"answers":[{"question_id":"%s","value":"Pending answer"}]},"status":"confirmed"}',
-        :'questionID'
-    )::jsonb,
-    'Should store answers when confirming pending registration-question attendees'
-);
-
--- Should require answers when attending an event with questions
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'questionsCommunityID', :'eventQuestionsID', :'questionsAttendeeUserID'
-    ),
-    'questionnaire answers are required',
-    'Should require answers when attending an event with questions'
+    'pending-payment',
+    'Routes an event with questions into checkout'
 );
 
 -- Should attend with valid registration answers
@@ -2017,8 +1996,8 @@ select is(
             :'questionID'
         )::jsonb
     ),
-    'attendee',
-    'Should attend with valid registration answers'
+    'pending-payment',
+    'Routes valid registration answers into checkout'
 );
 
 -- Should store answers submitted while attending
@@ -2029,11 +2008,8 @@ select is(
         where event_id = :'eventQuestionsID'::uuid
         and user_id = :'questionsAttendeeUserID'::uuid
     ),
-    format(
-        '{"answers": [{"question_id": "%s", "value": "Attendee answer"}]}',
-        :'questionID'
-    )::jsonb,
-    'Should store answers submitted while attending'
+    null::jsonb,
+    'Does not create attendance before checkout stores answers'
 );
 
 -- Should keep approval-required attendance pending and store answers on the request

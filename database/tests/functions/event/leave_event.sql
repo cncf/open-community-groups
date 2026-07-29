@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(27);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,8 +22,6 @@ select plan(27);
 \set eventPaidTicketedPurchaseID '5e090000-0000-0000-0000-00000000000b'
 \set eventPaidTicketTypeID '5e090000-0000-0000-0000-00000000000c'
 \set eventPast '5e090000-0000-0000-0000-00000000000d'
-\set eventQuestionsInvited '5e090000-0000-0000-0000-00000000000e'
-\set eventQuestionsPromoted '5e090000-0000-0000-0000-00000000000f'
 \set eventStartedNoEnd '5e090000-0000-0000-0000-000000000010'
 \set eventTicketed '5e090000-0000-0000-0000-000000000011'
 \set eventTicketedDiscountCodeID '5e090000-0000-0000-0000-000000000012'
@@ -36,13 +34,10 @@ select plan(27);
 \set groupCategoryID '5e090000-0000-0000-0000-000000000018'
 \set groupID '5e090000-0000-0000-0000-000000000019'
 \set inactiveGroupID '5e090000-0000-0000-0000-00000000001a'
-\set questionID '5e090000-0000-0000-0000-00000000001b'
 \set user1ID '5e090000-0000-0000-0000-00000000001c'
 \set user2ID '5e090000-0000-0000-0000-00000000001d'
 \set user3ID '5e090000-0000-0000-0000-00000000001e'
 \set user4ID '5e090000-0000-0000-0000-00000000001f'
-\set user5ID '5e090000-0000-0000-0000-000000000020'
-\set user6ID '5e090000-0000-0000-0000-000000000021'
 
 -- ============================================================================
 -- SEED DATA
@@ -81,9 +76,7 @@ values
     (:'user1ID', 'user-1-hash', 'u1@test.com', true, 'u1'),
     (:'user2ID', 'user-2-hash', 'u2@test.com', true, 'u2'),
     (:'user3ID', 'user-3-hash', 'u3@test.com', true, 'u3'),
-    (:'user4ID', 'user-4-hash', 'u4@test.com', true, 'u4'),
-    (:'user5ID', 'user-5-hash', 'u5@test.com', true, 'u5'),
-    (:'user6ID', 'user-6-hash', 'u6@test.com', true, 'u6');
+    (:'user4ID', 'user-4-hash', 'u4@test.com', true, 'u4');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
@@ -391,68 +384,6 @@ insert into event (
     false
 );
 
--- Events with registration questions used to release pending-question seats
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    canceled,
-    deleted,
-    starts_at,
-    ends_at,
-    capacity,
-    waitlist_enabled,
-    registration_questions
-) values
-    (
-        :'eventQuestionsPromoted',
-        'Questions Promoted',
-        'questions-promoted',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        false,
-        false,
-        null,
-        null,
-        1,
-        true,
-        format(
-            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
-            :'questionID'
-        )::jsonb
-    ),
-    (
-        :'eventQuestionsInvited',
-        'Questions Invited',
-        'questions-invited',
-        'd',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        false,
-        false,
-        null,
-        null,
-        1,
-        true,
-        format(
-            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
-            :'questionID'
-        )::jsonb
-    );
-
 -- Event Ticket Type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -494,6 +425,44 @@ insert into event_ticket_type (
     'Paid admission'
 );
 
+-- Events without a specialized ticket fixture use a default tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current prices for ticket tiers without an explicit price fixture
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select
+    case when ett.event_id = :'eventPaidTicketed'::uuid then 1500 else 0 end,
+    gen_random_uuid(),
+    ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- Event Discount Code
 insert into event_discount_code (
     event_discount_code_id,
@@ -518,38 +487,34 @@ insert into event_discount_code (
 -- Event Attendees
 insert into event_attendee (event_id, user_id, status) values
     (:'eventOK', :'user1ID', 'confirmed'),
-    (:'eventOK', :'user3ID', 'invitation-pending'),
     (:'eventDisabledWaitlist', :'user1ID', 'confirmed'),
     (:'eventDisabledWaitlist', :'user2ID', 'confirmed'),
     (:'eventPast', :'user1ID', 'confirmed'),
     (:'eventPaidTicketed', :'user3ID', 'confirmed'),
-    (:'eventQuestionsPromoted', :'user5ID', 'registration-questions-pending'),
     (:'eventStartedNoEnd', :'user1ID', 'confirmed'),
     (:'eventFull', :'user1ID', 'confirmed'),
     (:'eventUnlimited', :'user1ID', 'confirmed'),
-    (:'eventTicketed', :'user1ID', 'confirmed'),
-    (:'eventTicketed', :'user5ID', 'registration-questions-pending');
-
--- Manually invited attendee pending registration answers
-insert into event_attendee (event_id, user_id, manually_invited, status)
-values (:'eventQuestionsInvited', :'user5ID', true, 'registration-questions-pending');
+    (:'eventTicketed', :'user1ID', 'confirmed');
 
 -- Event Waitlists
 insert into event_waitlist (created_at, event_id, event_ticket_type_id, user_id) values
-    (current_timestamp, :'eventCanceled', null, :'user4ID'),
-    (current_timestamp, :'eventDisabledWaitlist', null, :'user3ID'),
-    (current_timestamp, :'eventFull', null, :'user2ID'),
-    (current_timestamp + interval '1 minute', :'eventFull', null, :'user3ID'),
-    (current_timestamp, :'eventQuestionsInvited', null, :'user6ID'),
-    (current_timestamp, :'eventQuestionsPromoted', null, :'user6ID'),
+    (current_timestamp, :'eventCanceled', (select event_ticket_type_id from event_ticket_type where event_id = :'eventCanceled' limit 1), :'user4ID'),
+    (current_timestamp, :'eventDisabledWaitlist', (select event_ticket_type_id from event_ticket_type where event_id = :'eventDisabledWaitlist' limit 1), :'user3ID'),
+    (current_timestamp, :'eventFull', (select event_ticket_type_id from event_ticket_type where event_id = :'eventFull' limit 1), :'user2ID'),
+    (current_timestamp + interval '1 minute', :'eventFull', (select event_ticket_type_id from event_ticket_type where event_id = :'eventFull' limit 1), :'user3ID'),
     (current_timestamp + interval '30 seconds', :'eventTicketed', :'eventTicketTypeID', :'user2ID'),
-    (current_timestamp, :'eventUnlimited', null, :'user2ID'),
-    (current_timestamp + interval '1 minute', :'eventUnlimited', null, :'user4ID'),
-    (current_timestamp, :'eventWaitlist', null, :'user2ID');
+    (current_timestamp, :'eventUnlimited', (select event_ticket_type_id from event_ticket_type where event_id = :'eventUnlimited' limit 1), :'user2ID'),
+    (current_timestamp + interval '1 minute', :'eventUnlimited', (select event_ticket_type_id from event_ticket_type where event_id = :'eventUnlimited' limit 1), :'user4ID'),
+    (current_timestamp, :'eventWaitlist', (select event_ticket_type_id from event_ticket_type where event_id = :'eventWaitlist' limit 1), :'user2ID');
 
 -- Event Invitation Requests
-insert into event_invitation_request (event_id, user_id, status)
-values (:'eventApprovalPending', :'user4ID', 'pending');
+insert into event_invitation_request (event_id, event_ticket_type_id, user_id, status)
+values (
+    :'eventApprovalPending',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventApprovalPending' limit 1),
+    :'user4ID',
+    'pending'
+);
 
 -- Event Purchase
 insert into event_purchase (
@@ -597,6 +562,48 @@ insert into event_purchase (
     :'user3ID'
 );
 
+-- Every confirmed attendee owns capacity through a completed purchase
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+)
+select
+    0,
+    null,
+    0,
+    ea.event_id,
+    ett.event_ticket_type_id,
+    'completed',
+    ett.title,
+    ea.user_id
+from event_attendee ea
+join lateral (
+    select ett.event_ticket_type_id, ett.title
+    from event_ticket_type ett
+    where ett.event_id = ea.event_id
+    order by ett."order", ett.event_ticket_type_id
+    limit 1
+) ett on true
+where ea.status = 'confirmed'
+and not exists (
+    select 1
+    from event_purchase ep
+    where ep.event_id = ea.event_id
+    and ep.user_id = ea.user_id
+    and ep.status in (
+        'completed',
+        'refund-pending',
+        'refund-recovery-pending',
+        'refund-requested'
+    )
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -604,7 +611,7 @@ insert into event_purchase (
 -- Should remove an attendee from a normal event
 select is(
     leave_event(:'communityID'::uuid, :'eventOK'::uuid, :'user1ID'::uuid)::jsonb,
-    '{"left_status":"attendee","promoted_user_ids":[]}'::jsonb,
+    '{"left_status":"attendee"}'::jsonb,
     'Removes attendee and returns attendee leave payload'
 );
 
@@ -625,7 +632,7 @@ select results_eq(
 -- Should allow a user to leave the waitlist
 select is(
     leave_event(:'communityID'::uuid, :'eventWaitlist'::uuid, :'user2ID'::uuid)::jsonb,
-    '{"left_status":"waitlisted","promoted_user_ids":[]}'::jsonb,
+    '{"left_status":"waitlisted"}'::jsonb,
     'Removes waitlisted user and returns waitlisted leave payload'
 );
 
@@ -642,7 +649,7 @@ select ok(
 -- Should allow a user to leave a pending invitation request
 select is(
     leave_event(:'communityID'::uuid, :'eventApprovalPending'::uuid, :'user4ID'::uuid)::jsonb,
-    '{"left_status":"pending-approval","promoted_user_ids":[]}'::jsonb,
+    '{"left_status":"pending-approval"}'::jsonb,
     'Removes pending invitation request and returns pending-approval leave payload'
 );
 
@@ -659,8 +666,8 @@ select ok(
 -- Should promote the next waitlisted user when a confirmed attendee leaves a full event
 select is(
     leave_event(:'communityID'::uuid, :'eventFull'::uuid, :'user1ID'::uuid)::jsonb,
-    format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user2ID')::jsonb,
-    'Promotes the oldest waitlisted user when capacity opens'
+    '{"left_status":"attendee"}'::jsonb,
+    'Leaves attendance after reconciling released capacity'
 );
 
 -- Should reject paid attendees trying to leave a ticketed event
@@ -694,7 +701,7 @@ select is(
     'Should keep paid attendees and purchases unchanged after rejection'
 );
 
--- Should move the promoted user into attendees and remove them from the waitlist
+-- Should create an offer for the oldest queued user
 select is(
     (
         select jsonb_build_object(
@@ -702,6 +709,12 @@ select is(
                 select jsonb_agg(user_id order by user_id)
                 from event_attendee
                 where event_id = :'eventFull'::uuid
+            ),
+            'offers', (
+                select jsonb_agg(user_id order by user_id)
+                from admission_offer
+                where event_id = :'eventFull'::uuid
+                and status = 'pending'
             ),
             'waitlist', (
                 select jsonb_agg(user_id order by user_id)
@@ -711,37 +724,33 @@ select is(
         )
     ),
     format(
-        '{"attendees":["%s","%s"],"waitlist":["%s"]}',
+        '{"attendees":["%s"],"offers":["%s"],"waitlist":["%s"]}',
         :'user1ID',
         :'user2ID',
         :'user3ID'
     )::jsonb,
-    'Preserves the canceled attendee and moves the promoted user into attendees'
+    'Preserves canceled attendance and offers the released seat to the queue head'
 );
 
 -- Should continue promoting existing waitlisted users after waitlist is disabled
 select is(
     leave_event(:'communityID'::uuid, :'eventDisabledWaitlist'::uuid, :'user1ID'::uuid)::jsonb,
-    format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user3ID')::jsonb,
-    'Promotes existing waitlisted users even after waitlist is disabled'
+    '{"left_status":"attendee"}'::jsonb,
+    'Reconciles existing queued users even after waitlist is disabled'
 );
 
 -- Should promote the full remaining queue when an unlimited event loses an attendee
 select is(
     leave_event(:'communityID'::uuid, :'eventUnlimited'::uuid, :'user1ID'::uuid)::jsonb,
-    format(
-        '{"left_status":"attendee","promoted_user_ids":["%s","%s"]}',
-        :'user2ID',
-        :'user4ID'
-    )::jsonb,
-    'Promotes all waitlisted users when the event capacity is unlimited'
+    '{"left_status":"attendee"}'::jsonb,
+    'Reconciles all queued users when the synthesized tier has capacity'
 );
 
 -- Should reserve released ticket capacity for the FIFO queue
 select is(
     leave_event(:'communityID'::uuid, :'eventTicketed'::uuid, :'user1ID'::uuid)::jsonb,
-    '{"left_status":"attendee","promoted_user_ids":[]}'::jsonb,
-    'Should reconcile ticket capacity without returning RSVP promotions'
+    '{"left_status":"attendee"}'::jsonb,
+    'Should reconcile ticket capacity without returning promotion details'
 );
 
 -- Should convert the queued ticketed user into an admission offer
@@ -784,7 +793,7 @@ select is(
     'Should restore the discount code remaining uses when a free ticketed attendee leaves'
 );
 
--- Should move all waitlisted users into attendees for unlimited-capacity events
+-- Should create offers for all queued users when the tier has capacity
 select is(
     (
         select jsonb_build_object(
@@ -792,6 +801,12 @@ select is(
                 select jsonb_agg(user_id order by user_id)
                 from event_attendee
                 where event_id = :'eventUnlimited'::uuid
+            ),
+            'offers', (
+                select jsonb_agg(user_id order by user_id)
+                from admission_offer
+                where event_id = :'eventUnlimited'::uuid
+                and status = 'pending'
             ),
             'waitlist', (
                 select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
@@ -801,73 +816,12 @@ select is(
         )
     ),
     format(
-        '{"attendees":["%s","%s","%s"],"waitlist":[]}',
+        '{"attendees":["%s"],"offers":["%s","%s"],"waitlist":[]}',
         :'user1ID',
         :'user2ID',
         :'user4ID'
     )::jsonb,
-    'Preserves the canceled attendee and moves the full waitlist into attendees'
-);
-
--- Should release a promoted pending-questions registration and promote the next user
-select is(
-    leave_event(:'communityID'::uuid, :'eventQuestionsPromoted'::uuid, :'user5ID'::uuid)::jsonb,
-    format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user6ID')::jsonb,
-    'Releases a promoted pending-questions registration and promotes the next user'
-);
-
--- Should delete the promoted pending-questions row and queue the next user for answers
-select is(
-    (
-        select jsonb_agg(jsonb_build_array(user_id, status) order by user_id)
-        from event_attendee
-        where event_id = :'eventQuestionsPromoted'::uuid
-    ),
-    format(
-        '[["%s","attendance-canceled"],["%s","registration-questions-pending"]]',
-        :'user5ID',
-        :'user6ID'
-    )::jsonb,
-    'Preserves the canceled pending-questions row and queues the next user for answers'
-);
-
--- Should turn a manually invited pending-questions registration into a rejected invitation
-select is(
-    leave_event(:'communityID'::uuid, :'eventQuestionsInvited'::uuid, :'user5ID'::uuid)::jsonb,
-    format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user6ID')::jsonb,
-    'Releases a manually invited pending-questions registration and promotes the next user'
-);
-
--- Should keep the rejected manual invitation on record after leaving
-select is(
-    (
-        select jsonb_build_array(manually_invited, status)
-        from event_attendee
-        where event_id = :'eventQuestionsInvited'::uuid
-        and user_id = :'user5ID'::uuid
-    ),
-    '[true, "invitation-rejected"]'::jsonb,
-    'Keeps the rejected manual invitation on record after leaving'
-);
-
--- Should not release pending-questions registrations on ticketed events
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventTicketed', :'user5ID'
-    ),
-    'user is not attending or waitlisted for this event',
-    'Does not release pending-questions registrations on ticketed events'
-);
-
--- Should reject pending organizer-created invitations
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventOK', :'user3ID'
-    ),
-    'user is not attending or waitlisted for this event',
-    'Rejects leave requests for pending organizer-created invitations'
+    'Preserves canceled attendance and offers seats to the full queue'
 );
 
 -- Should reject past events

@@ -15,15 +15,12 @@
             data-attendance-role="control-price-badge">{{ ticket_price_badge }}</span>
     {% endif -%}
   {% endif -%}
-  {% if event.is_ticketed() -%}
-    <div class="svg-icon size-3 icon-ticket" data-attendance-icon></div>
-    <span data-attendance-label>Get ticket</span>
-  {% else if event.attendee_approval_required -%}
-    <div class="svg-icon size-3 icon-request-invitation" data-attendance-icon></div>
-    <span data-attendance-label>Request invitation</span>
-  {% else -%}
+  {% if event.has_single_free_public_ticket_type() -%}
     <div class="svg-icon size-3 icon-user-plus" data-attendance-icon></div>
     <span data-attendance-label>Attend event</span>
+  {% else -%}
+    <div class="svg-icon size-3 icon-ticket" data-attendance-icon></div>
+    <span data-attendance-label>Get ticket</span>
   {% endif -%}
 {% endmacro initial_control_content -%}
 {# End initial attendance control content -#}

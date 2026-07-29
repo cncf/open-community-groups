@@ -431,8 +431,8 @@ insert into event_purchase (
 -- TESTS
 -- ============================================================================
 
--- Should report pending attendance became confirmed after answers are submitted
-select results_eq(
+-- Should store answers while checkout retains pending confirmation
+select lives_ok(
     format(
         $$
             select submit_event_registration_answers(
@@ -448,11 +448,10 @@ select results_eq(
         :'questionID',
         :'optionVegetarianID'
     ),
-    $$ values (true) $$,
-    'Should report pending attendance became confirmed after answers are submitted'
+    'Should accept answers for a pending registration'
 );
 
--- Should store answers and mark the attendee confirmed
+-- Should store answers without confirming the attendee
 select results_eq(
     format(
         $$
@@ -467,14 +466,14 @@ select results_eq(
     format(
         $$
             values (
-                'confirmed'::text,
+                'registration-questions-pending'::text,
                 '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
             )
         $$,
         :'questionID',
         :'optionVegetarianID'
     ),
-    'Should store answers and mark the attendee confirmed'
+    'Should store answers while leaving confirmation to checkout'
 );
 
 -- Should create the expected audit row
@@ -514,8 +513,8 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should report ticketed pending attendance stays unconfirmed while checkout is unpaid
-select results_eq(
+-- Should keep pending checkout attendance unconfirmed while checkout is unpaid
+select lives_ok(
     format(
         $$
             select submit_event_registration_answers(
@@ -531,11 +530,10 @@ select results_eq(
         :'questionID',
         :'optionVegetarianID'
     ),
-    $$ values (false) $$,
-    'Should report ticketed pending attendance stays unconfirmed while checkout is unpaid'
+    'Should accept answers while checkout is unpaid'
 );
 
--- Should store ticketed answers but leave pending attendance unconfirmed
+-- Should store checkout answers but leave pending attendance unconfirmed
 select results_eq(
     format(
         $$
@@ -557,7 +555,7 @@ select results_eq(
         :'questionID',
         :'optionVegetarianID'
     ),
-    'Should store ticketed answers but leave pending attendance unconfirmed'
+    'Should store checkout answers but leave pending attendance unconfirmed'
 );
 
 -- Should reject self-service answer updates after the registration window closes
@@ -582,7 +580,7 @@ select throws_ok(
 );
 
 -- Should allow active checkout holds to answer after the registration window closes
-select results_eq(
+select lives_ok(
     format(
         $$
             select submit_event_registration_answers(
@@ -598,7 +596,6 @@ select results_eq(
         :'questionID',
         :'optionVegetarianID'
     ),
-    $$ values (false) $$,
     'Should allow active checkout holds to answer after the registration window closes'
 );
 
@@ -628,7 +625,7 @@ select results_eq(
 );
 
 -- Should allow manually invited users to answer after the registration window closes
-select results_eq(
+select lives_ok(
     format(
         $$
             select submit_event_registration_answers(
@@ -644,12 +641,11 @@ select results_eq(
         :'questionID',
         :'optionVegetarianID'
     ),
-    $$ values (true) $$,
     'Should allow manually invited users to answer after the registration window closes'
 );
 
--- Should report confirmed attendee answer updates do not become newly confirmed
-select results_eq(
+-- Should update a confirmed attendee's answers without changing enrollment
+select lives_ok(
     format(
         $$
             select submit_event_registration_answers(
@@ -665,8 +661,7 @@ select results_eq(
         :'questionID',
         :'optionVegetarianID'
     ),
-    $$ values (false) $$,
-    'Should report confirmed attendee answer updates do not become newly confirmed'
+    'Should update confirmed attendee answers'
 );
 
 -- Should reject confirmed attendee updates after the event starts

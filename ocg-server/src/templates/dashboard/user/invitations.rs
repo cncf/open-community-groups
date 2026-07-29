@@ -67,8 +67,17 @@ pub(crate) struct EventInvitation {
     pub event_id: Uuid,
     /// Event display name.
     pub event_name: String,
+    /// Ticket type assigned to the offer.
+    pub event_ticket_type_id: Uuid,
+    /// Offer expiration time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub expires_at: DateTime<Utc>,
     /// Group display name.
     pub group_name: String,
+    /// Whether the offer belongs to a plain RSVP event.
+    pub is_simple_rsvp: bool,
+    /// Assigned ticket title.
+    pub ticket_title: String,
     /// Timezone in which event dates should be displayed.
     pub timezone: chrono_tz::Tz,
 
@@ -76,11 +85,6 @@ pub(crate) struct EventInvitation {
     pub amount_minor: Option<i64>,
     /// Currency used to display the offer amount.
     pub currency_code: Option<String>,
-    /// Ticket type assigned to the offer.
-    pub event_ticket_type_id: Option<Uuid>,
-    /// Offer expiration time.
-    #[serde(default, with = "chrono::serde::ts_seconds_option")]
-    pub expires_at: Option<DateTime<Utc>>,
     /// Existing registration answers from a ticket request or checkout.
     pub registration_answers: Option<QuestionnaireAnswers>,
     /// Registration questions configured for the event.
@@ -91,29 +95,17 @@ pub(crate) struct EventInvitation {
     /// Event start time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
-    /// Assigned ticket title.
-    pub ticket_title: Option<String>,
 }
 
 impl EventInvitation {
     /// Returns true when this offer currently owns a checkout hold.
     pub(crate) fn checkout_started(&self) -> bool {
-        self.event_ticket_type_id.is_some()
-            && self.admission_offer_status == EventAdmissionOfferStatus::CheckoutPending
-    }
-
-    /// Returns the attendee-facing action label for this offer.
-    pub(crate) fn claim_label(&self) -> &'static str {
-        if self.event_ticket_type_id.is_some() {
-            "Claim ticket"
-        } else {
-            "Accept invitation"
-        }
+        self.admission_offer_status == EventAdmissionOfferStatus::CheckoutPending
     }
 
     /// Returns whether a discount code can apply to this ticket offer.
     pub(crate) fn discount_code_available(&self) -> bool {
-        self.event_ticket_type_id.is_some() && self.amount_minor != Some(0)
+        self.amount_minor != Some(0)
     }
 
     /// Returns the attendee-facing price label for a ticket offer.
@@ -130,6 +122,7 @@ impl EventInvitation {
     /// Returns a label describing how the offer was created.
     pub(crate) fn source_label(&self) -> &'static str {
         match self.admission_offer_source {
+            EventAdmissionOfferSource::Approval if self.is_simple_rsvp => "RSVP request approved",
             EventAdmissionOfferSource::Approval => "Ticket request approved",
             EventAdmissionOfferSource::OrganizerInvitation => "Organizer invitation",
             EventAdmissionOfferSource::Waitlist => "Waiting list offer",
@@ -164,21 +157,8 @@ mod tests {
     use crate::types::event::{EventAdmissionOfferSource, EventAdmissionOfferStatus};
 
     #[test]
-    fn event_invitation_claim_label_distinguishes_ticket_offers() {
-        let mut invitation = sample_event_invitation();
-
-        assert_eq!(invitation.claim_label(), "Accept invitation");
-
-        invitation.event_ticket_type_id = Some(Uuid::from_u128(2));
-
-        assert_eq!(invitation.claim_label(), "Claim ticket");
-    }
-
-    #[test]
     fn event_invitation_discount_code_available_rejects_free_offers() {
         let mut invitation = sample_event_invitation();
-        invitation.event_ticket_type_id = Some(Uuid::from_u128(2));
-
         assert!(invitation.discount_code_available());
 
         invitation.amount_minor = Some(0);
@@ -212,18 +192,19 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
             event_id: Uuid::from_u128(3),
             event_name: "Test Event".to_string(),
+            event_ticket_type_id: Uuid::from_u128(2),
+            expires_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
             group_name: "Test Group".to_string(),
+            is_simple_rsvp: false,
+            ticket_title: "General admission".to_string(),
             timezone: UTC,
 
             amount_minor: None,
             currency_code: None,
-            event_ticket_type_id: None,
-            expires_at: None,
             registration_answers: None,
             registration_questions: vec![],
             resume_checkout_url: None,
             starts_at: None,
-            ticket_title: None,
         }
     }
 }

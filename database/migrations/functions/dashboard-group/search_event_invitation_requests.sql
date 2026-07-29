@@ -181,6 +181,8 @@ returns json as $$
                     json_build_object(
                         'created_at', created_at,
                         'invitation_request_status', invitation_request_status,
+                        'requested_event_ticket_type_id', requested_event_ticket_type_id,
+                        'requested_ticket_title', requested_ticket_title,
                         'reviewed_at', reviewed_at,
                         'user', "user"
                     )::jsonb
@@ -189,9 +191,7 @@ returns json as $$
                         'admission_offer_status', admission_offer_status,
                         'offer_expires_at', offer_expires_at,
                         'offered_event_ticket_type_id', offered_event_ticket_type_id,
-                        'offered_ticket_title', offered_ticket_title,
-                        'requested_event_ticket_type_id', requested_event_ticket_type_id,
-                        'requested_ticket_title', requested_ticket_title
+                        'offered_ticket_title', offered_ticket_title
                     ))
                 ),
                 '[]'::json

@@ -218,7 +218,7 @@ test.describe("user dashboard my events view", () => {
     ).toHaveCount(0);
   });
 
-  test("my events respects closed registration windows for pending actions", async ({
+  test("my events exposes offers and active checkout actions after registration closes", async ({
     member2Page,
   }) => {
     // Load My Events before checking registration-window actions.
@@ -230,33 +230,32 @@ test.describe("user dashboard my events view", () => {
       dashboardContent.getByText("My Events", { exact: true }),
     ).toBeVisible();
 
-    // Verify normal pending registration cannot continue after closing.
+    // Verify a waiting-list offer is claimed from the invitations dashboard.
     const closedQuestionsRow = dashboardContent.locator("tr", {
       hasText: TEST_REGISTRATION_WINDOW_EVENTS.questionsClosed.name,
     });
-    await expect(closedQuestionsRow).toContainText("Registration pending");
+    await expect(closedQuestionsRow).toContainText("Event offer");
     await openEventActions(closedQuestionsRow);
-    const closedCompleteRegistration = closedQuestionsRow.getByRole(
-      "menuitem",
-      { name: "Complete registration" },
-    );
-    await expect(closedCompleteRegistration).toBeDisabled();
-    await expect(closedCompleteRegistration).toHaveAttribute(
-      "title",
-      /Registration closed/,
+    await expect(
+      closedQuestionsRow.getByRole("menuitem", { name: "View event offer" }),
+    ).toHaveAttribute(
+      "href",
+      /\/dashboard\/user\?tab=invitations#event-offer-/,
     );
     await closeEventActions(closedQuestionsRow);
 
-    // Verify manual invitations can still complete pending questions.
+    // Verify an organizer invitation uses the same offer claim surface.
     const manualInviteRow = dashboardContent.locator("tr", {
       hasText: TEST_REGISTRATION_WINDOW_EVENTS.questionsManualInviteClosed.name,
     });
-    await expect(manualInviteRow).toContainText("Registration pending");
+    await expect(manualInviteRow).toContainText("Event offer");
     await openEventActions(manualInviteRow);
-    const manualCompleteRegistration = manualInviteRow.getByRole("menuitem", {
-      name: "Complete registration",
-    });
-    await expect(manualCompleteRegistration).toBeEnabled();
+    await expect(
+      manualInviteRow.getByRole("menuitem", { name: "View event offer" }),
+    ).toHaveAttribute(
+      "href",
+      /\/dashboard\/user\?tab=invitations#event-offer-/,
+    );
     await closeEventActions(manualInviteRow);
 
     // Verify an active checkout hold can still be resumed after closing.
@@ -266,7 +265,9 @@ test.describe("user dashboard my events view", () => {
     await expect(pendingPaymentRow).toContainText("Payment pending");
     await openEventActions(pendingPaymentRow);
     await expect(
-      pendingPaymentRow.getByRole("menuitem", { name: "Complete payment" }),
+      pendingPaymentRow.getByRole("menuitem", {
+        name: "Continue to checkout",
+      }),
     ).toHaveAttribute(
       "href",
       "https://example.test/checkout/registration-window-pending",

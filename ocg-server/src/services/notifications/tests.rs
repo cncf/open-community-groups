@@ -785,8 +785,33 @@ fn test_delivery_worker_prepare_content_event_admission_offer_created() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_admission_offer_created_without_rsvp_flag() {
+    // Setup a queued payload created before RSVP classification was persisted
+    let mut template_data = sample_event_admission_offer_created_template_data();
+    template_data
+        .as_object_mut()
+        .expect("template data to be an object")
+        .remove("is_simple_rsvp");
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventAdmissionOfferCreated,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare the legacy notification payload
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check legacy payloads retain ticket-offer wording
+    assert_eq!(subject, "[Enrollment Group] You have a new event offer");
+    assert!(body.contains("General admission"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_free_rsvp_admission_offer_created() {
-    // Setup a non-ticketed organizer offer
+    // Setup a simple-RSVP organizer offer
     let mut template_data = sample_event_admission_offer_created_template_data();
     template_data
         .as_object_mut()
@@ -798,6 +823,7 @@ fn test_delivery_worker_prepare_content_free_rsvp_admission_offer_created() {
                 "registration_questions_required".to_string(),
                 serde_json::Value::Bool(false),
             ),
+            ("is_simple_rsvp".to_string(), serde_json::Value::Bool(true)),
             ("ticket_title".to_string(), serde_json::Value::Null),
         ]);
     let notification = Notification {
@@ -809,10 +835,14 @@ fn test_delivery_worker_prepare_content_free_rsvp_admission_offer_created() {
         template_data: Some(template_data),
     };
 
-    let (_, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+    // Prepare the RSVP notification
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
-    assert!(body.contains("This invitation is <strong>Free</strong>"));
+    // Check neutral subject and RSVP-specific body copy
+    assert_eq!(subject, "[Enrollment Group] You have a new event offer");
+    assert!(body.contains("Event offer"));
     assert!(body.contains("No charge or registration has occurred"));
+    assert!(!body.contains("Your assigned ticket"));
     assert!(!body.contains("price is finalized when you first claim"));
 }
 
@@ -1212,7 +1242,7 @@ fn test_delivery_worker_prepare_content_event_ticket_request_approved() {
     // Check content matches expectations
     assert_eq!(
         subject,
-        "[Enrollment Group] Your ticket request was approved"
+        "[Enrollment Group] Your event request was approved"
     );
     assert!(body.contains("approved your request"));
     assert!(body.contains("General admission"));
@@ -1223,6 +1253,64 @@ fn test_delivery_worker_prepare_content_event_ticket_request_approved() {
     assert!(body.contains(
         "https://example.test/dashboard/user?tab=invitations#event-offer-11111111-1111-1111-1111-111111111111"
     ));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_ticket_request_approved_without_rsvp_flag() {
+    // Setup a queued payload created before RSVP classification was persisted
+    let mut template_data = sample_event_ticket_offer_template_data();
+    template_data
+        .as_object_mut()
+        .expect("template data to be an object")
+        .remove("is_simple_rsvp");
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventTicketRequestApproved,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare the legacy notification payload
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check legacy payloads retain ticket-specific body copy
+    assert_eq!(
+        subject,
+        "[Enrollment Group] Your event request was approved"
+    );
+    assert!(body.contains("General admission"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_free_rsvp_ticket_request_approved() {
+    // Setup a simple-RSVP approval payload
+    let mut template_data = sample_free_event_ticket_offer_template_data();
+    template_data
+        .as_object_mut()
+        .expect("template data to be an object")
+        .insert("is_simple_rsvp".to_string(), serde_json::Value::Bool(true));
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventTicketRequestApproved,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare the RSVP notification
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check neutral subject and RSVP-specific body copy
+    assert_eq!(
+        subject,
+        "[Enrollment Group] Your event request was approved"
+    );
+    assert!(body.contains("Event request approved"));
+    assert!(!body.contains("General admission"));
+    assert!(!body.contains("price is finalized when you first claim"));
 }
 
 #[test]
@@ -1241,7 +1329,7 @@ fn test_delivery_worker_prepare_content_event_ticket_waitlist_offer() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "[Enrollment Group] A ticket is available for you");
+    assert_eq!(subject, "[Enrollment Group] A place is available for you");
     assert!(body.contains("A seat opened"));
     assert!(body.contains("General admission"));
     assert!(body.contains("<strong>Free</strong>"));
@@ -1251,6 +1339,58 @@ fn test_delivery_worker_prepare_content_event_ticket_waitlist_offer() {
     assert!(body.contains(
         "https://example.test/dashboard/user?tab=invitations#event-offer-11111111-1111-1111-1111-111111111111"
     ));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_ticket_waitlist_offer_without_rsvp_flag() {
+    // Setup a queued payload created before RSVP classification was persisted
+    let mut template_data = sample_free_event_ticket_offer_template_data();
+    template_data
+        .as_object_mut()
+        .expect("template data to be an object")
+        .remove("is_simple_rsvp");
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventTicketWaitlistOffer,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare the legacy notification payload
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check legacy payloads retain ticket-specific body copy
+    assert_eq!(subject, "[Enrollment Group] A place is available for you");
+    assert!(body.contains("General admission"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_free_rsvp_ticket_waitlist_offer() {
+    // Setup a simple-RSVP waitlist payload
+    let mut template_data = sample_free_event_ticket_offer_template_data();
+    template_data
+        .as_object_mut()
+        .expect("template data to be an object")
+        .insert("is_simple_rsvp".to_string(), serde_json::Value::Bool(true));
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventTicketWaitlistOffer,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare the RSVP notification
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check neutral subject and RSVP-specific body copy
+    assert_eq!(subject, "[Enrollment Group] A place is available for you");
+    assert!(body.contains("Place available"));
+    assert!(!body.contains("General admission"));
+    assert!(!body.contains("price is finalized when you first claim"));
 }
 
 #[test]
@@ -1855,6 +1995,7 @@ fn sample_event_admission_offer_created_template_data() -> serde_json::Value {
         "event_name": "Enrollment Event",
         "expires_at": 1_914_724_800,
         "group_name": "Enrollment Group",
+        "is_simple_rsvp": false,
         "registration_questions_required": true,
         "theme": {
             "primary_color": "#000000"
@@ -2102,6 +2243,7 @@ fn sample_event_ticket_offer_template_data() -> serde_json::Value {
         "event_name": "Enrollment Event",
         "expires_at": 1_914_724_800,
         "group_name": "Enrollment Group",
+        "is_simple_rsvp": false,
         "theme": {
             "primary_color": "#000000"
         },

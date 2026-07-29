@@ -6,22 +6,12 @@ create or replace function leave_event(
     p_configured_provider text default null
 ) returns json as $$
 declare
-    v_is_ticketed boolean;
-    v_promoted_user_ids uuid[] := array[]::uuid[];
     v_purchase_amount_minor bigint;
     v_purchase_id uuid;
     v_purchase_ticket_type_id uuid;
-    v_reconciled_user_ids uuid[];
 begin
     -- Check if event exists in the community, is active and can be left
-    select
-        exists(
-            select 1
-            from event_ticket_type ett
-            where ett.event_id = e.event_id
-        )
-    into
-        v_is_ticketed
+    perform 1
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
@@ -89,67 +79,14 @@ begin
             perform refund_free_event_purchase(v_purchase_id);
         end if;
 
-        -- Reconcile the released RSVP or ticket-tier capacity
-        select reconcile_event_enrollment(
+        -- Reconcile the released ticket-tier capacity
+        perform reconcile_event_enrollment(
             p_event_id,
             v_purchase_ticket_type_id,
             p_configured_provider
-        )
-        into v_reconciled_user_ids;
-
-        if not v_is_ticketed then
-            v_promoted_user_ids := v_promoted_user_ids
-                || coalesce(v_reconciled_user_ids, array[]::uuid[]);
-        end if;
-
-        return json_build_object(
-            'left_status', 'attendee',
-            'promoted_user_ids', v_promoted_user_ids
         );
-    end if;
 
-    -- Otherwise release a pending registration-questions seat, since these
-    -- rows occupy capacity until answered; ticketed pending rows are owned
-    -- by the checkout hold flow instead
-    if not v_is_ticketed then
-        -- Declining a manual invitation keeps the rejection on record
-        update event_attendee
-        set status = 'invitation-rejected'
-        where event_id = p_event_id
-        and user_id = p_user_id
-        and manually_invited = true
-        and status = 'registration-questions-pending';
-
-        -- Registrations promoted from the waitlist retain inactive history
-        if not found then
-            update event_attendee
-            set
-                attendance_canceled_at = current_timestamp,
-                attendance_canceled_by_user_id = p_user_id,
-                status = 'attendance-canceled'
-            where event_id = p_event_id
-            and user_id = p_user_id
-            and manually_invited = false
-            and status = 'registration-questions-pending';
-        end if;
-
-        if found then
-            -- Reconcile the released RSVP capacity
-            select reconcile_event_enrollment(
-                p_event_id,
-                null,
-                p_configured_provider
-            )
-            into v_reconciled_user_ids;
-
-            v_promoted_user_ids := v_promoted_user_ids
-                || coalesce(v_reconciled_user_ids, array[]::uuid[]);
-
-            return json_build_object(
-                'left_status', 'attendee',
-                'promoted_user_ids', v_promoted_user_ids
-            );
-        end if;
+        return json_build_object('left_status', 'attendee');
     end if;
 
     -- Otherwise remove the user from the waiting list
@@ -158,10 +95,7 @@ begin
     and user_id = p_user_id;
 
     if found then
-        return json_build_object(
-            'left_status', 'waitlisted',
-            'promoted_user_ids', array[]::uuid[]
-        );
+        return json_build_object('left_status', 'waitlisted');
     end if;
 
     -- Otherwise remove a pending invitation request
@@ -171,10 +105,7 @@ begin
     and status = 'pending';
 
     if found then
-        return json_build_object(
-            'left_status', 'pending-approval',
-            'promoted_user_ids', array[]::uuid[]
-        );
+        return json_build_object('left_status', 'pending-approval');
     end if;
 
     raise exception 'user is not attending or waitlisted for this event';

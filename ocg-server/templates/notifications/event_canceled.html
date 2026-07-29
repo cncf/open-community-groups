@@ -15,7 +15,7 @@
     We are sorry to inform you that the event
     <strong>{{ event.name }}</strong> from
     <strong>{{ event.group_name }}</strong> has been <strong>canceled</strong>.
-    {% if event.is_ticketed() -%}
+    {% if event.payment_currency_code.is_some() -%}
       <br />
       <br />
       If you paid for a ticket, your refund has been started automatically. We will

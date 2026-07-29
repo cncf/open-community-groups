@@ -180,7 +180,7 @@
 
 {# Event Invitations -#}
 {{ dashboard::form_title(title = "Event Invitations",
-  description = "Claim, resume, or decline event ticket offers and invitations.") -}}
+  description = "Confirm, resume, or decline event invitations and ticket offers.") -}}
 
 <div class="mt-10">
   <div class="relative overflow-visible">
@@ -223,15 +223,13 @@
               {# Offer -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-700">
-                  {% if let Some(ticket_title) = &invitation.ticket_title -%}
-                    {{ ticket_title }}
-                  {% else -%}
-                    RSVP
-                  {% endif -%}
+                  {% if invitation.is_simple_rsvp -%}RSVP{% else -%}{{ invitation.ticket_title }}{% endif -%}
                 </div>
                 <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
-                {% if let Some(price_label) = invitation.price_label() -%}
-                  <div class="mt-1 text-xs font-semibold text-green-800">{{ price_label }}</div>
+                {% if !invitation.is_simple_rsvp -%}
+                  {% if let Some(price_label) = invitation.price_label() -%}
+                    <div class="mt-1 text-xs font-semibold text-green-800">{{ price_label }}</div>
+                  {% endif -%}
                 {% endif -%}
               </td>
               {# End offer -#}
@@ -246,14 +244,10 @@
               {# End starts date -#}
               {# Expiration date -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                {% if let Some(expires_at) = &invitation.expires_at -%}
-                  {{ expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y") }}
-                  <div class="text-xs text-stone-400">
-                    {{ expires_at.with_timezone(invitation.timezone).format("%-I:%M %p %Z") }}
-                  </div>
-                {% else -%}
-                  No deadline
-                {% endif -%}
+                {{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y") }}
+                <div class="text-xs text-stone-400">
+                  {{ invitation.expires_at.with_timezone(invitation.timezone).format("%-I:%M %p %Z") }}
+                </div>
               </td>
               {# End expiration date -#}
               {# Actions -#}
@@ -271,8 +265,8 @@
                             data-user-event-offer-open
                             data-user-event-offer-modal="event-offer-modal-{{ invitation.admission_offer_id }}"
                             class="btn-tertiary p-2"
-                            aria-label="{{ invitation.claim_label() }} for {{ invitation.event_name }}"
-                            title="{{ invitation.claim_label() }}">
+                            aria-label="Claim offer for {{ invitation.event_name }}"
+                            title="Claim offer">
                       <div class="svg-icon size-3 md:size-4 icon-ticket"></div>
                     </button>
                   {% endif -%}
@@ -337,7 +331,7 @@
           <div class="flex items-start justify-between border-b border-stone-200 p-4 md:p-5">
             <div>
               <h3 id="event-offer-title-{{ invitation.admission_offer_id }}"
-                  class="text-xl font-semibold text-stone-900">{{ invitation.claim_label() }}</h3>
+                  class="text-xl font-semibold text-stone-900">Claim offer</h3>
               <p class="mt-1 text-sm text-stone-600">{{ invitation.event_name }}</p>
             </div>
             <button data-user-event-offer-close
@@ -348,49 +342,40 @@
             </button>
           </div>
           <form data-user-event-offer-form
-                {% if invitation.event_ticket_type_id.is_some() -%}
-                  hx-post="/{{ invitation.community_name }}/event/{{ invitation.event_id }}/checkout"
-                {% else -%}
-                  hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/accept"
-                {% endif -%}
+                data-is-simple-rsvp="{{ invitation.is_simple_rsvp }}"
+                hx-post="/{{ invitation.community_name }}/event/{{ invitation.event_id }}/checkout"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="find button[type='submit']"
                 hx-swap="none"
                 class="modal-body space-y-6 p-4 md:p-6">
-            {% if let Some(event_ticket_type_id) = invitation.event_ticket_type_id -%}
-              <input type="hidden"
-                     name="admission_offer_id"
-                     value="{{ invitation.admission_offer_id }}">
-              <input type="hidden"
-                     name="event_ticket_type_id"
-                     value="{{ event_ticket_type_id }}">
-            {% endif -%}
+            <input type="hidden"
+                   name="admission_offer_id"
+                   value="{{ invitation.admission_offer_id }}">
+            <input type="hidden"
+                   name="event_ticket_type_id"
+                   value="{{ invitation.event_ticket_type_id }}">
 
             <div class="rounded-xl border border-stone-200 bg-stone-50 p-4">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div class="text-sm font-semibold text-stone-900">
-                    {% if let Some(ticket_title) = &invitation.ticket_title -%}
-                      {{ ticket_title }}
-                    {% else -%}
-                      Event invitation
-                    {% endif -%}
+                    {% if invitation.is_simple_rsvp -%}RSVP{% else -%}{{ invitation.ticket_title }}{% endif -%}
                   </div>
                   <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
                 </div>
-                {% if let Some(price_label) = invitation.price_label() -%}
-                  <div class="rounded-full border border-green-800 bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
-                    {{ price_label }}
-                  </div>
+                {% if !invitation.is_simple_rsvp -%}
+                  {% if let Some(price_label) = invitation.price_label() -%}
+                    <div class="rounded-full border border-green-800 bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
+                      {{ price_label }}
+                    </div>
+                  {% endif -%}
                 {% endif -%}
               </div>
-              {% if let Some(expires_at) = &invitation.expires_at -%}
-                <p class="mt-3 text-xs text-stone-600">
-                  Claim by
-                  <strong>{{ expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}</strong>.
-                </p>
-              {% endif -%}
-              {% if invitation.event_ticket_type_id.is_some() -%}
+              <p class="mt-3 text-xs text-stone-600">
+                {% if invitation.is_simple_rsvp %}Confirm by{% else %}Claim by{% endif %}
+                <strong>{{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}</strong>.
+              </p>
+              {% if !invitation.is_simple_rsvp -%}
                 <p class="mt-2 text-xs text-stone-600">
                   Your price is confirmed when you first claim the offer. If checkout has already started, retries keep that confirmed price.
                 </p>
@@ -401,7 +386,9 @@
               <div class="space-y-5">
                 <div>
                   <h4 class="text-sm font-semibold text-stone-900">Registration questions</h4>
-                  <p class="mt-1 text-xs text-stone-500">Complete these answers before claiming the offer.</p>
+                  <p class="mt-1 text-xs text-stone-500">
+                    Complete these answers before {% if invitation.is_simple_rsvp %}confirming your RSVP{% else %}claiming the offer{% endif %}.
+                  </p>
                 </div>
                 {% let radio_name_prefix -%}offer-question-{{ invitation.admission_offer_id }}{%- endlet %}
               {{ question_answers::fields(questions = invitation.registration_questions,
@@ -430,7 +417,7 @@
 
   <div class="flex flex-col-reverse gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:justify-end">
     <button data-user-event-offer-close type="button" class="btn-primary-outline">Cancel</button>
-    <button type="submit" class="btn-primary">{{ invitation.claim_label() }}</button>
+    <button type="submit" class="btn-primary">Claim offer</button>
   </div>
   </form>
   </div>

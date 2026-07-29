@@ -327,39 +327,6 @@
       {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
-        {# Capacity -#}
-        <div class="col-span-full 2xl:col-span-4">
-          <label for="capacity" class="form-label">
-            Capacity
-            {%- if meetings_enabled %}
-              <span class="asterisk">* <sup class="text-xs font-normal">(required when requesting automatic meeting creation)</sup></span>
-            {%- endif -%}
-          </label>
-          <div class="mt-2">
-            <input type="number"
-                   name="capacity"
-                   id="capacity"
-                   min="1"
-                   class="input-primary"
-                   placeholder="100"
-                   {% if let Some(capacity) = &event.capacity %}
-                     value="{{ capacity }}"
-                   {% endif %}>
-          </div>
-          <p class="form-legend">
-            Maximum number of attendees.
-            <br />
-            When ticketing is configured, total capacity is derived from ticket seat counts and
-            this field is filled automatically and disabled.
-            {%- if meetings_enabled %}
-              <br />
-              Note: Meeting providers have participant limits. If capacity exceeds your provider
-              limit, attendees may be unable to join the meeting.
-            {%- endif -%}
-          </p>
-        </div>
-        {# End Capacity -#}
-
         {# Test event -#}
         <div class="col-span-full 2xl:col-span-3">
           <label class="inline-flex items-center cursor-pointer">
@@ -433,7 +400,7 @@
           </label>
           <p class="form-legend">
             Allow full events, including paid ticket events, to add people to a waiting list instead
-            of rejecting them. Set a capacity first. Invitation approval and the waitlist cannot be
+            of rejecting them. Capacity is the total of ticket seats. Invitation approval and the waitlist cannot be
             enabled together.
           </p>
         </div>
@@ -889,13 +856,6 @@
 
 {# Tickets Tab -#}
 <div data-content="payments" class="hidden">
-  {% if event.waitlist_count > 0 -%}
-    <div class="mb-12 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-      <div class="svg-icon size-5 bg-amber-700 icon-warning mt-0.5 shrink-0"></div>
-      <p class="text-sm/6">This event cannot switch to ticketing while people are on the waitlist.</p>
-    </div>
-  {% endif -%}
-
   <form id="payments-form">
     <div class="space-y-12">
       <div>

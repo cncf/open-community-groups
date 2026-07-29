@@ -140,7 +140,7 @@ Event offer rows show:
 - The exact offer deadline in the event timezone.
 - Existing ticket-request answers and any registration questions required at
   claim time.
-- `Claim ticket` or `Accept invitation`, plus `Decline`.
+- `Claim offer`, plus `Decline`.
 - `Continue to checkout` and `Cancel checkout` when a paid checkout hold exists.
 
 The displayed ticket price is finalized on first claim. Checkout retries keep

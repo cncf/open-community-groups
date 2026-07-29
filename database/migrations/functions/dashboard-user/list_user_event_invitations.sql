@@ -15,7 +15,16 @@ returns json as $$
             extract(epoch from ao.created_at)::bigint as created_at,
             e.event_id,
             e.name as event_name,
+            ao.event_ticket_type_id,
+            extract(epoch from ao.expires_at)::bigint as expires_at,
             g.name as group_name,
+            coalesce(
+                is_event_simple_rsvp(e.event_id)
+                and ett.availability = 'public'
+                and coalesce(ao.amount_minor, current_price.amount_minor) = 0,
+                false
+            ) as is_simple_rsvp,
+            coalesce(ao.ticket_title, ett.title) as ticket_title,
             e.timezone,
 
             coalesce(ao.amount_minor, current_price.amount_minor) as amount_minor,
@@ -24,8 +33,6 @@ returns json as $$
                      or coalesce(ao.discount_amount_minor, 0) > 0
                     then coalesce(ao.currency_code, e.payment_currency_code)
             end as currency_code,
-            ao.event_ticket_type_id,
-            extract(epoch from ao.expires_at)::bigint as expires_at,
             case
                 when ao.source = 'approval'
                     then coalesce(
@@ -40,13 +47,12 @@ returns json as $$
             get_event_registration_questions(c.community_id, e.event_id)
                 as registration_questions,
             pending_purchase.provider_checkout_url as resume_checkout_url,
-            extract(epoch from e.starts_at)::bigint as starts_at,
-            coalesce(ao.ticket_title, ett.title) as ticket_title
+            extract(epoch from e.starts_at)::bigint as starts_at
         from admission_offer ao
         join event e using (event_id)
         join "group" g using (group_id)
         join community c using (community_id)
-        left join event_ticket_type ett using (event_ticket_type_id)
+        join event_ticket_type ett using (event_ticket_type_id)
         left join event_attendee ea
             on ea.event_id = ao.event_id
             and ea.user_id = ao.user_id
@@ -80,7 +86,7 @@ returns json as $$
         ) pending_purchase on true
         where ao.user_id = p_user_id
         and ao.status in ('checkout_pending', 'pending')
-        and (ao.expires_at is null or ao.expires_at > current_timestamp)
+        and ao.expires_at > current_timestamp
         and not exists (
             select 1
             from event_purchase ep

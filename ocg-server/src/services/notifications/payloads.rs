@@ -8,7 +8,7 @@ use crate::{
     templates::notifications::{
         EventAttendanceCanceled, EventCanceled, EventPublished, EventRefundApproved,
         EventRefundRejected, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
-        EventWaitlistPromoted, EventWelcome, SpeakerWelcome,
+        EventWelcome, SpeakerWelcome,
     },
     types::{event::EventSummary, site::SiteSettings},
     util::{
@@ -190,36 +190,6 @@ pub(crate) fn build_event_waitlist_left_notification(
     })
 }
 
-/// Builds an event waitlist promotion notification.
-pub(crate) fn build_event_waitlist_promoted_notification(
-    event: &EventSummary,
-    recipients: Vec<Uuid>,
-    server_cfg: &HttpServerConfig,
-    site_settings: &SiteSettings,
-) -> Result<NewNotification> {
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let attachments = if event.has_registration_questions {
-        vec![]
-    } else {
-        vec![build_event_calendar_attachment(base_url, event)]
-    };
-    let template_data = EventWaitlistPromoted {
-        event: event.clone(),
-        has_registration_questions: event.has_registration_questions,
-        link: build_event_page_link(base_url, event),
-        theme: site_settings.theme.clone(),
-
-        dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-    };
-
-    Ok(NewNotification {
-        attachments,
-        kind: NotificationKind::EventWaitlistPromoted,
-        recipients,
-        template_data: Some(serde_json::to_value(&template_data)?),
-    })
-}
-
 /// Builds an event welcome notification.
 pub(crate) fn build_event_welcome_notification(
     event: &EventSummary,
@@ -270,14 +240,6 @@ pub(crate) fn build_speaker_welcome_notification(
 
 // Helpers.
 
-/// Returns whether waitlist promotion notifications should be sent.
-pub(crate) fn should_send_waitlist_promoted_notification(
-    event: &EventSummary,
-    recipients: &[Uuid],
-) -> bool {
-    !recipients.is_empty() && !event.test_event
-}
-
 #[cfg(test)]
 mod tests {
     use uuid::Uuid;
@@ -289,7 +251,7 @@ mod tests {
         templates::notifications::{
             EventAttendanceCanceled, EventCanceled, EventPublished, EventRefundApproved,
             EventRefundRejected, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
-            EventWaitlistPromoted, EventWelcome, SpeakerWelcome,
+            EventWelcome, SpeakerWelcome,
         },
     };
 
@@ -499,96 +461,6 @@ mod tests {
             "https://example.test/test-community/group/def5678/event/ghi9abc"
         );
     }
-
-    #[test]
-    fn test_build_event_waitlist_promoted_notification_includes_calendar_for_confirmed_promotion() {
-        // Setup identifiers and data structures
-        let event_id = Uuid::new_v4();
-        let recipient_user_id = Uuid::new_v4();
-        let event = sample_event_summary(event_id, Uuid::new_v4());
-        let site_settings = sample_site_settings();
-        let server_cfg = sample_server_cfg();
-
-        // Build notification
-        let notification = build_event_waitlist_promoted_notification(
-            &event,
-            vec![recipient_user_id],
-            &server_cfg,
-            &site_settings,
-        )
-        .expect("notification to be built");
-
-        // Check notification matches expectations
-        assert_eq!(notification.attachments.len(), 1);
-        assert!(matches!(
-            notification.kind,
-            NotificationKind::EventWaitlistPromoted
-        ));
-        assert_eq!(notification.recipients, vec![recipient_user_id]);
-        let template: EventWaitlistPromoted =
-            serde_json::from_value(notification.template_data.expect("template data to exist"))
-                .expect("template data to deserialize");
-        assert_eq!(
-            template.dashboard_link.as_deref(),
-            Some("https://example.test/dashboard/user?tab=events")
-        );
-        assert_eq!(template.event.event_id, event_id);
-        assert!(!template.has_registration_questions);
-        assert_eq!(
-            template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
-        );
-        assert_eq!(
-            template.theme.primary_color,
-            site_settings.theme.primary_color
-        );
-    }
-
-    #[test]
-    fn test_build_event_waitlist_promoted_notification_omits_calendar_for_pending_questions() {
-        // Setup identifiers and data structures
-        let event_id = Uuid::new_v4();
-        let recipient_user_id = Uuid::new_v4();
-        let mut event = sample_event_summary(event_id, Uuid::new_v4());
-        event.has_registration_questions = true;
-        let site_settings = sample_site_settings();
-        let server_cfg = sample_server_cfg();
-
-        // Build notification
-        let notification = build_event_waitlist_promoted_notification(
-            &event,
-            vec![recipient_user_id],
-            &server_cfg,
-            &site_settings,
-        )
-        .expect("notification to be built");
-
-        // Check notification matches expectations
-        assert!(notification.attachments.is_empty());
-        assert!(matches!(
-            notification.kind,
-            NotificationKind::EventWaitlistPromoted
-        ));
-        assert_eq!(notification.recipients, vec![recipient_user_id]);
-        let template: EventWaitlistPromoted =
-            serde_json::from_value(notification.template_data.expect("template data to exist"))
-                .expect("template data to deserialize");
-        assert_eq!(
-            template.dashboard_link.as_deref(),
-            Some("https://example.test/dashboard/user?tab=events")
-        );
-        assert_eq!(template.event.event_id, event_id);
-        assert!(template.has_registration_questions);
-        assert_eq!(
-            template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
-        );
-        assert_eq!(
-            template.theme.primary_color,
-            site_settings.theme.primary_color
-        );
-    }
-
     #[test]
     fn test_build_event_welcome_notification_returns_expected_payload() {
         // Setup identifiers and data structures
@@ -629,41 +501,6 @@ mod tests {
             site_settings.theme.primary_color
         );
     }
-
-    #[test]
-    fn test_should_send_waitlist_promoted_notification_accepts_real_recipients() {
-        // Setup data
-        let event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
-
-        // Check notification should be sent
-        assert!(should_send_waitlist_promoted_notification(
-            &event,
-            &[Uuid::new_v4()]
-        ));
-    }
-
-    #[test]
-    fn test_should_send_waitlist_promoted_notification_requires_recipients() {
-        // Setup data
-        let event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
-
-        // Check notification should be skipped
-        assert!(!should_send_waitlist_promoted_notification(&event, &[]));
-    }
-
-    #[test]
-    fn test_should_send_waitlist_promoted_notification_skips_test_events() {
-        // Setup data
-        let mut event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
-        event.test_event = true;
-
-        // Check notification should be skipped
-        assert!(!should_send_waitlist_promoted_notification(
-            &event,
-            &[Uuid::new_v4()]
-        ));
-    }
-
     // Helpers.
 
     fn sample_server_cfg() -> HttpServerConfig {

@@ -107,16 +107,12 @@ returns json as $$
                     when ao.status = 'canceled' then 'invitation-canceled'
                     when ao.status = 'declined' then 'invitation-rejected'
                     when ao.status = 'expired' then 'invitation-expired'
-                    when ao.event_ticket_type_id is null
-                        and jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0
-                        then 'registration-questions-pending'
                     else 'invitation-pending'
                 end as status,
                 coalesce(ao.ticket_title, ett.title) as ticket_title,
                 ao.user_id
             from admission_offer ao
-            join event e using (event_id)
-            left join event_ticket_type ett using (event_ticket_type_id)
+            join event_ticket_type ett using (event_ticket_type_id)
             where ao.source = 'organizer_invitation'
             and ao.status in ('canceled', 'checkout_pending', 'declined', 'expired', 'pending')
         ),

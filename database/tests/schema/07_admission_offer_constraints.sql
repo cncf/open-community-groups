@@ -273,7 +273,7 @@ select lives_ok(
     'Should allow discounted-to-zero snapshots with currency and discount identity'
 );
 
--- Should reserve null deadlines for grandfathered legacy invitations
+-- Should reject null deadlines for every admission offer
 select throws_ok(
     format(
         $$
@@ -294,7 +294,7 @@ select throws_ok(
     ),
     '23514',
     null,
-    'Should reserve null deadlines for grandfathered legacy invitations'
+    'Should reject null deadlines for every admission offer'
 );
 
 -- Should require deadlines after offer creation

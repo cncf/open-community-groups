@@ -11,7 +11,6 @@ create or replace function invite_event_attendee(
 returns jsonb as $$
 declare
     v_admission_offer_id uuid;
-    v_capacity int;
     v_community_id uuid;
     v_create_pre_registered_user boolean := false;
     v_ends_at timestamptz;
@@ -21,19 +20,19 @@ declare
     v_existing_user_registration_status text;
     v_group_name text;
     v_has_registration_questions boolean;
-    v_is_ticketed boolean;
+    v_is_simple_rsvp boolean;
     v_normalized_email text := lower(nullif(btrim(p_email), ''));
-    v_occupied_seat_count int;
     v_offer_expires_at timestamptz;
     v_payment_currency_code text;
     v_payment_recipient jsonb;
     v_promoted_user_ids uuid[];
     v_registration_questions jsonb;
+    v_selectable_ticket_type_count int;
     v_starts_at timestamptz;
     v_target_user_id uuid;
-    v_target_was_waitlisted boolean;
     v_theme jsonb;
     v_ticket_allocated_count int;
+    v_ticket_availability text;
     v_ticket_current_price bigint;
     v_ticket_seats_total int;
     v_ticket_title text;
@@ -47,28 +46,20 @@ begin
 
     -- Lock and validate the event before ticket and attendee enrollment state
     select
-        e.capacity,
         g.community_id,
         e.ends_at,
         e.name,
         g.name,
-        exists (
-            select 1
-            from event_ticket_type ett
-            where ett.event_id = e.event_id
-        ),
         e.payment_currency_code,
         g.payment_recipient,
         e.registration_questions,
         e.starts_at,
         e.timezone
     into
-        v_capacity,
         v_community_id,
         v_ends_at,
         v_event_name,
         v_group_name,
-        v_is_ticketed,
         v_payment_currency_code,
         v_payment_recipient,
         v_registration_questions,
@@ -101,6 +92,7 @@ begin
 
     v_has_registration_questions :=
         jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0;
+    v_is_simple_rsvp := is_event_simple_rsvp(p_event_id);
 
     -- Resolve registered or pre-register email invitee
     if p_user_id is not null then
@@ -135,153 +127,126 @@ begin
         end if;
     end if;
 
-    -- Capture waitlist membership before enrollment transitions clear it
-    select exists (
-        select 1
-        from event_waitlist ew
-        where ew.event_id = p_event_id
-        and ew.user_id = v_target_user_id
-    )
-    into v_target_was_waitlisted;
-
-    if v_is_ticketed then
-        -- Resolve the organizer-selected ticket tier and current base price
-        if p_event_ticket_type_id is null then
-            raise exception 'ticket type is required for ticketed invitations';
-        end if;
-
+    -- Auto-select the sole organizer-visible tier when the form omits it
+    if p_event_ticket_type_id is null then
         select
-            (
-                select etpw.amount_minor
-                from event_ticket_price_window etpw
-                where etpw.event_ticket_type_id = ett.event_ticket_type_id
-                and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-                and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-                order by
-                    etpw.starts_at desc nulls last,
-                    etpw.event_ticket_price_window_id
-                limit 1
-            ),
-            ett.seats_total,
-            ett.title
+            count(*)::int,
+            (array_agg(
+                ett.event_ticket_type_id
+                order by ett."order", ett.event_ticket_type_id
+            ))[1]
         into
-            v_ticket_current_price,
-            v_ticket_seats_total,
-            v_ticket_title
+            v_selectable_ticket_type_count,
+            p_event_ticket_type_id
         from event_ticket_type ett
         where ett.event_id = p_event_id
-        and ett.event_ticket_type_id = p_event_ticket_type_id
-        and ett.active = true;
-
-        if not found or v_ticket_current_price is null then
-            raise exception 'ticket type is not available';
-        end if;
-
-        -- Reconcile stale reservations and public queue priority before allocation
-        v_promoted_user_ids := reconcile_event_enrollment(
-            p_event_id,
-            p_event_ticket_type_id,
-            p_configured_provider
+        and ett.active = true
+        and exists (
+            select 1
+            from event_ticket_price_window etpw
+            where etpw.event_ticket_type_id = ett.event_ticket_type_id
+            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
+            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
         );
 
-        -- Reuse the queue promotion when reconciliation already seated the target
-        if v_target_user_id = any(coalesce(v_promoted_user_ids, array[]::uuid[])) then
-            select ao.admission_offer_id
-            into v_admission_offer_id
-            from admission_offer ao
-            where ao.event_id = p_event_id
-            and ao.event_ticket_type_id = p_event_ticket_type_id
-            and ao.source = 'waitlist'
-            and ao.status = 'pending'
-            and ao.user_id = v_target_user_id;
-
-            return jsonb_build_object(
-                'admission_offer_id', v_admission_offer_id,
-                'outcome', 'queue-offer',
-                'promoted_user_ids', array[]::uuid[],
-                'user_id', v_target_user_id
-            );
-        end if;
-
-        -- Serialize offer issuance with attendee and offer transitions
-        perform pg_advisory_xact_lock(
-            hashtext(p_event_id::text),
-            hashtext(v_target_user_id::text)
-        );
-
-        -- Recheck tier capacity now that stale reservations are settled
-        select get_event_ticket_type_allocated_seat_count(
-            p_event_id,
-            p_event_ticket_type_id
-        )
-        into v_ticket_allocated_count;
-
-        -- Surface a conflict instead of overselling the target tier
-        if v_ticket_seats_total is not null
-           and v_ticket_allocated_count >= v_ticket_seats_total then
-            return jsonb_build_object(
-                'conflict',
-                case
-                    when cardinality(v_promoted_user_ids) > 0
-                        then 'queue-has-priority'
-                    else 'ticket-type-sold-out'
-                end,
-                'promoted_user_ids', array[]::uuid[]
-            );
-        end if;
-
-        -- Ensure payments can be collected before reserving a paid seat
-        perform validate_event_ticketing_payment_readiness(
-            p_configured_provider,
-            v_ticket_current_price > 0,
-            v_payment_currency_code,
-            v_payment_recipient
-        );
-    else
-        -- Reject tier selections for non-ticketed events
-        if p_event_ticket_type_id is not null then
-            raise exception 'ticket type is not valid for this event';
-        end if;
-
-        -- Existing RSVP queues receive available event capacity first
-        v_promoted_user_ids := reconcile_event_enrollment(
-            p_event_id,
-            null,
-            p_configured_provider
-        );
-
-        -- Serialize invitation issuance with attendee and offer transitions
-        perform pg_advisory_xact_lock(
-            hashtext(p_event_id::text),
-            hashtext(v_target_user_id::text)
-        );
-
-        -- Enforce event capacity against already accepted attendees and offers
-        if v_capacity is not null then
-            select get_event_occupied_seat_count(p_event_id)
-            into v_occupied_seat_count;
-
-            if v_occupied_seat_count >= v_capacity then
-                if v_target_user_id = any(coalesce(v_promoted_user_ids, array[]::uuid[])) then
-                    return jsonb_build_object(
-                        'outcome', 'attendee',
-                        'promoted_user_ids', coalesce(v_promoted_user_ids, array[]::uuid[]),
-                        'user_id', v_target_user_id
-                    );
-                end if;
-
-                return jsonb_build_object(
-                    'conflict',
-                    case
-                        when cardinality(v_promoted_user_ids) > 0
-                            then 'queue-has-priority'
-                        else 'event-capacity-full'
-                    end,
-                    'promoted_user_ids', coalesce(v_promoted_user_ids, array[]::uuid[])
-                );
-            end if;
+        if v_selectable_ticket_type_count <> 1 then
+            raise exception 'ticket type is required for event invitations';
         end if;
     end if;
+
+    -- Resolve the organizer-selected ticket tier and current base price
+    select
+        (
+            select etpw.amount_minor
+            from event_ticket_price_window etpw
+            where etpw.event_ticket_type_id = ett.event_ticket_type_id
+            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
+            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
+            order by
+                etpw.starts_at desc nulls last,
+                etpw.event_ticket_price_window_id
+            limit 1
+        ),
+        ett.availability,
+        ett.seats_total,
+        ett.title
+    into
+        v_ticket_current_price,
+        v_ticket_availability,
+        v_ticket_seats_total,
+        v_ticket_title
+    from event_ticket_type ett
+    where ett.event_id = p_event_id
+    and ett.event_ticket_type_id = p_event_ticket_type_id
+    and ett.active = true;
+
+    if not found or v_ticket_current_price is null then
+        raise exception 'ticket type is not available';
+    end if;
+
+    -- Keep RSVP wording only for the event's free public tier
+    v_is_simple_rsvp := v_is_simple_rsvp
+        and v_ticket_availability = 'public'
+        and v_ticket_current_price = 0;
+
+    -- Reconcile stale reservations and public queue priority before allocation
+    v_promoted_user_ids := reconcile_event_enrollment(
+        p_event_id,
+        p_event_ticket_type_id,
+        p_configured_provider
+    );
+
+    -- Reuse the queue promotion when reconciliation already seated the target
+    if v_target_user_id = any(coalesce(v_promoted_user_ids, array[]::uuid[])) then
+        select ao.admission_offer_id
+        into v_admission_offer_id
+        from admission_offer ao
+        where ao.event_id = p_event_id
+        and ao.event_ticket_type_id = p_event_ticket_type_id
+        and ao.source = 'waitlist'
+        and ao.status = 'pending'
+        and ao.user_id = v_target_user_id;
+
+        return jsonb_build_object(
+            'admission_offer_id', v_admission_offer_id,
+            'outcome', 'queue-offer',
+            'user_id', v_target_user_id
+        );
+    end if;
+
+    -- Serialize offer issuance with attendee and offer transitions
+    perform pg_advisory_xact_lock(
+        hashtext(p_event_id::text),
+        hashtext(v_target_user_id::text)
+    );
+
+    -- Recheck tier capacity now that stale reservations are settled
+    select get_event_ticket_type_allocated_seat_count(
+        p_event_id,
+        p_event_ticket_type_id
+    )
+    into v_ticket_allocated_count;
+
+    -- Surface a conflict instead of overselling the target tier
+    if v_ticket_seats_total is not null
+       and v_ticket_allocated_count >= v_ticket_seats_total then
+        return jsonb_build_object(
+            'conflict',
+            case
+                when cardinality(v_promoted_user_ids) > 0
+                    then 'queue-has-priority'
+                else 'ticket-type-sold-out'
+            end
+        );
+    end if;
+
+    -- Ensure payments can be collected before reserving a paid seat
+    perform validate_event_ticketing_payment_readiness(
+        p_configured_provider,
+        v_ticket_current_price > 0,
+        v_payment_currency_code,
+        v_payment_recipient
+    );
 
     -- Reject attendee and offer states that should not be invited again
     select ea.status
@@ -292,17 +257,6 @@ begin
     for update of ea;
 
     if v_existing_status = 'confirmed' then
-        if v_target_was_waitlisted then
-            return jsonb_build_object(
-                'outcome', 'attendee',
-                'promoted_user_ids', case
-                    when v_is_ticketed then array[]::uuid[]
-                    else coalesce(v_promoted_user_ids, array[]::uuid[])
-                end,
-                'user_id', v_target_user_id
-            );
-        end if;
-
         raise exception 'user is already attending this event';
     end if;
 
@@ -410,6 +364,7 @@ begin
             'event_ticket_type_id', p_event_ticket_type_id,
             'expires_at', extract(epoch from v_offer_expires_at)::bigint,
             'group_name', v_group_name,
+            'is_simple_rsvp', v_is_simple_rsvp,
             'registration_questions_required', v_has_registration_questions,
             'theme', v_theme,
             'ticket_title', v_ticket_title,
@@ -438,14 +393,10 @@ begin
         ))
     );
 
-    -- Return the invitation outcome and any queue promotions
+    -- Return the invitation outcome
     return jsonb_build_object(
         'admission_offer_id', v_admission_offer_id,
         'outcome', 'offer-created',
-        'promoted_user_ids', case
-            when v_is_ticketed then array[]::uuid[]
-            else coalesce(v_promoted_user_ids, array[]::uuid[])
-        end,
         'user_id', v_target_user_id
     );
 end;

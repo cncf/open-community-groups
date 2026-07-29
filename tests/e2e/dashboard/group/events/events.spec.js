@@ -162,6 +162,22 @@ const addTicketType = async (page, values) => {
   await expect(modal).toBeHidden();
 };
 
+// Edit an existing ticket type through the ticketing modal and save it.
+const editTicketType = async (page, currentTitle, values) => {
+  const ticketRow = page
+    .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
+    .filter({ hasText: currentTitle });
+  await ticketRow.locator('[data-ticketing-action="edit-ticket"]').click();
+
+  const modal = page.locator('[data-ticketing-role="ticket-modal"]');
+  await expect(modal).toBeVisible();
+  await modal.locator("#ticket-title-draft").fill(values.title);
+  await modal.locator("#ticket-seats-draft").fill(values.seatsTotal);
+  await modal.locator("#ticket-description-draft").fill(values.description);
+  await modal.locator('[data-ticketing-action="save-ticket"]').click();
+  await expect(modal).toBeHidden();
+};
+
 // Add a discount code through the ticketing modal and save it.
 const addDiscountCode = async (page, values) => {
   await page.locator("#add-discount-code-button").click();
@@ -344,24 +360,27 @@ test.describe("group dashboard events view", () => {
     ).toBeVisible();
   });
 
-  test("organizer sees attendee count without capacity for uncapped events", async ({
+  test("organizer sees the default tier capacity for migrated-style events", async ({
     organizerGroupPage,
   }) => {
     // Load the events list at the width where the attendees column is visible.
     await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
-    // Find the seeded event without a capacity limit.
+    // Find the second seeded event, which now uses the default 100-seat tier.
     const upcomingEventsTable = organizerGroupPage.getByRole("table", {
       name: "Upcoming events list",
     });
-    const uncappedEventRow = upcomingEventsTable.getByRole("row", {
+    const defaultCapacityEventRow = upcomingEventsTable.getByRole("row", {
       name: new RegExp(TEST_EVENT_NAMES.alpha[1], "u"),
     });
 
-    // Verify the attendee count is displayed without a capacity suffix.
+    // Verify every event displays its tier-derived capacity.
     await expect(
-      uncappedEventRow.getByRole("cell", { name: "0", exact: true }),
+      defaultCapacityEventRow.getByRole("cell", {
+        name: "0 / 100",
+        exact: true,
+      }),
     ).toBeVisible();
   });
 
@@ -456,11 +475,6 @@ test.describe("group dashboard events view", () => {
       "description",
       "A dashboard event created and removed by the e2e suite.",
     );
-
-    // Fill capacity only when automatic meeting fixtures require it.
-    if (E2E_MEETINGS_ENABLED) {
-      await organizerGroupPage.locator("#capacity").fill("50");
-    }
 
     // Fill schedule and online meeting details.
     await organizerGroupPage.locator("button[data-section-next]").click();
@@ -628,11 +642,6 @@ test.describe("group dashboard events view", () => {
       "description",
       "A dashboard event created and canceled by the e2e suite.",
     );
-
-    // Fill capacity only when automatic meeting fixtures require it.
-    if (E2E_MEETINGS_ENABLED) {
-      await organizerGroupPage.locator("#capacity").fill("50");
-    }
 
     // Fill schedule and online meeting details.
     await organizerGroupPage.locator("button[data-section-next]").click();
@@ -1199,8 +1208,6 @@ test.describe("group dashboard events view", () => {
       "description",
       "Coverage for automatic event and session recording overrides.",
     );
-    await organizerGroupPage.locator("#capacity").fill("25");
-
     // Fill the event schedule before configuring online recording.
     await organizerGroupPage
       .locator('button[data-section="date-venue"]')
@@ -1501,17 +1508,17 @@ test.describe("group dashboard events view", () => {
     ).toHaveValue("USD");
   });
 
-  test("organizer can create a ticketed event with ticket tiers and discount codes", async ({
+  test("organizer can create a paid event with multiple tiers and discount codes", async ({
     organizerGroupPage,
   }) => {
-    // Skip ticketing coverage when the environment disables payments.
+    // Skip paid-tier coverage when the environment disables payments.
     test.skip(
       !E2E_PAYMENTS_ENABLED,
       "Payments are disabled in this environment.",
     );
 
-    // Create a unique event name for the ticketing flow.
-    const eventName = `E2E Ticketed Event ${Date.now()}`;
+    // Create a unique event name for the tiered payment flow.
+    const eventName = `E2E Paid Tier Event ${Date.now()}`;
 
     // Open the event form for a payment-ready group.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -1520,7 +1527,7 @@ test.describe("group dashboard events view", () => {
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
 
-    // Fill the core ticketed event details.
+    // Fill the core event details.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
     await organizerGroupPage
@@ -1528,13 +1535,12 @@ test.describe("group dashboard events view", () => {
       .selectOption("33333333-3333-3333-3333-333333333331");
     await organizerGroupPage
       .locator("#description_short")
-      .fill("Ticketed dashboard event for payment coverage.");
+      .fill("Paid dashboard event for payment coverage.");
     await fillMarkdownEditor(
       organizerGroupPage,
       "description",
-      "Ticketed dashboard event used to cover ticket tiers and discount codes.",
+      "Paid dashboard event used to cover admission tiers and discount codes.",
     );
-    await organizerGroupPage.locator("#capacity").fill("25");
     await organizerGroupPage
       .locator("#toggle_waitlist_enabled")
       .check({ force: true });
@@ -1551,44 +1557,30 @@ test.describe("group dashboard events view", () => {
     } else {
       await organizerGroupPage
         .locator("#meeting_join_url")
-        .fill("https://meet.example.com/e2e-ticketed-event");
+        .fill("https://meet.example.com/e2e-paid-tier-event");
     }
 
-    // Open payments before adding ticketing details.
+    // Open payments before editing the default admission tier.
     await openPaymentsSection(organizerGroupPage);
 
-    // Configure ticketing values and related capacity side effects.
-    await addTicketType(organizerGroupPage, {
+    // Reuse the default tier for the free admission option.
+    await editTicketType(organizerGroupPage, "General Admission", {
       title: "Free community pass",
       description: "Free tier used for zero-price coverage.",
       seatsTotal: "12",
-      priceWindows: [{ amount: "0" }],
     });
 
-    // Verify currency validation after adding the first ticket type.
+    // Verify free-only tiers need no currency and retain the waitlist setting.
     const paymentCurrencyInput = organizerGroupPage.locator(
       "#payment_currency_code",
     );
-    await expect(paymentCurrencyInput).toHaveJSProperty("required", true);
-    const validationMessage = await paymentCurrencyInput.evaluate(
-      (element) => element.validationMessage,
-    );
-    expect(validationMessage).toBe(
-      "Ticketed events require an event currency.",
-    );
-
-    // Verify ticketing disables capacity and waitlist fields.
+    await expect(paymentCurrencyInput).toHaveJSProperty("required", false);
     await expect(
       organizerGroupPage.locator("#toggle_waitlist_enabled"),
-    ).toBeDisabled();
+    ).toBeEnabled();
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
-      "false",
+      "true",
     );
-    await expect(organizerGroupPage.locator("#capacity")).toBeDisabled();
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("12");
-
-    // Select currency before adding paid ticketing details.
-    await paymentCurrencyInput.selectOption("USD");
 
     // Add a paid ticket type with scheduled price windows.
     await addTicketType(organizerGroupPage, {
@@ -1601,8 +1593,15 @@ test.describe("group dashboard events view", () => {
       ],
     });
 
-    // Verify ticket capacity contributes to event capacity.
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("42");
+    // Verify positive prices require a currency before submission.
+    await expect(paymentCurrencyInput).toHaveJSProperty("required", true);
+    const validationMessage = await paymentCurrencyInput.evaluate(
+      (element) => element.validationMessage,
+    );
+    expect(validationMessage).toBe(
+      "Paid ticket prices require an event currency.",
+    );
+    await paymentCurrencyInput.selectOption("USD");
 
     // Add discount codes for fixed amount and percentage coverage.
     await addDiscountCode(organizerGroupPage, {
@@ -1619,13 +1618,13 @@ test.describe("group dashboard events view", () => {
       totalAvailable: "50",
     });
 
-    // Create the ticketed event and wait for the POST response.
+    // Create the tiered event and wait for the POST response.
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
     await expect(visibleAddEventButton).toBeVisible();
 
-    // Submit the ticketed event and wait for creation.
+    // Submit the tiered event and wait for creation.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -1636,14 +1635,14 @@ test.describe("group dashboard events view", () => {
       visibleAddEventButton.click(),
     ]);
 
-    // Verify the ticketed event appears and dismiss the success dialog.
+    // Verify the tiered event appears and dismiss the success dialog.
     const eventRow = dashboardContent.locator("tr", { hasText: eventName });
     const successDialog = organizerGroupPage.locator(".swal2-popup");
     await expect(eventRow).toBeVisible();
     await successDialog.getByRole("button", { name: "OK" }).click();
     await expect(successDialog).toBeHidden();
 
-    // Reopen the event and verify ticketing values persisted.
+    // Reopen the event and verify tier values persisted.
     await openEventUpdateFormByName(organizerGroupPage, eventName);
     await organizerGroupPage
       .locator('button[data-section="date-venue"]')
@@ -1659,7 +1658,7 @@ test.describe("group dashboard events view", () => {
       ).toHaveValue("true");
     } else {
       await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
-        "https://meet.example.com/e2e-ticketed-event",
+        "https://meet.example.com/e2e-paid-tier-event",
       );
     }
 
@@ -1721,16 +1720,16 @@ test.describe("group dashboard events view", () => {
     ).toHaveCount(0);
   });
 
-  test("organizer sees seeded ticketing values on a payment-ready event", async ({
+  test("organizer sees seeded admission tiers on a payment-ready event", async ({
     organizerGroupPage,
   }) => {
-    // Skip seeded ticketing coverage when the environment disables payments.
+    // Skip seeded paid-tier coverage when the environment disables payments.
     test.skip(
       !E2E_PAYMENTS_ENABLED,
       "Payments are disabled in this environment.",
     );
 
-    // Open the seeded payment-ready event before checking ticketing.
+    // Open the seeded payment-ready event before checking its tiers.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
@@ -1739,15 +1738,13 @@ test.describe("group dashboard events view", () => {
     );
     await openPaymentsSection(organizerGroupPage);
 
-    // Verify seeded ticketing values and capacity side effects.
+    // Verify seeded tier and enrollment values.
     await expect(
       organizerGroupPage.locator("#payment_currency_code"),
     ).toHaveValue("USD");
-    await expect(organizerGroupPage.locator("#capacity")).toBeDisabled();
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("42");
     await expect(
       organizerGroupPage.locator("#toggle_waitlist_enabled"),
-    ).toBeDisabled();
+    ).toBeEnabled();
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
       "false",
     );
@@ -1824,7 +1821,7 @@ test.describe("group dashboard events view", () => {
     const initialValues = {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
-      capacity: "120",
+      seatsTotal: "120",
       categoryId: "33333333-3333-3333-3333-333333333331",
       cfsDescription: "Initial speaker program details for a temporary event.",
       cfsEndsAt: "2030-09-20T17:00",
@@ -1883,7 +1880,7 @@ test.describe("group dashboard events view", () => {
     const updatedValues = {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
-      capacity: "180",
+      seatsTotal: "180",
       categoryId: "33333333-3333-3333-3333-333333333331",
       cfsDescription: "Updated speaker program details for a temporary event.",
       cfsEndsAt: "2030-09-24T18:00",
@@ -1975,7 +1972,12 @@ test.describe("group dashboard events view", () => {
         "description",
         values.description,
       );
-      await organizerGroupPage.locator("#capacity").fill(values.capacity);
+      await openPaymentsSection(organizerGroupPage);
+      await editTicketType(organizerGroupPage, "General Admission", {
+        description: "Default free admission tier.",
+        seatsTotal: values.seatsTotal,
+        title: "General Admission",
+      });
       if (values.testEvent) {
         await organizerGroupPage
           .locator("#toggle_test_event")
@@ -2179,9 +2181,11 @@ test.describe("group dashboard events view", () => {
         ).trim(),
       )
       .toBe(updatedValues.descriptionShort);
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue(
-      updatedValues.capacity,
-    );
+    await openPaymentsSection(organizerGroupPage);
+    const generalAdmissionRow = organizerGroupPage
+      .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
+      .filter({ hasText: "General Admission" });
+    await expect(generalAdmissionRow).toContainText(updatedValues.seatsTotal);
     await expect(organizerGroupPage.locator("#test_event")).toHaveValue(
       String(updatedValues.testEvent),
     );

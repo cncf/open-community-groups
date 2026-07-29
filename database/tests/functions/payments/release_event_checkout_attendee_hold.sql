@@ -18,11 +18,9 @@ select plan(5);
 \set groupCategoryID '79280000-0000-0000-0000-000000000007'
 \set groupID '79280000-0000-0000-0000-000000000008'
 \set manualUserID '79280000-0000-0000-0000-000000000014'
-\set nonTicketedEventID '79280000-0000-0000-0000-000000000004'
-\set nonTicketedUserID '79280000-0000-0000-0000-000000000015'
 \set priceWindowID '79280000-0000-0000-0000-000000000006'
 \set releasedUserID '79280000-0000-0000-0000-000000000011'
-\set ticketedEventID '79280000-0000-0000-0000-000000000003'
+\set eventID '79280000-0000-0000-0000-000000000003'
 \set ticketTypeID '79280000-0000-0000-0000-000000000005'
 
 -- ============================================================================
@@ -81,13 +79,6 @@ values
         'manual-user'
     ),
     (
-        :'nonTicketedUserID',
-        'hash-5',
-        'non-ticketed@example.com',
-        true,
-        'non-ticketed-user'
-    ),
-    (
         :'releasedUserID',
         'hash-1',
         'released@example.com',
@@ -128,29 +119,16 @@ insert into event (
     published,
     published_at
 ) values (
-    :'ticketedEventID',
+    :'eventID',
     :'eventCategoryID',
     'in-person',
     :'groupID',
-    'Ticketed Release Event',
-    'ticketed-release-event',
+    'Release Event',
+    'release-event',
     'Test event',
     'UTC',
     now() + interval '1 day',
     'USD',
-    true,
-    now()
-), (
-    :'nonTicketedEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Non-Ticketed Release Event',
-    'non-ticketed-release-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    null,
     true,
     now()
 );
@@ -164,7 +142,7 @@ insert into event_ticket_type (
     title
 ) values (
     :'ticketTypeID',
-    :'ticketedEventID',
+    :'eventID',
     1,
     10,
     'General admission'
@@ -198,7 +176,7 @@ insert into event_purchase (
     2500,
     'USD',
     0,
-    :'ticketedEventID',
+    :'eventID',
     :'ticketTypeID',
     now() + interval '10 minutes',
     'pending',
@@ -209,7 +187,7 @@ insert into event_purchase (
     2500,
     'USD',
     0,
-    :'ticketedEventID',
+    :'eventID',
     :'ticketTypeID',
     null,
     'completed',
@@ -220,11 +198,10 @@ insert into event_purchase (
 -- Pending attendee rows
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values
-    (:'ticketedEventID', :'releasedUserID', false, 'registration-questions-pending'),
-    (:'ticketedEventID', :'activeUserID', false, 'registration-questions-pending'),
-    (:'ticketedEventID', :'completedUserID', false, 'registration-questions-pending'),
-    (:'ticketedEventID', :'manualUserID', true, 'registration-questions-pending'),
-    (:'nonTicketedEventID', :'nonTicketedUserID', false, 'registration-questions-pending');
+    (:'eventID', :'releasedUserID', false, 'registration-questions-pending'),
+    (:'eventID', :'activeUserID', false, 'registration-questions-pending'),
+    (:'eventID', :'completedUserID', false, 'registration-questions-pending'),
+    (:'eventID', :'manualUserID', true, 'registration-questions-pending');
 
 -- ============================================================================
 -- TESTS
@@ -235,7 +212,7 @@ select lives_ok(
     format($$select release_event_checkout_attendee_hold(
         %L::uuid,
         %L::uuid
-    )$$, :'ticketedEventID', :'releasedUserID'),
+    )$$, :'eventID', :'releasedUserID'),
     'Should release a checkout-created pending attendee row without an active purchase'
 );
 
@@ -244,7 +221,7 @@ select is(
     (
         select count(*)::int
         from event_attendee
-        where event_id = :'ticketedEventID'::uuid
+        where event_id = :'eventID'::uuid
         and user_id = :'releasedUserID'::uuid
     ),
     0,
@@ -266,16 +243,12 @@ select lives_ok(
             release_event_checkout_attendee_hold(
                 %L::uuid,
                 %L::uuid
-            ),
-            release_event_checkout_attendee_hold(
-                %L::uuid,
-                %L::uuid
             )
-    $$, :'ticketedEventID', :'activeUserID', :'ticketedEventID', :'completedUserID', :'ticketedEventID', :'manualUserID', :'nonTicketedEventID', :'nonTicketedUserID'),
+    $$, :'eventID', :'activeUserID', :'eventID', :'completedUserID', :'eventID', :'manualUserID'),
     'Should leave protected pending attendee rows alone'
 );
 
--- Should preserve rows protected by active purchases, completed purchases, invitations, or non-ticketed events
+-- Should preserve rows protected by active purchases or organizer invitations
 select results_eq(
     format($$
         select
@@ -296,16 +269,10 @@ select results_eq(
                 from event_attendee
                 where event_id = %L::uuid
                 and user_id = %L::uuid
-            ),
-            (
-                select count(*)::int
-                from event_attendee
-                where event_id = %L::uuid
-                and user_id = %L::uuid
             )
-    $$, :'ticketedEventID', :'activeUserID', :'ticketedEventID', :'completedUserID', :'ticketedEventID', :'manualUserID', :'nonTicketedEventID', :'nonTicketedUserID'),
-    $$ values (1::int, 1::int, 1::int, 1::int) $$,
-    'Should preserve rows protected by active purchases, completed purchases, invitations, or non-ticketed events'
+    $$, :'eventID', :'activeUserID', :'eventID', :'completedUserID', :'eventID', :'manualUserID'),
+    $$ values (1::int, 1::int, 1::int) $$,
+    'Should preserve rows protected by active purchases or organizer invitations'
 );
 
 -- Should be idempotent for already released rows
@@ -313,7 +280,7 @@ select lives_ok(
     format($$select release_event_checkout_attendee_hold(
         %L::uuid,
         %L::uuid
-    )$$, :'ticketedEventID', :'releasedUserID'),
+    )$$, :'eventID', :'releasedUserID'),
     'Should be idempotent for already released rows'
 );
 

@@ -31,28 +31,25 @@ decision has been made, withdraw is no longer available.
 
 ## Can I Check In Without Confirmed Attendance?
 
-No. Check-in is limited to confirmed attendees, so you need a completed RSVP or
-ticket before event-day check-in.
+No. Check-in is limited to confirmed attendees, so you need a completed ticket
+before event-day check-in.
 
 ## What Happens If An Event Is Full?
 
-That depends on the enrollment type. A full RSVP event can use one event-level
-waiting list. A sold-out public ticket tier can use its own tier waiting list.
-
-An RSVP promotion confirms attendance or asks for required registration
-answers. A ticket promotion creates a time-limited offer in
+Each sold-out public ticket type has its own waiting list when the organizer
+enables waiting lists. A promotion creates a time-limited offer in
 [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 The offer must be claimed before its deadline.
 
 ## Do Free Tickets Need Stripe?
 
-No. Free-only ticketed events work without server payment configuration, a
+No. Events whose ticket prices are all zero work without server payment configuration, a
 group payment recipient, or event currency. Stripe is required only when a
 configured or claim-time final price may be positive.
 
 ## Why Is Registration Disabled?
 
-Organizers may configure a registration window. Before it opens and after it closes, RSVP,
+Organizers may configure a registration window. Before it opens and after it closes,
 starting ticket checkout, invitation requests, waitlist joining, and registration-question answers
 are disabled. The event page shows the open or close time when a window is configured.
 
@@ -65,8 +62,8 @@ window until the offer expires.
 
 ## How Do Ticket Offers Work?
 
-Approved ticket requests, organizer invitations, and ticket waiting-list
-promotions can create offers. The Invitations tab shows the assigned tier,
+Approved ticket requests, organizer invitations, and waiting-list promotions
+create offers. The Invitations tab shows the assigned tier,
 displayed price, and exact deadline. No charge or attendance exists until the
 offer is claimed and any positive checkout completes.
 

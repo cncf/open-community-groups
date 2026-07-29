@@ -7,6 +7,7 @@ import {
   isModalOverlayTarget,
   openModalBodyScroll,
   resetRestoredModalState,
+  trapModalFocus,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -95,6 +96,35 @@ describe("modal lifecycle", () => {
     overlay.click();
 
     expect(clickCount).to.equal(2);
+  });
+
+  it("wraps forward and reverse keyboard focus within an open modal", () => {
+    // Build an open modal with two keyboard focus targets.
+    const modal = document.createElement("div");
+    modal.innerHTML = `
+      <button type="button">First</button>
+      <input type="hidden" />
+      <button type="button">Last</button>
+    `;
+    document.body.append(modal);
+    const [firstButton, lastButton] = modal.querySelectorAll("button");
+
+    // Tab from the final target wraps to the first target.
+    lastButton.focus();
+    const forwardEvent = new KeyboardEvent("keydown", { cancelable: true, key: "Tab" });
+    expect(trapModalFocus(forwardEvent, modal)).to.equal(true);
+    expect(forwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(firstButton);
+
+    // Shift+Tab from the first target wraps to the final target.
+    const backwardEvent = new KeyboardEvent("keydown", {
+      cancelable: true,
+      key: "Tab",
+      shiftKey: true,
+    });
+    expect(trapModalFocus(backwardEvent, modal)).to.equal(true);
+    expect(backwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(lastButton);
   });
 
   it("locks body scroll only across modal open transitions", () => {

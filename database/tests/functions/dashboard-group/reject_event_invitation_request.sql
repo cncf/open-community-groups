@@ -16,6 +16,7 @@ select plan(4);
 \set groupCategoryID '3a2d0000-0000-0000-0000-000000000005'
 \set groupID '3a2d0000-0000-0000-0000-000000000006'
 \set requesterID '3a2d0000-0000-0000-0000-000000000007'
+\set ticketTypeID '3a2d0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
@@ -83,9 +84,13 @@ insert into event (
     true
 );
 
+-- Ticket tier requested by the invitation requester
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+
 -- Invitation request
-insert into event_invitation_request (event_id, user_id)
-values (:'eventID', :'requesterID');
+insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
+values (:'eventID', :'ticketTypeID', :'requesterID');
 
 -- ============================================================================
 -- TESTS

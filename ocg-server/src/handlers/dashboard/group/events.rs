@@ -30,7 +30,6 @@ use crate::{
             enqueue_event_canceled_notification, enqueue_event_published_notifications,
             enqueue_event_rescheduled_notification, enqueue_event_series_canceled_notifications,
             enqueue_event_series_published_notifications,
-            enqueue_event_waitlist_promoted_notification,
         },
     },
     templates::dashboard::group::{
@@ -570,26 +569,13 @@ pub(crate) async fn update(
                 let before = tx.get_event_summary(community_id, group_id, event_id).await?;
 
                 // Update event in database
-                let promoted_user_ids = tx
-                    .update_event(
-                        user.user_id,
-                        group_id,
-                        event_id,
-                        &event_json,
-                        &cfg_max_participants,
-                        payment_provider,
-                    )
-                    .await?;
-
-                // Enqueue required waitlist promotion notifications before committing
-                enqueue_event_waitlist_promoted_notification(
-                    tx,
-                    &server_cfg,
-                    community_id,
+                tx.update_event(
+                    user.user_id,
                     group_id,
                     event_id,
-                    &before,
-                    promoted_user_ids,
+                    &event_json,
+                    &cfg_max_participants,
+                    payment_provider,
                 )
                 .await?;
 

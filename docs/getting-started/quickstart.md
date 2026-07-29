@@ -52,20 +52,20 @@ membership cleanly.
 
 ![Group page and membership action](../screenshots/group-page.png)
 
-## Get a Ticket or RSVP to an Event
+## Attend an Event
 
-From the group page or explore results, open an event. RSVP events use
-`Attend event`. Ticketed events use `Get free ticket`, `Get ticket`, or
-`Request ticket`, depending on the event configuration. Free tickets complete
-inside OCG, while a paid ticket may continue through hosted checkout.
+From the group page or explore results, open an event. An event with one free
+public admission tier uses the simple `Attend event` action. Events with more
+choices use `Get free ticket`, `Get ticket`, or `Request ticket`, depending on
+their configuration. Free admission completes inside OCG, while a positive
+price may continue through hosted checkout.
 
 After attendance is confirmed, OCG sends a confirmation message with a calendar
 attachment. For live virtual or hybrid events with meeting information,
 attendees can also use `Join meeting` during the configured access window.
 
-If an RSVP event is full, you may see `Join waiting list`. For a ticketed event,
-sold-out public tiers can each have their own waiting list. A ticketed
-promotion creates a time-limited offer in
+If an admission tier is full, you may see `Join waiting list`. Each sold-out
+public tier has its own waiting list. A promotion creates a time-limited offer in
 [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore')
 rather than confirming attendance immediately.
 

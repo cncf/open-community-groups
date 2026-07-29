@@ -424,7 +424,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000022'::uuid,
         null
     )$$,
-    'user is already attending this ticketed event',
+    'user is already attending this event',
     'Should reject attendees that already have a seat'
 );
 

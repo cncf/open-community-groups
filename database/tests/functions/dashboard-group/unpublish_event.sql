@@ -206,9 +206,20 @@ insert into session (
 );
 
 -- Active organizer offer canceled when the event is unpublished
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
+from event e;
+
 insert into admission_offer (
     admission_offer_id,
     event_id,
+    event_ticket_type_id,
     expires_at,
     organizer_user_id,
     source,
@@ -217,6 +228,7 @@ insert into admission_offer (
 ) values (
     :'offerID',
     :'eventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
     current_timestamp + interval '1 hour',
     :'userID',
     'organizer_invitation',
@@ -227,9 +239,11 @@ insert into admission_offer (
 -- Event-level FIFO queue cleared when the event is unpublished
 insert into event_waitlist (
     event_id,
+    event_ticket_type_id,
     user_id
 ) values (
     :'eventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
     :'waitlistUserID'
 );
 

@@ -168,6 +168,36 @@ insert into event_ticket_price_window (
     :'ticketTypeID'
 );
 
+-- RSVP events without a specialized ticket fixture use a default tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select e.event_id, gen_random_uuid(), 1, 1, 'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free price for the RSVP event's default tier
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- Due and future offers reserving the ticket tier before reconciliation
 insert into admission_offer (
     admission_offer_id,
@@ -218,6 +248,7 @@ insert into admission_offer (
     admission_offer_id,
     created_at,
     event_id,
+    event_ticket_type_id,
     expires_at,
     source,
     status,
@@ -226,6 +257,7 @@ insert into admission_offer (
     :'rsvpDueOfferID',
     current_timestamp - interval '2 hours',
     :'rsvpEventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'rsvpEventID' limit 1),
     current_timestamp - interval '1 hour',
     'organizer_invitation',
     'pending',
@@ -233,8 +265,12 @@ insert into admission_offer (
 );
 
 -- RSVP queue head promoted by background reconciliation
-insert into event_waitlist (event_id, user_id)
-values (:'rsvpEventID', :'rsvpQueueRecipientID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'rsvpEventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'rsvpEventID' limit 1),
+    :'rsvpQueueRecipientID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -246,8 +282,7 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
-        'group_id', :'groupID'::uuid,
-        'non_ticketed_promoted_user_ids', '[]'::jsonb
+        'group_id', :'groupID'::uuid
     ),
     'Should claim and reconcile one event with a due offer'
 );
@@ -278,41 +313,40 @@ select is(
     'Should preserve admission offers whose deadlines are not due'
 );
 
--- Should return RSVP users promoted by background reconciliation
+-- Should reconcile a free queue after an offer expires
 select is(
     reconcile_next_event_enrollment()::jsonb,
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'rsvpEventID'::uuid,
-        'group_id', :'groupID'::uuid,
-        'non_ticketed_promoted_user_ids', jsonb_build_array(:'rsvpQueueRecipientID'::uuid)
+        'group_id', :'groupID'::uuid
     ),
-    'Should return RSVP users promoted by background reconciliation'
+    'Should reconcile a free queue after an offer expires'
 );
 
--- Should persist RSVP promotions during background reconciliation
+-- Should persist a claim offer during background reconciliation
 select results_eq(
     format(
         $$
             select
-                ea.status,
+                ao.status,
                 not exists (
                     select 1
                     from event_waitlist ew
                     where ew.event_id = %L::uuid
                     and ew.user_id = %L::uuid
                 )
-            from event_attendee ea
-            where ea.event_id = %L::uuid
-            and ea.user_id = %L::uuid
+            from admission_offer ao
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
         $$,
         :'rsvpEventID',
         :'rsvpQueueRecipientID',
         :'rsvpEventID',
         :'rsvpQueueRecipientID'
     ),
-    $$ values ('confirmed'::text, true) $$,
-    'Should persist RSVP promotions during background reconciliation'
+    $$ values ('pending'::text, true) $$,
+    'Should persist a claim offer during background reconciliation'
 );
 
 -- Should leave a paid queue idle while payment setup is unavailable
@@ -328,8 +362,7 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
-        'group_id', :'groupID'::uuid,
-        'non_ticketed_promoted_user_ids', '[]'::jsonb
+        'group_id', :'groupID'::uuid
     ),
     'Should resume a paid queue after payment setup becomes available'
 );

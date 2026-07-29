@@ -178,17 +178,16 @@ select ok(
     'Should omit ticket type details for fully invitation-only events'
 );
 
--- Should preserve ticketed enrollment state for fully invitation-only events
-select is(
-    (
+-- Should remove the superseded ticketed enrollment flag
+select ok(
+    not (
         get_public_event_full(
             :'communityID'::uuid,
             :'groupID'::uuid,
             :'eventPrivateID'::uuid
-        )::jsonb
-    )->>'is_ticketed',
-    'true',
-    'Should preserve ticketed enrollment state for fully invitation-only events'
+        )::jsonb ? 'is_ticketed'
+    ),
+    'Should remove the superseded ticketed enrollment flag'
 );
 
 -- ============================================================================

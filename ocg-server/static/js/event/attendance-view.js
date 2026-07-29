@@ -30,9 +30,9 @@ import {
 } from "/static/js/event/attendance-dom.js";
 import { initializeTicketModalControls } from "/static/js/event/attendance-ticket-view.js";
 
-const ACCEPT_INVITATION_LABEL = "Accept invitation";
 const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 const CLAIM_TICKET_LABEL = "Claim ticket";
+const CONFIRM_RSVP_LABEL = "Confirm RSVP";
 const COMPLETE_REGISTRATION_LABEL = "Complete registration";
 const PAID_TICKETS_UNAVAILABLE_LABEL = "Paid tickets temporarily unavailable";
 const REFUND_PROCESSING_LABEL = "Refund processing";
@@ -225,15 +225,13 @@ export const showAdmissionOfferState = (container, meta, response) => {
   const offerUrl = `/dashboard/user?tab=invitations#event-offer-${encodeURIComponent(
     response.admission_offer_id,
   )}`;
-  const isTicketOffer = Boolean(response.event_ticket_type_id);
-
   showPrimaryAttendanceState(
     container,
     meta,
     "attendButton",
     withEventActionState(meta, {
       icon: "icon-ticket",
-      label: isTicketOffer ? CLAIM_TICKET_LABEL : ACCEPT_INVITATION_LABEL,
+      label: meta.isSimpleRsvp ? CONFIRM_RSVP_LABEL : CLAIM_TICKET_LABEL,
       resumeUrl: offerUrl,
     }),
   );
@@ -290,7 +288,7 @@ export const showExpiredOfferState = (container, meta) => {
 /**
  * Shows the guest state for an authenticated non-attendee.
  * @param {HTMLElement} container - Attendance container element
- * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSimpleRsvp: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 export const showGuestAttendanceState = (container, meta) => {
   showPrimaryAttendanceState(container, meta, "attendButton", getAttendState(meta));
@@ -496,7 +494,7 @@ export const showRejectedInvitationState = (container, meta) => {
 /**
  * Shows the signed-out state for a container.
  * @param {HTMLElement} container - Attendance container element
- * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSimpleRsvp: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 export const showSignedOutAttendanceState = (container, meta) => {
   const { attendButton, signinButton } = getPrimaryControls(container);
@@ -508,12 +506,16 @@ export const showSignedOutAttendanceState = (container, meta) => {
     return;
   }
 
-  if (meta.isTicketed && attendState.disabled) {
+  if (!meta.isSimpleRsvp && attendState.disabled) {
     renderControl(attendButton, attendState);
     return;
   }
 
-  if (meta.isSoldOut && !meta.waitlistEnabled && !meta.attendeeApprovalRequired) {
+  if (
+    (meta.isSoldOut || isSimpleRsvpSoldOut(meta)) &&
+    !meta.waitlistEnabled &&
+    !meta.attendeeApprovalRequired
+  ) {
     renderControl(attendButton, getAttendState(meta));
     return;
   }
@@ -541,7 +543,7 @@ export const showWaitlistedAttendanceState = (container, meta) => {
 
 /**
  * Computes the primary attend-button state for the current meta.
- * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSimpleRsvp: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  * @returns {object} Render state
  */
 const getAttendState = (meta) => {
@@ -559,7 +561,7 @@ const getAttendState = (meta) => {
     });
   }
 
-  if (meta.isTicketed) {
+  if (!meta.isSimpleRsvp) {
     if (meta.attendeeApprovalRequired) {
       return withRegistrationWindowState(meta, {
         icon: REQUEST_INVITATION_ICON,
@@ -598,7 +600,14 @@ const getAttendState = (meta) => {
     };
   }
 
-  if (!meta.isTicketed && meta.hasNoCapacity && !meta.isPastEvent) {
+  if (meta.attendeeApprovalRequired) {
+    return withEventActionState(meta, {
+      icon: REQUEST_INVITATION_ICON,
+      label: REQUEST_INVITATION_LABEL,
+    });
+  }
+
+  if (meta.hasNoCapacity && !meta.waitlistEnabled && !meta.isPastEvent) {
     return {
       disabled: true,
       icon: ATTEND_EVENT_ICON,
@@ -607,14 +616,7 @@ const getAttendState = (meta) => {
     };
   }
 
-  if (meta.attendeeApprovalRequired) {
-    return withEventActionState(meta, {
-      icon: REQUEST_INVITATION_ICON,
-      label: REQUEST_INVITATION_LABEL,
-    });
-  }
-
-  if (!meta.isTicketed && meta.isSoldOut && !meta.isPastEvent) {
+  if (isSimpleRsvpSoldOut(meta) && !meta.isPastEvent) {
     if (meta.waitlistEnabled) {
       return withRegistrationWindowState(meta, {
         label: JOIN_WAITLIST_LABEL,
@@ -651,11 +653,11 @@ const getControlPriceBadges = (control) =>
 
 /**
  * Returns the default attend label for a container.
- * @param {{attendeeApprovalRequired: boolean, isTicketed: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isSimpleRsvp: boolean}} meta - Attendance metadata
  * @returns {string} Label text
  */
 const getDefaultAttendLabel = (meta) => {
-  if (meta.isTicketed) {
+  if (!meta.isSimpleRsvp) {
     if (meta.attendeeApprovalRequired) {
       return REQUEST_TICKET_LABEL;
     }
@@ -710,11 +712,11 @@ const getRefundState = (meta, response) => {
 
 /**
  * Returns the default sign-in label for a container.
- * @param {{attendeeApprovalRequired: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isSimpleRsvp: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  * @returns {string} Label text
  */
 const getSigninLabel = (meta) => {
-  if (meta.isTicketed) {
+  if (!meta.isSimpleRsvp) {
     if (meta.attendeeApprovalRequired) {
       return REQUEST_TICKET_LABEL;
     }
@@ -738,12 +740,12 @@ const getSigninLabel = (meta) => {
     return REQUEST_INVITATION_LABEL;
   }
 
-  return meta.isSoldOut && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
+  return isSimpleRsvpSoldOut(meta) && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
 };
 
 const getSigninState = (meta) => {
   const state = withEventActionState(meta, { label: getSigninLabel(meta) });
-  if (meta.isTicketed) {
+  if (!meta.isSimpleRsvp) {
     return state;
   }
 
@@ -752,6 +754,17 @@ const getSigninState = (meta) => {
     icon: meta.attendeeApprovalRequired ? REQUEST_INVITATION_ICON : ATTEND_EVENT_ICON,
   };
 };
+
+/**
+ * Returns whether the sole public RSVP tier has no selectable capacity.
+ * @param {{hasNoCapacity: boolean, hasSoldOutTicketTypes: boolean, isSimpleRsvp: boolean, isSoldOut: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @returns {boolean} Whether simple RSVP attendance is sold out
+ */
+const isSimpleRsvpSoldOut = (meta) =>
+  meta.isSimpleRsvp &&
+  ((meta.hasNoCapacity && meta.waitlistEnabled) ||
+    meta.isSoldOut ||
+    (!meta.ticketPurchaseAvailable && meta.hasSoldOutTicketTypes));
 
 /**
  * Hides an attendance control.

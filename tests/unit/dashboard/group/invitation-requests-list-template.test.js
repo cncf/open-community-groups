@@ -126,10 +126,11 @@ describe("dashboard group invitation requests list template", () => {
     // Load the invitation requests template before checking offer workflow markup.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify requester-selected tiers, generic private assignment, and offer metadata remain visible.
+    // Verify requester-selected tiers and offer metadata remain visible.
     expect(template).to.include("Requested:");
+    expect(template).to.include("{% if let Some(requested_ticket_title) = &request.requested_ticket_title -%}");
     expect(template).to.include("{{ requested_ticket_title }}");
-    expect(template).to.include("Invitation-only ticket");
+    expect(template).to.include("Private admission");
     expect(template).to.include("{{ offered_ticket_title }}");
     expect(template).to.include("Offer pending");
     expect(template).to.include("Checkout in progress");
@@ -138,24 +139,28 @@ describe("dashboard group invitation requests list template", () => {
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
     );
 
-    // Verify generic requests require an eligible private tier without allowing public-tier substitution.
+    // Verify the requested tier is submitted with the approval action.
     expect(template).to.include('name="event_ticket_type_id"');
+    expect(template).to.include("data-invitation-request-ticket-empty");
+    expect(template).to.include("data-invitation-request-ticket-type");
+    expect(template).to.include("data-invitation-request-ticket-submit");
+    expect(template).to.include("request.requested_event_ticket_type_id");
+    expect(template).to.include(
+      'name="event_ticket_type_id" value="{{ requested_event_ticket_type_id }}"',
+    );
+    expect(template).to.include("Invitation-only ticket");
     expect(template).to.include(
       "ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly",
     );
+    expect(template).to.include("ticket_type.current_price.is_some()");
     expect(template).to.include("!ticket_type.sold_out");
-    expect(template).to.include("data-invitation-request-ticket-type");
-    expect(template).to.include("data-invitation-request-ticket-empty");
-    expect(template).to.include("data-invitation-request-ticket-submit");
-    expect(template).to.include("No invitation-only ticket types can be assigned.");
-    expect(template).to.include("request.requested_event_ticket_type_id");
-    expect(template).to.include('name="event_ticket_type_id" value="{{ requested_event_ticket_type_id }}"');
+    expect(template).to.include(
+      "No invitation-only ticket types can be assigned. Add seats or activate an invitation-only ticket type with a current price before accepting this request.",
+    );
 
     // Verify active offers can be canceled and only expired approval offers can be reissued.
     expect(template).to.include('hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"');
-    expect(template).to.include(
-      'id="cancel-invitation-request-offer-{{ admission_offer_id }}"',
-    );
+    expect(template).to.include('id="cancel-invitation-request-offer-{{ admission_offer_id }}"');
     expect(template).to.include("Cancel offer");
     expect(template).to.include("Reissue offer");
     expect(template).to.include(
@@ -167,10 +172,7 @@ describe("dashboard group invitation requests list template", () => {
     const actionDisclosureStart = template.indexOf(
       'data-event-id="invitation-request-{{ request.user.user_id }}"',
     );
-    const actionDisclosureEnd = template.indexOf(
-      "{# End dropdown actions -#}",
-      actionDisclosureStart,
-    );
+    const actionDisclosureEnd = template.indexOf("{# End dropdown actions -#}", actionDisclosureStart);
     expect(actionDisclosureStart).to.be.greaterThan(-1);
     expect(actionDisclosureEnd).to.be.greaterThan(actionDisclosureStart);
     const actionDisclosure = template.slice(actionDisclosureStart, actionDisclosureEnd);
@@ -180,9 +182,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(actionDisclosure).to.include('aria-expanded="false"');
     expect(actionDisclosure).to.not.include('aria-label="Open actions menu for');
     expect(actionDisclosure).to.not.include('aria-haspopup="menu"');
-    expect(actionDisclosure).to.not.include(
-      '<ul class="py-2 text-sm text-stone-700" role="menu">',
-    );
+    expect(actionDisclosure).to.not.include('<ul class="py-2 text-sm text-stone-700" role="menu">');
     expect(actionDisclosure).to.not.include('role="menuitem"');
 
     // Confirmation-owned controls do not duplicate response handling.

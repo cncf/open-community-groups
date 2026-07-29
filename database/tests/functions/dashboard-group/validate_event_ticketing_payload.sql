@@ -9,10 +9,11 @@ select plan(11);
 -- TESTS
 -- ============================================================================
 
--- Should accept an omitted ticketing payload
-select lives_ok(
+-- Should reject an omitted ticket inventory
+select throws_ok(
     $$select validate_event_ticketing_payload(null, null, null, null, null)$$,
-    'Should accept an omitted ticketing payload'
+    'events require at least one ticket type',
+    'Should reject an omitted ticket inventory'
 );
 
 -- Should accept all-zero ticketing without payment configuration
@@ -173,7 +174,16 @@ select throws_ok(
         ]'::jsonb,
         null,
         null,
-        null
+        '[{
+            "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+            "order": 1,
+            "price_windows": [{
+                "amount_minor": 0,
+                "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+            }],
+            "seats_total": 50,
+            "title": "General admission"
+        }]'::jsonb
     )$$,
     'discount_codes require positive ticket pricing',
     'Should require positive ticket pricing when discount codes are present'
@@ -186,7 +196,16 @@ select throws_ok(
         null,
         'USD',
         null,
-        null
+        '[{
+            "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+            "order": 1,
+            "price_windows": [{
+                "amount_minor": 0,
+                "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+            }],
+            "seats_total": 50,
+            "title": "General admission"
+        }]'::jsonb
     )$$,
     'payment_currency_code requires positive ticket pricing',
     'Should require positive ticket pricing when a payment currency is present'

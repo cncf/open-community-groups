@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(358);
+select plan(362);
 
 -- ============================================================================
 -- VARIABLES
@@ -82,14 +82,6 @@ insert into event (
 -- Test: check expected functions exist
 select has_function('accept_community_team_invitation', array['uuid', 'uuid']::name[]);
 select has_function(
-    'accept_event_admission_offer',
-    array['uuid', 'uuid', 'jsonb', 'text']::name[]
-);
-select has_function(
-    'accept_event_attendee_invitation',
-    array['uuid', 'uuid', 'jsonb', 'text']::name[]
-);
-select has_function(
     'accept_event_invitation_request',
     array['uuid', 'uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]
 );
@@ -132,10 +124,6 @@ select has_function(
     'cancel_event_attendee_attendance',
     array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]
 );
-select has_function(
-    'cancel_event_attendee_invitation',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]
-);
 select has_function('cancel_event_checkout', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('cancel_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
 select has_function('check_in_event', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
@@ -151,10 +139,6 @@ select has_function(
     array['uuid', 'uuid', 'uuid', 'text', 'text', 'jsonb', 'text']::name[]
 );
 select has_function('complete_free_event_purchase', array['uuid']::name[]);
-select has_function(
-    'complete_non_ticketed_event_admission_offer',
-    array['uuid', 'uuid', 'uuid', 'jsonb', 'uuid']::name[]
-);
 select has_function('deactivate_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_badge', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_badge_artwork', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
@@ -195,8 +179,8 @@ select has_function('get_community_site_stats', array['uuid']::name[]);
 select has_function('get_community_stats', array['uuid']::name[]);
 select has_function('get_community_summary', array['uuid']::name[]);
 select has_function('get_community_upcoming_events', array['uuid', 'text[]']::name[]);
-select has_function('get_event_attendance', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_delete_eligibility', array['uuid', 'uuid']::name[]);
+select has_function('get_event_enrollment', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_full', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_full_by_slug', array['uuid', 'text', 'text']::name[]);
 select has_function('get_event_meeting_sync_state_hash', array['uuid']::name[]);
@@ -248,6 +232,7 @@ select has_function('is_badge_image', array['text']::name[]);
 select has_function('is_event_check_in_window_open', array['uuid', 'uuid']::name[]);
 select has_function('is_event_meeting_in_sync', array['jsonb', 'jsonb']::name[]);
 select has_function('is_event_paid_capable', array['uuid']::name[]);
+select has_function('is_event_simple_rsvp', array['uuid']::name[]);
 select has_function('is_event_ticketing_payload_paid_capable', array['jsonb']::name[]);
 select has_function('is_group_member', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('is_open_graph_image', array['text']::name[]);
@@ -345,7 +330,6 @@ select has_function(
     'process_badge_award_job_batch',
     array['uuid', 'uuid', 'integer', 'integer']::name[]
 );
-select has_function('promote_event_waitlist', array['uuid', 'integer']::name[]);
 select has_function('publish_event', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('publish_event_series_events', array['uuid', 'uuid', 'uuid[]', 'text']::name[]);
 select has_function('questionnaire_answers_exist_for_event', array['uuid']::name[]);
@@ -382,15 +366,7 @@ select has_function(
 select has_function('recover_stale_badge_award_jobs', array['bigint', 'integer']::name[]);
 select has_function('refresh_user_badge_identity', array['uuid', 'uuid']::name[]);
 select has_function('refund_free_event_purchase', array['uuid']::name[]);
-select has_function(
-    'release_event_admission_offer',
-    array['uuid', 'text', 'uuid', 'uuid', 'text']::name[]
-);
 select has_function('reject_community_team_invitation', array['uuid', 'uuid']::name[]);
-select has_function(
-    'reject_event_attendee_invitation',
-    array['uuid', 'uuid', 'text']::name[]
-);
 select has_function('reject_event_invitation_request', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('reject_event_refund_request', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('reject_group_team_invitation', array['uuid', 'uuid']::name[]);
@@ -493,14 +469,18 @@ select has_function('verify_email', array['uuid']::name[]);
 select has_function('withdraw_cfs_submission', array['uuid', 'uuid']::name[]);
 
 -- Test: check expected trigger functions exist
+select hasnt_function(
+    'complete_non_ticketed_event_admission_offer',
+    array['uuid', 'uuid', 'uuid', 'jsonb', 'uuid']::name[]
+);
 select has_function('check_admission_offer_enrollment_state', '{}'::name[]);
 select has_function('check_admission_offer_lifecycle', '{}'::name[]);
 select has_function('check_event_attendee_waitlist', '{}'::name[]);
 select has_function('check_event_category_community', '{}'::name[]);
+select has_function('check_event_has_ticket_type', '{}'::name[]);
 select has_function('check_event_sponsor_group', '{}'::name[]);
 select has_function('check_event_ticketing_consistency', '{}'::name[]);
 select has_function('check_event_purchase_admission_offer', '{}'::name[]);
-select has_function('check_event_waitlist_capacity_required', '{}'::name[]);
 select has_function('check_event_waitlist_attendee', '{}'::name[]);
 select has_function('check_group_category_community', '{}'::name[]);
 select has_function('check_group_parent_relationship', '{}'::name[]);
@@ -510,6 +490,7 @@ select has_function('check_session_within_event_bounds', '{}'::name[]);
 select has_function('prevent_audit_log_mutation', '{}'::name[]);
 select has_function('prevent_user_badge_revocation_reversal', '{}'::name[]);
 select has_function('revoke_user_badges_on_user_delete', '{}'::name[]);
+select has_function('sync_event_capacity_from_ticket_types', '{}'::name[]);
 select has_function('validate_group_slug_pretty', '{}'::name[]);
 
 -- Test: check expected triggers exist
@@ -518,8 +499,8 @@ select has_trigger('admission_offer', 'admission_offer_lifecycle_check');
 select has_trigger('audit_log', 'audit_log_mutation_guard');
 select has_trigger('event_attendee', 'event_attendee_waitlist_check');
 select has_trigger('event', 'event_category_community_check');
+select has_trigger('event', 'event_has_ticket_type_on_event');
 select has_trigger('event', 'event_ticketing_consistency_on_event');
-select has_trigger('event', 'event_waitlist_capacity_required_on_event');
 select has_trigger('event_discount_code', 'event_ticketing_consistency_on_event_discount_code');
 select has_trigger('event_sponsor', 'event_sponsor_group_check');
 select has_trigger(
@@ -527,10 +508,10 @@ select has_trigger(
     'event_ticketing_consistency_on_event_ticket_price_window'
 );
 select has_trigger('event_ticket_type', 'event_ticketing_consistency_on_event_ticket_type');
-select has_trigger(
-    'event_ticket_type',
-    'event_waitlist_capacity_required_on_event_ticket_type'
-);
+select has_trigger('event_ticket_type', 'event_capacity_sync_after_delete');
+select has_trigger('event_ticket_type', 'event_capacity_sync_after_insert');
+select has_trigger('event_ticket_type', 'event_capacity_sync_after_update');
+select has_trigger('event_ticket_type', 'event_has_ticket_type_on_event_ticket_type');
 select has_trigger('event_purchase', 'event_purchase_admission_offer_check');
 select has_trigger('event_waitlist', 'event_waitlist_attendee_check');
 select has_trigger('group', 'group_category_community_check');
@@ -570,6 +551,73 @@ select lives_ok(
         ) values (gen_random_uuid(), 0, %L)
     $$, :'ticketTypeID', :'eventID', :'ticketTypeID'),
     'All-zero ticket types should not require payment configuration'
+);
+
+-- Should synchronize event capacity after inserting a ticket tier
+select is(
+    (select capacity from event where event_id = :'eventID'),
+    10,
+    'Inserting a ticket tier should synchronize event capacity'
+);
+
+-- Should allow a ticket tier to have zero seats
+select lives_ok(
+    format($$
+        update event_ticket_type
+        set seats_total = 0
+        where event_ticket_type_id = %L
+    $$, :'ticketTypeID'),
+    'A ticket tier should allow zero seats'
+);
+
+-- Should synchronize event capacity after resizing a ticket tier
+select is(
+    (select capacity from event where event_id = :'eventID'),
+    0,
+    'Resizing a ticket tier should synchronize event capacity'
+);
+
+-- Check the deferred ticket-ownership constraints after each statement
+set constraints
+    event_has_ticket_type_on_event,
+    event_has_ticket_type_on_event_ticket_type
+    immediate;
+
+-- Should reject deleting an event's last ticket tier
+select throws_ok(
+    format($$
+        delete from event_ticket_type
+        where event_ticket_type_id = %L
+    $$, :'ticketTypeID'),
+    'events require at least one ticket type',
+    'Deleting an event last ticket tier should be rejected'
+);
+
+-- Should reject persisting an event without a ticket tier
+select throws_ok(
+    format($$
+        insert into event (
+            event_id,
+            name,
+            slug,
+            description,
+            event_category_id,
+            event_kind_id,
+            group_id,
+            timezone
+        ) values (
+            gen_random_uuid(),
+            'Tierless Event',
+            'tierless-event',
+            'An invalid event without a ticket tier',
+            %L,
+            'in-person',
+            %L,
+            'UTC'
+        )
+    $$, :'eventCategoryID', :'groupID'),
+    'events require at least one ticket type',
+    'Persisting an event without a ticket tier should be rejected'
 );
 
 -- Should reject discount codes when the event has no positive ticket pricing.

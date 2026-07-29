@@ -6,13 +6,10 @@ import { getElementById } from "/static/js/common/dom.js";
  * @returns {{
  *   attendeeApprovalRequiredInput: HTMLElement|null,
  *   attendeeApprovalToggleLabel: HTMLElement|null,
- *   capacityInput: HTMLElement|null,
- *   clearTicketingInput: HTMLElement|null,
  *   discountCodesRoot: HTMLElement|null,
  *   paymentCurrencyInput: HTMLElement|null,
  *   ticketTypesRoot: HTMLElement|null,
  *   timezoneInput: HTMLElement|null,
- *   toggleClearTicketing: HTMLElement|null,
  *   toggleAttendeeApprovalRequired: HTMLElement|null,
  *   toggleWaitlistEnabled: HTMLElement|null,
  *   waitlistEnabledInput: HTMLElement|null,
@@ -22,14 +19,11 @@ import { getElementById } from "/static/js/common/dom.js";
 const resolveEventEnrollmentControls = (root = document) => ({
   attendeeApprovalRequiredInput: getElementById(root, "attendee_approval_required"),
   attendeeApprovalToggleLabel: root.querySelector('[data-enrollment-toggle-label="attendee-approval"]'),
-  capacityInput: getElementById(root, "capacity"),
-  clearTicketingInput: getElementById(root, "clear_ticketing"),
   discountCodesRoot: getElementById(root, "discount-codes-ui"),
   paymentCurrencyInput: getElementById(root, "payment_currency_code"),
   ticketTypesRoot: getElementById(root, "ticket-types-ui"),
   timezoneInput: root.querySelector('[name="timezone"]'),
   toggleAttendeeApprovalRequired: getElementById(root, "toggle_attendee_approval_required"),
-  toggleClearTicketing: getElementById(root, "toggle_clear_ticketing"),
   toggleWaitlistEnabled: getElementById(root, "toggle_waitlist_enabled"),
   waitlistEnabledInput: getElementById(root, "waitlist_enabled"),
   waitlistToggleLabel: root.querySelector('[data-enrollment-toggle-label="waitlist"]'),
@@ -44,12 +38,9 @@ export function initializeEventEnrollmentState(root = document) {
   const {
     attendeeApprovalRequiredInput,
     attendeeApprovalToggleLabel,
-    capacityInput,
-    clearTicketingInput,
     paymentCurrencyInput,
     ticketTypesRoot,
     toggleAttendeeApprovalRequired,
-    toggleClearTicketing,
     toggleWaitlistEnabled,
     waitlistEnabledInput,
     waitlistToggleLabel,
@@ -75,14 +66,13 @@ export function initializeEventEnrollmentState(root = document) {
   };
 
   const syncEventEnrollmentState = () => {
-    const clearingTicketing = toggleClearTicketing?.checked === true;
     const hasTicketTypes =
       typeof ticketTypesEditor?.hasConfiguredTicketTypes === "function"
-        ? ticketTypesEditor.hasConfiguredTicketTypes() && !clearingTicketing
+        ? ticketTypesEditor.hasConfiguredTicketTypes()
         : false;
     syncPaymentCurrencyValidity(hasTicketTypes);
 
-    if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {
+    if (!toggleWaitlistEnabled || !waitlistEnabledInput) {
       return;
     }
 
@@ -91,27 +81,8 @@ export function initializeEventEnrollmentState(root = document) {
         ? ticketTypesEditor.getConfiguredSeatTotal()
         : null;
 
-    if (hasTicketTypes) {
-      if (!capacityInput.disabled) {
-        capacityInput.dataset.manualValue = capacityInput.value;
-      }
-
-      capacityInput.disabled = true;
-      capacityInput.placeholder = "Derived from ticket seats";
-      capacityInput.value =
-        Number.isFinite(configuredSeatTotal) && configuredSeatTotal > 0 ? String(configuredSeatTotal) : "";
-    } else {
-      capacityInput.disabled = false;
-      capacityInput.placeholder = "100";
-
-      if (capacityInput.dataset.manualValue !== undefined) {
-        capacityInput.value = capacityInput.dataset.manualValue;
-        delete capacityInput.dataset.manualValue;
-      }
-    }
-
-    const capacityValue = Number.parseInt(capacityInput.value, 10);
-    const capacityIsValid = Number.isFinite(capacityValue) && capacityValue > 0;
+    const capacityIsValid =
+      hasTicketTypes && Number.isFinite(configuredSeatTotal) && configuredSeatTotal >= 0;
     const attendeeApprovalRequired = toggleAttendeeApprovalRequired?.checked === true;
     const canEnableWaitlist = capacityIsValid && !attendeeApprovalRequired;
     const canRequireApproval = !toggleWaitlistEnabled.checked;
@@ -161,10 +132,6 @@ export function initializeEventEnrollmentState(root = document) {
     });
   }
 
-  if (capacityInput) {
-    capacityInput.addEventListener("input", syncEventEnrollmentState);
-  }
-
   if (ticketTypesRoot) {
     ticketTypesRoot.addEventListener("ticket-types-changed", syncEventEnrollmentState);
   }
@@ -172,13 +139,6 @@ export function initializeEventEnrollmentState(root = document) {
   if (paymentCurrencyInput) {
     paymentCurrencyInput.addEventListener("input", syncEventEnrollmentState);
     paymentCurrencyInput.addEventListener("change", syncEventEnrollmentState);
-  }
-
-  if (toggleClearTicketing && clearTicketingInput) {
-    toggleClearTicketing.addEventListener("change", () => {
-      clearTicketingInput.value = String(toggleClearTicketing.checked);
-      syncEventEnrollmentState();
-    });
   }
 
   syncEventEnrollmentState();

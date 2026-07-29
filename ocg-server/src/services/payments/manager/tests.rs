@@ -821,7 +821,6 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         group_slug: "group".to_string(),
         has_registration_questions: false,
         has_related_events: false,
-        is_ticketed: false,
         kind: EventKind::default(),
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Event".to_string(),

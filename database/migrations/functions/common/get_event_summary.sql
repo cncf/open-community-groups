@@ -23,11 +23,6 @@ returns json as $$
             and related_event.event_id <> e.event_id
             and related_event.deleted = false
         ),
-        'is_ticketed', exists (
-            select 1
-            from event_ticket_type ett
-            where ett.event_id = e.event_id
-        ),
         'kind', e.event_kind_id,
         'name', e.name,
         'published', e.published,

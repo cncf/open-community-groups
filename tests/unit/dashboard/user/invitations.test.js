@@ -5,7 +5,7 @@ import "/static/js/dashboard/user/invitations.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
 
-const renderOfferDom = ({ ticketed = true } = {}) => {
+const renderOfferDom = ({ isSimpleRsvp = false } = {}) => {
   document.body.innerHTML = `
     <div id="dashboard-content"></div>
     <button
@@ -13,11 +13,11 @@ const renderOfferDom = ({ ticketed = true } = {}) => {
       data-user-event-offer-modal="event-offer-modal"
       type="button"
     >
-      ${ticketed ? "Claim ticket" : "Accept invitation"}
+      Claim offer
     </button>
     <div id="event-offer-modal" data-user-event-offer-dialog class="hidden">
       <button data-user-event-offer-close type="button">Close</button>
-      <form data-user-event-offer-form>
+      <form data-user-event-offer-form data-is-simple-rsvp="${isSimpleRsvp}">
         <fieldset
           data-question-id="question-1"
           data-question-kind="free-text"
@@ -26,9 +26,9 @@ const renderOfferDom = ({ ticketed = true } = {}) => {
           <textarea data-question-answer required></textarea>
         </fieldset>
         <input data-user-event-offer-answers name="registration_answers" type="hidden" />
-        ${ticketed ? '<input name="event_ticket_type_id" type="hidden" value="ticket-1" />' : ""}
+        <input name="event_ticket_type_id" type="hidden" value="ticket-1" />
         <input name="discount_code" value="  SAVE10  " />
-        <button type="submit">Claim ticket</button>
+        <button type="submit">Claim offer</button>
       </form>
     </div>
     <button
@@ -84,6 +84,36 @@ describe("dashboard user invitations", () => {
     expect(document.activeElement).to.equal(openButton);
   });
 
+  it("wraps forward and reverse focus within an open offer modal", () => {
+    // Open an offer modal and resolve its first and last keyboard targets.
+    const { form, modal, openButton } = renderOfferDom();
+    openButton.click();
+    const closeButton = modal.querySelector("[data-user-event-offer-close]");
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    // Tab from the final target wraps to the first modal control.
+    submitButton.focus();
+    const forwardEvent = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "Tab",
+    });
+    document.dispatchEvent(forwardEvent);
+    expect(forwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(closeButton);
+
+    // Shift+Tab from the first target wraps to the final modal control.
+    const backwardEvent = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "Tab",
+      shiftKey: true,
+    });
+    document.dispatchEvent(backwardEvent);
+    expect(backwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(submitButton);
+  });
+
   it("serializes claim-time answers and normalizes discount codes", () => {
     // Render and complete the ticket claim form.
     const { answersInput, discountInput, form, questionAnswer } = renderOfferDom();
@@ -129,53 +159,33 @@ describe("dashboard user invitations", () => {
     expect(configEvent.detail.unfilteredParameters).to.not.have.property("discount_code");
   });
 
-  it("refreshes invitations after a free ticket claim", () => {
-    // Render the open ticket claim modal.
-    const { form, modal, openButton, questionAnswer } = renderOfferDom();
-    openButton.click();
-    questionAnswer.value = "Vegetarian";
+  for (const [claimKind, isSimpleRsvp, successMessage] of [
+    ["free ticket", false, "Your ticket has been claimed."],
+    ["simple RSVP", true, "Your RSVP has been confirmed."],
+  ]) {
+    it(`refreshes invitations after a ${claimKind} claim`, () => {
+      // Render the open offer claim modal.
+      const { form, modal, openButton, questionAnswer } = renderOfferDom({ isSimpleRsvp });
+      openButton.click();
+      questionAnswer.value = "Vegetarian";
 
-    // Complete the claim without an external checkout redirect.
-    dispatchHtmxAfterRequest(form, {
-      responseText: JSON.stringify({ status: "attendee" }),
-      status: 200,
+      // Complete the claim without an external checkout redirect.
+      dispatchHtmxAfterRequest(form, {
+        responseText: JSON.stringify({ status: "attendee" }),
+        status: 200,
+      });
+
+      // The modal closes, success feedback is shown, and the dashboard refreshes.
+      expect(modal.classList.contains("hidden")).to.equal(true);
+      expect(env.current.swal.calls.at(-1)).to.include({
+        icon: "info",
+        text: successMessage,
+      });
+      expect(env.current.htmx.triggerCalls).to.deep.equal([
+        ["#dashboard-content", "refresh-user-dashboard-content"],
+      ]);
     });
-
-    // The modal closes, success feedback is shown, and the dashboard refreshes.
-    expect(modal.classList.contains("hidden")).to.equal(true);
-    expect(env.current.swal.calls.at(-1)).to.include({
-      icon: "info",
-      text: "Your ticket has been claimed.",
-    });
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      ["#dashboard-content", "refresh-user-dashboard-content"],
-    ]);
-  });
-
-  it("lets backend flash own non-ticketed offer acceptance feedback", () => {
-    // Render and open a non-ticketed invitation acceptance modal.
-    const { form, modal, openButton } = renderOfferDom({ ticketed: false });
-    openButton.click();
-
-    // Complete the accept request with the backend flash refresh trigger.
-    form.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 204,
-            responseText: "",
-            getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
-          },
-        },
-      }),
-    );
-
-    // The server-provided flash and body refresh remain the only success feedback.
-    expect(modal.classList.contains("hidden")).to.equal(true);
-    expect(env.current.swal.calls).to.deep.equal([]);
-    expect(env.current.htmx.triggerCalls).to.deep.equal([]);
-  });
+  }
 
   it("removes a stale offer after an expired claim", () => {
     // Open the claim modal for an offer that expires before submission.

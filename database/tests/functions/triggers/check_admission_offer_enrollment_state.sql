@@ -130,8 +130,8 @@ insert into event_attendee (
 );
 
 -- Pending invitation request conflicting with new offers
-insert into event_invitation_request (event_id, user_id, status)
-values (:'eventID', :'requestUserID', 'pending');
+insert into event_invitation_request (event_id, event_ticket_type_id, user_id, status)
+values (:'eventID', :'ticketTypeID', :'requestUserID', 'pending');
 
 -- Waitlist entry conflicting with new offers
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)

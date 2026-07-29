@@ -90,7 +90,8 @@ describe("dashboard group attendees", () => {
 
   const attendeeInvitationMarkup = ({
     hasTicketOption = true,
-    ticketed = false,
+    multipleTiers = false,
+    singleTierUnavailable = false,
     ticketOptionDisabled = false,
   } = {}) => `
     <button id="open-attendee-invitation-modal" type="button">Invite</button>
@@ -111,7 +112,7 @@ describe("dashboard group attendees", () => {
         <input type="hidden" name="email" id="attendee-invitation-email" disabled />
         <div id="attendee-invitation-selected-user"></div>
         ${
-          ticketed
+          multipleTiers
             ? `
               <label for="attendee-invitation-ticket-type">Ticket type</label>
               <select id="attendee-invitation-ticket-type" name="event_ticket_type_id" required>
@@ -126,7 +127,9 @@ describe("dashboard group attendees", () => {
                 No ticket types can be assigned.
               </p>
             `
-            : ""
+            : singleTierUnavailable
+              ? `<p data-attendee-invitation-ticket-empty>No ticket types can be assigned.</p>`
+              : ""
         }
         <button id="submit-attendee-invitation" type="submit" disabled>Send invitation</button>
       </form>
@@ -1115,11 +1118,11 @@ describe("dashboard group attendees", () => {
     expect(refreshedModal.classList.contains("hidden")).to.equal(true);
   });
 
-  it("requires a ticket type for ticketed attendee invitations", () => {
-    // Render ticketed invitation controls and initialize the refreshed root.
+  it("requires a ticket type for multi-tier attendee invitations", () => {
+    // Render multi-tier invitation controls and initialize the refreshed root.
     document.body.innerHTML = `
       <div id="attendees-content">
-        ${attendeeInvitationMarkup({ ticketed: true })}
+        ${attendeeInvitationMarkup({ multipleTiers: true })}
       </div>
     `;
     const attendeesRoot = document.getElementById("attendees-content");
@@ -1150,11 +1153,11 @@ describe("dashboard group attendees", () => {
     ).to.equal("ticket-1");
   });
 
-  it("explains when a ticketed invitation has no assignable ticket types", () => {
-    // Render ticketed invitation controls without an eligible ticket option.
+  it("explains when a multi-tier invitation has no assignable ticket types", () => {
+    // Render multi-tier invitation controls without an eligible ticket option.
     document.body.innerHTML = `
       <div id="attendees-content">
-        ${attendeeInvitationMarkup({ hasTicketOption: false, ticketed: true })}
+        ${attendeeInvitationMarkup({ hasTicketOption: false, multipleTiers: true })}
       </div>
     `;
     const attendeesRoot = document.getElementById("attendees-content");
@@ -1175,11 +1178,35 @@ describe("dashboard group attendees", () => {
     ).to.equal(false);
   });
 
-  it("treats a disabled sold-out ticket as unavailable for invitations", () => {
-    // Render a ticketed invitation whose only priced tier is unavailable.
+  it("explains when the sole invitation ticket type is unavailable", () => {
+    // Render the single-tier shortcut with an unavailable admission tier.
     document.body.innerHTML = `
       <div id="attendees-content">
-        ${attendeeInvitationMarkup({ ticketed: true, ticketOptionDisabled: true })}
+        ${attendeeInvitationMarkup({ singleTierUnavailable: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // Select a recipient and verify the shortcut cannot bypass tier availability.
+    attendeesRoot.dispatchEvent(
+      new CustomEvent("user-selected", {
+        bubbles: true,
+        detail: { user: { user_id: "user-1", username: "invitee" } },
+      }),
+    );
+
+    expect(document.getElementById("submit-attendee-invitation").disabled).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-invitation-ticket-empty]").classList.contains("hidden"),
+    ).to.equal(false);
+  });
+
+  it("treats a disabled sold-out ticket as unavailable for invitations", () => {
+    // Render a multi-tier invitation whose only priced tier is unavailable.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ multipleTiers: true, ticketOptionDisabled: true })}
       </div>
     `;
     const attendeesRoot = document.getElementById("attendees-content");

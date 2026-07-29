@@ -99,7 +99,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-actions-menu");
   });
 
-  it("explains when ticketed invitations have no assignable ticket type", async () => {
+  it("explains when invitations have no assignable ticket type", async () => {
     // Load the invitation modal before checking its ticket empty state.
     const template = normalizeWhitespace(await loadTemplate());
 
@@ -107,7 +107,10 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-invitation-ticket-empty");
     expect(template).to.include("ticket_type.active && !ticket_type.sold_out");
     expect(template).to.include(
-      "No ticket types can be assigned. Add capacity or activate a ticket type with a current price before sending an invitation.",
+      "!ticket_types[0].active || ticket_types[0].sold_out || ticket_types[0].current_price.is_none()",
+    );
+    expect(template).to.include(
+      "No ticket types can be assigned. Add seats or activate a ticket type with a current price before sending an invitation.",
     );
   });
 
@@ -219,7 +222,9 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees list template before checking organizer invitation states.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify ticketed invitations select any active organizer-visible tier.
+    // Verify invitations select any active organizer-visible tier.
+    expect(template).to.include("{% if ticket_types.len() == 1 -%}");
+    expect(template).to.include("{{ ticket_types[0].title }}");
     expect(template).to.include('id="attendee-invitation-ticket-type"');
     expect(template).to.include('name="event_ticket_type_id"');
     expect(template).to.include(
@@ -227,9 +232,6 @@ describe("dashboard group attendees list template", () => {
     );
     expect(template).to.include("(Invitation only)");
     expect(template).to.include("(Public)");
-    expect(template).to.not.include(
-      'disabled title="Manual invitations are not available for ticketed events."',
-    );
 
     // Verify pending and checkout offers show tier and deadline without attendee actions.
     expect(template).to.include('label = "Offer pending"');

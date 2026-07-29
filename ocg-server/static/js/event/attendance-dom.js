@@ -185,7 +185,7 @@ export const getAttendanceMeta = (container) => {
   const attendeeMeetingAccessOpen = container?.dataset?.attendeeMeetingAccessOpen === "true";
   const canceled = container?.dataset?.canceled === "true";
   const hydratedIsPast = parseHydratedIsPast(container);
-  const isTicketed = container?.dataset?.isTicketed === "true";
+  const isSimpleRsvp = container?.dataset?.isSimpleRsvp === "true";
   const paidCapable = container?.dataset?.paidCapable === "true";
   const registrationWindowOpen = container?.dataset?.registrationWindowOpen !== "false";
   const registrationWindowMessage = container?.dataset?.registrationWindowMessage || "";
@@ -235,9 +235,9 @@ export const getAttendanceMeta = (container) => {
     registrationWindowUnavailableTitle,
     ticketPurchaseAvailable,
     ticketIsFreeOnly,
-    ticketModalRequired: isTicketed && hasVisibleTicketTypes,
+    ticketModalRequired: !isSimpleRsvp && hasVisibleTicketTypes,
     waitlistEnabled,
-    isTicketed,
+    isSimpleRsvp,
   };
 };
 

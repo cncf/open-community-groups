@@ -56,6 +56,10 @@ pub struct WaitlistEntry {
     /// Waiting list creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Ticket type for the queue or offer history.
+    pub event_ticket_type_id: Uuid,
+    /// Ticket title for the queue or offer history.
+    pub ticket_title: String,
     /// Public profile payload for the waitlisted user.
     pub user: User,
 
@@ -63,13 +67,9 @@ pub struct WaitlistEntry {
     pub admission_offer_id: Option<Uuid>,
     /// Waitlist-generated admission offer status.
     pub admission_offer_status: Option<EventAdmissionOfferStatus>,
-    /// Ticket type for the queue or offer history.
-    pub event_ticket_type_id: Option<Uuid>,
     /// Offer expiration time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub offer_expires_at: Option<DateTime<Utc>>,
-    /// Ticket title for the queue or offer history.
-    pub ticket_title: Option<String>,
     /// Position within the selected ticket queue.
     pub waitlist_position: Option<usize>,
 }

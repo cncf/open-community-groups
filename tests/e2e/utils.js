@@ -71,20 +71,20 @@ export const TEST_REGISTRATION_WINDOW_EVENTS = {
     name: "Registration Window Manual Invite Closed",
     slug: "alpha-registration-window-manual-invite-closed",
   },
-  ticketedClosed: {
+  paidClosed: {
     id: "55555555-5555-5555-5555-555555555901",
-    name: "Registration Window Ticketed Closed",
-    slug: "alpha-registration-window-ticketed-closed",
+    name: "Registration Window Paid Closed",
+    slug: "alpha-registration-window-paid-closed",
   },
-  ticketedFuture: {
+  paidFuture: {
     id: "55555555-5555-5555-5555-555555555902",
-    name: "Registration Window Ticketed Future",
-    slug: "alpha-registration-window-ticketed-future",
+    name: "Registration Window Paid Future",
+    slug: "alpha-registration-window-paid-future",
   },
-  ticketedOpen: {
+  paidOpen: {
     id: "55555555-5555-5555-5555-555555555903",
-    name: "Registration Window Ticketed Open",
-    slug: "alpha-registration-window-ticketed-open",
+    name: "Registration Window Paid Open",
+    slug: "alpha-registration-window-paid-open",
   },
   waitlistClosed: {
     id: "55555555-5555-5555-5555-555555555906",
@@ -182,8 +182,8 @@ export const TEST_PAYMENT_EVENT_IDS = {
 
 /** Payment-specific event names used by the future Playwright payment suite. */
 export const TEST_PAYMENT_EVENT_NAMES = {
-  draft: "Ticketed Draft Event",
-  refunds: "Ticketed Refund Review Event",
+  draft: "Paid Tier Draft Event",
+  refunds: "Paid Tier Refund Review Event",
 };
 
 /** Payment-specific event slugs used by the future Playwright payment suite. */
@@ -214,6 +214,7 @@ export const TEST_EVENT_SLUGS = {
 export const TEST_USER_IDS = {
   communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
   member2: "77777777-7777-7777-7777-777777777706",
+  organizer1: "77777777-7777-7777-7777-777777777703",
   pending1: "77777777-7777-7777-7777-777777777707",
   pending2: "77777777-7777-7777-7777-777777777708",
 };

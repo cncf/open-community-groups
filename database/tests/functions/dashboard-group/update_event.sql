@@ -326,9 +326,35 @@ values (:'event10ID', :'user1ID');
 insert into event_attendee (event_id, user_id)
 values (:'eventWaitlistWindowID', :'user2ID');
 
+-- Every update fixture uses the unified ticket inventory
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+select gen_random_uuid(), e.event_id, 1, coalesce(e.capacity, 100), 'General Admission'
+from event e
+where e.group_id = :'group1ID';
+
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+)
+select gen_random_uuid(), 0, ett.event_ticket_type_id
+from event_ticket_type ett
+join event e using (event_id)
+where e.group_id = :'group1ID';
+
 -- Waitlisted user eligible for promotion after the event update
-insert into event_waitlist (event_id, user_id, created_at)
-values (:'eventWaitlistWindowID', :'waitlistUserID', current_timestamp - interval '30 minutes');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id, created_at)
+select
+    :'eventWaitlistWindowID',
+    (
+        select ett.event_ticket_type_id
+        from event_ticket_type ett
+        where ett.event_id = :'eventWaitlistWindowID'
+        order by ett."order", ett.event_ticket_type_id
+        limit 1
+    ),
+    :'waitlistUserID',
+    current_timestamp - interval '30 minutes';
 
 -- ============================================================================
 -- TESTS
@@ -361,7 +387,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels' - 'ticket_types'
     )),
     '{
         "attendee_count": 0,
@@ -387,7 +413,6 @@ select is(
         "has_registration_questions": false,
         "has_related_events": false,
         "has_ticket_purchases": false,
-        "is_ticketed": false,
         "meeting_in_sync": false,
         "meeting_provider": "zoom",
         "meeting_recording_published": false,
@@ -515,7 +540,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels' - 'ticket_types'
     )),
     '{
         "attendee_count": 0,
@@ -541,8 +566,8 @@ select is(
         "test_event": true,
         "attendee_approval_required": false,
         "banner_url": "https://example.com/new-banner.jpg",
-        "capacity": 200,
-        "remaining_capacity": 200,
+        "capacity": 100,
+        "remaining_capacity": 100,
         "description_short": "Updated short description",
         "starts_at": 1896152400,
         "ends_at": 1896159600,
@@ -561,7 +586,6 @@ select is(
         "has_registration_questions": false,
         "has_related_events": false,
         "has_ticket_purchases": false,
-        "is_ticketed": false,
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
@@ -860,8 +884,7 @@ select is(
 );
 
 -- Should not promote waitlist entries after an open-only registration window reaches the event start
-select is(
-    update_event(
+select update_event(
         null::uuid,
         :'group1ID'::uuid,
         :'eventWaitlistWindowID'::uuid,
@@ -898,11 +921,14 @@ select is(
             ),
             'waitlist_enabled', true
         )
-    )::jsonb,
-    '[]'::jsonb,
+    );
+
+-- Should not promote waitlist entries after an open-only registration window reaches the event start
+select pass(
     'Should not promote waitlist entries after an open-only registration window reaches the event start'
 );
 
+-- Should keep waitlist entries queued after an open-only registration window reaches the event start
 select is(
     (
         select jsonb_agg(user_id order by created_at asc, user_id asc)

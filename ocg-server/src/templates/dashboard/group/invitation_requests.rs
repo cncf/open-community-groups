@@ -73,9 +73,9 @@ pub struct InvitationRequest {
     pub offered_event_ticket_type_id: Option<uuid::Uuid>,
     /// Ticket title assigned by the organizer.
     pub offered_ticket_title: Option<String>,
-    /// Public ticket type requested by the attendee.
+    /// Public ticket type requested by the attendee, when one was visible.
     pub requested_event_ticket_type_id: Option<uuid::Uuid>,
-    /// Public ticket title requested by the attendee.
+    /// Public ticket title requested by the attendee, when one was visible.
     pub requested_ticket_title: Option<String>,
     /// Review completion time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]

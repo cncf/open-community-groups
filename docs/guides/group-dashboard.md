@@ -137,8 +137,8 @@ the parent/child links connected to that group.
 
 ## Payments: Group Recipient Setup
 
-Ticketing is available without payment setup when every configured ticket price
-is zero. Paid-capable ticketing requires both server-side Stripe configuration
+Every event uses ticket inventory. Payment setup is unnecessary when every
+configured ticket price is zero. Positive pricing requires server-side Stripe configuration
 and a group payment recipient in `Settings`.
 
 To set up the group side, open [Settings](/dashboard/group?tab=settings ':ignore'), enter the
@@ -150,12 +150,12 @@ The dashboard does not create or onboard the Stripe account for you.
 For the full Stripe-side setup, including connected-account onboarding and
 payout details, follow [Payments Setup](payments-setup.md).
 
-If the group leaves the payment recipient blank, organizers can run RSVP events
-and free-only ticketed events. A ticket type with any positive current or future
-price window makes the event paid-capable and requires the recipient.
+If the group leaves the payment recipient blank, organizers can run events with
+free ticket types. A ticket type with any positive current or future price
+window makes the event paid-capable and requires the recipient.
 
 If the deployment has no payment provider, the event editor still shows the
-`Tickets` tab for free-only configuration. Positive prices remain unavailable,
+`Tickets` tab for free configuration. Positive prices remain unavailable,
 and group settings do not show a Stripe recipient field.
 
 Permission-wise, configuring the group payment recipient requires settings write access, while
@@ -245,8 +245,11 @@ payment-ready, and a read-only explanation when positive prices cannot be used.
 Enrollment-aware event operations also include:
 
 - A `Waitlist enabled` toggle in event details.
-- RSVP waitlists require a numeric event capacity. Ticketed waitlists use each
-  public tier's seat allocation.
+- New events start with one free, public `General Admission` ticket type with
+  500 seats. Organizers can rename it, change its seat count, or add tiers.
+- Event capacity is the sum of ticket-type seat counts. It is not edited
+  separately, and every event must retain at least one ticket type.
+- Waiting lists use each public tier's seat allocation.
 - Ticket types can be `Public` or `Invitation only`. Private tiers never appear
   in public event responses.
 - Optional `Registration Opens` and `Registration Closes` fields in `Date & Venue`.
@@ -270,10 +273,11 @@ Approval event operations include:
 - Invitation requests appear in a separate `Requests` tab for organizer review. The tab defaults to
   pending requests and can be filtered to all, accepted, or rejected requests.
 - A public ticket request keeps the requester-selected tier.
-- A generic request for a fully private ticketed event requires the organizer
+- A generic request for a fully private event requires the organizer
   to assign an invitation-only tier.
 - Accepting a ticket request creates a time-limited offer if capacity and payment
-  readiness allow it. Accepting an RSVP request confirms attendance.
+  readiness allow it. The recipient claims the offer through the same checkout
+  flow used by public tickets; zero-priced claims complete inside OCG.
 - Rejecting a request records the decision without creating an attendee.
 
 Organizer-created event invitations are managed from the event `Attendees` tab:
@@ -283,16 +287,15 @@ Organizer-created event invitations are managed from the event `Attendees` tab:
 - For new invitees, email invitations should use the invitee's LF account primary email because LF
   SSO activates the placeholder by email. For existing users, select the registered platform user
   when possible; LF SSO identity reconciliation handles later LF email changes during login.
-- Ticketed invitations require an active, currently priced public or
+- Invitations require an active, currently priced public or
   invitation-only tier. A zero-priced private tier is the normal complimentary
   option.
 - Invitations bypass public approval and registration windows, but never event
   capacity, tier capacity, or public-tier waiting-list priority.
 - Pending invitations reserve capacity until their displayed deadline and can
-  be canceled before claim. RSVP organizer invitations use a 24-hour claim
-  deadline; invitations without a deadline remain open until accepted,
-  declined, or canceled. Expired organizer invitations may be reissued when the
-  recipient is still eligible.
+  be canceled before claim. Offers are bounded by a 24-hour claim window and
+  the event or registration deadline. Expired organizer invitations may be
+  reissued when the recipient is still eligible.
 - Declined, canceled, or expired offers release their reservation and trigger
   queue reconciliation. Declined or expired waiting-list recipients are not
   automatically requeued, and their offers cannot be manually reissued.

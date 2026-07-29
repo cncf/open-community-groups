@@ -1,4 +1,4 @@
--- Stores pending registration answers for a ticketed checkout.
+-- Stores pending registration answers for an event checkout.
 create or replace function upsert_pending_registration_answers(
     p_event_id uuid,
     p_user_id uuid,

@@ -405,6 +405,42 @@ insert into event_ticket_price_window (
     (gen_random_uuid(), 0, :'replacementTicketTypeID'),
     (gen_random_uuid(), 0, :'closedTicketTypeID');
 
+-- RSVP events without a specialized ticket fixture use a default tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free price for the RSVP event's default tier
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where ett.event_id = :'rsvpEventID'
+and not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- Limited discount reserved by the checkout whose offer deadline elapsed
 insert into event_discount_code (
     event_discount_code_id,
@@ -456,7 +492,7 @@ insert into event_waitlist (
 ) values (
     '2024-01-01 00:00:00+00',
     :'rsvpEventID',
-    null,
+    (select event_ticket_type_id from event_ticket_type where event_id = :'rsvpEventID' limit 1),
     :'rsvpUserID'
 ), (
     '2024-01-01 00:00:00+00',
@@ -706,30 +742,30 @@ insert into event_attendee (
 -- TESTS
 -- ============================================================================
 
--- Should preserve existing RSVP promotion behavior
+-- Should promote an eligible waitlist entry into an admission offer
 select is(
     reconcile_event_enrollment(:'rsvpEventID'),
     array[:'rsvpUserID'::uuid],
-    'Should promote an eligible event-level waitlist entry'
+    'Should promote an eligible waitlist entry'
 );
 
 select results_eq(
     format(
         $$
-            select ea.status, count(ew.user_id)
-            from event_attendee ea
+            select ao.status, count(ew.user_id)
+            from admission_offer ao
             left join event_waitlist ew
-                on ew.event_id = ea.event_id
-                and ew.user_id = ea.user_id
-            where ea.event_id = %L::uuid
-            and ea.user_id = %L::uuid
-            group by ea.status
+                on ew.event_id = ao.event_id
+                and ew.user_id = ao.user_id
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+            group by ao.status
         $$,
         :'rsvpEventID',
         :'rsvpUserID'
     ),
-    $$ values ('confirmed'::text, 0::bigint) $$,
-    'Should move the RSVP queue entry into confirmed attendance'
+    $$ values ('pending'::text, 0::bigint) $$,
+    'Should replace the queue entry with an admission offer'
 );
 
 -- Should fill free ticket capacity in FIFO order

@@ -222,6 +222,41 @@ insert into event_ticket_price_window (
     :'freeTicketTypeID'
 );
 
+-- Events without a specialized ticket fixture use a default free tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for the default ticket tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- Completed purchases linked to the paid and free-ticket attendees
 insert into event_purchase (
     amount_minor,
@@ -266,7 +301,12 @@ values
 -- Waitlist entries
 insert into event_waitlist (event_id, user_id, created_at, event_ticket_type_id)
 values
-    (:'eventLimitedID', :'promotedUserID', now(), null),
+    (
+        :'eventLimitedID',
+        :'promotedUserID',
+        now(),
+        (select event_ticket_type_id from event_ticket_type where event_id = :'eventLimitedID' limit 1)
+    ),
     (
         :'eventTicketedFreeID',
         :'freeTicketPromotedUserID',
@@ -284,7 +324,7 @@ select results_eq(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
         :'actorID', :'groupID', :'eventID', :'attendeeID'
     ),
-    $$ values ('{"left_status": "attendee", "promoted_user_ids": []}'::jsonb) $$,
+    $$ values ('{"left_status": "attendee"}'::jsonb) $$,
     'Should cancel a confirmed attendance'
 );
 
@@ -387,7 +427,7 @@ select results_eq(
         :'eventTicketedFreeID',
         :'freeTicketAttendeeID'
     ),
-    $$ values ('{"left_status": "attendee", "promoted_user_ids": []}'::jsonb) $$,
+    $$ values ('{"left_status": "attendee"}'::jsonb) $$,
     'Should cancel free ticket attendance without returning ticket offer recipients'
 );
 
@@ -440,38 +480,35 @@ select results_eq(
     'Should refund the free purchase and offer the released tier seat'
 );
 
--- Should promote a waitlisted user when canceling from a full event.
+-- Should offer the released seat to a waitlisted user
 select results_eq(
     format(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
         :'actorID', :'groupID', :'eventLimitedID', :'limitedAttendeeID'
     ),
-    format(
-        $$ values ('{"left_status": "attendee", "promoted_user_ids": ["%s"]}'::jsonb) $$,
-        :'promotedUserID'
-    ),
-    'Should return promoted waitlisted user ids'
+    $$ values ('{"left_status": "attendee"}'::jsonb) $$,
+    'Should cancel attendance after offering the released seat'
 );
 
 select results_eq(
     format(
         $$
         select
-            ea.status,
+            ao.status,
             not exists (
                 select 1
                 from event_waitlist ew
                 where ew.event_id = %L::uuid
                 and ew.user_id = %L::uuid
             )
-        from event_attendee ea
-        where ea.event_id = %L::uuid
-        and ea.user_id = %L::uuid
+        from admission_offer ao
+        where ao.event_id = %L::uuid
+        and ao.user_id = %L::uuid
         $$,
         :'eventLimitedID', :'promotedUserID', :'eventLimitedID', :'promotedUserID'
     ),
-    $$ values ('confirmed'::text, true) $$,
-    'Should promote the waitlisted user into attendees'
+    $$ values ('pending'::text, true) $$,
+    'Should replace the waitlist entry with an admission offer'
 );
 
 -- Should reject unpublished events.

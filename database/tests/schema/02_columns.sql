@@ -26,7 +26,6 @@ select columns_are('admission_offer', array[
     'admission_offer_id',
     'created_at',
     'event_id',
-    'legacy',
     'source',
     'status',
     'updated_at',

@@ -13,10 +13,10 @@ Once this setup is complete:
 - OCG can create Stripe Checkout sessions for paid event purchases.
 - OCG can verify Stripe webhook signatures.
 - Groups can store Stripe connected account IDs in group settings.
-- Group administrators can configure paid-capable ticketed events and process
+- Group administrators can configure paid-capable events and process
   refunds in OCG.
 
-Free-only ticketed events work when Stripe is not configured. Ticketing requires
+Events with only free ticket types work when Stripe is not configured. Enrollment requires
 Stripe only when a configured or claim-time final price may be positive.
 
 ## Stripe Requirements
@@ -325,7 +325,7 @@ Check that:
 - All required Stripe values are present.
 - The deployment was restarted or rolled out with the new config.
 
-Free-only ticketed events remain available without this section. Its absence
+Events with only free ticket types remain available without this section. Its absence
 blocks only paid-capable ticket configuration and positive final-price claims.
 
 ### Stripe Returns Signature Errors

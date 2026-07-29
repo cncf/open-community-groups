@@ -132,6 +132,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._automaticRecordingEdited = false;
     this._capacityField = null;
     this._capacityInputHandler = () => this._handleCapacityInput();
+    this._ticketTypesChangeHandler = () => this._handleCapacityInput();
     this._hostsInputTimeoutId = 0;
   }
 
@@ -140,12 +141,14 @@ export class OnlineEventDetails extends LitWrapper {
 
     this._capacityField = getElementById(document, "capacity");
     this._capacityField?.addEventListener("input", this._capacityInputHandler);
+    document.addEventListener("ticket-types-changed", this._ticketTypesChangeHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._capacityField?.removeEventListener("input", this._capacityInputHandler);
     this._capacityField = null;
+    document.removeEventListener("ticket-types-changed", this._ticketTypesChangeHandler);
     this._hostsInputTimeoutId = clearTimeoutId(this._hostsInputTimeoutId);
   }
 
@@ -871,9 +874,19 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   _getCapacityValue() {
-    const capacityField = getElementById(document, "capacity");
-    const value = parseInt(capacityField?.value, 10);
-    return Number.isFinite(value) ? value : null;
+    const capacityField = this._capacityField || getElementById(document, "capacity");
+    if (capacityField) {
+      const value = parseInt(capacityField.value, 10);
+      return Number.isFinite(value) ? value : null;
+    }
+
+    const ticketTypesEditor = getElementById(document, "ticket-types-ui");
+    const configuredSeatTotal =
+      typeof ticketTypesEditor?.getConfiguredSeatTotal === "function"
+        ? ticketTypesEditor.getConfiguredSeatTotal()
+        : null;
+
+    return Number.isFinite(configuredSeatTotal) ? configuredSeatTotal : null;
   }
 
   _getCapacityLimit() {

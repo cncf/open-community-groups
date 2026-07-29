@@ -178,7 +178,7 @@ const updateAvailabilityMeta = (container, availability) => {
   container.dataset.hasSoldOutTicketTypes = String(availability.has_sold_out_ticket_types === true);
   container.dataset.hasVisibleTicketTypes = String(availability.has_visible_ticket_types === true);
   container.dataset.isPast = String(availability.is_past === true);
-  container.dataset.isTicketed = String(availability.is_ticketed === true);
+  container.dataset.isSimpleRsvp = String(availability.is_simple_rsvp === true);
   container.dataset.paidCapable = String(availability.paid_capable === true);
   container.dataset.registrationWindowOpen = String(availability.registration_window_open !== false);
   container.dataset.ticketPurchaseAvailable = String(availability.has_sellable_ticket_types === true);

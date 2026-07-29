@@ -9,7 +9,7 @@ use crate::{
     templates::dashboard,
     types::{
         event::{
-            EventAdmissionOfferSource, EventAdmissionOfferStatus, EventAttendanceStatus,
+            EventAdmissionOfferSource, EventAdmissionOfferStatus, EventEnrollmentStatus,
             EventSummary,
         },
         pagination::{self, Pagination, ToRawQuery},
@@ -66,10 +66,10 @@ pub(crate) struct UserEvent {
     pub admission_offer_status: Option<EventAdmissionOfferStatus>,
     /// Current or snapshotted offer amount in minor units.
     pub amount_minor: Option<i64>,
-    /// Current attendee status for the user, when the user is an attendee.
-    pub attendance_status: Option<EventAttendanceStatus>,
     /// Currency used to display the offer amount.
     pub currency_code: Option<String>,
+    /// Current enrollment status for the user.
+    pub enrollment_status: Option<EventEnrollmentStatus>,
     /// Ticket type assigned to the active offer.
     pub event_ticket_type_id: Option<uuid::Uuid>,
     /// Active offer expiration time.
@@ -84,24 +84,13 @@ pub(crate) struct UserEvent {
 }
 
 impl UserEvent {
-    /// Returns the attendee status badge label, when the row needs one.
-    pub(crate) fn attendance_status_label(&self) -> Option<&'static str> {
-        match self.attendance_status.as_ref()? {
-            EventAttendanceStatus::PendingPayment => Some("Payment pending"),
-            EventAttendanceStatus::RegistrationQuestionsPending => Some("Registration pending"),
-            _ => None,
-        }
-    }
-
     /// Returns true when attendance can be canceled from the user dashboard.
     pub(crate) fn can_cancel_attendance(&self) -> bool {
-        // Pending registrations on ticketed events are owned by the checkout hold flow
-        let cancelable_status = match self.attendance_status.as_ref() {
-            Some(EventAttendanceStatus::Attendee) => true,
-            Some(EventAttendanceStatus::RegistrationQuestionsPending) => !self.event.is_ticketed(),
-            _ => false,
-        };
-        cancelable_status
+        let has_cancelable_enrollment = matches!(
+            self.enrollment_status.as_ref(),
+            Some(EventEnrollmentStatus::Attendee)
+        );
+        has_cancelable_enrollment
             && self.roles.as_slice() == [UserEventRole::Attendee]
             && !self.has_paid_purchase
     }
@@ -114,6 +103,15 @@ impl UserEvent {
                 || self.event.registration_window_is_open())
     }
 
+    /// Returns the enrollment status badge label, when the row needs one.
+    pub(crate) fn enrollment_status_label(&self) -> Option<&'static str> {
+        match self.enrollment_status.as_ref()? {
+            EventEnrollmentStatus::PendingPayment => Some("Payment pending"),
+            EventEnrollmentStatus::RegistrationQuestionsPending => Some("Registration pending"),
+            _ => None,
+        }
+    }
+
     /// Returns true when the row represents an active admission offer.
     pub(crate) fn has_active_offer(&self) -> bool {
         self.admission_offer_id.is_some() && self.roles.contains(&UserEventRole::Offer)
@@ -123,11 +121,11 @@ impl UserEvent {
     pub(crate) fn has_registration_questions_action(&self) -> bool {
         !self.registration_questions.is_empty()
             && matches!(
-                self.attendance_status.as_ref(),
+                self.enrollment_status.as_ref(),
                 Some(
-                    EventAttendanceStatus::Attendee
-                        | EventAttendanceStatus::PendingPayment
-                        | EventAttendanceStatus::RegistrationQuestionsPending
+                    EventEnrollmentStatus::Attendee
+                        | EventEnrollmentStatus::PendingPayment
+                        | EventEnrollmentStatus::RegistrationQuestionsPending
                 )
             )
     }
@@ -155,8 +153,8 @@ impl UserEvent {
     /// Returns true when registration questions are still required.
     pub(crate) fn registration_questions_pending(&self) -> bool {
         matches!(
-            self.attendance_status.as_ref(),
-            Some(EventAttendanceStatus::RegistrationQuestionsPending)
+            self.enrollment_status.as_ref(),
+            Some(EventEnrollmentStatus::RegistrationQuestionsPending)
         )
     }
 
@@ -168,8 +166,8 @@ impl UserEvent {
     /// Returns true when payment is still pending.
     fn payment_pending(&self) -> bool {
         matches!(
-            self.attendance_status.as_ref(),
-            Some(EventAttendanceStatus::PendingPayment)
+            self.enrollment_status.as_ref(),
+            Some(EventEnrollmentStatus::PendingPayment)
         )
     }
 }
@@ -236,8 +234,7 @@ mod tests {
     use crate::{
         handlers::tests::sample_event_summary,
         types::{
-            event::EventAttendanceStatus,
-            payments::EventTicketType,
+            event::EventEnrollmentStatus,
             questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
         },
     };
@@ -252,26 +249,9 @@ mod tests {
     }
 
     #[test]
-    fn can_cancel_attendance_allows_pending_registration_on_non_ticketed_event() {
-        let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::RegistrationQuestionsPending);
-
-        assert!(user_event.can_cancel_attendance());
-    }
-
-    #[test]
     fn can_cancel_attendance_rejects_other_statuses() {
         let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::Waitlisted);
-
-        assert!(!user_event.can_cancel_attendance());
-    }
-
-    #[test]
-    fn can_cancel_attendance_rejects_pending_registration_on_ticketed_event() {
-        let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::RegistrationQuestionsPending);
-        user_event.event.ticket_types = Some(vec![EventTicketType::default()]);
+        user_event.enrollment_status = Some(EventEnrollmentStatus::Waitlisted);
 
         assert!(!user_event.can_cancel_attendance());
     }
@@ -279,7 +259,7 @@ mod tests {
     #[test]
     fn can_complete_registration_questions_allows_active_checkout_hold_after_closed_window() {
         let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::PendingPayment);
+        user_event.enrollment_status = Some(EventEnrollmentStatus::PendingPayment);
         user_event.registration_questions = vec![sample_question()];
         user_event.event.registration_ends_at = Some(Utc::now() - Duration::hours(1));
         user_event.resume_checkout_url = Some("https://example.test/checkout/resume".to_string());
@@ -352,8 +332,8 @@ mod tests {
             admission_offer_source: None,
             admission_offer_status: None,
             amount_minor: None,
-            attendance_status: Some(EventAttendanceStatus::Attendee),
             currency_code: None,
+            enrollment_status: Some(EventEnrollmentStatus::Attendee),
             event_ticket_type_id: None,
             offer_expires_at: None,
             registration_answers: None,

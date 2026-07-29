@@ -170,12 +170,12 @@ describe("events list page", () => {
   });
 
   it("disables invitation request assignment without an eligible ticket tier", () => {
+    // Build production-shaped invitation request controls without an assignable option.
     document.body.innerHTML = `
       <div id="events-list-root">
         <form>
           <select data-invitation-request-ticket-type>
             <option value="">Select ticket type</option>
-            <option value="sold-out" disabled>Sold out</option>
           </select>
           <p data-invitation-request-ticket-empty class="hidden">No tickets available.</p>
           <button data-invitation-request-ticket-submit type="submit">Accept</button>
@@ -184,8 +184,10 @@ describe("events list page", () => {
     `;
     const root = document.getElementById("events-list-root");
 
+    // Initialize the invitation request ticket guard.
     initializeEventsListPage(root);
 
+    // Check the unavailable controls and recovery guidance are synchronized.
     expect(root.querySelector("select").disabled).to.equal(true);
     expect(root.querySelector("button").disabled).to.equal(true);
     expect(root.querySelector("p").classList.contains("hidden")).to.equal(false);

@@ -126,7 +126,6 @@ async fn main() -> Result<()> {
     let enrollment_workers_db = db.clone() as DynDB;
     start_enrollment_workers(
         &enrollment_workers_db,
-        &cfg.server,
         &background_tasks.task_tracker,
         &background_tasks.cancellation_token,
         cfg.payments.as_ref().map(PaymentsConfig::provider),

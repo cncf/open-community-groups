@@ -193,8 +193,7 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
-        'group_id', :'groupID'::uuid,
-        'non_ticketed_promoted_user_ids', '[]'::jsonb
+        'group_id', :'groupID'::uuid
     ),
     'Should cancel a group-scoped ticket offer and return reconciliation context'
 );
@@ -279,8 +278,7 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
-        'group_id', :'groupID'::uuid,
-        'non_ticketed_promoted_user_ids', '[]'::jsonb
+        'group_id', :'groupID'::uuid
     ),
     'Should cancel an approval-sourced offer and return reconciliation context'
 );

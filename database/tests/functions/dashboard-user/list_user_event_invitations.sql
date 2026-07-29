@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,6 +23,10 @@ select plan(5);
 \set inactiveGroupID '4a0b0000-0000-0000-0000-000000000009'
 \set invitedUserID '4a0b0000-0000-0000-0000-000000000010'
 \set invitedOfferID '4a0b0000-0000-0000-0000-000000000013'
+\set privateOfferID '4a0b0000-0000-0000-0000-00000000001e'
+\set privatePriceWindowID '4a0b0000-0000-0000-0000-00000000001f'
+\set privateTicketTypeID '4a0b0000-0000-0000-0000-000000000020'
+\set privateUserID '4a0b0000-0000-0000-0000-000000000021'
 \set priceWindowID '4a0b0000-0000-0000-0000-000000000014'
 \set questionID '4a0b0000-0000-0000-0000-00000000001c'
 \set rejectedUserID '4a0b0000-0000-0000-0000-000000000011'
@@ -91,6 +95,13 @@ insert into "user" (
     true,
     'rejected',
     'Rejected User'
+), (
+    :'privateUserID',
+    'hash-private',
+    'private@example.com',
+    true,
+    'private-user',
+    'Private User'
 ), (
     :'ticketUserID',
     'hash-ticket',
@@ -208,6 +219,63 @@ insert into event_ticket_price_window (
     :'ticketTypeID'
 );
 
+-- Events without an explicit ticket fixture use default admission tiers
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for the default admission tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
+-- Paid private tier alongside the event's free public RSVP tier
+insert into event_ticket_type (
+    availability,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    'invitation_only',
+    :'eventID',
+    :'privateTicketTypeID',
+    2,
+    10,
+    'Private supporter'
+);
+
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    :'privatePriceWindowID',
+    :'privateTicketTypeID'
+);
+
 -- Event invitation offer states
 insert into admission_offer (
     admission_offer_id,
@@ -226,72 +294,90 @@ insert into admission_offer (
 values
     (
         :'invitedOfferID',
-        null,
+        0,
         '2024-01-02 10:00:00+00',
         null,
-        null,
+        0,
         :'eventID',
-        null,
+        (
+            select event_ticket_type_id
+            from event_ticket_type
+            where event_id = :'eventID'
+            and availability = 'public'
+            limit 1
+        ),
         '2099-01-02 10:00:00+00',
         'organizer_invitation',
         'pending',
-        null,
+        'General Admission',
         :'invitedUserID'
     ),
     (
         '4a0b0000-0000-0000-0000-000000000018',
-        null,
+        0,
         '2024-01-03 10:00:00+00',
         null,
-        null,
+        0,
         :'canceledEventID',
-        null,
+        (select event_ticket_type_id from event_ticket_type where event_id = :'canceledEventID' limit 1),
         '2099-01-03 10:00:00+00',
         'organizer_invitation',
         'pending',
-        null,
+        'General Admission',
         :'invitedUserID'
     ),
     (
         '4a0b0000-0000-0000-0000-000000000019',
-        null,
+        0,
         '2024-01-04 10:00:00+00',
         null,
-        null,
+        0,
         :'inactiveGroupEventID',
-        null,
+        (select event_ticket_type_id from event_ticket_type where event_id = :'inactiveGroupEventID' limit 1),
         '2099-01-04 10:00:00+00',
         'organizer_invitation',
         'pending',
-        null,
+        'General Admission',
         :'invitedUserID'
     ),
     (
         '4a0b0000-0000-0000-0000-00000000001a',
-        null,
+        0,
         '2024-01-05 10:00:00+00',
         null,
-        null,
+        0,
         :'eventID',
-        null,
+        (
+            select event_ticket_type_id
+            from event_ticket_type
+            where event_id = :'eventID'
+            and availability = 'public'
+            limit 1
+        ),
         '2099-01-05 10:00:00+00',
         'organizer_invitation',
         'completed',
-        null,
+        'General Admission',
         :'acceptedUserID'
     ),
     (
         '4a0b0000-0000-0000-0000-00000000001b',
-        null,
+        0,
         '2024-01-06 10:00:00+00',
         null,
-        null,
+        0,
         :'eventID',
-        null,
+        (
+            select event_ticket_type_id
+            from event_ticket_type
+            where event_id = :'eventID'
+            and availability = 'public'
+            limit 1
+        ),
         '2099-01-06 10:00:00+00',
         'organizer_invitation',
         'declined',
-        null,
+        'General Admission',
         :'rejectedUserID'
     ),
     (
@@ -307,11 +393,26 @@ values
         'checkout_pending',
         'General admission',
         :'ticketUserID'
+    ),
+    (
+        :'privateOfferID',
+        2500,
+        '2024-01-08 10:00:00+00',
+        'USD',
+        0,
+        :'eventID',
+        :'privateTicketTypeID',
+        '2099-01-02 10:00:00+00',
+        'organizer_invitation',
+        'pending',
+        'Private supporter',
+        :'privateUserID'
     );
 
 -- Accepted ticket request that supplies claim-time registration answers
 insert into event_invitation_request (
     event_id,
+    event_ticket_type_id,
     user_id,
     status,
     registration_answers,
@@ -319,6 +420,7 @@ insert into event_invitation_request (
     reviewed_by
 ) values (
     :'eventTicketedID',
+    :'ticketTypeID',
     :'ticketUserID',
     'accepted',
     format(
@@ -395,13 +497,25 @@ select is(
                     "event_name": "Future Event",
                     "group_name": "Event Invitations Group",
                     "timezone": "UTC",
+                    "amount_minor": 0,
+                    "event_ticket_type_id": "%s",
                     "expires_at": 4071031200,
+                    "is_simple_rsvp": true,
                     "registration_questions": [],
-                    "starts_at": 4071031200
+                    "starts_at": 4071031200,
+                    "ticket_title": "General Admission"
                 }
             ]
         $json$,
-        :'invitedOfferID', :'eventID'
+        :'invitedOfferID',
+        :'eventID',
+        (
+            select event_ticket_type_id
+            from event_ticket_type
+            where event_id = :'eventID'
+            and availability = 'public'
+            limit 1
+        )
     )::jsonb,
     'Should list active pending event invitations for the user'
 );
@@ -427,6 +541,7 @@ select is(
                     "currency_code": "USD",
                     "event_ticket_type_id": "%s",
                     "expires_at": 4071290400,
+                    "is_simple_rsvp": false,
                     "registration_answers": {
                         "answers": [
                             {
@@ -453,6 +568,13 @@ select is(
         :'ticketOfferID', :'eventTicketedID', :'ticketTypeID'
     )::jsonb,
     'Should expose the exact assigned tier on an owned ticket offer'
+);
+
+-- Offers on a private paid tier use ticket wording even for a simple RSVP event
+select is(
+    (list_user_event_invitations(:'privateUserID'::uuid)::jsonb->0->>'is_simple_rsvp')::boolean,
+    false,
+    'Should use ticket wording for a private paid offer on a simple RSVP event'
 );
 
 -- Automatic refunds keep the ticket offer unavailable until they finish

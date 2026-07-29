@@ -266,9 +266,6 @@ pub(crate) struct Event {
     /// Call for speakers start time.
     #[garde(skip)]
     pub cfs_starts_at: Option<NaiveDateTime>,
-    /// Whether ticketing should be removed from an existing event.
-    #[garde(skip)]
-    pub clear_ticketing: Option<bool>,
     /// Short description of the event.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub description_short: Option<String>,
@@ -420,7 +417,6 @@ impl Event {
         }
 
         // Remove ticketing fields so they can be reinserted from submitted inputs
-        payload.remove("clear_ticketing");
         payload.remove("discount_codes");
         payload.remove("discount_codes_present");
         payload.remove("recurrence_additional_occurrences");
@@ -437,14 +433,6 @@ impl Event {
                 "registration_questions".to_string(),
                 serde_json::to_value(&self.registration_questions)?,
             );
-        }
-
-        // Null out persisted ticketing fields when ticketing should be cleared
-        if self.clear_ticketing.unwrap_or(false) {
-            payload.insert("discount_codes".to_string(), Value::Null);
-            payload.insert("payment_currency_code".to_string(), Value::Null);
-            payload.insert("ticket_types".to_string(), Value::Null);
-            return Ok(Value::Object(payload));
         }
 
         // Reinsert ticketing sections only when the form submitted those inputs
@@ -962,18 +950,6 @@ registration_questions[0][options][0][label]=Vegetarian",
                 .get("available_override_active")
                 .is_none()
         );
-    }
-
-    #[test]
-    fn to_db_payload_clears_ticketing_when_requested() {
-        let mut event = sample_event();
-        event.clear_ticketing = Some(true);
-
-        let payload = event.to_db_payload().unwrap();
-
-        assert_eq!(payload["discount_codes"], Value::Null);
-        assert_eq!(payload["payment_currency_code"], Value::Null);
-        assert_eq!(payload["ticket_types"], Value::Null);
     }
 
     // Helpers.

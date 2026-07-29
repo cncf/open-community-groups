@@ -27,6 +27,7 @@ select plan(12);
 \set groupID '0c090000-0000-0000-0000-00000000000e'
 \set groupNoLogoID '0c090000-0000-0000-0000-00000000000f'
 \set pendingInviteID '0c090000-0000-0000-0000-000000000010'
+\set mainTicketTypeID '0c090000-0000-0000-0000-00000000001c'
 \set privateTicketPriceWindowID '0c090000-0000-0000-0000-00000000001a'
 \set privateTicketTypeID '0c090000-0000-0000-0000-00000000001b'
 \set questionID '0c090000-0000-0000-0000-000000000011'
@@ -410,6 +411,32 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Invitation-only tier used by the main event's queue fixture
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'mainTicketTypeID',
+    true,
+    'invitation_only',
+    :'eventID',
+    1,
+    5,
+    'General admission'
+);
+
+-- Current free price for the main event's invitation-only tier
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (gen_random_uuid(), 0, :'mainTicketTypeID');
+
 -- Invitation-only ticket type excluded from public summaries
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -503,8 +530,8 @@ insert into event_purchase (
 );
 
 -- Event Waitlist
-insert into event_waitlist (event_id, user_id)
-values (:'eventID', :'waitlistUserID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'eventID', :'mainTicketTypeID', :'waitlistUserID');
 
 -- ============================================================================
 -- TESTS
@@ -527,7 +554,6 @@ select is(
         "group_slug": "abc1234",
         "has_registration_questions": false,
         "has_related_events": false,
-        "is_ticketed": false,
         "kind": "in-person",
         "name": "KubeCon Seattle 2024",
         "published": true,
@@ -601,13 +627,6 @@ select is(
 -- Should include payment currency and normalized ticket types in event summaries
 select is(
     jsonb_build_object(
-        'is_ticketed', (
-            get_event_summary(
-                :'communityID'::uuid,
-                :'groupID'::uuid,
-                :'eventPaidID'::uuid
-            )::jsonb
-        )->'is_ticketed',
         'payment_currency_code', (
             get_event_summary(
                 :'communityID'::uuid,
@@ -625,7 +644,6 @@ select is(
     ),
     format(
         '{
-            "is_ticketed": true,
             "payment_currency_code": "USD",
             "ticket_types": [
                 {
@@ -720,17 +738,17 @@ select ok(
     'Should return null when community does not match event'
 );
 
--- Should count pending registration rows in event capacity summaries
+-- Should exclude pending registration rows without an active checkout hold
 select is(
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid)::jsonb->>'remaining_capacity',
-    '0',
-    'Should count pending registration rows in event capacity summaries'
+    '1',
+    'Should exclude pending registration rows without an active checkout hold'
 );
 
 -- Should exclude expired checkout holds from event capacity summaries
 select is(
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb->>'remaining_capacity',
-    '19',
+    '24',
     'Should exclude expired checkout holds from event capacity summaries'
 );
 

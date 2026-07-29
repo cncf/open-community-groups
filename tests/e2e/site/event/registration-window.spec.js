@@ -56,13 +56,13 @@ const expectRegistrationWindowState = async (page, open, messagePattern) => {
 };
 
 test.describe("event registration windows", () => {
-  test("ticketed events disable checkout until registration opens", async ({
+  test("paid events disable checkout until registration opens", async ({
     member2Page,
   }) => {
-    // Load the ticketed event before its registration window opens.
+    // Load the paid event before its registration window opens.
     await navigateToRegistrationWindowEvent(
       member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.ticketedFuture,
+      TEST_REGISTRATION_WINDOW_EVENTS.paidFuture,
     );
 
     // Verify registration-window state blocks ticket checkout controls.
@@ -71,20 +71,20 @@ test.describe("event registration windows", () => {
       false,
       /Registration opens/,
     );
-    await expect(getAttendButton(member2Page)).toContainText("Buy ticket");
+    await expect(getAttendButton(member2Page)).toContainText("Get ticket");
     await expect(getAttendButton(member2Page)).toBeDisabled();
     await expect(getTicketOption(member2Page)).toBeDisabled();
     await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
   });
 
-  test("ticketed events disable checkout after registration closes", async ({
+  test("paid events disable checkout after registration closes", async ({
     member2Page,
   }) => {
-    // Load the ticketed event after its registration window closes.
+    // Load the paid event after its registration window closes.
     await navigateToRegistrationWindowEvent(
       member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.ticketedClosed,
+      TEST_REGISTRATION_WINDOW_EVENTS.paidClosed,
     );
 
     // Verify closed registration blocks ticket checkout controls.
@@ -93,20 +93,20 @@ test.describe("event registration windows", () => {
       false,
       /Registration closed/,
     );
-    await expect(getAttendButton(member2Page)).toContainText("Buy ticket");
+    await expect(getAttendButton(member2Page)).toContainText("Get ticket");
     await expect(getAttendButton(member2Page)).toBeDisabled();
     await expect(getTicketOption(member2Page)).toBeDisabled();
     await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
   });
 
-  test("ticketed events allow checkout controls while registration is open", async ({
+  test("paid events allow checkout controls while registration is open", async ({
     member2Page,
   }) => {
-    // Load the ticketed event while registration is open.
+    // Load the paid event while registration is open.
     await navigateToRegistrationWindowEvent(
       member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.ticketedOpen,
+      TEST_REGISTRATION_WINDOW_EVENTS.paidOpen,
     );
 
     // Verify the ticket purchase action is available.
@@ -115,20 +115,21 @@ test.describe("event registration windows", () => {
       true,
       /Registration is open until/,
     );
-    await expect(getAttendButton(member2Page)).toContainText("Buy ticket");
+    await expect(getAttendButton(member2Page)).toContainText("Get ticket");
     await expect(getAttendButton(member2Page)).toBeEnabled();
 
     // Open the ticket modal and verify checkout waits for a ticket selection.
     await getAttendButton(member2Page).click();
     await expect(getTicketModal(member2Page)).toBeVisible();
     await expect(getTicketOption(member2Page)).toBeEnabled();
-    await expect(getDiscountCodeInput(member2Page)).toBeEnabled();
+    await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
 
     // Select a ticket and verify checkout becomes available.
     await getTicketModal(member2Page)
       .locator("label", { hasText: "Registration window pass" })
       .click();
+    await expect(getDiscountCodeInput(member2Page)).toBeEnabled();
     await expect(getCheckoutButton(member2Page)).toBeEnabled();
 
     // Close the ticket modal without creating a checkout.
@@ -144,7 +145,7 @@ test.describe("event registration windows", () => {
     // Load an event with a registration deadline on a mobile viewport.
     await navigateToRegistrationWindowEvent(
       member2Page,
-      TEST_REGISTRATION_WINDOW_EVENTS.ticketedOpen,
+      TEST_REGISTRATION_WINDOW_EVENTS.paidOpen,
     );
 
     // Verify the full deadline is truncated without widening the page.

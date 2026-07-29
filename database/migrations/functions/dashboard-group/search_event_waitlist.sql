@@ -101,7 +101,7 @@ returns json as $$
             from enrollment_entries ee
             join event e on e.event_id = ee.event_id
             join "user" u on u.user_id = ee.user_id
-            left join event_ticket_type ett
+            join event_ticket_type ett
                 on ett.event_ticket_type_id = ee.event_ticket_type_id
             where e.group_id = p_group_id
         ),
@@ -180,15 +180,15 @@ returns json as $$
                 json_agg(
                     json_build_object(
                         'created_at', created_at,
+                        'event_ticket_type_id', event_ticket_type_id,
+                        'ticket_title', ticket_title,
                         'user', "user",
                         'waitlist_position', waitlist_position
                     )::jsonb
                     || jsonb_strip_nulls(jsonb_build_object(
                         'admission_offer_id', admission_offer_id,
                         'admission_offer_status', admission_offer_status,
-                        'event_ticket_type_id', event_ticket_type_id,
-                        'offer_expires_at', offer_expires_at,
-                        'ticket_title', ticket_title
+                        'offer_expires_at', offer_expires_at
                     ))
                 ),
                 '[]'::json

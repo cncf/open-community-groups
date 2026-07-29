@@ -225,10 +225,8 @@
             {# Queue -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex min-w-0 flex-col gap-1.5">
-                {% if let Some(ticket_title) = &entry.ticket_title -%}
-                  <div class="max-w-[260px] truncate font-medium text-stone-900"
-                       title="{{ ticket_title }}">{{ ticket_title }}</div>
-                {% endif -%}
+                <div class="max-w-[260px] truncate font-medium text-stone-900"
+                     title="{{ entry.ticket_title }}">{{ entry.ticket_title }}</div>
                 <div>
                   {% if let Some(offer_status) = entry.admission_offer_status -%}
                     {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
@@ -291,44 +289,6 @@
                       <div class="svg-icon size-4 icon-cancel"></div>
                     </button>
                   {% endif -%}
-                {% else if can_manage_events
-                  && !event.canceled
-                  && !event.is_past()
-                  && !event.is_ticketed()
-                  && entry.admission_offer_id.is_none() -%}
-                  <div class="group relative">
-                    <button type="button"
-                            data-event-id="waitlist-{{ entry.user.user_id }}"
-                            aria-label="Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
-                            aria-haspopup="menu"
-                            aria-controls="dropdown-actions-waitlist-{{ entry.user.user_id }}"
-                            aria-expanded="false"
-                            class="btn-actions btn-tertiary flex items-center justify-center p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50">
-                      <div class="svg-icon size-4 icon-vertical-dots"></div>
-                    </button>
-                    <div id="dropdown-actions-waitlist-{{ entry.user.user_id }}"
-                         data-event-actions-dropdown
-                         class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                      <ul class="py-2 text-sm text-stone-700" role="menu">
-                        <li>
-                          <form hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
-                                hx-indicator="#dashboard-spinner"
-                                hx-disabled-elt="find button[type=submit]"
-                                data-htmx-response
-                                data-success-message="Invitation sent."
-                                data-error-message="Something went wrong sending this invitation. Please try again later.">
-                            <input type="hidden" name="user_id" value="{{ entry.user.user_id }}" />
-                            <button type="submit"
-                                    role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                              <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-500"></div>
-                              <span>Invite user</span>
-                            </button>
-                          </form>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
                 {% else -%}
                   <button type="button"
                           class="btn-actions btn-tertiary flex cursor-not-allowed items-center justify-center p-2 opacity-50"
@@ -339,8 +299,6 @@
                             title="Canceled events cannot invite attendees."
                           {% else if event.is_past() -%}
                             title="Past events cannot invite attendees."
-                          {% else if event.is_ticketed() -%}
-                            title="Manual invitations are not available for ticketed events."
                           {% else if entry.admission_offer_id.is_some() -%}
                             title="Waitlist offers cannot be manually reissued."
                           {% endif -%}

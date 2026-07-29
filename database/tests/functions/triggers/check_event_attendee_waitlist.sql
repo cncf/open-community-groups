@@ -21,6 +21,8 @@ select plan(6);
 \set user2ID 'ab010000-0000-0000-0000-000000000008'
 \set user3ID 'ab010000-0000-0000-0000-000000000009'
 \set user4ID 'ab010000-0000-0000-0000-00000000000a'
+\set ticketType1ID 'ab010000-0000-0000-0000-00000000000b'
+\set ticketType2ID 'ab010000-0000-0000-0000-00000000000c'
 
 -- ============================================================================
 -- SEED DATA
@@ -107,38 +109,66 @@ values
         true
     );
 
--- Existing waitlist entries
-insert into event_waitlist (event_id, user_id)
+-- Ticket tiers for the trigger-conflict fixtures
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values
-    (:'event1ID', :'user1ID'),
-    (:'event2ID', :'user1ID');
+    (:'ticketType1ID', :'event1ID', 1, 1, 'General admission'),
+    (:'ticketType2ID', :'event2ID', 1, 1, 'General admission');
+
+-- Existing waitlist entries
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values
+    (:'event1ID', :'ticketType1ID', :'user1ID'),
+    (:'event2ID', :'ticketType2ID', :'user1ID');
 
 -- Existing attendee
 insert into event_attendee (event_id, user_id)
 values (:'event2ID', :'user2ID');
 
 -- Existing active offers
-insert into admission_offer (event_id, expires_at, source, status, user_id)
+insert into admission_offer (
+    amount_minor,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+)
 values
     (
+        null,
+        null,
         :'event1ID',
+        :'ticketType1ID',
         current_timestamp + interval '1 hour',
         'organizer_invitation',
         'pending',
+        null,
         :'user3ID'
     ),
     (
+        null,
+        null,
         :'event2ID',
+        :'ticketType2ID',
         current_timestamp + interval '1 hour',
         'organizer_invitation',
         'pending',
+        null,
         :'user3ID'
     ),
     (
+        0,
+        0,
         :'event1ID',
+        :'ticketType1ID',
         current_timestamp + interval '1 hour',
         'organizer_invitation',
         'checkout_pending',
+        'General admission',
         :'user4ID'
     );
 

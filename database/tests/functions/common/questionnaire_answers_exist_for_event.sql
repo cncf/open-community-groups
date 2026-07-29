@@ -20,6 +20,7 @@ select plan(4);
 \set groupID '0c150000-0000-0000-0000-000000000009'
 \set nullAnswersUserID '0c150000-0000-0000-0000-00000000000a'
 \set requestUserID '0c150000-0000-0000-0000-00000000000b'
+\set requestTicketTypeID '0c150000-0000-0000-0000-00000000000c'
 
 -- ============================================================================
 -- SEED DATA
@@ -117,6 +118,21 @@ insert into event (
     'in-person'
 );
 
+-- Admission tier associated with the invitation request answers
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'requestTicketTypeID',
+    :'eventRequestAnswersID',
+    1,
+    10,
+    'General admission'
+);
+
 -- Attendee answers
 insert into event_attendee (event_id, user_id, registration_answers)
 values
@@ -124,8 +140,18 @@ values
     (:'eventAttendeeNullAnswersID', :'nullAnswersUserID', null);
 
 -- Invitation request answers
-insert into event_invitation_request (event_id, user_id, registration_answers)
-values (:'eventRequestAnswersID', :'requestUserID', '{"answers": []}'::jsonb);
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    user_id,
+    registration_answers
+)
+values (
+    :'eventRequestAnswersID',
+    :'requestTicketTypeID',
+    :'requestUserID',
+    '{"answers": []}'::jsonb
+);
 
 -- ============================================================================
 -- TESTS

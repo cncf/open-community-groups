@@ -450,6 +450,36 @@ insert into event_ticket_price_window (
     :'eventPaidTicketTypeID'
 );
 
+-- Events without an explicit ticket fixture use default admission tiers
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for the default admission tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- User participation
 insert into event_attendee (event_id, user_id, status) values
     (:'eventAID', :'userID', 'confirmed'),
@@ -475,7 +505,7 @@ insert into admission_offer (
 ) values (
     :'pendingInvitationOfferID',
     :'eventPendingInvitationID',
-    null,
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventPendingInvitationID' limit 1),
     '2099-01-13 11:00:00+00',
     'organizer_invitation',
     'pending',
@@ -645,10 +675,10 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -661,10 +691,10 @@ select is(
                 jsonb_build_array('attendee', 'host', 'speaker')
             ),
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -677,10 +707,10 @@ select is(
                 jsonb_build_array('attendee')
             ),
             jsonb_build_object(
-                'attendance_status',
-                null,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
+                'enrollment_status',
+                null,
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -699,14 +729,18 @@ select is(
                 'organizer_invitation',
                 'admission_offer_status',
                 'pending',
-                'attendance_status',
-                'invitation-approved',
+                'amount_minor',
+                0,
                 'event',
                 get_event_summary(
                     :'communityID'::uuid,
                     :'groupID'::uuid,
                     :'eventPendingInvitationID'::uuid
                 )::jsonb,
+                'enrollment_status',
+                'invitation-approved',
+                'event_ticket_type_id',
+                (select event_ticket_type_id from event_ticket_type where event_id = :'eventPendingInvitationID' limit 1),
                 'has_paid_purchase',
                 false,
                 'manually_invited',
@@ -723,7 +757,9 @@ select is(
                 'resume_checkout_url',
                 null,
                 'roles',
-                jsonb_build_array('offer')
+                jsonb_build_array('offer'),
+                'ticket_title',
+                'General Admission'
             )
         ),
         'total',
@@ -751,10 +787,10 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -780,10 +816,10 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 true,
                 'registration_answers',
@@ -828,7 +864,9 @@ select is(
         'organizer_invitation',
         'admission_offer_status',
         'pending',
-        'attendance_status',
+        'amount_minor',
+        0,
+        'enrollment_status',
         'invitation-approved',
         'event_ticket_type_id',
         :'eventQuestionsTicketTypeID',
@@ -872,7 +910,7 @@ select is(
         -> 0
     ) - 'event',
     jsonb_build_object(
-        'attendance_status',
+        'enrollment_status',
         'attendee',
         'has_paid_purchase',
         false,
@@ -901,10 +939,10 @@ select is(
     jsonb_build_object(
         'amount_minor',
         1500,
-        'attendance_status',
-        'pending-payment',
         'currency_code',
         'USD',
+        'enrollment_status',
+        'pending-payment',
         'event_ticket_type_id',
         :'eventQuestionsTicketTypeID',
         'has_paid_purchase',
@@ -934,7 +972,7 @@ select is(
         -> 0
     ) - 'event',
     jsonb_build_object(
-        'attendance_status',
+        'enrollment_status',
         'registration-questions-pending',
         'has_paid_purchase',
         false,

@@ -84,7 +84,7 @@ describe("attendance availability", () => {
       has_sellable_ticket_types: true,
       is_live: false,
       is_past: false,
-      is_ticketed: true,
+      is_simple_rsvp: false,
       remaining_capacity: 4,
       ticket_types: [
         {
@@ -156,7 +156,7 @@ describe("attendance availability", () => {
       has_sellable_ticket_types: true,
       is_live: false,
       is_past: false,
-      is_ticketed: true,
+      is_simple_rsvp: false,
       registration_window_message: "Registration closed May 1, 2099.",
       registration_window_open: false,
       registration_window_unavailable_title: "Registration closed May 1, 2099.",
@@ -205,7 +205,7 @@ describe("attendance availability", () => {
       has_sellable_ticket_types: true,
       is_live: false,
       is_past: false,
-      is_ticketed: true,
+      is_simple_rsvp: false,
       registration_window_message: "Registration closed May 1, 2099.",
       registration_window_open: false,
       registration_window_unavailable_title: "Registration closed May 1, 2099.",
@@ -250,7 +250,7 @@ describe("attendance availability", () => {
       attendee_approval_required: false,
       canceled: false,
       has_sellable_ticket_types: true,
-      is_ticketed: true,
+      is_simple_rsvp: false,
       registration_window_open: true,
       ticket_types: [
         {
@@ -308,7 +308,7 @@ describe("attendance availability", () => {
       attendee_approval_required: true,
       canceled: false,
       has_sellable_ticket_types: false,
-      is_ticketed: true,
+      is_simple_rsvp: false,
       registration_window_open: true,
       ticket_types: [
         {
@@ -359,7 +359,7 @@ describe("attendance availability", () => {
       attendee_approval_required: false,
       canceled: false,
       has_sellable_ticket_types: true,
-      is_ticketed: true,
+      is_simple_rsvp: false,
       registration_window_open: true,
       ticket_types: [
         {
@@ -415,7 +415,7 @@ describe("attendance availability", () => {
       attendee_approval_required: false,
       canceled: false,
       has_sellable_ticket_types: true,
-      is_ticketed: true,
+      is_simple_rsvp: false,
       registration_window_open: true,
       ticket_types: [
         {

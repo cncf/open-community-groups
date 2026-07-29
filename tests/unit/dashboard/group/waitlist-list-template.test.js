@@ -123,30 +123,6 @@ describe("dashboard group waitlist list template", () => {
     expect(template).not.to.include("refresh_limit");
   });
 
-  it("renders row actions to invite waitlisted users", async () => {
-    // Load the waitlist list template before checking invite action markup.
-    const template = normalizeWhitespace(await loadTemplate());
-
-    // Verify waitlisted users get an action menu with an invitation action.
-    expect(template).to.include("data-events-list-page");
-    expect(template).to.include('<span class="sr-only">Actions</span>');
-    expect(template).to.include("entry.admission_offer_id.is_none()");
-    expect(template).to.include(
-      "Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
-    );
-    expect(template).to.include('data-event-id="waitlist-{{ entry.user.user_id }}"');
-    expect(template).to.include('aria-expanded="false"');
-    expect(template).to.include('id="dropdown-actions-waitlist-{{ entry.user.user_id }}"');
-    expect(template).to.include("data-event-actions-dropdown");
-    expect(template).to.include('hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"');
-    expect(template).to.include('name="user_id" value="{{ entry.user.user_id }}"');
-    expect(template).to.include("Invite user");
-    expect(template).to.include('data-success-message="Invitation sent."');
-    expect(template).to.include(
-      'data-error-message="Something went wrong sending this invitation. Please try again later."',
-    );
-  });
-
   it("keeps waitlist actions disabled for unsupported invite states", async () => {
     // Load the waitlist list template before checking disabled invite states.
     const template = normalizeWhitespace(await loadTemplate());
@@ -155,7 +131,6 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include('title="Your role cannot invite attendees."');
     expect(template).to.include('title="Canceled events cannot invite attendees."');
     expect(template).to.include('title="Past events cannot invite attendees."');
-    expect(template).to.include('title="Manual invitations are not available for ticketed events."');
     expect(template).to.include('title="Waitlist offers cannot be manually reissued."');
     expect(template).to.include(
       "Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
@@ -167,7 +142,7 @@ describe("dashboard group waitlist list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify ticket tiers, queue positions, offer states, and deadlines remain visible.
-    expect(template).to.include("{{ ticket_title }}");
+    expect(template).to.include("{{ entry.ticket_title }}");
     expect(template).to.include("Queue #{{ waitlist_position }}");
     expect(template).to.include('label = "Offer pending"');
     expect(template).to.include('label = "Checkout pending"');

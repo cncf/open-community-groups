@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(55);
+select plan(56);
 
 -- ============================================================================
 -- VARIABLES
@@ -84,6 +84,7 @@ select plan(55);
 \set requester10ID '3a010000-0000-0000-0000-000000000048'
 \set requester11ID '3a010000-0000-0000-0000-000000000049'
 \set requester12ID '3a010000-0000-0000-0000-00000000004a'
+\set requester13ID '3a010000-0000-0000-0000-000000000058'
 \set unavailableTicketTypeID '3a010000-0000-0000-0000-00000000004b'
 
 -- ============================================================================
@@ -143,6 +144,7 @@ values
     (:'requester10ID', 'h', 'requester10@test.com', 'requester10'),
     (:'requester11ID', 'h', 'requester11@test.com', 'requester11'),
     (:'requester12ID', 'h', 'requester12@test.com', 'requester12'),
+    (:'requester13ID', 'h', 'requester13@test.com', 'requester13'),
     (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request'),
     (:'queuePriorityRequesterID', 'h', 'queue-priority-requester@test.com', 'queue-priority-requester'),
     (:'queuePriorityWaitlistUserID', 'h', 'queue-priority-waitlist@test.com', 'queue-priority-waitlist'),
@@ -725,24 +727,60 @@ insert into event_ticket_price_window (
     (0, :'queuePriorityPriceWindowID', :'queuePriorityTicketTypeID'),
     (0, :'soldOutPriceWindowID', :'soldOutTicketTypeID');
 
+-- Events that do not exercise a named tier use a default free admission tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for tiers without a named price fixture
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- Invitation requests
 insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
 values
-    (:'eventID', null, :'requesterID'),
-    (:'eventID', null, :'requester2ID'),
-    (:'eventFullID', null, :'requesterID'),
-    (:'eventUnpublishedID', null, :'requesterID'),
-    (:'eventInactiveGroupID', null, :'requesterID'),
-    (:'eventApprovalDisabledID', null, :'requesterID'),
-    (:'eventPastID', null, :'requesterID'),
-    (:'eventPendingInvitationID', null, :'requester3ID'),
-    (:'eventAttendeeConflictID', null, :'requester4ID'),
-    (:'eventAttendeeConflictID', null, :'requester5ID'),
+    (:'eventID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1), :'requesterID'),
+    (:'eventID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1), :'requester2ID'),
+    (:'eventFullID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventFullID' limit 1), :'requesterID'),
+    (:'eventUnpublishedID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventUnpublishedID' limit 1), :'requesterID'),
+    (:'eventInactiveGroupID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventInactiveGroupID' limit 1), :'requesterID'),
+    (:'eventApprovalDisabledID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventApprovalDisabledID' limit 1), :'requesterID'),
+    (:'eventPastID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventPastID' limit 1), :'requesterID'),
+    (:'eventPendingInvitationID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventPendingInvitationID' limit 1), :'requester3ID'),
+    (:'eventAttendeeConflictID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventAttendeeConflictID' limit 1), :'requester4ID'),
+    (:'eventAttendeeConflictID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventAttendeeConflictID' limit 1), :'requester5ID'),
     (:'eventInProgressApprovalID', :'inProgressTicketTypeID', :'inProgressRequesterID'),
-    (:'eventRegistrationOpenUntilStartID', null, :'requester6ID'),
-    (:'eventAttendanceCanceledID', null, :'requester7ID'),
-    (:'eventPrivateTicketApprovalID', null, :'requester3ID'),
-    (:'eventPrivateTicketApprovalID', :'privateTicketTypeID', :'requester8ID'),
+    (:'eventRegistrationOpenUntilStartID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventRegistrationOpenUntilStartID' limit 1), :'requester6ID'),
+    (:'eventAttendanceCanceledID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventAttendanceCanceledID' limit 1), :'requester7ID'),
+    (:'eventPrivateTicketApprovalID', :'publicGenericTicketTypeID', :'requester3ID'),
+    (:'eventPrivateTicketApprovalID', null, :'requester8ID'),
+    (:'eventPrivateTicketApprovalID', null, :'requester13ID'),
     (:'eventPublicTicketApprovalID', :'publicTicketTypeID', :'requester4ID'),
     (:'eventUnavailableTicketApprovalID', :'unavailableTicketTypeID', :'requester9ID'),
     (:'eventPaidNoRecipientApprovalID', :'paidTicketTypeID', :'requester10ID'),
@@ -751,7 +789,11 @@ values
 
 -- Pending RSVP request accepted after expired reservations are reconciled
 insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
-values (:'eventExpiredReservationID', null, :'expiredReservationRequesterID');
+values (
+    :'eventExpiredReservationID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventExpiredReservationID' limit 1),
+    :'expiredReservationRequesterID'
+);
 
 -- Accepted requests used to exercise ticket-offer reissue blockers
 insert into event_invitation_request (
@@ -833,6 +875,7 @@ insert into admission_offer (
     admission_offer_id,
     created_at,
     event_id,
+    event_ticket_type_id,
     expires_at,
     source,
     status,
@@ -842,6 +885,7 @@ insert into admission_offer (
         :'expiredReservationOfferOneID',
         current_timestamp - interval '3 hours',
         :'eventExpiredReservationID',
+        (select event_ticket_type_id from event_ticket_type where event_id = :'eventExpiredReservationID' limit 1),
         current_timestamp - interval '2 hours',
         'organizer_invitation',
         'pending',
@@ -851,6 +895,7 @@ insert into admission_offer (
         :'expiredReservationOfferTwoID',
         current_timestamp - interval '2 hours',
         :'eventExpiredReservationID',
+        (select event_ticket_type_id from event_ticket_type where event_id = :'eventExpiredReservationID' limit 1),
         current_timestamp - interval '1 hour',
         'organizer_invitation',
         'pending',
@@ -858,8 +903,12 @@ insert into admission_offer (
     );
 
 -- RSVP waitlist user promoted while expired reservations are swept
-insert into event_waitlist (event_id, user_id)
-values (:'eventExpiredReservationID', :'expiredReservationWaitlistUserID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'eventExpiredReservationID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventExpiredReservationID' limit 1),
+    :'expiredReservationWaitlistUserID'
+);
 
 -- Active offer that occupies the only sold-out ticket
 insert into admission_offer (
@@ -879,9 +928,15 @@ insert into admission_offer (
 );
 
 -- Invitation request with registration answers copied when accepted
-insert into event_invitation_request (event_id, user_id, registration_answers)
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    user_id,
+    registration_answers
+)
 values (
     :'eventQuestionsApprovalID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventQuestionsApprovalID' limit 1),
     :'questionsAcceptedRequestUserID',
     format(
         '{"answers": [{"question_id": "%s", "value": "Accepted request answer"}]}',
@@ -906,6 +961,34 @@ insert into event_attendee (event_id, user_id, status)
 values
     (:'eventAttendeeConflictID', :'requester4ID', 'confirmed'),
     (:'eventAttendeeConflictID', :'requester5ID', 'invitation-rejected');
+
+-- Confirmed attendees own their tier capacity through completed purchases
+insert into event_purchase (
+    amount_minor,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+)
+select
+    0,
+    0,
+    ea.event_id,
+    ett.event_ticket_type_id,
+    'completed',
+    ett.title,
+    ea.user_id
+from event_attendee ea
+join lateral (
+    select event_ticket_type_id, title
+    from event_ticket_type
+    where event_id = ea.event_id
+    order by "order", event_ticket_type_id
+    limit 1
+) ett on true
+where ea.status = 'confirmed';
 
 -- Existing canceled attendance row reactivated by accepting a new request
 insert into event_attendee (
@@ -961,8 +1044,8 @@ select is(
     'Should leave changed-ticket requests pending without an offer'
 );
 
--- Should reject generic requests without an invitation-only tier
-select throws_ok(
+-- Should derive the required tier when the organizer omits the redundant field
+select lives_ok(
     format(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,null,%L)',
         :'actorID',
@@ -971,11 +1054,10 @@ select throws_ok(
         :'requester3ID',
         'stripe'
     ),
-    'invitation-only ticket type is required',
-    'Should reject generic requests without an invitation-only tier'
+    'Should derive the requested tier during approval'
 );
 
--- Should leave missing-tier generic requests pending without an offer
+-- Should create an offer for the request's persisted tier
 select is(
     (
         select jsonb_build_object(
@@ -991,8 +1073,8 @@ select is(
         where eir.event_id = :'eventPrivateTicketApprovalID'::uuid
         and eir.user_id = :'requester3ID'::uuid
     ),
-    '{"offer_count":0,"request_status":"pending"}'::jsonb,
-    'Should leave missing-tier generic requests pending without an offer'
+    '{"offer_count":1,"request_status":"accepted"}'::jsonb,
+    'Should accept the request and create its tier-scoped offer'
 );
 
 -- Should reject unavailable requested ticket types
@@ -1029,21 +1111,50 @@ select is(
     'Should leave unavailable-ticket requests pending without an offer'
 );
 
--- Should reject requested ticket types that are not public
+-- Should require a tier when accepting a generic private request
 select throws_ok(
     format(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,null,%L)',
         :'actorID',
         :'groupID',
         :'eventPrivateTicketApprovalID',
-        :'requester8ID',
+        :'requester13ID',
         'stripe'
     ),
-    'requested ticket type is not public',
-    'Should reject requested ticket types that are not public'
+    'invitation-only ticket type is required',
+    'Should require a tier when accepting a generic private request'
 );
 
--- Should leave private requested-ticket requests pending without an offer
+-- Should reject a public tier assignment for a generic private request
+select throws_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L)',
+        :'actorID',
+        :'groupID',
+        :'eventPrivateTicketApprovalID',
+        :'requester13ID',
+        :'publicGenericTicketTypeID',
+        'stripe'
+    ),
+    'ticket type is not available',
+    'Should reject a public tier assignment for a generic private request'
+);
+
+-- Should assign an invitation-only tier to a generic private request
+select lives_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L)',
+        :'actorID',
+        :'groupID',
+        :'eventPrivateTicketApprovalID',
+        :'requester8ID',
+        :'privateTicketTypeID',
+        'stripe'
+    ),
+    'Should assign an invitation-only tier to a generic private request'
+);
+
+-- Should create an offer for the assigned private tier
 select is(
     (
         select jsonb_build_object(
@@ -1059,11 +1170,23 @@ select is(
         where eir.event_id = :'eventPrivateTicketApprovalID'::uuid
         and eir.user_id = :'requester8ID'::uuid
     ),
-    '{"offer_count":0,"request_status":"pending"}'::jsonb,
-    'Should leave private requested-ticket requests pending without an offer'
+    '{"offer_count":1,"request_status":"accepted"}'::jsonb,
+    'Should create an offer for the assigned private tier'
 );
 
--- Should reject assigning a public tier to a generic request
+select is(
+    (
+        select (ntd.data->>'is_simple_rsvp')::boolean
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-ticket-request-approved'
+        and n.user_id = :'requester8ID'::uuid
+    ),
+    false,
+    'Should use ticket wording for an approved private-tier request'
+);
+
+-- Should reject duplicate approval while the first offer remains active
 select throws_ok(
     format(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L)',
@@ -1074,8 +1197,8 @@ select throws_ok(
         :'publicGenericTicketTypeID',
         'stripe'
     ),
-    'generic requests require an invitation-only ticket type',
-    'Should reject assigning a public tier to a generic request'
+    'user already has an active admission offer for this event',
+    'Should reject duplicate approval while its offer is active'
 );
 
 -- Should reject reissuing when an active offer already exists
@@ -1288,23 +1411,15 @@ select lives_ok(
 );
 
 select is(
-    (
-        select jsonb_build_object(
-            'outcome', v_result->>'outcome',
-            'promoted_user_ids', v_result->'promoted_user_ids'
-        )
-        from (
-            select accept_event_invitation_request(
-                :'actorID',
-                :'groupID',
-                :'eventPublicTicketApprovalID',
-                :'requester4ID',
-                null,
-                'stripe'
-            ) as v_result
-        ) accept_result
-    ),
-    '{"outcome":"offer-created","promoted_user_ids":[]}'::jsonb,
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventPublicTicketApprovalID',
+        :'requester4ID',
+        null,
+        'stripe'
+    )->>'outcome',
+    'offer-created',
     'Should reissue an offer for an accepted ticket request'
 );
 
@@ -1337,8 +1452,8 @@ select is(
     'Should audit the approval offer reissue'
 );
 
--- Should require an organizer-selected invitation-only tier for generic requests
-select lives_ok(
+-- Should reject changing the persisted tier during a later approval attempt
+select throws_ok(
     format(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L)',
         :'actorID',
@@ -1348,10 +1463,11 @@ select lives_ok(
         :'privateTicketTypeID',
         'stripe'
     ),
-    'Should assign an invitation-only tier to a generic request'
+    'requested ticket type cannot be changed',
+    'Should reject changing the persisted request tier'
 );
 
--- Should create the assigned private-tier offer
+-- Should retain the original request-tier offer
 select is(
     (
         select jsonb_build_array(ao.source, ao.status, ao.event_ticket_type_id)
@@ -1359,8 +1475,8 @@ select is(
         where ao.event_id = :'eventPrivateTicketApprovalID'::uuid
         and ao.user_id = :'requester3ID'::uuid
     ),
-    format('["approval","pending","%s"]', :'privateTicketTypeID')::jsonb,
-    'Should create the assigned private-tier approval offer'
+    format('["approval","pending","%s"]', :'publicGenericTicketTypeID')::jsonb,
+    'Should retain the original request-tier approval offer'
 );
 
 -- Should enqueue approval notifications transactionally
@@ -1390,9 +1506,10 @@ select ok(
                 )
             ),
             'event_id', :'eventPrivateTicketApprovalID',
-            'event_ticket_type_id', :'privateTicketTypeID',
+            'event_ticket_type_id', :'publicGenericTicketTypeID',
+            'is_simple_rsvp', true,
             'theme', jsonb_build_object('primary_color', '#2563eb'),
-            'ticket_title', 'Private admission',
+            'ticket_title', 'Generic public admission',
             'timezone', 'UTC',
             'user_id', :'requester3ID'
         )
@@ -1414,7 +1531,7 @@ select is(
         null,
         'stripe'
     ),
-    '{"conflict":"queue-has-priority","promoted_user_ids":[]}'::jsonb,
+    '{"conflict":"queue-has-priority"}'::jsonb,
     'Should preserve queue priority when accepting a public-tier request'
 );
 
@@ -1463,7 +1580,7 @@ select is(
         null,
         'stripe'
     ),
-    '{"conflict":"ticket-type-sold-out","promoted_user_ids":[]}'::jsonb,
+    '{"conflict":"ticket-type-sold-out"}'::jsonb,
     'Should report a sold-out conflict without reviewing the request'
 );
 
@@ -1495,28 +1612,31 @@ select is(
     'Should retain sold-out enrollment state after the conflict'
 );
 
--- Should reactivate canceled attendance when accepting a new request
+-- Should preserve canceled attendance history while creating an offer
 select lives_ok(
     format(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventAttendanceCanceledID', :'requester7ID'
     ),
-    'Should reactivate canceled attendance when accepting a new request'
+    'Should accept a request with canceled attendance history'
 );
 
--- Should clear canceled attendance metadata after reactivation
+-- Should leave canceled attendance metadata unchanged
 select results_eq(
     format($$
         select
-            attendance_canceled_at,
+            attendance_canceled_at is not null,
             attendance_canceled_by_user_id,
             status
         from event_attendee
         where event_id = %L::uuid
         and user_id = %L::uuid
     $$, :'eventAttendanceCanceledID', :'requester7ID'),
-    $$ values (null::timestamptz, null::uuid, 'confirmed'::text) $$,
-    'Should clear canceled attendance metadata after reactivation'
+    format(
+        $$ values (true, %L::uuid, 'attendance-canceled'::text) $$,
+        :'requester7ID'
+    ),
+    'Should preserve canceled attendance metadata'
 );
 
 -- Should accept a pending invitation request
@@ -1544,32 +1664,33 @@ select results_eq(
     'Should mark the request accepted'
 );
 
--- Should create a confirmed attendee row
+-- Should reserve approval through an offer without creating attendance
 select ok(
-    exists(
+    not exists(
         select 1
         from event_attendee
         where event_id = :'eventID'::uuid
         and user_id = :'requesterID'::uuid
-        and manually_invited = false
+    ) and exists (
+        select 1
+        from admission_offer
+        where event_id = :'eventID'::uuid
+        and user_id = :'requesterID'::uuid
+        and status = 'pending'
     ),
-    'Should create a confirmed attendee row that is not manually invited'
+    'Should create an approval offer without confirming attendance'
 );
 
--- Should accept after reconciling expired RSVP reservations
+-- Should accept after reconciling expired reservations
 select is(
     accept_event_invitation_request(
         :'actorID',
         :'groupID',
         :'eventExpiredReservationID',
         :'expiredReservationRequesterID'
-    ),
-    format(
-        '{"outcome":"attendee","promoted_user_ids":["%s"],"user_id":"%s"}',
-        :'expiredReservationWaitlistUserID',
-        :'expiredReservationRequesterID'
-    )::jsonb,
-    'Should accept after reconciling expired RSVP reservations'
+    )->>'outcome',
+    'offer-created',
+    'Should accept after reconciling expired reservations'
 );
 
 select is(
@@ -1584,10 +1705,10 @@ select is(
                 )
             ),
             'promoted_status', (
-                select ea.status
-                from event_attendee ea
-                where ea.event_id = :'eventExpiredReservationID'::uuid
-                and ea.user_id = :'expiredReservationWaitlistUserID'::uuid
+                select ao.status
+                from admission_offer ao
+                where ao.event_id = :'eventExpiredReservationID'::uuid
+                and ao.user_id = :'expiredReservationWaitlistUserID'::uuid
             ),
             'request_status', (
                 select eir.status
@@ -1597,8 +1718,8 @@ select is(
             )
         )
     ),
-    '{"offer_statuses":["expired","expired"],"promoted_status":"confirmed","request_status":"accepted"}'::jsonb,
-    'Should persist expired RSVP reservation reconciliation before accepting'
+    '{"offer_statuses":["expired","expired"],"promoted_status":"pending","request_status":"accepted"}'::jsonb,
+    'Should persist expired reservation reconciliation before accepting'
 );
 
 -- Should reuse a canceled manual invitation row without marking it manually invited
@@ -1621,32 +1742,8 @@ select results_eq(
         :'eventID',
         :'requester2ID'
     ),
-    $$ values ('confirmed'::text, false) $$,
-    'Should keep reused canceled invitation request attendees not manually invited'
-);
-
--- Should confirm an existing pending manual invitation row
-select lives_ok(
-    format(
-        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
-        :'actorID', :'groupID', :'eventPendingInvitationID', :'requester3ID'
-    ),
-    'Should accept a request with a pending manual invitation row'
-);
-
-select results_eq(
-    format(
-        $$
-            select status, manually_invited
-            from event_attendee
-            where event_id = %L::uuid
-            and user_id = %L::uuid
-        $$,
-        :'eventPendingInvitationID',
-        :'requester3ID'
-    ),
-    $$ values ('confirmed'::text, true) $$,
-    'Should keep reused pending invitation request attendees manually invited'
+    $$ values ('invitation-canceled'::text, false) $$,
+    'Should preserve canceled invitation history'
 );
 
 -- Should track the acceptance in the audit log
@@ -1657,7 +1754,7 @@ select results_eq(
             action,
             actor_user_id,
             community_id,
-            details,
+            details - 'admission_offer_id' - 'event_ticket_type_id',
             event_id,
             group_id,
             resource_id,
@@ -1686,14 +1783,16 @@ select results_eq(
     'Should track the acceptance in the audit log'
 );
 
--- Should reject accepting when event capacity is full
-select throws_ok(
-    format(
-        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
-        :'actorID', :'groupID', :'eventFullID', :'requesterID'
+-- Should report a sold-out tier without reviewing the request
+select is(
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventFullID',
+        :'requesterID'
     ),
-    'event has reached capacity',
-    'Should reject accepting when event capacity is full'
+    '{"conflict":"ticket-type-sold-out"}'::jsonb,
+    'Should report a sold-out tier when capacity is full'
 );
 
 -- Should reject accepting when event is unpublished
@@ -1751,7 +1850,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventID', :'requesterID'
     ),
-    'pending invitation request not found',
+    'user already has an active admission offer for this event',
     'Should reject accepting an already reviewed request'
 );
 
@@ -1761,18 +1860,17 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventAttendeeConflictID', :'requester4ID'
     ),
-    'user is already attending this event',
+    'user already has active attendance for this event',
     'Should reject accepting when the requester is already attending'
 );
 
--- Should reject accepting when the requester rejected an organizer invitation
-select throws_ok(
+-- Should allow a new request after a rejected organizer invitation
+select lives_ok(
     format(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventAttendeeConflictID', :'requester5ID'
     ),
-    'user rejected an invitation for this event',
-    'Should reject accepting when the requester rejected an organizer invitation'
+    'Should accept a new request after a rejected organizer invitation'
 );
 
 -- Should keep conflicting requests pending and attendee rows unchanged
@@ -1791,8 +1889,8 @@ select is(
             )
         )
     ),
-    '{"attendee_statuses": ["confirmed", "invitation-rejected"], "request_statuses": ["pending", "pending"]}'::jsonb,
-    'Should keep conflicting requests pending and attendee rows unchanged'
+    '{"attendee_statuses": ["confirmed", "invitation-rejected"], "request_statuses": ["pending", "accepted"]}'::jsonb,
+    'Should leave attendance history unchanged while reviewing eligible requests'
 );
 
 -- Should accept invitation requests that include registration answers
@@ -1804,11 +1902,11 @@ select lives_ok(
     'Should accept invitation requests that include registration answers'
 );
 
--- Should copy request answers to the attendee row
+-- Should retain request answers for the later checkout claim
 select is(
     (
         select registration_answers
-        from event_attendee
+        from event_invitation_request
         where event_id = :'eventQuestionsApprovalID'::uuid
         and user_id = :'questionsAcceptedRequestUserID'::uuid
     ),
@@ -1816,7 +1914,7 @@ select is(
         '{"answers": [{"question_id": "%s", "value": "Accepted request answer"}]}',
         :'registrationQuestionID'
     )::jsonb,
-    'Should copy request answers to the attendee row'
+    'Should retain request answers for checkout'
 );
 
 -- ============================================================================

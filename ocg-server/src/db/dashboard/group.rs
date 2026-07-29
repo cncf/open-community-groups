@@ -499,7 +499,7 @@ pub(crate) trait DBDashboardGroup {
         submission: &CfsSubmissionUpdate,
     ) -> Result<bool>;
 
-    /// Updates an existing event and returns any waitlisted users promoted.
+    /// Updates an existing event.
     async fn update_event(
         &self,
         actor_user_id: Uuid,
@@ -508,7 +508,7 @@ pub(crate) trait DBDashboardGroup {
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
         payment_provider: Option<PaymentProvider>,
-    ) -> Result<Vec<Uuid>>;
+    ) -> Result<()>;
 
     /// Updates an existing sponsor.
     async fn update_group_sponsor(
@@ -1601,8 +1601,8 @@ where
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
         payment_provider: Option<PaymentProvider>,
-    ) -> Result<Vec<Uuid>> {
-        self.fetch_json_one(
+    ) -> Result<()> {
+        self.execute(
             "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::jsonb, $6::text)",
             &[
                 &actor_user_id,
@@ -1670,16 +1670,12 @@ where
 pub(crate) struct EventAdmissionAllocation {
     /// Allocation result kind.
     pub outcome: EventAdmissionAllocationOutcome,
-    /// Non-ticketed waitlist users promoted while reconciling before allocation.
-    pub promoted_user_ids: Vec<Uuid>,
 }
 
 /// Conflict returned while allocating organizer-controlled event capacity.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum EventAdmissionAllocationConflict {
-    /// The non-ticketed event has no available capacity.
-    EventCapacityFull,
     /// Queue reconciliation consumed the final available seat.
     QueueHasPriority,
     /// The selected ticket tier has no available capacity.
@@ -1690,8 +1686,6 @@ pub(crate) enum EventAdmissionAllocationConflict {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum EventAdmissionAllocationOutcome {
-    /// User became a confirmed attendee for a non-ticketed event.
-    Attendee,
     /// A new organizer-controlled offer was created.
     OfferCreated,
     /// Queue reconciliation created the user's waitlist offer.
@@ -1702,39 +1696,16 @@ pub(crate) enum EventAdmissionAllocationOutcome {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum EventAdmissionAllocationResult {
     /// Allocation could not proceed without violating capacity priority.
-    Conflict {
-        /// Conflict kind.
-        conflict: EventAdmissionAllocationConflict,
-        /// Non-ticketed waitlist users promoted while reconciling before allocation.
-        promoted_user_ids: Vec<Uuid>,
-    },
+    Conflict(EventAdmissionAllocationConflict),
     /// Allocation succeeded.
     Success(EventAdmissionAllocation),
-}
-
-impl EventAdmissionAllocationResult {
-    /// Non-ticketed waitlist users promoted while reconciling before allocation.
-    pub(crate) fn promoted_user_ids(&self) -> &[Uuid] {
-        match self {
-            Self::Conflict {
-                promoted_user_ids, ..
-            } => promoted_user_ids,
-            Self::Success(allocation) => &allocation.promoted_user_ids,
-        }
-    }
 }
 
 impl From<EventAdmissionAllocationOutput> for EventAdmissionAllocationResult {
     /// Converts database allocation output into the caller-facing result.
     fn from(output: EventAdmissionAllocationOutput) -> Self {
         match output {
-            EventAdmissionAllocationOutput::Conflict {
-                conflict,
-                promoted_user_ids,
-            } => Self::Conflict {
-                conflict,
-                promoted_user_ids,
-            },
+            EventAdmissionAllocationOutput::Conflict { conflict } => Self::Conflict(conflict),
             EventAdmissionAllocationOutput::Success(allocation) => Self::Success(allocation),
         }
     }
@@ -1745,7 +1716,7 @@ impl From<EventAdmissionAllocationOutput> for EventAdmissionAllocationResult {
 pub(crate) struct EventAttendeeInvitationInput {
     /// Email address used to create or reissue an invitation.
     pub email: Option<String>,
-    /// Ticket type assigned to a ticketed invitation.
+    /// Ticket type assigned to the invitation.
     pub event_ticket_type_id: Option<Uuid>,
     /// Existing registered user identifier.
     pub user_id: Option<Uuid>,
@@ -1759,8 +1730,6 @@ enum EventAdmissionAllocationOutput {
     Conflict {
         /// Conflict kind.
         conflict: EventAdmissionAllocationConflict,
-        /// Non-ticketed waitlist users promoted while reconciling before allocation.
-        promoted_user_ids: Vec<Uuid>,
     },
     /// Allocation succeeded.
     Success(EventAdmissionAllocation),

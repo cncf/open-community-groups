@@ -706,16 +706,16 @@ insert into event (
     ]'::jsonb
 );
 
--- Ticketed payment fixtures reserved for the Playwright suite.
+-- Paid-tier payment fixtures reserved for the Playwright suite
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, payment_currency_code, published, starts_at, ends_at,
     waitlist_enabled
 ) values (
     '55555555-5555-5555-5555-555555555522',
-    'Ticketed Draft Event',
+    'Paid Tier Draft Event',
     'alpha-payments-draft',
-    'Ticketed event used for payment editor and validation coverage.',
+    'Paid-tier event used for payment editor and validation coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -727,9 +727,9 @@ insert into event (
     false
 ), (
     '55555555-5555-5555-5555-555555555523',
-    'Ticketed Refund Review Event',
+    'Paid Tier Refund Review Event',
     'alpha-payments-refunds',
-    'Ticketed event used for organizer refund review coverage.',
+    'Paid-tier event used for organizer refund review coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -750,10 +750,10 @@ insert into event (
     registration_ends_at, registration_questions
 ) values (
     '55555555-5555-5555-5555-555555555901',
-    'Registration Window Ticketed Closed',
-    'alpha-registration-window-ticketed-closed',
-    'Ticketed event with a closed registration window.',
-    'Ticketed event with closed registration.',
+    'Registration Window Paid Closed',
+    'alpha-registration-window-paid-closed',
+    'Paid event with a closed registration window.',
+    'Paid event with closed registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -771,10 +771,10 @@ insert into event (
     '[]'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555902',
-    'Registration Window Ticketed Future',
-    'alpha-registration-window-ticketed-future',
-    'Ticketed event with registration opening later.',
-    'Ticketed event with future registration.',
+    'Registration Window Paid Future',
+    'alpha-registration-window-paid-future',
+    'Paid event with registration opening later.',
+    'Paid event with future registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -792,10 +792,10 @@ insert into event (
     '[]'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555903',
-    'Registration Window Ticketed Open',
-    'alpha-registration-window-ticketed-open',
-    'Ticketed event with registration currently open.',
-    'Ticketed event with open registration.',
+    'Registration Window Paid Open',
+    'alpha-registration-window-paid-open',
+    'Paid event with registration currently open.',
+    'Paid event with open registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -962,7 +962,7 @@ insert into event (
     '55555555-5555-5555-5555-555555555911',
     'Registration Window Pending Payment Closed',
     'alpha-registration-window-pending-payment-closed',
-    'Ticketed questions event with an active pending checkout after closing.',
+    'Paid questions event with an active pending checkout after closing.',
     'Pending payment event with closed registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
@@ -2073,6 +2073,119 @@ join group_team gt on gt.group_id = e.group_id
 where e.legacy_id is null
 and gt.accepted = true;
 
+-- Specialized admission tiers must exist before enrollment fixtures
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    event_id,
+    "order",
+    seats_total,
+    title,
+    description
+)
+values (
+    '56555555-5555-5555-5555-555555555521',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    1,
+    30,
+    'General admission',
+    'Standard paid admission used for ticket editor coverage.'
+), (
+    '56555555-5555-5555-5555-555555555522',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    2,
+    10,
+    'Community ticket',
+    'Free community allocation used for zero-price ticket coverage.'
+), (
+    '56555555-5555-5555-5555-555555555524',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    3,
+    2,
+    'Backstage pass',
+    'Future sale window used for unavailable ticket coverage.'
+), (
+    '56555555-5555-5555-5555-555555555523',
+    true,
+    '55555555-5555-5555-5555-555555555523',
+    1,
+    20,
+    'VIP pass',
+    'Paid pass used for organizer refund review coverage.'
+), (
+    '56555555-5555-5555-5555-555555555525',
+    true,
+    '55555555-5555-5555-5555-555555555505',
+    1,
+    20,
+    'Virtual access pass',
+    'Sellable tier used to show a price badge on the homepage virtual events list.'
+), (
+    '56555555-5555-5555-5555-555555555526',
+    true,
+    '55555555-5555-5555-5555-555555555507',
+    1,
+    30,
+    'Observability summit pass',
+    'Sellable tier used to show a price badge on the homepage in-person events list.'
+), (
+    '56555555-5555-5555-5555-555555555901',
+    true,
+    '55555555-5555-5555-5555-555555555901',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for closed registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555902',
+    true,
+    '55555555-5555-5555-5555-555555555902',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for future registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555903',
+    true,
+    '55555555-5555-5555-5555-555555555903',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for open registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555911',
+    true,
+    '55555555-5555-5555-5555-555555555911',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for pending payment dashboard coverage.'
+);
+
+-- Every other event uses one free General Admission tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
 -- ============================================================================
 -- EVENT ATTENDEES
 -- ============================================================================
@@ -2113,9 +2226,10 @@ values (
     '77777777-7777-7777-7777-777777777712'
 );
 
-insert into event_waitlist (event_id, user_id)
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values (
     '55555555-5555-5555-5555-555555555526',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555526' order by "order" limit 1),
     '77777777-7777-7777-7777-777777777706'
 );
 
@@ -2125,16 +2239,6 @@ values (
     '77777777-7777-7777-7777-777777777703',
     false,
     'confirmed'
-), (
-    '55555555-5555-5555-5555-555555555909',
-    '77777777-7777-7777-7777-777777777706',
-    false,
-    'registration-questions-pending'
-), (
-    '55555555-5555-5555-5555-555555555910',
-    '77777777-7777-7777-7777-777777777706',
-    true,
-    'registration-questions-pending'
 ), (
     '55555555-5555-5555-5555-555555555911',
     '77777777-7777-7777-7777-777777777706',
@@ -2158,21 +2262,50 @@ values (
     now() - interval '1 hour',
     false,
     'confirmed'
-), (
-    '55555555-5555-5555-5555-555555555527',
-    '77777777-7777-7777-7777-777777777702',
-    false,
-    null,
-    true,
-    'invitation-pending'
-), (
-    '55555555-5555-5555-5555-555555555527',
-    '77777777-7777-7777-7777-777777777704',
-    false,
-    null,
-    false,
-    'registration-questions-pending'
 );
+
+-- Claim offers replace the old pending-invitation and pending-question seats
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+)
+values
+    (
+        '55555555-5555-5555-5555-555555555909',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555909' order by "order" limit 1),
+        current_timestamp + interval '24 hours',
+        'waitlist',
+        'pending',
+        '77777777-7777-7777-7777-777777777706'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555910',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555910' order by "order" limit 1),
+        current_timestamp + interval '24 hours',
+        'organizer_invitation',
+        'pending',
+        '77777777-7777-7777-7777-777777777706'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555527',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555527' order by "order" limit 1),
+        current_timestamp + interval '24 hours',
+        'organizer_invitation',
+        'pending',
+        '77777777-7777-7777-7777-777777777702'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555527',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555527' order by "order" limit 1),
+        current_timestamp + interval '24 hours',
+        'waitlist',
+        'pending',
+        '77777777-7777-7777-7777-777777777704'
+    );
 
 -- Canceled invitation retained for attendee history regression coverage.
 insert into event_attendee (event_id, user_id, manually_invited, status)
@@ -2374,7 +2507,8 @@ values (
     30,
     'Registration window pass',
     'Sellable pass used for pending payment dashboard coverage.'
-);
+)
+on conflict (event_ticket_type_id) do nothing;
 
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -2449,6 +2583,20 @@ values (
     '56555555-5555-5555-5555-555555555911',
     null,
     null
+);
+
+-- Default tiers receive one open-ended free price window
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
 );
 
 insert into event_discount_code (
@@ -2776,6 +2924,68 @@ values (
     'pending',
     'Registration window pass',
     '77777777-7777-7777-7777-777777777706'
+), (
+    '59555555-5555-5555-5555-555555555912',
+    2500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555522',
+    '56555555-5555-5555-5555-555555555521',
+    now() + interval '2 days',
+    'stripe',
+    'cs_e2e_draft_pending',
+    'https://example.test/checkout/draft-pending',
+    'pending',
+    'General admission',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+-- Confirmed attendees own capacity through completed zero-value purchases
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+)
+select
+    0,
+    null,
+    0,
+    ea.event_id,
+    ett.event_ticket_type_id,
+    'completed',
+    ett.title,
+    ea.user_id
+from event_attendee ea
+join lateral (
+    select ett.event_ticket_type_id, ett.title
+    from event_ticket_type ett
+    where ett.event_id = ea.event_id
+    order by ett."order", ett.event_ticket_type_id
+    limit 1
+) ett on true
+where ea.status = 'confirmed'
+and not exists (
+    select 1
+    from event_purchase ep
+    where ep.event_id = ea.event_id
+    and ep.user_id = ea.user_id
+    and (
+        ep.status in (
+            'completed',
+            'refund-pending',
+            'refund-recovery-pending',
+            'refund-requested'
+        )
+        or (
+            ep.status = 'pending'
+            and ep.hold_expires_at > current_timestamp
+        )
+    )
 );
 
 -- ============================================================================

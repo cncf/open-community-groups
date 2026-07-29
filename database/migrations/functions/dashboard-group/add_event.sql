@@ -9,7 +9,6 @@ create or replace function add_event(
 returns uuid as $$
 declare
     v_discount_codes jsonb := nullif(p_event->'discount_codes', 'null'::jsonb);
-    v_effective_capacity int;
     v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
     v_event_id uuid;
     v_max_retries int := 10;
@@ -17,8 +16,22 @@ declare
     v_payment_recipient jsonb;
     v_retries int := 0;
     v_slug text;
-    v_ticket_types jsonb := nullif(p_event->'ticket_types', 'null'::jsonb);
-    v_ticket_capacity int := get_event_ticket_capacity(nullif(p_event->'ticket_types', 'null'::jsonb));
+    v_ticket_types jsonb := coalesce(
+        nullif(p_event->'ticket_types', 'null'::jsonb),
+        jsonb_build_array(jsonb_build_object(
+            'active', true,
+            'availability', 'public',
+            'event_ticket_type_id', gen_random_uuid(),
+            'order', 1,
+            'price_windows', jsonb_build_array(jsonb_build_object(
+                'amount_minor', 0,
+                'event_ticket_price_window_id', gen_random_uuid()
+            )),
+            'seats_total', 500,
+            'title', 'General Admission'
+        ))
+    );
+    v_ticket_capacity int := get_event_ticket_capacity(v_ticket_types);
 begin
     -- Validate registration questions before writing the event
     perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
@@ -27,9 +40,6 @@ begin
     select payment_recipient into v_payment_recipient
     from "group"
     where group_id = p_group_id;
-
-    -- Determine effective capacity based on ticket types or event capacity
-    v_effective_capacity := coalesce(v_ticket_capacity, (p_event->>'capacity')::int);
 
     -- Validate enrollment and ticketing payload rules
     perform validate_event_enrollment_payload(
@@ -52,7 +62,7 @@ begin
     perform validate_event_capacity(
         p_event,
         p_cfg_max_participants,
-        p_effective_capacity => v_effective_capacity
+        p_effective_capacity => v_ticket_capacity
     );
     perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
 
@@ -124,7 +134,7 @@ begin
                 v_event_attendee_approval_required,
                 nullif(p_event->>'banner_mobile_url', ''),
                 nullif(p_event->>'banner_url', ''),
-                v_effective_capacity,
+                v_ticket_capacity,
                 nullif(p_event->>'cfs_description', ''),
                 (p_event->>'cfs_enabled')::boolean,
                 (p_event->>'cfs_ends_at')::timestamp at time zone (p_event->>'timezone'),

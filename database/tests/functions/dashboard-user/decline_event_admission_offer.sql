@@ -190,8 +190,7 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
-        'group_id', :'groupID'::uuid,
-        'non_ticketed_promoted_user_ids', '[]'::jsonb
+        'group_id', :'groupID'::uuid
     ),
     'Should decline the owned ticket offer and return reconciliation context'
 );
@@ -275,8 +274,7 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
-        'group_id', :'groupID'::uuid,
-        'non_ticketed_promoted_user_ids', '[]'::jsonb
+        'group_id', :'groupID'::uuid
     ),
     'Should decline a waitlist-sourced offer without an organizer'
 );

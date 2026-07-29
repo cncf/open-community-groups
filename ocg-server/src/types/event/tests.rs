@@ -9,22 +9,22 @@ use crate::types::payments::{
 use super::*;
 
 #[test]
-fn event_attendance_info_can_request_refund_allows_tbd_events() {
-    let attendance = EventAttendanceInfo {
+fn event_enrollment_state_can_request_refund_allows_tbd_events() {
+    let enrollment = EventEnrollmentState {
         is_checked_in: false,
-        manually_invited: false,
-        status: EventAttendanceStatus::Attendee,
+        status: EventEnrollmentStatus::Attendee,
 
         admission_offer_id: None,
         event_ticket_type_id: None,
+        manually_invited: false,
         purchase_amount_minor: Some(2_500),
         refund_request_status: None,
         resume_checkout_url: None,
     };
 
-    assert!(attendance.can_request_refund(Some(Utc::now() + Duration::hours(1))));
-    assert!(attendance.can_request_refund(None));
-    assert!(!attendance.can_request_refund(Some(Utc::now() - Duration::hours(1))));
+    assert!(enrollment.can_request_refund(Some(Utc::now() + Duration::hours(1))));
+    assert!(enrollment.can_request_refund(None));
+    assert!(!enrollment.can_request_refund(Some(Utc::now() - Duration::hours(1))));
 }
 
 #[test]
@@ -203,7 +203,11 @@ fn event_full_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasabl
     };
 
     assert!(!event.has_sellable_ticket_types());
-    assert!(event.is_ticketed());
+    assert!(
+        event
+            .ticket_types
+            .is_some_and(|ticket_types| !ticket_types.is_empty())
+    );
 }
 
 #[test]
@@ -601,7 +605,6 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         group_slug: "group".to_string(),
         has_registration_questions: false,
         has_related_events: false,
-        is_ticketed: true,
         kind: EventKind::InPerson,
         logo_url: "https://example.com/logo.png".to_string(),
         name: "Event".to_string(),

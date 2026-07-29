@@ -11,6 +11,15 @@ const loadTemplate = async (path = "/ocg-server/templates/event/attend_button.ht
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("event attendance button template", () => {
+  it("loads enrollment state from the enrollment endpoint", async () => {
+    // Load the hidden checker that refreshes the current user's event state.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      'hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"',
+    );
+  });
+
   it("keeps price-ineligible approval tickets disabled in cached markup", async () => {
     // Load the cached ticket controls used when availability refresh fails.
     const template = normalizeWhitespace(await loadTemplate());

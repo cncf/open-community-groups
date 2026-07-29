@@ -98,7 +98,7 @@ The editor is organized so you can move from identity, to schedule, to speakers,
 ### Details
 
 In this tab, you define attendee-facing identity and enrollment posture: name, event type,
-category, description, branding assets, capacity, registration toggle, tags, and optional links.
+category, description, branding assets, registration toggle, tags, and optional links.
 
 Event category options come from the defined community's
 [Event Categories](/dashboard/community?tab=event-categories ':ignore') tab.
@@ -107,7 +107,7 @@ Publish readiness checks in this tab:
 
 - Name, type, category, and description are complete and clear.
 - Branding is consistent with group/community standards.
-- Capacity and registration policy match expected demand.
+- Registration policy matches expected demand.
 
 Ticketing is configured in the `Tickets` tab. `Ticket Types`
 define tier names, public or invitation-only availability, seat counts, and
@@ -116,39 +116,41 @@ paid-capable events.
 
 These are the ticketing rules to keep in mind:
 
-- Free-only ticketed events require no payment provider, group recipient,
+- Every event has at least one ticket type. New events begin with a free,
+  public `General Admission` tier with 500 seats.
+- Free-only events require no payment provider, group recipient,
   currency, or discount codes.
 - Any positive current or future price window makes the event paid-capable,
   including inactive and invitation-only tiers.
 - Multiple ticket types can exist on the same event.
 - Early-bird pricing is modeled as multiple price windows on the same ticket type.
-- Ticketed events automatically derive total capacity from ticket seat counts.
+- Events automatically derive total capacity from ticket seat counts. The last
+  ticket type cannot be removed.
 - Public tiers support direct enrollment, approval requests, or per-tier
   waiting lists according to event mode.
 - Invitation-only tiers are disclosed only to the recipient of an assigned
   offer.
 - Positive prices require server payment configuration, a matching group
   recipient, and event currency.
-- Converting an existing RSVP event into a ticketed event requires an empty attendee list and an
-  empty waitlist. If attendees already exist, keep the event as RSVP or create a new ticketed
-  event instead of converting in place.
+
+Deployments upgrading legacy RSVP events automatically create a free, public
+`General Admission` tier when an event has no ticket inventory. Existing finite
+capacity is preserved or raised to cover occupied seats; previously unlimited
+events receive 500 seats.
 
 If your group is not payment-ready, keep every price window at zero. Complete
 [Payments Setup](payments-setup.md) before configuring a positive price.
 
 Waitlist control also lives here:
 
-- `Waitlist enabled` is an explicit toggle, separate from `capacity`.
-- Enabling an RSVP waitlist requires a numeric capacity value.
-- Ticketed waiting lists are tracked separately for each sold-out public tier.
-- Leaving `Capacity` blank makes the event unlimited-capacity, and unlimited-capacity events cannot
-  enable waitlist.
+- `Waitlist enabled` is an explicit event toggle.
+- Waiting lists are tracked separately for each sold-out public tier.
+- Increase or decrease capacity by changing ticket-type seat counts. A tier's
+  seat count cannot be reduced below its current allocation.
 - Waitlist cannot be combined with invitation review.
 - If capacity is full and waitlist is off, the public page shows the event as sold out.
-- If capacity is full and waitlist is on, people can join the waitlist instead of RSVP'ing.
-
-!> If you want a waitlist, set capacity first.
-Unlimited-capacity events always keep waitlist disabled.
+- If capacity is full and waitlist is on, people can join that tier's waiting
+  list instead of starting checkout.
 
 ### Questions
 
@@ -162,19 +164,19 @@ attendee answers and in-progress checkouts cannot drift away from the question d
 
 Invitation review also lives here:
 
-- `Require Invitation Approval` changes ticketed public actions to
+- `Require Invitation Approval` changes public ticket actions to
   `Request ticket`.
 - Approval cannot be combined with waitlist, but it can be combined with free
   or paid ticketing.
-- Public ticket requests preserve the selected tier. A fully private ticketed
+- Public ticket requests preserve the selected tier. A fully private
   event accepts a generic request without disclosing private tiers.
 - Pending requests do not reserve seats. Accepting a ticket request creates a
   time-limited offer when capacity and payment readiness allow it.
 - A generic private request requires the organizer to assign an active
   invitation-only tier during acceptance.
 - Disabling invitation review is blocked while pending requests exist.
-- Accepted RSVP requests become regular attendees. Accepted ticket requests
-  receive an offer that must be claimed.
+- Accepted requests receive a time-limited offer that must be claimed. Free
+  offers complete inside OCG; positive prices continue to hosted checkout.
 
 Brand inheritance in event details mirrors the group model: if the event logo is not provided,
 OCG falls back to the group logo, then the community logo; if the event banner or mobile banner
@@ -354,8 +356,6 @@ Capacity changes drive automatic waitlist behavior:
 
 - If an attendee leaves and inventory becomes available, OCG reconciles the
   oldest eligible waiting-list entry while registration is open.
-- If you raise event capacity on a published event and seats become available, OCG also promotes from
-  the waitlist automatically while registration is open.
 - If you raise a ticket tier's seat count, reconciliation offers the new
   inventory to that tier's queue before direct checkout or organizer
   invitations use it.
@@ -365,18 +365,15 @@ Capacity changes drive automatic waitlist behavior:
 - If you later disable the waitlist, OCG stops accepting new waitlist sign-ups. People who were
   already on the waitlist remain queued and may still be promoted automatically when registration is
   open and attendee spots open up, for example after a cancellation or a capacity increase.
-- If you clear `Capacity` and disable waitlist, OCG treats the event as unlimited-capacity and
-  immediately promotes everyone still on the waitlist when registration is open.
-- Attendee cancellation notifications and any promotion notifications caused by attendance
-  cancellation are guaranteed: if OCG cannot send a required notification, the attendance
-  cancellation is not saved.
-- Promotion notifications caused by saving event capacity changes work the same way: if OCG
-  cannot send a required promotion notification, the event update is not saved.
+- Reconciliation creates a time-limited offer for each promoted user. It never
+  moves someone directly from the waiting list into confirmed attendance.
+- Attendee cancellation notifications are guaranteed: if OCG cannot queue the
+  required cancellation notification, the attendance cancellation is not saved.
 - Organizer invitations bypass public approval and registration windows, but
   never capacity or public-tier queue priority.
-- Active offers reserve capacity until their displayed deadline. RSVP organizer
-  invitations use a 24-hour claim deadline; invitations without a deadline
-  remain open until accepted, declined, or canceled.
+- Active offers reserve capacity until their displayed deadline. The claim
+  window is at most 24 hours and is shortened by the event or registration
+  deadline when necessary.
 - Expiry, decline, or organizer cancellation releases the reservation and runs
   reconciliation. Declined or expired waitlist recipients lose that queue
   position and are not automatically requeued.
@@ -385,19 +382,16 @@ Capacity changes drive automatic waitlist behavior:
 
 On the member side, these actions trigger notifications:
 
-- Accepting an RSVP approval request sends a confirmation notification with a
-  calendar attachment. A ticket approval creates a claimable offer instead.
+- Accepting an approval request creates a claimable offer.
 - Claiming a free organizer offer confirms attendance and sends the normal
   event confirmation. A positive offer price starts hosted checkout.
 - Joining the waitlist sends a waitlist confirmation notification.
 - Leaving the waitlist sends a waitlist removal notification.
-- RSVP promotion sends a confirmation notification. Ticket promotion sends an
-  offer notification with the tier, displayed price, claim link, and exact
-  deadline.
-- Confirmation notifications caused by accepting RSVP approval requests,
-  completing free organizer offers, or completing pending registration
-  questions are guaranteed: if OCG cannot send the required notification, the
-  attendance change is not saved.
+- Waitlist promotion sends an offer notification with the tier, displayed
+  price, claim link, and exact deadline.
+- Confirmation notifications caused by completing free organizer offers or
+  completing pending registration questions are guaranteed: if OCG cannot
+  queue the required notification, the attendance change is not saved.
 
 Paid attendance behaves differently in a few ways:
 
@@ -448,8 +442,8 @@ This tab supports delivery-day execution. From here you can:
 - Run manual check-in.
 - Open the attendee actions menu to generate a check-in QR code for on-site flow.
 - Cancel confirmed free attendance for future active events.
-- Open the attendee actions menu to invite attendees to RSVP or ticketed
-  events.
+- Open the attendee actions menu to invite attendees with an assigned ticket
+  type.
 - Award badges to all attendees, checked-in attendees, selected attendees, or one attendee.
 - Send all-attendee or selected-attendee operational emails.
 - Download the attendee list or attendee answers as CSV.
@@ -470,7 +464,7 @@ deleted.
 
 The attendee actions menu contains event-level attendee actions and exports. `Show check-in QR code`
 opens a QR code for the public check-in flow. `Invite attendee` is available
-when you have event write access. Ticketed invitations require an active,
+when you have event write access. Invitations require an active,
 currently priced tier with capacity. You can select a registered platform user
 or enter an email address. For new invitees, use their LF account primary email
 because LF SSO activates the email invitation by that address. For existing
@@ -628,8 +622,8 @@ Notification behavior differs per action:
   time changes by at least 15 minutes. Waitlisted users are not included in reschedule notices.
 - `Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
-For `Publish`, `Cancel`, and event-editor updates that require publish, cancellation, reschedule,
-or waitlist promotion notifications, the notification handoff is guaranteed: if OCG cannot queue
+For `Publish`, `Cancel`, and event-editor updates that require publish,
+cancellation, or reschedule notifications, the notification handoff is guaranteed: if OCG cannot queue
 the required notifications, the event change is not saved. A later payment-provider refund failure
 does not reverse an event cancellation; it remains visible for retry or recovery.
 
@@ -653,7 +647,7 @@ Use the least destructive action that matches your operational goal.
 
 ## Public Event Result
 
-The public event page is the delivery surface of all organizer decisions: RSVP controls, logistics,
+The public event page is the delivery surface of all organizer decisions: enrollment controls, logistics,
 CFS visibility, and final agenda experience. You can reach it through [Explore](/explore ':ignore').
 
 For attendee/member perspective, see [Public Site Guide](public-site.md).

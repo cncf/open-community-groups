@@ -498,10 +498,6 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             put(dashboard::user::invitations::reject_community_team_invitation),
         )
         .route(
-            "/invitations/event-offers/{admission_offer_id}/accept",
-            put(dashboard::user::invitations::accept_event_admission_offer),
-        )
-        .route(
             "/invitations/event-offers/{admission_offer_id}/decline",
             put(dashboard::user::invitations::decline_event_admission_offer),
         )

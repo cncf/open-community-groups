@@ -14,7 +14,9 @@
   <p class="default mb-30" style="margin-bottom: 30px">
     <strong>{{ group_name }}</strong> sent you an offer to attend
     <strong>{{ event_name }}</strong>.
-    {% if let Some(ticket_title) = &ticket_title -%}
+    {% if is_simple_rsvp -%}
+      No charge or registration has occurred.
+    {% else if let Some(ticket_title) = &ticket_title -%}
       Your assigned ticket is <strong>{{ ticket_title }}</strong> at the current
       price of <strong>{{ self.price_label() }}</strong>.
       No charge or registration has occurred.
@@ -26,11 +28,11 @@
     {% if registration_questions_required -%}
       Complete the required registration questions when claiming the offer.
     {% endif -%}
-    Claim or decline the offer by
+    Confirm or decline the offer by
     <strong>{{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
   </p>
 
-  {{ email::button(link = dashboard_url, text = "Claim or decline offer", color = theme.primary_color) }}
+  {{ email::button(link = dashboard_url, text = "Confirm or decline", color = theme.primary_color) }}
 {% endblock content -%}
 
 {% block footer -%}

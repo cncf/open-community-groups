@@ -8,24 +8,13 @@ create or replace function cancel_event_attendee_attendance(
 ) returns json as $$
 declare
     v_community_id uuid;
-    v_is_ticketed boolean;
-    v_promoted_user_ids uuid[] := array[]::uuid[];
     v_purchase_amount_minor bigint;
     v_purchase_id uuid;
     v_purchase_ticket_type_id uuid;
-    v_reconciled_user_ids uuid[];
 begin
     -- Lock the event and verify it belongs to the selected group and can be changed
-    select
-        g.community_id,
-        exists(
-            select 1
-            from event_ticket_type ett
-            where ett.event_id = e.event_id
-        )
-    into
-        v_community_id,
-        v_is_ticketed
+    select g.community_id
+    into v_community_id
     from event e
     join "group" g using (group_id)
     where e.event_id = p_event_id
@@ -95,18 +84,12 @@ begin
         perform refund_free_event_purchase(v_purchase_id);
     end if;
 
-    -- Reconcile the released RSVP or ticket-tier capacity
-    select reconcile_event_enrollment(
+    -- Reconcile the released ticket-tier capacity
+    perform reconcile_event_enrollment(
         p_event_id,
         v_purchase_ticket_type_id,
         p_configured_provider
-    )
-    into v_reconciled_user_ids;
-
-    if not v_is_ticketed then
-        v_promoted_user_ids := v_promoted_user_ids
-            || coalesce(v_reconciled_user_ids, array[]::uuid[]);
-    end if;
+    );
 
     -- Track the cancellation
     perform insert_audit_log(
@@ -120,9 +103,6 @@ begin
         jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)
     );
 
-    return json_build_object(
-        'left_status', 'attendee',
-        'promoted_user_ids', v_promoted_user_ids
-    );
+    return json_build_object('left_status', 'attendee');
 end;
 $$ language plpgsql;

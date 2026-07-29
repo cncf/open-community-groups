@@ -21,10 +21,16 @@ import { showProfileAwareInfoAlert } from "/static/js/event/attendance/feedback.
 import {
   blockAttendanceRequestForQuestions,
   isCompletingRegistrationQuestions,
+  requestQuestionAnswers,
   shouldCollectQuestionAnswers,
 } from "/static/js/event/attendance/questions.js";
 import { renderAttendanceCheckResponse } from "/static/js/event/attendance/status-renderer.js";
-import { parseJsonResponse, PRIMARY_REQUEST_ROLES } from "/static/js/event/attendance/shared.js";
+import {
+  parseJsonResponse,
+  PRIMARY_REQUEST_ROLES,
+  QUESTIONS_CONTINUE_ACTION_ATTEND,
+  QUESTIONS_CONTINUE_ACTION_TICKET,
+} from "/static/js/event/attendance/shared.js";
 
 const CHECKOUT_ACTION_ERROR_MESSAGES = {
   checkout: "Something went wrong starting checkout. Please try again later.",
@@ -73,6 +79,22 @@ const PRIMARY_ACTION_CONFIG = {
       return true;
     },
   },
+};
+
+/**
+ * Reopens registration questions after authoritative inventory becomes available.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {XMLHttpRequest|undefined} xhr - HTMX request object
+ * @param {"attend"|"ticket"} continueAction - Action to retry after answers
+ * @returns {boolean} Whether the conflict was handled
+ */
+const recoverRegistrationAnswers = (container, xhr, continueAction) => {
+  if (xhr?.status !== 409 || parseJsonResponse(xhr)?.conflict !== "registration-answers-required") {
+    return false;
+  }
+
+  requestQuestionAnswers(container, continueAction);
+  return true;
 };
 
 /**
@@ -212,6 +234,10 @@ const handlePrimaryActionAfterRequest = (event) => {
   }
 
   const xhr = event.detail?.xhr;
+  if (role === "attend-btn" && recoverRegistrationAnswers(container, xhr, QUESTIONS_CONTINUE_ACTION_ATTEND)) {
+    restorePrimaryRequestControl(container, role);
+    return;
+  }
   const ok = handleHtmxResponse({
     xhr,
     successMessage: "",
@@ -295,6 +321,10 @@ const handleCheckoutAfterRequest = (event) => {
       ? "waitlist"
       : "checkout";
   const xhr = event.detail?.xhr;
+  if (recoverRegistrationAnswers(container, xhr, QUESTIONS_CONTINUE_ACTION_TICKET)) {
+    restoreCheckoutModalControls(container);
+    return;
+  }
   const ok = handleHtmxResponse({
     xhr,
     successMessage: "",

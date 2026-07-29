@@ -728,7 +728,7 @@ mock! {
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
-        ) -> Result<Vec<Uuid>>;
+        ) -> Result<()>;
         async fn update_group_sponsor(
             &self,
             actor_user_id: Uuid,
@@ -759,13 +759,6 @@ mock! {
             actor_user_id: Uuid,
             community_id: Uuid,
         ) -> Result<()>;
-        async fn accept_event_admission_offer(
-            &self,
-            actor_user_id: Uuid,
-            admission_offer_id: Uuid,
-            registration_answers: Option<crate::types::questionnaire::QuestionnaireAnswers>,
-            payment_provider: Option<crate::types::payments::PaymentProvider>,
-        ) -> Result<crate::db::dashboard::user::AcceptEventAdmissionOfferResult>;
         async fn accept_group_team_invitation(
             &self,
             actor_user_id: Uuid,
@@ -894,7 +887,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             registration_answers: &crate::types::questionnaire::QuestionnaireAnswers,
-        ) -> Result<bool>;
+        ) -> Result<()>;
         async fn update_session_proposal(
             &self,
             actor_user_id: Uuid,
@@ -949,6 +942,12 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
         ) -> Result<()>;
+        async fn get_event_enrollment(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<crate::types::event::EventEnrollmentState>;
         async fn get_event_full_by_slug(
             &self,
             community_id: Uuid,
@@ -965,12 +964,6 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
-        async fn get_event_attendance(
-            &self,
-            community_id: Uuid,
-            event_id: Uuid,
-            user_id: Uuid,
-        ) -> Result<crate::types::event::EventAttendanceInfo>;
         async fn is_event_check_in_window_open(
             &self,
             community_id: Uuid,

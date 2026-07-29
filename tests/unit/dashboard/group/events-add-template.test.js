@@ -88,6 +88,14 @@ describe("dashboard group event add template", () => {
     );
   });
 
+  it("initializes the General Admission ticket with 500 seats", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      `ticket-types='[{"active":true,"availability":"public","order":1,"price_windows":[{"amount_minor":0}],"seats_total":500,"title":"General Admission"}]'`,
+    );
+  });
+
   it("names the recipient for paid ticket revenue", async () => {
     // Load the event add template before checking paid ticket guidance.
     const template = normalizeWhitespace(await loadTemplate());

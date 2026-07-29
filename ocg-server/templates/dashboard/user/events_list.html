@@ -112,8 +112,8 @@
             {# Role -#}
             <td class="px-3 xl:px-5 py-4 w-64">
               <div class="flex flex-wrap gap-1.5">
-                {% if let Some(attendance_status_label) = item.attendance_status_label() -%}
-                  {{ badges::status_badge(label = attendance_status_label, extra_styles = Some("uppercase")) -}}
+                {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
+                  {{ badges::status_badge(label = enrollment_status_label, extra_styles = Some("uppercase")) -}}
                 {% endif -%}
                 {% for role in item.roles -%}
                   {{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}

@@ -19,6 +19,11 @@ declare
         '{}'::uuid[]
     );
 begin
+    -- Require at least one tier before pruning the current inventory
+    if jsonb_array_length(coalesce(p_ticket_types, '[]'::jsonb)) = 0 then
+        raise exception 'events require at least one ticket type';
+    end if;
+
     -- Reject ticket type identifiers that belong to a different event
     if exists (
         select 1
@@ -143,7 +148,7 @@ begin
                 where ao.event_id = p_event_id
                 and ao.event_ticket_type_id = v_ticket_type_id
                 and ao.status in ('checkout_pending', 'pending')
-                and (ao.expires_at is null or ao.expires_at > current_timestamp)
+                and ao.expires_at > current_timestamp
            ) then
             raise exception 'ticket types with active offers cannot be deactivated';
         end if;
@@ -195,7 +200,7 @@ begin
             coalesce(v_ticket_type->>'availability', 'public'),
             nullif(v_ticket_type->>'description', ''),
             p_event_id,
-            coalesce((v_ticket_type->>'order')::int, 0),
+            coalesce((v_ticket_type->>'order')::int, 1),
             coalesce((v_ticket_type->>'seats_total')::int, 0),
             v_ticket_type->>'title'
         )

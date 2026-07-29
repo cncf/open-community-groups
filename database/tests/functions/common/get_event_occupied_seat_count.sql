@@ -23,8 +23,9 @@ select plan(4);
 \set ticketedEventID '0c070000-0000-0000-0000-00000000000b'
 \set ticketOfferUserID '0c070000-0000-0000-0000-000000000010'
 \set ticketTypeID '0c070000-0000-0000-0000-00000000000c'
-\set unticketedEventID '0c070000-0000-0000-0000-00000000000d'
-\set unticketedPendingUserID '0c070000-0000-0000-0000-00000000000e'
+\set freeEventID '0c070000-0000-0000-0000-00000000000d'
+\set freePendingUserID '0c070000-0000-0000-0000-00000000000e'
+\set freeTicketTypeID '0c070000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
@@ -105,11 +106,11 @@ insert into "user" (
     true,
     'ticket-offer'
 ), (
-    :'unticketedPendingUserID',
+    :'freePendingUserID',
     gen_random_bytes(32),
-    'unticketed-pending@example.com',
+    'free-pending@example.com',
     true,
-    'unticketed-pending'
+    'free-pending'
 );
 
 -- Events
@@ -143,11 +144,11 @@ insert into event (
         :'question1ID'
     )::jsonb
 ), (
-    :'unticketedEventID',
+    :'freeEventID',
     :'groupID',
-    'Unticketed Questions Event',
-    'unticketed-questions-event',
-    'Unticketed event for occupied seat count tests',
+    'Free Questions Event',
+    'free-questions-event',
+    'Free event for occupied seat count tests',
     'UTC',
     :'eventCategoryID',
     'in-person',
@@ -160,9 +161,20 @@ insert into event (
     )::jsonb
 );
 
--- Ticket type
+-- Ticket types
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'ticketedEventID', 1, 5, 'General admission');
+values
+    (:'ticketTypeID', :'ticketedEventID', 1, 5, 'General admission'),
+    (:'freeTicketTypeID', :'freeEventID', 1, 5, 'General admission');
+
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+)
+values
+    (gen_random_uuid(), 1000, :'ticketTypeID'),
+    (gen_random_uuid(), 0, :'freeTicketTypeID');
 
 -- Attendees
 insert into event_attendee (
@@ -186,8 +198,8 @@ insert into event_attendee (
     false,
     'registration-questions-pending'
 ), (
-    :'unticketedEventID',
-    :'unticketedPendingUserID',
+    :'freeEventID',
+    :'freePendingUserID',
     false,
     'registration-questions-pending'
 );
@@ -216,21 +228,32 @@ insert into event_purchase (
     'USD',
     :'ticketedEventID',
     :'ticketTypeID',
+    null,
+    'completed',
+    'General admission',
+    :'confirmedUserID'
+), (
+    1000,
+    'USD',
+    :'ticketedEventID',
+    :'ticketTypeID',
     current_timestamp - interval '10 minutes',
     'pending',
     'General admission',
     :'expiredCheckoutUserID'
 );
 
--- Active non-ticketed organizer invitation offer
+-- Active free organizer invitation offer
 insert into admission_offer (
     event_id,
+    event_ticket_type_id,
     expires_at,
     source,
     status,
     user_id
 ) values (
-    :'unticketedEventID',
+    :'freeEventID',
+    :'freeTicketTypeID',
     current_timestamp + interval '1 hour',
     'organizer_invitation',
     'pending',
@@ -296,11 +319,11 @@ select is(
     'Should count refund-processing purchases without attendee rows'
 );
 
--- Should count pending registration rows and active offers for unticketed events
+-- Should exclude unowned pending registration rows while counting active offers
 select is(
-    get_event_occupied_seat_count(:'unticketedEventID'::uuid),
-    2,
-    'Should count unticketed pending registration rows and active offers'
+    get_event_occupied_seat_count(:'freeEventID'::uuid),
+    1,
+    'Should count active offers but exclude unowned pending registration rows'
 );
 
 -- ============================================================================

@@ -7,7 +7,6 @@ declare
     v_community_id uuid;
     v_event_id uuid;
     v_group_id uuid;
-    v_promoted_user_ids uuid[] := array[]::uuid[];
 begin
     -- Claim one due or newly promotable event without blocking another worker
     select
@@ -102,28 +101,17 @@ begin
     end if;
 
     -- Expire due reservations and fill the released capacity
-    select reconcile_event_enrollment(
+    perform reconcile_event_enrollment(
         v_event_id,
         null,
         p_configured_provider
-    )
-    into v_promoted_user_ids;
-
-    -- Return only non-ticketed promotions because ticket offers enqueue their own notifications
-    if exists (
-        select 1
-        from event_ticket_type ett
-        where ett.event_id = v_event_id
-    ) then
-        v_promoted_user_ids := array[]::uuid[];
-    end if;
+    );
 
     -- Return the reconciliation context used by notification workers
     return json_build_object(
         'community_id', v_community_id,
         'event_id', v_event_id,
-        'group_id', v_group_id,
-        'non_ticketed_promoted_user_ids', coalesce(v_promoted_user_ids, array[]::uuid[])
+        'group_id', v_group_id
     );
 end;
 $$ language plpgsql;

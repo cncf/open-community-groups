@@ -25,7 +25,7 @@ use crate::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
         notifications::{
             EventCanceled, EventPublished, EventRescheduled, EventSeriesCanceled,
-            EventSeriesPublished, EventWaitlistPromoted, SpeakerWelcome,
+            EventSeriesPublished, SpeakerWelcome,
         },
     },
     types::{
@@ -247,7 +247,7 @@ async fn test_list_page_success() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases() {
+async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -977,7 +977,7 @@ async fn test_add_invalid_ticketing_fields_returns_unprocessable_entity() {
 }
 
 #[tokio::test]
-async fn test_add_ticketed_event_without_payments_returns_unprocessable_entity() {
+async fn test_add_paid_event_without_payments_returns_unprocessable_entity() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -991,7 +991,7 @@ async fn test_add_ticketed_event_without_payments_returns_unprocessable_entity()
         Some(community_id),
         Some(group_id),
     );
-    let body = sample_ticketed_event_body();
+    let body = sample_paid_event_body();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2536,7 +2536,7 @@ async fn test_update_success() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| Ok(vec![]));
+        .returning(move |_, _, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
@@ -2635,7 +2635,7 @@ async fn test_update_invalid_ticketing_fields_returns_unprocessable_entity() {
 }
 
 #[tokio::test]
-async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessable_entity() {
+async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_entity() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -2650,7 +2650,7 @@ async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessa
         Some(community_id),
         Some(group_id),
     );
-    let body = sample_ticketed_event_body();
+    let body = sample_paid_event_body();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2726,13 +2726,12 @@ async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessa
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
+async fn test_update_sends_reschedule_notification() {
     // Setup identifiers and data structures
     let attendee_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let promoted_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let speaker_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
@@ -2757,7 +2756,6 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
         ..sample_event_full(community_id, event_id, group_id)
     };
     let site_settings = sample_site_settings();
-    let site_settings_for_promotion_notification = site_settings.clone();
     let site_settings_for_reschedule_notification = site_settings.clone();
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
@@ -2783,7 +2781,7 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
     tx.expect_get_event_summary()
-        .times(3)
+        .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning({
             let mut call_count = 0;
@@ -2791,7 +2789,7 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                 call_count += 1;
                 match call_count {
                     1 => Ok(before.clone()),
-                    2 | 3 => Ok(after.clone()),
+                    2 => Ok(after.clone()),
                     _ => unreachable!(),
                 }
             }
@@ -2809,7 +2807,7 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| Ok(vec![promoted_user_id]));
+        .returning(move |_, _, _, _, _, _| Ok(()));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2821,23 +2819,8 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
         })
         .returning(move |_, _, _| Ok(vec![attendee_id]));
     tx.expect_get_site_settings()
-        .times(2)
-        .returning(move || Ok(site_settings.clone()));
-    tx.expect_enqueue_notification()
         .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
-                && notification.recipients == vec![promoted_user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
-                        template.dashboard_link.as_deref() == Some("/dashboard/user?tab=events")
-                            && template.link == "/test-community/group/def5678/event/ghi9abc"
-                            && template.theme.primary_color
-                                == site_settings_for_promotion_notification.theme.primary_color
-                    })
-                })
-        })
-        .returning(|_| Ok(()));
+        .returning(move || Ok(site_settings.clone()));
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -2883,12 +2866,11 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_update_promotion_notification_failure_rolls_back() {
+async fn test_update_reschedule_notification_failure_rolls_back() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let promoted_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -2900,7 +2882,11 @@ async fn test_update_promotion_notification_failure_rolls_back() {
         Some(group_id),
     );
     let before = sample_event_summary(event_id, group_id);
-    let after = before.clone();
+    let after = EventSummary {
+        starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
+        ..before.clone()
+    };
+    let event_full = sample_event_full(community_id, event_id, group_id);
     let site_settings = sample_site_settings();
     let site_settings_for_notification = site_settings.clone();
     let event_form = sample_event_form();
@@ -2954,23 +2940,28 @@ async fn test_update_promotion_notification_failure_rolls_back() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| Ok(vec![promoted_user_id]));
+        .returning(move |_, _, _, _, _, _| Ok(()));
+    tx.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_full.clone()));
+    tx.expect_list_event_attendees_ids()
+        .times(1)
+        .withf(move |gid, eid, checked_in_only| {
+            *gid == group_id && *eid == event_id && !checked_in_only
+        })
+        .returning(move |_, _, _| Ok(vec![user_id]));
     tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
-                && notification.recipients == vec![promoted_user_id]
-                && notification.attachments.len() == 1
-                && notification.attachments[0].file_name == "event-ghi9abc.ics"
+            matches!(notification.kind, NotificationKind::EventRescheduled)
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
-                        template.dashboard_link.as_deref() == Some("/dashboard/user?tab=events")
-                            && template.link == "/test-community/group/def5678/event/ghi9abc"
-                            && template.theme.primary_color
-                                == site_settings_for_notification.theme.primary_color
+                    from_value::<EventRescheduled>(value.clone()).is_ok_and(|template| {
+                        template.theme.primary_color
+                            == site_settings_for_notification.theme.primary_color
                     })
                 })
         })
@@ -2999,12 +2990,11 @@ async fn test_update_promotion_notification_failure_rolls_back() {
 }
 
 #[tokio::test]
-async fn test_update_promotion_notification_context_failure_rolls_back() {
+async fn test_update_reschedule_notification_context_failure_rolls_back() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let promoted_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -3066,10 +3056,7 @@ async fn test_update_promotion_notification_context_failure_rolls_back() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| Ok(vec![promoted_user_id]));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+        .returning(move |_, _, _, _, _, _| Ok(()));
     expect_rolled_back_transaction(&mut db, tx);
 
     // Setup notifications manager mock
@@ -3166,7 +3153,7 @@ async fn test_update_no_notification_when_shift_too_small() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| Ok(vec![]));
+        .returning(move |_, _, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected - shift too small)
@@ -3271,7 +3258,7 @@ async fn test_update_no_notification_when_unpublished() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| Ok(vec![]));
+        .returning(move |_, _, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected - event unpublished)
@@ -3367,7 +3354,7 @@ async fn test_update_past_event_success() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| Ok(vec![]));
+        .returning(move |_, _, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no expectations - past events don't notify)

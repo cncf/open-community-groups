@@ -87,14 +87,14 @@ do not aggregate subgroup data.
 The event page is the best place to check event details, enrollment options,
 logistics, links, and speaker-program status.
 
-RSVP events use `Attend event`. Ticketed events use one of these states:
+Every event uses admission tiers. When an event has one free public tier, OCG
+keeps the experience simple and shows `Attend event`. Other configurations use
+one of these states:
 
 - `Get free ticket` completes an intrinsically free ticket inside OCG.
 - `Get ticket` opens public ticket selection and starts hosted checkout only
   when the final price is positive.
-- `Request ticket` submits an approval request. Public ticket tiers are
-  selectable when available; a fully private event accepts a generic request
-  without exposing invitation-only tier details.
+- `Request ticket` submits an approval request for a selectable public tier.
 - `Tickets are available by invitation only` means public enrollment is not
   available.
 - `Paid tickets temporarily unavailable` means the event has paid tickets but
@@ -112,7 +112,7 @@ A few details shape event enrollment:
 - The action may take a moment to update after the page loads.
 - Public enrollment is available only before the event start time.
 - If organizers configured a registration window, the event page shows when registration opens or
-  closes. RSVP, starting ticket checkout, ticket requests, waitlist joining, and
+  closes. Attending, starting ticket checkout, ticket requests, waitlist joining, and
   registration-question answers are disabled outside that window. If you already have an active
   ticket hold, you can continue checkout and required registration questions until the hold expires.
 - Canceling RSVP is immediate through `Cancel attendance`.

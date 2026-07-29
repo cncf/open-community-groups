@@ -37,10 +37,10 @@ use crate::{
             DASHBOARD_PAGINATION_LIMIT,
             group::{PresenceFilter, attendees::AttendeesSort},
         },
-        notifications::{EventAttendanceCanceled, EventCustom, EventWaitlistPromoted},
+        notifications::{EventAttendanceCanceled, EventCustom},
     },
     types::{
-        event::{EventAttendanceStatus, EventEnrollmentReconciliationOutcome, EventLeaveOutcome},
+        event::{EventEnrollmentReconciliationOutcome, EventEnrollmentStatus, EventLeaveOutcome},
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -50,7 +50,7 @@ use crate::{
 };
 
 #[tokio::test]
-async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
+async fn test_accept_invitation_request_returns_no_content() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -66,9 +66,6 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
         Some(community_id),
         Some(group_id),
     );
-    let event = sample_event_summary(event_id, group_id);
-    let site_settings = sample_site_settings();
-
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
@@ -88,8 +85,7 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    let mut tx = MockDB::new();
-    tx.expect_accept_event_invitation_request()
+    db.expect_accept_event_invitation_request()
         .times(1)
         .withf(
             move |actor_id, gid, eid, uid, event_ticket_type_id, payment_provider| {
@@ -104,27 +100,10 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
         .returning(move |_, _, _, _, _, _| {
             Ok(EventAdmissionAllocationResult::Success(
                 EventAdmissionAllocation {
-                    outcome: EventAdmissionAllocationOutcome::Attendee,
-                    promoted_user_ids: vec![],
+                    outcome: EventAdmissionAllocationOutcome::OfferCreated,
                 },
             ))
         });
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    tx.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWelcome)
-                && notification.recipients == vec![target_user_id]
-                && notification.attachments.len() == 1
-        })
-        .returning(|_| Ok(()));
-    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -196,8 +175,7 @@ async fn test_accept_invitation_request_returns_conflict_when_queue_has_priority
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    let mut tx = MockDB::new();
-    tx.expect_accept_event_invitation_request()
+    db.expect_accept_event_invitation_request()
         .times(1)
         .withf(
             move |actor_id, gid, eid, uid, event_ticket_type_id, payment_provider| {
@@ -210,15 +188,10 @@ async fn test_accept_invitation_request_returns_conflict_when_queue_has_priority
             },
         )
         .returning(|_, _, _, _, _, _| {
-            Ok(EventAdmissionAllocationResult::Conflict {
-                conflict: EventAdmissionAllocationConflict::QueueHasPriority,
-                promoted_user_ids: vec![],
-            })
+            Ok(EventAdmissionAllocationResult::Conflict(
+                EventAdmissionAllocationConflict::QueueHasPriority,
+            ))
         });
-    tx.expect_get_site_settings().times(0);
-    tx.expect_get_event_summary_by_id().times(0);
-    tx.expect_enqueue_notification().times(0);
-    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -405,12 +378,11 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_notifications() {
+async fn test_cancel_event_attendee_attendance_enqueues_notification() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let promoted_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let target_user_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
@@ -427,7 +399,6 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
     let event_for_notifications = event.clone();
     let site_settings = sample_site_settings();
     let site_settings_for_notifications = site_settings.clone();
-    let primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -460,8 +431,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
         })
         .returning(move |_, _, _, _, _| {
             Ok(EventLeaveOutcome {
-                left_status: EventAttendanceStatus::Attendee,
-                promoted_user_ids: vec![promoted_user_id],
+                left_status: EventEnrollmentStatus::Attendee,
             })
         });
     tx.expect_get_site_settings()
@@ -481,24 +451,6 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                         template.dashboard_link == "https://ocg.test/dashboard/user?tab=events"
                             && template.link
                                 == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
-                    })
-                })
-        })
-        .returning(|_| Ok(()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
-                && notification.recipients == vec![promoted_user_id]
-                && notification.attachments.is_empty()
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
-                        template.dashboard_link.as_deref()
-                            == Some("https://ocg.test/dashboard/user?tab=events")
-                            && template.has_registration_questions
-                            && template.link
-                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
-                            && template.theme.primary_color == primary_color
                     })
                 })
         })
@@ -587,8 +539,7 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
         })
         .returning(|_, _, _, _, _| {
             Ok(EventLeaveOutcome {
-                left_status: EventAttendanceStatus::Attendee,
-                promoted_user_ids: vec![],
+                left_status: EventEnrollmentStatus::Attendee,
             })
         });
     tx.expect_get_site_settings()
@@ -639,9 +590,7 @@ async fn test_cancel_event_admission_offer_returns_no_content() {
     // Setup identifiers and data structures
     let admission_offer_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let promoted_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -672,8 +621,7 @@ async fn test_cancel_event_admission_offer_returns_no_content() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    let mut tx = MockDB::new();
-    tx.expect_cancel_event_admission_offer()
+    db.expect_cancel_event_admission_offer()
         .times(1)
         .withf(move |actor_id, gid, oid, payment_provider| {
             *actor_id == user_id
@@ -684,26 +632,10 @@ async fn test_cancel_event_admission_offer_returns_no_content() {
         .returning(move |_, _, _, _| {
             Ok(EventEnrollmentReconciliationOutcome {
                 community_id,
-                event_id,
+                event_id: Uuid::new_v4(),
                 group_id,
-                non_ticketed_promoted_user_ids: vec![promoted_user_id],
             })
         });
-    tx.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(sample_event_summary(event_id, group_id)));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
-                && notification.recipients == vec![promoted_user_id]
-        })
-        .returning(|_| Ok(()));
-    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1257,8 +1189,7 @@ async fn test_invite_event_attendee_returns_created_for_email_target() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    let mut tx = MockDB::new();
-    tx.expect_invite_event_attendee()
+    db.expect_invite_event_attendee()
         .times(1)
         .withf(move |actor_id, gid, eid, invitation, payment_provider| {
             *actor_id == user_id
@@ -1273,11 +1204,9 @@ async fn test_invite_event_attendee_returns_created_for_email_target() {
             Ok(EventAdmissionAllocationResult::Success(
                 EventAdmissionAllocation {
                     outcome: EventAdmissionAllocationOutcome::OfferCreated,
-                    promoted_user_ids: vec![],
                 },
             ))
         });
-    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1346,8 +1275,7 @@ async fn test_invite_event_attendee_returns_created_for_registered_user() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    let mut tx = MockDB::new();
-    tx.expect_invite_event_attendee()
+    db.expect_invite_event_attendee()
         .times(1)
         .withf(move |actor_id, gid, eid, invitation, payment_provider| {
             *actor_id == user_id
@@ -1362,11 +1290,9 @@ async fn test_invite_event_attendee_returns_created_for_registered_user() {
             Ok(EventAdmissionAllocationResult::Success(
                 EventAdmissionAllocation {
                     outcome: EventAdmissionAllocationOutcome::OfferCreated,
-                    promoted_user_ids: vec![],
                 },
             ))
         });
-    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1434,8 +1360,7 @@ async fn test_invite_event_attendee_returns_conflict_when_ticket_type_is_sold_ou
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    let mut tx = MockDB::new();
-    tx.expect_invite_event_attendee()
+    db.expect_invite_event_attendee()
         .times(1)
         .withf(move |actor_id, gid, eid, invitation, payment_provider| {
             *actor_id == user_id
@@ -1447,12 +1372,10 @@ async fn test_invite_event_attendee_returns_conflict_when_ticket_type_is_sold_ou
                 && payment_provider.is_none()
         })
         .returning(|_, _, _, _, _| {
-            Ok(EventAdmissionAllocationResult::Conflict {
-                conflict: EventAdmissionAllocationConflict::TicketTypeSoldOut,
-                promoted_user_ids: vec![],
-            })
+            Ok(EventAdmissionAllocationResult::Conflict(
+                EventAdmissionAllocationConflict::TicketTypeSoldOut,
+            ))
         });
-    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

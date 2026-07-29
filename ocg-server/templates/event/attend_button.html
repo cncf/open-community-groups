@@ -8,7 +8,7 @@
      data-canceled="{{ event.canceled }}"
      data-has-sold-out-ticket-types="{{ event.has_sold_out_visible_ticket_types() }}"
      data-has-visible-ticket-types="{{ event.has_visible_ticket_types() }}"
-     data-is-ticketed="{{ event.is_ticketed() }}"
+     data-is-simple-rsvp="{{ event.has_single_free_public_ticket_type() }}"
      data-paid-capable="{{ event.is_paid_capable() }}"
      data-registration-window-open="{{ event.registration_window_is_open() }}"
      {% if let Some(registration_window_message) = event.registration_window_message() %}
@@ -446,7 +446,7 @@
   <div id="attendance-checker-{{ attendance_instance }}"
        data-attendance-role="attendance-checker"
        class="hidden"
-       hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/attendance"
+       hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"
        hx-trigger="load, attendance-changed from:body"
        hx-swap="none"></div>
   {# End attendance checker -#}

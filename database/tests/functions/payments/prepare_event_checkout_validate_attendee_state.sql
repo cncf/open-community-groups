@@ -21,6 +21,7 @@ select plan(7);
 \set pendingAnswersUserID '79290000-0000-0000-0000-000000000009'
 \set rejectedUserID '79290000-0000-0000-0000-000000000011'
 \set waitlistedUserID '79290000-0000-0000-0000-000000000012'
+\set ticketTypeID '79290000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
@@ -143,6 +144,9 @@ insert into event (
     now()
 );
 
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+
 -- Attendees covering every lifecycle state
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values
@@ -153,8 +157,8 @@ values
     (:'eventID', :'rejectedUserID', true, 'invitation-rejected');
 
 -- Existing waitlist row that must not bypass promotion
-insert into event_waitlist (event_id, user_id)
-values (:'eventID', :'waitlistedUserID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'eventID', :'ticketTypeID', :'waitlistedUserID');
 
 -- ============================================================================
 -- TESTS
@@ -193,7 +197,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid
     )$$, :'eventID', :'confirmedUserID'),
-    'user is already attending this ticketed event',
+    'user is already attending this event',
     'Should reject confirmed attendees'
 );
 

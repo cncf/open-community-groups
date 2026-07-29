@@ -179,9 +179,9 @@ const updateInvitationSubmitState = (root) => {
   const userId = userInput?.value || "";
   const email = emailInput?.value.trim() || "";
   const hasRecipient = userId !== "" || isValidInvitationEmail(email);
-  const hasAssignableTicketType =
-    !ticketTypeInput ||
-    Array.from(ticketTypeInput.options).some((option) => option.value !== "" && !option.disabled);
+  const hasAssignableTicketType = ticketTypeInput
+    ? Array.from(ticketTypeInput.options).some((option) => option.value !== "" && !option.disabled)
+    : !ticketTypeEmptyState;
   const hasTicketType = hasAssignableTicketType && (!ticketTypeInput || ticketTypeInput.value !== "");
   if (ticketTypeInput) {
     ticketTypeInput.disabled = !hasAssignableTicketType;

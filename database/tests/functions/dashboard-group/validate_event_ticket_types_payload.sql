@@ -11,10 +11,11 @@ select plan(14);
 -- TESTS
 -- ============================================================================
 
--- Should accept an omitted ticket types payload
-select lives_ok(
+-- Should reject an omitted ticket types payload
+select throws_ok(
     $$select validate_event_ticket_types_payload(null)$$,
-    'Should accept an omitted ticket types payload'
+    'events require at least one ticket type',
+    'Should reject an omitted ticket types payload'
 );
 
 -- Should accept valid ticket types

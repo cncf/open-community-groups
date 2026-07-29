@@ -19,8 +19,6 @@ import {
   waitForAttendanceState,
 } from "../../utils.js";
 
-const GENERAL_ADMISSION_TICKET_TYPE_ID = "56555555-5555-5555-5555-555555555521";
-
 // Dismiss the optional profile completion prompt shown after successful attendance.
 const dismissProfileCompletionPrompt = async (page) => {
   const maybeLaterButton = page.getByRole("button", { name: "Maybe later" });
@@ -53,7 +51,7 @@ const cancelAttendance = async (page, eventId) => {
     page.waitForResponse(
       (response) =>
         response.request().method() === "GET" &&
-        response.url().includes(`/event/${eventId}/attendance`) &&
+        response.url().includes(`/event/${eventId}/enrollment`) &&
         response.ok(),
     ),
     confirmButton.click(),
@@ -244,10 +242,8 @@ test.describe("event attendance", () => {
       "Payments are disabled in this environment.",
     );
 
-    test("guest sees the buy ticket CTA on a ticketed event", async ({
-      page,
-    }) => {
-      // Load the ticketed event as a guest.
+    test("guest sees the get ticket CTA on a paid event", async ({ page }) => {
+      // Load the paid event as a guest.
       await navigateToEvent(
         page,
         TEST_COMMUNITY_NAME,
@@ -264,13 +260,13 @@ test.describe("event attendance", () => {
       ).toBeVisible();
 
       // Verify guests see the sign-in CTA for ticket checkout.
-      await expect(getSignInButton(page)).toContainText("Buy ticket");
+      await expect(getSignInButton(page)).toContainText("Get ticket");
     });
 
     test("member sees checkout validation and only sellable tickets in the ticket modal", async ({
       member1Page,
     }) => {
-      // Load the ticketed event before opening ticket choices.
+      // Load the paid event before opening ticket choices.
       await navigateToEvent(
         member1Page,
         TEST_COMMUNITY_NAME,
@@ -282,7 +278,7 @@ test.describe("event attendance", () => {
       await waitForAttendanceState(member1Page);
 
       // Verify ticket selection is required before checkout.
-      await expect(getAttendButton(member1Page)).toContainText("Buy ticket");
+      await expect(getAttendButton(member1Page)).toContainText("Get ticket");
 
       // Open the ticket modal without selecting a ticket.
       await getAttendButton(member1Page).click();
@@ -305,13 +301,13 @@ test.describe("event attendance", () => {
       // Verify closing the modal leaves the member unregistered.
       await expect(ticketModal).toBeHidden();
       await expect(getLeaveButton(member1Page)).toBeHidden();
-      await expect(getAttendButton(member1Page)).toContainText("Buy ticket");
+      await expect(getAttendButton(member1Page)).toContainText("Get ticket");
     });
 
     test("member can complete a free ticket checkout without a discount code", async ({
       member2Page,
     }) => {
-      // Load the ticketed event before selecting a free ticket.
+      // Load the multi-tier event before selecting a free ticket.
       await navigateToEvent(
         member2Page,
         TEST_COMMUNITY_NAME,
@@ -372,10 +368,10 @@ test.describe("event attendance", () => {
       await cancelAttendance(member2Page, TEST_PAYMENT_EVENT_IDS.draft);
     });
 
-    test("member trims the discount code before a free ticket checkout", async ({
+    test("member trims the discount code before a paid ticket checkout", async ({
       pending1Page,
     }) => {
-      // Load the ticketed event before entering a spaced discount code.
+      // Load the paid event before entering a spaced discount code.
       await navigateToEvent(
         pending1Page,
         TEST_COMMUNITY_NAME,
@@ -387,17 +383,25 @@ test.describe("event attendance", () => {
       await waitForAttendanceState(pending1Page);
       await getAttendButton(pending1Page).click();
 
-      // Verify the discount code field accepts the spaced input.
+      // Verify the discount code field accepts the spaced input for a paid tier.
       const ticketModal = getTicketModal(pending1Page);
       await expect(ticketModal).toBeVisible();
       await ticketModal
-        .locator("label", { hasText: "Community ticket" })
+        .locator("label", { hasText: "General admission" })
         .click();
       await ticketModal
         .locator('[data-attendance-role="discount-code-input"]')
         .fill("  SAVE10  ");
 
-      // Watch checkout request payload and response after submitting.
+      // Intercept checkout so request normalization is tested without calling Stripe.
+      const checkoutUrl = `**/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`;
+      await pending1Page.route(checkoutUrl, async (route) => {
+        await route.fulfill({
+          body: "checkout intercepted by e2e test",
+          contentType: "text/plain",
+          status: 422,
+        });
+      });
       const checkoutRequest = pending1Page.waitForRequest(
         (request) =>
           request.method() === "POST" &&
@@ -405,39 +409,26 @@ test.describe("event attendance", () => {
             .url()
             .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
       );
-      const checkoutResponse = pending1Page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`) &&
-          response.ok(),
-      );
+      try {
+        // Submit checkout with the spaced discount code.
+        await getCheckoutButton(pending1Page).click();
 
-      // Submit checkout with the spaced discount code.
-      await getCheckoutButton(pending1Page).click();
+        // Wait for checkout request details.
+        const request = await checkoutRequest;
+        const postData = request.postData() ?? "";
 
-      // Wait for checkout request details and the successful response.
-      const [request] = await Promise.all([checkoutRequest, checkoutResponse]);
-      const postData = request.postData() ?? "";
-
-      // Verify checkout submits the trimmed discount code.
-      expect(postData).toContain("discount_code=SAVE10");
-      expect(postData).not.toContain("discount_code=%20%20SAVE10%20%20");
-
-      // Verify successful checkout registers the member.
-      await expect(getLeaveButton(pending1Page)).toContainText(
-        "Cancel attendance",
-      );
-
-      // Restore the reusable ticket attendance state.
-      await cancelAttendance(pending1Page, TEST_PAYMENT_EVENT_IDS.draft);
+        // Verify checkout submits the trimmed discount code.
+        expect(postData).toContain("discount_code=SAVE10");
+        expect(postData).not.toContain("discount_code=%20%20SAVE10%20%20");
+      } finally {
+        await pending1Page.unroute(checkoutUrl);
+      }
     });
 
     test("member sees an error for expired discount codes during checkout", async ({
       member1Page,
     }) => {
-      // Load the ticketed event before submitting an expired discount.
+      // Load the paid event before submitting an expired discount.
       await navigateToEvent(
         member1Page,
         TEST_COMMUNITY_NAME,
@@ -454,7 +445,7 @@ test.describe("event attendance", () => {
 
       // Select a ticket and enter an expired discount code.
       await ticketModal
-        .locator("label", { hasText: "Community ticket" })
+        .locator("label", { hasText: "General admission" })
         .click();
       await ticketModal
         .locator('[data-attendance-role="discount-code-input"]')
@@ -483,7 +474,7 @@ test.describe("event attendance", () => {
     test("member sees an error for unavailable discount codes during checkout", async ({
       member1Page,
     }) => {
-      // Load the ticketed event before submitting an unavailable discount.
+      // Load the paid event before submitting an unavailable discount.
       await navigateToEvent(
         member1Page,
         TEST_COMMUNITY_NAME,
@@ -500,7 +491,7 @@ test.describe("event attendance", () => {
 
       // Select a ticket and enter an exhausted discount code.
       await ticketModal
-        .locator("label", { hasText: "Community ticket" })
+        .locator("label", { hasText: "General admission" })
         .click();
       await ticketModal
         .locator('[data-attendance-role="discount-code-input"]')
@@ -531,7 +522,7 @@ test.describe("event attendance", () => {
     }) => {
       test.setTimeout(60_000);
 
-      // Load the ticketed event before starting a paid checkout.
+      // Load the paid event before starting checkout.
       await navigateToEvent(
         pending2Page,
         TEST_COMMUNITY_NAME,
@@ -541,73 +532,9 @@ test.describe("event attendance", () => {
 
       // Resolve the current ticket attendance state.
       await waitForAttendanceState(pending2Page);
-      if (
-        (await getLeaveButton(pending2Page).isVisible()) &&
-        !(await getAttendButton(pending2Page).isVisible())
-      ) {
-        await cancelAttendance(pending2Page, TEST_PAYMENT_EVENT_IDS.draft);
-      }
-
-      // Create a pending paid checkout when one does not already exist.
-      if (
-        !(await getAttendButton(pending2Page).innerText()).includes(
-          "Complete payment",
-        )
-      ) {
-        const checkoutResponse = await pending2Page.request.post(
-          buildE2eUrl(
-            `/${TEST_COMMUNITY_NAME}/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
-          ),
-          {
-            form: {
-              event_ticket_type_id: GENERAL_ADMISSION_TICKET_TYPE_ID,
-            },
-          },
-        );
-
-        if (!checkoutResponse.ok()) {
-          await navigateToEvent(
-            pending2Page,
-            TEST_COMMUNITY_NAME,
-            TEST_GROUP_SLUGS.community1.alpha,
-            TEST_PAYMENT_EVENT_SLUGS.draft,
-          );
-          await waitForAttendanceState(pending2Page);
-
-          if (
-            !(await getAttendButton(pending2Page).innerText()).includes(
-              "Complete payment",
-            )
-          ) {
-            await getAttendButton(pending2Page).click();
-            const ticketModal = getTicketModal(pending2Page);
-            await expect(ticketModal).toBeVisible();
-            await ticketModal
-              .locator("label", { hasText: "General admission" })
-              .click();
-
-            const uiCheckoutResponse = pending2Page.waitForResponse(
-              (response) =>
-                response.request().method() === "POST" &&
-                response
-                  .url()
-                  .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
-            );
-            await getCheckoutButton(pending2Page).click();
-            expect((await uiCheckoutResponse).ok()).toBeTruthy();
-          }
-        }
-      }
-
-      // Return to the event page and verify the pending payment controls.
-      await navigateToEvent(
-        pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
-        TEST_PAYMENT_EVENT_SLUGS.draft,
-      );
+      // Verify the seeded pending payment exposes resume controls.
       await expect(getAttendButton(pending2Page)).toContainText(
-        "Complete payment",
+        "Continue to checkout",
       );
       const resumeCheckoutUrl =
         await getAttendButton(pending2Page).getAttribute("data-resume-url");
@@ -625,7 +552,7 @@ test.describe("event attendance", () => {
         await expect(paymentEventRow).toContainText("Attendee");
         await paymentEventRow.getByLabel("Open event actions").click();
         const completePaymentMenuItem = paymentEventRow.getByRole("menuitem", {
-          name: "Complete payment",
+          name: "Continue to checkout",
         });
         if (resumeCheckoutUrl !== null) {
           await expect(completePaymentMenuItem).toHaveAttribute(
@@ -664,7 +591,7 @@ test.describe("event attendance", () => {
         ),
         pending2Page.getByRole("button", { name: "Yes" }).click(),
       ]);
-      await expect(getAttendButton(pending2Page)).toContainText("Buy ticket");
+      await expect(getAttendButton(pending2Page)).toContainText("Get ticket");
     });
 
     test("paid attendee sees a pending refund request on the event page", async ({

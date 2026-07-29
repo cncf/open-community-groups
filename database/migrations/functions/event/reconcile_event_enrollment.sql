@@ -16,6 +16,7 @@ declare
     v_group_id uuid;
     v_group_name text;
     v_group_payment_recipient jsonb;
+    v_is_simple_rsvp boolean;
     v_offer_expires_at timestamptz;
     v_offer_id uuid;
     v_payment_currency_code text;
@@ -67,6 +68,9 @@ begin
     if not found then
         return array[]::uuid[];
     end if;
+
+    -- Resolve attendee wording from the event's public ticket shape
+    v_is_simple_rsvp := is_event_simple_rsvp(p_event_id);
 
     -- Lock affected ticket tiers in stable identifier order
     perform 1
@@ -243,19 +247,6 @@ begin
         end if;
     end loop;
 
-    -- Promote event-level RSVP waitlists through the existing attendee flow
-    if not exists (
-        select 1
-        from event_ticket_type ett
-        where ett.event_id = p_event_id
-    ) then
-        if p_event_ticket_type_id is null and v_event_active then
-            v_promoted_user_ids := promote_event_waitlist(p_event_id);
-        end if;
-
-        return coalesce(v_promoted_user_ids, array[]::uuid[]);
-    end if;
-
     -- Stop ticket offer creation when the public registration window is closed
     v_event_registration_open := is_registration_window_open(
         v_registration_starts_at,
@@ -418,6 +409,7 @@ begin
                     'event_ticket_type_id', v_ticket_type.event_ticket_type_id,
                     'expires_at', extract(epoch from v_offer_expires_at)::bigint,
                     'group_name', v_group_name,
+                    'is_simple_rsvp', v_is_simple_rsvp,
                     'theme', v_theme,
                     'ticket_title', v_ticket_type.title,
                     'timezone', v_timezone,

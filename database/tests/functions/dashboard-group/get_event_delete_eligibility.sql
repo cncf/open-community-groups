@@ -152,36 +152,82 @@ insert into event (
     ('Finalized refund', :'eventCategoryID', :'finalizedEventID', 'virtual', :'groupID', 'Finalized Refund', true, 'finalized-refund', now() + interval '1 day', 'UTC', true, false, null, now() + interval '1 day 1 hour', current_timestamp),
     ('Historical draft', :'eventCategoryID', :'historicalDraftEventID', 'virtual', :'groupID', 'Historical Draft', false, 'historical-draft', null, 'UTC', false, false, null, null, current_timestamp);
 
+-- Every event uses a free tier with stable identifiers for purchase fixtures
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    case e.event_id
+        when :'durableEventID'::uuid then :'durableTicketTypeID'::uuid
+        when :'expiredPendingEventID'::uuid then :'expiredPendingTicketTypeID'::uuid
+        when :'finalizedEventID'::uuid then :'finalizedTicketTypeID'::uuid
+        when :'pendingEventID'::uuid then :'pendingTicketTypeID'::uuid
+        when :'providerPendingEventID'::uuid then :'providerPendingTicketTypeID'::uuid
+        when :'purchaseDraftEventID'::uuid then :'purchaseDraftTicketTypeID'::uuid
+        when :'recoveredEventID'::uuid then :'recoveredTicketTypeID'::uuid
+        else gen_random_uuid()
+    end,
+    1,
+    100,
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
 -- Attendee that makes an unpublished draft ineligible for direct deletion
 insert into event_attendee (event_id, user_id)
 values (:'attendeeDraftEventID', :'userID');
 
 -- Invitation request that makes an unpublished draft ineligible for direct deletion
-insert into event_invitation_request (event_id, user_id)
-values (:'invitationDraftEventID', :'userID');
+insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
+values (
+    :'invitationDraftEventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'invitationDraftEventID' limit 1),
+    :'userID'
+);
 
 -- Active organizer offer that makes an unpublished draft ineligible for deletion
 insert into admission_offer (
     admission_offer_id,
+    amount_minor,
+    discount_amount_minor,
     event_id,
-    legacy,
+    event_ticket_type_id,
+    expires_at,
     organizer_user_id,
     source,
     status,
+    ticket_title,
     user_id
 ) values (
     :'offerID',
+    0,
+    0,
     :'offerDraftEventID',
-    true,
+    (select event_ticket_type_id from event_ticket_type where event_id = :'offerDraftEventID' limit 1),
+    current_timestamp + interval '1 hour',
     :'actorID',
     'organizer_invitation',
     'pending',
+    'General Admission',
     :'userID'
 );
 
 -- Waitlist entry that makes an unpublished draft ineligible for direct deletion
-insert into event_waitlist (event_id, user_id)
-values (:'waitlistDraftEventID', :'userID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'waitlistDraftEventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'waitlistDraftEventID' limit 1),
+    :'userID'
+);
 
 -- Publication audit history that makes an unpublished draft ineligible for direct deletion
 insert into audit_log (
@@ -201,16 +247,6 @@ insert into audit_log (
     :'auditDraftEventID',
     'event'
 );
-
--- Ticket types required by the purchase eligibility fixtures
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title) values
-    (:'durableEventID', :'durableTicketTypeID', 1, 10, 'Durable'),
-    (:'expiredPendingEventID', :'expiredPendingTicketTypeID', 1, 10, 'Expired'),
-    (:'finalizedEventID', :'finalizedTicketTypeID', 1, 10, 'Finalized'),
-    (:'pendingEventID', :'pendingTicketTypeID', 1, 10, 'Pending'),
-    (:'providerPendingEventID', :'providerPendingTicketTypeID', 1, 10, 'Provider'),
-    (:'purchaseDraftEventID', :'purchaseDraftTicketTypeID', 1, 10, 'Draft'),
-    (:'recoveredEventID', :'recoveredTicketTypeID', 1, 10, 'Recovered');
 
 -- Purchases representing pending, historical, unresolved, and recovered work
 insert into event_purchase (

@@ -399,7 +399,7 @@ class TicketTypesEditor extends TicketingEditorBase {
    * @returns {void}
    */
   _removeTicketType(rowId) {
-    if (this.disabled) {
+    if (this.disabled || this._rows.length <= 1) {
       return;
     }
 
@@ -588,12 +588,14 @@ class TicketTypesEditor extends TicketingEditorBase {
               <button
                 type="button"
                 class="rounded-full p-2 transition-colors ${
-                  this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"
+                  this.disabled || this._rows.length <= 1
+                    ? "opacity-60 cursor-not-allowed"
+                    : "hover:bg-stone-100"
                 }"
                 data-ticketing-action="delete-ticket"
                 data-row-id=${String(row._row_id)}
-                title="Delete"
-                ?disabled=${this.disabled}
+                title=${this._rows.length <= 1 ? "Every event needs at least one ticket type" : "Delete"}
+                ?disabled=${this.disabled || this._rows.length <= 1}
                 @click=${() => this._removeTicketType(row._row_id)}
               >
                 <div class="svg-icon size-4 icon-trash bg-stone-600"></div>

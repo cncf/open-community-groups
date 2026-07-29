@@ -16,15 +16,17 @@ describe("dashboard user invitations list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Ticket offers expose their tier, price, source, deadline, and pricing warning.
-    expect(template).to.include("{{ ticket_title }}");
+    expect(template).to.include("{{ invitation.ticket_title }}");
     expect(template).to.include("{{ invitation.source_label() }}");
+    expect(template).to.include("{% if !invitation.is_simple_rsvp -%}");
     expect(template).to.include("{% if let Some(price_label) = invitation.price_label() -%}");
     expect(template).to.include(
-      '{{ expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}',
+      '{{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}',
     );
     expect(template).to.include(
       "Your price is confirmed when you first claim the offer. If checkout has already started, retries keep that confirmed price.",
     );
+    expect(template).to.include("{% if invitation.is_simple_rsvp %}Confirm by{% else %}Claim by{% endif %}");
   });
 
   it("renders claim decline resume and cancel checkout actions", async () => {
@@ -33,6 +35,8 @@ describe("dashboard user invitations list template", () => {
 
     // Owned offers expose every supported lifecycle action.
     expect(template).to.include("data-user-event-offer-open");
+    expect(template).to.include('aria-label="Claim offer for {{ invitation.event_name }}"');
+    expect(template).to.include('title="Claim offer"');
     expect(template).to.include('title="Continue to checkout"');
     expect(template).to.include("data-user-event-offer-checkout-cancel");
     expect(template).to.include(

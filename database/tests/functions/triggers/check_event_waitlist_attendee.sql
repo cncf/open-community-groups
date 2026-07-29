@@ -18,6 +18,8 @@ select plan(5);
 \set user1ID 'ab040000-0000-0000-0000-000000000007'
 \set user2ID 'ab040000-0000-0000-0000-000000000008'
 \set user3ID 'ab040000-0000-0000-0000-000000000009'
+\set ticketType1ID 'ab040000-0000-0000-0000-00000000000a'
+\set ticketType2ID 'ab040000-0000-0000-0000-00000000000b'
 
 -- ============================================================================
 -- SEED DATA
@@ -103,6 +105,12 @@ values
         true
     );
 
+-- Ticket tiers for the trigger-conflict fixtures
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values
+    (:'ticketType1ID', :'event1ID', 1, 1, 'General admission'),
+    (:'ticketType2ID', :'event2ID', 1, 1, 'General admission');
+
 -- Existing attendees
 insert into event_attendee (event_id, user_id)
 values
@@ -110,14 +118,22 @@ values
     (:'event2ID', :'user1ID');
 
 -- Existing waitlist entry
-insert into event_waitlist (event_id, user_id)
-values (:'event2ID', :'user2ID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'event2ID', :'ticketType2ID', :'user2ID');
 
 -- Existing active offers
-insert into admission_offer (event_id, expires_at, source, status, user_id)
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+)
 values
     (
         :'event1ID',
+        :'ticketType1ID',
         current_timestamp + interval '1 hour',
         'organizer_invitation',
         'pending',
@@ -125,6 +141,7 @@ values
     ),
     (
         :'event2ID',
+        :'ticketType2ID',
         current_timestamp + interval '1 hour',
         'organizer_invitation',
         'pending',
@@ -138,8 +155,9 @@ values
 -- Should allow waitlist inserts when the user is not already attending
 select lives_ok(
     format(
-        'insert into event_waitlist (event_id, user_id) values (%L, %L)',
+        'insert into event_waitlist (event_id, event_ticket_type_id, user_id) values (%L, %L, %L)',
         :'event1ID',
+        :'ticketType1ID',
         :'user2ID'
     ),
     'Should allow waitlist inserts when the user is not already attending'
@@ -148,8 +166,9 @@ select lives_ok(
 -- Should reject waitlist inserts when the user is already attending
 select throws_ok(
     format(
-        'insert into event_waitlist (event_id, user_id) values (%L, %L)',
+        'insert into event_waitlist (event_id, event_ticket_type_id, user_id) values (%L, %L, %L)',
         :'event1ID',
+        :'ticketType1ID',
         :'user1ID'
     ),
     'user is already attending this event',
@@ -171,8 +190,9 @@ select throws_ok(
 -- Should reject waitlist writes that conflict with active offers
 select throws_ok(
     format(
-        'insert into event_waitlist (event_id, user_id) values (%L, %L)',
+        'insert into event_waitlist (event_id, event_ticket_type_id, user_id) values (%L, %L, %L)',
         :'event1ID',
+        :'ticketType1ID',
         :'user3ID'
     ),
     'user already has an active admission offer for this event',

@@ -592,7 +592,7 @@ select throws_ok(
         $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
         :'eventGuardedID'
     ),
-    'ticket types with admission offers cannot be removed; deactivate them instead',
+    'events require at least one ticket type',
     'Should reject removing ticket types with admission offers'
 );
 
@@ -602,7 +602,7 @@ select throws_ok(
         $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
         :'eventRequestedID'
     ),
-    'ticket types with invitation requests cannot be removed; deactivate them instead',
+    'events require at least one ticket type',
     'Should reject removing ticket types with invitation requests'
 );
 
@@ -612,7 +612,7 @@ select throws_ok(
         $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
         :'eventProtectedID'
     ),
-    'ticket types with purchases cannot be removed; deactivate them instead',
+    'events require at least one ticket type',
     'Should reject removing ticket types with purchases'
 );
 
@@ -622,7 +622,7 @@ select throws_ok(
         $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
         :'eventWaitlistRemovalID'
     ),
-    'ticket types with waitlist entries cannot be removed; deactivate them instead',
+    'events require at least one ticket type',
     'Should reject removing ticket types with waitlist entries'
 );
 

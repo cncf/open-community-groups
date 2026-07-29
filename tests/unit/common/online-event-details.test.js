@@ -225,6 +225,39 @@ describe("online-event-details", () => {
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
 
+  it("uses aggregate ticket capacity for automatic meeting availability", async () => {
+    // Provide the ticket editor capacity used by the event form.
+    let configuredSeatTotal = 75;
+    const ticketTypesEditor = document.createElement("div");
+    ticketTypesEditor.id = "ticket-types-ui";
+    ticketTypesEditor.getConfiguredSeatTotal = () => configuredSeatTotal;
+    document.body.append(ticketTypesEditor);
+
+    // Render a valid automatic meeting without the removed capacity input.
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2030-05-10T12:00",
+      kind: "virtual",
+      meetingMaxParticipants: { zoom: 100 },
+      startsAt: "2030-05-10T10:00",
+    });
+    const automaticModeInput = element.renderRoot.querySelector(
+      'input[type="radio"][value="automatic"]',
+    );
+    expect(automaticModeInput.disabled).to.equal(false);
+
+    // Recalculate the warning whenever ticket capacity changes.
+    element._mode = "automatic";
+    element._createMeeting = true;
+    element._providerId = "zoom";
+    configuredSeatTotal = 150;
+    ticketTypesEditor.dispatchEvent(
+      new CustomEvent("ticket-types-changed", { bubbles: true, composed: true }),
+    );
+    await element.updateComplete;
+
+    expect(element._capacityWarning).to.include("Capacity (150) exceeds");
+  });
+
   it("disables automatic meeting creation for past events", async () => {
     // Create the capacity fixture required by automatic meeting validation.
     const capacity = document.createElement("input");

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(104);
+select plan(107);
 
 -- ============================================================================
 -- VARIABLES
@@ -31,6 +31,7 @@ select has_check('admission_offer', 'admission_offer_snapshot_chk');
 select has_check('admission_offer', 'admission_offer_source_chk');
 select has_check('admission_offer', 'admission_offer_status_chk');
 select has_check('admission_offer', 'admission_offer_ticket_status_snapshot_chk');
+select col_not_null('admission_offer', 'event_ticket_type_id');
 
 -- Test: badge artwork should preserve route-safe filenames
 select has_check('badge_artwork', 'badge_artwork_file_name_chk');
@@ -205,8 +206,12 @@ select has_check('event', 'event_registration_end_before_event_start_chk');
 select has_check('event', 'event_registration_start_before_event_start_chk');
 select has_check('event', 'event_registration_window_order_chk');
 
--- Test: event invitation request table expected constraints exist
+-- Test: event invitation requests may defer the ticket tier to organizer approval
 select has_check('event_invitation_request');
+select col_is_null('event_invitation_request', 'event_ticket_type_id');
+
+-- Test: event waitlist rows should always belong to a ticket tier
+select col_not_null('event_waitlist', 'event_ticket_type_id');
 
 -- Test: admission offer sources should match expected values
 select results_eq(

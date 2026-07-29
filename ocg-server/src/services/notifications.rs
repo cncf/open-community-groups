@@ -521,7 +521,7 @@ impl DeliveryWorker {
                         helpers::absolute_url(base_url, &template.dashboard_url);
                 }
                 let subject =
-                    Self::scoped_subject(&template.group_name, "Your ticket request was approved");
+                    Self::scoped_subject(&template.group_name, "Your event request was approved");
                 let body = template.render()?;
                 (subject, body)
             }
@@ -533,7 +533,7 @@ impl DeliveryWorker {
                         helpers::absolute_url(base_url, &template.dashboard_url);
                 }
                 let subject =
-                    Self::scoped_subject(&template.group_name, "A ticket is available for you");
+                    Self::scoped_subject(&template.group_name, "A place is available for you");
                 let body = template.render()?;
                 (subject, body)
             }

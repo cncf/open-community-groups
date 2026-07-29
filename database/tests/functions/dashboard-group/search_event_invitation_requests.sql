@@ -219,7 +219,7 @@ insert into event_invitation_request (
     'accepted'
 ), (
     :'event1ID',
-    null,
+    :'ticketTypeID',
     :'user2ID',
     '2024-01-02 00:00:00+00',
     null,
@@ -227,7 +227,7 @@ insert into event_invitation_request (
     'pending'
 ), (
     :'event1ID',
-    null,
+    :'ticketTypeID',
     :'user3ID',
     '2024-01-03 00:00:00+00',
     '2024-01-03 01:00:00+00',
@@ -300,8 +300,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
-            {"created_at": 1704240000, "invitation_request_status": "rejected", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000011", "username": "carol", "name": "Carol", "title": "Designer"}, "reviewed_at": 1704243600},
-            {"created_at": 1704153600, "invitation_request_status": "pending", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null},
+            {"created_at": 1704240000, "invitation_request_status": "rejected", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000011", "username": "carol", "name": "Carol", "title": "Designer"}, "reviewed_at": 1704243600},
+            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null},
             {"admission_offer_id": "3a2f0000-0000-0000-0000-000000000012", "admission_offer_status": "pending", "created_at": 1704067200, "invitation_request_status": "accepted", "offer_expires_at": 4071686400, "offered_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "offered_ticket_title": "General admission", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800}
         ]'::jsonb,
         'total', 3
@@ -328,6 +328,8 @@ select is(
                     "offer_expires_at": 1704412800,
                     "offered_event_ticket_type_id": "%s",
                     "offered_ticket_title": "Private admission",
+                    "requested_event_ticket_type_id": null,
+                    "requested_ticket_title": null,
                     "reviewed_at": 1704330000,
                     "user": {
                         "name": "Carol",
@@ -356,7 +358,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
-            {"created_at": 1704153600, "invitation_request_status": "pending", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null}
+            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null}
         ]'::jsonb,
         'total', 3
     ),

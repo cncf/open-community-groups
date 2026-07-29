@@ -130,6 +130,9 @@ pub(crate) struct EventAdmissionOfferCreated {
     pub amount_minor: Option<i64>,
     /// Currency used to display the current ticket amount.
     pub currency_code: Option<String>,
+    /// Whether the offer belongs to a plain RSVP event.
+    #[serde(default)]
+    pub is_simple_rsvp: bool,
     /// Whether registration questions must be completed.
     #[serde(default)]
     pub registration_questions_required: bool,
@@ -361,6 +364,9 @@ pub(crate) struct EventTicketRequestApproved {
 
     /// Currency used to display the current ticket amount.
     pub currency_code: Option<String>,
+    /// Whether the offer belongs to a plain RSVP event.
+    #[serde(default)]
+    pub is_simple_rsvp: bool,
 }
 
 impl EventTicketRequestApproved {
@@ -394,6 +400,9 @@ pub(crate) struct EventTicketWaitlistOffer {
 
     /// Currency used to display the current ticket amount.
     pub currency_code: Option<String>,
+    /// Whether the offer belongs to a plain RSVP event.
+    #[serde(default)]
+    pub is_simple_rsvp: bool,
 }
 
 impl EventTicketWaitlistOffer {

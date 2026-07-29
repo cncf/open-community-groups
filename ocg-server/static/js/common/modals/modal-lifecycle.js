@@ -2,9 +2,19 @@ import { getElementById, isElementHidden, setElementHidden } from "/static/js/co
 
 const MODAL_AUTOFOCUS_SELECTOR = "[autofocus]";
 const MODAL_FOCUS_SELECTOR =
-  "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), " +
+  'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
   'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const modalFocusOrigins = new WeakMap();
+
+/**
+ * Returns available keyboard focus targets inside a modal.
+ * @param {Element} modal Modal element.
+ * @returns {HTMLElement[]} Available focus targets.
+ */
+const getModalFocusTargets = (modal) =>
+  Array.from(modal.querySelectorAll(MODAL_FOCUS_SELECTOR)).filter(
+    (target) => target instanceof HTMLElement && !target.closest('[hidden], [aria-hidden="true"], .hidden'),
+  );
 
 /**
  * Returns the focus target for an opened modal.
@@ -12,10 +22,13 @@ const modalFocusOrigins = new WeakMap();
  * @returns {HTMLElement|null} Element that can receive focus.
  */
 const getModalFocusTarget = (modal) => {
-  const focusTarget =
-    modal.querySelector(MODAL_AUTOFOCUS_SELECTOR) ?? modal.querySelector(MODAL_FOCUS_SELECTOR);
-  if (focusTarget instanceof HTMLElement) {
-    return focusTarget;
+  const focusTargets = getModalFocusTargets(modal);
+  const autofocusTarget = focusTargets.find((target) => target.matches(MODAL_AUTOFOCUS_SELECTOR));
+  if (autofocusTarget) {
+    return autofocusTarget;
+  }
+  if (focusTargets[0]) {
+    return focusTargets[0];
   }
 
   if (modal instanceof HTMLElement) {
@@ -26,6 +39,44 @@ const getModalFocusTarget = (modal) => {
   }
 
   return null;
+};
+
+/**
+ * Keeps Tab navigation within an open modal.
+ * @param {KeyboardEvent} event Keyboard event.
+ * @param {Element} modal Open modal element.
+ * @returns {boolean} True when focus was wrapped.
+ */
+export const trapModalFocus = (event, modal) => {
+  if (
+    event.key !== "Tab" ||
+    !(modal instanceof Element) ||
+    isElementHidden(modal) ||
+    modal.getAttribute("aria-hidden") === "true"
+  ) {
+    return false;
+  }
+
+  const focusTargets = getModalFocusTargets(modal);
+  if (focusTargets.length === 0) {
+    event.preventDefault();
+    getModalFocusTarget(modal)?.focus();
+    return true;
+  }
+
+  const activeElement = document.activeElement;
+  const firstTarget = focusTargets[0];
+  const lastTarget = focusTargets.at(-1);
+  const focusOutsideModal = !modal.contains(activeElement);
+  const wrapBackward = event.shiftKey && (activeElement === firstTarget || focusOutsideModal);
+  const wrapForward = !event.shiftKey && (activeElement === lastTarget || focusOutsideModal);
+  if (!wrapBackward && !wrapForward) {
+    return false;
+  }
+
+  event.preventDefault();
+  (event.shiftKey ? lastTarget : firstTarget)?.focus();
+  return true;
 };
 
 /**
