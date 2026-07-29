@@ -39,11 +39,10 @@ mime_guess = { workspace = true }
 minify-html = { workspace = true }
 num-format = { workspace = true }
 oauth2 = { workspace = true }
+ocg-common = { workspace = true }
 openidconnect = { workspace = true }
-openssl = { workspace = true }
 password-auth = { workspace = true }
 percent-encoding = { workspace = true }
-postgres-openssl = { workspace = true }
 quick-xml = { workspace = true }
 qrcode = { workspace = true }
 reqwest = { workspace = true }
@@ -72,7 +71,6 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 tower-sessions = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 unicode-segmentation = { workspace = true }
 uuid = { workspace = true }
 

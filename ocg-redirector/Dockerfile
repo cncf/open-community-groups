@@ -3,6 +3,7 @@ FROM rust:1.96.1-alpine3.24 AS builder
 RUN apk --no-cache add musl-dev perl make
 WORKDIR /ocg
 COPY Cargo.* ./
+COPY ocg-common ocg-common
 COPY ocg-redirector ocg-redirector
 COPY ocg-server ocg-server
 WORKDIR /ocg/ocg-redirector

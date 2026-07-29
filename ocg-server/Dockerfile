@@ -8,6 +8,7 @@ RUN chmod +x /usr/local/bin/tailwindcss
 WORKDIR /ocg
 COPY Cargo.* ./
 COPY docs docs
+COPY ocg-common ocg-common
 COPY ocg-redirector ocg-redirector
 COPY ocg-server ocg-server
 WORKDIR /ocg/ocg-server

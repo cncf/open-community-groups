@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "ocg-common",
     "ocg-redirector",
     "ocg-server"
 ]
@@ -50,6 +51,7 @@ minify-html = "0.18.1"
 mockall = "0.15.0"
 num-format = "0.4.4"
 oauth2 = "5.0.0"
+ocg-common = { path = "ocg-common" }
 openidconnect = { version = "4.0.1", features = ["accept-rfc3339-timestamps"] }
 openssl = { version = "0.10.81", features = ["vendored"] }
 password-auth = "1.0.0"
@@ -80,6 +82,7 @@ thiserror = "2.0.18"
 time = "0.3.53"
 tokio = { version = "1.52.3", features = [
     "macros",
+    "net",
     "process",
     "rt-multi-thread",
     "signal",

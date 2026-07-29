@@ -1,0 +1,20 @@
+[package]
+name = "ocg-common"
+description = "Open Community Groups shared building blocks"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+deadpool-postgres = { workspace = true }
+openssl = { workspace = true }
+postgres-openssl = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tokio-postgres = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+figment = { workspace = true }

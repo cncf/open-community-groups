@@ -60,6 +60,7 @@ jobs:
               - '.rustfmt.toml'
               - 'Cargo.lock'
               - 'Cargo.toml'
+              - 'ocg-common/**'
               - 'ocg-redirector/**'
               - 'ocg-server/**'
             templates:

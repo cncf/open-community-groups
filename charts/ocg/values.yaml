@@ -33,6 +33,15 @@ db:
     maxSize: 25
     recycleTimeoutSeconds: 5
     waitTimeoutSeconds: 5
+  # SSL mode for application database connections [disable|prefer|require]
+  # Set to require when TLS certificate verification is enabled
+  sslMode: prefer
+  tls:
+    # Certificate verification mode [none|verify-ca|verify-full]
+    mode: none
+    # Trusted CA certificate bundle in PEM format
+    # Required when mode is verify-ca or verify-full
+    caCert: ""
 
 # Email configuration
 email:

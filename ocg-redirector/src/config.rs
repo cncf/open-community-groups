@@ -1,19 +1,22 @@
 //! Configuration management for the OCG redirector.
 
-use std::{path::PathBuf, str::FromStr};
+use std::{fmt, path::PathBuf, str::FromStr};
 
 use anyhow::{Result, anyhow};
 use axum::http::Uri;
-use deadpool_postgres::Config as DbConfig;
 use figment::{
     Figment,
     providers::{Env, Format, Serialized, Yaml},
 };
+use ocg_common::config::{DbConfig, LogConfig};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
+/// Placeholder used when formatting sensitive configuration values.
+const REDACTED_CONFIG_VALUE: &str = "[redacted]";
+
 /// Root configuration structure for the OCG redirector.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub(crate) struct Config {
     /// Database configuration.
     pub db: DbConfig,
@@ -47,27 +50,24 @@ impl Config {
 
     /// Validates configuration consistency after loading from all sources.
     fn validate(&self) -> Result<()> {
+        // Validate database transport security before starting the service
+        self.db.validate()?;
+
+        // Validate the redirect target configuration
         validate_url(&self.server.base_redirect_url, "server.base_redirect_url")?;
 
         Ok(())
     }
 }
 
-/// Logging configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) struct LogConfig {
-    /// Log output format.
-    pub format: LogFormat,
-}
-
-/// Supported log output formats.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum LogFormat {
-    /// JSON log format.
-    Json,
-    /// Human-readable log format.
-    Pretty,
+impl fmt::Debug for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Config")
+            .field("db", &REDACTED_CONFIG_VALUE)
+            .field("log", &self.log)
+            .field("server", &self.server)
+            .finish()
+    }
 }
 
 /// HTTP server configuration settings.
@@ -100,4 +100,52 @@ fn validate_url(value: &str, field_name: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use deadpool_postgres::Config as DeadpoolDbConfig;
+    use ocg_common::config::LogFormat;
+
+    use super::*;
+
+    #[test]
+    fn test_config_debug_redacts_database_credentials() {
+        // Setup a configuration containing sentinel database credentials
+        let cfg = sample_config();
+
+        // Format the complete startup configuration
+        let output = format!("{cfg:?}");
+
+        // Check database credentials cannot enter logs or errors through Debug
+        assert!(output.contains(REDACTED_CONFIG_VALUE));
+        assert!(!output.contains("database-password-sensitive-value"));
+    }
+
+    // Helpers.
+
+    fn sample_config() -> Config {
+        Config {
+            db: sample_db_config(),
+            log: LogConfig {
+                format: LogFormat::Json,
+            },
+            server: HttpServerConfig {
+                addr: "127.0.0.1:9001".to_string(),
+                base_redirect_url: "https://ocg.example.test".to_string(),
+            },
+        }
+    }
+
+    fn sample_db_config() -> DbConfig {
+        let mut connection = DeadpoolDbConfig::new();
+        connection.dbname = Some("ocg".to_string());
+        connection.password = Some("database-password-sensitive-value".to_string());
+
+        DbConfig {
+            connection,
+
+            tls: None,
+        }
+    }
 }

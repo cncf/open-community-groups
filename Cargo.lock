@@ -3814,6 +3814,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ocg-common"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "deadpool-postgres",
+ "figment",
+ "openssl",
+ "postgres-openssl",
+ "serde",
+ "tokio",
+ "tokio-postgres",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "ocg-redirector"
 version = "0.7.0"
 dependencies = [
@@ -3822,15 +3837,12 @@ dependencies = [
  "clap",
  "deadpool-postgres",
  "figment",
- "openssl",
- "postgres-openssl",
+ "ocg-common",
  "serde",
  "tokio",
- "tokio-postgres",
  "tower",
  "tower-http 0.7.0",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3870,11 +3882,10 @@ dependencies = [
  "mockall",
  "num-format",
  "oauth2",
+ "ocg-common",
  "openidconnect",
- "openssl",
  "password-auth",
  "percent-encoding",
- "postgres-openssl",
  "qrcode",
  "quick-xml",
  "reqwest 0.13.4",
@@ -3903,7 +3914,6 @@ dependencies = [
  "tower-http 0.7.0",
  "tower-sessions",
  "tracing",
- "tracing-subscriber",
  "unicode-segmentation",
  "uuid",
  "which",

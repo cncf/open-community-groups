@@ -2,7 +2,7 @@ use std::{collections::HashMap, env, time::Duration};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
-use deadpool_postgres::{Config as DbConfig, Pool, Runtime};
+use deadpool_postgres::{Config as DeadpoolDbConfig, Pool, Runtime};
 use tokio_postgres::{
     NoTls,
     error::{DbError, SqlState},
@@ -2827,12 +2827,12 @@ fn community_id() -> Uuid {
 }
 
 /// Builds the shared `PostgreSQL` configuration for contract tests.
-fn contract_tests_config() -> Result<DbConfig> {
+fn contract_tests_config() -> Result<DeadpoolDbConfig> {
     let port = env_or_default("OCG_DB_PORT", "5432")
         .parse()
         .context("OCG_DB_PORT must be a valid port number")?;
 
-    let mut cfg = DbConfig::new();
+    let mut cfg = DeadpoolDbConfig::new();
     cfg.dbname = Some(env_or_default(
         "OCG_DB_NAME_TESTS_CONTRACT",
         "ocg_tests_contract",
