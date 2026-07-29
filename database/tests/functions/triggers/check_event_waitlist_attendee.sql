@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(3);
 \set groupID 'ab040000-0000-0000-0000-000000000006'
 \set user1ID 'ab040000-0000-0000-0000-000000000007'
 \set user2ID 'ab040000-0000-0000-0000-000000000008'
+\set user3ID 'ab040000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
@@ -57,7 +58,8 @@ values (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
     (:'user1ID', 'user-one-hash', 'user-one@example.com', true, 'user-one'),
-    (:'user2ID', 'user-two-hash', 'user-two@example.com', true, 'user-two');
+    (:'user2ID', 'user-two-hash', 'user-two@example.com', true, 'user-two'),
+    (:'user3ID', 'user-three-hash', 'user-three@example.com', true, 'user-three');
 
 -- Events
 insert into event (
@@ -111,6 +113,24 @@ values
 insert into event_waitlist (event_id, user_id)
 values (:'event2ID', :'user2ID');
 
+-- Existing active offers
+insert into admission_offer (event_id, expires_at, source, status, user_id)
+values
+    (
+        :'event1ID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        :'user3ID'
+    ),
+    (
+        :'event2ID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        :'user3ID'
+    );
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -146,6 +166,28 @@ select throws_ok(
     ),
     'user is already attending this event',
     'Should reject waitlist updates that target an attendee pair'
+);
+
+-- Should reject waitlist writes that conflict with active offers
+select throws_ok(
+    format(
+        'insert into event_waitlist (event_id, user_id) values (%L, %L)',
+        :'event1ID',
+        :'user3ID'
+    ),
+    'user already has an active admission offer for this event',
+    'Should reject waitlist inserts for active offer recipients'
+);
+
+select throws_ok(
+    format(
+        'update event_waitlist set user_id = %L where event_id = %L and user_id = %L',
+        :'user3ID',
+        :'event2ID',
+        :'user2ID'
+    ),
+    'user already has an active admission offer for this event',
+    'Should reject waitlist updates targeting active offer recipients'
 );
 
 -- ============================================================================

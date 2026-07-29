@@ -6,6 +6,9 @@
 
 {# Events update form -#}
 {% let event_read_only = event.canceled || !can_manage_events -%}
+{% let paid_ticketing_read_only = !payments_ready && event.is_paid_capable() -%}
+{% let ticketing_free_only = !payments_ready && !event.is_paid_capable() -%}
+{% let ticketing_read_only = event_read_only || paid_ticketing_read_only -%}
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
 <div id="event-update-page"
@@ -143,7 +146,7 @@
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
               hx-trigger="click, confirmed"
               hx-ext="no-empty-vals-keep-zero"
-              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form {% if payments_ready %}, #payments-form{% endif %}"
+              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form, #payments-form"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
@@ -167,9 +170,7 @@
         {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
         {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_option(section = "payments", label = "Payments") -}}
-        {% endif -%}
+        {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
         {{ event_form::tab_option(section = "questions", label = "Questions") -}}
         {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
         {{ event_form::tab_option(section = "submissions", label = "Submissions") -}}
@@ -184,9 +185,7 @@
         {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
         {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Payments") -}}
-        {% endif -%}
+        {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
         {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
         {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
         {% let submissions_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/submissions" hx-trigger="click once" hx-target="#submissions-content" hx-swap="innerHTML" hx-indicator="#submissions-loading"{%- endlet %}
@@ -889,31 +888,55 @@
 </div>
 {# End Sessions Tab -#}
 
-{% if payments_ready -%}
-  {# Payments Tab -#}
-  <div data-content="payments" class="hidden">
-    {% if event.waitlist_count > 0 -%}
-      <div class="mb-12 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-        <div class="svg-icon size-5 bg-amber-700 icon-warning mt-0.5 shrink-0"></div>
-        <p class="text-sm/6">This event cannot switch to ticketing while people are on the waitlist.</p>
-      </div>
-    {% endif -%}
+{# Tickets Tab -#}
+<div data-content="payments" class="hidden">
+  {% if event.waitlist_count > 0 -%}
+    <div class="mb-12 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+      <div class="svg-icon size-5 bg-amber-700 icon-warning mt-0.5 shrink-0"></div>
+      <p class="text-sm/6">This event cannot switch to ticketing while people are on the waitlist.</p>
+    </div>
+  {% endif -%}
 
-    <form id="payments-form">
-      <div class="space-y-12">
-        <div>
-          {{ dashboard::form_title(title = "Payments", description = "Configure event currency, ticket tiers, and optional discount codes.") -}}
+  <form id="payments-form">
+    <div class="space-y-12">
+      <div>
+        {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
 
+        {% if payments_ready -%}
+          {% if let Some(payment_recipient) = &payment_recipient -%}
+            <div class="mt-8 flex items-start gap-3 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-green-900">
+              <div class="svg-icon size-5 bg-green-700 icon-info mt-0.5 shrink-0"></div>
+              <p class="text-sm/6">
+                Paid ticket revenue is sent to Stripe recipient
+                <span class="font-semibold">{{ payment_recipient.recipient_id }}</span>.
+              </p>
+            </div>
+          {% endif -%}
+        {% else -%}
+          <div class="mt-8 flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sky-900">
+            <div class="svg-icon size-5 bg-sky-700 icon-info mt-0.5 shrink-0"></div>
+            <p class="text-sm/6">
+              {% if paid_ticketing_read_only -%}
+                Paid ticket settings are read-only until server payments and a matching group recipient are configured.
+              {% else -%}
+                Payments are not configured for this group, but free ticket tiers remain editable.
+              {% endif -%}
+            </p>
+          </div>
+        {% endif -%}
+
+        {% if payments_ready || event.is_paid_capable() -%}
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
             <div class="col-span-full 2xl:col-span-3">
               <label for="payment_currency_code" class="form-label">
                 Event Currency
-                <span class="asterisk">* <sup class="text-xs font-normal">(required for ticketed events)</sup></span>
+                <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
               </label>
               <div class="mt-2">
                 <select id="payment_currency_code"
                         name="payment_currency_code"
-                        class="select-primary">
+                        class="select-primary"
+                        {% if ticketing_read_only %}disabled{% endif %}>
                   <option value="">Select currency</option>
                   {% for payment_currency_code in payment_currency_codes -%}
                     <option value="{{ payment_currency_code }}"
@@ -921,30 +944,39 @@
                   {% endfor -%}
                 </select>
               </div>
-              <p class="form-legend">Single currency used for all ticket prices on this event.</p>
+              <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
             </div>
           </div>
-        </div>
+        {% endif -%}
+      </div>
 
-        <div class="border-t border-stone-900/10 pt-12">
-          <div>
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
-              <button id="add-ticket-type-button"
-                      type="button"
-                      class="btn-primary-outline btn-mini whitespace-nowrap"
-                      aria-label="Add ticket type">Add ticket type</button>
-            </div>
-            <p class="mt-1 text-sm/6 text-stone-500">
-              Use one ticket type per tier, add price windows for early-bird or late pricing, and
-              set the ticket amount to 0 to make a specific tier free.
-            </p>
+      <div class="border-t border-stone-900/10 pt-12">
+        <div>
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+            <button id="add-ticket-type-button"
+                    type="button"
+                    class="btn-primary-outline btn-mini whitespace-nowrap"
+                    aria-label="Add ticket type"
+                    {% if ticketing_read_only %}
+                      disabled title="Ticket settings are currently read-only."
+                    {% endif %}>Add ticket type</button>
           </div>
-          <div class="mt-10">{# djlint:off #}
-            <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="false" ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
-                    {# djlint:on #}</div>
+          <p class="mt-1 text-sm/6 text-stone-500">
+            Use one ticket type per tier and add price windows for scheduled pricing.
+            {% if ticketing_free_only -%}
+              Ticket prices are fixed at 0 until payments are configured.
+            {% else -%}
+              Set the ticket amount to 0 to make a specific tier free.
+            {% endif -%}
+          </p>
         </div>
+        <div class="mt-10">{# djlint:off #}
+          <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="{{ ticketing_read_only }}" {% if ticketing_free_only %}free-only{% endif %} ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
+                  {# djlint:on #}</div>
+      </div>
 
+      {% if payments_ready || event.is_paid_capable() -%}
         <div class="border-t border-stone-900/10 pt-12 pb-12">
           <div>
             <div class="flex items-center justify-between gap-3">
@@ -952,7 +984,10 @@
               <button id="add-discount-code-button"
                       type="button"
                       class="btn-primary-outline btn-mini whitespace-nowrap"
-                      aria-label="Add discount code">Add discount code</button>
+                      aria-label="Add discount code"
+                      {% if ticketing_read_only %}
+                        disabled title="Ticket settings are currently read-only."
+                      {% endif %}>Add discount code</button>
             </div>
             <p class="mt-1 text-sm/6 text-stone-500">
               Discount codes apply to the event currency and can be limited by schedule, remaining
@@ -960,14 +995,14 @@
             </p>
           </div>
           <div class="mt-10">{# djlint:off #}
-            <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="false" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>
+            <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="{{ ticketing_read_only }}" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>
                     {# djlint:on #}</div>
         </div>
-      </div>
-    </form>
-  </div>
-  {# End Payments Tab -#}
-{% endif -%}
+      {% endif -%}
+    </div>
+  </form>
+</div>
+{# End Tickets Tab -#}
 
 {# Hosts & Speakers Tab -#}
 <div data-content="hosts-sponsors" class="hidden">

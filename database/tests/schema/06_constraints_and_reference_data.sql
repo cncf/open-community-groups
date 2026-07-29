@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(95);
+select plan(104);
 
 -- ============================================================================
 -- VARIABLES
@@ -24,6 +24,13 @@ select has_check('badge', 'badge_criteria_chk');
 select has_check('badge', 'badge_description_chk');
 select has_check('badge', 'badge_image_file_name_chk');
 select has_check('badge', 'badge_name_chk');
+
+-- Test: admission offers should preserve lifecycle, deadline, and snapshot invariants
+select has_check('admission_offer', 'admission_offer_deadline_chk');
+select has_check('admission_offer', 'admission_offer_snapshot_chk');
+select has_check('admission_offer', 'admission_offer_source_chk');
+select has_check('admission_offer', 'admission_offer_status_chk');
+select has_check('admission_offer', 'admission_offer_ticket_status_snapshot_chk');
 
 -- Test: badge artwork should preserve route-safe filenames
 select has_check('badge_artwork', 'badge_artwork_file_name_chk');
@@ -197,10 +204,42 @@ select has_check('event', 'event_meeting_requested_times_chk');
 select has_check('event', 'event_registration_end_before_event_start_chk');
 select has_check('event', 'event_registration_start_before_event_start_chk');
 select has_check('event', 'event_registration_window_order_chk');
-select has_check('event', 'event_waitlist_capacity_required_chk');
 
 -- Test: event invitation request table expected constraints exist
 select has_check('event_invitation_request');
+
+-- Test: admission offer sources should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'admission_offer_source_chk'
+    $$,
+    $$ values
+        ('approval'),
+        ('organizer_invitation'),
+        ('waitlist')
+    $$,
+    'Admission offer sources should match expected values'
+);
+
+-- Test: admission offer statuses should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'admission_offer_status_chk'
+    $$,
+    $$ values
+        ('canceled'),
+        ('checkout_pending'),
+        ('completed'),
+        ('declined'),
+        ('expired'),
+        ('pending')
+    $$,
+    'Admission offer statuses should match expected values'
+);
 
 -- Test: event discount code table expected constraints exist
 select has_check('event_discount_code', 'event_discount_code_kind_value_chk');
@@ -208,6 +247,9 @@ select has_check('event_discount_code', 'event_discount_code_window_chk');
 
 -- Test: event ticket price window table expected constraints exist
 select has_check('event_ticket_price_window', 'event_ticket_price_window_window_chk');
+
+-- Test: event ticket type table expected constraints exist
+select has_check('event_ticket_type', 'event_ticket_type_availability_chk');
 
 -- Test: group table expected constraints exist
 select has_check('group', 'group_check');
@@ -243,6 +285,9 @@ select results_eq(
 );
 
 -- Test: event purchase statuses should match expected values
+select col_is_null('event_purchase', 'currency_code');
+select has_check('event_purchase', 'event_purchase_currency_code_chk');
+
 select results_eq(
     $$
         select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
@@ -423,6 +468,9 @@ select results_eq(
         ('cfs-submission-updated', false),
         ('community-team-invitation', false),
         ('email-verification', false),
+        ('event-admission-offer-canceled', false),
+        ('event-admission-offer-created', false),
+        ('event-admission-offer-declined', false),
         ('event-attendance-canceled', false),
         ('event-canceled', false),
         ('event-custom', true),
@@ -435,6 +483,8 @@ select results_eq(
         ('event-rescheduled', false),
         ('event-series-canceled', false),
         ('event-series-published', true),
+        ('event-ticket-request-approved', false),
+        ('event-ticket-waitlist-offer', false),
         ('event-waitlist-joined', false),
         ('event-waitlist-left', false),
         ('event-waitlist-promoted', false),

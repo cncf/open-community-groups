@@ -17,7 +17,11 @@ use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     auth::AuthSession,
     config::{HttpServerConfig, PaymentsConfig},
-    db::{DBExt, DynDB, payments::PrepareEventCheckoutPurchaseInput},
+    db::{
+        DBExt, DynDB,
+        event::AttendEventResult,
+        payments::{PrepareEventCheckoutPurchaseInput, PrepareEventCheckoutPurchaseResult},
+    },
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
         request_matches_site,
@@ -44,7 +48,7 @@ use crate::{
     },
     types::{
         event::{EventAttendanceStatus, EventFull, EventSummary},
-        payments::{EventPurchaseStatus, EventTicketType, PreparedEventCheckout},
+        payments::{EventPurchaseStatus, EventTicketType},
         questionnaire::{
             OptionalQuestionnaireAnswersForm, QuestionnaireAnswers, QuestionnaireQuestion,
         },
@@ -219,48 +223,53 @@ pub(crate) async fn attend_event(
     State(server_cfg): State<HttpServerConfig>,
     Path((_, event_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
-    ValidatedForm(input): ValidatedForm<OptionalQuestionnaireAnswersForm>,
+    ValidatedForm(input): ValidatedForm<EventAttendanceInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate that the event is still attendee-visible before checking ticketing
+    // Validate that the event is still attendee-visible before loading its enrollment state
     ensure_attendee_event_is_active(&db, community_id, event_id).await?;
 
-    // Require checkout before users can RSVP to ticketed events
     let event = db.get_event_summary_by_id(community_id, event_id).await?;
-    if event.is_ticketed() {
-        return Err(anyhow::anyhow!("ticketed events must be purchased before attending").into());
-    }
 
     // Defer waitlisted users' registration answers until promotion
-    let waitlist_join_without_answers = !event.attendee_approval_required
-        && event.waitlist_enabled
-        && event.remaining_capacity == Some(0);
+    let waitlist_join_without_answers =
+        should_defer_registration_answers(&event, input.event_ticket_type_id);
     if !waitlist_join_without_answers {
         // Get registration questions and validate answers
         let registration_questions =
             db.get_event_registration_questions(community_id, event_id).await?;
         validate_registration_answers(
-            input.registration_answers.as_ref(),
+            input.registration_answers.registration_answers.as_ref(),
             &registration_questions,
         )?;
     }
 
     // Attend event
-    let attend_result = db
+    let attend_result = match db
         .attend_event(
             community_id,
             event_id,
             user.user_id,
-            input.registration_answers,
+            input.registration_answers.registration_answers,
+            input.event_ticket_type_id,
         )
-        .await?;
+        .await?
+    {
+        AttendEventResult::Conflict(conflict) => {
+            return Ok((
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "conflict": conflict,
+                })),
+            ));
+        }
+        AttendEventResult::Attendance(status) => status,
+    };
     let response = (
         StatusCode::OK,
         Json(json!({
             "status": &attend_result,
         })),
     );
-
-    // Enqueue attendee or waitlist notification best-effort after the RSVP succeeds
 
     // Get site settings and event details for notifications
     let (event, site_settings) = match load_event_notification_context(
@@ -280,7 +289,7 @@ pub(crate) async fn attend_event(
     // Build the notification that matches the new attendance status
     let notification_result = match &attend_result {
         EventAttendanceStatus::Attendee => {
-            // Confirm the RSVP with the event details and calendar attachment
+            // Confirm attendance with the event details and calendar attachment
             match build_event_welcome_notification(
                 &event,
                 user.user_id,
@@ -296,6 +305,7 @@ pub(crate) async fn attend_event(
             }
         }
         EventAttendanceStatus::InvitationApproved
+        | EventAttendanceStatus::OfferExpired
         | EventAttendanceStatus::PendingApproval
         | EventAttendanceStatus::PendingPayment
         | EventAttendanceStatus::RegistrationQuestionsPending
@@ -350,7 +360,9 @@ pub(crate) async fn attendance_status(
     };
 
     Ok(Json(json!({
+        "admission_offer_id": attendance.admission_offer_id,
         "can_request_refund": can_request_refund,
+        "event_ticket_type_id": attendance.event_ticket_type_id,
         "is_checked_in": attendance.is_checked_in,
         "manually_invited": attendance.manually_invited,
         "purchase_amount_minor": attendance.purchase_amount_minor,
@@ -365,15 +377,25 @@ pub(crate) async fn attendance_status(
 pub(crate) async fn cancel_checkout(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     Path((_, event_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.cancel_event_checkout(community_id, event_id, user.user_id).await?;
+    db.cancel_event_checkout(
+        community_id,
+        event_id,
+        user.user_id,
+        payments_cfg.as_ref().map(PaymentsConfig::provider),
+    )
+    .await?;
+
+    // Return the authoritative enrollment state restored by cancellation
+    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
 
     Ok((
         StatusCode::OK,
         Json(json!({
-            "status": EventAttendanceStatus::None,
+            "status": attendance.status,
         })),
     ))
 }
@@ -398,18 +420,22 @@ pub(crate) async fn leave_event(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path((_, event_id)): Path<(String, Uuid)>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Leave event and enqueue required attendee cancellation notifications
+    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
     let required_notification_server_cfg = server_cfg.clone();
     let leave_result = db
         .as_ref()
         .transaction(|tx| {
             Box::pin(async move {
                 // Leave the event and collect any waitlist promotions
-                let leave_result = tx.leave_event(community_id, event_id, user.user_id).await?;
+                let leave_result = tx
+                    .leave_event(community_id, event_id, user.user_id, payment_provider)
+                    .await?;
 
                 // Enqueue required cancellation and promotion notifications before committing
                 if leave_result.left_status == EventAttendanceStatus::Attendee {
@@ -529,7 +555,7 @@ pub(crate) async fn start_checkout(
     )?;
 
     // Reserve a purchase hold for the attendee
-    let prepared_checkout = create_checkout_hold(
+    let prepared_checkout = match create_checkout_hold(
         &db,
         community_id,
         event_id,
@@ -537,7 +563,18 @@ pub(crate) async fn start_checkout(
         user.user_id,
         &input,
     )
-    .await?;
+    .await?
+    {
+        PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
+            return Ok((
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "conflict": conflict,
+                })),
+            ));
+        }
+        PrepareEventCheckoutPurchaseResult::Prepared(checkout) => *checkout,
+    };
 
     // Return early when the attendee already has a purchase state that should not reopen checkout
     if let Some(status) = get_checkout_status_response(prepared_checkout.purchase.status)? {
@@ -657,9 +694,24 @@ pub(crate) struct CfsSubmissionInput {
 /// Ticket checkout form data.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct CheckoutInput {
+    /// Admission offer being claimed by the attendee.
+    #[garde(skip)]
+    admission_offer_id: Option<Uuid>,
     /// Optional discount code entered by the attendee.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     discount_code: Option<String>,
+    /// Ticket type selected by the attendee.
+    #[garde(skip)]
+    event_ticket_type_id: Option<Uuid>,
+    /// Questionnaire answers encoded as JSON.
+    #[serde(default, flatten)]
+    #[garde(dive)]
+    registration_answers: OptionalQuestionnaireAnswersForm,
+}
+
+/// Public RSVP, approval request, or waitlist form data.
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct EventAttendanceInput {
     /// Ticket type selected by the attendee.
     #[garde(skip)]
     event_ticket_type_id: Option<Uuid>,
@@ -679,14 +731,22 @@ struct EventAvailability {
     attendee_count: i32,
     /// Whether the event has been canceled.
     canceled: bool,
+    /// Whether every public ticket type currently has a zero price.
+    has_only_free_ticket_types: bool,
     /// Whether the event has at least one ticket type selectable now.
     has_sellable_ticket_types: bool,
+    /// Whether the event page has at least one sold-out public ticket type.
+    has_sold_out_ticket_types: bool,
+    /// Whether the event page has at least one public ticket type.
+    has_visible_ticket_types: bool,
     /// Whether the event is live for attendee-facing access.
     is_live: bool,
     /// Whether the event has already ended or started without an end time.
     is_past: bool,
     /// Whether the event uses the ticketing flow.
     is_ticketed: bool,
+    /// Whether any public ticket configuration can require payment.
+    paid_capable: bool,
     /// Whether attendee registration is currently open.
     registration_window_open: bool,
     /// Current public availability for each ticket type.
@@ -713,10 +773,14 @@ impl EventAvailability {
             attendee_approval_required: event.attendee_approval_required,
             attendee_count: event.attendee_count,
             canceled: event.canceled,
+            has_only_free_ticket_types: event.has_only_free_visible_ticket_types(),
             has_sellable_ticket_types: event.has_sellable_ticket_types(),
+            has_sold_out_ticket_types: event.has_sold_out_visible_ticket_types(),
+            has_visible_ticket_types: event.has_visible_ticket_types(),
             is_live: event.is_live(),
             is_past: event.is_past(),
             is_ticketed: event.is_ticketed(),
+            paid_capable: event.is_paid_capable(),
             registration_window_open: event.registration_window_is_open(),
             ticket_types: event
                 .ticket_types
@@ -752,9 +816,13 @@ struct EventTicketAvailability {
     is_sellable_now: bool,
     /// Whether all seats for this ticket type are currently reserved.
     sold_out: bool,
+    /// Ticket type display name.
+    title: String,
 
     /// Current attendee-facing price label for this ticket type.
     current_price_label: Option<String>,
+    /// Current ticket price in minor units.
+    current_price_minor: Option<i64>,
     /// Number of seats still available for this ticket type.
     remaining_seats: Option<i32>,
 }
@@ -770,9 +838,15 @@ impl EventTicketAvailability {
             event_ticket_type_id: ticket_type.event_ticket_type_id,
             is_sellable_now: ticket_type.is_sellable_now(),
             sold_out: ticket_type.sold_out,
+            title: ticket_type.title.clone(),
 
-            current_price_label: payment_currency_code
-                .and_then(|currency_code| ticket_type.formatted_current_price(currency_code)),
+            current_price_label: match ticket_type.current_amount_minor() {
+                Some(0) => Some("Free".to_string()),
+                Some(_) => payment_currency_code
+                    .and_then(|currency_code| ticket_type.formatted_current_price(currency_code)),
+                None => None,
+            },
+            current_price_minor: ticket_type.current_amount_minor(),
             remaining_seats: ticket_type.remaining_seats,
         }
     }
@@ -796,7 +870,7 @@ async fn create_checkout_hold(
     payments_cfg: Option<&PaymentsConfig>,
     user_id: Uuid,
     input: &CheckoutInput,
-) -> Result<PreparedEventCheckout, HandlerError> {
+) -> Result<PrepareEventCheckoutPurchaseResult, HandlerError> {
     // Require an explicit ticket selection before opening checkout
     let event_ticket_type_id = input
         .event_ticket_type_id
@@ -806,16 +880,18 @@ async fn create_checkout_hold(
     db.prepare_event_checkout_purchase(
         community_id,
         &PrepareEventCheckoutPurchaseInput {
-            configured_provider: payments_cfg.map(PaymentsConfig::provider),
-            discount_code: input.discount_code.clone(),
             event_id,
             event_ticket_type_id,
-            registration_answers: input.registration_answers.registration_answers.clone(),
             user_id,
+
+            admission_offer_id: input.admission_offer_id,
+            discount_code: input.discount_code.clone(),
+            payment_provider: payments_cfg.map(PaymentsConfig::provider),
+            registration_answers: input.registration_answers.registration_answers.clone(),
         },
     )
     .await
-    .map_err(Into::into)
+    .map_err(HandlerError::from)
 }
 
 /// Ensures attendee-facing event flows only continue for active events.
@@ -880,6 +956,20 @@ fn public_event_url(community_name: &str, group_slug: &str, event_slug: &str, ur
     }
 
     url
+}
+
+/// Returns whether registration answers should be deferred until waitlist promotion.
+fn should_defer_registration_answers(
+    event: &EventSummary,
+    event_ticket_type_id: Option<Uuid>,
+) -> bool {
+    !event.attendee_approval_required
+        && event.waitlist_enabled
+        && if event.is_ticketed() {
+            event_ticket_type_id.is_some()
+        } else {
+            event.remaining_capacity == Some(0)
+        }
 }
 
 /// Returns whether a public event request should canonicalize to a pretty group slug.

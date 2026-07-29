@@ -93,9 +93,20 @@ insert into event (
     current_timestamp + interval '1 day'
 );
 
--- Event invitation
-insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'invitedUserID', 'invitation-pending');
+-- Event invitation offer
+insert into admission_offer (
+    event_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'eventID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'invitedUserID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -114,9 +125,9 @@ select lives_ok(
 );
 
 select is(
-    (select status from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
-    'invitation-rejected',
-    'Should persist rejected invitation status'
+    (select status from admission_offer where event_id = :'eventID' and user_id = :'invitedUserID'),
+    'declined',
+    'Should persist declined offer status'
 );
 
 -- Should reject rejecting non-pending invitations.
@@ -143,7 +154,7 @@ select results_eq(
             group_id,
             resource_id,
             resource_type,
-            details
+            details - 'admission_offer_id'
         from audit_log
     $$,
     format(

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -37,11 +37,19 @@ select plan(15);
 \set rejectedRefundID 'd4060000-0000-0000-0000-000000000030'
 \set rejectedRequestID 'd4060000-0000-0000-0000-000000000031'
 \set rejectedUserID 'd4060000-0000-0000-0000-000000000032'
+\set replacementClaimID 'd4060000-0000-0000-0000-000000000035'
+\set replacementOfferID 'd4060000-0000-0000-0000-000000000040'
+\set replacementPurchaseID 'd4060000-0000-0000-0000-000000000036'
+\set replacementRefundedPurchaseID 'd4060000-0000-0000-0000-000000000037'
+\set replacementRefundID 'd4060000-0000-0000-0000-000000000038'
+\set replacementUserID 'd4060000-0000-0000-0000-000000000039'
 \set staleClaimID 'd4060000-0000-0000-0000-000000000022'
 \set stalePurchaseID 'd4060000-0000-0000-0000-000000000023'
 \set staleRefundID 'd4060000-0000-0000-0000-000000000024'
 \set staleUserID 'd4060000-0000-0000-0000-000000000025'
 \set ticketTypeID 'd4060000-0000-0000-0000-000000000026'
+\set ticketPriceWindowID 'd4060000-0000-0000-0000-000000000033'
+\set waitlistUserID 'd4060000-0000-0000-0000-000000000034'
 \set wrongClaimID 'd4060000-0000-0000-0000-000000000027'
 
 -- ============================================================================
@@ -76,8 +84,21 @@ insert into group_category (community_id, group_category_id, name)
 values (:'communityID', :'groupCategoryID', 'Groups');
 
 -- Group owning the finalization event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
+insert into "group" (
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    payment_recipient,
+    slug
+) values (
+    :'communityID',
+    :'groupCategoryID',
+    :'groupID',
+    'Group',
+    '{"provider": "stripe", "recipient_id": "acct_finalize"}'::jsonb,
+    'group'
+);
 
 -- Users covering organizer, attendee-request, automatic, incomplete, rejected, and stale claims
 insert into "user" (auth_hash, email, user_id, username) values
@@ -86,7 +107,9 @@ insert into "user" (auth_hash, email, user_id, username) values
     ('incomplete', 'incomplete@example.test', :'incompleteUserID', 'incomplete'),
     ('questions', 'questions@example.test', :'questionsUserID', 'questions'),
     ('rejected', 'rejected@example.test', :'rejectedUserID', 'rejected'),
-    ('stale', 'stale@example.test', :'staleUserID', 'stale');
+    ('replacement', 'replacement@example.test', :'replacementUserID', 'replacement'),
+    ('stale', 'stale@example.test', :'staleUserID', 'stale'),
+    ('waitlist', 'waitlist@example.test', :'waitlistUserID', 'waitlist');
 
 -- Event owning every finalization purchase
 insert into event (
@@ -97,8 +120,11 @@ insert into event (
     group_id,
     name,
     payment_currency_code,
+    published,
     slug,
-    timezone
+    starts_at,
+    timezone,
+    waitlist_enabled
 ) values (
     'Event',
     :'eventCategoryID',
@@ -107,13 +133,27 @@ insert into event (
     :'groupID',
     'Event',
     'USD',
+    true,
     'event',
-    'UTC'
+    current_timestamp + interval '2 days',
+    'UTC',
+    true
 );
 
 -- Ticket type referenced by every finalization purchase
 insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 100, 'General admission');
+values (:'eventID', :'ticketTypeID', 1, 6, 'General admission');
+
+-- Current paid price used when reconciliation promotes the queue
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'ticketPriceWindowID',
+    2500,
+    :'ticketTypeID'
+);
 
 -- Discount reservation released by successful attendee-request finalization
 insert into event_discount_code (
@@ -134,6 +174,33 @@ insert into event_discount_code (
     :'eventID',
     'fixed_amount',
     'Save 5'
+);
+
+-- Completed offer shared by a late payment and its replacement.
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'replacementOfferID',
+    2500,
+    'USD',
+    0,
+    :'eventID',
+    :'ticketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'completed',
+    'General admission',
+    :'replacementUserID'
 );
 
 -- Purchases covering successful, automatic, incomplete, rejected, and stale finalization
@@ -159,11 +226,38 @@ insert into event_purchase (
     (2500, 'USD', :'eventID', :'rejectedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'rejectedUserID', 0, null, null, 'stripe', 'pi_rejected'),
     (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'staleUserID', 0, null, null, 'stripe', 'pi_stale');
 
+-- Replacement and late-refund purchases linked to the same completed offer.
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+) values
+    (
+        :'replacementOfferID', 2500, 'USD', 0, :'eventID', :'replacementPurchaseID',
+        :'ticketTypeID', 'stripe', 'pi_replacement', 'completed', 'General admission',
+        :'replacementUserID'
+    ),
+    (
+        :'replacementOfferID', 2500, 'USD', 0, :'eventID', :'replacementRefundedPurchaseID',
+        :'ticketTypeID', 'stripe', 'pi_replaced', 'refund-pending', 'General admission',
+        :'replacementUserID'
+    );
+
 -- Attendee rows removed from active capacity only after successful finalization
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id) values
     (true, current_timestamp, :'eventID', 'confirmed', :'happyUserID'),
     (false, null, :'eventID', 'confirmed', :'incompleteUserID'),
     (false, null, :'eventID', 'registration-questions-pending', :'questionsUserID'),
+    (true, current_timestamp, :'eventID', 'confirmed', :'replacementUserID'),
     (false, null, :'eventID', 'confirmed', :'staleUserID');
 
 -- Refund requests covering approving and rejected decision history
@@ -220,7 +314,19 @@ insert into event_purchase_refund (
     (2500, 1, :'incompleteClaimID', current_timestamp, 'USD', :'incompletePurchaseID', :'incompleteRefundID', 'refund-incomplete', :'actorID', 'event-cancellation', 'stripe', null, 'processing', null, null, null),
     (2000, 1, :'questionsClaimID', current_timestamp, 'USD', :'questionsPurchaseID', :'questionsRefundID', 'refund-questions', null, 'automatic-unfulfillable-checkout', 'stripe', null, 'processing', null, 're_questions', current_timestamp),
     (2500, 1, :'rejectedClaimID', current_timestamp, 'USD', :'rejectedPurchaseID', :'rejectedRefundID', 'refund-rejected', :'actorID', 'event-cancellation', 'stripe', null, 'processing', :'rejectedRequestID', 're_rejected', current_timestamp),
+    (2500, 1, :'replacementClaimID', current_timestamp, 'USD', :'replacementRefundedPurchaseID', :'replacementRefundID', 'refund-replaced', null, 'automatic-unfulfillable-checkout', 'stripe', null, 'processing', null, 're_replaced', current_timestamp),
     (2500, 1, :'staleClaimID', current_timestamp, 'USD', :'stalePurchaseID', :'staleRefundID', 'refund-stale', :'actorID', 'event-cancellation', 'stripe', null, 'processing', null, 're_stale', current_timestamp);
+
+-- FIFO waitlist entry offered the seat released by successful finalization
+insert into event_waitlist (
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    :'eventID',
+    :'ticketTypeID',
+    :'waitlistUserID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -299,7 +405,8 @@ select lives_ok(
             select finalize_event_purchase_refund(
                 %L::uuid,
                 %L::uuid,
-                jsonb_build_object('scenario', 'happy')
+                jsonb_build_object('scenario', 'happy'),
+                'stripe'
             )
         $$,
         :'happyRefundID',
@@ -356,6 +463,31 @@ select results_eq(
         'finalized'::text
     ) $$, :'actorID', :'actorID'),
     'Should finalize purchase, attendance, review, discount, and claim state atomically'
+);
+
+-- Should reconcile the ticket queue after refund capacity is released
+select results_eq(
+    format(
+        $$
+            select
+                ao.status,
+                ao.user_id,
+                count(ew.user_id)
+            from admission_offer ao
+            left join event_waitlist ew
+                on ew.event_id = ao.event_id
+                and ew.event_ticket_type_id = ao.event_ticket_type_id
+            where ao.event_id = %L::uuid
+            and ao.source = 'waitlist'
+            group by ao.status, ao.user_id
+        $$,
+        :'eventID'
+    ),
+    format(
+        $$ values ('pending'::text, %L::uuid, 0::bigint) $$,
+        :'waitlistUserID'
+    ),
+    'Should reconcile the ticket queue after refund capacity is released'
 );
 
 -- Should atomically enqueue the supplied completion notification
@@ -466,6 +598,53 @@ select results_eq(
     $$, :'eventID', :'questionsUserID'),
     $$ values (true, null::uuid, 'attendance-canceled'::text, 1) $$,
     'Should preserve automatic refund cancellation ownership and released discount inventory'
+);
+
+-- Should finalize an automatic refund after a replacement purchase completes.
+select lives_ok(
+    format(
+        $$
+            select finalize_event_purchase_refund(
+                %L::uuid,
+                %L::uuid,
+                jsonb_build_object('scenario', 'replacement')
+            )
+        $$,
+        :'replacementRefundID',
+        :'replacementClaimID'
+    ),
+    'Should finalize an automatic refund after a replacement purchase completes'
+);
+
+-- Should preserve attendance owned by the completed replacement purchase.
+select results_eq(
+    format($$
+        select
+            refunded_purchase.status,
+            replacement_purchase.status,
+            ea.attendance_canceled_at,
+            ea.checked_in,
+            ea.status,
+            epr.status
+        from event_purchase refunded_purchase
+        join event_purchase replacement_purchase
+            on replacement_purchase.event_purchase_id = %L::uuid
+        join event_attendee ea
+            on ea.event_id = refunded_purchase.event_id
+            and ea.user_id = refunded_purchase.user_id
+        join event_purchase_refund epr
+            on epr.event_purchase_id = refunded_purchase.event_purchase_id
+        where refunded_purchase.event_purchase_id = %L::uuid
+    $$, :'replacementPurchaseID', :'replacementRefundedPurchaseID'),
+    $$ values (
+        'refunded'::text,
+        'completed'::text,
+        null::timestamptz,
+        true,
+        'confirmed'::text,
+        'finalized'::text
+    ) $$,
+    'Should preserve attendance owned by the completed replacement purchase'
 );
 
 -- Should finalize an event cancellation without rewriting a rejected request

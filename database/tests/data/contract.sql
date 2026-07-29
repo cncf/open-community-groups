@@ -290,6 +290,54 @@ insert into "user" (
         'Contract Cancelee',
         '00000000-0000-0000-0000-00000000c0e9',
         'contract-cancelee'
+    ),
+    (
+        'contract_hash_invitee',
+        'invitee.contract@example.com',
+        true,
+        'Contract Invitee',
+        '00000000-0000-0000-0000-00000000c0ed',
+        'contract-invitee'
+    ),
+    (
+        'contract_hash_requester',
+        'requester.contract@example.com',
+        true,
+        'Contract Requester',
+        '00000000-0000-0000-0000-00000000c0ee',
+        'contract-requester'
+    ),
+    (
+        'contract_hash_offer_accepter',
+        'offer-accepter.contract@example.com',
+        true,
+        'Contract Offer Accepter',
+        '00000000-0000-0000-0000-00000000c0ef',
+        'contract-offer-accepter'
+    ),
+    (
+        'contract_hash_offer_decliner',
+        'offer-decliner.contract@example.com',
+        true,
+        'Contract Offer Decliner',
+        '00000000-0000-0000-0000-00000000c0f0',
+        'contract-offer-decliner'
+    ),
+    (
+        'contract_hash_reconcile_stale',
+        'reconcile-stale.contract@example.com',
+        true,
+        'Contract Reconcile Stale',
+        '00000000-0000-0000-0000-00000000c0e0',
+        'contract-reconcile-stale'
+    ),
+    (
+        'contract_hash_reconcile_promotee',
+        'reconcile-promotee.contract@example.com',
+        true,
+        'Contract Reconcile Promotee',
+        '00000000-0000-0000-0000-00000000c0ff',
+        'contract-reconcile-promotee'
     );
 
 -- ============================================================================
@@ -741,18 +789,6 @@ insert into event_attendee (
     '00000000-0000-0000-0000-00000000c042'
 );
 
-insert into event_attendee (
-    event_id,
-    manually_invited,
-    status,
-    user_id
-) values (
-    '00000000-0000-0000-0000-00000000c031',
-    true,
-    'invitation-pending',
-    '00000000-0000-0000-0000-00000000c044'
-);
-
 -- ============================================================================
 -- EVENT WAITLIST
 -- ============================================================================
@@ -900,6 +936,27 @@ insert into event_ticket_price_window (
     '00000000-0000-0000-0000-00000000c081'
 );
 
+-- Organizer invitation offer consumed by dashboard invitation contract checks
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    source,
+    status,
+    user_id,
+
+    event_ticket_type_id,
+    expires_at
+) values (
+    '00000000-0000-0000-0000-00000000c083',
+    '00000000-0000-0000-0000-00000000c031',
+    'organizer_invitation',
+    'pending',
+    '00000000-0000-0000-0000-00000000c044',
+
+    '00000000-0000-0000-0000-00000000c081',
+    '2099-05-20 18:30:00+00'
+);
+
 -- ============================================================================
 -- EVENT PURCHASES
 -- ============================================================================
@@ -1037,7 +1094,7 @@ insert into event_purchase (
     ),
     (
         0,
-        'USD',
+        null,
         '00000000-0000-0000-0000-00000000c0d0',
         '00000000-0000-0000-0000-00000000c0f3',
         '00000000-0000-0000-0000-00000000c0d3',
@@ -1286,6 +1343,202 @@ insert into event_attendee (
 ) values
     ('00000000-0000-0000-0000-00000000c0d5', '00000000-0000-0000-0000-00000000c0e8'),
     ('00000000-0000-0000-0000-00000000c0d5', '00000000-0000-0000-0000-00000000c0e9');
+
+-- RSVP offer dedicated to the admission-offer cancellation contract
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    source,
+    status,
+    user_id,
+
+    expires_at
+) values (
+    '00000000-0000-0000-0000-00000000c0d7',
+    '00000000-0000-0000-0000-00000000c0d5',
+    'organizer_invitation',
+    'pending',
+    '00000000-0000-0000-0000-00000000c046',
+
+    '2099-08-01 09:00:00+00'
+);
+
+-- Non-ticketed subgroup test events dedicated to the admission allocation,
+-- offer accept and decline, and enrollment reconciliation contracts
+insert into event (
+    attendee_approval_required,
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone,
+    waitlist_enabled
+) values
+    (
+        false,
+        100,
+        'An invite event used by Rust database contract tests',
+        '2099-08-03 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000c0d8',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Invite Event',
+        true,
+        'contract-invite-event',
+        '2099-08-03 10:00:00+00',
+        true,
+        'UTC',
+        false
+    ),
+    (
+        true,
+        100,
+        'An invitation request event used by Rust database contract tests',
+        '2099-08-04 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000c0d9',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Invitation Request Event',
+        true,
+        'contract-invitation-request-event',
+        '2099-08-04 10:00:00+00',
+        true,
+        'UTC',
+        false
+    ),
+    (
+        false,
+        100,
+        'An offer accept event used by Rust database contract tests',
+        '2099-08-05 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000c0da',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Offer Accept Event',
+        true,
+        'contract-offer-accept-event',
+        '2099-08-05 10:00:00+00',
+        true,
+        'UTC',
+        false
+    ),
+    (
+        false,
+        100,
+        'An offer decline event used by Rust database contract tests',
+        '2099-08-06 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000c0dc',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Offer Decline Event',
+        true,
+        'contract-offer-decline-event',
+        '2099-08-06 10:00:00+00',
+        true,
+        'UTC',
+        false
+    ),
+    (
+        false,
+        1,
+        'A reconciliation due event used by Rust database contract tests',
+        '2099-08-07 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000c0de',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c022',
+        'Contract Reconcile Due Event',
+        true,
+        'contract-reconcile-due-event',
+        '2099-08-07 10:00:00+00',
+        true,
+        'UTC',
+        true
+    );
+
+-- Pending RSVP invitation request consumed by the acceptance contract
+insert into event_invitation_request (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-09 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c0d9',
+    'pending',
+    '00000000-0000-0000-0000-00000000c0ee'
+);
+
+-- RSVP offers dedicated to the admission-offer accept and decline contracts
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    source,
+    status,
+    user_id,
+
+    expires_at
+) values
+    (
+        '00000000-0000-0000-0000-00000000c0db',
+        '00000000-0000-0000-0000-00000000c0da',
+        'organizer_invitation',
+        'pending',
+        '00000000-0000-0000-0000-00000000c0ef',
+
+        '2099-08-05 09:00:00+00'
+    ),
+    (
+        '00000000-0000-0000-0000-00000000c0dd',
+        '00000000-0000-0000-0000-00000000c0dc',
+        'organizer_invitation',
+        'pending',
+        '00000000-0000-0000-0000-00000000c0f0',
+
+        '2099-08-06 09:00:00+00'
+    );
+
+-- Expired RSVP offer that keeps the reconciliation event due for the worker
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    source,
+    status,
+    user_id,
+
+    expires_at
+) values (
+    '00000000-0000-0000-0000-00000000c0df',
+    '2023-12-31 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c0de',
+    'organizer_invitation',
+    'pending',
+    '00000000-0000-0000-0000-00000000c0e0',
+
+    '2024-01-01 10:00:00+00'
+);
+
+-- RSVP waitlist entry promoted by the reconciliation worker contract
+insert into event_waitlist (
+    event_id,
+    user_id
+) values (
+    '00000000-0000-0000-0000-00000000c0de',
+    '00000000-0000-0000-0000-00000000c0ff'
+);
 
 -- ============================================================================
 -- CFS

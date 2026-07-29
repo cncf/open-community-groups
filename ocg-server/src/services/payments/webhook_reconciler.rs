@@ -341,7 +341,11 @@ impl PaymentsWebhookReconciler {
                 "refund webhook amount does not match purchase"
             ));
         }
-        if !purchase.currency_code.eq_ignore_ascii_case(currency_code) {
+        if purchase
+            .currency_code
+            .as_deref()
+            .is_none_or(|purchase_currency| !purchase_currency.eq_ignore_ascii_case(currency_code))
+        {
             return Err(anyhow::anyhow!(
                 "refund webhook currency does not match purchase"
             ));

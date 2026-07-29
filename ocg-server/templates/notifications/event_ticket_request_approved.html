@@ -1,0 +1,32 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Ticket Request Approved Notification -#}
+{% block subject -%}
+  Ticket request approved: {{ event_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Your request for {{ event_name }} was approved.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    <strong>{{ group_name }}</strong> approved your request for
+    <strong>{{ event_name }}</strong> and assigned
+    <strong>{{ ticket_title }}</strong> at the current price of
+    <strong>{{ self.price_label() }}</strong>.
+    No charge or registration has occurred.
+    The price is finalized when you first claim the offer and may change before then.
+    Claim or decline the offer by
+    <strong>{{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
+  </p>
+
+  {{ email::button(link = dashboard_url, text = "Claim or decline offer", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because your ticket request for {{ event_name }} was
+  approved.
+{% endblock footer -%}
+{# End event ticket request approved notification -#}

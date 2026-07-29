@@ -57,28 +57,124 @@ returns json as $$
             from filters
             where ts_query_value is not null
         ),
+        -- Normalize attendee and organizer-offer rows into one enrollment shape
+        enrollment_candidates as (
+            select
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                ea.checked_in,
+                ea.checked_in_at,
+                ea.created_at,
+                ea.event_id,
+                null::uuid as event_ticket_type_id,
+                ea.manually_invited,
+                null::timestamptz as offer_expires_at,
+                ea.registration_answers,
+                0 as source_priority,
+                ea.status,
+                null::text as ticket_title,
+                ea.user_id
+            from event_attendee ea
+            where ea.status in (
+                'attendance-canceled',
+                'confirmed',
+                'invitation-canceled',
+                'invitation-pending',
+                'invitation-rejected',
+                'registration-questions-pending'
+            )
+
+            union all
+
+            select
+                ao.admission_offer_id,
+                ao.source as admission_offer_source,
+                ao.status as admission_offer_status,
+                false as checked_in,
+                null::timestamptz as checked_in_at,
+                ao.created_at,
+                ao.event_id,
+                ao.event_ticket_type_id,
+                true as manually_invited,
+                ao.expires_at as offer_expires_at,
+                null::jsonb as registration_answers,
+                case
+                    when ao.status in ('checkout_pending', 'pending') then 1
+                    else 0
+                end as source_priority,
+                case
+                    when ao.status = 'canceled' then 'invitation-canceled'
+                    when ao.status = 'declined' then 'invitation-rejected'
+                    when ao.status = 'expired' then 'invitation-expired'
+                    when ao.event_ticket_type_id is null
+                        and jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0
+                        then 'registration-questions-pending'
+                    else 'invitation-pending'
+                end as status,
+                coalesce(ao.ticket_title, ett.title) as ticket_title,
+                ao.user_id
+            from admission_offer ao
+            join event e using (event_id)
+            left join event_ticket_type ett using (event_ticket_type_id)
+            where ao.source = 'organizer_invitation'
+            and ao.status in ('canceled', 'checkout_pending', 'declined', 'expired', 'pending')
+        ),
+        -- Keep the latest attendee or organizer-offer state for each user
+        enrollment_rows as (
+            select
+                admission_offer_id,
+                admission_offer_source,
+                admission_offer_status,
+                checked_in,
+                checked_in_at,
+                created_at,
+                event_id,
+                event_ticket_type_id,
+                manually_invited,
+                offer_expires_at,
+                registration_answers,
+                status,
+                ticket_title,
+                user_id
+            from (
+                select
+                    enrollment_candidates.*,
+                    row_number() over (
+                        partition by event_id, user_id
+                        order by source_priority desc, created_at desc
+                    ) as enrollment_rank
+                from enrollment_candidates
+            ) ranked_enrollment
+            where enrollment_rank = 1
+        ),
         -- Select visible attendee and invitation rows
         base_attendees as (
             select
-                ea.checked_in,
-                extract(epoch from ea.created_at)::bigint as created_at,
-                ea.created_at as created_at_sort,
+                er.admission_offer_id,
+                er.admission_offer_source,
+                er.admission_offer_status,
+                er.checked_in,
+                extract(epoch from er.created_at)::bigint as created_at,
+                er.created_at as created_at_sort,
                 u.email,
-                ea.manually_invited,
-                ea.registration_answers,
-                ea.status,
+                er.manually_invited,
+                er.registration_answers,
+                er.status,
                 e.canceled as event_canceled,
                 u.user_id,
                 u.username,
 
-                extract(epoch from ea.checked_in_at)::bigint as checked_in_at,
+                extract(epoch from er.checked_in_at)::bigint as checked_in_at,
                 ep.amount_minor,
                 u.company,
                 ep.currency_code,
                 ep.discount_code,
                 ep.event_purchase_id,
-                ep.event_ticket_type_id,
-                ep.ticket_title,
+                coalesce(ep.event_ticket_type_id, er.event_ticket_type_id)
+                    as event_ticket_type_id,
+                extract(epoch from er.offer_expires_at)::bigint as offer_expires_at,
+                coalesce(ep.ticket_title, er.ticket_title) as ticket_title,
                 u.bio,
                 u.bluesky_url,
                 u.name,
@@ -115,14 +211,15 @@ returns json as $$
                 u.website_url,
 
                 (
-                    ea.status in ('confirmed', 'registration-questions-pending')
+                    er.status in ('confirmed', 'registration-questions-pending')
+                    and er.admission_offer_id is null
                     and u.email_verified = true
                     and coalesce(u.optional_notifications_enabled, true) = true
                     and pending_ep.event_purchase_id is null
                 ) as can_receive_attendee_email
-            from event_attendee ea
-            join event e on e.event_id = ea.event_id
-            join "user" u on u.user_id = ea.user_id
+            from enrollment_rows er
+            join event e on e.event_id = er.event_id
+            join "user" u on u.user_id = er.user_id
             left join lateral (
                 select
                     event_purchase_id,
@@ -136,8 +233,8 @@ returns json as $$
                     hold_expires_at,
                     provider_checkout_session_id
                 from event_purchase
-                where event_id = ea.event_id
-                and user_id = ea.user_id
+                where event_id = er.event_id
+                and user_id = er.user_id
                 and status in (
                     'completed',
                     'pending',
@@ -160,22 +257,15 @@ returns json as $$
             left join lateral (
                 select event_purchase_id
                 from event_purchase
-                where event_id = ea.event_id
-                and user_id = ea.user_id
+                where event_id = er.event_id
+                and user_id = er.user_id
                 and status = 'pending'
                 and hold_expires_at > current_timestamp
                 order by created_at desc, event_purchase_id desc
                 limit 1
             ) pending_ep on true
             where e.group_id = p_group_id
-            and ea.event_id = p_event_id
-            and ea.status in (
-                'attendance-canceled',
-                'confirmed',
-                'invitation-pending',
-                'invitation-rejected',
-                'registration-questions-pending'
-            )
+            and er.event_id = p_event_id
         ),
         -- Apply table filters while retaining internal search data
         filtered_attendees as (
@@ -250,11 +340,16 @@ returns json as $$
                     'website_url', website_url
                 )) as "user",
 
+                admission_offer_id,
+                admission_offer_source,
+                admission_offer_status,
                 amount_minor,
                 checked_in_at,
                 currency_code,
                 discount_code,
                 event_purchase_id,
+                event_ticket_type_id,
+                offer_expires_at,
                 refund_progress,
                 refund_request_status,
                 ticket_title,

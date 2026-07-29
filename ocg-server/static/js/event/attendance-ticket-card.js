@@ -7,18 +7,22 @@ import { toTrimmedString } from "/static/js/common/utils.js";
  */
 class AttendanceTicketCard extends LitWrapper {
   static properties = {
+    attendeeApprovalRequired: { type: Boolean },
     canceled: { type: Boolean },
     registrationWindowOpen: { type: Boolean },
     ticket: { type: Object },
     ticketPurchaseAvailable: { type: Boolean },
+    waitlistEnabled: { type: Boolean },
   };
 
   constructor() {
     super();
+    this.attendeeApprovalRequired = false;
     this.canceled = false;
     this.registrationWindowOpen = true;
     this.ticket = null;
     this.ticketPurchaseAvailable = false;
+    this.waitlistEnabled = false;
   }
 
   get _eventTicketTypeId() {
@@ -34,12 +38,20 @@ class AttendanceTicketCard extends LitWrapper {
   }
 
   get _isSellableNow() {
-    return this.ticket?.is_sellable_now === true && Boolean(this._priceLabel);
+    return (
+      this.ticket?.active !== false && this.ticket?.is_sellable_now === true && Boolean(this._priceLabel)
+    );
   }
 
   get _isDisabled() {
     return (
-      this.canceled || !this.registrationWindowOpen || !this.ticketPurchaseAvailable || !this._isSellableNow
+      this.canceled ||
+      !this.registrationWindowOpen ||
+      this.ticket?.active === false ||
+      !this._priceLabel ||
+      (!this.attendeeApprovalRequired &&
+        !(this.ticketPurchaseAvailable && this._isSellableNow) &&
+        !(this.waitlistEnabled && this.ticket?.sold_out === true))
     );
   }
 
@@ -67,6 +79,8 @@ class AttendanceTicketCard extends LitWrapper {
         <input
           data-attendance-role="ticket-type-option"
           data-ticket-purchasable=${String(this._isSellableNow)}
+          data-ticket-price-minor=${String(this.ticket?.current_price_minor ?? "")}
+          data-ticket-sold-out=${String(this.ticket?.sold_out === true)}
           type="radio"
           name="event_ticket_type_id"
           value=${this._eventTicketTypeId}

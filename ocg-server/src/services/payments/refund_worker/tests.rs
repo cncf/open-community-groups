@@ -22,6 +22,7 @@ use crate::{
             DynPaymentsProvider, RefundPaymentResult, RefundPaymentStatus,
             notification_composer::PaymentsNotificationComposer, provider::MockPaymentsProvider,
         },
+        workers::run_until_cancelled,
     },
     templates::notifications::EventRefundApproved,
     types::{
@@ -31,7 +32,7 @@ use crate::{
     },
 };
 
-use super::{RefundRecoveryWorker, RefundWorker, run_until_cancelled};
+use super::{RefundRecoveryWorker, RefundWorker};
 
 #[tokio::test]
 async fn process_next_refund_creates_missing_provider_refund_and_finalizes_success() {
@@ -65,9 +66,14 @@ async fn process_next_refund_creates_missing_provider_refund_and_finalizes_succe
         .times(1)
         .return_once(move |_, _, _, _| Ok(succeeded_refund));
     db.expect_finalize_event_purchase_refund()
-        .with(eq(refund_id), eq(claim_id), eq(expected_template_data))
+        .with(
+            eq(refund_id),
+            eq(claim_id),
+            eq(expected_template_data),
+            eq(Some(PaymentProvider::Stripe)),
+        )
         .times(1)
-        .return_once(|_, _, _| Ok(()));
+        .return_once(|_, _, _, _| Ok(()));
 
     // Setup lookup-before-create and stable idempotency expectations
     let mut provider = MockPaymentsProvider::new();
@@ -140,9 +146,14 @@ async fn process_next_refund_finalizes_persisted_success_without_provider_call_a
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_finalize_event_purchase_refund()
-        .with(eq(refund_id), eq(claim_id), eq(expected_template_data))
+        .with(
+            eq(refund_id),
+            eq(claim_id),
+            eq(expected_template_data),
+            eq(Some(PaymentProvider::Stripe)),
+        )
         .times(1)
-        .return_once(|_, _, _| Ok(()));
+        .return_once(|_, _, _, _| Ok(()));
 
     // Forbid the legacy post-commit notification enqueue
     let mut notifications_manager = MockNotificationsManager::new();
@@ -194,9 +205,14 @@ async fn process_next_refund_finds_existing_success_without_creating_refund() {
         .times(1)
         .return_once(move |_, _, _, _| Ok(succeeded_refund));
     db.expect_finalize_event_purchase_refund()
-        .with(eq(refund_id), eq(claim_id), eq(expected_template_data))
+        .with(
+            eq(refund_id),
+            eq(claim_id),
+            eq(expected_template_data),
+            eq(Some(PaymentProvider::Stripe)),
+        )
         .times(1)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     // Return the existing provider success and forbid another creation
     let mut provider = MockPaymentsProvider::new();
@@ -246,9 +262,14 @@ async fn process_next_refund_handles_persisted_success_finalization_error() {
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_finalize_event_purchase_refund()
-        .with(eq(refund_id), eq(claim_id), eq(expected_template_data))
+        .with(
+            eq(refund_id),
+            eq(claim_id),
+            eq(expected_template_data),
+            eq(Some(PaymentProvider::Stripe)),
+        )
         .times(1)
-        .returning(|_, _, _| Err(anyhow::anyhow!("finalization unavailable")));
+        .returning(|_, _, _, _| Err(anyhow::anyhow!("finalization unavailable")));
     db.expect_record_event_purchase_refund_retryable_failure()
         .withf(move |id, claim, message| {
             *id == refund_id && *claim == claim_id && message == "finalization unavailable"
@@ -472,9 +493,14 @@ async fn process_next_refund_records_retryable_failure_after_finalization_error(
         .times(1)
         .return_once(move |_, _, _, _| Ok(succeeded_refund));
     db.expect_finalize_event_purchase_refund()
-        .with(eq(refund_id), eq(claim_id), eq(expected_template_data))
+        .with(
+            eq(refund_id),
+            eq(claim_id),
+            eq(expected_template_data),
+            eq(Some(PaymentProvider::Stripe)),
+        )
         .times(1)
-        .returning(|_, _, _| Err(anyhow::anyhow!("finalization unavailable")));
+        .returning(|_, _, _, _| Err(anyhow::anyhow!("finalization unavailable")));
     db.expect_record_event_purchase_refund_retryable_failure()
         .withf(move |id, claim, message| {
             *id == refund_id && *claim == claim_id && message == "finalization unavailable"
@@ -982,6 +1008,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         group_slug: "group".to_string(),
         has_registration_questions: false,
         has_related_events: false,
+        is_ticketed: false,
         kind: EventKind::default(),
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Event".to_string(),

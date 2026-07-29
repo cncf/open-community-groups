@@ -307,6 +307,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
 
     // Group events management endpoints
     let events_management = Router::new()
+        .route(
+            "/admission-offers/{admission_offer_id}/cancel",
+            put(dashboard::group::attendees::cancel_event_admission_offer),
+        )
         .route("/events/add", post(dashboard::group::events::add))
         .route("/events/preview", post(dashboard::group::events::preview))
         .route(
@@ -322,11 +326,11 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             post(dashboard::group::attendees::manual_check_in),
         )
         .route(
-            "/events/{event_id}/attendees/{user_id}/invitation/cancel",
-            put(dashboard::group::attendees::cancel_event_attendee_invitation),
+            "/events/{event_id}/attendees/{user_id}/invitation-request/accept",
+            put(dashboard::group::attendees::accept_invitation_request),
         )
         .route(
-            "/events/{event_id}/attendees/{user_id}/invitation-request/accept",
+            "/events/{event_id}/attendees/{user_id}/invitation-request/reissue",
             put(dashboard::group::attendees::accept_invitation_request),
         )
         .route(
@@ -494,12 +498,12 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             put(dashboard::user::invitations::reject_community_team_invitation),
         )
         .route(
-            "/invitations/event/{event_id}/accept",
-            put(dashboard::user::invitations::accept_event_attendee_invitation),
+            "/invitations/event-offers/{admission_offer_id}/accept",
+            put(dashboard::user::invitations::accept_event_admission_offer),
         )
         .route(
-            "/invitations/event/{event_id}/reject",
-            put(dashboard::user::invitations::reject_event_attendee_invitation),
+            "/invitations/event-offers/{admission_offer_id}/decline",
+            put(dashboard::user::invitations::decline_event_admission_offer),
         )
         .route(
             "/invitations/group/{group_id}/accept",

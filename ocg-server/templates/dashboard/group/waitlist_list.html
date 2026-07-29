@@ -1,3 +1,4 @@
+{% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
@@ -77,11 +78,11 @@
       <option value="created-at-asc"
               {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc) -%}
                 selected
-              {% endif -%}>Joined ↑</option>
+              {% endif -%}>Created ↑</option>
       <option value="created-at-desc"
               {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc) -%}
                 selected
-              {% endif -%}>Joined ↓</option>
+              {% endif -%}>Created ↓</option>
     </select>
   </form>
 </div>
@@ -156,9 +157,9 @@
           </div>
           {% endcall -%}
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-1.5">Queue</th>
+        <th scope="col" class="px-3 xl:px-5 py-1.5">Enrollment</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
-          <span class="whitespace-nowrap">Joined</span>
+          <span class="whitespace-nowrap">Created</span>
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>
@@ -222,17 +223,78 @@
             </td>
             {# End position -#}
             {# Queue -#}
-            <td class="px-3 xl:px-5 py-4">{{ entry.waitlist_position }}</td>
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex min-w-0 flex-col gap-1.5">
+                {% if let Some(ticket_title) = &entry.ticket_title -%}
+                  <div class="max-w-[260px] truncate font-medium text-stone-900"
+                       title="{{ ticket_title }}">{{ ticket_title }}</div>
+                {% endif -%}
+                <div>
+                  {% if let Some(offer_status) = entry.admission_offer_status -%}
+                    {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
+                      {{ badges::invitation_badge(label = "Offer pending") -}}
+                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
+                      {{ badges::invitation_badge(label = "Checkout pending") -}}
+                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
+                      {{ badges::invitation_badge(label = "Ticket claimed", tone = "success") -}}
+                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                      {{ badges::invitation_badge(label = "Offer expired", tone = "danger") -}}
+                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
+                      {{ badges::invitation_badge(label = "Offer canceled", tone = "danger") -}}
+                    {% else -%}
+                      {{ badges::invitation_badge(label = "Offer declined", tone = "danger") -}}
+                    {% endif -%}
+                  {% else if let Some(waitlist_position) = entry.waitlist_position -%}
+                    <span class="font-medium text-stone-900">Queue #{{ waitlist_position }}</span>
+                  {% else -%}
+                    <span class="text-stone-500">Queue</span>
+                  {% endif -%}
+                </div>
+                {% if let Some(offer_expires_at) = &entry.offer_expires_at -%}
+                  <div class="text-xs text-stone-500">
+                    {% if entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                      Expired
+                    {% else -%}
+                      Deadline
+                    {% endif -%}
+                    {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                  </div>
+                {% endif -%}
+              </div>
+            </td>
             {# End queue -#}
-            {# Joined date -#}
+            {# Created date -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {{ entry.created_at.format("%b %d, %Y") }}
             </td>
-            {# End joined date -#}
+            {# End created date -#}
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
               <div class="relative inline-flex justify-end">
-                {% if can_manage_events && !event.canceled && !event.is_past() && !event.is_ticketed() -%}
+                {% if can_manage_events
+                  && (entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                  || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)) -%}
+                  {% if let Some(admission_offer_id) = entry.admission_offer_id -%}
+                    <button type="button"
+                            aria-label="Cancel waiting list offer for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
+                            hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt="this"
+                            hx-trigger="confirmed"
+                            data-confirm-action
+                            data-confirm-message="Are you sure you want to cancel this waiting list offer?"
+                            data-confirm-text="Yes"
+                            data-success-message="Waiting list offer canceled."
+                            data-error-message="Something went wrong canceling this waiting list offer. Please try again later."
+                            class="btn-actions btn-tertiary flex items-center justify-center p-2">
+                      <div class="svg-icon size-4 icon-cancel"></div>
+                    </button>
+                  {% endif -%}
+                {% else if can_manage_events
+                  && !event.canceled
+                  && !event.is_past()
+                  && !event.is_ticketed()
+                  && entry.admission_offer_id.is_none() -%}
                   <div class="group relative">
                     <button type="button"
                             data-event-id="waitlist-{{ entry.user.user_id }}"
@@ -277,6 +339,8 @@
                             title="Past events cannot invite attendees."
                           {% else if event.is_ticketed() -%}
                             title="Manual invitations are not available for ticketed events."
+                          {% else if entry.admission_offer_id.is_some() -%}
+                            title="Waitlist offers cannot be manually reissued."
                           {% endif -%}
                           aria-label="Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}">
                     <div class="svg-icon size-4 icon-vertical-dots"></div>

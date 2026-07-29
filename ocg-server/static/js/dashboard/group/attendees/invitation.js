@@ -48,6 +48,7 @@ const getInvitationSearchField = (root) =>
 const getInvitationControls = (root) => ({
   form: getElementById(root, "attendee-invitation-form"),
   submit: getElementById(root, "submit-attendee-invitation"),
+  ticketTypeInput: getElementById(root, "attendee-invitation-ticket-type"),
   userInput: getElementById(root, "attendee-invitation-user-id"),
   emailInput: getElementById(root, "attendee-invitation-email"),
   selectedUser: getElementById(root, "attendee-invitation-selected-user"),
@@ -72,11 +73,12 @@ const setInvitationSubmissionField = (root, field) => {
  * @returns {void}
  */
 const clearInvitationState = (root) => {
-  const { userInput, emailInput, selectedUser } = getInvitationControls(root);
+  const { emailInput, selectedUser, ticketTypeInput, userInput } = getInvitationControls(root);
   const searchField = getInvitationSearchField(root);
 
   if (userInput) userInput.value = "";
   if (emailInput) emailInput.value = "";
+  if (ticketTypeInput) ticketTypeInput.value = "";
   setInvitationSubmissionField(root, "");
   selectedUser?.replaceChildren();
   if (typeof searchField?.clearSearch === "function") {
@@ -186,12 +188,14 @@ const renderInvitationSelectedEmail = (root, email) => {
  * @returns {void}
  */
 const updateInvitationSubmitState = (root) => {
-  const { form, submit, userInput, emailInput } = getInvitationControls(root);
+  const { emailInput, form, submit, ticketTypeInput, userInput } = getInvitationControls(root);
   if (!form || !submit) return;
 
   const userId = userInput?.value || "";
   const email = emailInput?.value.trim() || "";
-  submit.disabled = userId === "" && !isValidInvitationEmail(email);
+  const hasRecipient = userId !== "" || isValidInvitationEmail(email);
+  const hasTicketType = !ticketTypeInput || ticketTypeInput.value !== "";
+  submit.disabled = !hasRecipient || !hasTicketType;
 };
 
 /**
@@ -309,6 +313,12 @@ export const initializeInvitationModal = (root = document) => {
 
     if (searchField) {
       updateInvitationQuery(root, target.value);
+    }
+  });
+
+  root.addEventListener("change", (event) => {
+    if (event.target === getInvitationControls(root).ticketTypeInput) {
+      updateInvitationSubmitState(root);
     }
   });
 

@@ -125,25 +125,31 @@ async fn complete_refund_recovery_composes_template_data_before_atomic_completio
         .returning(|| Ok(SiteSettings::default()));
     db.expect_complete_event_purchase_refund_recovery()
         .times(1)
-        .withf(
-            move |actor, group, refund, reference, note, template_data| {
-                *actor == actor_user_id
-                    && *group == group_id
-                    && *refund == event_purchase_refund_id
-                    && reference == "bank-transfer-123"
-                    && note == "Verified bank receipt"
-                    && template_data.as_ref().is_some_and(|data| {
-                        data.get("event")
-                            .and_then(|event| event.get("event_id"))
-                            .and_then(|event_id| event_id.as_str())
-                            .is_some_and(|value| value == event_id.to_string())
-                    })
-            },
-        )
-        .returning(|_, _, _, _, _, _| Ok(()));
+        .withf(move |input| {
+            input.actor_user_id == actor_user_id
+                && input.group_id == group_id
+                && input.event_purchase_refund_id == event_purchase_refund_id
+                && input.recovery_reference == "bank-transfer-123"
+                && input.recovery_note == "Verified bank receipt"
+                && input.notification_template_data.as_ref().is_some_and(|data| {
+                    data.get("event")
+                        .and_then(|event| event.get("event_id"))
+                        .and_then(|event_id| event_id.as_str())
+                        .is_some_and(|value| value == event_id.to_string())
+                })
+                && input.payment_provider == Some(PaymentProvider::Stripe)
+        })
+        .returning(|_| Ok(()));
+
+    // Setup the configured payment provider expectation
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
 
     // Complete recovery through the same typed composer used by the refund worker
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
     manager
         .complete_refund_recovery(&CompleteRefundRecoveryInput {
             actor_user_id,
@@ -176,13 +182,14 @@ async fn complete_refund_recovery_skips_composition_after_local_finalization() {
         });
     db.expect_complete_event_purchase_refund_recovery()
         .times(1)
-        .withf(move |actor, group, refund, _, _, template_data| {
-            *actor == actor_user_id
-                && *group == group_id
-                && *refund == event_purchase_refund_id
-                && template_data.is_none()
+        .withf(move |input| {
+            input.actor_user_id == actor_user_id
+                && input.group_id == group_id
+                && input.event_purchase_refund_id == event_purchase_refund_id
+                && input.notification_template_data.is_none()
+                && input.payment_provider.is_none()
         })
-        .returning(|_, _, _, _, _, _| Ok(()));
+        .returning(|_| Ok(()));
 
     // Complete recovery without loading event or theme template context
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
@@ -497,6 +504,71 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unc
 }
 
 #[tokio::test]
+async fn get_or_create_checkout_redirect_url_requires_paid_currency() {
+    // Setup a paid checkout without a currency snapshot
+    let mut prepared_checkout = sample_prepared_event_checkout(
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        None,
+        None,
+        GroupPaymentRecipient {
+            provider: PaymentProvider::Stripe,
+            recipient_id: "acct_test_123".to_string(),
+        },
+    );
+    prepared_checkout.purchase.currency_code = None;
+
+    // Attempt provider checkout creation with the incomplete paid contract
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(MockPaymentsProvider::new()),
+    );
+    let err = manager
+        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
+        .await
+        .expect_err("missing paid currency to fail");
+
+    // Check the paid-only requirement remains explicit
+    assert_eq!(err.to_string(), "paid checkout is missing currency_code");
+}
+
+#[tokio::test]
+async fn get_or_create_checkout_redirect_url_requires_paid_recipient() {
+    // Setup a paid checkout without a group recipient
+    let mut prepared_checkout = sample_prepared_event_checkout(
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        None,
+        None,
+        GroupPaymentRecipient {
+            provider: PaymentProvider::Stripe,
+            recipient_id: "acct_test_123".to_string(),
+        },
+    );
+    prepared_checkout.recipient = None;
+
+    // Attempt provider checkout creation with the incomplete paid contract
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(MockPaymentsProvider::new()),
+    );
+    let err = manager
+        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
+        .await
+        .expect_err("missing paid recipient to fail");
+
+    // Check the paid-only requirement remains explicit
+    assert_eq!(
+        err.to_string(),
+        "paid checkout is missing a payment recipient"
+    );
+}
+
+#[tokio::test]
 async fn get_or_create_checkout_redirect_url_reuses_existing_url_without_provider() {
     // Setup a checkout with an existing provider URL
     let existing_url = "https://example.test/checkout".to_string();
@@ -749,6 +821,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         group_slug: "group".to_string(),
         has_registration_questions: false,
         has_related_events: false,
+        is_ticketed: false,
         kind: EventKind::default(),
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Event".to_string(),
@@ -800,7 +873,7 @@ fn sample_event_purchase_summary(
 ) -> EventPurchaseSummary {
     EventPurchaseSummary {
         amount_minor: 2_500,
-        currency_code: "usd".to_string(),
+        currency_code: Some("usd".to_string()),
         event_purchase_id,
         event_ticket_type_id,
         ticket_title: "General admission".to_string(),
@@ -848,8 +921,8 @@ fn sample_prepared_event_checkout(
             provider_checkout_url,
             discount_code,
         ),
-        recipient,
         group_slug_pretty: None,
+        recipient: Some(recipient),
     }
 }
 

@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
-        event::EventSummary,
+        event::{EventAdmissionOfferSource, EventAdmissionOfferStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
         payments::{EventRefundProgress, EventRefundRequestStatus, format_amount_minor},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
@@ -84,7 +84,7 @@ pub struct Attendee {
     pub can_receive_attendee_email: bool,
     /// Whether the attendee has checked in.
     pub checked_in: bool,
-    /// RSVP creation time.
+    /// Enrollment record creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Email address for invitation placeholders and registered users.
@@ -96,6 +96,12 @@ pub struct Attendee {
     /// Public profile payload for the attendee.
     pub user: User,
 
+    /// Latest organizer admission offer identifier.
+    pub admission_offer_id: Option<Uuid>,
+    /// Workflow that created the latest organizer admission offer.
+    pub admission_offer_source: Option<EventAdmissionOfferSource>,
+    /// Lifecycle status of the latest organizer admission offer.
+    pub admission_offer_status: Option<EventAdmissionOfferStatus>,
     /// Purchase amount in minor units.
     pub amount_minor: Option<i64>,
     /// Timestamp when the attendee checked in.
@@ -107,6 +113,11 @@ pub struct Attendee {
     pub discount_code: Option<String>,
     /// Purchase identifier.
     pub event_purchase_id: Option<Uuid>,
+    /// Ticket type assigned by an offer or purchase.
+    pub event_ticket_type_id: Option<Uuid>,
+    /// Latest organizer offer expiration time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub offer_expires_at: Option<DateTime<Utc>>,
     /// Durable refund progress for this attendee's purchase.
     pub refund_progress: Option<EventRefundProgress>,
     /// Refund request status for the attendee purchase.
@@ -124,9 +135,9 @@ pub struct Attendee {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum AttendeesSort {
-    /// Sort by RSVP creation time ascending.
+    /// Sort by enrollment creation time ascending.
     CreatedAtAsc,
-    /// Sort by RSVP creation time descending.
+    /// Sort by enrollment creation time descending.
     CreatedAtDesc,
     /// Sort by attendee display name ascending.
     NameAsc,
@@ -189,12 +200,12 @@ pub(crate) fn format_payment_amount(
     currency_code: Option<&str>,
 ) -> Option<String> {
     let amount_minor = (*amount_minor)?;
-    let currency_code = currency_code?;
 
     if amount_minor == 0 {
         return Some("Free".to_string());
     }
 
+    let currency_code = currency_code?;
     Some(format_amount_minor(amount_minor, currency_code))
 }
 
@@ -202,4 +213,22 @@ pub(crate) fn format_payment_amount(
 #[allow(clippy::ref_option)]
 pub(crate) fn is_paid_attendee(amount_minor: &Option<i64>) -> bool {
     matches!(*amount_minor, Some(amount_minor) if amount_minor > 0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_payment_amount;
+
+    #[test]
+    fn test_format_payment_amount_formats_free_without_currency() {
+        assert_eq!(
+            format_payment_amount(&Some(0), None),
+            Some("Free".to_string())
+        );
+    }
+
+    #[test]
+    fn test_format_payment_amount_requires_currency_for_paid_amounts() {
+        assert_eq!(format_payment_amount(&Some(2500), None), None);
+    }
 }

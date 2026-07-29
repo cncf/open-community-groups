@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::Serialize;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -13,6 +14,7 @@ use crate::{
         event::{
             EventAttendanceInfo, EventAttendanceStatus, EventFull, EventLeaveOutcome, EventSummary,
         },
+        payments::PaymentProvider,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
 };
@@ -30,14 +32,15 @@ pub(crate) trait DBEvent {
         label_ids: &[Uuid],
     ) -> Result<Uuid>;
 
-    /// Registers attendance and returns the resulting attendance status.
+    /// Registers attendance and returns the resulting attendance outcome.
     async fn attend_event(
         &self,
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
         registration_answers: Option<QuestionnaireAnswers>,
-    ) -> Result<EventAttendanceStatus>;
+        event_ticket_type_id: Option<Uuid>,
+    ) -> Result<AttendEventResult>;
 
     /// Marks an attendee as checked in for an event.
     async fn check_in_event(
@@ -94,6 +97,7 @@ pub(crate) trait DBEvent {
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<EventLeaveOutcome>;
 
     /// Lists session proposals with submission status for a given event.
@@ -140,22 +144,35 @@ where
         event_id: Uuid,
         user_id: Uuid,
         registration_answers: Option<QuestionnaireAnswers>,
-    ) -> Result<EventAttendanceStatus> {
-        let status: String = self
+        event_ticket_type_id: Option<Uuid>,
+    ) -> Result<AttendEventResult> {
+        // Run the attendance flow and capture its outcome
+        let outcome: String = self
             .fetch_scalar_one(
-                "select attend_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::text",
+                "select attend_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::uuid)::text",
                 &[
                     &community_id,
                     &event_id,
                     &user_id,
                     &registration_answers.as_ref().map(Json),
+                    &event_ticket_type_id,
                 ],
             )
             .await?;
 
-        status.parse().map_err(|_| {
-            anyhow::anyhow!("unknown attendance status returned by database: {status}")
-        })
+        // Map the capacity conflict to a typed result
+        if outcome == "event-capacity-unavailable" {
+            return Ok(AttendEventResult::Conflict(
+                AttendEventConflict::EventCapacityUnavailable,
+            ));
+        }
+
+        // Decode the remaining outcomes as attendance statuses
+        let status = outcome.parse().map_err(|_| {
+            anyhow::anyhow!("unknown attendance outcome returned by database: {outcome}")
+        })?;
+
+        Ok(AttendEventResult::Attendance(status))
     }
 
     /// [`DBEvent::check_in_event`]
@@ -263,10 +280,16 @@ where
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<EventLeaveOutcome> {
         self.fetch_json_one(
-            "select leave_event($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &event_id, &user_id],
+            "select leave_event($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[
+                &community_id,
+                &event_id,
+                &user_id,
+                &payment_provider.map(|provider| provider.to_string()),
+            ],
         )
         .await
     }
@@ -284,4 +307,21 @@ where
         )
         .await
     }
+}
+
+/// Conflict returned while registering public event attendance.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum AttendEventConflict {
+    /// The event has no unallocated RSVP capacity.
+    EventCapacityUnavailable,
+}
+
+/// Result of registering public event attendance.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum AttendEventResult {
+    /// Attendance was registered or queued.
+    Attendance(EventAttendanceStatus),
+    /// Attendance could not be registered.
+    Conflict(AttendEventConflict),
 }

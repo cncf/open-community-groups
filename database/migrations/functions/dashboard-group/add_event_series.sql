@@ -4,7 +4,8 @@ create or replace function add_event_series(
     p_group_id uuid,
     p_events jsonb,
     p_recurrence jsonb,
-    p_cfg_max_participants jsonb default null
+    p_cfg_max_participants jsonb default null,
+    p_configured_provider text default null
 )
 returns uuid[] as $$
 declare
@@ -77,7 +78,8 @@ begin
             p_actor_user_id,
             p_group_id,
             v_event,
-            p_cfg_max_participants
+            p_cfg_max_participants,
+            p_configured_provider
         );
 
         update event

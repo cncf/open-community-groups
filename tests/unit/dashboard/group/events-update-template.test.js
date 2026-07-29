@@ -160,6 +160,15 @@ describe("dashboard group event update template", () => {
     );
   });
 
+  it("names the recipient for paid ticket revenue", async () => {
+    // Load the event update template before checking paid ticket guidance.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert paid-ready organizers can see the configured recipient.
+    expect(template).to.include("Paid ticket revenue is sent to Stripe recipient");
+    expect(template).to.include("{{ payment_recipient.recipient_id }}");
+  });
+
   it("keeps the event form navigation in the shared page scroll", async () => {
     // Load the event update template before checking sidebar scroll behavior.
     const template = normalizeWhitespace(await loadTemplate());

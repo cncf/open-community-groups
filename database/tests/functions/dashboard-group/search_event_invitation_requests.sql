@@ -1,9 +1,11 @@
+-- Tests searching organizer event invitation requests.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,10 +15,16 @@ select plan(12);
 \set event1ID '3a2f0000-0000-0000-0000-000000000002'
 \set event2ID '3a2f0000-0000-0000-0000-000000000003'
 \set eventCategoryID '3a2f0000-0000-0000-0000-000000000004'
+\set expiredOfferID '3a2f0000-0000-0000-0000-000000000015'
 \set group2ID '3a2f0000-0000-0000-0000-000000000005'
 \set groupCategoryID '3a2f0000-0000-0000-0000-000000000006'
 \set groupID '3a2f0000-0000-0000-0000-000000000007'
 \set missingEventID '3a2f0000-0000-0000-0000-000000000008'
+\set offerID '3a2f0000-0000-0000-0000-000000000012'
+\set priceWindowID '3a2f0000-0000-0000-0000-000000000013'
+\set priceWindow2ID '3a2f0000-0000-0000-0000-000000000016'
+\set ticketTypeID '3a2f0000-0000-0000-0000-000000000014'
+\set ticketType2ID '3a2f0000-0000-0000-0000-000000000017'
 \set user1ID '3a2f0000-0000-0000-0000-000000000009'
 \set user2ID '3a2f0000-0000-0000-0000-000000000010'
 \set user3ID '3a2f0000-0000-0000-0000-000000000011'
@@ -157,9 +165,45 @@ values (
     false
 );
 
+-- Public ticket tier requested by an accepted attendee
+insert into event_ticket_type (
+    availability,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values
+    (
+        'public',
+        :'event1ID',
+        :'ticketTypeID',
+        1,
+        10,
+        'General admission'
+    ),
+    (
+        'invitation_only',
+        :'event2ID',
+        :'ticketType2ID',
+        1,
+        10,
+        'Private admission'
+    );
+
+-- Free price windows for the request ticket tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values
+    (0, :'priceWindowID', :'ticketTypeID'),
+    (0, :'priceWindow2ID', :'ticketType2ID');
+
 -- Invitation requests
 insert into event_invitation_request (
     event_id,
+    event_ticket_type_id,
     user_id,
     created_at,
     reviewed_at,
@@ -167,6 +211,7 @@ insert into event_invitation_request (
     status
 ) values (
     :'event1ID',
+    :'ticketTypeID',
     :'user1ID',
     '2024-01-01 00:00:00+00',
     '2024-01-01 01:00:00+00',
@@ -174,6 +219,7 @@ insert into event_invitation_request (
     'accepted'
 ), (
     :'event1ID',
+    null,
     :'user2ID',
     '2024-01-02 00:00:00+00',
     null,
@@ -181,6 +227,7 @@ insert into event_invitation_request (
     'pending'
 ), (
     :'event1ID',
+    null,
     :'user3ID',
     '2024-01-03 00:00:00+00',
     '2024-01-03 01:00:00+00',
@@ -188,11 +235,56 @@ insert into event_invitation_request (
     'rejected'
 ), (
     :'event2ID',
+    null,
     :'user3ID',
     '2024-01-04 00:00:00+00',
-    null,
-    null,
-    'pending'
+    '2024-01-04 01:00:00+00',
+    :'user1ID',
+    'accepted'
+);
+
+-- Active approval offer returned with its request
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'offerID',
+    :'event1ID',
+    :'ticketTypeID',
+    '2099-01-10 00:00:00+00',
+    :'user3ID',
+    'approval',
+    'pending',
+    :'user1ID'
+);
+
+-- Expired approval offer retained with its accepted request
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'expiredOfferID',
+    '2024-01-04 02:00:00+00',
+    :'event2ID',
+    :'ticketType2ID',
+    '2024-01-05 00:00:00+00',
+    :'user1ID',
+    'approval',
+    'expired',
+    :'user3ID'
 );
 
 -- ============================================================================
@@ -210,11 +302,49 @@ select is(
         'invitation_requests', '[
             {"created_at": 1704240000, "invitation_request_status": "rejected", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000011", "username": "carol", "name": "Carol", "title": "Designer"}, "reviewed_at": 1704243600},
             {"created_at": 1704153600, "invitation_request_status": "pending", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null},
-            {"created_at": 1704067200, "invitation_request_status": "accepted", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800}
+            {"admission_offer_id": "3a2f0000-0000-0000-0000-000000000012", "admission_offer_status": "pending", "created_at": 1704067200, "invitation_request_status": "accepted", "offer_expires_at": 4071686400, "offered_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "offered_ticket_title": "General admission", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800}
         ]'::jsonb,
         'total', 3
     ),
     'Should return invitation requests by requested date descending by default'
+);
+
+-- Should retain the latest expired approval offer for reissue
+select is(
+    search_event_invitation_requests(
+        :'groupID'::uuid,
+        :'event2ID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
+    )::jsonb,
+    format(
+        $json$
+        {
+            "invitation_requests": [
+                {
+                    "admission_offer_id": "%s",
+                    "admission_offer_status": "expired",
+                    "created_at": 1704326400,
+                    "invitation_request_status": "accepted",
+                    "offer_expires_at": 1704412800,
+                    "offered_event_ticket_type_id": "%s",
+                    "offered_ticket_title": "Private admission",
+                    "reviewed_at": 1704330000,
+                    "user": {
+                        "name": "Carol",
+                        "title": "Designer",
+                        "user_id": "%s",
+                        "username": "carol"
+                    }
+                }
+            ],
+            "total": 1
+        }
+        $json$,
+        :'expiredOfferID',
+        :'ticketType2ID',
+        :'user3ID'
+    )::jsonb,
+    'Should retain the latest expired approval offer for reissue'
 );
 
 -- Should return paginated invitation requests when limit and offset are provided

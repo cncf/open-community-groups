@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -78,7 +78,6 @@ insert into event (
     slug,
     description,
     capacity,
-    payment_currency_code,
     published,
     starts_at,
     timezone
@@ -91,15 +90,25 @@ insert into event (
     'free-event',
     'Free event with invitation acceptance',
     0,
-    'USD',
     true,
     current_timestamp + interval '1 day',
     'UTC'
 );
 
--- Event invitations
-insert into event_attendee (event_id, user_id, manually_invited, status)
-values (:'eventID', :'invitedUserID', true, 'invitation-pending');
+-- Event invitation offer
+insert into admission_offer (
+    event_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'eventID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'invitedUserID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -121,6 +130,17 @@ select is(
 select ok(
     (select manually_invited from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
     'Should keep the attendee marked as manually invited'
+);
+
+select is(
+    (
+        select status
+        from admission_offer
+        where event_id = :'eventID'
+        and user_id = :'invitedUserID'
+    ),
+    'completed',
+    'Should complete the organizer invitation offer'
 );
 
 -- Should reject accepting non-pending invitations.

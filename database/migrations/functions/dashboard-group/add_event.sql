@@ -3,7 +3,8 @@ create or replace function add_event(
     p_actor_user_id uuid,
     p_group_id uuid,
     p_event jsonb,
-    p_cfg_max_participants jsonb default null
+    p_cfg_max_participants jsonb default null,
+    p_configured_provider text default null
 )
 returns uuid as $$
 declare
@@ -13,6 +14,7 @@ declare
     v_event_id uuid;
     v_max_retries int := 10;
     v_payment_currency_code text := nullif(p_event->>'payment_currency_code', '');
+    v_payment_recipient jsonb;
     v_retries int := 0;
     v_slug text;
     v_ticket_types jsonb := nullif(p_event->'ticket_types', 'null'::jsonb);
@@ -21,21 +23,26 @@ begin
     -- Validate registration questions before writing the event
     perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
 
+    -- Load group payment state for paid-capable ticket validation
+    select payment_recipient into v_payment_recipient
+    from "group"
+    where group_id = p_group_id;
+
     -- Determine effective capacity based on ticket types or event capacity
     v_effective_capacity := coalesce(v_ticket_capacity, (p_event->>'capacity')::int);
 
     -- Validate enrollment and ticketing payload rules
     perform validate_event_enrollment_payload(
         v_event_attendee_approval_required,
-        v_ticket_types,
         coalesce((p_event->>'waitlist_enabled')::boolean, false)
     );
 
     perform validate_event_ticketing_payload(
+        p_configured_provider,
         v_discount_codes,
         v_payment_currency_code,
-        v_ticket_types,
-        coalesce((p_event->>'waitlist_enabled')::boolean, false)
+        v_payment_recipient,
+        v_ticket_types
     );
 
     -- Validate add-specific event and session date rules
@@ -156,10 +163,7 @@ begin
                 nullif(p_event->>'venue_name', ''),
                 nullif(p_event->>'venue_state', ''),
                 nullif(p_event->>'venue_zip_code', ''),
-                case
-                    when v_ticket_types is not null then false
-                    else coalesce((p_event->>'waitlist_enabled')::boolean, false)
-                end
+                coalesce((p_event->>'waitlist_enabled')::boolean, false)
             )
             returning event_id into v_event_id;
 

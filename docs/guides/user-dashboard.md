@@ -69,7 +69,8 @@ Each row includes:
 - Event title with a direct link to the public event page.
 - Event location.
 - Event date and time.
-- Your participation roles in that event (`Attendee`, `Host`, `Speaker`, or multiple roles).
+- Your participation roles in that event (`Attendee`, `Event offer`, `Host`,
+  `Speaker`, or multiple roles).
 - Your attendance status when action is still needed, such as `Payment pending` or
   `Registration pending`.
 
@@ -80,8 +81,13 @@ questions. You can update submitted answers from the same menu before the event 
 registration is open, while an active checkout hold exists, or when an organizer invited you
 manually.
 
+An `Event offer` row links to the Invitations tab, which owns claim, decline,
+checkout resume, and checkout cancellation actions. An active offer does not
+describe you as an attendee until a free claim completes or paid checkout is
+confirmed.
+
 If organizers configured a registration window, new public registration actions are disabled
-outside that window. Organizer-created manual invitations and active checkout holds are the
+outside that window. Organizer offers and active checkout holds are the
 exceptions for completing required registration questions from `My Events`.
 
 The list includes only upcoming published events; canceled events and events from inactive or
@@ -121,14 +127,25 @@ follow [User Badge Operations](badges.md#user-badge-operations) in the Badges Gu
 
 ## Invitations: Access and Attendance
 
-When a community or group invites you to help run operations, or an organizer
-invites you to attend an event, the invitation appears here. Accepting an
-invitation updates your access or confirms your event attendance.
+This tab contains community and group team invitations plus active event
+admission offers. Event offers can come from an organizer invitation, an
+approved ticket request, or a ticket waiting list.
 
-Both community/group team invites and event invitations move through the same statuses:
-invitation sent, accepted, or rejected. Invitation rows include the role that will be assigned on
-acceptance. Keep in mind that pending team invites do not grant dashboard access until accepted,
-and pending event invitations do not make you an attendee until accepted.
+Community and group invitation rows show the role granted after acceptance.
+Pending team invitations do not grant dashboard access.
+
+Event offer rows show:
+
+- The event, source, assigned ticket tier or RSVP, and displayed price.
+- The exact offer deadline in the event timezone.
+- Existing ticket-request answers and any registration questions required at
+  claim time.
+- `Claim ticket` or `Accept invitation`, plus `Decline`.
+- `Continue to checkout` and `Cancel checkout` when a paid checkout hold exists.
+
+The displayed ticket price is finalized on first claim. Checkout retries keep
+that confirmed snapshot. Before a claim completes, no charge or attendance has
+been created.
 
 When someone invites you to a team, you receive an in-app and email invitation with a direct path
 to accept or decline.
@@ -138,13 +155,17 @@ OCG account, use the LF account whose primary email matches the invited address.
 OCG accounts can still be recognized by LF SSO identity after an LF email change. If you cannot
 accept an invitation, ask the site administrators to reconcile the account records.
 
-After you accept an invitation, this is what typically happens:
+After you accept a team invitation:
 
 1. Access is granted to the related scope.
 2. The assigned community/group role becomes active for permission checks.
-3. Event invitations become confirmed attendance and send the normal event confirmation.
-4. Pending invitation state clears.
-5. A refresh or re-login may be needed before navigation updates.
+3. Pending invitation state clears.
+4. A refresh or re-login may be needed before navigation updates.
+
+After an event offer is claimed, a free ticket or RSVP completes inside OCG.
+A positive ticket price continues through hosted checkout. Attendance and the
+normal event confirmation are created only after free completion or paid
+confirmation.
 
 If organizer dashboards still do not appear, see
 [Choose Your Dashboard](../getting-started/choose-dashboard.md) and

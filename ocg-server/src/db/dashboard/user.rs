@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -23,6 +24,8 @@ use crate::{
     },
     types::{
         badges::{UserBadge, UserBadgeIdentity},
+        event::EventEnrollmentReconciliationOutcome,
+        payments::PaymentProvider,
         questionnaire::QuestionnaireAnswers,
     },
 };
@@ -37,12 +40,14 @@ pub(crate) trait DBDashboardUser {
         community_id: Uuid,
     ) -> Result<()>;
 
-    /// Accepts a pending organizer-created event invitation.
-    async fn accept_event_attendee_invitation(
+    /// Accepts an exact non-ticketed organizer admission offer.
+    async fn accept_event_admission_offer(
         &self,
         actor_user_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<Uuid>;
+        admission_offer_id: Uuid,
+        registration_answers: Option<QuestionnaireAnswers>,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<AcceptEventAdmissionOfferResult>;
 
     /// Accepts a pending group team invitation.
     async fn accept_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid)
@@ -61,6 +66,14 @@ pub(crate) trait DBDashboardUser {
         actor_user_id: Uuid,
         session_proposal: &SessionProposalInput,
     ) -> Result<Uuid>;
+
+    /// Declines an active admission offer owned by the user.
+    async fn decline_event_admission_offer(
+        &self,
+        actor_user_id: Uuid,
+        admission_offer_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventEnrollmentReconciliationOutcome>;
 
     /// Deletes a session proposal for the user.
     async fn delete_session_proposal(
@@ -113,7 +126,7 @@ pub(crate) trait DBDashboardUser {
         filters: &UserGroupsFilters,
     ) -> Result<UserGroupsOutput>;
 
-    /// Lists all pending organizer-created event invitations for the user.
+    /// Lists active event admission offers owned by the user.
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
 
     /// Lists upcoming events where the user participates.
@@ -154,13 +167,6 @@ pub(crate) trait DBDashboardUser {
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
-    ) -> Result<()>;
-
-    /// Rejects a pending organizer-created event invitation.
-    async fn reject_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        event_id: Uuid,
     ) -> Result<()>;
 
     /// Rejects a pending group team invitation.
@@ -243,18 +249,35 @@ where
         .await
     }
 
-    /// [`DBDashboardUser::accept_event_attendee_invitation`]
-    #[instrument(skip(self), err)]
-    async fn accept_event_attendee_invitation(
+    /// [`DBDashboardUser::accept_event_admission_offer`].
+    #[instrument(skip(self, registration_answers), err)]
+    async fn accept_event_admission_offer(
         &self,
         actor_user_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<Uuid> {
-        self.fetch_scalar_one(
-            "select accept_event_attendee_invitation($1::uuid, $2::uuid)::uuid",
-            &[&actor_user_id, &event_id],
-        )
-        .await
+        admission_offer_id: Uuid,
+        registration_answers: Option<QuestionnaireAnswers>,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<AcceptEventAdmissionOfferResult> {
+        let output: AcceptEventAdmissionOfferOutput = self
+            .fetch_json_one(
+                "
+                select accept_event_admission_offer(
+                    $1::uuid,
+                    $2::uuid,
+                    $3::jsonb,
+                    $4::text
+                )
+                ",
+                &[
+                    &actor_user_id,
+                    &admission_offer_id,
+                    &registration_answers.as_ref().map(Json),
+                    &payment_provider.map(|provider| provider.to_string()),
+                ],
+            )
+            .await?;
+
+        Ok(output.into())
     }
 
     /// [`DBDashboardUser::accept_group_team_invitation`]
@@ -295,6 +318,31 @@ where
         self.fetch_scalar_one(
             "select add_session_proposal($1::uuid, $2::jsonb)::uuid",
             &[&actor_user_id, &Json(session_proposal)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::decline_event_admission_offer`].
+    #[instrument(skip(self), err)]
+    async fn decline_event_admission_offer(
+        &self,
+        actor_user_id: Uuid,
+        admission_offer_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventEnrollmentReconciliationOutcome> {
+        self.fetch_json_one(
+            "
+            select decline_event_admission_offer(
+                $1::uuid,
+                $2::uuid,
+                $3::text
+            )
+            ",
+            &[
+                &actor_user_id,
+                &admission_offer_id,
+                &payment_provider.map(|provider| provider.to_string()),
+            ],
         )
         .await
     }
@@ -510,20 +558,6 @@ where
         .await
     }
 
-    /// [`DBDashboardUser::reject_event_attendee_invitation`]
-    #[instrument(skip(self), err)]
-    async fn reject_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<()> {
-        self.execute(
-            "select reject_event_attendee_invitation($1::uuid, $2::uuid)",
-            &[&actor_user_id, &event_id],
-        )
-        .await
-    }
-
     /// [`DBDashboardUser::reject_group_team_invitation`]
     #[instrument(skip(self), err)]
     async fn reject_group_team_invitation(
@@ -660,9 +694,58 @@ where
     }
 }
 
+/// Scope returned after accepting an exact event admission offer.
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub(crate) struct AcceptedEventAdmissionOffer {
+    /// Community containing the accepted offer's event.
+    pub community_id: Uuid,
+    /// Event associated with the accepted offer.
+    pub event_id: Uuid,
+}
+
+/// Conflict returned while accepting an event admission offer.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum AcceptEventAdmissionOfferConflict {
+    /// The selected admission offer is no longer claimable.
+    AdmissionOfferUnavailable,
+}
+
+/// Result of accepting an event admission offer.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum AcceptEventAdmissionOfferResult {
+    /// The offer was accepted.
+    Accepted(AcceptedEventAdmissionOffer),
+    /// The offer could not be accepted.
+    Conflict(AcceptEventAdmissionOfferConflict),
+}
+
+impl From<AcceptEventAdmissionOfferOutput> for AcceptEventAdmissionOfferResult {
+    /// Converts database offer acceptance output into the caller-facing result.
+    fn from(output: AcceptEventAdmissionOfferOutput) -> Self {
+        match output {
+            AcceptEventAdmissionOfferOutput::Accepted(accepted) => Self::Accepted(accepted),
+            AcceptEventAdmissionOfferOutput::Conflict { conflict } => Self::Conflict(conflict),
+        }
+    }
+}
+
 /// Co-speaker identifier for a session proposal.
 #[derive(Debug, Clone)]
 pub(crate) struct SessionProposalCoSpeakerUser {
     /// Optional co-speaker user identifier.
     pub co_speaker_user_id: Option<Uuid>,
+}
+
+/// Database output returned after accepting an event admission offer.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum AcceptEventAdmissionOfferOutput {
+    /// The offer was accepted.
+    Accepted(AcceptedEventAdmissionOffer),
+    /// The offer could not be accepted.
+    Conflict {
+        /// Conflict kind.
+        conflict: AcceptEventAdmissionOfferConflict,
+    },
 }

@@ -329,6 +329,7 @@ mod tests {
             group_slug: "test-group".to_string(),
             has_registration_questions: false,
             has_related_events: false,
+            is_ticketed: false,
             kind: EventKind::InPerson,
             logo_url: "https://example.test/logo.png".to_string(),
             name: "Test Event".to_string(),

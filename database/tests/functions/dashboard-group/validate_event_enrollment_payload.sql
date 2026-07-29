@@ -11,39 +11,21 @@ select plan(3);
 
 -- Should accept default enrollment settings
 select lives_ok(
-    $$select validate_event_enrollment_payload(false, null, false)$$,
+    $$select validate_event_enrollment_payload(false, false)$$,
     'Should accept default enrollment settings'
 );
 
 -- Should reject waitlists for approval-required events
 select throws_ok(
-    $$select validate_event_enrollment_payload(true, null, true)$$,
+    $$select validate_event_enrollment_payload(true, true)$$,
     'approval-required events cannot enable waitlist',
     'Should reject waitlists for approval-required events'
 );
 
--- Should reject ticketing for approval-required events
-select throws_ok(
-    $$select validate_event_enrollment_payload(
-        true,
-        '[
-            {
-                "event_ticket_type_id": "3a440000-0000-0000-0000-000000000001",
-                "order": 1,
-                "price_windows": [
-                    {
-                        "amount_minor": 2000,
-                        "event_ticket_price_window_id": "3a440000-0000-0000-0000-000000000002"
-                    }
-                ],
-                "seats_total": 50,
-                "title": "General admission"
-            }
-        ]'::jsonb,
-        false
-    )$$,
-    'approval-required events cannot be ticketed',
-    'Should reject ticketing for approval-required events'
+-- Should accept approval-required events without a waitlist
+select lives_ok(
+    $$select validate_event_enrollment_payload(true, false)$$,
+    'Should accept approval-required events without a waitlist'
 );
 
 -- ============================================================================

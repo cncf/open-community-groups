@@ -5,7 +5,7 @@ create or replace function get_event_delete_eligibility(
 )
 returns text as $$
     select case
-        -- Prevent deletion while a checkout or refund can still progress
+        -- Prevent deletion while enrollment or payment work can still progress
         when exists (
             select 1
             from event_purchase ep
@@ -36,6 +36,24 @@ returns text as $$
             and epr.status <> 'finalized'
             and epr.recovery_completed_at is null
         ) then 'refunds-pending'
+        -- Enrollment reservations and queues must be closed before deletion
+        when exists (
+            select 1
+            from admission_offer ao
+            where ao.event_id = e.event_id
+            and ao.status in ('checkout_pending', 'pending')
+        )
+        or exists (
+            select 1
+            from event_invitation_request eir
+            where eir.event_id = e.event_id
+            and eir.status = 'pending'
+        )
+        or exists (
+            select 1
+            from event_waitlist ew
+            where ew.event_id = e.event_id
+        ) then 'cancel-first'
         -- Canceled events have already completed the required workflow
         when e.canceled then 'allowed'
         -- Past events no longer need cancellation before deletion

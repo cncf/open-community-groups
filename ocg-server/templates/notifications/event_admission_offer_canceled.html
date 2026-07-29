@@ -1,0 +1,30 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Admission Offer Canceled Notification -#}
+{% block subject -%}
+  Event offer canceled: {{ event_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Your offer for {{ event_name }} is no longer available.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    Your offer to attend <strong>{{ event_name }}</strong> with
+    <strong>{{ group_name }}</strong> was canceled.
+    {% if let Some(ticket_title) = &ticket_title -%}
+      The offer was for <strong>{{ ticket_title }}</strong>.
+    {% endif -%}
+    Open My Events to review your current event registrations and offers.
+  </p>
+
+  {{ email::button(link = dashboard_url, text = "Open My Events", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because an admission offer assigned to your account
+  for {{ event_name }} was canceled.
+{% endblock footer -%}
+{# End event admission offer canceled notification -#}

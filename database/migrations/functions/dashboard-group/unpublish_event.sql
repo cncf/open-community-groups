@@ -18,6 +18,9 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
+    -- Cancel active offers, expire checkouts, and clear enrollment queues
+    perform close_event_enrollment(p_actor_user_id, p_event_id);
+
     -- Update event to mark as unpublished
     -- Also set meeting_in_sync to false to trigger meeting deletion when applicable
     update event set

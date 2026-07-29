@@ -1,9 +1,11 @@
+-- Tests preparing event checkout purchases.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(44);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,6 +30,11 @@ select plan(19);
 \set eventCategoryID '79100000-0000-0000-0000-000000000002'
 \set exhaustedDiscountUserID '79100000-0000-0000-0000-000000000027'
 \set freeDiscountID '79100000-0000-0000-0000-000000000016'
+\set freeEventID '79100000-0000-0000-0000-00000000004e'
+\set freeGroupID '79100000-0000-0000-0000-00000000004d'
+\set freePriceWindowID '79100000-0000-0000-0000-000000000050'
+\set freeTicketTypeID '79100000-0000-0000-0000-00000000004f'
+\set freeUserID '79100000-0000-0000-0000-000000000051'
 \set groupCategoryID '79100000-0000-0000-0000-000000000010'
 \set groupID '79100000-0000-0000-0000-000000000011'
 \set inactiveDiscountID '79100000-0000-0000-0000-000000000017'
@@ -35,13 +42,43 @@ select plan(19);
 \set inactivePriceWindowID '79100000-0000-0000-0000-000000000015'
 \set inactiveTicketTypeID '79100000-0000-0000-0000-000000000009'
 \set inactiveUserID '79100000-0000-0000-0000-000000000030'
+\set ineffectiveDiscountID '79100000-0000-0000-0000-00000000006c'
+\set ineffectiveDiscountOfferID '79100000-0000-0000-0000-00000000006d'
+\set ineffectiveDiscountPriceWindowID '79100000-0000-0000-0000-00000000006e'
+\set ineffectiveDiscountTicketTypeID '79100000-0000-0000-0000-00000000006f'
+\set ineffectiveDiscountUserID '79100000-0000-0000-0000-000000000070'
 \set invalidDiscountUserID '79100000-0000-0000-0000-000000000025'
 \set invitedPendingPurchaseID '79100000-0000-0000-0000-000000000040'
 \set invitedUserID '79100000-0000-0000-0000-000000000039'
+\set offerDiscountID '79100000-0000-0000-0000-00000000005a'
+\set offerDiscountUserID '79100000-0000-0000-0000-00000000005b'
+\set offerFreeID '79100000-0000-0000-0000-00000000005c'
+\set offerFreeUserID '79100000-0000-0000-0000-00000000005d'
+\set offerPaidID '79100000-0000-0000-0000-00000000005e'
+\set offerPaidUserID '79100000-0000-0000-0000-00000000005f'
+\set offerPrivatePriceWindowID '79100000-0000-0000-0000-000000000060'
+\set offerPrivateTicketTypeID '79100000-0000-0000-0000-000000000061'
+\set offerWrongUserID '79100000-0000-0000-0000-000000000062'
+\set paymentSetupUnavailableEventID '79100000-0000-0000-0000-000000000064'
+\set paymentSetupUnavailablePriceWindowID '79100000-0000-0000-0000-000000000065'
+\set paymentSetupUnavailableTicketTypeID '79100000-0000-0000-0000-000000000066'
+\set paymentSetupUnavailableUserID '79100000-0000-0000-0000-000000000067'
 \set limitedDiscountID '79100000-0000-0000-0000-000000000018'
 \set mainEventID '79100000-0000-0000-0000-000000000003'
+\set priceUnavailableEventID '79100000-0000-0000-0000-000000000068'
+\set priceUnavailablePriceWindowID '79100000-0000-0000-0000-000000000069'
+\set priceUnavailableTicketTypeID '79100000-0000-0000-0000-00000000006a'
+\set priceUnavailableUserID '79100000-0000-0000-0000-00000000006b'
 \set priceWindowAID '79100000-0000-0000-0000-000000000012'
 \set priceWindowBID '79100000-0000-0000-0000-000000000013'
+\set queueCheckoutUserID '79100000-0000-0000-0000-000000000052'
+\set queueDiscountID '79100000-0000-0000-0000-000000000063'
+\set queueEventID '79100000-0000-0000-0000-000000000053'
+\set queueExpiredPurchaseID '79100000-0000-0000-0000-000000000054'
+\set queueHolderUserID '79100000-0000-0000-0000-000000000055'
+\set queuePriceWindowID '79100000-0000-0000-0000-000000000056'
+\set queueTicketTypeID '79100000-0000-0000-0000-000000000057'
+\set queueUserID '79100000-0000-0000-0000-000000000058'
 \set questionsEventID '79100000-0000-0000-0000-000000000035'
 \set questionsPriceWindowID '79100000-0000-0000-0000-000000000036'
 \set questionsTicketTypeID '79100000-0000-0000-0000-000000000037'
@@ -102,10 +139,15 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'closedWindowMismatchedUserID', 'hash-16', 'closed-mismatched@example.com', true, 'closed-mismatched-user'),
     (:'closedWindowNewUserID', 'hash-17', 'closed-new@example.com', true, 'closed-new-user'),
     (:'completedUserID', 'hash-3', 'completed@example.com', true, 'completed-user'),
+    (:'ineffectiveDiscountUserID', 'hash-28', 'ineffective@example.com', true, 'ineffective-user'),
     (:'invalidDiscountUserID', 'hash-4', 'invalid@example.com', true, 'invalid-user'),
     (:'unavailableDiscountUserID', 'hash-5', 'unavailable@example.com', true, 'unavailable-user'),
     (:'exhaustedDiscountUserID', 'hash-6', 'exhausted@example.com', true, 'exhausted-user'),
     (:'discountUserID', 'hash-7', 'discount@example.com', true, 'discount-user'),
+    (:'freeUserID', 'hash-19', 'free@example.com', true, 'free-user'),
+    (:'queueCheckoutUserID', 'hash-20', 'queue-checkout@example.com', true, 'queue-checkout-user'),
+    (:'queueHolderUserID', 'hash-21', 'queue-holder@example.com', true, 'queue-holder-user'),
+    (:'queueUserID', 'hash-22', 'queue-user@example.com', true, 'queue-user'),
     (:'soldOutUserID', 'hash-8', 'soldout@example.com', true, 'soldout-user'),
     (:'inactiveUserID', 'hash-9', 'inactive@example.com', true, 'inactive-user'),
     (:'redeemedUserID', 'hash-10', 'redeemed@example.com', true, 'redeemed-user'),
@@ -113,7 +155,13 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'soldOutPendingUserID', 'hash-18', 'soldout-pending@example.com', true, 'soldout-pending-user'),
     (:'underMinimumUserID', 'hash-12', 'under-minimum@example.com', true, 'under-minimum-user'),
     (:'questionsUserID', 'hash-13', 'questions@example.com', true, 'questions-user'),
-    (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user');
+    (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user'),
+    (:'offerDiscountUserID', 'hash-23', 'offer-discount@example.com', true, 'offer-discount-user'),
+    (:'offerFreeUserID', 'hash-24', 'offer-free@example.com', true, 'offer-free-user'),
+    (:'offerPaidUserID', 'hash-25', 'offer-paid@example.com', true, 'offer-paid-user'),
+    (:'offerWrongUserID', 'hash-26', 'offer-wrong@example.com', true, 'offer-wrong-user'),
+    (:'paymentSetupUnavailableUserID', 'hash-27', 'payment-setup-unavailable@example.com', true, 'payment-setup-unavailable-user'),
+    (:'priceUnavailableUserID', 'hash-28', 'price-unavailable@example.com', true, 'price-unavailable-user');
 
 -- Group
 insert into "group" (
@@ -125,15 +173,25 @@ insert into "group" (
     payment_recipient,
     slug_pretty
 )
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Prepare Group',
-    'prepare-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
-    'prepare-group-pretty'
-);
+values
+    (
+        :'freeGroupID',
+        :'communityID',
+        :'groupCategoryID',
+        'Free Group',
+        'free-group',
+        null,
+        null
+    ),
+    (
+        :'groupID',
+        :'communityID',
+        :'groupCategoryID',
+        'Prepare Group',
+        'prepare-group',
+        jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
+        'prepare-group-pretty'
+    );
 
 -- Events
 insert into event (
@@ -151,6 +209,20 @@ insert into event (
     published_at,
     registration_questions
 ) values (
+    :'freeEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'freeGroupID',
+    'Free Event',
+    'free-event',
+    'Test event',
+    'UTC',
+    now() + interval '2 days',
+    null,
+    true,
+    now(),
+    '[]'::jsonb
+), (
     :'mainEventID',
     :'eventCategoryID',
     'in-person',
@@ -185,6 +257,20 @@ insert into event (
     :'groupID',
     'Inactive Ticket Event',
     'inactive-ticket-event',
+    'Test event',
+    'UTC',
+    now() + interval '2 days',
+    'USD',
+    true,
+    now(),
+    '[]'::jsonb
+), (
+    :'queueEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Queue Priority Event',
+    'queue-priority-event',
     'Test event',
     'UTC',
     now() + interval '2 days',
@@ -250,16 +336,135 @@ insert into event (
     '[]'::jsonb
 );
 
+-- Paid event without payment setup used by the readiness conflict
+insert into event (
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    starts_at,
+    payment_currency_code,
+    published,
+    published_at,
+    registration_questions
+) values (
+    :'paymentSetupUnavailableEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'freeGroupID',
+    'Payment Setup Unavailable Event',
+    'payment-setup-unavailable-event',
+    'Test event',
+    'UTC',
+    now() + interval '2 days',
+    'USD',
+    true,
+    now(),
+    '[]'::jsonb
+);
+
+-- Event with a lapsed ticket price used by the price availability conflict
+insert into event (
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    starts_at,
+    payment_currency_code,
+    published,
+    published_at,
+    registration_questions
+) values (
+    :'priceUnavailableEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Price Unavailable Event',
+    'price-unavailable-event',
+    'Test event',
+    'UTC',
+    now() + interval '2 days',
+    'USD',
+    true,
+    now(),
+    '[]'::jsonb
+);
+
 -- Ticket types
-insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
+insert into event_ticket_type (
+    active,
+    availability,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
 values
-    (:'ticketTypeAID', true, :'mainEventID', 1, 10, 'General admission'),
-    (:'ticketTypeBID', true, :'mainEventID', 2, 10, 'VIP'),
-    (:'closedWindowTicketTypeAID', true, :'closedWindowEventID', 1, 10, 'General admission'),
-    (:'closedWindowTicketTypeBID', true, :'closedWindowEventID', 2, 10, 'VIP'),
-    (:'soldOutTicketTypeID', true, :'soldOutEventID', 1, 1, 'General admission'),
-    (:'inactiveTicketTypeID', false, :'inactiveEventID', 1, 10, 'General admission'),
-    (:'questionsTicketTypeID', true, :'questionsEventID', 1, 10, 'General admission');
+    (true, 'public', :'freeEventID', :'freeTicketTypeID', 1, 10, 'Free admission'),
+    (true, 'public', :'mainEventID', :'ticketTypeAID', 1, 10, 'General admission'),
+    (true, 'public', :'mainEventID', :'ticketTypeBID', 2, 10, 'VIP'),
+    (
+        true,
+        'public',
+        :'mainEventID',
+        :'ineffectiveDiscountTicketTypeID',
+        4,
+        10,
+        'Minor-unit admission'
+    ),
+    (true, 'public', :'closedWindowEventID', :'closedWindowTicketTypeAID', 1, 10, 'General admission'),
+    (true, 'public', :'closedWindowEventID', :'closedWindowTicketTypeBID', 2, 10, 'VIP'),
+    (true, 'public', :'queueEventID', :'queueTicketTypeID', 1, 1, 'Queue admission'),
+    (true, 'public', :'soldOutEventID', :'soldOutTicketTypeID', 1, 1, 'General admission'),
+    (false, 'public', :'inactiveEventID', :'inactiveTicketTypeID', 1, 10, 'General admission'),
+    (
+        true,
+        'invitation_only',
+        :'mainEventID',
+        :'offerPrivateTicketTypeID',
+        3,
+        10,
+        'Invitation admission'
+    ),
+    (true, 'public', :'questionsEventID', :'questionsTicketTypeID', 1, 10, 'General admission');
+
+-- Ticket types dedicated to mutable configuration conflict scenarios
+insert into event_ticket_type (
+    active,
+    availability,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values
+    (
+        true,
+        'public',
+        :'paymentSetupUnavailableEventID',
+        :'paymentSetupUnavailableTicketTypeID',
+        1,
+        10,
+        'Payment setup admission'
+    ),
+    (
+        true,
+        'public',
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        1,
+        10,
+        'Price unavailable admission'
+    );
 
 -- Price windows
 insert into event_ticket_price_window (
@@ -267,13 +472,43 @@ insert into event_ticket_price_window (
     amount_minor,
     event_ticket_type_id
 ) values
+    (:'freePriceWindowID', 0, :'freeTicketTypeID'),
+    (:'ineffectiveDiscountPriceWindowID', 1, :'ineffectiveDiscountTicketTypeID'),
     (:'priceWindowAID', 2500, :'ticketTypeAID'),
     (:'priceWindowBID', 4000, :'ticketTypeBID'),
     (:'closedWindowPriceWindowAID', 2500, :'closedWindowTicketTypeAID'),
     (:'closedWindowPriceWindowBID', 4000, :'closedWindowTicketTypeBID'),
+    (:'queuePriceWindowID', 2500, :'queueTicketTypeID'),
     (:'soldOutPriceWindowID', 2500, :'soldOutTicketTypeID'),
     (:'inactivePriceWindowID', 2500, :'inactiveTicketTypeID'),
+    (:'offerPrivatePriceWindowID', 3000, :'offerPrivateTicketTypeID'),
     (:'questionsPriceWindowID', 2500, :'questionsTicketTypeID');
+
+-- Current paid price window used by the payment readiness conflict
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'paymentSetupUnavailablePriceWindowID',
+    2500,
+    :'paymentSetupUnavailableTicketTypeID'
+);
+
+-- Lapsed price window used by the price availability conflict
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id,
+    ends_at,
+    starts_at
+) values (
+    :'priceUnavailablePriceWindowID',
+    2500,
+    :'priceUnavailableTicketTypeID',
+    current_timestamp - interval '1 minute',
+    current_timestamp - interval '2 days'
+);
 
 -- Discount codes
 insert into event_discount_code (
@@ -291,7 +526,7 @@ insert into event_discount_code (
     :'freeDiscountID',
     true,
     2500,
-    2,
+    4,
     true,
     'FREEPASS',
     :'mainEventID',
@@ -321,6 +556,17 @@ insert into event_discount_code (
     1,
     'Limited discount'
 ), (
+    :'queueDiscountID',
+    true,
+    2500,
+    1,
+    true,
+    'QUEUEFREE',
+    :'queueEventID',
+    'fixed_amount',
+    null,
+    'Queue free pass'
+), (
     :'underMinimumDiscountID',
     true,
     2475,
@@ -331,6 +577,31 @@ insert into event_discount_code (
     'fixed_amount',
     null,
     'Under minimum discount'
+);
+
+-- Percentage discount too small to reduce the minor-unit price
+insert into event_discount_code (
+    event_discount_code_id,
+    active,
+    code,
+    event_id,
+    kind,
+    title,
+
+    available,
+    available_override_active,
+    percentage
+) values (
+    :'ineffectiveDiscountID',
+    true,
+    'TINY25',
+    :'mainEventID',
+    'percentage',
+    'Tiny percentage',
+
+    5,
+    true,
+    25
 );
 
 -- Existing attendee
@@ -401,6 +672,17 @@ insert into event_purchase (
     'General admission',
     :'closedWindowMismatchedUserID'
 ), (
+    :'queueExpiredPurchaseID',
+    2500,
+    'USD',
+    0,
+    :'queueEventID',
+    :'queueTicketTypeID',
+    now() - interval '1 minute',
+    'pending',
+    'Queue admission',
+    :'queueHolderUserID'
+), (
     :'soldOutPendingPurchaseID',
     2500,
     'USD',
@@ -464,9 +746,92 @@ insert into event_purchase (
     :'soldOutHolderUserID'
 );
 
+-- FIFO queue that must take released capacity before direct checkout
+insert into event_waitlist (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    current_timestamp,
+    :'queueEventID',
+    :'queueTicketTypeID',
+    :'queueUserID'
+);
+
+-- Owned offers for paid, discounted-to-zero, and intrinsic-free claims
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values
+    (
+        :'ineffectiveDiscountOfferID',
+        :'mainEventID',
+        :'ineffectiveDiscountTicketTypeID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        :'ineffectiveDiscountUserID'
+    ),
+    (
+        :'offerDiscountID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        :'offerDiscountUserID'
+    ),
+    (
+        :'offerFreeID',
+        :'freeEventID',
+        :'freeTicketTypeID',
+        now() + interval '1 day',
+        'organizer_invitation',
+        'pending',
+        :'offerFreeUserID'
+    ),
+    (
+        :'offerPaidID',
+        :'mainEventID',
+        :'offerPrivateTicketTypeID',
+        now() + interval '1 day',
+        'organizer_invitation',
+        'pending',
+        :'offerPaidUserID'
+    );
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should prepare intrinsic zero-price checkout without provider or recipient setup.
+select results_eq(
+    $$
+        with prepared_checkout as (
+            select prepare_event_checkout_purchase(
+                '79100000-0000-0000-0000-000000000001'::uuid,
+                '79100000-0000-0000-0000-00000000004e'::uuid,
+                '79100000-0000-0000-0000-00000000004f'::uuid,
+                '79100000-0000-0000-0000-000000000051'::uuid,
+                null,
+                null
+            ) as checkout
+        )
+        select
+            checkout->>'amount_minor',
+            checkout ? 'currency_code',
+            checkout->'recipient'
+        from prepared_checkout
+    $$,
+    $$ values ('0'::text, false, 'null'::jsonb) $$,
+    'Should prepare intrinsic zero-price checkout without payment setup'
+);
 
 -- Should create a pending checkout purchase
 select lives_ok(
@@ -700,6 +1065,512 @@ select is(
     'Should reuse an equivalent pending purchase when the ticket type is sold out'
 );
 
+-- Should preserve a payment-blocked queue head over discounted direct checkout
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'queueEventID'::uuid,
+        :'queueTicketTypeID'::uuid,
+        :'queueCheckoutUserID'::uuid,
+        'QUEUEFREE',
+        null
+    ),
+    '{"conflict":"ticket-type-sold-out"}'::jsonb,
+    'Should preserve a payment-blocked queue head over discounted direct checkout'
+);
+
+-- Should preserve FIFO queue priority over direct checkout
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'queueEventID'::uuid,
+        :'queueTicketTypeID'::uuid,
+        :'queueCheckoutUserID'::uuid,
+        null,
+        'stripe'
+    ),
+    '{"conflict":"ticket-type-sold-out"}'::jsonb,
+    'Should preserve FIFO queue priority over direct checkout'
+);
+
+-- Should commit queue promotion and stale-hold expiry with the typed conflict
+select is(
+    (
+        select jsonb_build_object(
+            'offer_status', (
+                select status
+                from admission_offer
+                where event_id = :'queueEventID'::uuid
+                and user_id = :'queueUserID'::uuid
+            ),
+            'purchase_status', (
+                select status
+                from event_purchase
+                where event_purchase_id = :'queueExpiredPurchaseID'::uuid
+            ),
+            'waitlist_count', (
+                select count(*)
+                from event_waitlist
+                where event_id = :'queueEventID'::uuid
+            )
+        )
+    ),
+    '{"offer_status":"pending","purchase_status":"expired","waitlist_count":0}'::jsonb,
+    'Should persist reconciliation before rejecting direct checkout'
+);
+
+-- Should reject attempts to claim another user's offer.
+select is(
+    prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'mainEventID'::uuid,
+            :'offerPrivateTicketTypeID'::uuid,
+            :'offerWrongUserID'::uuid,
+            null,
+            'stripe',
+            null,
+            :'offerPaidID'::uuid
+    ),
+    '{"conflict":"admission-offer-unavailable"}'::jsonb,
+    'Should reject claiming an offer owned by another user'
+);
+
+-- Should prepare a paid checkout for an invitation-only offer.
+select lives_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'freepass',
+            'stripe',
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'offerPrivateTicketTypeID',
+        :'offerPaidUserID',
+        :'offerPaidID'
+    ),
+    'Should prepare paid checkout for an invitation-only offer'
+);
+
+select results_eq(
+    format(
+        $$
+        select
+            ao.amount_minor,
+            ao.currency_code,
+            ao.discount_amount_minor,
+            ao.discount_code,
+            ao.status,
+            ep.admission_offer_id,
+            ep.amount_minor,
+            ep.discount_code,
+            ep.status
+        from admission_offer ao
+        join event_purchase ep using (admission_offer_id)
+        where ao.admission_offer_id = %L::uuid
+        $$,
+        :'offerPaidID'
+    ),
+    format(
+        $$
+        values (
+            500::bigint,
+            'USD'::text,
+            2500::bigint,
+            'FREEPASS'::text,
+            'checkout_pending'::text,
+            %L::uuid,
+            500::bigint,
+            'FREEPASS'::text,
+            'pending'::text
+        )
+        $$,
+        :'offerPaidID'
+    ),
+    'Should snapshot and link the paid offer checkout'
+);
+
+select is(
+    (
+        select prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'mainEventID'::uuid,
+            :'offerPrivateTicketTypeID'::uuid,
+            :'offerPaidUserID'::uuid,
+            null,
+            'stripe',
+            null,
+            :'offerPaidID'::uuid
+        )->>'event_purchase_id'
+    ),
+    (
+        select event_purchase_id::text
+        from event_purchase
+        where admission_offer_id = :'offerPaidID'::uuid
+    ),
+    'Should reuse the pending checkout for the same offer'
+);
+
+-- Should retain the first claim snapshot across canceled checkout retries.
+select lives_ok(
+    format(
+        $$ select cancel_event_checkout(%L, %L, %L, 'stripe') $$,
+        :'communityID',
+        :'mainEventID',
+        :'offerPaidUserID'
+    ),
+    'Should cancel the first offer-linked checkout'
+);
+
+select lives_ok(
+    format(
+        $$
+        select sync_event_ticket_types(
+            %L::uuid,
+            '[
+                {
+                    "active": true,
+                    "availability": "public",
+                    "event_ticket_type_id": "%s",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 2500,
+                            "event_ticket_price_window_id": "%s"
+                        }
+                    ],
+                    "seats_total": 10,
+                    "title": "General admission"
+                },
+                {
+                    "active": true,
+                    "availability": "public",
+                    "event_ticket_type_id": "%s",
+                    "order": 2,
+                    "price_windows": [
+                        {
+                            "amount_minor": 4000,
+                            "event_ticket_price_window_id": "%s"
+                        }
+                    ],
+                    "seats_total": 10,
+                    "title": "VIP"
+                },
+                {
+                    "active": true,
+                    "availability": "invitation_only",
+                    "event_ticket_type_id": "%s",
+                    "order": 3,
+                    "price_windows": [
+                        {
+                            "amount_minor": 5000,
+                            "event_ticket_price_window_id": "%s"
+                        }
+                    ],
+                    "seats_total": 10,
+                    "title": "Invitation admission"
+                },
+                {
+                    "active": true,
+                    "availability": "public",
+                    "event_ticket_type_id": "%s",
+                    "order": 4,
+                    "price_windows": [
+                        {
+                            "amount_minor": 1,
+                            "event_ticket_price_window_id": "%s"
+                        }
+                    ],
+                    "seats_total": 10,
+                    "title": "Minor-unit admission"
+                }
+            ]'::jsonb
+        )
+        $$,
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'priceWindowAID',
+        :'ticketTypeBID',
+        :'priceWindowBID',
+        :'offerPrivateTicketTypeID',
+        :'offerPrivatePriceWindowID',
+        :'ineffectiveDiscountTicketTypeID',
+        :'ineffectiveDiscountPriceWindowID'
+    ),
+    'Should change the tier price after the first offer claim'
+);
+
+select lives_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'offerPrivateTicketTypeID',
+        :'offerPaidUserID',
+        :'offerPaidID'
+    ),
+    'Should retry checkout through the same offer'
+);
+
+select results_eq(
+    format(
+        $$
+        select
+            ao.amount_minor,
+            current_price.amount_minor,
+            count(*) filter (where ep.status = 'expired')::int,
+            count(*) filter (where ep.status = 'pending')::int,
+            min(ep.amount_minor),
+            max(ep.amount_minor)
+        from admission_offer ao
+        join event_purchase ep using (admission_offer_id)
+        join event_ticket_price_window current_price
+            on current_price.event_ticket_type_id = ao.event_ticket_type_id
+        where ao.admission_offer_id = %L::uuid
+        group by ao.amount_minor, current_price.amount_minor
+        $$,
+        :'offerPaidID'
+    ),
+    $$ values (500::bigint, 5000::bigint, 1, 1, 500::bigint, 500::bigint) $$,
+    'Should copy the immutable first claim snapshot into every retry purchase'
+);
+
+select throws_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'total1',
+            'stripe',
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'offerPrivateTicketTypeID',
+        :'offerPaidUserID',
+        :'offerPaidID'
+    ),
+    'P0001',
+    'admission offer price selection cannot be changed',
+    'Should reject changing the offer discount selection on retry'
+);
+
+-- Should reject offer discounts below one minor unit
+select throws_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'tiny25',
+            'stripe',
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ineffectiveDiscountTicketTypeID',
+        :'ineffectiveDiscountUserID',
+        :'ineffectiveDiscountOfferID'
+    ),
+    'P0001',
+    'discount code does not reduce ticket price',
+    'Should reject offer discounts below one minor unit'
+);
+
+select results_eq(
+    format(
+        $$
+            select
+                ao.amount_minor is null,
+                ao.status,
+                (
+                    select count(*)::int
+                    from event_purchase ep
+                    where ep.admission_offer_id = ao.admission_offer_id
+                ),
+                (
+                    select available
+                    from event_discount_code edc
+                    where edc.event_discount_code_id = %L::uuid
+                )
+            from admission_offer ao
+            where ao.admission_offer_id = %L::uuid
+        $$,
+        :'ineffectiveDiscountID',
+        :'ineffectiveDiscountOfferID'
+    ),
+    $$ values (true, 'pending'::text, 0::int, 5::int) $$,
+    'Should leave rejected offer discount state unchanged'
+);
+
+-- Should prepare and snapshot a discounted-to-zero offer claim
+select lives_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'freepass',
+            null,
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'offerDiscountUserID',
+        :'offerDiscountID'
+    ),
+    'Should prepare a discounted-to-zero offer claim'
+);
+
+select results_eq(
+    format(
+        $$
+        select
+            ao.amount_minor,
+            ao.currency_code,
+            ao.discount_amount_minor,
+            ao.discount_code,
+            ep.amount_minor,
+            ep.currency_code
+        from admission_offer ao
+        join event_purchase ep using (admission_offer_id)
+        where ao.admission_offer_id = %L::uuid
+        $$,
+        :'offerDiscountID'
+    ),
+    $$ values (0::bigint, 'USD'::text, 2500::bigint, 'FREEPASS'::text, 0::bigint, 'USD'::text) $$,
+    'Should retain discounted-to-zero offer price snapshots'
+);
+
+-- Should cancel the discounted-to-zero offer checkout before retry
+select lives_ok(
+    format(
+        $$ select cancel_event_checkout(%L, %L, %L, null) $$,
+        :'communityID',
+        :'mainEventID',
+        :'offerDiscountUserID'
+    ),
+    'Should cancel the discounted-to-zero offer checkout'
+);
+
+-- Should retry the discounted-to-zero offer without resubmitting its code
+select lives_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            null,
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'offerDiscountUserID',
+        :'offerDiscountID'
+    ),
+    'Should retry the discounted-to-zero offer without resubmitting its code'
+);
+
+-- Should reuse the discounted-to-zero offer snapshot for its retry purchase
+select results_eq(
+    format(
+        $$
+        select
+            count(*) filter (where ep.status = 'expired')::int,
+            count(*) filter (where ep.status = 'pending')::int,
+            bool_and(ep.discount_code = 'FREEPASS'),
+            min(ep.amount_minor),
+            max(ep.amount_minor)
+        from event_purchase ep
+        where ep.admission_offer_id = %L::uuid
+        $$,
+        :'offerDiscountID'
+    ),
+    $$ values (1, 1, true, 0::bigint, 0::bigint) $$,
+    'Should reuse the discounted-to-zero offer snapshot for its retry purchase'
+);
+
+-- Should prepare an intrinsic-free offer without payment configuration.
+select lives_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            null,
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'freeEventID',
+        :'freeTicketTypeID',
+        :'offerFreeUserID',
+        :'offerFreeID'
+    ),
+    'Should prepare an intrinsic-free offer claim'
+);
+
+select results_eq(
+    format(
+        $$
+        select
+            ao.amount_minor,
+            ao.currency_code,
+            ao.status,
+            ep.amount_minor,
+            ep.currency_code
+        from admission_offer ao
+        join event_purchase ep using (admission_offer_id)
+        where ao.admission_offer_id = %L::uuid
+        $$,
+        :'offerFreeID'
+    ),
+    $$ values (0::bigint, null::text, 'checkout_pending'::text, 0::bigint, null::text) $$,
+    'Should retain intrinsic-free offer price snapshots'
+);
+
 -- Should apply a valid discount and decrement its availability
 select lives_ok(
     $$
@@ -709,7 +1580,7 @@ select lives_ok(
             '79100000-0000-0000-0000-000000000006'::uuid,
             '79100000-0000-0000-0000-000000000028'::uuid,
             'freepass',
-            'stripe'
+            null
         )
     $$,
     'Should apply a valid discount'
@@ -727,13 +1598,27 @@ select results_eq(
                 and status = 'pending'
             ),
             (
+                select currency_code
+                from event_purchase
+                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
+                and user_id = '79100000-0000-0000-0000-000000000028'::uuid
+                and status = 'pending'
+            ),
+            (
+                select discount_amount_minor::text
+                from event_purchase
+                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
+                and user_id = '79100000-0000-0000-0000-000000000028'::uuid
+                and status = 'pending'
+            ),
+            (
                 select available::text
                 from event_discount_code
                 where event_discount_code_id = '79100000-0000-0000-0000-000000000016'::uuid
             )
     $$,
-    $$ values ('0'::text, '1'::text) $$,
-    'Should persist the discounted amount and decrement its availability'
+    $$ values ('0'::text, 'USD'::text, '2500'::text, '1'::text) $$,
+    'Should persist discounted-to-zero snapshots and decrement availability'
 );
 
 -- Should reject discounted checkout amounts below minimums
@@ -810,6 +1695,48 @@ select throws_ok(
     $$,
     'user has a pending or rejected invitation for this event',
     'Should reject reusing a pending purchase when an invitation is pending'
+);
+
+-- Should return a typed conflict for an inactive ticket type
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'inactiveEventID'::uuid,
+        :'inactiveTicketTypeID'::uuid,
+        :'inactiveUserID'::uuid,
+        null,
+        'stripe'
+    ),
+    '{"conflict":"ticket-type-inactive"}'::jsonb,
+    'Should return a typed conflict for an inactive ticket type'
+);
+
+-- Should return a typed conflict when a ticket type has no current price
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'priceUnavailableEventID'::uuid,
+        :'priceUnavailableTicketTypeID'::uuid,
+        :'priceUnavailableUserID'::uuid,
+        null,
+        'stripe'
+    ),
+    '{"conflict":"ticket-type-price-unavailable"}'::jsonb,
+    'Should return a typed conflict when a ticket type has no current price'
+);
+
+-- Should return a typed conflict when paid checkout setup is unavailable
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'paymentSetupUnavailableEventID'::uuid,
+        :'paymentSetupUnavailableTicketTypeID'::uuid,
+        :'paymentSetupUnavailableUserID'::uuid,
+        null,
+        null
+    ),
+    '{"conflict":"payment-setup-unavailable"}'::jsonb,
+    'Should return a typed conflict when paid checkout setup is unavailable'
 );
 
 -- ============================================================================

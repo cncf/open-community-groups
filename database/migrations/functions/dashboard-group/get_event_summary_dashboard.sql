@@ -11,7 +11,8 @@ returns json as $$
             'attendee_count', get_event_occupied_seat_count(p_event_id),
             'created_by_display_name', coalesce(u.name, u.username),
             'created_by_username', u.username,
-            'delete_eligibility', get_event_delete_eligibility(p_group_id, p_event_id)
+            'delete_eligibility', get_event_delete_eligibility(p_group_id, p_event_id),
+            'ticket_types', list_event_ticket_types(p_event_id)
         ))::jsonb
     )::json
     from event e

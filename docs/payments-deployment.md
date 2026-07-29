@@ -13,7 +13,11 @@ Once this setup is complete:
 - OCG can create Stripe Checkout sessions for paid event purchases.
 - OCG can verify Stripe webhook signatures.
 - Groups can store Stripe connected account IDs in group settings.
-- Group administrators can create ticketed events and process refunds in OCG.
+- Group administrators can configure paid-capable ticketed events and process
+  refunds in OCG.
+
+Free-only ticketed events work when Stripe is not configured. Ticketing requires
+Stripe only when a configured or claim-time final price may be positive.
 
 ## Stripe Requirements
 
@@ -196,6 +200,12 @@ If Stripe payments are disabled, the route is not registered.
 OCG creates Stripe-hosted Checkout sessions on the server side and redirects
 attendees to Stripe Checkout for paid tickets.
 
+Intrinsically free tickets complete locally without a currency, provider
+session, webhook, or connected account. A positive base price reduced to zero
+by a valid discount also completes locally while retaining its currency and
+discount snapshot. If payment setup is lost, positive final-price claims are
+blocked without disabling free claims or unrelated event edits.
+
 OCG currently restricts Stripe Checkout to card payments in code. This keeps
 the checkout flow aligned with the current webhook handling and avoids delayed
 payment methods that require async completion events.
@@ -211,6 +221,11 @@ starts two provider refund workers and one stale-claim recovery worker. This sam
 approved attendee requests, paid checkouts that can no longer be fulfilled, and automatic refunds
 from event cancellation.
 
+A late provider completion that cannot be fulfilled because its hold or offer
+expired, the offer was canceled, capacity changed, or event state changed is
+recorded and queued for an automatic full refund. It never creates attendance
+or revives the terminal offer.
+
 Workers look up an existing Stripe refund before creating one and reuse the purchase's stable
 idempotency key. Transient failures use up to ten claims with exponential backoff from one to
 thirty minutes. A claim left in `processing` for fifteen minutes is released by the recovery
@@ -219,6 +234,10 @@ finalization without creating another refund.
 
 When this deployment has no payments provider configured, refund work remains queued and visible
 to organizers. It is not discarded or treated as complete.
+
+Payment webhooks and durable refund workers apply only to provider-backed
+purchases. The enrollment reconciliation worker continues expiring offers,
+releasing holds, and promoting queues independently of Stripe.
 
 OCG validates refund webhook amounts, currencies, and PaymentIntent identifiers
 against the durable purchase before accepting provider state changes. A refund
@@ -287,7 +306,8 @@ card payments only when OCG creates Stripe Checkout sessions.
    `refund.created`, `refund.failed`, and `refund.updated`.
 6. Copy the webhook signing secret into OCG config.
 7. Deploy OCG with `payments.enabled: true`.
-8. Verify the `Payments` section appears in group settings.
+8. Verify the `Payments` section appears in group settings and the event editor
+   `Tickets` tab is available.
 9. Create a Stripe connected account for a test group and give that group's
    administrator access to it.
 10. Complete Stripe onboarding and payout setup for the test group's connected
@@ -304,6 +324,9 @@ Check that:
 - Stripe payments are enabled in OCG configuration.
 - All required Stripe values are present.
 - The deployment was restarted or rolled out with the new config.
+
+Free-only ticketed events remain available without this section. Its absence
+blocks only paid-capable ticket configuration and positive final-price claims.
 
 ### Stripe Returns Signature Errors
 
@@ -342,3 +365,8 @@ Check that:
 - The group saved a Stripe connected account ID in `acct_...` format.
 - The connected account belongs to the same Stripe platform used by OCG.
 - The group settings were saved successfully.
+- Every positive final-price claim uses the same configured provider and
+  recipient currency context.
+
+If only free tickets are needed, remove positive current and future price
+windows and leave the event currency and discount codes empty.

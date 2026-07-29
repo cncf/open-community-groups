@@ -1,5 +1,6 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/badges.html" as badges -%}
+{% import "macros/question_answers.html" as question_answers -%}
 
 {{ dashboard::page_title(title = "Community Invitations", docs_href = "/docs#/guides/user-dashboard?id=invitations-access-and-attendance",
   description = "Manage invitations to join communities.") -}}
@@ -179,7 +180,7 @@
 
 {# Event Invitations -#}
 {{ dashboard::form_title(title = "Event Invitations",
-  description = "Manage invitations to attend events.") -}}
+  description = "Claim, resume, or decline event ticket offers and invitations.") -}}
 
 <div class="mt-10">
   <div class="relative overflow-visible">
@@ -188,10 +189,10 @@
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Event</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Group</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Offer</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Starts</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Created</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
+          <th scope="col" class="px-3 xl:px-5 py-3">Expires</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -209,16 +210,31 @@
         {% else -%}
           {% for invitation in event_invitations -%}
             {# Invitation row -#}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <tr id="event-offer-{{ invitation.admission_offer_id }}"
+                class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 scroll-mt-4">
               {# Event -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
                 <div class="max-w-full text-black truncate">{{ invitation.event_name }}</div>
-                <div class="text-xs text-stone-600 truncate">{{ invitation.community_display_name }}</div>
+                <div class="text-xs text-stone-600 truncate">
+                  {{ invitation.group_name }} · {{ invitation.community_display_name }}
+                </div>
               </td>
               {# End event -#}
-              {# Group -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.group_name }}</td>
-              {# End group -#}
+              {# Offer -#}
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-700">
+                  {% if let Some(ticket_title) = &invitation.ticket_title -%}
+                    {{ ticket_title }}
+                  {% else -%}
+                    RSVP
+                  {% endif -%}
+                </div>
+                <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
+                {% if let Some(price_label) = invitation.price_label() -%}
+                  <div class="mt-1 text-xs font-semibold text-green-800">{{ price_label }}</div>
+                {% endif -%}
+              </td>
+              {# End offer -#}
               {# Starts date -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(starts_at) = &invitation.starts_at -%}
@@ -228,30 +244,69 @@
                 {% endif -%}
               </td>
               {# End starts date -#}
-              {# Created date -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.created_at.format(DATE_FORMAT_2) }}</td>
-              {# End created date -#}
+              {# Expiration date -#}
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(expires_at) = &invitation.expires_at -%}
+                  {{ expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y") }}
+                  <div class="text-xs text-stone-400">
+                    {{ expires_at.with_timezone(invitation.timezone).format("%-I:%M %p %Z") }}
+                  </div>
+                {% else -%}
+                  No deadline
+                {% endif -%}
+              </td>
+              {# End expiration date -#}
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[112px]">
+              <td class="px-3 xl:px-5 py-4 w-[152px]">
                 <div class="flex items-center justify-end gap-2">
-                  <button hx-put="/dashboard/user/invitations/event/{{ invitation.event_id }}/accept"
-                          hx-indicator="#dashboard-spinner"
-                          hx-disabled-elt="this"
-                          class="btn-tertiary p-2"
-                          title="Approve">
-                    <div class="svg-icon size-3 md:size-4 icon-check"></div>
-                  </button>
-                  <button id="reject-event-{{ invitation.event_id }}"
-                          hx-put="/dashboard/user/invitations/event/{{ invitation.event_id }}/reject"
+                  {% if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}
+                    <a href="{{ resume_checkout_url }}"
+                       class="btn-tertiary-anchor p-2"
+                       aria-label="Continue checkout for {{ invitation.event_name }}"
+                       title="Continue to checkout">
+                      <div class="svg-icon size-3 md:size-4 icon-ticket"></div>
+                    </a>
+                  {% else -%}
+                    <button type="button"
+                            data-user-event-offer-open
+                            data-user-event-offer-modal="event-offer-modal-{{ invitation.admission_offer_id }}"
+                            class="btn-tertiary p-2"
+                            aria-label="{{ invitation.claim_label() }} for {{ invitation.event_name }}"
+                            title="{{ invitation.claim_label() }}">
+                      <div class="svg-icon size-3 md:size-4 icon-ticket"></div>
+                    </button>
+                  {% endif -%}
+                  {% if invitation.checkout_started() -%}
+                    <button id="cancel-event-offer-checkout-{{ invitation.admission_offer_id }}"
+                            type="button"
+                            hx-delete="/{{ invitation.community_name }}/event/{{ invitation.event_id }}/checkout"
+                            hx-indicator="#dashboard-spinner"
+                            hx-trigger="confirmed"
+                            hx-swap="none"
+                            hx-disabled-elt="this"
+                            data-confirm-action
+                            data-user-event-offer-checkout-cancel
+                            data-confirm-message="Are you sure you want to cancel this checkout? Your ticket hold will be released."
+                            data-confirm-text="Yes"
+                            data-error-message="Something went wrong canceling checkout. Please try again later."
+                            class="btn-tertiary p-2"
+                            aria-label="Cancel checkout for {{ invitation.event_name }}"
+                            title="Cancel checkout">
+                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
+                    </button>
+                  {% endif -%}
+                  <button id="decline-event-offer-{{ invitation.admission_offer_id }}"
+                          hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/decline"
                           hx-indicator="#dashboard-spinner"
                           hx-trigger="confirmed"
                           hx-disabled-elt="this"
                           data-confirm-action
-                          data-confirm-message="Are you sure you would like to reject this invitation?"
+                          data-confirm-message="Are you sure you would like to decline this offer?"
                           data-confirm-text="Yes"
-                          data-error-message="Something went wrong rejecting this invitation. Please try again later."
+                          data-error-message="Something went wrong declining this offer. Please try again later."
                           class="btn-tertiary p-2 reject-modal"
-                          title="Reject">
+                          aria-label="Decline offer for {{ invitation.event_name }}"
+                          title="Decline">
                     <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
                   </button>
                 </div>
@@ -265,4 +320,123 @@
     </table>
   </div>
 </div>
+
+{# Event offer claim modals -#}
+{% for invitation in event_invitations -%}
+  {% if invitation.resume_checkout_url.is_none() -%}
+    <div id="event-offer-modal-{{ invitation.admission_offer_id }}"
+         data-user-event-offer-dialog
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="event-offer-title-{{ invitation.admission_offer_id }}"
+         class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+      <div data-user-event-offer-close
+           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+      <div class="modal-panel p-4 max-w-3xl">
+        <div class="modal-card rounded-lg">
+          <div class="flex items-start justify-between border-b border-stone-200 p-4 md:p-5">
+            <div>
+              <h3 id="event-offer-title-{{ invitation.admission_offer_id }}"
+                  class="text-xl font-semibold text-stone-900">{{ invitation.claim_label() }}</h3>
+              <p class="mt-1 text-sm text-stone-600">{{ invitation.event_name }}</p>
+            </div>
+            <button data-user-event-offer-close
+                    type="button"
+                    class="group ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-900">
+              <div class="svg-icon h-5 w-5 icon-close bg-stone-500 transition-colors group-hover:bg-stone-900"></div>
+              <span class="sr-only">Close modal</span>
+            </button>
+          </div>
+          <form data-user-event-offer-form
+                {% if invitation.event_ticket_type_id.is_some() -%}
+                  hx-post="/{{ invitation.community_name }}/event/{{ invitation.event_id }}/checkout"
+                {% else -%}
+                  hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/accept"
+                {% endif -%}
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="find button[type='submit']"
+                hx-swap="none"
+                class="modal-body space-y-6 p-4 md:p-6">
+            {% if let Some(event_ticket_type_id) = invitation.event_ticket_type_id -%}
+              <input type="hidden"
+                     name="admission_offer_id"
+                     value="{{ invitation.admission_offer_id }}">
+              <input type="hidden"
+                     name="event_ticket_type_id"
+                     value="{{ event_ticket_type_id }}">
+            {% endif -%}
+
+            <div class="rounded-xl border border-stone-200 bg-stone-50 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div class="text-sm font-semibold text-stone-900">
+                    {% if let Some(ticket_title) = &invitation.ticket_title -%}
+                      {{ ticket_title }}
+                    {% else -%}
+                      Event invitation
+                    {% endif -%}
+                  </div>
+                  <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
+                </div>
+                {% if let Some(price_label) = invitation.price_label() -%}
+                  <div class="rounded-full border border-green-800 bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
+                    {{ price_label }}
+                  </div>
+                {% endif -%}
+              </div>
+              {% if let Some(expires_at) = &invitation.expires_at -%}
+                <p class="mt-3 text-xs text-stone-600">
+                  Claim by
+                  <strong>{{ expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}</strong>.
+                </p>
+              {% endif -%}
+              {% if invitation.event_ticket_type_id.is_some() -%}
+                <p class="mt-2 text-xs text-stone-600">
+                  Your price is confirmed when you first claim the offer. If checkout has already started, retries keep that confirmed price.
+                </p>
+              {% endif -%}
+            </div>
+
+            {% if !invitation.registration_questions.is_empty() -%}
+              <div class="space-y-5">
+                <div>
+                  <h4 class="text-sm font-semibold text-stone-900">Registration questions</h4>
+                  <p class="mt-1 text-xs text-stone-500">Complete these answers before claiming the offer.</p>
+                </div>
+                {% let radio_name_prefix -%}offer-question-{{ invitation.admission_offer_id }}{%- endlet %}
+              {{ question_answers::fields(questions = invitation.registration_questions,
+                answers = invitation.registration_answers.as_ref() ,
+                answer_attr = "data-question-answer",
+                radio_name_prefix = radio_name_prefix) -}}
+              {{ question_answers::required_note() -}}
+            </div>
+  {% endif -%}
+  <input type="hidden"
+         data-user-event-offer-answers
+         name="registration_answers">
+
+  {% if invitation.discount_code_available() -%}
+    <div>
+      <label for="event-offer-discount-{{ invitation.admission_offer_id }}"
+             class="form-label">Discount code (optional)</label>
+      <input id="event-offer-discount-{{ invitation.admission_offer_id }}"
+             type="text"
+             name="discount_code"
+             maxlength="{{ crate::validation::MAX_LEN_S }}"
+             class="input-primary mt-2"
+             placeholder="Discount code">
+    </div>
+  {% endif -%}
+
+  <div class="flex flex-col-reverse gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:justify-end">
+    <button data-user-event-offer-close type="button" class="btn-primary-outline">Cancel</button>
+    <button type="submit" class="btn-primary">{{ invitation.claim_label() }}</button>
+  </div>
+  </form>
+  </div>
+  </div>
+  </div>
+{% endif -%}
+{% endfor -%}
+{# End event offer claim modals -#}
 {# End Event Invitations -#}

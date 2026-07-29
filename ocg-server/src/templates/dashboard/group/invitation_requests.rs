@@ -9,7 +9,7 @@ use serde_with::skip_serializing_none;
 use crate::{
     templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
-        event::{EventInvitationRequestStatus, EventSummary},
+        event::{EventAdmissionOfferStatus, EventInvitationRequestStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
         user::User,
     },
@@ -62,6 +62,21 @@ pub struct InvitationRequest {
     /// Public profile payload for the requester.
     pub user: User,
 
+    /// Latest approval admission offer identifier.
+    pub admission_offer_id: Option<uuid::Uuid>,
+    /// Latest approval admission offer lifecycle status.
+    pub admission_offer_status: Option<EventAdmissionOfferStatus>,
+    /// Latest approval offer expiration time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub offer_expires_at: Option<DateTime<Utc>>,
+    /// Ticket type assigned by the organizer.
+    pub offered_event_ticket_type_id: Option<uuid::Uuid>,
+    /// Ticket title assigned by the organizer.
+    pub offered_ticket_title: Option<String>,
+    /// Public ticket type requested by the attendee.
+    pub requested_event_ticket_type_id: Option<uuid::Uuid>,
+    /// Public ticket title requested by the attendee.
+    pub requested_ticket_title: Option<String>,
     /// Review completion time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub reviewed_at: Option<DateTime<Utc>>,

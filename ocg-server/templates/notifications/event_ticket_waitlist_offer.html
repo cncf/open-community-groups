@@ -1,0 +1,33 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Ticket Waitlist Offer Notification -#}
+{% block subject -%}
+  Ticket available: {{ event_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  A {{ ticket_title }} ticket is available for {{ event_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    A seat opened for <strong>{{ event_name }}</strong> with
+    <strong>{{ group_name }}</strong>. Your
+    <strong>{{ ticket_title }}</strong> offer has a current price of
+    <strong>{{ self.price_label() }}</strong>.
+    No charge or registration has occurred.
+    The price is finalized when you first claim the offer and may change before then.
+    It is reserved until
+    <strong>{{ expires_at.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
+    Claim or decline it before the deadline.
+  </p>
+
+  {{ email::button(link = dashboard_url, text = "Claim or decline offer", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because your account was promoted from the
+  {{ ticket_title }} waiting list for {{ event_name }}.
+{% endblock footer -%}
+{# End event ticket waitlist offer notification -#}

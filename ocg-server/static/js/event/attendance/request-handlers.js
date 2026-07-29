@@ -1,5 +1,9 @@
 import { handleHtmxResponse, showInfoAlert } from "/static/js/common/alerts.js";
-import { getAttendanceContainer, getAttendanceControl } from "/static/js/event/attendance-dom.js";
+import {
+  getAttendanceContainer,
+  getAttendanceControl,
+  getAttendanceMeta,
+} from "/static/js/event/attendance-dom.js";
 import {
   closeRefundModal,
   closeTicketModal,
@@ -12,7 +16,7 @@ import {
 } from "/static/js/event/attendance-view.js";
 import { refreshAvailabilityAndRenderAttendance } from "/static/js/event/attendance/availability-refresh.js";
 import { showProfileAwareInfoAlert } from "/static/js/event/attendance/feedback.js";
-import { blockAttendRequestForQuestions } from "/static/js/event/attendance/questions.js";
+import { blockAttendanceRequestForQuestions } from "/static/js/event/attendance/questions.js";
 import { renderAttendanceCheckResponse } from "/static/js/event/attendance/status-renderer.js";
 import { parseJsonResponse, PRIMARY_REQUEST_ROLES } from "/static/js/event/attendance/shared.js";
 
@@ -76,8 +80,36 @@ const handleCheckoutConfigRequest = (event) => {
     return;
   }
 
+  const selectedTicketType = container.querySelector('[data-attendance-role="ticket-type-option"]:checked');
+  const isRequest = getAttendanceMeta(container).attendeeApprovalRequired;
+  const isWaitlist =
+    selectedTicketType instanceof HTMLInputElement && selectedTicketType.dataset.ticketSoldOut === "true";
+  if (isRequest || isWaitlist) {
+    event.detail.path = target.dataset.attendUrl || event.detail.path;
+    delete params.discount_code;
+    if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
+      delete event.detail.unfilteredParameters.discount_code;
+    }
+
+    if (isWaitlist && !isRequest) {
+      delete params.registration_answers;
+      if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
+        delete event.detail.unfilteredParameters.registration_answers;
+      }
+    }
+    return;
+  }
+
+  event.detail.path = target.dataset.checkoutUrl || event.detail.path;
   const discountCodeInput = getAttendanceControl(container, "discount-code-input");
   if (!(discountCodeInput instanceof HTMLInputElement)) {
+    return;
+  }
+  if (discountCodeInput.disabled) {
+    delete params.discount_code;
+    if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
+      delete event.detail.unfilteredParameters.discount_code;
+    }
     return;
   }
 
@@ -198,6 +230,27 @@ const handleCheckoutBeforeRequest = (target) => {
 };
 
 /**
+ * Blocks attend-button HTMX requests when click handling owns the action.
+ * @param {Event} event - htmx:beforeRequest event
+ * @param {HTMLElement} target - Event target
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} True when the request was blocked
+ */
+const blockInterceptedAttendRequest = (event, target, container) => {
+  if (!(target instanceof HTMLButtonElement) || target.dataset.attendanceRole !== "attend-btn") {
+    return false;
+  }
+
+  const meta = getAttendanceMeta(container);
+  if (!meta.ticketModalRequired && !target.dataset.resumeUrl) {
+    return false;
+  }
+
+  event.preventDefault();
+  return true;
+};
+
+/**
  * Handles checkout form afterRequest state.
  * @param {Event} event - htmx:afterRequest event
  * @returns {void}
@@ -236,7 +289,11 @@ const handleCheckoutAfterRequest = (event) => {
     return;
   }
 
-  if (response?.status !== "pending-payment") {
+  if (response?.status === "waitlisted") {
+    showProfileAwareInfoAlert(target, "You have joined the waiting list for this ticket.");
+  } else if (response?.status === "pending-approval") {
+    showProfileAwareInfoAlert(target, "Your ticket request has been sent to the organizers.");
+  } else if (response?.status !== "pending-payment") {
     showProfileAwareInfoAlert(target, "You have successfully registered for this event.");
   }
 
@@ -291,7 +348,11 @@ export const handleBeforeRequest = (event) => {
     return;
   }
 
-  if (blockAttendRequestForQuestions(event, target, container)) {
+  if (blockInterceptedAttendRequest(event, target, container)) {
+    return;
+  }
+
+  if (blockAttendanceRequestForQuestions(event, target, container)) {
     return;
   }
 

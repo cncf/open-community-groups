@@ -137,8 +137,9 @@ the parent/child links connected to that group.
 
 ## Payments: Group Recipient Setup
 
-Ticketed events are available only when two prerequisites are both true: your OCG deployment has
-payments enabled, and the group has a payment recipient configured in `Settings`.
+Ticketing is available without payment setup when every configured ticket price
+is zero. Paid-capable ticketing requires both server-side Stripe configuration
+and a group payment recipient in `Settings`.
 
 To set up the group side, open [Settings](/dashboard/group?tab=settings ':ignore'), enter the
 group's Stripe connected account ID in the payments section, and save the group settings.
@@ -149,12 +150,13 @@ The dashboard does not create or onboard the Stripe account for you.
 For the full Stripe-side setup, including connected-account onboarding and
 payout details, follow [Payments Setup](payments-setup.md).
 
-If the group leaves the payment recipient blank, organizers can still run free
-RSVP events, but ticketed events stay unavailable for that group, including
-zero-price tiers.
+If the group leaves the payment recipient blank, organizers can run RSVP events
+and free-only ticketed events. A ticket type with any positive current or future
+price window makes the event paid-capable and requires the recipient.
 
-If you do not see payment controls in the event editor at all, your deployment may not have
-payments enabled yet. That setup is managed outside the public dashboard documentation.
+If the deployment has no payment provider, the event editor still shows the
+`Tickets` tab for free-only configuration. Positive prices remain unavailable,
+and group settings do not show a Stripe recipient field.
 
 Permission-wise, configuring the group payment recipient requires settings write access, while
 creating paid events and approving/rejecting refund requests require events write access.
@@ -236,33 +238,42 @@ already passed.
 ![Group events area](../screenshots/dashboard-group-events.png)
 
 Starting from [Add Event](/dashboard/group/events/add ':ignore') gives organizers a structured editor with
-tabbed sections that map directly to delivery needs (details, schedule, roles, sessions, CFS,
-attendees).
+tabbed sections that map directly to delivery needs. The `Tickets` tab supports
+free-only configuration without Stripe, paid configuration when the group is
+payment-ready, and a read-only explanation when positive prices cannot be used.
 
-Waitlist-aware event operations also include:
+Enrollment-aware event operations also include:
 
 - A `Waitlist enabled` toggle in event details.
-- Waitlist requires a numeric event capacity; unlimited-capacity events cannot enable it.
+- RSVP waitlists require a numeric event capacity. Ticketed waitlists use each
+  public tier's seat allocation.
+- Ticket types can be `Public` or `Invitation only`. Private tiers never appear
+  in public event responses.
 - Optional `Registration Opens` and `Registration Closes` fields in `Date & Venue`.
   When configured, the window controls public registration, invitation requests, starting ticket
   checkout, registration-question answers, and automatic waitlist promotion.
   Registration open and close dates cannot be after the event start, and close must be after open
   when both are set. If only an open date is set, registration closes at event start; if both fields
-  are blank, no registration window is applied. Active checkout holds may still complete payment and
+  are blank, no registration window is applied. Active checkout holds may still complete checkout and
   required registration questions after the public window closes, until the hold expires.
 - Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on event
   enrollment settings, with table search, sorting, and filters for day-of operations.
-- Automatic promotion from the waitlist when attendees leave, capacity increases, or capacity is
-  removed, but only while registration is open.
+- Automatic reconciliation when attendance, checkout, refund, capacity, or
+  offer state releases inventory.
 - Waitlist recipients included in event cancellation notifications.
 
-Invitation-review event operations include:
+Approval event operations include:
 
 - A `Require Invitation Approval` toggle in event details.
-- Invitation review cannot be combined with waitlist or paid tickets.
+- Approval cannot be combined with waitlist, but it can be used with free or
+  paid ticketing.
 - Invitation requests appear in a separate `Requests` tab for organizer review. The tab defaults to
   pending requests and can be filtered to all, accepted, or rejected requests.
-- Accepting a request creates a confirmed attendee if capacity allows.
+- A public ticket request keeps the requester-selected tier.
+- A generic request for a fully private ticketed event requires the organizer
+  to assign an invitation-only tier.
+- Accepting a ticket request creates a time-limited offer if capacity and payment
+  readiness allow it. Accepting an RSVP request confirms attendance.
 - Rejecting a request records the decision without creating an attendee.
 
 Organizer-created event invitations are managed from the event `Attendees` tab:
@@ -272,13 +283,19 @@ Organizer-created event invitations are managed from the event `Attendees` tab:
 - For new invitees, email invitations should use the invitee's LF account primary email because LF
   SSO activates the placeholder by email. For existing users, select the registered platform user
   when possible; LF SSO identity reconciliation handles later LF email changes during login.
-- Manual invitations are available for free RSVP events only, not ticketed events.
-- Manual invitations are an organizer override for registration windows and capacity. Invitees can
-  accept and answer required registration questions outside the public registration window.
-- Pending invitations appear in the attendee table with invitation status and can be canceled
-  before the invitee accepts.
-- If an invitee rejects the invitation, the attendee row stays rejected and the same user cannot be
-  invited to that event again.
+- Ticketed invitations require an active, currently priced public or
+  invitation-only tier. A zero-priced private tier is the normal complimentary
+  option.
+- Invitations bypass public approval and registration windows, but never event
+  capacity, tier capacity, or public-tier waiting-list priority.
+- Pending invitations reserve capacity until their displayed deadline and can
+  be canceled before claim. RSVP organizer invitations use a 24-hour claim
+  deadline; invitations without a deadline remain open until accepted,
+  declined, or canceled. Expired organizer invitations may be reissued when the
+  recipient is still eligible.
+- Declined, canceled, or expired offers release their reservation and trigger
+  queue reconciliation. Declined or expired waiting-list recipients are not
+  automatically requeued, and their offers cannot be manually reissued.
 
 ![Add event flow](../screenshots/dashboard-group-add-event.png)
 

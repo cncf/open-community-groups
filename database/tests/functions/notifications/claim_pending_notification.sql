@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,8 @@ select plan(18);
 \set notificationEventPublishedID '8a010000-0000-0000-0000-000000000007'
 \set notificationFutureRetryID '8a010000-0000-0000-0000-000000000023'
 \set notificationGroupWelcomeID '8a010000-0000-0000-0000-000000000008'
+\set notificationPreRegisteredAdmissionOfferCanceledID '8a010000-0000-0000-0000-000000000025'
+\set notificationPreRegisteredAdmissionOfferID '8a010000-0000-0000-0000-000000000024'
 \set notificationPreRegisteredEventInvitationID '8a010000-0000-0000-0000-000000000009'
 \set notificationPreRegisteredGroupWelcomeID '8a010000-0000-0000-0000-000000000010'
 \set notificationPreRegisteredVerifiedGroupWelcomeID '8a010000-0000-0000-0000-000000000011'
@@ -216,6 +218,26 @@ insert into notification (
         :'userPreRegisteredID'
     ),
     (
+        '2025-01-01 00:00:11.5',
+        0,
+        'pending',
+        'event-admission-offer-created',
+        null,
+        :'notificationPreRegisteredAdmissionOfferID',
+        :'templateEventPublishedID',
+        :'userPreRegisteredID'
+    ),
+    (
+        '2025-01-01 00:00:11.6',
+        0,
+        'pending',
+        'event-admission-offer-canceled',
+        null,
+        :'notificationPreRegisteredAdmissionOfferCanceledID',
+        :'templateEventPublishedID',
+        :'userPreRegisteredID'
+    ),
+    (
         '2025-01-01 00:00:12',
         0,
         'pending',
@@ -399,6 +421,34 @@ select is(
         'template_data', '{"event": "test"}'::jsonb
     ),
     'Claims event invitation notification for pre-registered user'
+);
+
+-- Should return admission offer notifications for pre-registered users
+select is(
+    (select row_to_json(r)::jsonb from claim_pending_notification() r),
+    jsonb_build_object(
+        'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
+        'email', 'invited@example.com',
+        'kind', 'event-admission-offer-created',
+        'notification_id', :'notificationPreRegisteredAdmissionOfferID',
+        'template_data', '{"event": "test"}'::jsonb
+    ),
+    'Claims admission offer notification for pre-registered user'
+);
+
+-- Should return admission offer cancellation notifications for pre-registered users
+select is(
+    (select row_to_json(r)::jsonb from claim_pending_notification() r),
+    jsonb_build_object(
+        'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
+        'email', 'invited@example.com',
+        'kind', 'event-admission-offer-canceled',
+        'notification_id', :'notificationPreRegisteredAdmissionOfferCanceledID',
+        'template_data', '{"event": "test"}'::jsonb
+    ),
+    'Claims admission offer cancellation notification for pre-registered user'
 );
 
 -- Should leave other notification kinds for unverified users pending

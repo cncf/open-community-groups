@@ -27,6 +27,7 @@ use crate::{
     db::{DynDB, PgDB, pool as db_pool},
     services::{
         badges::start_badge_award_workers,
+        enrollment::start_enrollment_workers,
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
         meetings::{
             DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider,
@@ -122,6 +123,14 @@ async fn main() -> Result<()> {
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
     let payments_provider = build_payments_provider(cfg.payments.as_ref());
+    let enrollment_workers_db = db.clone() as DynDB;
+    start_enrollment_workers(
+        &enrollment_workers_db,
+        &cfg.server,
+        &background_tasks.task_tracker,
+        &background_tasks.cancellation_token,
+        cfg.payments.as_ref().map(PaymentsConfig::provider),
+    );
     let refund_workers_db = db.clone() as DynDB;
     start_refund_workers(
         &refund_workers_db,

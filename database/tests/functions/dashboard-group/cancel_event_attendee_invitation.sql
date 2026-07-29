@@ -101,12 +101,32 @@ values (
     true
 );
 
--- Event invitation
+-- Event invitation offers
+insert into admission_offer (
+    event_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values
+    (
+        :'eventID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        :'invitedUserID'
+    ),
+    (
+        :'eventID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        :'questionsInvitedUserID'
+    );
+
+-- Non-invitation pending registration
 insert into event_attendee (event_id, user_id, manually_invited, status)
-values
-    (:'eventID', :'invitedUserID', true, 'invitation-pending'),
-    (:'eventID', :'questionsInvitedUserID', true, 'registration-questions-pending'),
-    (:'eventID', :'questionsRegisteredUserID', false, 'registration-questions-pending');
+values (:'eventID', :'questionsRegisteredUserID', false, 'registration-questions-pending');
 
 -- ============================================================================
 -- TESTS
@@ -122,14 +142,19 @@ select lives_ok(
 );
 
 select is(
-    (select status from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
-    'invitation-canceled',
-    'Should persist canceled invitation status'
+    (select status from admission_offer where event_id = :'eventID' and user_id = :'invitedUserID'),
+    'canceled',
+    'Should persist canceled offer status'
 );
 
 select ok(
-    not (select manually_invited from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
-    'Should clear the manual invitation flag when canceling'
+    not exists (
+        select 1
+        from event_attendee
+        where event_id = :'eventID'
+        and user_id = :'invitedUserID'
+    ),
+    'Should not create attendee state when canceling'
 );
 
 -- Should create the expected audit row.
@@ -143,7 +168,7 @@ select results_eq(
             group_id,
             resource_id,
             resource_type,
-            details
+            details - 'admission_offer_id'
         from audit_log
     $$,
     format(
@@ -175,14 +200,24 @@ select lives_ok(
 );
 
 select is(
-    (select status from event_attendee where event_id = :'eventID' and user_id = :'questionsInvitedUserID'),
-    'invitation-canceled',
-    'Should persist canceled invitation status for registration questions pending invitations'
+    (
+        select status
+        from admission_offer
+        where event_id = :'eventID'
+        and user_id = :'questionsInvitedUserID'
+    ),
+    'canceled',
+    'Should persist canceled offer status for registration-question invitations'
 );
 
 select ok(
-    not (select manually_invited from event_attendee where event_id = :'eventID' and user_id = :'questionsInvitedUserID'),
-    'Should clear the manual invitation flag for registration questions pending invitations'
+    not exists (
+        select 1
+        from event_attendee
+        where event_id = :'eventID'
+        and user_id = :'questionsInvitedUserID'
+    ),
+    'Should not create pending registration state when canceling'
 );
 
 -- Should reject canceling non-manual pending question registrations.

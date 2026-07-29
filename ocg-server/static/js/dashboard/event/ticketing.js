@@ -61,12 +61,16 @@ export function initializeEventEnrollmentState(root = document) {
       return;
     }
 
-    const requiresCurrency = hasTicketTypes && !paymentCurrencyInput.disabled;
+    const hasPositivePrices =
+      typeof ticketTypesEditor?.hasConfiguredPositivePrices === "function"
+        ? ticketTypesEditor.hasConfiguredPositivePrices()
+        : false;
+    const requiresCurrency = hasTicketTypes && hasPositivePrices && !paymentCurrencyInput.disabled;
     const hasCurrency = paymentCurrencyInput.value.trim() !== "";
 
     paymentCurrencyInput.required = requiresCurrency;
     paymentCurrencyInput.setCustomValidity(
-      requiresCurrency && !hasCurrency ? "Ticketed events require an event currency." : "",
+      requiresCurrency && !hasCurrency ? "Paid ticket prices require an event currency." : "",
     );
   };
 
@@ -109,8 +113,8 @@ export function initializeEventEnrollmentState(root = document) {
     const capacityValue = Number.parseInt(capacityInput.value, 10);
     const capacityIsValid = Number.isFinite(capacityValue) && capacityValue > 0;
     const attendeeApprovalRequired = toggleAttendeeApprovalRequired?.checked === true;
-    const canEnableWaitlist = capacityIsValid && !hasTicketTypes && !attendeeApprovalRequired;
-    const canRequireApproval = !hasTicketTypes && !toggleWaitlistEnabled.checked;
+    const canEnableWaitlist = capacityIsValid && !attendeeApprovalRequired;
+    const canRequireApproval = !toggleWaitlistEnabled.checked;
 
     if (toggleAttendeeApprovalRequired && attendeeApprovalRequiredInput) {
       toggleAttendeeApprovalRequired.disabled = !canRequireApproval;

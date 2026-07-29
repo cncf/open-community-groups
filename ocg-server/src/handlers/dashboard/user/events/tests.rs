@@ -59,6 +59,8 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
                 manually_invited: false,
                 status: EventAttendanceStatus::RegistrationQuestionsPending,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -71,8 +73,13 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
     let mut tx = MockDB::new();
     tx.expect_leave_event()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(move |_, _, _| {
+        .withf(move |cid, eid, uid, payment_provider| {
+            *cid == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && payment_provider.is_none()
+        })
+        .returning(move |_, _, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
                 promoted_user_ids: vec![],
@@ -164,6 +171,8 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
                 manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -172,8 +181,13 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
     let mut tx = MockDB::new();
     tx.expect_leave_event()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(move |_, _, _| {
+        .withf(move |cid, eid, uid, payment_provider| {
+            *cid == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && payment_provider.is_none()
+        })
+        .returning(move |_, _, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
                 promoted_user_ids: vec![promoted_user_id],
@@ -278,6 +292,8 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
                 manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -286,8 +302,13 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
     let mut tx = MockDB::new();
     tx.expect_leave_event()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| {
+        .withf(move |cid, eid, uid, payment_provider| {
+            *cid == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
                 promoted_user_ids: vec![],
@@ -364,6 +385,8 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
                 manually_invited: false,
                 status: EventAttendanceStatus::Waitlisted,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -434,6 +457,8 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
                 manually_invited: false,
                 status: EventAttendanceStatus::RegistrationQuestionsPending,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -578,9 +603,18 @@ async fn test_list_page_success() {
             manually_invited: false,
             registration_questions: vec![],
             roles: vec![UserEventRole::Attendee, UserEventRole::Host],
+
+            admission_offer_id: None,
+            admission_offer_source: None,
+            admission_offer_status: None,
+            amount_minor: None,
             attendance_status: Some(EventAttendanceStatus::Attendee),
+            currency_code: None,
+            event_ticket_type_id: None,
+            offer_expires_at: None,
             registration_answers: None,
             resume_checkout_url: None,
+            ticket_title: None,
         }],
         total: 1,
     };

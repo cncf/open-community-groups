@@ -17,6 +17,7 @@ select plan(2);
 \set eventCategoryID '3a0f0000-0000-0000-0000-000000000004'
 \set groupCategoryID '3a0f0000-0000-0000-0000-000000000005'
 \set groupID '3a0f0000-0000-0000-0000-000000000006'
+\set ticketTypeID '3a0f0000-0000-0000-0000-000000000008'
 \set user1ID '3a0f0000-0000-0000-0000-000000000007'
 
 -- ============================================================================
@@ -82,7 +83,8 @@ insert into event (
     event_kind_id,
     timezone,
 
-    created_by
+    created_by,
+    payment_currency_code
 ) values (
     :'event1ID',
     :'groupID',
@@ -93,7 +95,8 @@ insert into event (
     'in-person',
     'America/New_York',
 
-    :'user1ID'
+    :'user1ID',
+    'USD'
 ), (
     :'event2ID',
     :'groupID',
@@ -104,7 +107,25 @@ insert into event (
     'virtual',
     'America/New_York',
 
+    null,
     null
+);
+
+-- Invitation-only ticket type included in organizer summaries
+insert into event_ticket_type (
+    event_ticket_type_id,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    'invitation_only',
+    :'event1ID',
+    1,
+    5,
+    'Sponsor pass'
 );
 
 -- Confirmed attendee for the created event
@@ -123,7 +144,8 @@ select is(
             'attendee_count', 1,
             'created_by_display_name', 'Creator User',
             'created_by_username', 'creator',
-            'delete_eligibility', 'cancel-first'
+            'delete_eligibility', 'cancel-first',
+            'ticket_types', list_event_ticket_types(:'event1ID'::uuid)
         ),
     'Should extend the shared event summary with dashboard information'
 );

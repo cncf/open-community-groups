@@ -1,0 +1,57 @@
+import { expect } from "@open-wc/testing";
+
+const loadTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/dashboard/user/invitations_list.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
+const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
+
+describe("dashboard user invitations list template", () => {
+  it("renders ticket offer details and exact claim deadlines", async () => {
+    // Load the invitations template before checking offer details.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Ticket offers expose their tier, price, source, deadline, and pricing warning.
+    expect(template).to.include("{{ ticket_title }}");
+    expect(template).to.include("{{ invitation.source_label() }}");
+    expect(template).to.include("{% if let Some(price_label) = invitation.price_label() -%}");
+    expect(template).to.include(
+      '{{ expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}',
+    );
+    expect(template).to.include(
+      "Your price is confirmed when you first claim the offer. If checkout has already started, retries keep that confirmed price.",
+    );
+  });
+
+  it("renders claim decline resume and cancel checkout actions", async () => {
+    // Load the invitations template before checking offer actions.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Owned offers expose every supported lifecycle action.
+    expect(template).to.include("data-user-event-offer-open");
+    expect(template).to.include('title="Continue to checkout"');
+    expect(template).to.include("data-user-event-offer-checkout-cancel");
+    expect(template).to.include(
+      'hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/decline"',
+    );
+    expect(template).to.include('aria-label="Decline offer for {{ invitation.event_name }}"');
+    expect(template).to.not.include('data-success-message="The offer has been declined."');
+    expect(template).to.include('name="admission_offer_id"');
+    expect(template).to.include('name="event_ticket_type_id"');
+  });
+
+  it("collects registration answers in the offer claim modal", async () => {
+    // Load the invitations template before checking question fields.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Claim-time questions share the established questionnaire macro and answer payload.
+    expect(template).to.include("{{ question_answers::fields(questions = invitation.registration_questions,");
+    expect(template).to.include("answers = invitation.registration_answers.as_ref()");
+    expect(template).to.include("data-user-event-offer-answers");
+    expect(template).to.include('name="registration_answers"');
+  });
+});

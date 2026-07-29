@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(38);
+select plan(39);
 
 -- ============================================================================
 -- VARIABLES
@@ -64,14 +64,16 @@ insert into "group" (
     name,
     slug,
     description,
-    group_category_id
+    group_category_id,
+    payment_recipient
 ) values (
     :'groupID',
     :'communityID',
     'Kubernetes Study Group',
     'abc1234',
     'A study group focused on Kubernetes best practices and implementation',
-    :'groupCategoryID'
+    :'groupCategoryID',
+    '{"provider": "stripe", "recipient_id": "acct_add_event"}'::jsonb
 );
 
 -- Group Sponsors
@@ -120,6 +122,7 @@ select ok(
         "has_related_events": false,
         "has_ticket_purchases": false,
         "hosts": [],
+        "is_ticketed": false,
         "speakers": [],
         "kind": "in-person",
         "logo_url": "https://example.com/logo.png",
@@ -309,6 +312,7 @@ select ok(
         "has_registration_questions": false,
         "has_related_events": false,
         "has_ticket_purchases": false,
+        "is_ticketed": false,
         "starts_at": 1893520800,
         "ends_at": 1893528000,
         "logo_url": "https://example.com/logo.png",
@@ -689,10 +693,42 @@ select throws_ok(
                 }
             ]
         }'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"zoom": 100}'::jsonb,
+        'stripe'
     )$$,
     'event capacity (150) exceeds maximum participants allowed (100)',
     'Should reject ticket-derived capacity above the meeting provider limit'
+);
+
+-- Should create an all-zero ticketed event without payment configuration
+select lives_ok(
+    $$select add_event(
+        null::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Free Ticket Event",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "event_ticket_type_id": "3a020000-0000-0000-0000-000000000095",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 0,
+                            "event_ticket_price_window_id": "3a020000-0000-0000-0000-000000000096"
+                        }
+                    ],
+                    "seats_total": 25,
+                    "title": "Free admission"
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should create an all-zero ticketed event without payment configuration'
 );
 
 -- Should reject approval-required events when waitlist is enabled
@@ -738,7 +774,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
-    'discount_codes require ticket_types',
+    'discount_codes require positive ticket pricing',
     'Should throw error when discount codes are provided without ticket types'
 );
 
@@ -756,7 +792,7 @@ select throws_ok(
             "payment_currency_code": "USD"
         }'::jsonb
     )$$,
-    'payment_currency_code requires ticket_types',
+    'payment_currency_code requires positive ticket pricing',
     'Should throw error when payment currency is provided without ticket types'
 );
 

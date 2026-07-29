@@ -5,11 +5,7 @@ import {
   getAttendanceControl,
   getAttendanceMeta,
 } from "/static/js/event/attendance-dom.js";
-import {
-  closeQuestionsModal,
-  openQuestionsModal,
-  openTicketModal,
-} from "/static/js/event/attendance-view.js";
+import { closeQuestionsModal, openQuestionsModal } from "/static/js/event/attendance-view.js";
 import {
   QUESTIONS_CONTINUE_ACTION_ATTEND,
   QUESTIONS_CONTINUE_ACTION_TICKET,
@@ -30,7 +26,9 @@ export const shouldCollectQuestionAnswers = (container) =>
  * @returns {boolean} Whether the action is a waitlist join
  */
 export const isWaitlistJoinAction = (meta) =>
-  !meta.isTicketed && !meta.attendeeApprovalRequired && meta.isSoldOut && meta.waitlistEnabled;
+  !meta.attendeeApprovalRequired &&
+  meta.waitlistEnabled &&
+  (meta.isTicketed ? !meta.ticketPurchaseAvailable && meta.hasSoldOutTicketTypes : meta.isSoldOut);
 
 /**
  * Returns true when the attendee must complete promoted waitlist questions.
@@ -112,7 +110,10 @@ export const handleAttendanceSubmit = (event) => {
   delete container.dataset.questionsContinueAction;
 
   if (continueAction === QUESTIONS_CONTINUE_ACTION_TICKET) {
-    openTicketModal(container);
+    const checkoutForm = getAttendanceControl(container, "checkout-form");
+    if (checkoutForm instanceof HTMLFormElement) {
+      checkoutForm.requestSubmit();
+    }
     return;
   }
 
@@ -131,20 +132,38 @@ export const handleAttendanceSubmit = (event) => {
  * @param {HTMLElement} container - Attendance container element
  * @returns {boolean} True when the request was blocked
  */
-export const blockAttendRequestForQuestions = (event, target, container) => {
+export const blockAttendanceRequestForQuestions = (event, target, container) => {
   const meta = getAttendanceMeta(container);
-  if (
-    target.dataset.attendanceRole !== "attend-btn" ||
-    (isWaitlistJoinAction(meta) && !isCompletingRegistrationQuestions(target)) ||
-    !shouldCollectQuestionAnswers(container)
-  ) {
+  if (!shouldCollectQuestionAnswers(container)) {
     return false;
   }
 
-  event.preventDefault();
-  const continueAction = meta.isTicketed
-    ? QUESTIONS_CONTINUE_ACTION_TICKET
-    : QUESTIONS_CONTINUE_ACTION_ATTEND;
-  requestQuestionAnswers(container, continueAction);
-  return true;
+  if (target.dataset.attendanceRole === "attend-btn") {
+    if (
+      meta.ticketModalRequired ||
+      (isWaitlistJoinAction(meta) && !isCompletingRegistrationQuestions(target))
+    ) {
+      return false;
+    }
+
+    event.preventDefault();
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_ATTEND);
+    return true;
+  }
+
+  if (target.dataset.attendanceRole === "checkout-form") {
+    const selectedTicketType = target.querySelector('[data-attendance-role="ticket-type-option"]:checked');
+    const isRequest = meta.attendeeApprovalRequired;
+    const isWaitlist =
+      selectedTicketType instanceof HTMLInputElement && selectedTicketType.dataset.ticketSoldOut === "true";
+    if (!isRequest && isWaitlist) {
+      return false;
+    }
+
+    event.preventDefault();
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_TICKET);
+    return true;
+  }
+
+  return false;
 };

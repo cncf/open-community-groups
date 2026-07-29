@@ -20,7 +20,7 @@ use crate::{
         },
         group::GroupSponsor,
         pagination::{self, Pagination, ToRawQuery},
-        payments::EventDiscountType,
+        payments::{EventDiscountType, EventTicketTypeAvailability, GroupPaymentRecipient},
         questionnaire::QuestionnaireQuestion,
     },
     validation::{
@@ -65,6 +65,9 @@ pub(crate) struct AddPage {
     pub sponsors: Vec<GroupSponsor>,
     /// List of available timezones.
     pub timezones: Vec<String>,
+
+    /// Payments recipient configured for paid ticket revenue.
+    pub payment_recipient: Option<GroupPaymentRecipient>,
 }
 
 /// List events page template.
@@ -127,6 +130,9 @@ pub(crate) struct UpdatePage {
     pub sponsors: Vec<GroupSponsor>,
     /// List of available timezones.
     pub timezones: Vec<String>,
+
+    /// Payments recipient configured for paid ticket revenue.
+    pub payment_recipient: Option<GroupPaymentRecipient>,
 }
 
 impl UpdatePage {
@@ -718,6 +724,10 @@ pub(crate) struct TicketType {
     /// Whether the ticket type can currently be selected.
     #[garde(skip)]
     pub active: bool,
+    /// Whether the ticket type is publicly discoverable or invitation-only.
+    #[serde(default)]
+    #[garde(skip)]
+    pub availability: EventTicketTypeAvailability,
     /// Display order in event pages and forms.
     #[garde(range(min = 1))]
     pub order: i32,
@@ -744,7 +754,7 @@ pub(crate) struct TicketType {
 mod tests {
     use serde_json::Value;
 
-    use crate::types::payments::EventDiscountType;
+    use crate::types::payments::{EventDiscountType, EventTicketTypeAvailability};
 
     use super::{DiscountCode, Event, TicketPriceWindow, TicketType};
 
@@ -845,6 +855,7 @@ registration_questions[0][options][0][label]=Vegetarian",
         event.discount_codes_present = Some(true);
         event.ticket_types = Some(vec![TicketType {
             active: true,
+            availability: EventTicketTypeAvailability::InvitationOnly,
             order: 1,
             price_windows: vec![TicketPriceWindow {
                 amount_minor: 2500,
@@ -873,6 +884,10 @@ registration_questions[0][options][0][label]=Vegetarian",
             .is_ok()
         );
         assert_eq!(payload["ticket_types"][0]["title"], "General admission");
+        assert_eq!(
+            payload["ticket_types"][0]["availability"],
+            "invitation_only"
+        );
         assert!(
             uuid::Uuid::parse_str(
                 payload["ticket_types"][0]["event_ticket_type_id"].as_str().unwrap()

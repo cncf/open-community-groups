@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -37,6 +37,8 @@ select plan(19);
 \set invitationDraftEventID 'd3010000-0000-0000-0000-000000000015'
 \set missingEventID 'd3010000-0000-0000-0000-000000000016'
 \set otherGroupID 'd3010000-0000-0000-0000-000000000017'
+\set offerDraftEventID 'd3010000-0000-0000-0000-000000000043'
+\set offerID 'd3010000-0000-0000-0000-000000000044'
 \set pastEventID 'd3010000-0000-0000-0000-000000000018'
 \set pendingEventID 'd3010000-0000-0000-0000-000000000019'
 \set pendingPurchaseID 'd3010000-0000-0000-0000-000000000020'
@@ -119,6 +121,7 @@ insert into event (
     ('Durable refund', :'eventCategoryID', :'durableEventID', 'virtual', :'groupID', 'Durable Refund', true, 'durable-refund', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
     ('Expired checkout', :'eventCategoryID', :'expiredPendingEventID', 'virtual', :'groupID', 'Expired Checkout', true, 'expired-checkout', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
     ('Invitation draft', :'eventCategoryID', :'invitationDraftEventID', 'virtual', :'groupID', 'Invitation Draft', false, 'invitation-draft', null, 'UTC', false, null),
+    ('Offer draft', :'eventCategoryID', :'offerDraftEventID', 'virtual', :'groupID', 'Offer Draft', false, 'offer-draft', null, 'UTC', false, null),
     ('Past', :'eventCategoryID', :'pastEventID', 'virtual', :'groupID', 'Past', true, 'past', now() - interval '2 hours', 'UTC', false, now() - interval '1 hour'),
     ('Pending purchase', :'eventCategoryID', :'pendingEventID', 'virtual', :'groupID', 'Pending Purchase', true, 'pending-purchase', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
     ('Provider checkout', :'eventCategoryID', :'providerPendingEventID', 'virtual', :'groupID', 'Provider Checkout', true, 'provider-checkout', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
@@ -156,6 +159,25 @@ values (:'attendeeDraftEventID', :'userID');
 -- Invitation request that makes an unpublished draft ineligible for direct deletion
 insert into event_invitation_request (event_id, user_id)
 values (:'invitationDraftEventID', :'userID');
+
+-- Active organizer offer that makes an unpublished draft ineligible for deletion
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    legacy,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'offerID',
+    :'offerDraftEventID',
+    true,
+    :'actorID',
+    'organizer_invitation',
+    'pending',
+    :'userID'
+);
 
 -- Waitlist entry that makes an unpublished draft ineligible for direct deletion
 insert into event_waitlist (event_id, user_id)
@@ -349,6 +371,13 @@ select is(
     get_event_delete_eligibility(:'groupID', :'invitationDraftEventID'),
     'cancel-first',
     'Should require cancellation for a draft with an invitation request'
+);
+
+-- Should require cancellation for a draft with an active admission offer
+select is(
+    get_event_delete_eligibility(:'groupID', :'offerDraftEventID'),
+    'cancel-first',
+    'Should require cancellation for a draft with an active admission offer'
 );
 
 -- Should require cancellation for an unpublished event with publication history

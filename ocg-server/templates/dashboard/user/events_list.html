@@ -6,7 +6,7 @@
 {# Dashboard User Events List -#}
 {# Header -#}
 {{ dashboard::page_title(title = "My Events", docs_href = "/docs#/guides/user-dashboard?id=my-events-upcoming-participation",
-  description = "Upcoming events where you'll participate.") -}}
+  description = "Upcoming events you attend, speak at, host, or have active offers for.") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
@@ -140,9 +140,21 @@
                            role="menuitem"
                            class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                           <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-500"></div>
-                          <span>Complete payment</span>
+                          <span>Continue to checkout</span>
                         </a>
                       </li>
+                    {% endif -%}
+                    {% if item.has_active_offer() -%}
+                      {% if let Some(admission_offer_id) = item.admission_offer_id -%}
+                        <li>
+                          <a href="/dashboard/user?tab=invitations#event-offer-{{ admission_offer_id }}"
+                             role="menuitem"
+                             class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                            <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-500"></div>
+                            <span>View event offer</span>
+                          </a>
+                        </li>
+                      {% endif -%}
                     {% endif -%}
                     {% if item.has_registration_questions_action() -%}
                       <li>

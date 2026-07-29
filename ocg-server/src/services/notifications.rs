@@ -32,12 +32,14 @@ use crate::{
         helpers,
         notifications::{
             BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
-            EmailVerification, EventAttendanceCanceled, EventCanceled, EventCustom,
+            EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
+            EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCustom,
             EventInvitation, EventPublished, EventRefundApproved, EventRefundRejected,
             EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
-            EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted,
-            EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-            SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+            EventSeriesPublished, EventTicketRequestApproved, EventTicketWaitlistOffer,
+            EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
+            GroupCustom, GroupTeamInvitation, GroupWelcome, SessionProposalCoSpeakerInvitation,
+            SpeakerSeriesWelcome, SpeakerWelcome,
         },
     },
     types::{event::EventSummary, site::SiteSettings},
@@ -393,6 +395,44 @@ impl DeliveryWorker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::EventAdmissionOfferCanceled => {
+                // Complete the deployment-specific dashboard URL after typed deserialization
+                let mut template: EventAdmissionOfferCanceled =
+                    serde_json::from_value(template_data)?;
+                if template.dashboard_url.starts_with('/') {
+                    template.dashboard_url =
+                        helpers::absolute_url(base_url, &template.dashboard_url);
+                }
+                let subject =
+                    Self::scoped_subject(&template.group_name, "Your event offer was canceled");
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventAdmissionOfferCreated => {
+                // Complete the deployment-specific dashboard URL after typed deserialization
+                let mut template: EventAdmissionOfferCreated =
+                    serde_json::from_value(template_data)?;
+                if template.dashboard_url.starts_with('/') {
+                    template.dashboard_url =
+                        helpers::absolute_url(base_url, &template.dashboard_url);
+                }
+                let subject =
+                    Self::scoped_subject(&template.group_name, "You have a new event offer");
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventAdmissionOfferDeclined => {
+                // Complete the deployment-specific dashboard URL after typed deserialization
+                let mut template: EventAdmissionOfferDeclined =
+                    serde_json::from_value(template_data)?;
+                if template.dashboard_url.starts_with('/') {
+                    template.dashboard_url =
+                        helpers::absolute_url(base_url, &template.dashboard_url);
+                }
+                let subject = Self::scoped_subject(&template.group_name, "Event offer declined");
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::EventAttendanceCanceled => {
                 let template: EventAttendanceCanceled = serde_json::from_value(template_data)?;
                 let subject =
@@ -469,6 +509,31 @@ impl DeliveryWorker {
             NotificationKind::EventSeriesPublished => {
                 let template: EventSeriesPublished = serde_json::from_value(template_data)?;
                 let subject = Self::scoped_subject(&template.group_name, "New events published");
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventTicketRequestApproved => {
+                // Complete the deployment-specific dashboard URL after typed deserialization
+                let mut template: EventTicketRequestApproved =
+                    serde_json::from_value(template_data)?;
+                if template.dashboard_url.starts_with('/') {
+                    template.dashboard_url =
+                        helpers::absolute_url(base_url, &template.dashboard_url);
+                }
+                let subject =
+                    Self::scoped_subject(&template.group_name, "Your ticket request was approved");
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventTicketWaitlistOffer => {
+                // Complete the deployment-specific dashboard URL after typed deserialization
+                let mut template: EventTicketWaitlistOffer = serde_json::from_value(template_data)?;
+                if template.dashboard_url.starts_with('/') {
+                    template.dashboard_url =
+                        helpers::absolute_url(base_url, &template.dashboard_url);
+                }
+                let subject =
+                    Self::scoped_subject(&template.group_name, "A ticket is available for you");
                 let body = template.render()?;
                 (subject, body)
             }
@@ -854,6 +919,12 @@ pub(crate) enum NotificationKind {
     CommunityTeamInvitation,
     /// Notification for email verification.
     EmailVerification,
+    /// Notification for a canceled event admission offer.
+    EventAdmissionOfferCanceled,
+    /// Notification for a newly created organizer event admission offer.
+    EventAdmissionOfferCreated,
+    /// Notification for an organizer whose event admission offer was declined.
+    EventAdmissionOfferDeclined,
     /// Notification for a canceled event attendance.
     EventAttendanceCanceled,
     /// Notification for an event canceled.
@@ -878,6 +949,10 @@ pub(crate) enum NotificationKind {
     EventSeriesCanceled,
     /// Notification for multiple published events in a linked series.
     EventSeriesPublished,
+    /// Notification for an approved ticket request offer.
+    EventTicketRequestApproved,
+    /// Notification for an offer created from a ticket waiting list.
+    EventTicketWaitlistOffer,
     /// Notification for joining an event waiting list.
     EventWaitlistJoined,
     /// Notification for leaving an event waiting list.

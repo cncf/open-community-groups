@@ -49,7 +49,14 @@ begin
         and (
             (u.registration_status = 'registered' and u.email_verified = true)
             or n.kind = 'email-verification'
-            or (n.kind = 'event-invitation' and u.registration_status = 'pre-registered')
+            or (
+                n.kind in (
+                    'event-admission-offer-canceled',
+                    'event-admission-offer-created',
+                    'event-invitation'
+                )
+                and u.registration_status = 'pre-registered'
+            )
         )
         order by n.created_at asc
         limit 1

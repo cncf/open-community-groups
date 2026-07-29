@@ -88,7 +88,7 @@ describe("dashboard group attendees", () => {
     </div>
   `;
 
-  const attendeeInvitationMarkup = () => `
+  const attendeeInvitationMarkup = ({ ticketed = false } = {}) => `
     <button id="open-attendee-invitation-modal" type="button">Invite</button>
     <div id="attendee-invitation-modal" class="hidden">
       <button id="close-attendee-invitation-modal" type="button">Close</button>
@@ -106,6 +106,17 @@ describe("dashboard group attendees", () => {
         <input type="hidden" name="user_id" id="attendee-invitation-user-id" disabled />
         <input type="hidden" name="email" id="attendee-invitation-email" disabled />
         <div id="attendee-invitation-selected-user"></div>
+        ${
+          ticketed
+            ? `
+              <label for="attendee-invitation-ticket-type">Ticket type</label>
+              <select id="attendee-invitation-ticket-type" name="event_ticket_type_id" required>
+                <option value="">Select ticket type</option>
+                <option value="ticket-1">General admission</option>
+              </select>
+            `
+            : ""
+        }
         <button id="submit-attendee-invitation" type="submit" disabled>Send invitation</button>
       </form>
     </div>
@@ -1089,7 +1100,43 @@ describe("dashboard group attendees", () => {
       text: "Invitation sent.",
       icon: "success",
     });
+
     expect(refreshedModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("requires a ticket type for ticketed attendee invitations", () => {
+    // Render ticketed invitation controls and initialize the refreshed root.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ ticketed: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // Select an invitation recipient without assigning a ticket.
+    attendeesRoot.dispatchEvent(
+      new CustomEvent("user-selected", {
+        bubbles: true,
+        detail: {
+          user: {
+            user_id: "user-1",
+            username: "invitee",
+          },
+        },
+      }),
+    );
+    const submitButton = document.getElementById("submit-attendee-invitation");
+    const ticketTypeInput = document.getElementById("attendee-invitation-ticket-type");
+    expect(submitButton.disabled).to.equal(true);
+
+    // Assign a ticket and verify the complete invitation can be submitted.
+    ticketTypeInput.value = "ticket-1";
+    ticketTypeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(submitButton.disabled).to.equal(false);
+    expect(
+      new FormData(document.getElementById("attendee-invitation-form")).get("event_ticket_type_id"),
+    ).to.equal("ticket-1");
   });
 
   it("enables attendee invitation for a typed email when no user matches", async () => {
@@ -1294,5 +1341,4 @@ describe("dashboard group attendees", () => {
       icon: "error",
     });
   });
-
 });

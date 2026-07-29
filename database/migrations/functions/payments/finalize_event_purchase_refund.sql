@@ -2,13 +2,15 @@
 create or replace function finalize_event_purchase_refund(
     p_event_purchase_refund_id uuid,
     p_claim_id uuid,
-    p_notification_template_data jsonb
+    p_notification_template_data jsonb,
+    p_configured_provider text default null
 )
 returns void as $$
 declare
     v_community_id uuid;
     v_event_discount_code_id uuid;
     v_event_id uuid;
+    v_event_ticket_type_id uuid;
     v_group_id uuid;
     v_refund event_purchase_refund;
     v_user_id uuid;
@@ -19,8 +21,14 @@ begin
     end if;
 
     -- Resolve the owning event before taking lifecycle locks
-    select ep.event_id
-    into v_event_id
+    select
+        ep.event_id,
+        ep.event_ticket_type_id,
+        ep.user_id
+    into
+        v_event_id,
+        v_event_ticket_type_id,
+        v_user_id
     from event_purchase_refund epr
     join event_purchase ep on ep.event_purchase_id = epr.event_purchase_id
     where epr.event_purchase_refund_id = p_event_purchase_refund_id;
@@ -34,6 +42,15 @@ begin
     from event
     where event_id = v_event_id
     for update;
+
+    -- Reconcile and serialize enrollment before locking refund state
+    perform reconcile_event_enrollment(
+        v_event_id,
+        v_event_ticket_type_id,
+        p_configured_provider
+    );
+
+    perform pg_advisory_xact_lock(hashtext(v_event_id::text), hashtext(v_user_id::text));
 
     select
         g.community_id,
@@ -71,7 +88,7 @@ begin
         raise exception 'event purchase refund claim is not provider-complete';
     end if;
 
-    -- Preserve the attendee relationship while removing active access and capacity
+    -- Remove active access only when this refund owns the attendee relationship.
     update event_attendee
     set
         attendance_canceled_at = current_timestamp,
@@ -81,7 +98,15 @@ begin
         status = 'attendance-canceled'
     where event_id = v_event_id
     and user_id = v_user_id
-    and status in ('confirmed', 'registration-questions-pending');
+    and status in ('confirmed', 'registration-questions-pending')
+    and not exists (
+        select 1
+        from event_purchase replacement
+        where replacement.event_id = v_event_id
+        and replacement.event_purchase_id <> v_refund.event_purchase_id
+        and replacement.status in ('completed', 'refund-requested')
+        and replacement.user_id = v_user_id
+    );
 
     -- Mark the purchase refunded and return any discount inventory
     update event_purchase
@@ -127,6 +152,13 @@ begin
     if not found then
         raise exception 'event purchase refund claim is no longer current';
     end if;
+
+    -- Fill capacity released only after the refund is locally terminal
+    perform reconcile_event_enrollment(
+        v_event_id,
+        v_event_ticket_type_id,
+        p_configured_provider
+    );
 
     -- Record the completed refund for reconciliation and support work
     perform insert_audit_log(

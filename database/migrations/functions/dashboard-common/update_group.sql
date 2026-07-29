@@ -24,7 +24,8 @@ begin
     from "group"
     where group_id = p_group_id
     and community_id = p_community_id
-    and deleted = false;
+    and deleted = false
+    for update;
 
     -- Resolve the requested parent value
     v_parent_group_id_present := coalesce((p_group->>'parent_group_id_present')::boolean, false);
@@ -64,23 +65,23 @@ begin
     v_payment_recipient_changed := p_group ? 'payment_recipient'
         and v_previous_payment_recipient is distinct from v_new_payment_recipient;
 
-    -- Prevent clearing the recipient from breaking checkout for active ticketed events
+    -- Prevent clearing the recipient from breaking checkout for active paid events
     if v_payment_recipient_changed
        and v_new_payment_recipient is null
        and exists (
            select 1
            from event e
-           join event_ticket_type ett on ett.event_id = e.event_id
            where e.group_id = p_group_id
            and e.canceled = false
            and e.deleted = false
            and e.published = true
+           and is_event_paid_capable(e.event_id)
            and (
                coalesce(e.ends_at, e.starts_at) is null
                or coalesce(e.ends_at, e.starts_at) > current_timestamp
            )
        ) then
-        raise exception 'ticketed events require a payment recipient';
+        raise exception 'paid-capable events require a payment recipient';
     end if;
 
     -- Update the group fields from the payload

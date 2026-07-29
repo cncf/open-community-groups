@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{
     config::{PaymentsConfig, PaymentsStripeConfig},
     db::mock::MockDB,
-    handlers::tests::*,
+    handlers::{error::HandlerError, tests::*},
     services::{
         meetings::MeetingProvider,
         notifications::{MockNotificationsManager, NotificationKind},
@@ -30,7 +30,7 @@ use crate::{
     },
     types::{
         event::{EventFull, EventSummary, Speaker},
-        payments::{EventTicketType, PaymentMode},
+        payments::{EventTicketPriceWindow, EventTicketType, PaymentMode, PaymentProvider},
         permissions::GroupPermission,
     },
 };
@@ -147,6 +147,10 @@ async fn test_add_page_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains(">Tickets</"));
+    assert!(body.contains("free-only"));
+    assert!(body.contains("Payments are not configured for this group"));
 }
 
 #[tokio::test]
@@ -269,6 +273,10 @@ async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases(
         ticket_types: Some(vec![EventTicketType {
             event_ticket_type_id: Uuid::new_v4(),
             order: 1,
+            price_windows: vec![EventTicketPriceWindow {
+                amount_minor: 2500,
+                ..Default::default()
+            }],
             title: "General admission".to_string(),
             ..Default::default()
         }]),
@@ -377,6 +385,9 @@ async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases(
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("Paid ticket settings are read-only"));
+    assert!(body.contains("data-disabled=\"true\""));
 }
 
 #[tokio::test]
@@ -506,6 +517,9 @@ async fn test_update_page_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains(">Tickets</"));
+    assert!(body.contains("free-only"));
 }
 
 #[tokio::test]
@@ -690,17 +704,20 @@ async fn test_add_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_add_event()
         .times(1)
-        .withf(move |uid, id, event, cfg_max_participants| {
-            let event_name = event
-                .get("name")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or_default();
-            *uid == user_id
-                && *id == group_id
-                && event_name == event_form.name
-                && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
-        })
-        .returning(move |_, _, _, _| Ok(Uuid::new_v4()));
+        .withf(
+            move |uid, id, event, cfg_max_participants, payment_provider| {
+                let event_name = event
+                    .get("name")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default();
+                *uid == user_id
+                    && *id == group_id
+                    && event_name == event_form.name
+                    && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _| Ok(Uuid::new_v4()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -778,26 +795,32 @@ async fn test_add_recurring_success() {
     db.expect_add_event().times(0);
     db.expect_add_event_series()
         .times(1)
-        .withf(move |uid, id, events, recurrence, cfg_max_participants| {
-            let names_match = events.iter().all(|event| {
-                event
-                    .get("name")
-                    .and_then(serde_json::Value::as_str)
-                    .is_some_and(|name| name == event_name)
-            });
+        .withf(
+            move |uid, id, events, recurrence, cfg_max_participants, payment_provider| {
+                let names_match = events.iter().all(|event| {
+                    event
+                        .get("name")
+                        .and_then(serde_json::Value::as_str)
+                        .is_some_and(|name| name == event_name)
+                });
 
-            *uid == user_id
-                && *id == group_id
-                && events.len() == 3
-                && names_match
-                && recurrence
-                    .get("additional_occurrences")
-                    .and_then(serde_json::Value::as_i64)
-                    == Some(2)
-                && recurrence.get("pattern").and_then(serde_json::Value::as_str) == Some("weekly")
-                && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()]));
+                *uid == user_id
+                    && *id == group_id
+                    && events.len() == 3
+                    && names_match
+                    && recurrence
+                        .get("additional_occurrences")
+                        .and_then(serde_json::Value::as_i64)
+                        == Some(2)
+                    && recurrence.get("pattern").and_then(serde_json::Value::as_str)
+                        == Some("weekly")
+                    && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| {
+            Ok(vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()])
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -990,7 +1013,16 @@ async fn test_add_ticketed_event_without_payments_returns_unprocessable_entity()
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_payment_recipient().times(0);
-    db.expect_add_event().times(0);
+    db.expect_add_event()
+        .times(1)
+        .withf(move |uid, gid, _, _, payment_provider| {
+            *uid == user_id && *gid == group_id && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _, _| {
+            Err(anyhow::Error::new(HandlerError::Database(
+                "payments are not configured on this server".to_string(),
+            )))
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1556,8 +1588,8 @@ async fn test_publish_success() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, provider, gid, eid| {
-            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        .withf(move |uid, gid, eid, payment_provider| {
+            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
         })
         .returning(move |_, _, _, _| Ok(()));
     tx.expect_get_event_full()
@@ -1675,8 +1707,8 @@ async fn test_publish_test_event_no_notification() {
         .returning(move |_, _, _| Ok(unpublished_test_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, provider, gid, eid| {
-            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        .withf(move |uid, gid, eid, payment_provider| {
+            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
         })
         .returning(move |_, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
@@ -1771,11 +1803,11 @@ async fn test_publish_series_success() {
     tx.expect_publish_event().times(0);
     tx.expect_publish_event_series_events()
         .times(1)
-        .withf(move |uid, provider, gid, event_ids| {
+        .withf(move |uid, gid, event_ids, payment_provider| {
             *uid == user_id
-                && provider.is_none()
                 && *gid == group_id
                 && event_ids == expected_series_event_ids.as_slice()
+                && payment_provider.is_none()
         })
         .returning(move |_, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
@@ -1887,11 +1919,11 @@ async fn test_publish_series_sends_aggregate_notification() {
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     tx.expect_publish_event_series_events()
         .times(1)
-        .withf(move |uid, provider, gid, event_ids| {
+        .withf(move |uid, gid, event_ids, payment_provider| {
             *uid == user_id
-                && provider.is_none()
                 && *gid == group_id
                 && event_ids == expected_series_event_ids.as_slice()
+                && payment_provider.is_none()
         })
         .returning(move |_, _, _, _| Ok(()));
     tx.expect_list_group_members_ids()
@@ -2003,8 +2035,8 @@ async fn test_publish_already_published_no_notification() {
         .returning(move |_, _, _| Ok(already_published_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, provider, gid, eid| {
-            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        .withf(move |uid, gid, eid, payment_provider| {
+            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
         })
         .returning(move |_, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
@@ -2091,8 +2123,8 @@ async fn test_publish_speakers_only() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, provider, gid, eid| {
-            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        .withf(move |uid, gid, eid, payment_provider| {
+            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
         })
         .returning(move |_, _, _, _| Ok(()));
     tx.expect_get_event_full()
@@ -2493,15 +2525,18 @@ async fn test_update_success() {
         });
     tx.expect_update_event()
         .times(1)
-        .withf(move |uid, gid, eid, event, cfg_max_participants| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str)
-                    == Some(event_form.name.as_str())
-                && cfg_max_participants.is_empty()
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![]));
+        .withf(
+            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+                *uid == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(serde_json::Value::as_str)
+                        == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| Ok(vec![]));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
@@ -2636,11 +2671,26 @@ async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessa
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_group_payment_recipient()
+    db.expect_get_group_payment_recipient().times(0);
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
-    db.expect_update_event().times(0);
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(sample_event_summary(event_id, group_id)));
+    tx.expect_update_event()
+        .times(1)
+        .withf(move |uid, gid, eid, _, _, payment_provider| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && *payment_provider == Some(PaymentProvider::Stripe)
+        })
+        .returning(|_, _, _, _, _, _| {
+            Err(anyhow::Error::new(HandlerError::Database(
+                "paid-capable events require a payment recipient".to_string(),
+            )))
+        });
+    expect_rolled_back_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -2670,7 +2720,7 @@ async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessa
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "configure a payments recipient in group settings first",
+        "paid-capable events require a payment recipient",
     );
 }
 
@@ -2748,15 +2798,18 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
         });
     tx.expect_update_event()
         .times(1)
-        .withf(move |uid, gid, eid, event, cfg_max_participants| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str)
-                    == Some(event_form.name.as_str())
-                && cfg_max_participants.is_empty()
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
+        .withf(
+            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+                *uid == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(serde_json::Value::as_str)
+                        == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| Ok(vec![promoted_user_id]));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2890,15 +2943,18 @@ async fn test_update_promotion_notification_failure_rolls_back() {
         });
     tx.expect_update_event()
         .times(1)
-        .withf(move |uid, gid, eid, event, cfg_max_participants| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str)
-                    == Some(event_form.name.as_str())
-                && cfg_max_participants.is_empty()
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
+        .withf(
+            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+                *uid == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(serde_json::Value::as_str)
+                        == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| Ok(vec![promoted_user_id]));
     tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
@@ -2999,15 +3055,18 @@ async fn test_update_promotion_notification_context_failure_rolls_back() {
         });
     tx.expect_update_event()
         .times(1)
-        .withf(move |uid, gid, eid, event, cfg_max_participants| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str)
-                    == Some(event_form.name.as_str())
-                && cfg_max_participants.is_empty()
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
+        .withf(
+            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+                *uid == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(serde_json::Value::as_str)
+                        == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| Ok(vec![promoted_user_id]));
     tx.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -3096,15 +3155,18 @@ async fn test_update_no_notification_when_shift_too_small() {
         });
     tx.expect_update_event()
         .times(1)
-        .withf(move |uid, gid, eid, event, cfg_max_participants| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str)
-                    == Some(event_form.name.as_str())
-                && cfg_max_participants.is_empty()
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![]));
+        .withf(
+            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+                *uid == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(serde_json::Value::as_str)
+                        == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| Ok(vec![]));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected - shift too small)
@@ -3198,15 +3260,18 @@ async fn test_update_no_notification_when_unpublished() {
         });
     tx.expect_update_event()
         .times(1)
-        .withf(move |uid, gid, eid, event, cfg_max_participants| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str)
-                    == Some(event_form.name.as_str())
-                && cfg_max_participants.is_empty()
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![]));
+        .withf(
+            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+                *uid == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(serde_json::Value::as_str)
+                        == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| Ok(vec![]));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected - event unpublished)
@@ -3289,17 +3354,20 @@ async fn test_update_past_event_success() {
         .returning(move |_, _, _| Ok(past_event.clone()));
     tx.expect_update_event()
         .times(1)
-        .withf(move |uid, gid, eid, event, cfg_max_participants| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && event.get("description").and_then(serde_json::Value::as_str)
-                    == Some("Updated past event description")
-                && event.get("name").and_then(serde_json::Value::as_str)
-                    == Some("Past Event Updated")
-                && cfg_max_participants.is_empty()
-        })
-        .returning(move |_, _, _, _, _| Ok(vec![]));
+        .withf(
+            move |uid, gid, eid, event, cfg_max_participants, payment_provider| {
+                *uid == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && event.get("description").and_then(serde_json::Value::as_str)
+                        == Some("Updated past event description")
+                    && event.get("name").and_then(serde_json::Value::as_str)
+                        == Some("Past Event Updated")
+                    && cfg_max_participants.is_empty()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| Ok(vec![]));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no expectations - past events don't notify)

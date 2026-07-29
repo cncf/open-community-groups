@@ -37,13 +37,14 @@ organizations.
 
 - Call for Speakers workflows with reusable proposals, co-speaker invitations,
   reviewer feedback, ratings, and accepted sessions
-- Capacity management with sold-out, waitlist, and invitation-review options
+- Capacity management with per-tier waitlists, approval requests, and reserved
+  admission offers
 - Custom event pages with banners, galleries, tags, markdown descriptions, and
   social sharing
 - Host in-person, virtual, or hybrid events
 - Multi-session agendas with per-session timing and speakers
-- Paid ticketing with Stripe Checkout, ticket tiers, discount codes, and refund
-  review
+- Free and paid ticketing with public or invitation-only tiers, discount codes,
+  Stripe Checkout for paid claims, and refund review
 - Recurring event creation with series-aware publish, unpublish, cancel, and
   delete actions
 - RSVP, attendance tracking, QR code check-in, and manual organizer check-in

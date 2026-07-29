@@ -61,7 +61,11 @@ describe("dashboard group attendees list template", () => {
   it("keeps canceled attendee history and accessible state aligned", async () => {
     // Load the attendee row before checking canceled attendance details.
     const template = normalizeWhitespace(await loadTemplate());
-    const rsvpDate = sliceTemplateSection(template, "{# RSVP Date -#}", "{# End RSVP date -#}");
+    const enrollmentDate = sliceTemplateSection(
+      template,
+      "{# Enrollment Date -#}",
+      "{# End enrollment date -#}",
+    );
     const checkInToggle = sliceTemplateSection(
       template,
       "{# Checked In Toggle -#}",
@@ -69,8 +73,8 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify canceled attendees retain their date and accurate check-in label.
-    expect(rsvpDate).to.include('attendee.status == "attendance-canceled"');
-    expect(rsvpDate).to.include('attendee.created_at.format("%b %d, %Y")');
+    expect(enrollmentDate).to.include('attendee.status == "attendance-canceled"');
+    expect(enrollmentDate).to.include('attendee.created_at.format("%b %d, %Y")');
     expect(checkInToggle).to.include("Canceled attendance cannot be checked in");
     expect(checkInToggle).to.include("Rejected invitation cannot be checked in");
     expect(checkInToggle).to.include("Pending registration cannot be checked in");
@@ -182,21 +186,62 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('title="Past event attendance cannot be canceled."');
   });
 
-  it("renders cancel invitation for manual question-pending invitations", async () => {
+  it("renders exact offer cancellation for manual question-pending invitations", async () => {
     // Load the attendees list template before checking invitation actions.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify renders cancel invitation for manual question-pending invitations.
+    // Verify manual invitations cancel the exact admission offer.
     expect(template).to.include(
       'attendee.status == "registration-questions-pending") && attendee.user.name.is_none()',
     );
     expect(template).to.include(
       'attendee.status == "registration-questions-pending" && attendee.manually_invited',
     );
-    expect(template).to.include('id="cancel-invitation-{{ attendee.user.user_id }}"');
+    expect(template).to.include("{% if let Some(admission_offer_id) = attendee.admission_offer_id -%}");
+    expect(template).to.include('id="cancel-admission-offer-{{ admission_offer_id }}"');
+    expect(template).to.include('hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"');
+    expect(template).not.to.include("/invitation/cancel");
+  });
+
+  it("renders organizer invitation tiers, deadlines, and state-specific actions", async () => {
+    // Load the attendees list template before checking organizer invitation states.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify ticketed invitations select any active organizer-visible tier.
+    expect(template).to.include('id="attendee-invitation-ticket-type"');
+    expect(template).to.include('name="event_ticket_type_id"');
     expect(template).to.include(
-      'hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/invitation/cancel"',
+      "ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly",
     );
+    expect(template).to.include("(Invitation only)");
+    expect(template).to.include("(Public)");
+    expect(template).to.not.include(
+      'disabled title="Manual invitations are not available for ticketed events."',
+    );
+
+    // Verify pending and checkout offers show tier and deadline without attendee actions.
+    expect(template).to.include('label = "Offer pending"');
+    expect(template).to.include('label = "Checkout pending"');
+    expect(template).to.include("Awaiting claim");
+    expect(template).to.include("Checkout in progress");
+    expect(template).to.include(
+      'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
+    );
+    expect(template).to.include(
+      "attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)",
+    );
+    expect(template).to.include(
+      "attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)",
+    );
+
+    // Verify only expired organizer invitations expose reissue.
+    expect(template).to.include('label = "Offer expired"');
+    expect(template).to.include("Reissue invitation");
+    expect(template).to.include('name="email" value="{{ attendee.email }}"');
+    expect(template).to.include(
+      "attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)",
+    );
+    expect(template).to.not.include("Waitlist offer reissue");
   });
 
   it("uses all-attendee eligibility for the attendee email modal entrypoint", async () => {
@@ -276,8 +321,8 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("2xl:self-end");
     expect(template).to.include("Attendee ↑");
     expect(template).to.include("Attendee ↓");
-    expect(template).to.include("RSVP Date ↑");
-    expect(template).to.include("RSVP Date ↓");
+    expect(template).to.include("Enrollment Date ↑");
+    expect(template).to.include("Enrollment Date ↓");
     expect(template).to.include('<option value="name-asc"');
     expect(template).to.include('<option value="name-desc"');
     expect(template).to.include('<option value="created-at-asc"');
@@ -293,7 +338,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include('<span class="whitespace-nowrap">Attendee</span>');
-    expect(template).to.include('<span class="whitespace-nowrap">RSVP Date</span>');
+    expect(template).to.include('<span class="whitespace-nowrap">Enrollment Date</span>');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
     );

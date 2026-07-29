@@ -10,19 +10,28 @@ import {
   getAttendanceControl,
   getAttendanceMeta,
   getPrimaryControls,
-  getSelectedTicketTypeValue,
+  getSelectedTicketTypeOption,
   isTicketModalOpen,
   setAttendanceControlIcon,
   setAttendanceControlLabel,
 } from "/static/js/event/attendance-dom.js";
 
 export const ATTEND_EVENT_LABEL = "Attend event";
-export const BUY_TICKET_LABEL = "Buy ticket";
-const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
+const ACCEPT_INVITATION_LABEL = "Accept invitation";
+const CLAIM_TICKET_LABEL = "Claim ticket";
+export const GET_FREE_TICKET_LABEL = "Get free ticket";
+export const GET_TICKET_LABEL = "Get ticket";
 export const JOIN_WAITLIST_LABEL = "Join waiting list";
+export const ON_WAITLIST_LABEL = "On waiting list";
+const PAID_TICKETS_UNAVAILABLE_LABEL = "Paid tickets temporarily unavailable";
 export const REQUEST_INVITATION_LABEL = "Request invitation";
+export const REQUEST_PENDING_LABEL = "Request pending";
+export const REQUEST_TICKET_LABEL = "Request ticket";
+const TICKET_OFFER_EXPIRED_LABEL = "Ticket offer expired";
+const TICKETS_BY_INVITATION_LABEL = "Tickets are available by invitation only";
+const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
 const COMPLETE_REGISTRATION_LABEL = "Complete registration";
-const COMPLETE_PAYMENT_LABEL = "Complete payment";
+const CONTINUE_CHECKOUT_LABEL = "Continue to checkout";
 export const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
 const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 export const CANCEL_INVITATION_REQUEST_LABEL = "Cancel request";
@@ -32,6 +41,8 @@ const REQUEST_REFUND_LABEL = "Request refund";
 const REFUND_REQUESTED_LABEL = "Refund requested";
 const REFUND_PROCESSING_LABEL = "Refund processing";
 const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
+const ON_WAITLIST_CANCEL_ARIA_LABEL = `${ON_WAITLIST_LABEL} – leave waiting list`;
+const REQUEST_PENDING_CANCEL_ARIA_LABEL = `${REQUEST_PENDING_LABEL} – cancel request`;
 
 const ATTEND_EVENT_ICON = "icon-user-plus";
 const CANCEL_ACTION_ICON = "icon-cancel";
@@ -41,13 +52,14 @@ const CANCELED_EVENT_TITLE = "This event has been canceled.";
 const NO_CAPACITY_TITLE = "This event has no attendee capacity.";
 const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
 const TICKETS_UNAVAILABLE_TITLE = "Tickets are not currently available for this event.";
+const TICKETS_BY_INVITATION_TITLE = "Tickets for this event are available by invitation only.";
 const SOLD_OUT_TITLE = "This event is sold out.";
 const CHOOSE_TICKET_TITLE = "Choose a ticket to continue.";
 const REFUND_PENDING_TITLE = "Your refund request is waiting for organizer review.";
 const REFUND_PROCESSING_TITLE = "Your refund is being processed.";
 const REFUND_REJECTED_TITLE = "Your refund request was rejected. Contact the organizers for help.";
 const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
-const PAST_CHECKOUT_TITLE = "You cannot buy tickets because the event has already started.";
+const PAST_CHECKOUT_TITLE = "You cannot get tickets because the event has already started.";
 const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
 const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
 const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
@@ -164,6 +176,7 @@ const renderControl = (control, state = {}) => {
   }
 
   const {
+    ariaLabel = null,
     disabled = false,
     hidePriceBadge = false,
     icon = null,
@@ -195,7 +208,8 @@ const renderControl = (control, state = {}) => {
   }
 
   // Price badges describe fresh ticket purchase options, not user-specific states.
-  const shouldHidePriceBadge = hidePriceBadge || (label !== null && label !== BUY_TICKET_LABEL);
+  const shouldHidePriceBadge =
+    hidePriceBadge || (label !== null && label !== GET_TICKET_LABEL && label !== GET_FREE_TICKET_LABEL);
   getControlPriceBadges(control).forEach((priceBadge) => {
     priceBadge.hidden = shouldHidePriceBadge;
     setElementHidden(priceBadge, shouldHidePriceBadge);
@@ -204,6 +218,12 @@ const renderControl = (control, state = {}) => {
 
   if (control instanceof HTMLButtonElement) {
     control.disabled = disabled;
+  }
+
+  if (ariaLabel) {
+    control.setAttribute("aria-label", ariaLabel);
+  } else {
+    control.removeAttribute("aria-label");
   }
 
   if (title) {
@@ -276,7 +296,23 @@ const withRegistrationWindowState = (meta, state, { allowManualInvitation = fals
  */
 const getSigninLabel = (meta) => {
   if (meta.isTicketed) {
-    return meta.ticketPurchaseAvailable ? BUY_TICKET_LABEL : TICKETS_UNAVAILABLE_LABEL;
+    if (meta.attendeeApprovalRequired) {
+      return REQUEST_TICKET_LABEL;
+    }
+
+    if (!meta.hasVisibleTicketTypes) {
+      return TICKETS_BY_INVITATION_LABEL;
+    }
+
+    if (meta.ticketPurchaseAvailable) {
+      return meta.ticketIsFreeOnly ? GET_FREE_TICKET_LABEL : GET_TICKET_LABEL;
+    }
+
+    if (meta.waitlistEnabled && meta.hasSoldOutTicketTypes) {
+      return JOIN_WAITLIST_LABEL;
+    }
+
+    return meta.paidCapable ? PAID_TICKETS_UNAVAILABLE_LABEL : TICKETS_UNAVAILABLE_LABEL;
   }
 
   if (meta.attendeeApprovalRequired) {
@@ -305,7 +341,11 @@ const getSigninState = (meta) => {
  */
 const getDefaultAttendLabel = (meta) => {
   if (meta.isTicketed) {
-    return BUY_TICKET_LABEL;
+    if (meta.attendeeApprovalRequired) {
+      return REQUEST_TICKET_LABEL;
+    }
+
+    return meta.ticketIsFreeOnly ? GET_FREE_TICKET_LABEL : GET_TICKET_LABEL;
   }
 
   return meta.attendeeApprovalRequired ? REQUEST_INVITATION_LABEL : ATTEND_EVENT_LABEL;
@@ -331,10 +371,41 @@ const getAttendState = (meta) => {
     });
   }
 
-  if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
+  if (meta.isTicketed) {
+    if (meta.attendeeApprovalRequired) {
+      return withRegistrationWindowState(meta, {
+        icon: REQUEST_INVITATION_ICON,
+        label: REQUEST_TICKET_LABEL,
+      });
+    }
+
+    if (!meta.hasVisibleTicketTypes) {
+      return {
+        disabled: true,
+        icon: "icon-ticket",
+        label: TICKETS_BY_INVITATION_LABEL,
+        title: TICKETS_BY_INVITATION_TITLE,
+      };
+    }
+
+    if (meta.ticketPurchaseAvailable) {
+      return withRegistrationWindowState(meta, {
+        icon: "icon-ticket",
+        label: getDefaultAttendLabel(meta),
+      });
+    }
+
+    if (meta.waitlistEnabled && meta.hasSoldOutTicketTypes) {
+      return withRegistrationWindowState(meta, {
+        icon: "icon-ticket",
+        label: JOIN_WAITLIST_LABEL,
+      });
+    }
+
     return {
       disabled: true,
-      label: TICKETS_UNAVAILABLE_LABEL,
+      icon: "icon-ticket",
+      label: meta.paidCapable ? PAID_TICKETS_UNAVAILABLE_LABEL : TICKETS_UNAVAILABLE_LABEL,
       title: TICKETS_UNAVAILABLE_TITLE,
     };
   }
@@ -450,15 +521,16 @@ export const renderMeetingDetails = (isAttendee, meta) => {
  */
 export const showSignedOutAttendanceState = (container, meta) => {
   const { attendButton, signinButton } = getPrimaryControls(container);
+  const attendState = getAttendState(meta);
 
   resetPrimaryControls(container);
   if (meta.canceled) {
-    renderControl(attendButton, getAttendState(meta));
+    renderControl(attendButton, attendState);
     return;
   }
 
-  if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
-    renderControl(attendButton, getAttendState(meta));
+  if (meta.isTicketed && attendState.disabled) {
+    renderControl(attendButton, attendState);
     return;
   }
 
@@ -602,6 +674,48 @@ export const showInvitationApprovedAttendanceState = (container, meta, response 
 };
 
 /**
+ * Shows a link to the dashboard surface that owns an active admission offer.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{admission_offer_id?: string, event_ticket_type_id?: string}} response - Attendance response
+ */
+export const showAdmissionOfferState = (container, meta, response) => {
+  const offerUrl = `/dashboard/user?tab=invitations#event-offer-${encodeURIComponent(
+    response.admission_offer_id,
+  )}`;
+  const isTicketOffer = Boolean(response.event_ticket_type_id);
+
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withEventActionState(meta, {
+      icon: "icon-ticket",
+      label: isTicketOffer ? CLAIM_TICKET_LABEL : ACCEPT_INVITATION_LABEL,
+      resumeUrl: offerUrl,
+    }),
+  );
+};
+
+/**
+ * Shows the terminal state for the user's latest expired ticket offer.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ */
+export const showExpiredOfferState = (container, meta) => {
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withEventActionState(meta, {
+      disabled: true,
+      icon: "icon-ticket",
+      label: TICKET_OFFER_EXPIRED_LABEL,
+    }),
+  );
+};
+
+/**
  * Shows the waitlist state for an attendee.
  * @param {HTMLElement} container - Attendance container element
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
@@ -612,8 +726,9 @@ export const showWaitlistedAttendanceState = (container, meta) => {
     meta,
     "leaveButton",
     withEventActionState(meta, {
+      ariaLabel: ON_WAITLIST_CANCEL_ARIA_LABEL,
       icon: CANCEL_ACTION_ICON,
-      label: LEAVE_WAITLIST_LABEL,
+      label: ON_WAITLIST_LABEL,
     }),
   );
 };
@@ -629,8 +744,9 @@ export const showPendingApprovalAttendanceState = (container, meta) => {
     meta,
     "leaveButton",
     withEventActionState(meta, {
+      ariaLabel: REQUEST_PENDING_CANCEL_ARIA_LABEL,
       icon: CANCEL_ACTION_ICON,
-      label: CANCEL_INVITATION_REQUEST_LABEL,
+      label: REQUEST_PENDING_LABEL,
       title: INVITATION_PENDING_TITLE,
     }),
   );
@@ -664,7 +780,7 @@ export const showPendingPaymentState = (container, meta, response) => {
     attendButton,
     withEventActionState(meta, {
       icon: "icon-ticket",
-      label: COMPLETE_PAYMENT_LABEL,
+      label: CONTINUE_CHECKOUT_LABEL,
       resumeUrl: response.resume_checkout_url || "",
     }),
   );
@@ -713,18 +829,24 @@ export const showAttendeeState = (container, meta, response) => {
 const updateCheckoutButtonState = (container) => {
   const meta = getAttendanceMeta(container);
   const checkoutButton = getAttendanceControl(container, "checkout-btn");
+  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
   const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
+  const discountCodeInput = getAttendanceControl(container, "discount-code-input");
   if (!(checkoutButton instanceof HTMLButtonElement)) {
     return;
   }
 
-  const selectedTicketType = getSelectedTicketTypeValue(container);
+  const selectedTicketType = getSelectedTicketTypeOption(container);
+  const isRequest = selectedTicketType && meta.attendeeApprovalRequired;
+  const isWaitlist =
+    selectedTicketType &&
+    !meta.attendeeApprovalRequired &&
+    meta.waitlistEnabled &&
+    selectedTicketType.dataset.ticketSoldOut === "true";
+  const isCheckout = meta.ticketPurchaseAvailable && selectedTicketType?.dataset.ticketPurchasable === "true";
+  const isSelectedTicketAction = isRequest || isWaitlist || isCheckout;
   const shouldDisable =
-    meta.canceled ||
-    !meta.registrationWindowOpen ||
-    !meta.ticketPurchaseAvailable ||
-    meta.isPastEvent ||
-    !selectedTicketType;
+    meta.canceled || !meta.registrationWindowOpen || meta.isPastEvent || !isSelectedTicketAction;
 
   checkoutButton.disabled = shouldDisable;
   setDisabledStyles(checkoutButton, shouldDisable);
@@ -733,11 +855,9 @@ const updateCheckoutButtonState = (container) => {
     checkoutButton.title = CANCELED_EVENT_TITLE;
   } else if (!meta.registrationWindowOpen) {
     checkoutButton.title = meta.registrationWindowUnavailableTitle;
-  } else if (!meta.ticketPurchaseAvailable) {
-    checkoutButton.title = TICKETS_UNAVAILABLE_TITLE;
   } else if (meta.isPastEvent) {
     checkoutButton.title = PAST_CHECKOUT_TITLE;
-  } else if (!selectedTicketType) {
+  } else if (!isSelectedTicketAction) {
     checkoutButton.title = CHOOSE_TICKET_TITLE;
   } else {
     checkoutButton.removeAttribute("title");
@@ -745,6 +865,27 @@ const updateCheckoutButtonState = (container) => {
 
   if (checkoutSpinner instanceof HTMLElement && !isElementHidden(checkoutSpinner)) {
     checkoutButton.disabled = true;
+  }
+
+  if (checkoutLabel instanceof HTMLElement) {
+    if (isRequest) {
+      checkoutLabel.textContent = REQUEST_TICKET_LABEL;
+    } else if (isWaitlist) {
+      checkoutLabel.textContent = JOIN_WAITLIST_LABEL;
+    } else if (selectedTicketType?.dataset.ticketPriceMinor === "0") {
+      checkoutLabel.textContent = GET_FREE_TICKET_LABEL;
+    } else {
+      checkoutLabel.textContent = CONTINUE_CHECKOUT_LABEL;
+    }
+  }
+
+  if (discountCodeInput instanceof HTMLInputElement) {
+    discountCodeInput.disabled =
+      meta.canceled ||
+      !meta.registrationWindowOpen ||
+      meta.attendeeApprovalRequired ||
+      selectedTicketType?.dataset.ticketPurchasable !== "true" ||
+      selectedTicketType?.dataset.ticketPriceMinor === "0";
   }
 };
 
@@ -786,7 +927,6 @@ const setRefundLoadingState = (container, isLoading) => {
  * @param {HTMLElement} container - Attendance container element
  */
 const syncTicketModalState = (container) => {
-  const discountCodeInput = getAttendanceControl(container, "discount-code-input");
   const ticketModalForm = getAttendanceControl(container, "ticket-modal-form");
   const meta = getAttendanceMeta(container);
   const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
@@ -799,8 +939,10 @@ const syncTicketModalState = (container) => {
       const ticketTypeDisabled =
         meta.canceled ||
         !meta.registrationWindowOpen ||
-        !meta.ticketPurchaseAvailable ||
-        ticketTypeOption.dataset.ticketPurchasable !== "true";
+        ticketTypeOption.dataset.ticketSelectable === "false" ||
+        (!meta.attendeeApprovalRequired &&
+          (!meta.ticketPurchaseAvailable || ticketTypeOption.dataset.ticketPurchasable !== "true") &&
+          !(meta.waitlistEnabled && ticketTypeOption.dataset.ticketSoldOut === "true"));
       const ticketTypeCardBody = ticketTypeOption
         .closest('[data-attendance-role="ticket-type-card"]')
         ?.querySelector('[data-attendance-role="ticket-type-card-body"]');
@@ -817,11 +959,6 @@ const syncTicketModalState = (container) => {
       }
     }
   });
-
-  if (discountCodeInput instanceof HTMLInputElement) {
-    discountCodeInput.disabled =
-      meta.canceled || !meta.registrationWindowOpen || !meta.ticketPurchaseAvailable;
-  }
 
   updateCheckoutButtonState(container);
 };

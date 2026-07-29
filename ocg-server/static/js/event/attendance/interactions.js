@@ -16,8 +16,10 @@ import {
   closeRefundModal,
   closeTicketModal,
   LEAVE_WAITLIST_LABEL,
+  ON_WAITLIST_LABEL,
   openRefundModal,
   openTicketModal,
+  REQUEST_PENDING_LABEL,
   restoreCheckoutModalControls,
 } from "/static/js/event/attendance-view.js";
 import {
@@ -26,11 +28,7 @@ import {
   requestQuestionAnswers,
   shouldCollectQuestionAnswers,
 } from "/static/js/event/attendance/questions.js";
-import {
-  getSigninActionText,
-  QUESTIONS_CONTINUE_ACTION_ATTEND,
-  QUESTIONS_CONTINUE_ACTION_TICKET,
-} from "/static/js/event/attendance/shared.js";
+import { getSigninActionText, QUESTIONS_CONTINUE_ACTION_ATTEND } from "/static/js/event/attendance/shared.js";
 
 /**
  * Handles click events for attendance actions.
@@ -79,23 +77,32 @@ export const handleAttendanceClick = (event) => {
   const meta = getAttendanceMeta(container);
   const completingRegistrationQuestions = isCompletingRegistrationQuestions(attendButton);
 
-  // Ticketed attendance may need questions before opening the checkout modal.
+  // Promoted attendees answer questions before completing their reserved place
   if (
     attendButton instanceof HTMLButtonElement &&
     shouldCollectQuestionAnswers(container) &&
-    (!isWaitlistJoinAction(meta) || completingRegistrationQuestions)
+    completingRegistrationQuestions
   ) {
     event.preventDefault();
-    const continueAction = meta.isTicketed
-      ? QUESTIONS_CONTINUE_ACTION_TICKET
-      : QUESTIONS_CONTINUE_ACTION_ATTEND;
-    requestQuestionAnswers(container, continueAction);
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_ATTEND);
     return;
   }
 
-  if (attendButton instanceof HTMLButtonElement && meta.isTicketed) {
+  // Ticketed actions choose a tier before deciding whether answers are required
+  if (attendButton instanceof HTMLButtonElement && meta.ticketModalRequired) {
     event.preventDefault();
     openTicketModal(container);
+    return;
+  }
+
+  // Direct RSVP and private request flows collect answers before submission
+  if (
+    attendButton instanceof HTMLButtonElement &&
+    shouldCollectQuestionAnswers(container) &&
+    !isWaitlistJoinAction(meta)
+  ) {
+    event.preventDefault();
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_ATTEND);
     return;
   }
 
@@ -111,9 +118,9 @@ export const handleAttendanceClick = (event) => {
     // Destructive actions keep the real button id as the SweetAlert target.
     const label = getAttendanceControlLabel(leaveButton) || CANCEL_ATTENDANCE_LABEL;
     let message = "Are you sure you want to cancel your attendance?";
-    if (label === LEAVE_WAITLIST_LABEL) {
+    if (label === ON_WAITLIST_LABEL || label === LEAVE_WAITLIST_LABEL) {
       message = "Are you sure you want to leave the waiting list?";
-    } else if (label === CANCEL_INVITATION_REQUEST_LABEL) {
+    } else if (label === REQUEST_PENDING_LABEL || label === CANCEL_INVITATION_REQUEST_LABEL) {
       message = "Are you sure you want to cancel your invitation request?";
     }
     showConfirmAlert(message, leaveButton.id, "Yes");

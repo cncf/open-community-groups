@@ -106,11 +106,11 @@
         <option value="created-at-asc"
                 {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) -%}
                   selected
-                {% endif -%}>RSVP Date ↑</option>
+                {% endif -%}>Enrollment Date ↑</option>
         <option value="created-at-desc"
                 {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc) -%}
                   selected
-                {% endif -%}>RSVP Date ↓</option>
+                {% endif -%}>Enrollment Date ↓</option>
       </select>
     </div>
   </form>
@@ -334,8 +334,6 @@
                       disabled title="Canceled events cannot invite attendees."
                     {% else if event.is_past() -%}
                       disabled title="Past events cannot invite attendees."
-                    {% else if event.is_ticketed() -%}
-                      disabled title="Manual invitations are not available for ticketed events."
                     {% endif -%}
                     data-event-id="{{ event.event_id }}">
               <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-500"></div>
@@ -430,7 +428,7 @@
           {% endcall -%}
         </th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">
-          <span class="whitespace-nowrap">RSVP Date</span>
+          <span class="whitespace-nowrap">Enrollment Date</span>
         </th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48">
           {% if let Some(ticket_types) = &event.ticket_types -%}
@@ -553,7 +551,17 @@
                     {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}
                   {% endif -%}
                 </div>
-                {% if attendee.status == "invitation-pending" -%}
+                {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending) -%}
+                  {{ badges::invitation_badge(label = "Offer pending") -}}
+                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
+                  {{ badges::invitation_badge(label = "Checkout pending") -}}
+                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                  {{ badges::invitation_badge(label = "Offer expired", tone = "danger") -}}
+                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled) -%}
+                  {{ badges::invitation_badge(label = "Offer canceled", tone = "danger") -}}
+                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Declined) -%}
+                  {{ badges::invitation_badge(label = "Offer declined", tone = "danger") -}}
+                {% else if attendee.status == "invitation-pending" -%}
                   {{ badges::invitation_badge(label = "Invitation sent") -}}
                 {% else if attendee.status == "confirmed" && attendee.manually_invited -%}
                   {{ badges::invitation_badge(label = "Invited", tone = "success") -}}
@@ -563,6 +571,21 @@
                   {{ badges::invitation_badge(label = "Attendance canceled", tone = "danger") -}}
                 {% endif -%}
               </div>
+              {% if attendee.admission_offer_id.is_some() -%}
+                <div class="mt-1 text-xs text-stone-600 xl:hidden">
+                  <div class="truncate">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
+                  {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
+                    <div class="mt-1">
+                      {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                        Expired
+                      {% else -%}
+                        Deadline
+                      {% endif -%}
+                      {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                    </div>
+                  {% endif -%}
+                </div>
+              {% endif -%}
               {% endcall -%}
             </td>
             {# End attendee -#}
@@ -578,7 +601,7 @@
             </td>
             {# End position -#}
 
-            {# RSVP Date -#}
+            {# Enrollment Date -#}
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {% if attendee.status == "confirmed"
                 || attendee.status == "invitation-pending"
@@ -587,11 +610,41 @@
                 <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
               {% endif -%}
             </td>
-            {# End RSVP date -#}
+            {# End enrollment date -#}
 
             {# Payment -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle">
-              {% if attendee.status == "registration-questions-pending" && event.is_ticketed() -%}
+              {% if let Some(offer_status) = attendee.admission_offer_status -%}
+                <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-1">
+                  <div class="max-w-full truncate font-semibold text-stone-900"
+                       title="{{ attendee.ticket_title|assigned_or("RSVP invitation") }}">
+                    {{ attendee.ticket_title|assigned_or("RSVP invitation") }}
+                  </div>
+                  <div class="text-xs text-stone-600">
+                    {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
+                      Awaiting claim
+                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
+                      Checkout in progress
+                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                      Offer expired
+                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
+                      Offer canceled
+                    {% else -%}
+                      Offer declined
+                    {% endif -%}
+                  </div>
+                  {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
+                    <div class="text-xs text-stone-500">
+                      {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                        Expired
+                      {% else -%}
+                        Deadline
+                      {% endif -%}
+                      {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                    </div>
+                  {% endif -%}
+                </div>
+              {% else if attendee.status == "registration-questions-pending" && event.is_ticketed() -%}
                 {{ badges::invitation_badge(label = "Pending checkout", with_border = true) -}}
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-2">
@@ -665,6 +718,9 @@
                   || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || attendee.status == "invitation-pending"
                   || (attendee.status == "registration-questions-pending" && attendee.manually_invited)
+                  || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
+                  || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)
+                  || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
                   || (!event.canceled && attendee.can_receive_attendee_email)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
                   || attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::RetryableFailure))) -%}
@@ -726,25 +782,53 @@
                           </li>
                         {% endif -%}
                         {% if can_manage_events
-                          && (attendee.status == "invitation-pending"
-                          || (attendee.status == "registration-questions-pending" && attendee.manually_invited)) -%}
+                          && (attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                          || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)) -%}
+                          {% if let Some(admission_offer_id) = attendee.admission_offer_id -%}
+                            <li>
+                              <button id="cancel-admission-offer-{{ admission_offer_id }}"
+                                      hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
+                                      hx-indicator="#dashboard-spinner"
+                                      hx-trigger="confirmed"
+                                      hx-disabled-elt="this"
+                                      data-confirm-action
+                                      data-confirm-message="Are you sure you would like to cancel this invitation?"
+                                      data-confirm-text="Yes"
+                                      data-success-message="Invitation canceled."
+                                      data-error-message="Something went wrong canceling this invitation. Please try again later."
+                                      role="menuitem"
+                                      class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                                      type="button">
+                                <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                                <span>Cancel invitation</span>
+                              </button>
+                            </li>
+                          {% endif -%}
+                        {% endif -%}
+                        {% if can_manage_events
+                          && !event.canceled
+                          && !event.is_past()
+                          && attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
                           <li>
-                            <button id="cancel-invitation-{{ attendee.user.user_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/invitation/cancel"
-                                    hx-indicator="#dashboard-spinner"
-                                    hx-trigger="confirmed"
-                                    hx-disabled-elt="this"
-                                    data-confirm-action
-                                    data-confirm-message="Are you sure you would like to cancel this invitation?"
-                                    data-confirm-text="Yes"
-                                    data-success-message="Invitation canceled."
-                                    data-error-message="Something went wrong canceling this invitation. Please try again later."
-                                    role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
-                                    type="button">
-                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
-                              <span>Cancel invitation</span>
-                            </button>
+                            <form hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-disabled-elt="find button[type=submit]"
+                                  data-htmx-response
+                                  data-success-message="Invitation reissued."
+                                  data-error-message="Something went wrong reissuing this invitation. Please check capacity and ticket availability, then try again.">
+                              <input type="hidden" name="email" value="{{ attendee.email }}">
+                              {% if let Some(event_ticket_type_id) = attendee.event_ticket_type_id -%}
+                                <input type="hidden"
+                                       name="event_ticket_type_id"
+                                       value="{{ event_ticket_type_id }}">
+                              {% endif -%}
+                              <button type="submit"
+                                      role="menuitem"
+                                      class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                                <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-500"></div>
+                                <span>Reissue invitation</span>
+                              </button>
+                            </form>
                           </li>
                         {% endif -%}
                         {% if can_manage_events && !event.canceled && attendee.can_receive_attendee_email -%}
@@ -951,6 +1035,37 @@
             <div id="attendee-invitation-selected-user"
                  class="mt-4 text-sm text-stone-700"></div>
           </div>
+
+          {% if event.is_ticketed() -%}
+            <div>
+              <label for="attendee-invitation-ticket-type" class="form-label">
+                Ticket type <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2">
+                <select id="attendee-invitation-ticket-type"
+                        name="event_ticket_type_id"
+                        class="select-primary"
+                        required>
+                  <option value="">Select ticket type</option>
+                  {% if let Some(ticket_types) = &event.ticket_types -%}
+                    {% for ticket_type in ticket_types -%}
+                      {% if ticket_type.active && ticket_type.current_price.is_some() -%}
+                        <option value="{{ ticket_type.event_ticket_type_id }}">
+                          {{ ticket_type.title }}
+                          {% if ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly -%}
+                            (Invitation only)
+                          {% else -%}
+                            (Public)
+                          {% endif -%}
+                        </option>
+                      {% endif -%}
+                    {% endfor -%}
+                  {% endif -%}
+                </select>
+              </div>
+              <p class="form-legend">The selected ticket is reserved when the invitation is sent.</p>
+            </div>
+          {% endif -%}
 
           <div class="mt-auto bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-lg p-4 text-sm">
             When <span class="font-semibold">inviting by email</span>, the email address must match the primary email on the invitee's LF account.

@@ -3,22 +3,31 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
+    Json,
     extract::{Path, RawQuery, State},
     http::{
         StatusCode,
         header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE},
     },
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Response},
 };
 use garde::Validate;
 use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
-use tracing::{instrument, warn};
+use serde_json::json;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig,
-    db::{DBExt, DynDB, notifications::CustomNotificationTracking},
+    config::{HttpServerConfig, PaymentsConfig},
+    db::{
+        DBExt, DynDB,
+        dashboard::group::{
+            EventAdmissionAllocation, EventAdmissionAllocationOutcome,
+            EventAdmissionAllocationResult, EventAttendeeInvitationInput,
+        },
+        notifications::CustomNotificationTracking,
+    },
     handlers::{
         error::HandlerError,
         extractors::{
@@ -28,13 +37,13 @@ use crate::{
     router::serde_qs_config,
     services::{
         notifications::{
-            DynNotificationsManager, NewNotification, NotificationKind,
+            NewNotification, NotificationKind,
             enqueue::{
                 enqueue_event_attendance_cancellation_notifications,
                 enqueue_event_welcome_notification,
+                enqueue_reconciled_non_ticketed_waitlist_promotion_notification,
             },
             load_event_notification_context,
-            payloads::build_event_invitation_notification,
         },
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
@@ -83,7 +92,7 @@ pub(crate) async fn list_page(
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary(community_id, group_id, event_id),
+        db.get_event_summary_dashboard(community_id, group_id, event_id),
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
@@ -137,40 +146,67 @@ pub(crate) async fn accept_invitation_request(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+    ValidatedForm(acceptance): ValidatedForm<EventInvitationRequestAcceptance>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.as_ref()
+    let allocation = db
+        .as_ref()
         .transaction(|tx| {
             Box::pin(async move {
-                // Accept the invitation request
-                tx.accept_event_invitation_request(user.user_id, group_id, event_id, user_id)
+                // Accept the request and allocate attendance or an admission offer
+                let allocation = tx
+                    .accept_event_invitation_request(
+                        user.user_id,
+                        group_id,
+                        event_id,
+                        user_id,
+                        acceptance.event_ticket_type_id,
+                        payments_cfg.as_ref().map(PaymentsConfig::provider),
+                    )
                     .await?;
 
-                // Enqueue the welcome notification
-                enqueue_event_welcome_notification(
+                // Enqueue required non-ticketed waitlist promotion notifications before committing
+                enqueue_reconciled_non_ticketed_waitlist_promotion_notification(
                     tx,
                     &server_cfg,
                     community_id,
+                    group_id,
                     event_id,
-                    user_id,
-                    true,
+                    allocation.promoted_user_ids().to_vec(),
                 )
                 .await?;
 
-                Ok(())
+                // Enqueue the welcome notification when approval directly confirms attendance
+                if matches!(
+                    &allocation,
+                    EventAdmissionAllocationResult::Success(EventAdmissionAllocation {
+                        outcome: EventAdmissionAllocationOutcome::Attendee,
+                        ..
+                    })
+                ) {
+                    enqueue_event_welcome_notification(
+                        tx,
+                        &server_cfg,
+                        community_id,
+                        event_id,
+                        user_id,
+                        true,
+                    )
+                    .await?;
+                }
+
+                Ok(allocation)
             })
         })
         .await?;
 
-    Ok((
+    Ok(event_admission_allocation_response(
+        &allocation,
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-event-attendees, refresh-event-invitation-requests",
-        )],
-    )
-        .into_response())
+        "refresh-event-attendees, refresh-event-invitation-requests",
+    ))
 }
 
 /// Approves an attendee refund request.
@@ -203,6 +239,58 @@ pub(crate) async fn approve_refund_request(
         .into_response())
 }
 
+/// Cancels an active group-scoped admission offer.
+#[instrument(skip_all, err)]
+pub(crate) async fn cancel_event_admission_offer(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path(admission_offer_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Resolve the configured payment provider before transactional work
+    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
+
+    // Cancel the offer and enqueue non-ticketed waitlist promotion notifications atomically
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Cancel the offer and collect any waitlist promotions
+                let outcome = tx
+                    .cancel_event_admission_offer(
+                        user.user_id,
+                        group_id,
+                        admission_offer_id,
+                        payment_provider,
+                    )
+                    .await?;
+
+                // Enqueue required non-ticketed waitlist promotions before committing
+                enqueue_reconciled_non_ticketed_waitlist_promotion_notification(
+                    tx,
+                    &server_cfg,
+                    outcome.community_id,
+                    outcome.group_id,
+                    outcome.event_id,
+                    outcome.non_ticketed_promoted_user_ids,
+                )
+                .await
+            })
+        })
+        .await?;
+
+    // Refresh every dashboard view affected by the cancellation
+    Ok((
+        StatusCode::NO_CONTENT,
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
+        )],
+    )
+        .into_response())
+}
+
 /// Cancels a confirmed attendee's event attendance.
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]
@@ -211,17 +299,25 @@ pub(crate) async fn cancel_event_attendee_attendance(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Cancel the attendee and enqueue required notifications
+    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
     let required_notification_server_cfg = server_cfg.clone();
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
                 // Cancel attendance and collect any waitlist promotions
                 let cancel_result = tx
-                    .cancel_event_attendee_attendance(user.user_id, group_id, event_id, user_id)
+                    .cancel_event_attendee_attendance(
+                        user.user_id,
+                        group_id,
+                        event_id,
+                        user_id,
+                        payment_provider,
+                    )
                     .await?;
 
                 // Enqueue required attendee and promotion notifications before committing
@@ -238,24 +334,6 @@ pub(crate) async fn cancel_event_attendee_attendance(
                 Ok(())
             })
         })
-        .await?;
-
-    Ok((
-        StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-event-attendees")],
-    )
-        .into_response())
-}
-
-/// Cancels a pending organizer-created event invitation.
-#[instrument(skip_all, err)]
-pub(crate) async fn cancel_event_attendee_invitation(
-    CurrentUser(user): CurrentUser,
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
-) -> Result<impl IntoResponse, HandlerError> {
-    db.cancel_event_attendee_invitation(user.user_id, group_id, event_id, user_id)
         .await?;
 
     Ok((
@@ -317,7 +395,7 @@ pub(crate) async fn invite_event_attendee(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     ValidatedForm(invitation): ValidatedForm<EventAttendeeInvitation>,
@@ -329,53 +407,49 @@ pub(crate) async fn invite_event_attendee(
         return Ok((StatusCode::BAD_REQUEST, "provide exactly one invite target").into_response());
     }
 
-    // Create the pending invitation
-    let invited_user_id = db
-        .invite_event_attendee(
-            user.user_id,
-            group_id,
-            event_id,
-            invitation.user_id,
-            invitation.email,
-        )
+    // Allocate the invitation and enqueue non-ticketed waitlist promotions atomically
+    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
+    let invitation = EventAttendeeInvitationInput {
+        email: invitation.email,
+        event_ticket_type_id: invitation.event_ticket_type_id,
+        user_id: invitation.user_id,
+    };
+    let allocation = db
+        .as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Allocate the organizer invitation and preserve queue priority conflicts
+                let allocation = tx
+                    .invite_event_attendee(
+                        user.user_id,
+                        group_id,
+                        event_id,
+                        &invitation,
+                        payment_provider,
+                    )
+                    .await?;
+
+                // Enqueue required non-ticketed waitlist promotion notifications before committing
+                enqueue_reconciled_non_ticketed_waitlist_promotion_notification(
+                    tx,
+                    &server_cfg,
+                    community_id,
+                    group_id,
+                    event_id,
+                    allocation.promoted_user_ids().to_vec(),
+                )
+                .await?;
+
+                Ok(allocation)
+            })
+        })
         .await?;
 
-    // Load context and enqueue the invitation notification
-    let (event, site_settings) =
-        match load_event_notification_context(db.as_ref(), community_id, event_id).await {
-            Ok(context) => context,
-            Err(err) => {
-                warn!(error = %err, "failed to load event invitation notification context");
-                return Ok((
-                    StatusCode::CREATED,
-                    [(
-                        "HX-Trigger",
-                        "refresh-event-attendees, refresh-event-waitlist",
-                    )],
-                )
-                    .into_response());
-            }
-        };
-    match build_event_invitation_notification(&event, invited_user_id, &server_cfg, &site_settings)
-    {
-        Ok(notification) => {
-            if let Err(err) = notifications_manager.enqueue(&notification).await {
-                warn!(error = %err, "failed to enqueue event invitation notification");
-            }
-        }
-        Err(err) => {
-            warn!(error = %err, "failed to build event invitation notification");
-        }
-    }
-
-    Ok((
+    Ok(event_admission_allocation_response(
+        &allocation,
         StatusCode::CREATED,
-        [(
-            "HX-Trigger",
-            "refresh-event-attendees, refresh-event-waitlist",
-        )],
-    )
-        .into_response())
+        "refresh-event-attendees, refresh-event-waitlist",
+    ))
 }
 
 /// Manually checks in a user for an event, bypassing the check-in window validation.
@@ -624,9 +698,12 @@ pub(crate) async fn download_csv_with_answers(
 /// Form data for organizer-created event invitations.
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct EventAttendeeInvitation {
-    /// Email address for an unregistered invitee.
+    /// Email address used to create or reissue an invitation.
     #[garde(email, length(max = MAX_LEN_M))]
     pub email: Option<String>,
+    /// Ticket type assigned to a ticketed invitation.
+    #[garde(skip)]
+    pub event_ticket_type_id: Option<Uuid>,
     /// Existing registered user identifier.
     #[garde(skip)]
     pub user_id: Option<Uuid>,
@@ -663,6 +740,14 @@ pub(crate) enum EventCustomNotificationRecipientScope {
     /// Send only to selected attendees eligible for email.
     #[strum(serialize = "selected-attendees")]
     Selected,
+}
+
+/// Form data for accepting or reissuing an event invitation request.
+#[derive(Debug, Deserialize, Serialize, Validate)]
+pub(crate) struct EventInvitationRequestAcceptance {
+    /// Invitation-only ticket type assigned to a generic ticket request.
+    #[garde(skip)]
+    pub event_ticket_type_id: Option<Uuid>,
 }
 
 /// Form data for refund reviews.
@@ -729,4 +814,24 @@ fn build_attendees_csv(
     }
 
     writer.into_inner().map_err(|err| anyhow::Error::from(err).into())
+}
+
+/// Converts an organizer allocation result into the stable HTTP contract.
+fn event_admission_allocation_response(
+    allocation: &EventAdmissionAllocationResult,
+    success_status: StatusCode,
+    success_trigger: &'static str,
+) -> Response {
+    match allocation {
+        EventAdmissionAllocationResult::Conflict { conflict, .. } => (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "conflict": conflict,
+            })),
+        )
+            .into_response(),
+        EventAdmissionAllocationResult::Success(_) => {
+            (success_status, [("HX-Trigger", success_trigger)]).into_response()
+        }
+    }
 }

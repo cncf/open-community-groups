@@ -1,9 +1,11 @@
+-- Tests updating event ticketing configuration.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(44);
+select plan(48);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,6 +28,7 @@ select plan(44);
 \set eventQuestionsHoldID '3a3c0000-0000-0000-0000-000000000056'
 \set eventQuestionsID '3a3c0000-0000-0000-0000-000000000016'
 \set eventQuestionsPublishedID '3a3c0000-0000-0000-0000-000000000017'
+\set eventTicketQueueID '3a3c0000-0000-0000-0000-000000000064'
 \set group1ID '3a3c0000-0000-0000-0000-000000000018'
 \set questionsAttendeeUserID '3a3c0000-0000-0000-0000-000000000019'
 \set questionsCategoryID '3a3c0000-0000-0000-0000-000000000020'
@@ -37,6 +40,9 @@ select plan(44);
 \set questionsHoldTicketTypeID '3a3c0000-0000-0000-0000-000000000058'
 \set questionsHoldUserID '3a3c0000-0000-0000-0000-000000000057'
 \set questionsOrganizerUserID '3a3c0000-0000-0000-0000-000000000024'
+\set ticketQueuePriceWindowID '3a3c0000-0000-0000-0000-000000000065'
+\set ticketQueuePurchaseID '3a3c0000-0000-0000-0000-000000000066'
+\set ticketQueueTicketTypeID '3a3c0000-0000-0000-0000-000000000067'
 \set user1ID '3a3c0000-0000-0000-0000-000000000025'
 \set user2ID '3a3c0000-0000-0000-0000-000000000026'
 \set user3ID '3a3c0000-0000-0000-0000-000000000027'
@@ -117,14 +123,16 @@ insert into "group" (
     name,
     slug,
     description,
-    group_category_id
+    group_category_id,
+    payment_recipient
 ) values (
     :'group1ID',
     :'community1ID',
     'Test Group',
     'abc1234',
     'A test group',
-    '3a3c0000-0000-0000-0000-000000000030'
+    '3a3c0000-0000-0000-0000-000000000030',
+    '{"provider": "stripe", "recipient_id": "acct_update_ticketing"}'::jsonb
 );
 
 -- Group for registration-question update tests
@@ -133,13 +141,15 @@ insert into "group" (
     community_id,
     group_category_id,
     name,
-    slug
+    slug,
+    payment_recipient
 ) values (
     :'questionsGroupID',
     :'questionsCommunityID',
     :'questionsCategoryID',
     'Update Questions Group',
-    'update-questions-group'
+    'update-questions-group',
+    '{"provider": "stripe", "recipient_id": "acct_update_questions"}'::jsonb
 );
 
 -- Events used to update and lock registration questions
@@ -579,6 +589,39 @@ insert into event (
     'USD'
 );
 
+-- Published ticketed event used to verify tier capacity reconciliation
+insert into event (
+    capacity,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone,
+    waitlist_enabled
+) values (
+    1,
+    'Published event for ticket queue capacity checks',
+    :'category1ID',
+    :'eventTicketQueueID',
+    'virtual',
+    :'group1ID',
+    'Ticket Queue Capacity Event',
+    'USD',
+    true,
+    current_timestamp,
+    'ticket-queue-capacity-event',
+    current_timestamp + interval '1 day',
+    'UTC',
+    true
+);
+
 -- Ticket type initially owned by the primary ticketed event
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -731,6 +774,34 @@ insert into event_ticket_price_window (
     '3a3c0000-0000-0000-0000-000000000041'::uuid
 );
 
+-- Full public tier expanded by the capacity reconciliation test
+insert into event_ticket_type (
+    active,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    true,
+    :'eventTicketQueueID',
+    :'ticketQueueTicketTypeID',
+    1,
+    1,
+    'Queue General'
+);
+
+-- Current price for the capacity reconciliation tier
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    :'ticketQueuePriceWindowID',
+    :'ticketQueueTicketTypeID'
+);
+
 -- Discount code owned by the other event
 insert into event_discount_code (
     event_discount_code_id,
@@ -798,6 +869,27 @@ insert into event_purchase (
     '3a3c0000-0000-0000-0000-000000000036'::uuid,
     'completed',
     'Protected General',
+    :'user1ID'
+);
+
+-- Completed purchase occupying the capacity reconciliation tier
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'USD',
+    :'eventTicketQueueID',
+    :'ticketQueuePurchaseID',
+    :'ticketQueueTicketTypeID',
+    'completed',
+    'Queue General',
     :'user1ID'
 );
 
@@ -870,9 +962,33 @@ insert into event_waitlist (event_id, user_id, created_at) values
     (:'event20ID', :'user4ID', current_timestamp + interval '5 minutes'),
     (:'event23ID', :'user5ID', current_timestamp + interval '6 minutes');
 
+-- Tier-specific FIFO queue promoted after ticket capacity increases
+insert into event_waitlist (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    current_timestamp,
+    :'eventTicketQueueID',
+    :'ticketQueueTicketTypeID',
+    :'user4ID'
+);
+
 -- Event invitation requests (for attendee approval transition tests)
 insert into event_invitation_request (event_id, user_id)
 values (:'event24ID', :'user5ID');
+
+-- Test-only overloads keep existing calls focused while supplying server payment configuration.
+create function update_event_with_payments(uuid, uuid, uuid, jsonb)
+returns json as $$
+    select update_event($1, $2, $3, $4, null, 'stripe');
+$$ language sql;
+
+create function update_event_with_payments(uuid, uuid, uuid, jsonb, jsonb)
+returns json as $$
+    select update_event($1, $2, $3, $4, $5, 'stripe');
+$$ language sql;
 
 -- ============================================================================
 -- TESTS
@@ -880,7 +996,7 @@ values (:'event24ID', :'user5ID');
 
 -- Should preserve ticketing fields when payload omits payment controls
 select lives_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000008'::uuid,
@@ -921,6 +1037,7 @@ select is(
         "ticket_types": [
             {
                 "active": true,
+                "availability": "public",
                 "current_price": {
                     "amount_minor": 2500
                 },
@@ -947,9 +1064,59 @@ select is(
     'Should preserve derived capacity when payload omits payment controls'
 );
 
+-- Should allow unrelated edits after payment setup is lost
+select lives_ok(
+    $$
+        select update_event(
+            null::uuid,
+            '3a3c0000-0000-0000-0000-000000000018'::uuid,
+            '3a3c0000-0000-0000-0000-000000000008'::uuid,
+            '{
+                "name": "Paid Event Without Payment Setup",
+                "description": "Unrelated edits remain available",
+                "timezone": "UTC",
+                "category_id": "3a3c0000-0000-0000-0000-000000000001",
+                "kind_id": "virtual",
+                "meeting_requested": false,
+                "payment_currency_code": "USD",
+                "discount_codes": [
+                    {
+                        "active": true,
+                        "amount_minor": 500,
+                        "available_override_active": false,
+                        "code": "SAVE20",
+                        "event_discount_code_id": "3a3c0000-0000-0000-0000-000000000035",
+                        "kind": "fixed_amount",
+                        "title": "Launch"
+                    }
+                ],
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000033",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000034"
+                            }
+                        ],
+                        "seats_total": 10,
+                        "title": "General"
+                    }
+                ]
+            }'::jsonb,
+            null,
+            null
+        )
+    $$,
+    'Should allow unrelated edits after payment setup is lost'
+);
+
 -- Should throw error when discount codes remain without ticket types
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000008'::uuid,
@@ -963,33 +1130,13 @@ select throws_ok(
             "ticket_types": null
         }'::jsonb
     )$$,
-    'discount_codes require ticket_types',
+    'discount_codes require positive ticket pricing',
     'Should throw error when discount codes remain after ticket types are cleared'
-);
-
--- Should throw error when payment currency remains without ticket types
-select throws_ok(
-    $$select update_event(
-        null::uuid,
-        '3a3c0000-0000-0000-0000-000000000018'::uuid,
-        '3a3c0000-0000-0000-0000-000000000008'::uuid,
-        '{
-            "name": "Paid Event Updated",
-            "description": "Event seeded for ticketing preservation tests",
-            "timezone": "UTC",
-            "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "discount_codes": null,
-            "ticket_types": null
-        }'::jsonb
-    )$$,
-    'payment_currency_code requires ticket_types',
-    'Should throw error when payment currency remains after ticket types are cleared'
 );
 
 -- Should throw error when a ticket type identifier belongs to another event
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000008'::uuid,
@@ -1023,7 +1170,7 @@ select throws_ok(
 
 -- Should throw error when a ticket price window identifier belongs to another event
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000008'::uuid,
@@ -1057,7 +1204,7 @@ select throws_ok(
 
 -- Should throw error when a ticket price window identifier belongs to another ticket type
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000010'::uuid,
@@ -1104,7 +1251,7 @@ select throws_ok(
 
 -- Should throw error when a discount code identifier belongs to another event
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000008'::uuid,
@@ -1132,7 +1279,7 @@ select throws_ok(
 
 -- Should throw error when ticketed events omit payment_currency_code
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000011'::uuid,
@@ -1159,13 +1306,13 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
-    'ticketed events require payment_currency_code',
-    'Should reject ticketed events when payment_currency_code is omitted'
+    'paid-capable events require payment_currency_code',
+    'Should reject paid-capable events when payment_currency_code is omitted'
 );
 
--- Should throw error when waitlist remains enabled for ticketed events
-select throws_ok(
-    $$select update_event(
+-- Should allow waitlists for ticketed events
+select lives_ok(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000011'::uuid,
@@ -1194,13 +1341,12 @@ select throws_ok(
             "waitlist_enabled": true
         }'::jsonb
     )$$,
-    'waitlist cannot be enabled for ticketed events',
-    'Should reject ticketed events when waitlist_enabled stays true'
+    'Should allow ticketed events when waitlist_enabled stays true'
 );
 
 -- Should reject disabling attendee approval while invitation requests are pending
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000013'::uuid,
@@ -1219,7 +1365,7 @@ select throws_ok(
 
 -- Should reject enabling attendee approval while waitlist entries exist
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000012'::uuid,
@@ -1242,7 +1388,7 @@ select throws_ok(
 
 -- Should throw error when ticket seats are reduced below purchased inventory
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000010'::uuid,
@@ -1266,17 +1412,30 @@ select throws_ok(
                     ],
                     "seats_total": 0,
                     "title": "Protected General"
+                },
+                {
+                    "active": true,
+                    "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000038",
+                    "order": 2,
+                    "price_windows": [
+                        {
+                            "amount_minor": 5000,
+                            "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000039"
+                        }
+                    ],
+                    "seats_total": 5,
+                    "title": "Protected VIP"
                 }
             ]
         }'::jsonb
     )$$,
-    'ticket type seats_total (0) cannot be less than current number of purchased seats (1)',
+    'ticket type seats_total (0) cannot be less than current allocated seats (1)',
     'Should reject seat totals below the current purchased inventory for a ticket type'
 );
 
 -- Should throw error when purchased ticket types are removed
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000010'::uuid,
@@ -1287,7 +1446,21 @@ select throws_ok(
             "category_id": "3a3c0000-0000-0000-0000-000000000001",
             "kind_id": "virtual",
             "payment_currency_code": "USD",
-            "ticket_types": []
+            "ticket_types": [
+                {
+                    "active": true,
+                    "event_ticket_type_id": "3a3c0000-0000-0000-0000-000000000038",
+                    "order": 2,
+                    "price_windows": [
+                        {
+                            "amount_minor": 5000,
+                            "event_ticket_price_window_id": "3a3c0000-0000-0000-0000-000000000039"
+                        }
+                    ],
+                    "seats_total": 5,
+                    "title": "Protected VIP"
+                }
+            ]
         }'::jsonb
     )$$,
     'ticket types with purchases cannot be removed; deactivate them instead',
@@ -1296,7 +1469,7 @@ select throws_ok(
 
 -- Should throw error when discount code total_available drops below redemptions
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000010'::uuid,
@@ -1325,7 +1498,7 @@ select throws_ok(
 
 -- Should throw error when redeemed discount codes are removed
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000010'::uuid,
@@ -1344,7 +1517,7 @@ select throws_ok(
 
 -- Should throw error when capacity is reduced below attendee count
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000004'::uuid,
@@ -1356,7 +1529,7 @@ select throws_ok(
 
 -- Should allow saving an event already over capacity from accepted manual invitations
 select lives_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000014'::uuid,
@@ -1373,7 +1546,7 @@ select is(
 
 -- Should reject ticketing conversion when the event already has attendees
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000004'::uuid,
@@ -1408,7 +1581,7 @@ select throws_ok(
 
 -- Should succeed when capacity equals attendee count
 select lives_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000004'::uuid,
@@ -1419,7 +1592,7 @@ select lives_ok(
 
 -- Should succeed when capacity exceeds attendee count
 select lives_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000004'::uuid,
@@ -1430,7 +1603,7 @@ select lives_ok(
 
 -- Should promote waitlisted users when increasing capacity on a waitlist-enabled event
 select is(
-    update_event(
+    update_event_with_payments(
         null::uuid,
         :'group1ID'::uuid,
         :'event15ID'::uuid,
@@ -1475,7 +1648,7 @@ select is(
 
 -- Should reject ticketing conversion when attendees already exist, even if the event also has a waitlist
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000009'::uuid,
@@ -1512,7 +1685,7 @@ select throws_ok(
 
 -- Should reject ticketing conversion when the event already has a waitlist
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000012'::uuid,
@@ -1543,13 +1716,13 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
-    'ticketed events cannot have existing waitlist entries',
+    'ticketed events cannot have existing event-level waitlist entries',
     'Should reject ticketing conversion when queued users already exist'
 );
 
 -- Should reject ticketing conversion when the event already has attendees
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         null::uuid,
         '3a3c0000-0000-0000-0000-000000000018'::uuid,
         '3a3c0000-0000-0000-0000-000000000004'::uuid,
@@ -1616,7 +1789,7 @@ select is(
 
 -- Should promote waitlisted users for a published event when capacity increases
 select is(
-    update_event(
+    update_event_with_payments(
         null::uuid,
         :'group1ID'::uuid,
         :'event13ID'::uuid,
@@ -1663,7 +1836,7 @@ select is(
 
 -- Should continue promoting queued users when waitlist is disabled for new joins
 select is(
-    update_event(
+    update_event_with_payments(
         null::uuid,
         :'group1ID'::uuid,
         :'event16ID'::uuid,
@@ -1694,7 +1867,7 @@ select is(
 
 -- Should promote all queued users when capacity becomes unlimited
 select is(
-    update_event(
+    update_event_with_payments(
         null::uuid,
         :'group1ID'::uuid,
         :'event17ID'::uuid,
@@ -1739,10 +1912,80 @@ select is(
     'Should move all waitlisted users into attendees when capacity becomes unlimited'
 );
 
+-- Should reconcile a public ticket queue after tier capacity increases
+select lives_ok(
+    format($$select update_event_with_payments(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        %L::jsonb
+    )$$,
+        :'group1ID',
+        :'eventTicketQueueID',
+        format(
+            '{
+                "name": "Ticket Queue Capacity Event",
+                "description": "Published event for ticket queue capacity checks",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "virtual",
+                "payment_currency_code": "USD",
+                "starts_at": "2030-02-17T10:00:00",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 2,
+                        "title": "Queue General"
+                    }
+                ]
+            }',
+            :'category1ID',
+            :'ticketQueueTicketTypeID',
+            :'ticketQueuePriceWindowID'
+        )
+    ),
+    'Should update ticket capacity and reconcile its queue'
+);
+
+-- Should assign the newly available ticket seat to the FIFO queue head
+select is(
+    (
+        select jsonb_build_object(
+            'offer_status', (
+                select status
+                from admission_offer
+                where event_id = :'eventTicketQueueID'::uuid
+                and user_id = :'user4ID'::uuid
+            ),
+            'seats_total', (
+                select seats_total
+                from event_ticket_type
+                where event_ticket_type_id = :'ticketQueueTicketTypeID'::uuid
+            ),
+            'waitlist_count', (
+                select count(*)
+                from event_waitlist
+                where event_id = :'eventTicketQueueID'::uuid
+            )
+        )
+    ),
+    '{"offer_status":"pending","seats_total":2,"waitlist_count":0}'::jsonb,
+    'Should promote the ticket queue after capacity increases'
+);
+
 -- Should update registration questions while the event is unpublished
 select lives_ok(
     $$
-        select update_event(
+        select update_event_with_payments(
             '3a3c0000-0000-0000-0000-000000000024'::uuid,
             '3a3c0000-0000-0000-0000-000000000023'::uuid,
             '3a3c0000-0000-0000-0000-000000000016'::uuid,
@@ -1765,7 +2008,7 @@ select is(
 
 -- Should validate registration questions when updating an event
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000016'::uuid,
@@ -1777,7 +2020,7 @@ select throws_ok(
 
 -- Should update registration questions after publish when no answers exist
 select lives_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000017'::uuid,
@@ -1788,7 +2031,7 @@ select lives_ok(
 
 -- Should preserve registration questions when answers exist and questions are omitted
 select lives_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000015'::uuid,
@@ -1799,7 +2042,7 @@ select lives_ok(
 
 -- Should reject registration question changes after answers exist
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000015'::uuid,
@@ -1811,7 +2054,7 @@ select throws_ok(
 
 -- Should allow unrelated event edits while checkout holds are active
 select lives_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000056'::uuid,
@@ -1822,7 +2065,7 @@ select lives_ok(
 
 -- Should reject registration question changes while checkout holds are active
 select throws_ok(
-    $$select update_event(
+    $$select update_event_with_payments(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000056'::uuid,
@@ -1830,6 +2073,39 @@ select throws_ok(
     )$$,
     'registration questions cannot be changed while checkout holds are active',
     'Should reject registration question changes while checkout holds are active'
+);
+
+-- Should clear payment-only configuration when the final positive price is removed
+select lives_ok(
+    $$select update_event_with_payments(
+        null::uuid,
+        '3a3c0000-0000-0000-0000-000000000018'::uuid,
+        '3a3c0000-0000-0000-0000-000000000008'::uuid,
+        '{
+            "name": "Paid Event Updated",
+            "description": "Event seeded for ticketing preservation tests",
+            "timezone": "UTC",
+            "category_id": "3a3c0000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "discount_codes": null,
+            "ticket_types": null
+        }'::jsonb
+    )$$,
+    'Should clear payment-only configuration with the final positive price'
+);
+
+-- Should persist the provider-free configuration after ticket removal
+select results_eq(
+    $$
+        select
+            payment_currency_code,
+            (select count(*)::int from event_discount_code where event_id = e.event_id),
+            (select count(*)::int from event_ticket_type where event_id = e.event_id)
+        from event e
+        where event_id = '3a3c0000-0000-0000-0000-000000000008'::uuid
+    $$,
+    $$ values (null::text, 0::int, 0::int) $$,
+    'Should persist provider-free configuration after ticket removal'
 );
 
 -- ============================================================================

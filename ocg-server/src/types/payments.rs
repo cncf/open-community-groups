@@ -165,8 +165,6 @@ pub struct EventDiscountCode {
 pub struct EventPurchaseSummary {
     /// Recorded purchase amount after discounts.
     pub amount_minor: i64,
-    /// Currency used for the purchase.
-    pub currency_code: String,
     /// Discount amount applied to the purchase.
     pub discount_amount_minor: i64,
     /// Purchase identifier.
@@ -181,6 +179,8 @@ pub struct EventPurchaseSummary {
     /// Time when the purchase was completed.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub completed_at: Option<DateTime<Utc>>,
+    /// Currency used for the purchase.
+    pub currency_code: Option<String>,
     /// Discount code used for the purchase.
     pub discount_code: Option<String>,
     /// Time when the payment hold expires.
@@ -256,6 +256,8 @@ impl EventTicketPriceWindow {
 pub struct EventTicketType {
     /// Whether the ticket type can currently be selected.
     pub active: bool,
+    /// Whether the ticket type is publicly discoverable or invitation-only.
+    pub availability: EventTicketTypeAvailability,
     /// Unique identifier for the ticket type.
     pub event_ticket_type_id: Uuid,
     /// Display order in event pages and forms.
@@ -310,6 +312,17 @@ impl EventTicketType {
     }
 }
 
+/// Availability of a configured event ticket type.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EventTicketTypeAvailability {
+    /// Ticket type is assigned only through organizer or workflow offers.
+    InvitationOnly,
+    /// Ticket type is visible through public enrollment.
+    #[default]
+    Public,
+}
+
 /// Group-level payout recipient details.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -335,11 +348,11 @@ pub struct PreparedEventCheckout {
     /// Prepared purchase summary for the attendee.
     #[serde(flatten)]
     pub purchase: EventPurchaseSummary,
-    /// Recipient account configured for the event's group.
-    pub recipient: GroupPaymentRecipient,
 
     /// Admin-managed group slug used in attendee-facing routes.
     pub group_slug_pretty: Option<String>,
+    /// Recipient account configured for the event's group.
+    pub recipient: Option<GroupPaymentRecipient>,
 }
 
 // Helpers.

@@ -6,9 +6,9 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     templates::notifications::{
-        EventAttendanceCanceled, EventCanceled, EventInvitation, EventPublished,
-        EventRefundApproved, EventRefundRejected, EventRescheduled, EventWaitlistJoined,
-        EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, SpeakerWelcome,
+        EventAttendanceCanceled, EventCanceled, EventPublished, EventRefundApproved,
+        EventRefundRejected, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
+        EventWaitlistPromoted, EventWelcome, SpeakerWelcome,
     },
     types::{event::EventSummary, site::SiteSettings},
     util::{
@@ -60,34 +60,6 @@ pub(crate) fn build_event_canceled_notification(
         attachments: vec![build_event_calendar_attachment(base_url, event)],
         kind: NotificationKind::EventCanceled,
         recipients,
-        template_data: Some(serde_json::to_value(&template_data)?),
-    })
-}
-
-/// Builds an organizer-created event invitation notification.
-pub(crate) fn build_event_invitation_notification(
-    event: &EventSummary,
-    recipient_user_id: Uuid,
-    server_cfg: &HttpServerConfig,
-    site_settings: &SiteSettings,
-) -> Result<NewNotification> {
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-    let link = if event.has_registration_questions {
-        build_user_dashboard_events_link(base_url)
-    } else {
-        format!("{base_url}/dashboard/user?tab=invitations")
-    };
-    let template_data = EventInvitation {
-        event: event.clone(),
-        has_registration_questions: event.has_registration_questions,
-        link,
-        theme: site_settings.theme.clone(),
-    };
-
-    Ok(NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::EventInvitation,
-        recipients: vec![recipient_user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
     })
 }
@@ -315,9 +287,9 @@ mod tests {
         handlers::tests::{sample_event_summary, sample_site_settings},
         services::notifications::NotificationKind,
         templates::notifications::{
-            EventAttendanceCanceled, EventCanceled, EventInvitation, EventPublished,
-            EventRefundApproved, EventRefundRejected, EventRescheduled, EventWaitlistJoined,
-            EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, SpeakerWelcome,
+            EventAttendanceCanceled, EventCanceled, EventPublished, EventRefundApproved,
+            EventRefundRejected, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
+            EventWaitlistPromoted, EventWelcome, SpeakerWelcome,
         },
     };
 
@@ -437,47 +409,6 @@ mod tests {
             serde_json::from_value(speaker.template_data.expect("template data to exist"))
                 .expect("template data to deserialize");
         assert_eq!(speaker_template.event.event_id, event_id);
-    }
-
-    #[test]
-    fn test_build_event_invitation_notification_returns_expected_payload() {
-        // Setup identifiers and data structures
-        let event_id = Uuid::new_v4();
-        let recipient_user_id = Uuid::new_v4();
-        let mut event = sample_event_summary(event_id, Uuid::new_v4());
-        event.has_registration_questions = true;
-        let site_settings = sample_site_settings();
-        let server_cfg = sample_server_cfg();
-
-        // Build notification
-        let notification = build_event_invitation_notification(
-            &event,
-            recipient_user_id,
-            &server_cfg,
-            &site_settings,
-        )
-        .expect("notification to be built");
-
-        // Check notification matches expectations
-        assert!(notification.attachments.is_empty());
-        assert!(matches!(
-            notification.kind,
-            NotificationKind::EventInvitation
-        ));
-        assert_eq!(notification.recipients, vec![recipient_user_id]);
-        let template: EventInvitation =
-            serde_json::from_value(notification.template_data.expect("template data to exist"))
-                .expect("template data to deserialize");
-        assert_eq!(template.event.event_id, event_id);
-        assert!(template.has_registration_questions);
-        assert_eq!(
-            template.link,
-            "https://example.test/dashboard/user?tab=events"
-        );
-        assert_eq!(
-            template.theme.primary_color,
-            site_settings.theme.primary_color
-        );
     }
 
     #[test]

@@ -7,7 +7,8 @@ create or replace function get_event_attendance(
     with scoped_event as (
         select
             e.attendee_approval_required,
-            e.event_id
+            e.event_id,
+            e.registration_questions
         from event e
         join "group" g on g.group_id = e.group_id
         where e.event_id = p_event_id
@@ -22,6 +23,48 @@ create or replace function get_event_attendance(
             or e.ends_at is null
             or e.ends_at >= current_timestamp
         )
+    ),
+    active_offer_state as (
+        select
+            ao.admission_offer_id,
+            ao.event_ticket_type_id,
+            ao.source,
+            ao.status
+        from admission_offer ao
+        where ao.event_id = p_event_id
+        and ao.user_id = p_user_id
+        and ao.status in ('checkout_pending', 'pending')
+        and (ao.expires_at is null or ao.expires_at > current_timestamp)
+        and not exists (
+            select 1
+            from event_purchase ep
+            where ep.admission_offer_id = ao.admission_offer_id
+            and ep.status in (
+                'refund-pending',
+                'refund-recovery-pending',
+                'refund-requested'
+            )
+        )
+        and exists (select 1 from scoped_event)
+        order by ao.created_at desc, ao.admission_offer_id desc
+        limit 1
+    ),
+    latest_offer_state as (
+        select
+            (
+                ao.status = 'expired'
+                or (
+                    ao.status in ('checkout_pending', 'pending')
+                    and ao.expires_at is not null
+                    and ao.expires_at <= current_timestamp
+                )
+            ) as is_expired
+        from admission_offer ao
+        where ao.event_id = p_event_id
+        and ao.user_id = p_user_id
+        and exists (select 1 from scoped_event)
+        order by ao.created_at desc, ao.admission_offer_id desc
+        limit 1
     ),
     attendance_state as (
         select
@@ -45,8 +88,27 @@ create or replace function get_event_attendance(
                     and exists (select 1 from scoped_event)
                 ),
                 false
+            )
+            or exists (
+                select 1
+                from active_offer_state aos
+                where aos.source = 'organizer_invitation'
             ) as manually_invited,
             case
+                when exists (
+                    select 1
+                    from active_offer_state aos
+                    where aos.source = 'organizer_invitation'
+                    and aos.status = 'pending'
+                    and exists (
+                        select 1
+                        from scoped_event se
+                        where aos.event_ticket_type_id is null
+                        and jsonb_array_length(
+                            coalesce(se.registration_questions, '[]'::jsonb)
+                        ) > 0
+                    )
+                ) then 'registration-questions-pending'
                 when exists (
                     select 1
                     from event_attendee ea
@@ -64,6 +126,7 @@ create or replace function get_event_attendance(
                     and ep.hold_expires_at > current_timestamp
                     and exists (select 1 from scoped_event)
                 ) then 'pending-payment'
+                when exists (select 1 from active_offer_state) then 'invitation-approved'
                 when exists (
                     select 1
                     from event_attendee ea
@@ -99,6 +162,13 @@ create or replace function get_event_attendance(
                     where eir.event_id = p_event_id
                     and eir.user_id = p_user_id
                     and eir.status = 'accepted'
+                    and not exists (
+                        select 1
+                        from admission_offer ao
+                        where ao.event_id = p_event_id
+                        and ao.user_id = p_user_id
+                        and ao.source = 'approval'
+                    )
                     and exists (
                         select 1
                         from scoped_event se
@@ -124,6 +194,11 @@ create or replace function get_event_attendance(
                     and ew.user_id = p_user_id
                     and exists (select 1 from scoped_event)
                 ) then 'waitlisted'
+                when exists (
+                    select 1
+                    from latest_offer_state los
+                    where los.is_expired
+                ) then 'offer-expired'
                 else 'none'
             end as status
     ),
@@ -165,6 +240,12 @@ create or replace function get_event_attendance(
                 'resume_checkout_url', (select provider_checkout_url from purchase_state),
                 'status', status
             )
+            || jsonb_strip_nulls(jsonb_build_object(
+                'admission_offer_id',
+                (select admission_offer_id from active_offer_state),
+                'event_ticket_type_id',
+                (select event_ticket_type_id from active_offer_state)
+            ))
             || case
                 when manually_invited then jsonb_build_object('manually_invited', true)
                 else '{}'::jsonb

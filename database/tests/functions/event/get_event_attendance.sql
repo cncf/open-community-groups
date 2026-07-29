@@ -1,9 +1,11 @@
+-- Tests resolving a user's public attendance and admission-offer state.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(24);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,6 +13,8 @@ select plan(20);
 
 \set community2ID '5e050000-0000-0000-0000-000000000001'
 \set communityID '5e050000-0000-0000-0000-000000000002'
+\set declinedApprovalOfferID '5e050000-0000-0000-0000-00000000002b'
+\set declinedApprovalUserID '5e050000-0000-0000-0000-00000000002c'
 \set eventApprovalID '5e050000-0000-0000-0000-000000000003'
 \set eventCanceledID '5e050000-0000-0000-0000-000000000004'
 \set eventCategoryID '5e050000-0000-0000-0000-000000000005'
@@ -21,6 +25,9 @@ select plan(20);
 \set eventPurchaseProcessingID '5e050000-0000-0000-0000-00000000000a'
 \set eventPurchaseQuestionsExpiredID '5e050000-0000-0000-0000-00000000000b'
 \set eventPurchaseQuestionsPendingID '5e050000-0000-0000-0000-00000000000c'
+\set expiredApprovalOfferID '5e050000-0000-0000-0000-000000000028'
+\set expiredApprovalPriceWindowID '5e050000-0000-0000-0000-000000000029'
+\set expiredApprovalTicketTypeID '5e050000-0000-0000-0000-00000000002a'
 \set eventQuestionsID '5e050000-0000-0000-0000-00000000000d'
 \set eventRefundRequestID '5e050000-0000-0000-0000-00000000000e'
 \set eventRefundRequestProcessingID '5e050000-0000-0000-0000-00000000000f'
@@ -29,10 +36,16 @@ select plan(20);
 \set groupID '5e050000-0000-0000-0000-000000000012'
 \set nonAttendeeUserID '5e050000-0000-0000-0000-000000000013'
 \set questionID '5e050000-0000-0000-0000-000000000014'
+\set organizerOfferID '5e050000-0000-0000-0000-000000000024'
+\set questionsOfferID '5e050000-0000-0000-0000-000000000025'
 \set questionsCheckoutExpiredUserID '5e050000-0000-0000-0000-000000000015'
 \set questionsCheckoutUserID '5e050000-0000-0000-0000-000000000016'
 \set questionsInvitedUserID '5e050000-0000-0000-0000-000000000017'
 \set questionsTicketTypeID '5e050000-0000-0000-0000-000000000018'
+\set refundPendingOfferID '5e050000-0000-0000-0000-00000000002f'
+\set refundPendingUserID '5e050000-0000-0000-0000-000000000030'
+\set rejoinedApprovalOfferID '5e050000-0000-0000-0000-00000000002d'
+\set rejoinedApprovalUserID '5e050000-0000-0000-0000-00000000002e'
 \set ticketTypeGeneralID '5e050000-0000-0000-0000-000000000019'
 \set ticketTypeVIPID '5e050000-0000-0000-0000-00000000001a'
 \set user1ID '5e050000-0000-0000-0000-00000000001b'
@@ -44,6 +57,8 @@ select plan(20);
 \set user7ID '5e050000-0000-0000-0000-000000000021'
 \set user8ID '5e050000-0000-0000-0000-000000000022'
 \set user9ID '5e050000-0000-0000-0000-000000000023'
+\set waitlistOfferID '5e050000-0000-0000-0000-000000000026'
+\set waitlistOfferUserID '5e050000-0000-0000-0000-000000000027'
 
 -- ============================================================================
 -- SEED DATA
@@ -130,6 +145,12 @@ insert into "user" (
 ), (
     :'user9ID', 'h12', 'att9@example.com', true, 'att9', 'Att Nine'
 ), (
+    :'waitlistOfferUserID', 'h13', 'waitlist-offer@example.com', true, 'waitlist-offer', null
+), (
+    :'declinedApprovalUserID', 'h14', 'declined-approval@example.com', true, 'declined-approval', null
+), (
+    :'rejoinedApprovalUserID', 'h15', 'rejoined-approval@example.com', true, 'rejoined-approval', null
+), (
     :'questionsCheckoutUserID', 'h9', 'rq-checkout@test.com', true, 'rq-checkout', null
 ), (
     :'questionsCheckoutExpiredUserID',
@@ -140,6 +161,13 @@ insert into "user" (
     null
 ), (
     :'questionsInvitedUserID', 'h11', 'rq-invited@test.com', true, 'rq-invited', null
+), (
+    :'refundPendingUserID',
+    'h16',
+    'refund-pending@example.com',
+    true,
+    'refund-pending',
+    null
 );
 
 -- Event
@@ -270,7 +298,19 @@ insert into event_ticket_type (
 ) values
     (:'ticketTypeGeneralID', true, :'eventID', 1, 100, 'General admission'),
     (:'ticketTypeVIPID', true, :'eventID', 2, 100, 'VIP'),
+    (:'expiredApprovalTicketTypeID', true, :'eventApprovalID', 1, 100, 'Approval ticket'),
     (:'questionsTicketTypeID', true, :'eventQuestionsID', 1, 100, 'Questions general admission');
+
+-- Zero-price window for the approval ticket
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'expiredApprovalPriceWindowID',
+    0,
+    :'expiredApprovalTicketTypeID'
+);
 
 -- Event Attendee - user1 is checked in
 insert into event_attendee (
@@ -300,9 +340,98 @@ values (:'eventCanceledID', :'user1ID', false);
 insert into event_attendee (event_id, user_id, checked_in)
 values (:'eventDraftCanceledID', :'user2ID', false);
 
--- Event Attendee - pending organizer invitation should report approved invitation
-insert into event_attendee (event_id, user_id, manually_invited, status)
-values (:'eventID', :'user8ID', true, 'invitation-pending');
+-- Organizer invitation offers should report invitation states
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'organizerOfferID',
+    :'eventID',
+    :'ticketTypeGeneralID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'user8ID'
+), (
+    :'questionsOfferID',
+    :'eventQuestionsID',
+    :'questionsTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'questionsInvitedUserID'
+), (
+    :'waitlistOfferID',
+    :'eventID',
+    :'ticketTypeVIPID',
+    current_timestamp + interval '1 hour',
+    'waitlist',
+    'pending',
+    :'waitlistOfferUserID'
+);
+
+-- Organizer invitation hidden while its linked purchase refund is processing
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'refundPendingOfferID',
+    :'eventID',
+    :'ticketTypeGeneralID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'refundPendingUserID'
+);
+
+-- Expired approval offer that remains terminal after its accepted request
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'expiredApprovalOfferID',
+    current_timestamp - interval '2 hours',
+    :'eventApprovalID',
+    :'expiredApprovalTicketTypeID',
+    current_timestamp - interval '1 hour',
+    'approval',
+    'expired',
+    :'user7ID'
+), (
+    :'declinedApprovalOfferID',
+    current_timestamp - interval '2 hours',
+    :'eventApprovalID',
+    :'expiredApprovalTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'approval',
+    'declined',
+    :'declinedApprovalUserID'
+), (
+    :'rejoinedApprovalOfferID',
+    current_timestamp - interval '2 hours',
+    :'eventApprovalID',
+    :'expiredApprovalTicketTypeID',
+    current_timestamp - interval '1 hour',
+    'approval',
+    'expired',
+    :'rejoinedApprovalUserID'
+);
 
 -- Event Attendee - pending non-manual invitation should not report attendee
 insert into event_attendee (event_id, user_id, status)
@@ -311,7 +440,6 @@ values (:'eventID', :'user9ID', 'invitation-pending');
 -- Event Attendee - pending registration questions should report pending state
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values
-    (:'eventQuestionsID', :'questionsInvitedUserID', true, 'registration-questions-pending'),
     (:'eventQuestionsID', :'questionsCheckoutUserID', false, 'registration-questions-pending'),
     (
         :'eventQuestionsID',
@@ -326,12 +454,34 @@ values
     (:'eventID', :'user3ID'),
     (:'eventCanceledID', :'user3ID');
 
+-- Ticket waitlist rejoined after a prior approval offer expired
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'eventApprovalID',
+    :'expiredApprovalTicketTypeID',
+    :'rejoinedApprovalUserID'
+);
+
 -- Event invitation requests
 insert into event_invitation_request (event_id, user_id, status, reviewed_at, reviewed_by)
 values
     (:'eventApprovalID', :'user5ID', 'pending', null, null),
     (:'eventApprovalID', :'user6ID', 'rejected', current_timestamp, :'user1ID'),
     (:'eventApprovalID', :'user7ID', 'accepted', current_timestamp, :'user1ID'),
+    (
+        :'eventApprovalID',
+        :'declinedApprovalUserID',
+        'accepted',
+        current_timestamp,
+        :'user1ID'
+    ),
+    (
+        :'eventApprovalID',
+        :'rejoinedApprovalUserID',
+        'accepted',
+        current_timestamp,
+        :'user1ID'
+    ),
     (:'eventID', :'user6ID', 'rejected', current_timestamp, :'user1ID');
 
 -- Event purchase
@@ -415,6 +565,27 @@ insert into event_purchase (
     'pending',
     'Questions general admission',
     :'questionsCheckoutExpiredUserID'
+);
+
+-- Refund-pending purchase linked to an otherwise active organizer invitation
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'refundPendingOfferID',
+    1000,
+    'USD',
+    :'eventID',
+    :'ticketTypeGeneralID',
+    'refund-pending',
+    'General admission',
+    :'refundPendingUserID'
 );
 
 -- Event refund request
@@ -542,6 +713,8 @@ select is(
 select is(
     get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user8ID'::uuid)::jsonb,
     '{
+        "admission_offer_id": "5e050000-0000-0000-0000-000000000024",
+        "event_ticket_type_id": "5e050000-0000-0000-0000-000000000019",
         "is_checked_in": false,
         "manually_invited": true,
         "purchase_amount_minor": null,
@@ -550,6 +723,25 @@ select is(
         "status": "invitation-approved"
     }'::jsonb,
     'Should return invitation approved for pending organizer-created invitations'
+);
+
+-- Should expose the exact tier assigned by a waitlist offer
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventID'::uuid,
+        :'waitlistOfferUserID'::uuid
+    )::jsonb,
+    '{
+        "admission_offer_id": "5e050000-0000-0000-0000-000000000026",
+        "event_ticket_type_id": "5e050000-0000-0000-0000-00000000001a",
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "invitation-approved"
+    }'::jsonb,
+    'Should expose the exact tier assigned by a waitlist offer'
 );
 
 -- Should return none for pending non-manual invitations
@@ -578,7 +770,7 @@ select is(
     'Should return pending approval status for pending invitation request'
 );
 
--- Should return invitation approved status for accepted invitation request
+-- Should return ticket offer expired for an accepted request with an expired offer
 select is(
     get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user7ID'::uuid)::jsonb,
     '{
@@ -586,9 +778,31 @@ select is(
         "purchase_amount_minor": null,
         "refund_request_status": null,
         "resume_checkout_url": null,
-        "status": "invitation-approved"
+        "status": "offer-expired"
     }'::jsonb,
-    'Should return invitation approved status for accepted invitation request'
+    'Should return ticket offer expired for an accepted request with an expired offer'
+);
+
+-- Should not restore approval after its offer is declined
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventApprovalID'::uuid,
+        :'declinedApprovalUserID'::uuid
+    )::jsonb->>'status',
+    'none',
+    'Should not restore approval after its offer is declined'
+);
+
+-- Should report a current waitlist after a prior offer expired
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventApprovalID'::uuid,
+        :'rejoinedApprovalUserID'::uuid
+    )::jsonb->>'status',
+    'waitlisted',
+    'Should report a current waitlist after a prior offer expired'
 );
 
 -- Should return rejected status for rejected invitation request
@@ -685,11 +899,11 @@ select is(
     'Should return none for a non-attendee'
 );
 
--- Should report pending registration questions in event attendance state
+-- Should report a ticketed organizer offer before registration questions are claimed
 select is(
     get_event_attendance(:'communityID'::uuid, :'eventQuestionsID'::uuid, :'questionsInvitedUserID'::uuid)::jsonb->>'status',
-    'registration-questions-pending',
-    'Should report pending registration questions in event attendance state'
+    'invitation-approved',
+    'Should report a ticketed organizer invitation before claim'
 );
 
 -- Should report pending payment before pending registration questions
@@ -716,6 +930,23 @@ select is(
         "status": "registration-questions-pending"
     }'::jsonb,
     'Should ignore expired pending checkout before pending registration questions'
+);
+
+-- Should hide an active offer while its purchase refund is processing
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventID'::uuid,
+        :'refundPendingUserID'::uuid
+    )::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
+    'Should hide an active offer while its purchase refund is processing'
 );
 
 -- ============================================================================

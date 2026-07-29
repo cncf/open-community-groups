@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(75);
+select plan(76);
 
 -- ============================================================================
 -- TESTS
@@ -16,6 +16,7 @@ select has_extension('pgcrypto');
 select has_extension('postgis');
 
 -- Test: check expected tables exist
+select has_table('admission_offer');
 select has_table('attachment');
 select has_table('audit_log');
 select has_table('auth_session');

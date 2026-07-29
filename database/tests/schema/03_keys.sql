@@ -5,13 +5,14 @@
 -- ============================================================================
 
 begin;
-select plan(183);
+select plan(196);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Test: check tables have expected primary keys
+select has_pk('admission_offer');
 select has_pk('attachment');
 select has_pk('audit_log');
 select has_pk('auth_session');
@@ -84,6 +85,11 @@ select has_pk('user');
 select has_pk('user_badge');
 
 -- Test: check tables have expected foreign keys
+select col_is_fk('admission_offer', 'event_discount_code_id', 'event_discount_code');
+select col_is_fk('admission_offer', 'event_id', 'event');
+select col_is_fk('admission_offer', 'event_ticket_type_id', 'event_ticket_type');
+select col_is_fk('admission_offer', 'organizer_user_id', 'user');
+select col_is_fk('admission_offer', 'user_id', 'user');
 select col_is_fk('badge', 'group_id', 'group');
 select col_is_fk('badge_artwork', 'group_id', 'group');
 select col_is_fk('badge_award_job', 'actor_user_id', 'user');
@@ -144,6 +150,7 @@ select col_is_fk('event_refund_request', 'requested_by_user_id', 'user');
 select col_is_fk('event_refund_request', 'reviewed_by_user_id', 'user');
 select col_is_fk('event_ticket_price_window', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_ticket_type', 'event_id', 'event');
+select col_is_fk('event_invitation_request', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_series', 'created_by', 'user');
 select col_is_fk('event_series', 'group_id', 'group');
 select col_is_fk('event_speaker', 'event_id', 'event');
@@ -152,6 +159,7 @@ select col_is_fk('event_sponsor', 'event_id', 'event');
 select col_is_fk('event_sponsor', 'group_sponsor_id', 'group_sponsor');
 select col_is_fk('event_views', 'event_id', 'event');
 select col_is_fk('event_waitlist', 'event_id', 'event');
+select col_is_fk('event_waitlist', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_waitlist', 'user_id', 'user');
 select col_is_fk('group', 'community_id', 'community');
 select col_is_fk('group', 'group_category_id', 'group_category');
@@ -212,6 +220,36 @@ select fk_ok(
 select col_is_fk('user_badge', 'group_id', 'group');
 select col_is_fk('user_badge', 'revoked_by_user_id', 'user');
 select col_is_fk('user_badge', 'user_id', 'user');
+select fk_ok(
+    'admission_offer',
+    array['event_id', 'event_discount_code_id']::name[],
+    'event_discount_code',
+    array['event_id', 'event_discount_code_id']::name[]
+);
+select fk_ok(
+    'admission_offer',
+    array['event_id', 'event_ticket_type_id']::name[],
+    'event_ticket_type',
+    array['event_id', 'event_ticket_type_id']::name[]
+);
+select fk_ok(
+    'event_invitation_request',
+    array['event_id', 'event_ticket_type_id']::name[],
+    'event_ticket_type',
+    array['event_id', 'event_ticket_type_id']::name[]
+);
+select fk_ok(
+    'event_purchase',
+    array['admission_offer_id', 'event_id', 'user_id']::name[],
+    'admission_offer',
+    array['admission_offer_id', 'event_id', 'user_id']::name[]
+);
+select fk_ok(
+    'event_waitlist',
+    array['event_id', 'event_ticket_type_id']::name[],
+    'event_ticket_type',
+    array['event_id', 'event_ticket_type_id']::name[]
+);
 
 -- ============================================================================
 -- CLEANUP

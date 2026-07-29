@@ -265,19 +265,71 @@
 
               {# Status -#}
               <td class="px-3 xl:px-5 py-4 align-middle">
-                {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
-                  <span class="inline-flex w-fit rounded-full border border-amber-800 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                    Pending
-                  </span>
-                {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
-                  <span class="inline-flex w-fit rounded-full border border-red-800 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
-                    Rejected
-                  </span>
-                {% else -%}
-                  <span class="inline-flex w-fit rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                    Accepted
-                  </span>
-                {% endif -%}
+                <div class="flex min-w-0 flex-col gap-2">
+                  <div>
+                    {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                      <span class="inline-flex w-fit rounded-full border border-amber-800 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                        Request pending
+                      </span>
+                    {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
+                      <span class="inline-flex w-fit rounded-full border border-red-800 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
+                        Request rejected
+                      </span>
+                    {% else -%}
+                      <span class="inline-flex w-fit rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                        Request accepted
+                      </span>
+                    {% endif -%}
+                  </div>
+
+                  <div class="min-w-0 text-xs text-stone-600">
+                    {% if let Some(requested_ticket_title) = &request.requested_ticket_title -%}
+                      <div class="truncate" title="{{ requested_ticket_title }}">
+                        Requested: <span class="font-medium text-stone-900">{{ requested_ticket_title }}</span>
+                      </div>
+                    {% else if event.is_ticketed() -%}
+                      <div>Requested: <span class="font-medium text-stone-900">Invitation-only ticket</span></div>
+                    {% else -%}
+                      <div>Requested: <span class="font-medium text-stone-900">RSVP</span></div>
+                    {% endif -%}
+                  </div>
+
+                  {% if let Some(offer_status) = request.admission_offer_status -%}
+                    <div class="min-w-0 rounded-md border border-stone-200 bg-white px-2.5 py-2 text-xs text-stone-600">
+                      {% if let Some(offered_ticket_title) = &request.offered_ticket_title -%}
+                        <div class="truncate font-medium text-stone-900"
+                             title="{{ offered_ticket_title }}">{{ offered_ticket_title }}</div>
+                      {% else -%}
+                        <div class="font-medium text-stone-900">RSVP invitation</div>
+                      {% endif -%}
+                      <div class="mt-1">
+                        {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
+                          Offer pending
+                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
+                          Checkout in progress
+                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
+                          Offer claimed
+                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                          Offer expired
+                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
+                          Offer canceled
+                        {% else -%}
+                          Offer declined
+                        {% endif -%}
+                      </div>
+                      {% if let Some(offer_expires_at) = &request.offer_expires_at -%}
+                        <div class="mt-1">
+                          {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                            Expired
+                          {% else -%}
+                            Deadline
+                          {% endif -%}
+                          {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                        </div>
+                      {% endif -%}
+                    </div>
+                  {% endif -%}
+                </div>
               </td>
               {# End status -#}
 
@@ -293,20 +345,26 @@
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-24">
-                {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
+                  || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                  || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
+                  || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
                   <div class="flex justify-end">
                     <div class="group relative">
                       <button type="button"
                               data-event-id="invitation-request-{{ request.user.user_id }}"
-                              aria-label="Open actions menu for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
-                              aria-haspopup="menu"
+                              aria-label="Open actions for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
                               aria-controls="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                               class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
-                                     {% if !can_manage_events -%}
+                                     {% if !can_manage_events || event.canceled || event.is_past() -%}
                                        opacity-50 cursor-not-allowed
                                      {% endif -%}"
                               {% if !can_manage_events -%}
                                 disabled title="Your role cannot manage invitation requests."
+                              {% else if event.canceled -%}
+                                disabled title="Canceled events cannot manage invitation requests."
+                              {% else if event.is_past() -%}
+                                disabled title="Past events cannot manage invitation requests."
                               {% endif -%}>
                         <div class="svg-icon size-4 icon-vertical-dots"></div>
                       </button>
@@ -314,42 +372,106 @@
                       {# Dropdown actions -#}
                       <div id="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                            data-event-actions-dropdown
-                           class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                        <ul class="py-2 text-sm text-stone-700" role="menu">
-                          <li>
-                            <button type="button"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/accept"
+                           class="dropdown absolute hidden z-10 end-0 top-8 w-[280px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                        <ul class="py-2 text-sm text-stone-700">
+                          {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
+                            || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                            <li>
+                              <form hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}reissue{% else %}accept{% endif %}"
                                     hx-indicator="#dashboard-spinner"
-                                    hx-disabled-elt="this"
+                                    hx-disabled-elt="find button[type=submit]"
                                     data-invitation-request-action
-                                    data-error-message="Something went wrong accepting this invitation request. Please check the event capacity and try again later."
-                                    role="menuitem">
-                              <div class="flex items-center">
-                                <div class="svg-icon size-4 icon-check bg-stone-600"></div>
-                                <div class="ms-2">Accept</div>
-                              </div>
-                            </button>
-                          </li>
-                          <li>
-                            <button id="reject-invitation-request-{{ request.user.user_id }}"
-                                    type="button"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/reject"
-                                    hx-indicator="#dashboard-spinner"
-                                    hx-disabled-elt="this"
-                                    hx-trigger="confirmed"
-                                    data-confirm-action
-                                    data-confirm-message="Are you sure you want to reject this invitation request?"
-                                    data-confirm-text="Yes"
-                                    data-error-message="Something went wrong rejecting this invitation request. Please try again later."
-                                    role="menuitem">
-                              <div class="flex items-center">
-                                <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
-                                <div class="ms-2">Reject</div>
-                              </div>
-                            </button>
-                          </li>
+                                    data-success-message="{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Ticket offer reissued.{% else %}Ticket request accepted.{% endif %}"
+                                    data-error-message="Something went wrong allocating this ticket. Please check ticket availability and payment readiness, then try again.">
+                                {% if let Some(requested_event_ticket_type_id) = request.requested_event_ticket_type_id -%}
+                                  <input type="hidden"
+                                         name="event_ticket_type_id"
+                                         value="{{ requested_event_ticket_type_id }}">
+                                {% else if event.is_ticketed() -%}
+                                  <div class="px-4 pb-2 pt-1">
+                                    <label for="request-ticket-type-{{ request.user.user_id }}"
+                                           class="mb-1 block text-xs font-semibold text-stone-700">Invitation-only ticket</label>
+                                    <select id="request-ticket-type-{{ request.user.user_id }}"
+                                            name="event_ticket_type_id"
+                                            class="select-primary text-sm"
+                                            required>
+                                      <option value="">Select ticket type</option>
+                                      {% if let Some(ticket_types) = &event.ticket_types -%}
+                                        {% for ticket_type in ticket_types -%}
+                                          {% if ticket_type.active
+                                            && ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly
+                                            && ticket_type.current_price.is_some() -%}
+                                            <option value="{{ ticket_type.event_ticket_type_id }}"
+                                                    {% if request.offered_event_ticket_type_id == Some(*ticket_type.event_ticket_type_id) %}selected{% endif %}>
+                                              {{ ticket_type.title }}
+                                            </option>
+                                          {% endif -%}
+                                        {% endfor -%}
+                                      {% endif -%}
+                                    </select>
+                                  </div>
+                                {% endif -%}
+                                <button type="submit"
+                                        class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                  <div class="flex items-center">
+                                    <div class="svg-icon size-4 icon-check bg-stone-600"></div>
+                                    <div class="ms-2">
+                                      {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                                        Reissue offer
+                                      {% else -%}
+                                        Accept
+                                      {% endif -%}
+                                    </div>
+                                  </div>
+                                </button>
+                              </form>
+                            </li>
+                          {% endif -%}
+                          {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                            || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
+                            {% if let Some(admission_offer_id) = request.admission_offer_id -%}
+                              <li>
+                                <button type="button"
+                                        class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
+                                        hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
+                                        hx-indicator="#dashboard-spinner"
+                                        hx-disabled-elt="this"
+                                        hx-trigger="confirmed"
+                                        data-confirm-action
+                                        data-confirm-message="Are you sure you want to cancel this ticket offer?"
+                                        data-confirm-text="Yes"
+                                        data-invitation-request-action
+                                        data-success-message="Ticket offer canceled."
+                                        data-error-message="Something went wrong canceling this ticket offer. Please try again later.">
+                                  <div class="flex items-center">
+                                    <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
+                                    <div class="ms-2">Cancel offer</div>
+                                  </div>
+                                </button>
+                              </li>
+                            {% endif -%}
+                          {% endif -%}
+                          {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                            <li>
+                              <button id="reject-invitation-request-{{ request.user.user_id }}"
+                                      type="button"
+                                      class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
+                                      hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/reject"
+                                      hx-indicator="#dashboard-spinner"
+                                      hx-disabled-elt="this"
+                                      hx-trigger="confirmed"
+                                      data-confirm-action
+                                      data-confirm-message="Are you sure you want to reject this invitation request?"
+                                      data-confirm-text="Yes"
+                                      data-error-message="Something went wrong rejecting this invitation request. Please try again later."
+                                      data-invitation-request-action>
+                                <div class="flex items-center">
+                                  <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
+                                  <div class="ms-2">Reject</div>
+                                </div>
+                              </button>
+                            </li>
+                          {% endif -%}
                         </ul>
                       </div>
                       {# End dropdown actions -#}

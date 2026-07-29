@@ -1,52 +1,56 @@
--- Cancels a pending organizer-created event invitation.
+-- Cancels a pending organizer-created RSVP invitation.
 create or replace function cancel_event_attendee_invitation(
     p_actor_user_id uuid,
     p_group_id uuid,
     p_event_id uuid,
-    p_user_id uuid
+    p_user_id uuid,
+    p_configured_provider text default null
 )
 returns void as $$
 declare
-    v_community_id uuid;
+    v_admission_offer_id uuid;
 begin
-    -- Lock the event and verify it belongs to the selected group
-    select g.community_id
-    into v_community_id
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    for update of e;
+    -- Resolve the group-scoped RSVP invitation before using the generic release flow
+    select ao.admission_offer_id
+    into v_admission_offer_id
+    from admission_offer ao
+    join event e using (event_id)
+    where ao.event_id = p_event_id
+    and ao.event_ticket_type_id is null
+    and ao.source = 'organizer_invitation'
+    and ao.status in ('checkout_pending', 'pending')
+    and ao.user_id = p_user_id
+    and e.group_id = p_group_id;
 
     if not found then
-        raise exception 'event not found';
-    end if;
+        if not exists (
+            select 1
+            from event e
+            where e.event_id = p_event_id
+            and e.group_id = p_group_id
+            and e.deleted = false
+        ) then
+            raise exception 'event not found';
+        end if;
 
-    -- Only manually-created pending invitations can be canceled
-    update event_attendee
-    set
-        manually_invited = false,
-        status = 'invitation-canceled'
-    where event_id = p_event_id
-    and user_id = p_user_id
-    and manually_invited = true
-    and status in ('invitation-pending', 'registration-questions-pending');
-
-    if not found then
         raise exception 'pending event invitation not found';
     end if;
 
-    -- Track the cancellation
-    perform insert_audit_log(
-        'event_attendee_invitation_canceled',
-        p_actor_user_id,
-        'user',
-        p_user_id,
-        v_community_id,
-        p_group_id,
-        p_event_id,
-        jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)
-    );
+    -- Cancel the exact invitation and reconcile released capacity
+    begin
+        perform cancel_event_admission_offer(
+            p_actor_user_id,
+            p_group_id,
+            v_admission_offer_id,
+            p_configured_provider
+        );
+    exception
+        when raise_exception then
+            if sqlerrm = 'admission offer is no longer available' then
+                raise exception 'pending event invitation not found';
+            end if;
+
+            raise;
+    end;
 end;
 $$ language plpgsql;

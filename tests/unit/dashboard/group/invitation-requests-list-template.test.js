@@ -1,9 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch(
-    "/ocg-server/templates/dashboard/group/invitation_requests_list.html",
-  );
+  const response = await fetch("/ocg-server/templates/dashboard/group/invitation_requests_list.html");
 
   expect(response.ok).to.equal(true);
 
@@ -21,9 +19,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include(
       "dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str()))",
     );
-    expect(template).to.include(
-      "request.user.name.as_deref() |assigned_or(request.user.username)",
-    );
+    expect(template).to.include("request.user.name.as_deref() |assigned_or(request.user.username)");
   });
 
   it("uses the shared search convention for table filtering", async () => {
@@ -32,9 +28,7 @@ describe("dashboard group invitation requests list template", () => {
 
     // Verify invitation request search follows the existing dashboard HTMX pattern.
     expect(template).to.include('id="invitation-requests-search-form"');
-    expect(template).to.include(
-      'hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"',
-    );
+    expect(template).to.include('hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"');
     expect(template).to.include('hx-trigger="change, submit"');
     expect(template).to.include('hx-target="#invitation-requests-content"');
     expect(template).to.include(
@@ -44,9 +38,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('value="{{ ts_query|assigned_or("") }}"');
     expect(template).to.include('placeholder="Search requests"');
     expect(template).to.include('aria-label="Clear invitation request search"');
-    expect(template).to.include(
-      "dashboard/placeholders/group_invitation_requests_no_results.html",
-    );
+    expect(template).to.include("dashboard/placeholders/group_invitation_requests_no_results.html");
   });
 
   it("renders request sort select, title, and status filter controls", async () => {
@@ -78,31 +70,19 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('<span class="whitespace-nowrap">Requester</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Requested</span>');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
-    expect(template).to.include(
-      'class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"',
-    );
-    expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
-    );
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include(
-      'class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"',
-    );
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"');
     expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
     expect(template).to.include('<span class="sr-only">Actions</span>');
     expect(template).to.include('class="xl:hidden px-8 py-12 text-center" colspan="3"');
-    expect(template).to.include(
-      'class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4"',
-    );
+    expect(template).to.include('class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4"');
     expect(template).to.include('class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6"');
-    expect(template).to.include(
-      'dashboard::table_filter_menu(id = "invitation-requests-position-filter"',
-    );
-    expect(template).to.include(
-      'dashboard::table_filter_menu(id = "invitation-requests-status-filter"',
-    );
+    expect(template).to.include('dashboard::table_filter_menu(id = "invitation-requests-position-filter"');
+    expect(template).to.include('dashboard::table_filter_menu(id = "invitation-requests-status-filter"');
     expect(template).to.include(
       'dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true)',
     );
@@ -123,21 +103,11 @@ describe("dashboard group invitation requests list template", () => {
     );
     expect(template).to.include("Reset all");
     expect(template).to.not.include("invitation-requests-requester-filter");
-    expect(template).to.include(
-      'dashboard::active_table_filter_badge("Status", "Accepted")',
-    );
-    expect(template).to.include(
-      'dashboard::active_table_filter_badge("Status", "Pending")',
-    );
-    expect(template).to.include(
-      'dashboard::active_table_filter_badge("Status", "Rejected")',
-    );
-    expect(template).to.include(
-      'dashboard::active_table_filter_badge("Position", "Present")',
-    );
-    expect(template).to.include(
-      'dashboard::active_table_filter_badge("Position", "Missing")',
-    );
+    expect(template).to.include('dashboard::active_table_filter_badge("Status", "Accepted")');
+    expect(template).to.include('dashboard::active_table_filter_badge("Status", "Pending")');
+    expect(template).to.include('dashboard::active_table_filter_badge("Status", "Rejected")');
+    expect(template).to.include('dashboard::active_table_filter_badge("Position", "Present")');
+    expect(template).to.include('dashboard::active_table_filter_badge("Position", "Missing")');
     expect(template).to.not.include('dashboard::active_table_filter_badge("Sort"');
   });
 
@@ -148,9 +118,62 @@ describe("dashboard group invitation requests list template", () => {
     // Verify action-triggered refreshes reuse the handler-built filtered URL.
     expect(template).to.include('id="invitation-requests-refresh"');
     expect(template).to.include('hx-get="{{ refresh_url }}"');
-    expect(template).to.include(
-      'hx-trigger="refresh-event-invitation-requests from:body"',
-    );
+    expect(template).to.include('hx-trigger="refresh-event-invitation-requests from:body"');
     expect(template).not.to.include("refresh_limit");
+  });
+
+  it("shows ticket request offers and exact organizer actions", async () => {
+    // Load the invitation requests template before checking offer workflow markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify requester-selected tiers, generic private assignment, and offer metadata remain visible.
+    expect(template).to.include("Requested:");
+    expect(template).to.include("{{ requested_ticket_title }}");
+    expect(template).to.include("Invitation-only ticket");
+    expect(template).to.include("{{ offered_ticket_title }}");
+    expect(template).to.include("Offer pending");
+    expect(template).to.include("Checkout in progress");
+    expect(template).to.include("Offer expired");
+    expect(template).to.include(
+      'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
+    );
+
+    // Verify generic requests require an eligible private tier without allowing public-tier substitution.
+    expect(template).to.include('name="event_ticket_type_id"');
+    expect(template).to.include(
+      "ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly",
+    );
+    expect(template).to.include("request.requested_event_ticket_type_id");
+    expect(template).to.include('name="event_ticket_type_id" value="{{ requested_event_ticket_type_id }}"');
+
+    // Verify active offers can be canceled and only expired approval offers can be reissued.
+    expect(template).to.include('hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"');
+    expect(template).to.include("Cancel offer");
+    expect(template).to.include("Reissue offer");
+    expect(template).to.include(
+      "{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}reissue{% else %}accept{% endif %}",
+    );
+    expect(template).to.not.include("waitlist/reissue");
+
+    // Verify the mixed form-control dropdown avoids ARIA menu semantics.
+    const actionDisclosureStart = template.indexOf(
+      'data-event-id="invitation-request-{{ request.user.user_id }}"',
+    );
+    const actionDisclosureEnd = template.indexOf(
+      "{# End dropdown actions -#}",
+      actionDisclosureStart,
+    );
+    expect(actionDisclosureStart).to.be.greaterThan(-1);
+    expect(actionDisclosureEnd).to.be.greaterThan(actionDisclosureStart);
+    const actionDisclosure = template.slice(actionDisclosureStart, actionDisclosureEnd);
+    expect(actionDisclosure).to.include(
+      'aria-label="Open actions for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"',
+    );
+    expect(actionDisclosure).to.not.include('aria-label="Open actions menu for');
+    expect(actionDisclosure).to.not.include('aria-haspopup="menu"');
+    expect(actionDisclosure).to.not.include(
+      '<ul class="py-2 text-sm text-stone-700" role="menu">',
+    );
+    expect(actionDisclosure).to.not.include('role="menuitem"');
   });
 });

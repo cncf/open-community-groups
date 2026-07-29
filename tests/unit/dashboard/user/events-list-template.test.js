@@ -59,4 +59,15 @@ describe("dashboard user events list template", () => {
       '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}',
     );
   });
+
+  it("routes active event offers to the invitations dashboard", async () => {
+    // Load the user events template before checking offer actions.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Offer rows use explicit offer actions and checkout wording.
+    expect(template).to.include("{% if item.has_active_offer() -%}");
+    expect(template).to.include("/dashboard/user?tab=invitations#event-offer-{{ admission_offer_id }}");
+    expect(template).to.include("<span>View event offer</span>");
+    expect(template).to.include("<span>Continue to checkout</span>");
+  });
 });

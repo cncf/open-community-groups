@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -226,61 +226,46 @@ insert into event (
 
 -- Should return the payment currency for a valid event context
 select is(
-    prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid, 'stripe'),
+    prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid),
     'USD',
     'Should return the payment currency for a valid event context'
 );
 
--- Should reject groups without a configured payments recipient
-select throws_ok(
-    format($$select prepare_event_checkout_validate_event(
-        %L::uuid,
-        %L::uuid,
-        'stripe'
-    )$$, :'communityID', :'missingRecipientEventID'),
-    'group payments recipient is not configured',
-    'Should reject groups without a configured payments recipient'
+-- Should allow groups without a configured payments recipient
+select is(
+    prepare_event_checkout_validate_event(
+        :'communityID'::uuid,
+        :'missingRecipientEventID'::uuid
+    ),
+    'USD',
+    'Should leave payment recipient validation until after pricing'
 );
 
--- Should reject events when payments are not configured on the server
-select throws_ok(
-    format($$select prepare_event_checkout_validate_event(
-        %L::uuid,
-        %L::uuid,
-        null
-    )$$, :'communityID', :'validEventID'),
-    'payments are not configured on this server',
-    'Should reject events when payments are not configured on the server'
+-- Should allow recipients for another provider during state validation
+select is(
+    prepare_event_checkout_validate_event(
+        :'communityID'::uuid,
+        :'nonStripeEventID'::uuid
+    ),
+    'USD',
+    'Should leave provider compatibility validation until after pricing'
 );
 
--- Should reject groups whose payments recipient does not match the server provider
-select throws_ok(
-    format($$select prepare_event_checkout_validate_event(
-        %L::uuid,
-        %L::uuid,
-        'stripe'
-    )$$, :'communityID', :'nonStripeEventID'),
-    'group payments recipient is not configured for the server payments provider',
-    'Should reject groups whose payments recipient does not match the server provider'
-);
-
--- Should reject ticketed events without a payment currency
-select throws_ok(
-    format($$select prepare_event_checkout_validate_event(
-        %L::uuid,
-        %L::uuid,
-        'stripe'
-    )$$, :'communityID', :'missingCurrencyEventID'),
-    'ticketed event is missing payment_currency_code',
-    'Should reject ticketed events without a payment currency'
+-- Should return a null currency for intrinsically free event checkout
+select is(
+    prepare_event_checkout_validate_event(
+        :'communityID'::uuid,
+        :'missingCurrencyEventID'::uuid
+    ),
+    null::text,
+    'Should leave currency requirements until after pricing'
 );
 
 -- Should reject inactive events
 select throws_ok(
     format($$select prepare_event_checkout_validate_event(
         %L::uuid,
-        %L::uuid,
-        'stripe'
+        %L::uuid
     )$$, :'communityID', :'inactiveEventID'),
     'event not found or inactive',
     'Should reject inactive events'
@@ -290,22 +275,20 @@ select throws_ok(
 select is(
     prepare_event_checkout_validate_event(
         :'communityID'::uuid,
-        :'openUntilStartEventID'::uuid,
-        'stripe'
+        :'openUntilStartEventID'::uuid
     ),
     'USD',
     'Should return the payment currency after an open-only registration window reaches the event start'
 );
 
--- Should reject events whose currency code is unsupported
-select throws_ok(
-    format($$select prepare_event_checkout_validate_event(
-        %L::uuid,
-        %L::uuid,
-        'stripe'
-    )$$, :'communityID', :'invalidCurrencyEventID'),
-    'payment_currency_code must be a supported currency code',
-    'Should reject events whose currency code is unsupported'
+-- Should return unsupported currency unchanged until a paid price is resolved
+select is(
+    prepare_event_checkout_validate_event(
+        :'communityID'::uuid,
+        :'invalidCurrencyEventID'::uuid
+    ),
+    'USDD',
+    'Should leave currency validation until after pricing'
 );
 
 -- ============================================================================

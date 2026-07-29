@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,7 +19,9 @@ select plan(2);
 \set manualPendingUserID '0c070000-0000-0000-0000-000000000008'
 \set question1ID '0c070000-0000-0000-0000-000000000009'
 \set question2ID '0c070000-0000-0000-0000-00000000000a'
+\set refundPurchaseUserID '0c070000-0000-0000-0000-00000000000f'
 \set ticketedEventID '0c070000-0000-0000-0000-00000000000b'
+\set ticketOfferUserID '0c070000-0000-0000-0000-000000000010'
 \set ticketTypeID '0c070000-0000-0000-0000-00000000000c'
 \set unticketedEventID '0c070000-0000-0000-0000-00000000000d'
 \set unticketedPendingUserID '0c070000-0000-0000-0000-00000000000e'
@@ -90,6 +92,18 @@ insert into "user" (
     'manual-pending@example.com',
     true,
     'manual-pending'
+), (
+    :'refundPurchaseUserID',
+    gen_random_bytes(32),
+    'refund-purchase@example.com',
+    true,
+    'refund-purchase'
+), (
+    :'ticketOfferUserID',
+    gen_random_bytes(32),
+    'ticket-offer@example.com',
+    true,
+    'ticket-offer'
 ), (
     :'unticketedPendingUserID',
     gen_random_bytes(32),
@@ -172,11 +186,6 @@ insert into event_attendee (
     false,
     'registration-questions-pending'
 ), (
-    :'ticketedEventID',
-    :'manualPendingUserID',
-    true,
-    'registration-questions-pending'
-), (
     :'unticketedEventID',
     :'unticketedPendingUserID',
     false,
@@ -213,6 +222,21 @@ insert into event_purchase (
     :'expiredCheckoutUserID'
 );
 
+-- Active non-ticketed organizer invitation offer
+insert into admission_offer (
+    event_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'unticketedEventID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'manualPendingUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -220,15 +244,63 @@ insert into event_purchase (
 -- Should exclude expired checkout-created pending registration rows for ticketed events
 select is(
     get_event_occupied_seat_count(:'ticketedEventID'::uuid),
-    3,
-    'Should count confirmed, manual pending, and active checkout pending seats only'
+    2,
+    'Should count confirmed and active checkout pending seats only'
 );
 
--- Should count pending registration rows for unticketed events
+-- An unclaimed ticket offer reserves event-level capacity.
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'ticketedEventID',
+    :'ticketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'ticketOfferUserID'
+);
+
+select is(
+    get_event_occupied_seat_count(:'ticketedEventID'::uuid),
+    3,
+    'Should count unclaimed ticket offers in event capacity'
+);
+
+-- A refund-processing purchase keeps its event-level seat reserved.
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    1000,
+    'USD',
+    :'ticketedEventID',
+    :'ticketTypeID',
+    'refund-pending',
+    'General admission',
+    :'refundPurchaseUserID'
+);
+
+select is(
+    get_event_occupied_seat_count(:'ticketedEventID'::uuid),
+    4,
+    'Should count refund-processing purchases without attendee rows'
+);
+
+-- Should count pending registration rows and active offers for unticketed events
 select is(
     get_event_occupied_seat_count(:'unticketedEventID'::uuid),
-    1,
-    'Should count unticketed pending registration rows'
+    2,
+    'Should count unticketed pending registration rows and active offers'
 );
 
 -- ============================================================================

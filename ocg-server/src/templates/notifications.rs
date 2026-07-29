@@ -1,9 +1,13 @@
 //! Notifications templates.
 
 use askama::Template;
+use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{event::EventSummary, group::GroupSummary, site::Theme};
+use crate::types::{
+    event::EventSummary, group::GroupSummary, payments::format_amount_minor, site::Theme,
+};
 
 // Emails templates.
 
@@ -85,6 +89,78 @@ pub(crate) struct EmailVerification {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+/// Template for a canceled event admission offer notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_admission_offer_canceled.html")]
+pub(crate) struct EventAdmissionOfferCanceled {
+    /// Link to review the user's remaining events and offers.
+    pub dashboard_url: String,
+    /// Event display name.
+    pub event_name: String,
+    /// Group display name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Assigned ticket title.
+    pub ticket_title: Option<String>,
+}
+
+/// Template for a newly created organizer admission offer notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_admission_offer_created.html")]
+pub(crate) struct EventAdmissionOfferCreated {
+    /// Link to claim or decline the offer.
+    pub dashboard_url: String,
+    /// Event display name.
+    pub event_name: String,
+    /// Offer expiration time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub expires_at: DateTime<Utc>,
+    /// Group display name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+    /// Event timezone used to display the offer deadline.
+    pub timezone: Tz,
+
+    /// Current ticket amount in minor units, when this is a ticket offer.
+    pub amount_minor: Option<i64>,
+    /// Currency used to display the current ticket amount.
+    pub currency_code: Option<String>,
+    /// Whether registration questions must be completed.
+    #[serde(default)]
+    pub registration_questions_required: bool,
+    /// Assigned ticket title.
+    pub ticket_title: Option<String>,
+}
+
+impl EventAdmissionOfferCreated {
+    /// Formats the current displayed offer price.
+    pub(crate) fn price_label(&self) -> String {
+        format_offer_price(self.amount_minor, self.currency_code.as_deref())
+    }
+}
+
+/// Template for an organizer notification that an offer was declined.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_admission_offer_declined.html")]
+pub(crate) struct EventAdmissionOfferDeclined {
+    /// Link to the organizer attendee view.
+    pub dashboard_url: String,
+    /// Event display name.
+    pub event_name: String,
+    /// Group display name.
+    pub group_name: String,
+    /// Display name of the recipient who declined.
+    pub recipient_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Assigned ticket title.
+    pub ticket_title: Option<String>,
 }
 
 /// Template for event attendance canceled notification.
@@ -261,6 +337,72 @@ pub(crate) struct EventSeriesPublished {
     pub theme: Theme,
 }
 
+/// Template for an approved ticket request notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_ticket_request_approved.html")]
+pub(crate) struct EventTicketRequestApproved {
+    /// Current ticket amount in minor units.
+    pub amount_minor: i64,
+    /// Link to claim or decline the approved offer.
+    pub dashboard_url: String,
+    /// Event display name.
+    pub event_name: String,
+    /// Offer expiration time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub expires_at: DateTime<Utc>,
+    /// Group display name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+    /// Assigned ticket title.
+    pub ticket_title: String,
+    /// Event timezone used to display the offer deadline.
+    pub timezone: Tz,
+
+    /// Currency used to display the current ticket amount.
+    pub currency_code: Option<String>,
+}
+
+impl EventTicketRequestApproved {
+    /// Formats the current displayed offer price.
+    pub(crate) fn price_label(&self) -> String {
+        format_offer_price(Some(self.amount_minor), self.currency_code.as_deref())
+    }
+}
+
+/// Template for a ticket waitlist offer notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_ticket_waitlist_offer.html")]
+pub(crate) struct EventTicketWaitlistOffer {
+    /// Current ticket amount in minor units.
+    pub amount_minor: i64,
+    /// Link to claim or decline the offer.
+    pub dashboard_url: String,
+    /// Event display name.
+    pub event_name: String,
+    /// Offer expiration time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub expires_at: DateTime<Utc>,
+    /// Group display name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+    /// Assigned ticket title.
+    pub ticket_title: String,
+    /// Event timezone used to display the offer deadline.
+    pub timezone: Tz,
+
+    /// Currency used to display the current ticket amount.
+    pub currency_code: Option<String>,
+}
+
+impl EventTicketWaitlistOffer {
+    /// Formats the current displayed offer price.
+    pub(crate) fn price_label(&self) -> String {
+        format_offer_price(Some(self.amount_minor), self.currency_code.as_deref())
+    }
+}
+
 /// Template for event waitlist joined notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_waitlist_joined.html")]
@@ -398,4 +540,15 @@ pub(crate) struct SpeakerSeriesWelcome {
     pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+/// Formats the attendee-facing current price for an admission offer.
+fn format_offer_price(amount_minor: Option<i64>, currency_code: Option<&str>) -> String {
+    match amount_minor {
+        None | Some(0) => "Free".to_string(),
+        Some(amount_minor) => currency_code.map_or_else(
+            || "Price unavailable".to_string(),
+            |currency_code| format_amount_minor(amount_minor, currency_code),
+        ),
+    }
 }

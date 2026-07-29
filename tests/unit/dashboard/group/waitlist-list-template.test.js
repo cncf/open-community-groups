@@ -1,9 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch(
-    "/ocg-server/templates/dashboard/group/waitlist_list.html",
-  );
+  const response = await fetch("/ocg-server/templates/dashboard/group/waitlist_list.html");
 
   expect(response.ok).to.equal(true);
 
@@ -21,12 +19,8 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include(
       "dashboard::user_profile_modal_trigger(entry.user, self::user_initials(entry.user.name.as_deref() , entry.user.username.as_str()))",
     );
-    expect(template).to.include(
-      "entry.user.name.as_deref() |assigned_or(entry.user.username)",
-    );
-    expect(template).to.include(
-      "entry.user.company.as_deref() |assigned_or(\"-\")",
-    );
+    expect(template).to.include("entry.user.name.as_deref() |assigned_or(entry.user.username)");
+    expect(template).to.include('entry.user.company.as_deref() |assigned_or("-")');
     expect(template).to.include("{% if let Some(title) = &entry.user.title -%}");
   });
 
@@ -36,14 +30,10 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify waitlist search follows the existing dashboard HTMX pattern.
     expect(template).to.include('id="waitlist-search-form"');
-    expect(template).to.include(
-      'hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"',
-    );
+    expect(template).to.include('hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"');
     expect(template).to.include('hx-trigger="change, submit"');
     expect(template).to.include('hx-target="#waitlist-content"');
-    expect(template).to.include(
-      '<label for="search_waitlist" class="sr-only">Search waitlist</label>',
-    );
+    expect(template).to.include('<label for="search_waitlist" class="sr-only">Search waitlist</label>');
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('value="{{ ts_query|assigned_or("") }}"');
     expect(template).to.include('placeholder="Search waitlist"');
@@ -51,10 +41,9 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include(
       'pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry", plural_label = "waitlist entries")',
     );
-    expect(template).to.include(
-      "dashboard/placeholders/group_waitlist_no_results.html",
-    );
-    expect(template).to.include("{{ entry.waitlist_position }}");
+    expect(template).to.include("dashboard/placeholders/group_waitlist_no_results.html");
+    expect(template).to.include("{% else if let Some(waitlist_position) = entry.waitlist_position -%}");
+    expect(template).to.include("Queue #{{ waitlist_position }}");
     expect(template).not.to.include("{{ refresh_offset + loop.index }}");
   });
 
@@ -74,8 +63,8 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include("self-end sm:ms-auto");
     expect(template).to.include("Entry ↑");
     expect(template).to.include("Entry ↓");
-    expect(template).to.include("Joined ↑");
-    expect(template).to.include("Joined ↓");
+    expect(template).to.include("Created ↑");
+    expect(template).to.include("Created ↓");
     expect(template).to.include('<option value="name-asc"');
     expect(template).to.include('<option value="name-desc"');
     expect(template).to.include('<option value="created-at-asc"');
@@ -84,15 +73,11 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.not.include("dashboard::table_sort_option_button");
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
-    expect(template).to.include(
-      'class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"',
-    );
-    expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
-    );
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include('<span class="whitespace-nowrap">Entry</span>');
-    expect(template).to.include('<span class="whitespace-nowrap">Joined</span>');
+    expect(template).to.include('<span class="whitespace-nowrap">Created</span>');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "waitlist-position-filter", label = "Position", is_active = title.is_some())',
     );
@@ -109,12 +94,8 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.not.include("Title present");
     expect(template).to.not.include("Title missing");
     expect(template).to.not.include("waitlist-entry-filter");
-    expect(template).to.include(
-      'dashboard::active_table_filter_badge("Position", "Present")',
-    );
-    expect(template).to.include(
-      'dashboard::active_table_filter_badge("Position", "Missing")',
-    );
+    expect(template).to.include('dashboard::active_table_filter_badge("Position", "Present")');
+    expect(template).to.include('dashboard::active_table_filter_badge("Position", "Missing")');
     expect(template).to.not.include('dashboard::active_table_filter_badge("Sort"');
   });
 
@@ -123,18 +104,12 @@ describe("dashboard group waitlist list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify the table columns and placeholders keep matching responsive spans.
-    expect(template).to.include(
-      'class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"',
-    );
-    expect(template).to.include(
-      '<td class="xl:hidden px-8 py-12 text-center" colspan="3">',
-    );
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"');
+    expect(template).to.include('<td class="xl:hidden px-8 py-12 text-center" colspan="3">');
     expect(template).to.include(
       '<td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4">',
     );
-    expect(template).to.include(
-      '<td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">',
-    );
+    expect(template).to.include('<td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">');
   });
 
   it("preserves current filters for waitlist refreshes", async () => {
@@ -144,9 +119,7 @@ describe("dashboard group waitlist list template", () => {
     // Verify action-triggered refreshes reuse the handler-built filtered URL.
     expect(template).to.include('id="waitlist-refresh"');
     expect(template).to.include('hx-get="{{ refresh_url }}"');
-    expect(template).to.include(
-      'hx-trigger="refresh-event-waitlist from:body"',
-    );
+    expect(template).to.include('hx-trigger="refresh-event-waitlist from:body"');
     expect(template).not.to.include("refresh_limit");
   });
 
@@ -157,25 +130,15 @@ describe("dashboard group waitlist list template", () => {
     // Verify waitlisted users get an action menu with an invitation action.
     expect(template).to.include("data-events-list-page");
     expect(template).to.include('<span class="sr-only">Actions</span>');
-    expect(template).to.include(
-      "can_manage_events && !event.canceled && !event.is_past() && !event.is_ticketed()",
-    );
+    expect(template).to.include("entry.admission_offer_id.is_none()");
     expect(template).to.include(
       "Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
     );
-    expect(template).to.include(
-      'data-event-id="waitlist-{{ entry.user.user_id }}"',
-    );
-    expect(template).to.include(
-      'id="dropdown-actions-waitlist-{{ entry.user.user_id }}"',
-    );
+    expect(template).to.include('data-event-id="waitlist-{{ entry.user.user_id }}"');
+    expect(template).to.include('id="dropdown-actions-waitlist-{{ entry.user.user_id }}"');
     expect(template).to.include("data-event-actions-dropdown");
-    expect(template).to.include(
-      'hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"',
-    );
-    expect(template).to.include(
-      'name="user_id" value="{{ entry.user.user_id }}"',
-    );
+    expect(template).to.include('hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"');
+    expect(template).to.include('name="user_id" value="{{ entry.user.user_id }}"');
     expect(template).to.include("Invite user");
     expect(template).to.include('data-success-message="Invitation sent."');
     expect(template).to.include(
@@ -189,15 +152,31 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify unsupported invite states keep the waitlist action unavailable.
     expect(template).to.include('title="Your role cannot invite attendees."');
-    expect(template).to.include(
-      'title="Canceled events cannot invite attendees."',
-    );
+    expect(template).to.include('title="Canceled events cannot invite attendees."');
     expect(template).to.include('title="Past events cannot invite attendees."');
-    expect(template).to.include(
-      'title="Manual invitations are not available for ticketed events."',
-    );
+    expect(template).to.include('title="Manual invitations are not available for ticketed events."');
+    expect(template).to.include('title="Waitlist offers cannot be manually reissued."');
     expect(template).to.include(
       "Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
     );
+  });
+
+  it("renders waitlist queue and offer history states", async () => {
+    // Load the waitlist template before checking queue and offer history.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify ticket tiers, queue positions, offer states, and deadlines remain visible.
+    expect(template).to.include("{{ ticket_title }}");
+    expect(template).to.include("Queue #{{ waitlist_position }}");
+    expect(template).to.include('label = "Offer pending"');
+    expect(template).to.include('label = "Checkout pending"');
+    expect(template).to.include('label = "Ticket claimed"');
+    expect(template).to.include('label = "Offer expired"');
+    expect(template).to.include('label = "Offer canceled"');
+    expect(template).to.include('label = "Offer declined"');
+    expect(template).to.include(
+      'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
+    );
+    expect(template).not.to.include("Reissue offer");
   });
 });

@@ -36,6 +36,7 @@ const normalizeTicketTypes = ({ currencyCode, nextRowId, ticketTypes, timezone }
     return {
       _row_id: nextRowId(),
       active: toBoolean(ticketType?.active, true),
+      availability: ticketType?.availability === "invitation_only" ? "invitation_only" : "public",
       description: String(ticketType?.description || ""),
       event_ticket_type_id: toTrimmedString(ticketType?.event_ticket_type_id),
       price_windows: priceWindows,
@@ -59,6 +60,7 @@ const serializeTicketTypes = ({ currencyCode, fieldNamePrefix, rows, timezone })
     const description = toTrimmedString(row.description);
     const fields = [
       { name: `${rowPrefix}[active]`, value: row.active ? "true" : "false" },
+      { name: `${rowPrefix}[availability]`, value: row.availability },
       { name: `${rowPrefix}[order]`, value: String(index + 1) },
       { name: `${rowPrefix}[title]`, value: row.title.trim() },
     ];
@@ -120,6 +122,7 @@ const serializeTicketTypes = ({ currencyCode, fieldNamePrefix, rows, timezone })
  */
 class TicketTypesEditor extends TicketingEditorBase {
   static properties = {
+    freeOnly: { type: Boolean, attribute: "free-only" },
     ticketTypes: {
       type: Array,
       attribute: "ticket-types",
@@ -134,6 +137,7 @@ class TicketTypesEditor extends TicketingEditorBase {
   constructor() {
     super();
     this.fieldNamePrefix = "ticket_types";
+    this.freeOnly = false;
     this.presenceFieldName = "ticket_types_present";
     this.ticketTypes = [];
   }
@@ -160,6 +164,21 @@ class TicketTypesEditor extends TicketingEditorBase {
    */
   hasConfiguredTicketTypes() {
     return this._rows.length > 0;
+  }
+
+  /**
+   * Returns whether any configured price window can require payment.
+   * @returns {boolean}
+   */
+  hasConfiguredPositivePrices() {
+    const currencyCode = this._currencyCode();
+
+    return this._rows.some((row) =>
+      row.price_windows.some((windowRow) => {
+        const amountMinor = parseCurrencyInputToMinorUnits(windowRow.amount, currencyCode);
+        return amountMinor !== null && amountMinor > 0;
+      }),
+    );
   }
 
   /**
@@ -215,7 +234,10 @@ class TicketTypesEditor extends TicketingEditorBase {
    * @returns {void}
    */
   _notifyTicketTypesChanged() {
-    this._emitChange({ hasTicketTypes: this.hasConfiguredTicketTypes() });
+    this._emitChange({
+      hasPositivePrices: this.hasConfiguredPositivePrices(),
+      hasTicketTypes: this.hasConfiguredTicketTypes(),
+    });
   }
 
   /**
@@ -231,10 +253,17 @@ class TicketTypesEditor extends TicketingEditorBase {
       timezone: this._timezone(),
     });
 
-    this._rows = rows.map((row) => ({
-      ...row,
-      price_windows: row.price_windows.length > 0 ? row.price_windows : [this._createEmptyPriceWindow()],
-    }));
+    this._rows = rows.map((row) => {
+      const priceWindows =
+        row.price_windows.length > 0 ? row.price_windows : [this._createEmptyPriceWindow()];
+
+      return {
+        ...row,
+        price_windows: this.freeOnly
+          ? priceWindows.map((priceWindow) => ({ ...priceWindow, amount: "0" }))
+          : priceWindows,
+      };
+    });
     this._notifyTicketTypesChanged();
   }
 
@@ -245,7 +274,7 @@ class TicketTypesEditor extends TicketingEditorBase {
   _createEmptyPriceWindow() {
     return {
       _row_id: this._nextRowId(),
-      amount: "",
+      amount: this.freeOnly ? "0" : "",
       ends_at: "",
       event_ticket_price_window_id: "",
       starts_at: "",
@@ -260,6 +289,7 @@ class TicketTypesEditor extends TicketingEditorBase {
     return {
       _row_id: this._nextRowId(),
       active: true,
+      availability: "public",
       description: "",
       event_ticket_type_id: "",
       price_windows: [this._createEmptyPriceWindow()],
@@ -476,7 +506,11 @@ class TicketTypesEditor extends TicketingEditorBase {
       }
 
       const amountMinor = parseCurrencyInputToMinorUnits(field.value, currencyCode);
-      field.setCustomValidity(validateStripePaymentAmountMinor(amountMinor, currencyCode));
+      const validationMessage =
+        this.freeOnly && amountMinor !== 0
+          ? "Only zero-price tickets are available until payments are configured."
+          : validateStripePaymentAmountMinor(amountMinor, currencyCode);
+      field.setCustomValidity(validationMessage);
     });
   }
 
@@ -516,6 +550,9 @@ class TicketTypesEditor extends TicketingEditorBase {
         <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
           <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
             <div class="font-medium text-stone-900">${this._ticketTitle(row)}</div>
+            <div class="mt-1 text-xs text-stone-500">
+              ${row.availability === "invitation_only" ? "Invitation only" : "Public"}
+            </div>
           </td>
           <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${row.seats_total || "—"}</td>
           <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
@@ -611,7 +648,8 @@ class TicketTypesEditor extends TicketingEditorBase {
             <div class="mt-4 grid gap-4 md:grid-cols-3">
               <div>
                 <label class="form-label" for=${`ticket-price-${windowRow._row_id}`}>
-                  Price ${this._currencyLabelSuffix()} <span class="asterisk">*</span>
+                  Price ${this.freeOnly ? "(free only)" : this._currencyLabelSuffix()}
+                  <span class="asterisk">*</span>
                 </label>
                 <div class="mt-2">
                   <input
@@ -620,13 +658,14 @@ class TicketTypesEditor extends TicketingEditorBase {
                     data-ticket-window-field="amount"
                     data-window-row-id=${String(windowRow._row_id)}
                     type="number"
-                    max=${this._currencyInputMax()}
+                    max=${this.freeOnly ? "0" : this._currencyInputMax()}
                     min="0"
-                    step=${this._currencyInputStep()}
+                    step=${this.freeOnly ? "1" : this._currencyInputStep()}
                     class="input-primary"
-                    placeholder=${this._currencyInputPlaceholder()}
+                    placeholder=${this.freeOnly ? "0" : this._currencyInputPlaceholder()}
                     .value=${windowRow.amount}
                     ?disabled=${!this._isModalOpen}
+                    ?readonly=${this.freeOnly}
                     required
                     @input=${(event) => {
                       this._updateDraftPriceWindow(windowRow._row_id, "amount", event.target.value);
@@ -634,7 +673,13 @@ class TicketTypesEditor extends TicketingEditorBase {
                     }}
                   />
                 </div>
-                <p class="form-legend">Use <span class="font-semibold">0</span> for free tickets.</p>
+                <p class="form-legend">
+                  ${
+                    this.freeOnly
+                      ? "Payments are not required for this zero-price ticket."
+                      : html`Use <span class="font-semibold">0</span> for free tickets.`
+                  }
+                </p>
               </div>
 
               <div>
@@ -819,6 +864,28 @@ class TicketTypesEditor extends TicketingEditorBase {
                     @input=${(event) => this._updateDraftTicketType("description", event.target.value)}
                   ></textarea>
                 </div>
+              </div>
+
+              <div>
+                <label class="form-label" for="ticket-availability-draft">Availability</label>
+                <div class="mt-2">
+                  <select
+                    id="ticket-availability-draft"
+                    data-ticket-modal-field
+                    data-ticket-field="availability"
+                    class="input-primary"
+                    .value=${this._draftRow?.availability || "public"}
+                    ?disabled=${!this._isModalOpen}
+                    @change=${(event) => this._updateDraftTicketType("availability", event.target.value)}
+                  >
+                    <option value="public">Public</option>
+                    <option value="invitation_only">Invitation only</option>
+                  </select>
+                </div>
+                <p class="form-legend">
+                  Public tickets appear during enrollment. Invitation-only tickets are assigned through
+                  requests or organizer invitations.
+                </p>
               </div>
 
               <div>

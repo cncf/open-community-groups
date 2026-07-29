@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use chrono::{Duration, TimeZone, Utc};
 
-use crate::types::payments::{EventTicketCurrentPrice, EventTicketType};
+use crate::types::payments::{
+    EventTicketCurrentPrice, EventTicketPriceWindow, EventTicketType, EventTicketTypeAvailability,
+};
 
 use super::*;
 
@@ -13,6 +15,8 @@ fn event_attendance_info_can_request_refund_allows_tbd_events() {
         manually_invited: false,
         status: EventAttendanceStatus::Attendee,
 
+        admission_offer_id: None,
+        event_ticket_type_id: None,
         purchase_amount_minor: Some(2_500),
         refund_request_status: None,
         resume_checkout_url: None,
@@ -313,6 +317,24 @@ fn event_full_is_past_returns_true_when_starts_at_is_in_past_and_no_ends_at() {
 }
 
 #[test]
+fn event_full_paid_capability_includes_future_and_inactive_prices() {
+    let event = EventFull {
+        ticket_types: Some(vec![EventTicketType {
+            active: false,
+            price_windows: vec![EventTicketPriceWindow {
+                amount_minor: 2500,
+                starts_at: Some(Utc::now() + Duration::days(10)),
+                ..Default::default()
+            }],
+            ..sample_ticket_type(false, None, false, "Future paid")
+        }]),
+        ..Default::default()
+    };
+
+    assert!(event.is_paid_capable());
+}
+
+#[test]
 fn event_full_speakers_ids_collects_both_event_and_session_level_speakers() {
     let event_speaker_id = Uuid::from_u128(1);
     let session_speaker_id = Uuid::from_u128(2);
@@ -549,6 +571,7 @@ fn sample_ticket_type(
 ) -> EventTicketType {
     EventTicketType {
         active,
+        availability: EventTicketTypeAvailability::Public,
         event_ticket_type_id: Uuid::nil(),
         order: 1,
         title: title.to_string(),
@@ -578,6 +601,7 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         group_slug: "group".to_string(),
         has_registration_questions: false,
         has_related_events: false,
+        is_ticketed: true,
         kind: EventKind::InPerson,
         logo_url: "https://example.com/logo.png".to_string(),
         name: "Event".to_string(),

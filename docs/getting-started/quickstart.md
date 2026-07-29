@@ -2,7 +2,7 @@
 
 This walkthrough takes you through the core OCG flow in one sitting, in
 about 10 to 15 minutes. By the end, you will have discovered events and, if
-you sign in, joined a group, RSVP'd to an event, and seen which dashboards
+you sign in, joined a group, enrolled in an event, and seen which dashboards
 are available to you.
 
 ## Optional: Sign In
@@ -52,18 +52,22 @@ membership cleanly.
 
 ![Group page and membership action](../screenshots/group-page.png)
 
-## RSVP to an Event
+## Get a Ticket or RSVP to an Event
 
-From the group page or explore results, open an event and click `Attend event`.
-This records your attendance intent and is the basis for event-day check-in.
-After you RSVP, OCG sends a confirmation message with a calendar attachment.
-For live virtual/hybrid events that have meeting information configured,
-attendees can also get `Join meeting` access at the right time window.
+From the group page or explore results, open an event. RSVP events use
+`Attend event`. Ticketed events use `Get free ticket`, `Get ticket`, or
+`Request ticket`, depending on the event configuration. Free tickets complete
+inside OCG, while a paid ticket may continue through hosted checkout.
 
-If the event is already full, you may instead see `Join waiting list` when
-organizers have enabled waitlisting for that capacity-limited event. Should a
-seat open later, because someone leaves, capacity increases, or organizers
-remove the capacity limit, OCG may promote you automatically.
+After attendance is confirmed, OCG sends a confirmation message with a calendar
+attachment. For live virtual or hybrid events with meeting information,
+attendees can also use `Join meeting` during the configured access window.
+
+If an RSVP event is full, you may see `Join waiting list`. For a ticketed event,
+sold-out public tiers can each have their own waiting list. A ticketed
+promotion creates a time-limited offer in
+[User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore')
+rather than confirming attendance immediately.
 
 ![Event page and RSVP action](../screenshots/event-page.png)
 

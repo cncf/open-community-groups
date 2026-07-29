@@ -15,6 +15,11 @@ begin
             raise exception 'ticket types require event_ticket_type_id';
         end if;
 
+        if coalesce(v_ticket_type->>'availability', 'public')
+           not in ('invitation_only', 'public') then
+            raise exception 'ticket type availability must be public or invitation_only';
+        end if;
+
         if nullif(v_ticket_type->>'title', '') is null then
             raise exception 'ticket types require title';
         end if;

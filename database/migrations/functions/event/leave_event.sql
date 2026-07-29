@@ -2,25 +2,25 @@
 create or replace function leave_event(
     p_community_id uuid,
     p_event_id uuid,
-    p_user_id uuid
+    p_user_id uuid,
+    p_configured_provider text default null
 ) returns json as $$
 declare
-    v_capacity int;
     v_is_ticketed boolean;
     v_promoted_user_ids uuid[] := array[]::uuid[];
     v_purchase_amount_minor bigint;
     v_purchase_id uuid;
+    v_purchase_ticket_type_id uuid;
+    v_reconciled_user_ids uuid[];
 begin
     -- Check if event exists in the community, is active and can be left
     select
-        e.capacity,
         exists(
             select 1
             from event_ticket_type ett
             where ett.event_id = e.event_id
         )
     into
-        v_capacity,
         v_is_ticketed
     from event e
     join "group" g on g.group_id = e.group_id
@@ -40,19 +40,32 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
+    -- Lock ticket tiers before serializing this attendee's enrollment state
+    perform 1
+    from event_ticket_type ett
+    where ett.event_id = p_event_id
+    order by ett.event_ticket_type_id
+    for update of ett;
+
+    -- Serialize this attendee's enrollment transitions
+    perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(p_user_id::text));
+
     -- Paid attendees must request a refund instead of leaving the event
     select
         ep.amount_minor,
-        ep.event_purchase_id
+        ep.event_purchase_id,
+        ep.event_ticket_type_id
     into
         v_purchase_amount_minor,
-        v_purchase_id
+        v_purchase_id,
+        v_purchase_ticket_type_id
     from event_purchase ep
     where ep.event_id = p_event_id
     and ep.user_id = p_user_id
     and ep.status in ('completed', 'refund-requested')
     order by ep.created_at desc, ep.event_purchase_id desc
-    limit 1;
+    limit 1
+    for update of ep;
 
     if v_purchase_amount_minor > 0 then
         raise exception 'paid attendees must request a refund instead of leaving the event';
@@ -76,13 +89,17 @@ begin
             perform refund_free_event_purchase(v_purchase_id);
         end if;
 
-        -- Promote the next waitlisted user when a confirmed attendee frees a seat
+        -- Reconcile the released RSVP or ticket-tier capacity
+        select reconcile_event_enrollment(
+            p_event_id,
+            v_purchase_ticket_type_id,
+            p_configured_provider
+        )
+        into v_reconciled_user_ids;
+
         if not v_is_ticketed then
-            select promote_event_waitlist(
-                p_event_id,
-                case when v_capacity is null then null else 1 end
-            )
-            into v_promoted_user_ids;
+            v_promoted_user_ids := v_promoted_user_ids
+                || coalesce(v_reconciled_user_ids, array[]::uuid[]);
         end if;
 
         return json_build_object(
@@ -117,12 +134,16 @@ begin
         end if;
 
         if found then
-            -- Promote the next waitlisted user now that a seat is free
-            select promote_event_waitlist(
+            -- Reconcile the released RSVP capacity
+            select reconcile_event_enrollment(
                 p_event_id,
-                case when v_capacity is null then null else 1 end
+                null,
+                p_configured_provider
             )
-            into v_promoted_user_ids;
+            into v_reconciled_user_ids;
+
+            v_promoted_user_ids := v_promoted_user_ids
+                || coalesce(v_reconciled_user_ids, array[]::uuid[]);
 
             return json_build_object(
                 'left_status', 'attendee',

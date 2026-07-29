@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,7 @@ select plan(6);
 \set newUserID '79290000-0000-0000-0000-000000000006'
 \set pendingAnswersUserID '79290000-0000-0000-0000-000000000009'
 \set rejectedUserID '79290000-0000-0000-0000-000000000011'
+\set waitlistedUserID '79290000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -96,6 +97,13 @@ values
         'rejected@example.com',
         true,
         'rejected-user'
+    ),
+    (
+        :'waitlistedUserID',
+        'hash-7',
+        'waitlisted@example.com',
+        true,
+        'waitlisted-user'
     );
 
 -- Group
@@ -143,6 +151,10 @@ values
     (:'eventID', :'pendingAnswersUserID', false, 'registration-questions-pending'),
     (:'eventID', :'invitedUserID', true, 'invitation-pending'),
     (:'eventID', :'rejectedUserID', true, 'invitation-rejected');
+
+-- Existing waitlist row that must not bypass promotion
+insert into event_waitlist (event_id, user_id)
+values (:'eventID', :'waitlistedUserID');
 
 -- ============================================================================
 -- TESTS
@@ -203,6 +215,16 @@ select throws_ok(
     )$$, :'eventID', :'rejectedUserID'),
     'user has a pending or rejected invitation for this event',
     'Should reject users with a rejected invitation'
+);
+
+-- Should reject waitlisted users
+select throws_ok(
+    format($$select prepare_event_checkout_validate_attendee_state(
+        %L::uuid,
+        %L::uuid
+    )$$, :'eventID', :'waitlistedUserID'),
+    'user is already on the waiting list for this event',
+    'Should reject waitlisted users'
 );
 
 -- ============================================================================

@@ -1,9 +1,11 @@
+-- Tests creating organizer event invitations.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(48);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,20 +14,56 @@ select plan(23);
 \set actorID '3a130000-0000-0000-0000-000000000001'
 \set canceledAttendeeUserID '3a130000-0000-0000-0000-000000000019'
 \set canceledEventID '3a130000-0000-0000-0000-000000000002'
+\set capacityEventID '3a130000-0000-0000-0000-000000000021'
+\set capacityInviteUserID '3a130000-0000-0000-0000-000000000022'
+\set capacityQueueUserID '3a130000-0000-0000-0000-000000000023'
 \set communityID '3a130000-0000-0000-0000-000000000003'
 \set confirmedAttendeeUserID '3a130000-0000-0000-0000-000000000004'
 \set eventCategoryID '3a130000-0000-0000-0000-000000000005'
 \set eventID '3a130000-0000-0000-0000-000000000006'
 \set eventQuestionsID '3a130000-0000-0000-0000-000000000007'
+\set expiredReservationEventID '3a130000-0000-0000-0000-00000000003f'
+\set expiredReservationInviteUserID '3a130000-0000-0000-0000-000000000040'
+\set expiredReservationOfferID '3a130000-0000-0000-0000-000000000041'
+\set expiredReservationOfferUserID '3a130000-0000-0000-0000-000000000042'
+\set expiredReservationPromotedUserID '3a130000-0000-0000-0000-000000000043'
 \set groupCategoryID '3a130000-0000-0000-0000-000000000008'
 \set groupID '3a130000-0000-0000-0000-000000000009'
+\set inProgressEventID '3a130000-0000-0000-0000-000000000025'
+\set inProgressInviteUserID '3a130000-0000-0000-0000-000000000026'
+\set inProgressPriceWindowID '3a130000-0000-0000-0000-000000000027'
+\set inProgressTicketTypeID '3a130000-0000-0000-0000-000000000028'
+\set invalidTicketUserID '3a130000-0000-0000-0000-000000000029'
+\set paidEventID '3a130000-0000-0000-0000-00000000002a'
+\set paidInviteUserID '3a130000-0000-0000-0000-00000000002b'
+\set paidPriceWindowID '3a130000-0000-0000-0000-00000000002c'
+\set paidTicketTypeID '3a130000-0000-0000-0000-00000000002d'
 \set questionsInvitedUserID '3a130000-0000-0000-0000-000000000010'
+\set queueConflictEventID '3a130000-0000-0000-0000-00000000002e'
+\set queueConflictInviteUserID '3a130000-0000-0000-0000-00000000002f'
+\set queueConflictPriceWindowID '3a130000-0000-0000-0000-000000000030'
+\set queueConflictTicketTypeID '3a130000-0000-0000-0000-000000000031'
+\set queueConflictWaitlistUserID '3a130000-0000-0000-0000-000000000032'
+\set queueOfferEventID '3a130000-0000-0000-0000-000000000033'
+\set queueOfferPriceWindowID '3a130000-0000-0000-0000-000000000034'
+\set queueOfferTicketTypeID '3a130000-0000-0000-0000-000000000035'
+\set queueOfferUserID '3a130000-0000-0000-0000-000000000036'
 \set registeredUserID '3a130000-0000-0000-0000-000000000011'
 \set registrationQuestionID '3a130000-0000-0000-0000-000000000012'
 \set rejectedUserID '3a130000-0000-0000-0000-000000000013'
+\set siteID '3a130000-0000-0000-0000-000000000024'
+\set soldOutInviteUserID '3a130000-0000-0000-0000-000000000037'
+\set soldOutOccupantID '3a130000-0000-0000-0000-000000000038'
+\set soldOutPriceWindowID '3a130000-0000-0000-0000-000000000039'
+\set soldOutTicketedEventID '3a130000-0000-0000-0000-00000000003a'
+\set soldOutTicketTypeID '3a130000-0000-0000-0000-00000000003b'
 \set ticketedEventID '3a130000-0000-0000-0000-000000000014'
 \set ticketTypeID '3a130000-0000-0000-0000-000000000015'
+\set ticketPriceWindowID '3a130000-0000-0000-0000-000000000020'
 \set unpublishedEventID '3a130000-0000-0000-0000-000000000016'
+\set unavailableInviteUserID '3a130000-0000-0000-0000-00000000003c'
+\set unavailableTicketEventID '3a130000-0000-0000-0000-00000000003d'
+\set unavailableTicketTypeID '3a130000-0000-0000-0000-00000000003e'
 \set unverifiedUserID '3a130000-0000-0000-0000-000000000017'
 \set waitlistedUserID '3a130000-0000-0000-0000-000000000018'
 
@@ -34,6 +72,14 @@ select plan(23);
 -- ============================================================================
 
 -- Community
+insert into site (description, site_id, theme, title)
+values (
+    'Event invitation site',
+    :'siteID',
+    '{"primary_color": "#2563eb"}'::jsonb,
+    'Event Invitation Site'
+);
+
 insert into community (
     community_id,
     name,
@@ -69,12 +115,51 @@ insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
     ('hash-canceled-attendee', 'canceled-attendee@example.com', true, 'Canceled', :'canceledAttendeeUserID', 'canceled-attendee'),
+    ('hash-capacity-invite', 'capacity-invite@example.com', true, 'Capacity Invite', :'capacityInviteUserID', 'capacity-invite'),
+    ('hash-capacity-queue', 'capacity-queue@example.com', true, 'Capacity Queue', :'capacityQueueUserID', 'capacity-queue'),
     ('hash-confirmed', 'confirmed@example.com', true, 'Confirmed', :'confirmedAttendeeUserID', 'confirmed'),
+    ('hash-in-progress', 'in-progress@example.com', true, 'In Progress', :'inProgressInviteUserID', 'in-progress'),
+    ('hash-invalid-ticket', 'invalid-ticket@example.com', true, 'Invalid Ticket', :'invalidTicketUserID', 'invalid-ticket'),
+    ('hash-paid-invite', 'paid-invite@example.com', true, 'Paid Invite', :'paidInviteUserID', 'paid-invite'),
+    ('hash-queue-conflict', 'queue-conflict@example.com', true, 'Queue Conflict', :'queueConflictInviteUserID', 'queue-conflict'),
+    ('hash-queue-conflict-head', 'queue-conflict-head@example.com', true, 'Queue Head', :'queueConflictWaitlistUserID', 'queue-conflict-head'),
+    ('hash-queue-offer', 'queue-offer@example.com', true, 'Queue Offer', :'queueOfferUserID', 'queue-offer'),
     ('hash-registered', 'registered@example.com', true, 'Registered', :'registeredUserID', 'registered'),
     ('hash-rejected', 'rejected@example.com', true, 'Rejected', :'rejectedUserID', 'rejected'),
+    ('hash-sold-out-invite', 'sold-out-invite@example.com', true, 'Sold Out Invite', :'soldOutInviteUserID', 'sold-out-invite'),
+    ('hash-sold-out-occupant', 'sold-out-occupant@example.com', true, 'Sold Out Occupant', :'soldOutOccupantID', 'sold-out-occupant'),
+    ('hash-unavailable', 'unavailable-ticket@example.com', true, 'Unavailable Ticket', :'unavailableInviteUserID', 'unavailable-ticket'),
     ('hash-unverified', 'unverified@example.com', false, 'Unverified', :'unverifiedUserID', 'unverified'),
     ('hash-waitlisted', 'waitlisted@example.com', true, 'Waitlisted', :'waitlistedUserID', 'waitlisted'),
     ('hash-rq-invited', 'rq-invited@example.com', true, 'RQ Invited', :'questionsInvitedUserID', 'rq-invited');
+
+-- Users used by expired RSVP reservation reconciliation
+insert into "user" (auth_hash, email, email_verified, name, user_id, username)
+values
+    (
+        'hash-expired-reservation-invite',
+        'expired-reservation-invite@example.com',
+        true,
+        'Expired Reservation Invite',
+        :'expiredReservationInviteUserID',
+        'expired-reservation-invite'
+    ),
+    (
+        'hash-expired-reservation-offer',
+        'expired-reservation-offer@example.com',
+        true,
+        'Expired Reservation Offer',
+        :'expiredReservationOfferUserID',
+        'expired-reservation-offer'
+    ),
+    (
+        'hash-expired-reservation-promoted',
+        'expired-reservation-promoted@example.com',
+        true,
+        'Expired Reservation Promoted',
+        :'expiredReservationPromotedUserID',
+        'expired-reservation-promoted'
+    );
 
 -- Events
 insert into event (
@@ -89,10 +174,27 @@ insert into event (
     payment_currency_code,
     published,
     canceled,
-    starts_at
+    starts_at,
+    capacity,
+    waitlist_enabled
 )
 values
     (
+        :'capacityEventID',
+        'Capacity Event',
+        'capacity-event',
+        'Test queue-priority event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        current_timestamp + interval '1 day',
+        1,
+        true
+    ), (
         :'eventID',
         'Free Event',
         'free-event',
@@ -101,10 +203,12 @@ values
         :'eventCategoryID',
         'in-person',
         :'groupID',
-        'USD',
+        null,
         true,
         false,
-        current_timestamp + interval '1 day'
+        current_timestamp + interval '1 day',
+        null,
+        false
     ), (
         :'canceledEventID',
         'Canceled Event',
@@ -117,7 +221,9 @@ values
         'USD',
         true,
         true,
-        current_timestamp + interval '1 day'
+        current_timestamp + interval '1 day',
+        null,
+        false
     ), (
         :'ticketedEventID',
         'Ticketed Event',
@@ -127,10 +233,87 @@ values
         :'eventCategoryID',
         'in-person',
         :'groupID',
+        null,
+        true,
+        false,
+        current_timestamp + interval '1 day',
+        null,
+        false
+    ), (
+        :'paidEventID',
+        'Paid Ticket Event',
+        'paid-ticket-event',
+        'Test paid ticket event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
         'USD',
         true,
         false,
-        current_timestamp + interval '1 day'
+        current_timestamp + interval '1 day',
+        null,
+        false
+    ), (
+        :'queueConflictEventID',
+        'Queue Conflict Ticket Event',
+        'queue-conflict-ticket-event',
+        'Test ticketed queue-priority event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        current_timestamp + interval '1 day',
+        null,
+        true
+    ), (
+        :'queueOfferEventID',
+        'Queue Offer Ticket Event',
+        'queue-offer-ticket-event',
+        'Test ticketed queue-offer event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        current_timestamp + interval '1 day',
+        null,
+        true
+    ), (
+        :'soldOutTicketedEventID',
+        'Sold Out Ticket Event',
+        'sold-out-ticket-event',
+        'Test ticketed sold-out event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        current_timestamp + interval '1 day',
+        null,
+        false
+    ), (
+        :'unavailableTicketEventID',
+        'Unavailable Ticket Event',
+        'unavailable-ticket-event',
+        'Test unavailable ticket event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        current_timestamp + interval '1 day',
+        null,
+        false
     ), (
         :'unpublishedEventID',
         'Unpublished Event',
@@ -143,8 +326,78 @@ values
         'USD',
         false,
         false,
-        current_timestamp + interval '1 day'
+        current_timestamp + interval '1 day',
+        null,
+        false
     );
+
+-- RSVP event whose expired reservation is reconciled before organizer invite allocation
+insert into event (
+    capacity,
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    waitlist_enabled
+) values (
+    1,
+    false,
+    'Test expired reservation reconciliation event',
+    :'eventCategoryID',
+    :'expiredReservationEventID',
+    'in-person',
+    :'groupID',
+    'Expired Reservation Event',
+    null,
+    true,
+    'expired-reservation-event',
+    current_timestamp + interval '1 day',
+    'UTC',
+    true
+);
+
+-- In-progress ticketed event that remains open for organizer invitations
+insert into event (
+    capacity,
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    ends_at,
+    timezone,
+    waitlist_enabled
+) values (
+    null,
+    false,
+    'Test in-progress ticketed event',
+    :'eventCategoryID',
+    :'inProgressEventID',
+    'in-person',
+    :'groupID',
+    'In Progress Ticket Event',
+    null,
+    true,
+    'in-progress-ticket-event',
+    current_timestamp - interval '1 hour',
+    current_timestamp + interval '2 hours',
+    'UTC',
+    false
+);
 
 -- Event with registration questions before confirmation
 insert into event (
@@ -159,6 +412,7 @@ insert into event (
     payment_currency_code,
     published,
     starts_at,
+    registration_ends_at,
     registration_questions
 )
 values (
@@ -173,6 +427,7 @@ values (
     'USD',
     true,
     current_timestamp + interval '1 day',
+    current_timestamp - interval '1 hour',
     format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
         :'registrationQuestionID'
@@ -181,7 +436,42 @@ values (
 
 -- Ticket types
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'ticketedEventID', 1, 100, 'General');
+values
+    (:'inProgressTicketTypeID', :'inProgressEventID', 1, 100, 'In-progress admission'),
+    (:'paidTicketTypeID', :'paidEventID', 1, 100, 'Paid admission'),
+    (:'queueConflictTicketTypeID', :'queueConflictEventID', 1, 1, 'Queue conflict admission'),
+    (:'queueOfferTicketTypeID', :'queueOfferEventID', 1, 1, 'Queue offer admission'),
+    (:'soldOutTicketTypeID', :'soldOutTicketedEventID', 1, 1, 'Sold-out admission'),
+    (:'ticketTypeID', :'ticketedEventID', 1, 100, 'General');
+
+-- Inactive ticket type used to reject unavailable ticketed invitations
+insert into event_ticket_type (
+    active,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    false,
+    :'unavailableTicketEventID',
+    :'unavailableTicketTypeID',
+    1,
+    100,
+    'Unavailable admission'
+);
+
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values
+    (0, :'inProgressPriceWindowID', :'inProgressTicketTypeID'),
+    (2500, :'paidPriceWindowID', :'paidTicketTypeID'),
+    (0, :'queueConflictPriceWindowID', :'queueConflictTicketTypeID'),
+    (0, :'queueOfferPriceWindowID', :'queueOfferTicketTypeID'),
+    (0, :'soldOutPriceWindowID', :'soldOutTicketTypeID'),
+    (0, :'ticketPriceWindowID', :'ticketTypeID');
 
 -- Existing attendees and invitation decisions
 insert into event_attendee (event_id, user_id, status)
@@ -208,7 +498,65 @@ insert into event_attendee (
 
 -- Existing waitlist entries
 insert into event_waitlist (event_id, user_id)
-values (:'eventID', :'waitlistedUserID');
+values
+    (:'capacityEventID', :'capacityQueueUserID'),
+    (:'eventID', :'waitlistedUserID');
+
+-- Expired RSVP organizer offer swept before the invitation capacity check
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'expiredReservationOfferID',
+    current_timestamp - interval '2 hours',
+    :'expiredReservationEventID',
+    current_timestamp - interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'expiredReservationOfferUserID'
+);
+
+-- RSVP waitlist user promoted when the expired reservation is swept
+insert into event_waitlist (event_id, user_id)
+values (:'expiredReservationEventID', :'expiredReservationPromotedUserID');
+
+-- Ticketed waitlist target promoted into a queue offer during organizer invite
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'queueOfferEventID',
+    :'queueOfferTicketTypeID',
+    :'queueOfferUserID'
+);
+
+-- Ticketed waitlist head that receives priority over a new organizer invite
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'queueConflictEventID',
+    :'queueConflictTicketTypeID',
+    :'queueConflictWaitlistUserID'
+);
+
+-- Active ticket offer occupying the sold-out ticketed tier
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'soldOutTicketedEventID',
+    :'soldOutTicketTypeID',
+    current_timestamp + interval '12 hours',
+    'organizer_invitation',
+    'pending',
+    :'soldOutOccupantID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -227,23 +575,29 @@ select throws_ok(
 
 -- Should invite a registered user.
 select is(
-    invite_event_attendee(:'actorID', :'groupID', :'eventID', :'registeredUserID', null),
-    :'registeredUserID'::uuid,
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'eventID',
+        :'registeredUserID',
+        null
+    )->>'user_id',
+    :'registeredUserID',
     'Should return registered invitee id'
 );
 
 select results_eq(
     format(
         $$
-        select status, manually_invited
-        from event_attendee
+        select source, status
+        from admission_offer
         where event_id = %L::uuid
         and user_id = %L::uuid
         $$,
         :'eventID', :'registeredUserID'
     ),
-    $$ values ('invitation-pending'::text, true) $$,
-    'Should create a pending manual invitation for a registered user'
+    $$ values ('organizer_invitation'::text, 'pending'::text) $$,
+    'Should create a pending organizer invitation offer for a registered user'
 );
 
 -- Should create the expected audit row for a registered user invitation.
@@ -255,7 +609,7 @@ select results_eq(
             actor_user_id,
             actor_username,
             community_id,
-            details,
+            details - 'admission_offer_id',
             event_id,
             group_id,
             resource_id,
@@ -273,7 +627,11 @@ select results_eq(
             %L::uuid,
             'actor',
             %L::uuid,
-            '{"event_id": "%s", "user_id": "%s"}'::jsonb,
+            '{
+                "event_id": "%s",
+                "registration_questions_required": false,
+                "user_id": "%s"
+            }'::jsonb,
             %L::uuid,
             %L::uuid,
             %L::uuid,
@@ -307,25 +665,26 @@ select throws_ok(
     'Should reject re-inviting confirmed attendees'
 );
 
--- Should invite a waitlisted user and remove them from the waitlist.
+-- Should preserve queue priority before allocating organizer invitations.
 select is(
-    invite_event_attendee(:'actorID', :'groupID', :'eventID', :'waitlistedUserID', null),
-    :'waitlistedUserID'::uuid,
-    'Should return waitlisted invitee id'
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventID'::uuid
+        and user_id = :'waitlistedUserID'::uuid
+    ),
+    'confirmed',
+    'Should promote the existing waitlist before creating a new invitation'
 );
 
-select results_eq(
+select throws_ok(
     format(
-        $$
-        select status, manually_invited
-        from event_attendee
-        where event_id = %L::uuid
-        and user_id = %L::uuid
-        $$,
-        :'eventID', :'waitlistedUserID'
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'eventID', :'waitlistedUserID'
     ),
-    $$ values ('invitation-pending'::text, true) $$,
-    'Should create a pending manual invitation for a waitlisted user'
+    'P0001',
+    'user is already attending this event',
+    'Should reject inviting a user promoted from the existing waitlist'
 );
 
 select is(
@@ -359,30 +718,26 @@ select results_eq(
     format(
         $$
         select
-            ea.checked_in,
-            ea.checked_in_at is null,
-            ea.manually_invited,
-            ea.status,
+            ao.source,
+            ao.status,
             u.email,
             u.registration_status
-        from event_attendee ea
+        from admission_offer ao
         join "user" u using (user_id)
-        where ea.event_id = %L::uuid
+        where ao.event_id = %L::uuid
         and u.email = 'new@example.com'
         $$,
         :'eventID'
     ),
     $$
         values (
-            false,
-            true,
-            true,
-            'invitation-pending',
+            'organizer_invitation',
+            'pending',
             'new@example.com',
             'pre-registered'
         )
     $$,
-    'Should create a pending attendee row for an email invite'
+    'Should create a pending offer for an email invite'
 );
 
 -- Should reject email invites for registered users with unverified email.
@@ -415,8 +770,14 @@ select lives_ok(
 
 -- Should reuse a canceled attendance row when inviting the attendee again.
 select is(
-    invite_event_attendee(:'actorID', :'groupID', :'eventID', :'canceledAttendeeUserID', null),
-    :'canceledAttendeeUserID'::uuid,
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'eventID',
+        :'canceledAttendeeUserID',
+        null
+    )->>'user_id',
+    :'canceledAttendeeUserID',
     'Should allow inviting a canceled attendee again'
 );
 
@@ -424,41 +785,330 @@ select results_eq(
     format(
         $$
         select
-            attendance_canceled_at is null,
-            attendance_canceled_by_user_id is null,
-            manually_invited,
-            registration_answers is null,
-            status
-        from event_attendee
-        where event_id = %L::uuid
-        and user_id = %L::uuid
+            ea.status,
+            ao.source,
+            ao.status
+        from event_attendee ea
+        join admission_offer ao using (event_id, user_id)
+        where ea.event_id = %L::uuid
+        and ea.user_id = %L::uuid
         $$,
         :'eventID', :'canceledAttendeeUserID'
     ),
-    $$ values (true, true, true, true, 'invitation-pending'::text) $$,
-    'Should clear canceled attendance state when creating the invitation'
+    $$ values (
+        'attendance-canceled'::text,
+        'organizer_invitation'::text,
+        'pending'::text
+    ) $$,
+    'Should retain canceled attendance history while creating the invitation offer'
 );
 
--- Should reject re-inviting users that rejected an organizer invitation.
-select throws_ok(
+-- Should allow organizers to re-invite users that declined an earlier invitation.
+select lives_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
         :'actorID', :'groupID', :'eventID', :'rejectedUserID'
     ),
-    'P0001',
-    'user rejected an invitation for this event',
-    'Should reject re-inviting a user that rejected an event invitation'
+    'Should allow re-inviting a user that rejected an earlier invitation'
 );
 
--- Should reject ticketed events.
+-- Should require a selected tier for ticketed events.
 select throws_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
         :'actorID', :'groupID', :'ticketedEventID', :'registeredUserID'
     ),
     'P0001',
-    'manual invitations are not available for ticketed events',
-    'Should reject invitations for ticketed events'
+    'ticket type is required for ticketed invitations',
+    'Should require a selected tier for ticketed invitations'
+);
+
+-- Should reject unavailable ticket types for ticketed invitations
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
+        :'actorID',
+        :'groupID',
+        :'unavailableTicketEventID',
+        :'unavailableInviteUserID',
+        :'unavailableTicketTypeID'
+    ),
+    'P0001',
+    'ticket type is not available',
+    'Should reject unavailable ticket types for ticketed invitations'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'unavailableTicketEventID'::uuid
+        and user_id = :'unavailableInviteUserID'::uuid
+    ),
+    0,
+    'Should not create an offer for unavailable ticket types'
+);
+
+-- Should reject ticket types selected for non-ticketed events
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
+        :'actorID',
+        :'groupID',
+        :'eventID',
+        :'invalidTicketUserID',
+        :'ticketTypeID'
+    ),
+    'P0001',
+    'ticket type is not valid for this event',
+    'Should reject ticket types selected for non-ticketed events'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'eventID'::uuid
+        and user_id = :'invalidTicketUserID'::uuid
+    ),
+    0,
+    'Should not create an offer when a tier is supplied for a non-ticketed event'
+);
+
+-- Should reject paid ticket invitations when payment readiness fails
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L, %L) $$,
+        :'actorID',
+        :'groupID',
+        :'paidEventID',
+        :'paidInviteUserID',
+        :'paidTicketTypeID',
+        'stripe'
+    ),
+    'P0001',
+    'paid-capable events require a payment recipient',
+    'Should reject paid ticket invitations when payment readiness fails'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'paidEventID'::uuid
+        and user_id = :'paidInviteUserID'::uuid
+    ),
+    0,
+    'Should not create an offer when paid ticket readiness fails'
+);
+
+-- Should return a queue offer when reconciliation promotes the invitee
+select is(
+    (
+        select jsonb_build_object(
+            'outcome', v_result->>'outcome',
+            'promoted_user_ids', v_result->'promoted_user_ids'
+        )
+        from (
+            select invite_event_attendee(
+                :'actorID',
+                :'groupID',
+                :'queueOfferEventID',
+                :'queueOfferUserID',
+                null,
+                :'queueOfferTicketTypeID'
+            ) as v_result
+        ) invite_result
+    ),
+    '{"outcome":"queue-offer","promoted_user_ids":[]}'::jsonb,
+    'Should return a queue offer when reconciliation promotes the invitee'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'offer_source', ao.source,
+            'offer_status', ao.status,
+            'waitlist_count', (
+                select count(*)::int
+                from event_waitlist ew
+                where ew.event_id = :'queueOfferEventID'::uuid
+                and ew.user_id = :'queueOfferUserID'::uuid
+            )
+        )
+        from admission_offer ao
+        where ao.event_id = :'queueOfferEventID'::uuid
+        and ao.user_id = :'queueOfferUserID'::uuid
+    ),
+    '{"offer_source":"waitlist","offer_status":"pending","waitlist_count":0}'::jsonb,
+    'Should preserve the promoted queue offer without creating an organizer invitation'
+);
+
+-- Should report queue priority when reconciliation fills the ticket tier
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'queueConflictEventID',
+        :'queueConflictInviteUserID',
+        null,
+        :'queueConflictTicketTypeID'
+    ),
+    '{"conflict":"queue-has-priority","promoted_user_ids":[]}'::jsonb,
+    'Should report queue priority when reconciliation fills the ticket tier'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'invite_offer_count', (
+                select count(*)::int
+                from admission_offer ao
+                where ao.event_id = :'queueConflictEventID'::uuid
+                and ao.user_id = :'queueConflictInviteUserID'::uuid
+            ),
+            'waitlist_offer_status', (
+                select ao.status
+                from admission_offer ao
+                where ao.event_id = :'queueConflictEventID'::uuid
+                and ao.user_id = :'queueConflictWaitlistUserID'::uuid
+            )
+        )
+    ),
+    '{"invite_offer_count":0,"waitlist_offer_status":"pending"}'::jsonb,
+    'Should keep the promoted queue offer after a queue-priority conflict'
+);
+
+-- Should report sold-out ticket tiers without creating an offer
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'soldOutTicketedEventID',
+        :'soldOutInviteUserID',
+        null,
+        :'soldOutTicketTypeID'
+    ),
+    '{"conflict":"ticket-type-sold-out","promoted_user_ids":[]}'::jsonb,
+    'Should report sold-out ticket tiers without creating an offer'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'soldOutTicketedEventID'::uuid
+        and user_id = :'soldOutInviteUserID'::uuid
+    ),
+    0,
+    'Should not create an offer for a sold-out ticket tier'
+);
+
+-- Should create in-progress event invitations with future offer expiry
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'inProgressEventID',
+        :'inProgressInviteUserID',
+        null,
+        :'inProgressTicketTypeID'
+    )->>'outcome',
+    'offer-created',
+    'Should create in-progress event invitations with future offer expiry'
+);
+
+-- Should keep in-progress invitation expiry within the remaining event window
+select ok(
+    (
+        select ao.expires_at > current_timestamp
+            and ao.expires_at <= e.ends_at
+        from admission_offer ao
+        join event e using (event_id)
+        where ao.event_id = :'inProgressEventID'::uuid
+        and ao.user_id = :'inProgressInviteUserID'::uuid
+    ),
+    'Should keep in-progress invitation expiry within the remaining event window'
+);
+
+-- Should create a ticketed organizer invitation
+select is(
+    (
+        select jsonb_build_object(
+            'promoted_user_ids', v_result->'promoted_user_ids',
+            'user_id', v_result->>'user_id'
+        )
+        from (
+            select invite_event_attendee(
+                :'actorID',
+                :'groupID',
+                :'ticketedEventID',
+                :'registeredUserID',
+                null,
+                :'ticketTypeID'
+            ) as v_result
+        ) invite_result
+    ),
+    format(
+        '{"promoted_user_ids":[],"user_id":"%s"}',
+        :'registeredUserID'
+    )::jsonb,
+    'Should create a ticketed organizer invitation'
+);
+
+-- Should reserve the organizer-selected ticket tier
+select results_eq(
+    format(
+        $$
+        select event_ticket_type_id, source, status
+        from admission_offer
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        $$,
+        :'ticketedEventID', :'registeredUserID'
+    ),
+    format(
+        $$ values (%L::uuid, 'organizer_invitation'::text, 'pending'::text) $$,
+        :'ticketTypeID'
+    ),
+    'Should reserve the organizer-selected ticket tier'
+);
+
+-- Should enqueue complete organizer offer notification context
+select is(
+    (
+        select ntd.data
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-admission-offer-created'
+        and n.user_id = :'registeredUserID'
+        and (ntd.data->>'event_id')::uuid = :'ticketedEventID'
+    ),
+    (
+        select jsonb_build_object(
+            'admission_offer_id', ao.admission_offer_id,
+            'amount_minor', 0,
+            'dashboard_url', format(
+                '/dashboard/user?tab=invitations#event-offer-%s',
+                ao.admission_offer_id
+            ),
+            'event_id', :'ticketedEventID',
+            'event_name', 'Ticketed Event',
+            'event_ticket_type_id', :'ticketTypeID',
+            'expires_at', extract(epoch from ao.expires_at)::bigint,
+            'group_name', 'Test Group',
+            'registration_questions_required', false,
+            'theme', jsonb_build_object('primary_color', '#2563eb'),
+            'ticket_title', 'General',
+            'timezone', 'UTC',
+            'user_id', :'registeredUserID'
+        )
+        from admission_offer ao
+        where ao.event_id = :'ticketedEventID'
+        and ao.user_id = :'registeredUserID'
+        and ao.status = 'pending'
+    ),
+    'Should enqueue complete organizer offer notification context'
 );
 
 -- Should reject unpublished events.
@@ -483,23 +1133,135 @@ select throws_ok(
     'Should reject canceled events'
 );
 
--- Should invite users into registration-questions-pending when registration questions exist
+-- Should create an offer when registration questions exist
 select is(
-    invite_event_attendee(:'actorID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid, :'questionsInvitedUserID'::uuid, null),
-    :'questionsInvitedUserID'::uuid,
-    'Should invite users into registration-questions-pending when registration questions exist'
+    invite_event_attendee(
+        :'actorID'::uuid,
+        :'groupID'::uuid,
+        :'eventQuestionsID'::uuid,
+        :'questionsInvitedUserID'::uuid,
+        null
+    )->>'user_id',
+    :'questionsInvitedUserID',
+    'Should create an invitation offer when registration questions exist'
 );
 
--- Should store the pending registration status for invited users
+-- Should store a pending offer until registration questions are answered
+select is(
+    (
+        select status
+        from admission_offer
+        where event_id = :'eventQuestionsID'::uuid
+        and user_id = :'questionsInvitedUserID'::uuid
+    ),
+    'pending',
+    'Should store a pending organizer invitation offer'
+);
+
+select ok(
+    (
+        select expires_at > current_timestamp
+        from admission_offer
+        where event_id = :'eventQuestionsID'::uuid
+        and user_id = :'questionsInvitedUserID'::uuid
+    ),
+    'Should keep organizer invitations claimable after public registration closes'
+);
+
+-- Should return RSVP promotions when expired reservations release capacity
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'expiredReservationEventID',
+        :'expiredReservationInviteUserID',
+        null
+    ),
+    format(
+        '{"conflict":"queue-has-priority","promoted_user_ids":["%s"]}',
+        :'expiredReservationPromotedUserID'
+    )::jsonb,
+    'Should return RSVP promotions when expired reservations release capacity'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'offer_status', (
+                select ao.status
+                from admission_offer ao
+                where ao.admission_offer_id = :'expiredReservationOfferID'::uuid
+            ),
+            'promoted_status', (
+                select ea.status
+                from event_attendee ea
+                where ea.event_id = :'expiredReservationEventID'::uuid
+                and ea.user_id = :'expiredReservationPromotedUserID'::uuid
+            )
+        )
+    ),
+    '{"offer_status":"expired","promoted_status":"confirmed"}'::jsonb,
+    'Should persist RSVP promotion when expired reservations release capacity'
+);
+
+-- Should commit queue promotion before reporting an invitation conflict.
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'capacityEventID',
+        :'capacityInviteUserID',
+        null
+    ),
+    format(
+        '{"conflict":"queue-has-priority","promoted_user_ids":["%s"]}',
+        :'capacityQueueUserID'
+    )::jsonb,
+    'Should report that the existing queue consumed event capacity'
+);
+
 select is(
     (
         select status
         from event_attendee
-        where event_id = :'eventQuestionsID'::uuid
-        and user_id = :'questionsInvitedUserID'::uuid
+        where event_id = :'capacityEventID'::uuid
+        and user_id = :'capacityQueueUserID'::uuid
     ),
-    'registration-questions-pending',
-    'Should store the pending registration status for invited users'
+    'confirmed',
+    'Should preserve queue promotion after the invitation conflict'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'capacityEventID'::uuid
+        and user_id = :'capacityInviteUserID'::uuid
+    ),
+    0,
+    'Should not create an invitation after the queue consumes capacity'
+);
+
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupID',
+        :'capacityEventID',
+        null,
+        'capacity-email@example.com'
+    ),
+    '{"conflict":"event-capacity-full","promoted_user_ids":[]}'::jsonb,
+    'Should report full capacity after the queue promotion'
+);
+
+select is(
+    (
+        select count(*)::int
+        from "user"
+        where email = 'capacity-email@example.com'
+    ),
+    0,
+    'Should not pre-register an email target when no invitation is created'
 );
 
 -- ============================================================================

@@ -80,7 +80,11 @@ impl From<anyhow::Error> for HandlerError {
         if let Some(msg) = extract_db_error_message(&err) {
             return HandlerError::Database(msg);
         }
-        HandlerError::Other(err)
+        // Preserve an already classified handler error carried through anyhow
+        match err.downcast::<HandlerError>() {
+            Ok(handler_err) => handler_err,
+            Err(err) => HandlerError::Other(err),
+        }
     }
 }
 

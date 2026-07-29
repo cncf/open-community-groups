@@ -1,3 +1,5 @@
+-- Tests returning event summary information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -25,6 +27,8 @@ select plan(12);
 \set groupID '0c090000-0000-0000-0000-00000000000e'
 \set groupNoLogoID '0c090000-0000-0000-0000-00000000000f'
 \set pendingInviteID '0c090000-0000-0000-0000-000000000010'
+\set privateTicketPriceWindowID '0c090000-0000-0000-0000-00000000001a'
+\set privateTicketTypeID '0c090000-0000-0000-0000-00000000001b'
 \set questionID '0c090000-0000-0000-0000-000000000011'
 \set questionsSeatedUserID '0c090000-0000-0000-0000-000000000012'
 \set questionsWaitlistUserID '0c090000-0000-0000-0000-000000000013'
@@ -406,6 +410,25 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Invitation-only ticket type excluded from public summaries
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'privateTicketTypeID',
+    true,
+    'invitation_only',
+    :'eventPaidID',
+    2,
+    5,
+    'Sponsor admission'
+);
+
 -- Event ticket price window
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -415,6 +438,17 @@ insert into event_ticket_price_window (
     :'ticketPriceWindowID',
     3000,
     :'ticketTypeID'
+);
+
+-- Current invitation-only ticket price excluded from public summaries
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'privateTicketPriceWindowID',
+    1000,
+    :'privateTicketTypeID'
 );
 
 -- Link meeting to event
@@ -493,6 +527,7 @@ select is(
         "group_slug": "abc1234",
         "has_registration_questions": false,
         "has_related_events": false,
+        "is_ticketed": false,
         "kind": "in-person",
         "name": "KubeCon Seattle 2024",
         "published": true,
@@ -566,6 +601,13 @@ select is(
 -- Should include payment currency and normalized ticket types in event summaries
 select is(
     jsonb_build_object(
+        'is_ticketed', (
+            get_event_summary(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventPaidID'::uuid
+            )::jsonb
+        )->'is_ticketed',
         'payment_currency_code', (
             get_event_summary(
                 :'communityID'::uuid,
@@ -583,10 +625,12 @@ select is(
     ),
     format(
         '{
+            "is_ticketed": true,
             "payment_currency_code": "USD",
             "ticket_types": [
                 {
                     "active": true,
+                    "availability": "public",
                     "current_price": {
                         "amount_minor": 3000
                     },

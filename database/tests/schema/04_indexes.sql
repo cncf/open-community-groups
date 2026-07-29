@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(83);
+select plan(88);
 
 -- ============================================================================
 -- TESTS
@@ -16,6 +16,22 @@ select indexes_are('attachment', array[
     'attachment_pkey',
     'attachment_hash_idx'
 ]);
+
+-- Test: admission offer indexes should match expected
+select indexes_are('admission_offer', array[
+    'admission_offer_pkey',
+    'admission_offer_admission_offer_id_event_id_user_id_key',
+    'admission_offer_due_idx',
+    'admission_offer_event_id_event_ticket_type_id_active_idx',
+    'admission_offer_event_id_source_created_at_idx',
+    'admission_offer_event_id_user_id_active_idx',
+    'admission_offer_user_id_event_id_created_at_idx'
+]);
+select index_is_unique(
+    'admission_offer',
+    'admission_offer_admission_offer_id_event_id_user_id_key'
+);
+select index_is_unique('admission_offer', 'admission_offer_event_id_user_id_active_idx');
 
 -- Test: audit_log indexes should match expected
 select indexes_are('audit_log', array[
@@ -243,6 +259,7 @@ select indexes_are('event_host', array[
 -- Test: event_invitation_request indexes should match expected
 select indexes_are('event_invitation_request', array[
     'event_invitation_request_pkey',
+    'event_invitation_request_event_ticket_type_status_created_idx',
     'event_invitation_request_event_id_status_created_at_idx',
     'event_invitation_request_user_id_idx',
     'event_invitation_request_event_id_registration_answers_idx'
@@ -264,12 +281,16 @@ select indexes_are('event_organizer', array[
 -- Test: event_purchase indexes should match expected
 select indexes_are('event_purchase', array[
     'event_purchase_pkey',
+    'event_purchase_admission_offer_id_active_idx',
+    'event_purchase_admission_offer_id_created_at_idx',
     'event_purchase_event_id_idx',
     'event_purchase_event_id_status_idx',
     'event_purchase_user_id_idx',
     'event_purchase_provider_checkout_session_idx',
     'event_purchase_event_id_user_id_active_idx'
 ]);
+select index_is_unique('event_purchase', 'event_purchase_admission_offer_id_active_idx');
+select index_is_unique('event_purchase', 'event_purchase_event_id_user_id_active_idx');
 
 -- Test: event_purchase_refund indexes should match expected
 select indexes_are('event_purchase_refund', array[
@@ -392,8 +413,9 @@ select indexes_are('event_views', array[
 -- Test: event_waitlist indexes should match expected
 select indexes_are('event_waitlist', array[
     'event_waitlist_pkey',
-    'event_waitlist_user_id_idx',
-    'event_waitlist_event_id_created_at_idx'
+    'event_waitlist_event_id_created_at_idx',
+    'event_waitlist_event_id_event_ticket_type_id_created_at_idx',
+    'event_waitlist_user_id_idx'
 ]);
 
 -- Test: group_team indexes should match expected

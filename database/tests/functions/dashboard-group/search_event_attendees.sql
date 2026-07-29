@@ -1,9 +1,11 @@
+-- Tests searching organizer event attendees and invitation offers.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(26);
+select plan(27);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +19,7 @@ select plan(26);
 \set event2ID '3a2e0000-0000-0000-0000-000000000003'
 \set eventCategoryID '3a2e0000-0000-0000-0000-000000000004'
 \set eventDiscountCode1ID '3a2e0000-0000-0000-0000-000000000005'
+\set expiredInvitationOfferID '3a2e0000-0000-0000-0000-000000000065'
 \set eventPurchase1ID '3a2e0000-0000-0000-0000-000000000006'
 \set eventPurchase2ID '3a2e0000-0000-0000-0000-000000000007'
 \set eventPurchasePendingCheckoutID '3a2e0000-0000-0000-0000-000000000025'
@@ -32,6 +35,8 @@ select plan(26);
 \set groupID '3a2e0000-0000-0000-0000-000000000014'
 \set missingEventID '3a2e0000-0000-0000-0000-000000000015'
 \set pendingCheckoutUserID '3a2e0000-0000-0000-0000-000000000024'
+\set pendingInvitationOfferID '3a2e0000-0000-0000-0000-000000000063'
+\set questionsInvitationOfferID '3a2e0000-0000-0000-0000-000000000066'
 \set questionsAttendeeUserID '3a2e0000-0000-0000-0000-000000000016'
 \set progressClaimID '3a2e0000-0000-0000-0000-000000000060'
 \set progressPurchase1ID '3a2e0000-0000-0000-0000-000000000040'
@@ -57,6 +62,7 @@ select plan(26);
 \set progressUser7ID '3a2e0000-0000-0000-0000-000000000033'
 \set progressUser8ID '3a2e0000-0000-0000-0000-000000000034'
 \set registrationQuestionID '3a2e0000-0000-0000-0000-000000000017'
+\set rejectedInvitationOfferID '3a2e0000-0000-0000-0000-000000000064'
 \set refundProgressEventID '3a2e0000-0000-0000-0000-000000000031'
 \set refundProgressTicketTypeID '3a2e0000-0000-0000-0000-000000000032'
 \set user1ID '3a2e0000-0000-0000-0000-000000000018'
@@ -462,22 +468,6 @@ insert into event_attendee (
     'confirmed'
 ), (
     :'event1ID',
-    :'user3ID',
-    false,
-    null,
-    '2024-01-03 00:00:00+00',
-    true,
-    'invitation-pending'
-), (
-    :'event1ID',
-    :'user4ID',
-    false,
-    null,
-    '2024-01-04 00:00:00+00',
-    true,
-    'invitation-rejected'
-), (
-    :'event1ID',
     :'user5ID',
     false,
     null,
@@ -516,6 +506,74 @@ insert into event_attendee (
     '2024-01-08 00:00:00+00',
     false,
     'confirmed'
+);
+
+-- Organizer invitation offers
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'pendingInvitationOfferID',
+    2500,
+    '2024-01-03 00:00:00+00',
+    'USD',
+    0,
+    :'event1ID',
+    :'eventTicketType1ID',
+    '2099-01-03 00:00:00+00',
+    'organizer_invitation',
+    'checkout_pending',
+    'General admission',
+    :'user3ID'
+), (
+    :'rejectedInvitationOfferID',
+    null,
+    '2024-01-04 00:00:00+00',
+    null,
+    null,
+    :'event1ID',
+    :'eventTicketType1ID',
+    '2099-01-04 00:00:00+00',
+    'organizer_invitation',
+    'declined',
+    null,
+    :'user4ID'
+), (
+    :'expiredInvitationOfferID',
+    null,
+    '2024-01-07 00:00:00+00',
+    null,
+    null,
+    :'event1ID',
+    :'eventTicketType1ID',
+    '2024-01-08 00:00:00+00',
+    'organizer_invitation',
+    'expired',
+    null,
+    :'user5ID'
+), (
+    :'questionsInvitationOfferID',
+    null,
+    '2024-01-09 00:00:00+00',
+    null,
+    null,
+    :'eventQuestionsID',
+    null,
+    '2029-01-01 00:00:00+00',
+    'organizer_invitation',
+    'pending',
+    null,
+    :'user1ID'
 );
 
 -- Attendee with registration answers returned by attendee search
@@ -564,6 +622,19 @@ insert into event_attendee (
     (current_timestamp, :'userStopwordSearchID', :'refundProgressEventID', 'attendance-canceled', :'userStopwordSearchID'),
     (current_timestamp, :'progressUser7ID', :'refundProgressEventID', 'attendance-canceled', :'progressUser7ID'),
     (current_timestamp, :'progressUser8ID', :'refundProgressEventID', 'attendance-canceled', :'progressUser8ID');
+
+-- Checkout question row created after the active organizer offer
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-05 00:00:00+00',
+    :'event1ID',
+    'registration-questions-pending',
+    :'user3ID'
+);
 
 -- Purchases
 insert into event_purchase (
@@ -839,14 +910,15 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"can_receive_attendee_email": true, "checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "manually_invited": true, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000018", "username": "alice", "bio": "Maintains event infrastructure", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "checked_in_at": 1704103200, "amount_minor": 2500, "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "3a2e0000-0000-0000-0000-000000000006", "refund_request_status": null, "ticket_title": "General admission"},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704240000, "email": "pending@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000020", "username": "pending", "name": "Pending Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null},
-            {"can_receive_attendee_email": true, "checked_in": false, "created_at": 1704499200, "email": "questions-pending@example.com", "manually_invited": false, "registration_answers": null, "status": "registration-questions-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000023", "username": "questions-pending", "name": "Questions Pending"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704326400, "email": "rejected@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-rejected", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000021", "username": "rejected", "name": "Rejected Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null}
+            {"can_receive_attendee_email": true, "checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "manually_invited": true, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000018", "username": "alice", "bio": "Maintains event infrastructure", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "checked_in_at": 1704103200, "amount_minor": 2500, "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "3a2e0000-0000-0000-0000-000000000006", "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": null},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704585600, "email": "canceled@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-expired", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000022", "username": "canceled", "name": "Canceled Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000065", "admission_offer_source": "organizer_invitation", "admission_offer_status": "expired", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 1704672000},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704240000, "email": "pending@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000020", "username": "pending", "name": "Pending Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000063", "admission_offer_source": "organizer_invitation", "admission_offer_status": "checkout_pending", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 4071081600},
+            {"can_receive_attendee_email": true, "checked_in": false, "created_at": 1704499200, "email": "questions-pending@example.com", "manually_invited": false, "registration_answers": null, "status": "registration-questions-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000023", "username": "questions-pending", "name": "Questions Pending"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704326400, "email": "rejected@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-rejected", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000021", "username": "rejected", "name": "Rejected Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000064", "admission_offer_source": "organizer_invitation", "admission_offer_status": "declined", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 4071168000}
         ]'::jsonb,
         'all_attendees_email_recipient_total', 2,
-        'total', 5
+        'total', 6
     ),
     'Should return attendees for event1 with expected fields and order'
 );
@@ -860,10 +932,10 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null}
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null}
         ]'::jsonb,
         'all_attendees_email_recipient_total', 2,
-        'total', 5
+        'total', 6
     ),
     'Should return paginated attendees when limit and offset are provided'
 );
@@ -877,14 +949,15 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"can_receive_attendee_email": true, "checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "manually_invited": true, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000018", "username": "alice", "bio": "Maintains event infrastructure", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "checked_in_at": 1704103200, "amount_minor": 2500, "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "3a2e0000-0000-0000-0000-000000000006", "refund_request_status": null, "ticket_title": "General admission"},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704240000, "email": "pending@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000020", "username": "pending", "name": "Pending Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null},
-            {"can_receive_attendee_email": true, "checked_in": false, "created_at": 1704499200, "email": "questions-pending@example.com", "manually_invited": false, "registration_answers": null, "status": "registration-questions-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000023", "username": "questions-pending", "name": "Questions Pending"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null},
-            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704326400, "email": "rejected@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-rejected", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000021", "username": "rejected", "name": "Rejected Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null}
+            {"can_receive_attendee_email": true, "checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "manually_invited": true, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000018", "username": "alice", "bio": "Maintains event infrastructure", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "checked_in_at": 1704103200, "amount_minor": 2500, "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "3a2e0000-0000-0000-0000-000000000006", "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": null},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704585600, "email": "canceled@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-expired", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000022", "username": "canceled", "name": "Canceled Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000065", "admission_offer_source": "organizer_invitation", "admission_offer_status": "expired", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 1704672000},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704240000, "email": "pending@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000020", "username": "pending", "name": "Pending Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000063", "admission_offer_source": "organizer_invitation", "admission_offer_status": "checkout_pending", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 4071081600},
+            {"can_receive_attendee_email": true, "checked_in": false, "created_at": 1704499200, "email": "questions-pending@example.com", "manually_invited": false, "registration_answers": null, "status": "registration-questions-pending", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000023", "username": "questions-pending", "name": "Questions Pending"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null},
+            {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704326400, "email": "rejected@example.com", "manually_invited": true, "registration_answers": null, "status": "invitation-rejected", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000021", "username": "rejected", "name": "Rejected Invite"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": "3a2e0000-0000-0000-0000-000000000064", "admission_offer_source": "organizer_invitation", "admission_offer_status": "declined", "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": 4071168000}
         ]'::jsonb,
         'all_attendees_email_recipient_total', 2,
-        'total', 5
+        'total', 6
     ),
     'Should return full attendee list when pagination is omitted'
 );
@@ -898,7 +971,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"can_receive_attendee_email": false, "checked_in": true, "created_at": 1704240000, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": 1704294000, "amount_minor": 4000, "currency_code": "USD", "discount_code": null, "event_purchase_id": "3a2e0000-0000-0000-0000-000000000007", "refund_request_status": "pending", "ticket_title": "VIP"}
+            {"can_receive_attendee_email": false, "checked_in": true, "created_at": 1704240000, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": 1704294000, "amount_minor": 4000, "currency_code": "USD", "discount_code": null, "event_purchase_id": "3a2e0000-0000-0000-0000-000000000007", "refund_request_status": "pending", "ticket_title": "VIP", "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000011", "offer_expires_at": null}
         ]'::jsonb,
         'all_attendees_email_recipient_total', 0,
         'total', 1
@@ -1050,7 +1123,7 @@ select is(
             'sort', 'created-at-desc'
         )
     )::jsonb#>>'{attendees,0,user,username}',
-    'questions-pending',
+    'canceled',
     'Should sort attendees by created_at descending'
 );
 
@@ -1080,7 +1153,7 @@ select is(
             'title', 'missing'
         )
     )::jsonb->>'total',
-    '4',
+    '5',
     'Should filter attendees without a title'
 );
 
@@ -1110,7 +1183,7 @@ select is(
             'offset', 0
         )
     )::jsonb->>'total',
-    '1',
+    '4',
     'Should filter attendees by event ticket type identifiers'
 );
 
@@ -1152,6 +1225,27 @@ select is(
         ))
     ),
     'Should include registration answers in attendee search results'
+);
+
+-- Pending organizer offers are not attendees eligible for custom notifications.
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'eventQuestionsID'::uuid,
+                jsonb_build_object('limit', 10, 'offset', 0)
+            )::jsonb as data
+        )
+        select (data->>'all_attendees_email_recipient_total')::int = 0
+        and (
+            select (attendee->>'can_receive_attendee_email')::boolean
+            from jsonb_array_elements(data->'attendees') attendee
+            where attendee#>>'{user,user_id}' = :'user1ID'
+        ) = false
+        from result
+    ),
+    'Should exclude pending organizer offers from attendee email eligibility'
 );
 
 -- ============================================================================

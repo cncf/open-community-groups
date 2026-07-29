@@ -5,11 +5,12 @@ use chrono::{DateTime, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use uuid::Uuid;
 
 use crate::{
     templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
-        event::EventSummary,
+        event::{EventAdmissionOfferStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
         user::User,
     },
@@ -57,8 +58,20 @@ pub struct WaitlistEntry {
     pub created_at: DateTime<Utc>,
     /// Public profile payload for the waitlisted user.
     pub user: User,
-    /// Position in the full event waitlist.
-    pub waitlist_position: usize,
+
+    /// Waitlist-generated admission offer identifier.
+    pub admission_offer_id: Option<Uuid>,
+    /// Waitlist-generated admission offer status.
+    pub admission_offer_status: Option<EventAdmissionOfferStatus>,
+    /// Ticket type for the queue or offer history.
+    pub event_ticket_type_id: Option<Uuid>,
+    /// Offer expiration time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub offer_expires_at: Option<DateTime<Utc>>,
+    /// Ticket title for the queue or offer history.
+    pub ticket_title: Option<String>,
+    /// Position within the selected ticket queue.
+    pub waitlist_position: Option<usize>,
 }
 
 /// Supported waitlist sort options.

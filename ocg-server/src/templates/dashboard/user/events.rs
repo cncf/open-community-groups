@@ -8,7 +8,10 @@ use serde_with::skip_serializing_none;
 use crate::{
     templates::dashboard,
     types::{
-        event::{EventAttendanceStatus, EventSummary},
+        event::{
+            EventAdmissionOfferSource, EventAdmissionOfferStatus, EventAttendanceStatus,
+            EventSummary,
+        },
         pagination::{self, Pagination, ToRawQuery},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
@@ -55,12 +58,29 @@ pub(crate) struct UserEvent {
     #[serde(default)]
     pub roles: Vec<UserEventRole>,
 
+    /// Active admission offer identifier.
+    pub admission_offer_id: Option<uuid::Uuid>,
+    /// Workflow that created the active admission offer.
+    pub admission_offer_source: Option<EventAdmissionOfferSource>,
+    /// Current active offer status.
+    pub admission_offer_status: Option<EventAdmissionOfferStatus>,
+    /// Current or snapshotted offer amount in minor units.
+    pub amount_minor: Option<i64>,
     /// Current attendee status for the user, when the user is an attendee.
     pub attendance_status: Option<EventAttendanceStatus>,
+    /// Currency used to display the offer amount.
+    pub currency_code: Option<String>,
+    /// Ticket type assigned to the active offer.
+    pub event_ticket_type_id: Option<uuid::Uuid>,
+    /// Active offer expiration time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub offer_expires_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Existing registration answers submitted by the user.
     pub registration_answers: Option<QuestionnaireAnswers>,
     /// Checkout URL where the user can complete payment.
     pub resume_checkout_url: Option<String>,
+    /// Assigned ticket title.
+    pub ticket_title: Option<String>,
 }
 
 impl UserEvent {
@@ -92,6 +112,11 @@ impl UserEvent {
             && (self.manually_invited
                 || self.has_active_checkout_hold()
                 || self.event.registration_window_is_open())
+    }
+
+    /// Returns true when the row represents an active admission offer.
+    pub(crate) fn has_active_offer(&self) -> bool {
+        self.admission_offer_id.is_some() && self.roles.contains(&UserEventRole::Offer)
     }
 
     /// Returns true when the registration question action applies to the row.
@@ -160,6 +185,8 @@ pub(crate) enum UserEventRole {
     Attendee,
     /// User hosts the event.
     Host,
+    /// User owns an active admission offer.
+    Offer,
     /// User speaks at the event or one of its sessions.
     Speaker,
 }
@@ -170,6 +197,7 @@ impl UserEventRole {
         match self {
             Self::Attendee => "Attendee",
             Self::Host => "Host",
+            Self::Offer => "Event offer",
             Self::Speaker => "Speaker",
         }
     }
@@ -285,6 +313,18 @@ mod tests {
         assert!(user_event.registration_questions_disabled_title().is_some());
     }
 
+    #[test]
+    fn has_active_offer_requires_offer_identifier_and_role() {
+        let mut user_event = sample_user_event();
+        user_event.admission_offer_id = Some(Uuid::from_u128(1));
+
+        assert!(!user_event.has_active_offer());
+
+        user_event.roles = vec![UserEventRole::Offer];
+
+        assert!(user_event.has_active_offer());
+    }
+
     // Helpers.
 
     /// Sample free-text registration question.
@@ -307,9 +347,18 @@ mod tests {
             manually_invited: false,
             registration_questions: vec![],
             roles: vec![UserEventRole::Attendee],
+
+            admission_offer_id: None,
+            admission_offer_source: None,
+            admission_offer_status: None,
+            amount_minor: None,
             attendance_status: Some(EventAttendanceStatus::Attendee),
+            currency_code: None,
+            event_ticket_type_id: None,
+            offer_expires_at: None,
             registration_answers: None,
             resume_checkout_url: None,
+            ticket_title: None,
         }
     }
 }

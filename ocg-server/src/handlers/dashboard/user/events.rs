@@ -11,7 +11,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig,
+    config::{HttpServerConfig, PaymentsConfig},
     db::{DBExt, DynDB},
     handlers::{
         error::HandlerError,
@@ -65,6 +65,7 @@ pub(crate) async fn list_page(
 pub(crate) async fn cancel_attendance(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path((community_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -97,12 +98,15 @@ pub(crate) async fn cancel_attendance(
     }
 
     // Cancel attendance and enqueue required notifications
+    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
     let required_notification_server_cfg = server_cfg.clone();
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
                 // Cancel attendance and collect any waitlist promotions
-                let leave_result = tx.leave_event(community_id, event_id, user.user_id).await?;
+                let leave_result = tx
+                    .leave_event(community_id, event_id, user.user_id, payment_provider)
+                    .await?;
 
                 // Enqueue required cancellation and promotion notifications before committing
                 enqueue_event_attendance_cancellation_notifications(

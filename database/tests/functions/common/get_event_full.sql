@@ -1,3 +1,5 @@
+-- Tests returning full event information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -983,6 +985,7 @@ select is(
         "has_registration_questions": false,
         "has_related_events": true,
         "has_ticket_purchases": false,
+        "is_ticketed": false,
         "kind": "hybrid",
         "name": "KubeCon Seattle 2024",
         "published": true,
@@ -1447,6 +1450,7 @@ select is(
             "ticket_types": [
                 {
                     "active": true,
+                    "availability": "public",
                     "current_price": {
                         "amount_minor": 2500
                     },

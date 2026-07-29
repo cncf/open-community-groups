@@ -29,6 +29,7 @@ select plan(27);
 \set eventTicketedDiscountCodeID '5e090000-0000-0000-0000-000000000012'
 \set eventTicketedPurchaseID '5e090000-0000-0000-0000-000000000013'
 \set eventTicketTypeID '5e090000-0000-0000-0000-000000000014'
+\set eventTicketedPriceWindowID '5e090000-0000-0000-0000-000000000022'
 \set eventUnlimited '5e090000-0000-0000-0000-000000000015'
 \set eventUnpublished '5e090000-0000-0000-0000-000000000016'
 \set eventWaitlist '5e090000-0000-0000-0000-000000000017'
@@ -467,6 +468,17 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Intrinsic-free price available to the next queued user
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    0,
+    :'eventTicketedPriceWindowID',
+    :'eventTicketTypeID'
+);
+
 -- Event Ticket Type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -523,17 +535,17 @@ insert into event_attendee (event_id, user_id, manually_invited, status)
 values (:'eventQuestionsInvited', :'user5ID', true, 'registration-questions-pending');
 
 -- Event Waitlists
-insert into event_waitlist (event_id, user_id, created_at) values
-    (:'eventCanceled', :'user4ID', current_timestamp),
-    (:'eventDisabledWaitlist', :'user3ID', current_timestamp),
-    (:'eventFull', :'user2ID', current_timestamp),
-    (:'eventFull', :'user3ID', current_timestamp + interval '1 minute'),
-    (:'eventQuestionsInvited', :'user6ID', current_timestamp),
-    (:'eventQuestionsPromoted', :'user6ID', current_timestamp),
-    (:'eventTicketed', :'user2ID', current_timestamp + interval '30 seconds'),
-    (:'eventUnlimited', :'user2ID', current_timestamp),
-    (:'eventUnlimited', :'user4ID', current_timestamp + interval '1 minute'),
-    (:'eventWaitlist', :'user2ID', current_timestamp);
+insert into event_waitlist (created_at, event_id, event_ticket_type_id, user_id) values
+    (current_timestamp, :'eventCanceled', null, :'user4ID'),
+    (current_timestamp, :'eventDisabledWaitlist', null, :'user3ID'),
+    (current_timestamp, :'eventFull', null, :'user2ID'),
+    (current_timestamp + interval '1 minute', :'eventFull', null, :'user3ID'),
+    (current_timestamp, :'eventQuestionsInvited', null, :'user6ID'),
+    (current_timestamp, :'eventQuestionsPromoted', null, :'user6ID'),
+    (current_timestamp + interval '30 seconds', :'eventTicketed', :'eventTicketTypeID', :'user2ID'),
+    (current_timestamp, :'eventUnlimited', null, :'user2ID'),
+    (current_timestamp + interval '1 minute', :'eventUnlimited', null, :'user4ID'),
+    (current_timestamp, :'eventWaitlist', null, :'user2ID');
 
 -- Event Invitation Requests
 insert into event_invitation_request (event_id, user_id, status)
@@ -725,34 +737,40 @@ select is(
     'Promotes all waitlisted users when the event capacity is unlimited'
 );
 
--- Should not promote waitlisted users when leaving a ticketed event
+-- Should reserve released ticket capacity for the FIFO queue
 select is(
     leave_event(:'communityID'::uuid, :'eventTicketed'::uuid, :'user1ID'::uuid)::jsonb,
     '{"left_status":"attendee","promoted_user_ids":[]}'::jsonb,
-    'Should not promote waitlisted users when a ticketed attendee leaves'
+    'Should reconcile ticket capacity without returning RSVP promotions'
 );
 
--- Should keep queued ticketed users waitlisted after an attendee leaves
+-- Should convert the queued ticketed user into an admission offer
 select is(
     (
         select jsonb_build_object(
+            'offer', (
+                select jsonb_build_array(status, user_id)
+                from admission_offer
+                where event_id = :'eventTicketed'::uuid
+                and event_ticket_type_id = :'eventTicketTypeID'::uuid
+            ),
             'purchase_status', (
                 select status
                 from event_purchase
                 where event_purchase_id = :'eventTicketedPurchaseID'::uuid
             ),
-            'waitlist', (
-                select jsonb_agg(user_id order by user_id)
+            'waitlist_count', (
+                select count(*)
                 from event_waitlist
                 where event_id = :'eventTicketed'::uuid
             )
         )
     ),
     format(
-        '{"purchase_status":"refunded","waitlist":["%s"]}',
+        '{"offer":["pending","%s"],"purchase_status":"refunded","waitlist_count":0}',
         :'user2ID'
     )::jsonb,
-    'Should keep queued ticketed users waitlisted after an attendee leaves'
+    'Should offer the released ticket to the queued user'
 );
 
 -- Should restore the discount code remaining uses when a free ticketed attendee leaves

@@ -1,7 +1,9 @@
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import { getAttendanceMeta } from "/static/js/event/attendance-dom.js";
 import {
+  showAdmissionOfferState,
   showAttendeeState,
+  showExpiredOfferState,
   showGuestAttendanceState,
   showInvitationApprovedAttendanceState,
   showPendingApprovalAttendanceState,
@@ -49,6 +51,11 @@ export const renderAttendanceCheckResponse = (container, event) => {
     return;
   }
 
+  if (response.admission_offer_id) {
+    showAdmissionOfferState(container, meta, response);
+    return;
+  }
+
   if (response.status === "registration-questions-pending") {
     showRegistrationQuestionsPendingState(container, meta, response);
     return;
@@ -61,6 +68,11 @@ export const renderAttendanceCheckResponse = (container, event) => {
 
   if (response.status === "invitation-approved") {
     showInvitationApprovedAttendanceState(container, meta, response);
+    return;
+  }
+
+  if (response.status === "offer-expired") {
+    showExpiredOfferState(container, meta);
     return;
   }
 

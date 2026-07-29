@@ -14,7 +14,11 @@ use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, MockActivityTracker},
-    db::mock::MockDB,
+    db::{
+        event::{AttendEventConflict, AttendEventResult},
+        mock::MockDB,
+        payments::{PrepareEventCheckoutPurchaseConflict, PrepareEventCheckoutPurchaseResult},
+    },
     handlers::tests::*,
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::{
@@ -28,7 +32,8 @@ use crate::{
     types::{
         event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
         payments::{
-            EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType, PreparedEventCheckout,
+            EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType,
+            EventTicketTypeAvailability, PreparedEventCheckout,
         },
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -44,6 +49,7 @@ async fn test_availability_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
+    let free_event_ticket_type_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let mut event = sample_event_full(community_id, event_id, group_id);
@@ -52,23 +58,44 @@ async fn test_availability_success() {
     event.ends_at = Some(chrono::Utc::now() + chrono::Duration::hours(1));
     event.payment_currency_code = Some("usd".to_string());
     event.remaining_capacity = Some(7);
-    event.ticket_types = Some(vec![EventTicketType {
-        active: true,
-        event_ticket_type_id,
-        order: 1,
-        title: "General admission".to_string(),
+    event.ticket_types = Some(vec![
+        EventTicketType {
+            active: true,
+            availability: EventTicketTypeAvailability::Public,
+            event_ticket_type_id,
+            order: 1,
+            title: "General admission".to_string(),
 
-        current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 1_500,
+            current_price: Some(EventTicketCurrentPrice {
+                amount_minor: 1_500,
 
-            ends_at: None,
-            starts_at: None,
-        }),
-        remaining_seats: Some(7),
-        seats_total: Some(10),
-        sold_out: false,
-        ..Default::default()
-    }]);
+                ends_at: None,
+                starts_at: None,
+            }),
+            remaining_seats: Some(7),
+            seats_total: Some(10),
+            sold_out: false,
+            ..Default::default()
+        },
+        EventTicketType {
+            active: true,
+            availability: EventTicketTypeAvailability::Public,
+            event_ticket_type_id: free_event_ticket_type_id,
+            order: 2,
+            title: "Community pass".to_string(),
+
+            current_price: Some(EventTicketCurrentPrice {
+                amount_minor: 0,
+
+                ends_at: None,
+                starts_at: None,
+            }),
+            remaining_seats: Some(5),
+            seats_total: Some(5),
+            sold_out: false,
+            ..Default::default()
+        },
+    ]);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -118,6 +145,14 @@ async fn test_availability_success() {
     );
     assert_eq!(payload["ticket_types"][0]["is_sellable_now"], json!(true));
     assert_eq!(payload["ticket_types"][0]["remaining_seats"], json!(7));
+    assert_eq!(
+        payload["ticket_types"][0]["title"],
+        json!("General admission")
+    );
+    assert_eq!(
+        payload["ticket_types"][1]["current_price_label"],
+        json!("Free")
+    );
 }
 
 #[tokio::test]
@@ -425,6 +460,8 @@ async fn test_check_in_page_success() {
                 manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -635,12 +672,13 @@ async fn test_cfs_modal_db_error() {
 }
 
 #[tokio::test]
-async fn test_attend_event_success() {
+async fn test_attend_event_delegates_ticketed_legacy_invitation() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let mut event_summary = sample_event_summary(event_id, group_id);
+    event_summary.is_ticketed = true;
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -670,10 +708,18 @@ async fn test_attend_event_success() {
         .returning(|_, _| Ok(vec![]));
     db.expect_attend_event()
         .times(1)
-        .withf(move |id, eid, uid, answers| {
-            *id == community_id && *eid == event_id && *uid == user_id && answers.is_none()
+        .withf(move |id, eid, uid, answers, event_ticket_type_id| {
+            *id == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && answers.is_none()
+                && event_ticket_type_id.is_none()
         })
-        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Attendee));
+        .returning(|_, _, _, _, _| {
+            Ok(AttendEventResult::Attendance(
+                EventAttendanceStatus::Attendee,
+            ))
+        });
     db.expect_get_event_summary_by_id()
         .times(2)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -714,6 +760,83 @@ async fn test_attend_event_success() {
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
     assert_eq!(body, json!({ "status": "attendee" }));
+}
+
+#[tokio::test]
+async fn test_attend_event_returns_capacity_conflict() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let event_summary = sample_event_summary(event_id, group_id);
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_ensure_event_is_active()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(()));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_attend_event()
+        .times(1)
+        .withf(move |cid, eid, uid, answers, event_ticket_type_id| {
+            *cid == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && answers.is_none()
+                && event_ticket_type_id.is_none()
+        })
+        .returning(|_, _, _, _, _| {
+            Ok(AttendEventResult::Conflict(
+                AttendEventConflict::EventCapacityUnavailable,
+            ))
+        });
+
+    // Submit an RSVP after the final seat is allocated
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/attend"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    assert_eq!(parts.status, StatusCode::CONFLICT);
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
+        json!({
+            "conflict": "event-capacity-unavailable",
+        })
+    );
 }
 
 #[tokio::test]
@@ -770,14 +893,19 @@ async fn test_attend_event_success_with_registration_answers() {
     let expected_answers = answers_json.clone();
     db.expect_attend_event()
         .times(1)
-        .withf(move |id, eid, uid, answers| {
+        .withf(move |id, eid, uid, answers, event_ticket_type_id| {
             *id == community_id
                 && *eid == event_id
                 && *uid == user_id
                 && answers.as_ref().and_then(|value| serde_json::to_value(value).ok())
                     == Some(expected_answers.clone())
+                && event_ticket_type_id.is_none()
         })
-        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Attendee));
+        .returning(|_, _, _, _, _| {
+            Ok(AttendEventResult::Attendance(
+                EventAttendanceStatus::Attendee,
+            ))
+        });
     db.expect_get_event_summary_by_id()
         .times(2)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -826,9 +954,11 @@ async fn test_attend_event_waitlist_success_without_registration_answers() {
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.capacity = Some(1);
     event_summary.has_registration_questions = true;
-    event_summary.remaining_capacity = Some(0);
+    event_summary.is_ticketed = true;
+    event_summary.remaining_capacity = Some(5);
     event_summary.waitlist_enabled = true;
     let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
@@ -854,10 +984,18 @@ async fn test_attend_event_waitlist_success_without_registration_answers() {
     db.expect_get_event_registration_questions().times(0);
     db.expect_attend_event()
         .times(1)
-        .withf(move |id, eid, uid, answers| {
-            *id == community_id && *eid == event_id && *uid == user_id && answers.is_none()
+        .withf(move |id, eid, uid, answers, event_ticket_type_id| {
+            *id == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && answers.is_none()
+                && *event_ticket_type_id == Some(ticket_type_id)
         })
-        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Waitlisted));
+        .returning(|_, _, _, _, _| {
+            Ok(AttendEventResult::Attendance(
+                EventAttendanceStatus::Waitlisted,
+            ))
+        });
     db.expect_get_event_summary_by_id()
         .times(2)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -888,7 +1026,7 @@ async fn test_attend_event_waitlist_success_without_registration_answers() {
         .uri(format!("/test-community/event/{event_id}/attend"))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::empty())
+        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
@@ -936,10 +1074,18 @@ async fn test_attend_event_success_when_notification_context_load_fails() {
         .returning(|_, _| Ok(vec![]));
     db.expect_attend_event()
         .times(1)
-        .withf(move |id, eid, uid, answers| {
-            *id == community_id && *eid == event_id && *uid == user_id && answers.is_none()
+        .withf(move |id, eid, uid, answers, event_ticket_type_id| {
+            *id == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && answers.is_none()
+                && event_ticket_type_id.is_none()
         })
-        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Attendee));
+        .returning(|_, _, _, _, _| {
+            Ok(AttendEventResult::Attendance(
+                EventAttendanceStatus::Attendee,
+            ))
+        });
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -975,7 +1121,7 @@ async fn test_attend_event_success_when_notification_context_load_fails() {
 }
 
 #[tokio::test]
-async fn test_attend_event_returns_inactive_error_before_ticketed_check() {
+async fn test_attend_event_returns_inactive_error_before_loading_enrollment_state() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1062,6 +1208,8 @@ async fn test_attendance_status_success() {
                 manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -1093,7 +1241,9 @@ async fn test_attendance_status_success() {
     assert_eq!(
         body,
         json!({
+            "admission_offer_id": null,
             "can_request_refund": false,
+            "event_ticket_type_id": null,
             "is_checked_in": false,
             "manually_invited": false,
             "purchase_amount_minor": null,
@@ -1137,6 +1287,8 @@ async fn test_attendance_status_stale_event_returns_none_without_summary_lookup(
                 manually_invited: false,
                 status: EventAttendanceStatus::None,
 
+                admission_offer_id: None,
+                event_ticket_type_id: None,
                 purchase_amount_minor: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -1164,7 +1316,9 @@ async fn test_attendance_status_stale_event_returns_none_without_summary_lookup(
     assert_eq!(
         body,
         json!({
+            "admission_offer_id": null,
             "can_request_refund": false,
+            "event_ticket_type_id": null,
             "is_checked_in": false,
             "manually_invited": false,
             "purchase_amount_minor": null,
@@ -1201,8 +1355,29 @@ async fn test_cancel_checkout_success() {
         .returning(move |_| Ok(Some(community_id)));
     db.expect_cancel_event_checkout()
         .times(1)
+        .withf(move |cid, eid, uid, payment_provider| {
+            *cid == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _| Ok(()));
+    db.expect_get_event_attendance()
+        .times(1)
         .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _| {
+            Ok(EventAttendanceInfo {
+                is_checked_in: false,
+                manually_invited: false,
+                status: EventAttendanceStatus::InvitationApproved,
+
+                admission_offer_id: Some(Uuid::from_u128(1)),
+                event_ticket_type_id: Some(Uuid::from_u128(2)),
+                purchase_amount_minor: None,
+                refund_request_status: None,
+                resume_checkout_url: None,
+            })
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1222,7 +1397,7 @@ async fn test_cancel_checkout_success() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "status": "none" }));
+    assert_eq!(body, json!({ "status": "invitation-approved" }));
 }
 
 #[tokio::test]
@@ -1251,8 +1426,13 @@ async fn test_cancel_checkout_returns_internal_server_error_when_db_fails() {
         .returning(move |_| Ok(Some(community_id)));
     db.expect_cancel_event_checkout()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Err(anyhow!("db error")));
+        .withf(move |cid, eid, uid, payment_provider| {
+            *cid == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1354,8 +1534,10 @@ async fn test_leave_event_success() {
     let mut tx = MockDB::new();
     tx.expect_leave_event()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| {
+        .withf(move |id, eid, uid, payment_provider| {
+            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
                 promoted_user_ids: vec![],
@@ -1433,8 +1615,10 @@ async fn test_leave_waitlist_success() {
     let mut tx = MockDB::new();
     tx.expect_leave_event()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| {
+        .withf(move |id, eid, uid, payment_provider| {
+            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Waitlisted,
                 promoted_user_ids: vec![],
@@ -1516,8 +1700,10 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
     let mut tx = MockDB::new();
     tx.expect_leave_event()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(move |_, _, _| {
+        .withf(move |id, eid, uid, payment_provider| {
+            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
+        })
+        .returning(move |_, _, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
                 promoted_user_ids: vec![promoted_user_id],
@@ -1609,8 +1795,10 @@ async fn test_leave_event_rolls_back_when_notification_context_load_fails() {
     let mut tx = MockDB::new();
     tx.expect_leave_event()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| {
+        .withf(move |id, eid, uid, payment_provider| {
+            *id == community_id && *eid == event_id && *uid == user_id && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
                 promoted_user_ids: vec![],
@@ -1816,6 +2004,7 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
         active: true,
+        availability: EventTicketTypeAvailability::Public,
         event_ticket_type_id: ticket_type_id,
         order: 1,
         title: "General admission".to_string(),
@@ -1863,6 +2052,7 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
         .times(1)
         .withf(move |cid, input| {
             *cid == community_id
+                && input.admission_offer_id.is_none()
                 && input.event_id == event_id
                 && input.event_ticket_type_id == ticket_type_id
                 && input
@@ -1873,18 +2063,20 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
                 && input.user_id == user_id
         })
         .returning(move |_, _| {
-            Ok(PreparedEventCheckout {
-                community_name: "test-community".to_string(),
-                event_id,
-                event_slug: "event".to_string(),
-                group_slug: "group".to_string(),
-                purchase: sample_purchase_summary(EventPurchaseStatus::RefundRequested),
-                recipient: crate::types::payments::GroupPaymentRecipient {
-                    provider: crate::types::payments::PaymentProvider::Stripe,
-                    recipient_id: "acct_test_123".to_string(),
+            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
+                PreparedEventCheckout {
+                    community_name: "test-community".to_string(),
+                    event_id,
+                    event_slug: "event".to_string(),
+                    group_slug: "group".to_string(),
+                    purchase: sample_purchase_summary(EventPurchaseStatus::RefundRequested),
+                    group_slug_pretty: None,
+                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
+                        provider: crate::types::payments::PaymentProvider::Stripe,
+                        recipient_id: "acct_test_123".to_string(),
+                    }),
                 },
-                group_slug_pretty: None,
-            })
+            )))
         });
 
     // Setup notifications manager mock
@@ -1921,6 +2113,132 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
+async fn test_start_checkout_completes_free_ticket_without_payments_config() {
+    // Setup an intrinsically free ticket and authenticated attendee.
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let mut event_summary = sample_event_summary(event_id, group_id);
+    event_summary.payment_currency_code = None;
+    event_summary.ticket_types = Some(vec![EventTicketType {
+        active: true,
+        availability: EventTicketTypeAvailability::Public,
+        event_ticket_type_id: ticket_type_id,
+        order: 1,
+        title: "Free admission".to_string(),
+
+        current_price: Some(EventTicketCurrentPrice {
+            amount_minor: 0,
+            ends_at: None,
+            starts_at: None,
+        }),
+        description: None,
+        price_windows: vec![],
+        remaining_seats: Some(10),
+        seats_total: Some(10),
+        sold_out: false,
+    }]);
+    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
+    purchase.amount_minor = 0;
+    purchase.currency_code = None;
+    purchase.event_purchase_id = event_purchase_id;
+    purchase.event_ticket_type_id = ticket_type_id;
+    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
+
+    // Prepare the provider-free checkout through the database boundary.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_ensure_event_is_active()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(()));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_prepare_event_checkout_purchase()
+        .times(1)
+        .withf(move |cid, input| {
+            *cid == community_id
+                && input.admission_offer_id.is_none()
+                && input.payment_provider.is_none()
+                && input.event_id == event_id
+                && input.event_ticket_type_id == ticket_type_id
+                && input.user_id == user_id
+        })
+        .returning(move |_, _| {
+            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
+                PreparedEventCheckout {
+                    community_name: "test-community".to_string(),
+                    event_id,
+                    event_slug: "event".to_string(),
+                    group_slug: "group".to_string(),
+                    purchase: purchase.clone(),
+                    group_slug_pretty: None,
+                    recipient: None,
+                },
+            )))
+        });
+
+    // Complete locally without attempting to create a provider checkout.
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_free_checkout()
+        .times(1)
+        .withf(move |cid, eid, purchase_id, uid| {
+            *cid == community_id
+                && *eid == event_id
+                && *purchase_id == event_purchase_id
+                && *uid == user_id
+        })
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
+    payments_manager.expect_get_or_create_checkout_redirect_url().times(0);
+
+    // Submit checkout without a PaymentsConfig.
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check local completion is returned as confirmed attendance.
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["status"], json!("attendee"));
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_start_checkout_allows_active_hold_after_registration_window_closes() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1936,6 +2254,7 @@ async fn test_start_checkout_allows_active_hold_after_registration_window_closes
     event_summary.registration_ends_at = Some(chrono::Utc::now() - chrono::Duration::hours(1));
     event_summary.ticket_types = Some(vec![EventTicketType {
         active: true,
+        availability: EventTicketTypeAvailability::Public,
         event_ticket_type_id: ticket_type_id,
         order: 1,
         title: "General admission".to_string(),
@@ -1986,24 +2305,27 @@ async fn test_start_checkout_allows_active_hold_after_registration_window_closes
         .times(1)
         .withf(move |cid, input| {
             *cid == community_id
-                && input.configured_provider.is_none()
+                && input.admission_offer_id.is_none()
+                && input.payment_provider.is_none()
                 && input.event_id == event_id
                 && input.event_ticket_type_id == ticket_type_id
                 && input.user_id == user_id
         })
         .returning(move |_, _| {
-            Ok(PreparedEventCheckout {
-                community_name: "test-community".to_string(),
-                event_id,
-                event_slug: "event".to_string(),
-                group_slug: "group".to_string(),
-                purchase: purchase.clone(),
-                recipient: crate::types::payments::GroupPaymentRecipient {
-                    provider: crate::types::payments::PaymentProvider::Stripe,
-                    recipient_id: "acct_test_123".to_string(),
+            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
+                PreparedEventCheckout {
+                    community_name: "test-community".to_string(),
+                    event_id,
+                    event_slug: "event".to_string(),
+                    group_slug: "group".to_string(),
+                    purchase: purchase.clone(),
+                    group_slug_pretty: None,
+                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
+                        provider: crate::types::payments::PaymentProvider::Stripe,
+                        recipient_id: "acct_test_123".to_string(),
+                    }),
                 },
-                group_slug_pretty: None,
-            })
+            )))
         });
 
     // Setup payments manager mock
@@ -2060,6 +2382,7 @@ async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
         active: true,
+        availability: EventTicketTypeAvailability::Public,
         event_ticket_type_id: ticket_type_id,
         order: 1,
         title: "General admission".to_string(),
@@ -2106,24 +2429,27 @@ async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
         .times(1)
         .withf(move |cid, input| {
             *cid == community_id
-                && input.configured_provider.is_none()
+                && input.admission_offer_id.is_none()
+                && input.payment_provider.is_none()
                 && input.event_id == event_id
                 && input.event_ticket_type_id == ticket_type_id
                 && input.user_id == user_id
         })
         .returning(move |_, _| {
-            Ok(PreparedEventCheckout {
-                community_name: "test-community".to_string(),
-                event_id,
-                event_slug: "event".to_string(),
-                group_slug: "group".to_string(),
-                purchase: purchase.clone(),
-                recipient: crate::types::payments::GroupPaymentRecipient {
-                    provider: crate::types::payments::PaymentProvider::Stripe,
-                    recipient_id: "acct_test_123".to_string(),
+            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
+                PreparedEventCheckout {
+                    community_name: "test-community".to_string(),
+                    event_id,
+                    event_slug: "event".to_string(),
+                    group_slug: "group".to_string(),
+                    purchase: purchase.clone(),
+                    group_slug_pretty: None,
+                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
+                        provider: crate::types::payments::PaymentProvider::Stripe,
+                        recipient_id: "acct_test_123".to_string(),
+                    }),
                 },
-                group_slug_pretty: None,
-            })
+            )))
         });
 
     // Setup payments manager mock
@@ -2221,6 +2547,104 @@ async fn test_start_checkout_rejects_inactive_event_before_ticket_checks() {
 }
 
 #[tokio::test]
+async fn test_start_checkout_returns_sold_out_conflict() {
+    // Setup identifiers and active event context
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let mut event_summary = sample_event_summary(event_id, group_id);
+    event_summary.payment_currency_code = Some("USD".to_string());
+    event_summary.ticket_types = Some(vec![EventTicketType {
+        active: true,
+        availability: EventTicketTypeAvailability::Public,
+        event_ticket_type_id: ticket_type_id,
+        order: 1,
+        title: "General admission".to_string(),
+
+        current_price: Some(EventTicketCurrentPrice {
+            amount_minor: 2_500,
+            ends_at: None,
+            starts_at: None,
+        }),
+        description: None,
+        price_windows: vec![],
+        remaining_seats: Some(1),
+        seats_total: Some(10),
+        sold_out: false,
+    }]);
+
+    // Setup checkout preparation to return the committed reconciliation conflict
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_ensure_event_is_active()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(()));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_prepare_event_checkout_purchase()
+        .times(1)
+        .withf(move |cid, input| {
+            *cid == community_id
+                && input.admission_offer_id.is_none()
+                && input.event_id == event_id
+                && input.event_ticket_type_id == ticket_type_id
+                && input.user_id == user_id
+        })
+        .returning(|_, _| {
+            Ok(PrepareEventCheckoutPurchaseResult::Conflict(
+                PrepareEventCheckoutPurchaseConflict::TicketTypeSoldOut,
+            ))
+        });
+
+    // Submit checkout for the now-reserved ticket type
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Return the stable sold-out conflict payload
+    assert_eq!(parts.status, StatusCode::CONFLICT);
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
+        json!({
+            "conflict": "ticket-type-sold-out",
+        })
+    );
+}
+
+#[tokio::test]
 async fn test_start_checkout_rejects_missing_ticket_type() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -2234,6 +2658,7 @@ async fn test_start_checkout_rejects_missing_ticket_type() {
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
         active: true,
+        availability: EventTicketTypeAvailability::Public,
         event_ticket_type_id: Uuid::new_v4(),
         order: 1,
         title: "General admission".to_string(),

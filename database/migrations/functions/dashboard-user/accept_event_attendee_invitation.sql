@@ -1,7 +1,9 @@
 -- Accepts a pending organizer-created event invitation.
 create or replace function accept_event_attendee_invitation(
     p_actor_user_id uuid,
-    p_event_id uuid
+    p_event_id uuid,
+    p_registration_answers jsonb default null,
+    p_configured_provider text default null
 )
 returns uuid as $$
 declare
@@ -32,28 +34,24 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
-    -- Confirm the pending invitation
-    update event_attendee
-    set status = 'confirmed'
-    where event_id = p_event_id
-    and user_id = p_actor_user_id
-    and status = 'invitation-pending';
+    -- Expire stale offers and preserve RSVP queue priority before the claim
+    perform reconcile_event_enrollment(p_event_id, null, p_configured_provider);
 
-    if not found then
+    -- Serialize the claim with attendee and offer transitions
+    perform pg_advisory_xact_lock(
+        hashtext(p_event_id::text),
+        hashtext(p_actor_user_id::text)
+    );
+
+    -- Complete the owned organizer invitation offer
+    if not complete_non_ticketed_event_admission_offer(
+        v_community_id,
+        p_event_id,
+        p_actor_user_id,
+        p_registration_answers
+    ) then
         raise exception 'pending event invitation not found';
     end if;
-
-    -- Track the attendee decision
-    perform insert_audit_log(
-        'event_attendee_invitation_accepted',
-        p_actor_user_id,
-        'user',
-        p_actor_user_id,
-        v_community_id,
-        v_group_id,
-        p_event_id,
-        jsonb_build_object('event_id', p_event_id, 'user_id', p_actor_user_id)
-    );
 
     return v_community_id;
 end;

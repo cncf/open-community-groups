@@ -4,10 +4,12 @@ create or replace function update_event(
     p_group_id uuid,
     p_event_id uuid,
     p_event jsonb,
-    p_cfg_max_participants jsonb default null
+    p_cfg_max_participants jsonb default null,
+    p_configured_provider text default null
 )
 returns json as $$
 declare
+    v_community_id uuid;
     v_discount_codes jsonb;
     v_effective_capacity int;
     v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
@@ -19,30 +21,54 @@ declare
     v_event_reminder_enabled boolean := coalesce((p_event->>'event_reminder_enabled')::boolean, true);
     v_event_tags text[];
     v_event_waitlist_enabled boolean := coalesce((p_event->>'waitlist_enabled')::boolean, false);
+    v_has_active_offers boolean;
     v_has_existing_attendees boolean;
     v_has_new_waitlist_capacity boolean;
     v_has_pending_invitation_requests boolean;
+    v_has_ticket_purchases boolean;
+    v_has_tier_invitation_requests boolean;
+    v_has_tier_waitlist_entries boolean;
     v_has_waitlist_entries boolean;
     v_is_promotable_event boolean;
     v_new_capacity int := (p_event->>'capacity')::int;
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
     v_payment_currency_code text;
+    v_payment_recipient jsonb;
     v_promoted_user_ids uuid[] := array[]::uuid[];
     v_registration_ends_at timestamptz;
     v_registration_questions jsonb;
     v_registration_starts_at timestamptz;
     v_ticket_capacity int;
+    v_ticketing_configuration_changed boolean;
     v_ticket_types jsonb;
+    v_ticket_types_before_configuration jsonb;
+    v_ticket_types_configuration jsonb;
     v_timezone text := p_event->>'timezone';
     v_was_ticketed boolean;
 begin
-    -- Load the locked event state used by the update flow
-    select get_event_full(g.community_id, p_group_id, p_event_id)::jsonb
-    into v_event_before
+    -- Lock the group payment state before the event so recipient changes and
+    -- paid ticket updates cannot invalidate each other
+    select
+        g.community_id,
+        g.payment_recipient
+    into
+        v_community_id,
+        v_payment_recipient
     from "group" g
-    join event e on e.group_id = g.group_id
     where g.group_id = p_group_id
+    and g.deleted = false
+    for update;
+
+    if not found then
+        raise exception 'event not found or inactive';
+    end if;
+
+    -- Load the locked event state used by the update flow
+    select get_event_full(v_community_id, p_group_id, p_event_id)::jsonb
+    into v_event_before
+    from event e
+    where e.group_id = p_group_id
     and e.event_id = p_event_id
     and e.deleted = false
     and e.canceled = false
@@ -77,6 +103,34 @@ begin
         then nullif(p_event->>'payment_currency_code', '')
         else nullif(v_event_before->>'payment_currency_code', '')
     end;
+
+    -- Compare stable ticket configuration without computed read-model fields
+    select coalesce(
+        jsonb_agg(
+            ticket_type - 'current_price' - 'remaining_seats' - 'sold_out'
+            order by ordinality
+        ),
+        '[]'::jsonb
+    )
+    into v_ticket_types_before_configuration
+    from jsonb_array_elements(coalesce(v_event_before->'ticket_types', '[]'::jsonb))
+        with ordinality as ticket_types(ticket_type, ordinality);
+
+    select coalesce(
+        jsonb_agg(
+            ticket_type - 'current_price' - 'remaining_seats' - 'sold_out'
+            order by ordinality
+        ),
+        '[]'::jsonb
+    )
+    into v_ticket_types_configuration
+    from jsonb_array_elements(coalesce(v_ticket_types, '[]'::jsonb))
+        with ordinality as ticket_types(ticket_type, ordinality);
+
+    v_ticketing_configuration_changed :=
+        v_discount_codes is distinct from v_event_before->'discount_codes'
+        or v_payment_currency_code is distinct from nullif(v_event_before->>'payment_currency_code', '')
+        or v_ticket_types_configuration is distinct from v_ticket_types_before_configuration;
 
     -- Resolve registration question defaults
     v_registration_questions := case
@@ -116,11 +170,34 @@ begin
             'registration-questions-pending'
         )
     );
+    v_has_active_offers := exists(
+        select 1
+        from admission_offer ao
+        where ao.event_id = p_event_id
+        and ao.status in ('checkout_pending', 'pending')
+    );
     v_has_pending_invitation_requests := exists(
         select 1
         from event_invitation_request
         where event_id = p_event_id
         and status = 'pending'
+    );
+    v_has_ticket_purchases := exists(
+        select 1
+        from event_purchase ep
+        where ep.event_id = p_event_id
+    );
+    v_has_tier_invitation_requests := exists(
+        select 1
+        from event_invitation_request eir
+        where eir.event_id = p_event_id
+        and eir.event_ticket_type_id is not null
+    );
+    v_has_tier_waitlist_entries := exists(
+        select 1
+        from event_waitlist ew
+        where ew.event_id = p_event_id
+        and ew.event_ticket_type_id is not null
     );
     v_has_waitlist_entries := exists(
         select 1
@@ -128,6 +205,12 @@ begin
         where event_id = p_event_id
     );
     v_was_ticketed := jsonb_array_length(coalesce(v_event_before->'ticket_types', '[]'::jsonb)) > 0;
+
+    -- Clear stale currency when the last positive price is removed without discounts
+    if not is_event_ticketing_payload_paid_capable(v_ticket_types)
+       and v_discount_codes is null then
+        v_payment_currency_code := null;
+    end if;
 
     -- Enforce attendee approval transition rules
     if v_event_attendee_approval_required = false and v_has_pending_invitation_requests then
@@ -144,22 +227,42 @@ begin
         raise exception 'ticketed events require an empty attendee list';
     end if;
 
-    if v_ticket_types is not null and v_has_waitlist_entries then
-        raise exception 'ticketed events cannot have existing waitlist entries';
+    if v_ticket_types is not null
+       and not v_was_ticketed
+       and v_has_active_offers then
+        raise exception 'organizer invitations must be resolved before enabling ticketing';
+    end if;
+
+    if v_ticket_types is not null
+       and not v_was_ticketed
+       and v_has_waitlist_entries then
+        raise exception 'ticketed events cannot have existing event-level waitlist entries';
+    end if;
+
+    if v_ticket_types is null
+       and v_was_ticketed
+       and (
+            v_has_active_offers
+            or v_has_ticket_purchases
+            or v_has_tier_invitation_requests
+            or v_has_tier_waitlist_entries
+       ) then
+        raise exception 'ticketed enrollment state must be resolved before removing ticket types';
     end if;
 
     -- Validate enrollment and ticketing payload rules
     perform validate_event_enrollment_payload(
         v_event_attendee_approval_required,
-        v_ticket_types,
         v_event_waitlist_enabled
     );
 
     perform validate_event_ticketing_payload(
+        p_configured_provider,
         v_discount_codes,
         v_payment_currency_code,
+        v_payment_recipient,
         v_ticket_types,
-        v_event_waitlist_enabled
+        false
     );
 
     -- Parse event timestamps once for validation and row updates
@@ -294,10 +397,7 @@ begin
         venue_name = nullif(p_event->>'venue_name', ''),
         venue_state = nullif(p_event->>'venue_state', ''),
         venue_zip_code = nullif(p_event->>'venue_zip_code', ''),
-        waitlist_enabled = case
-            when v_ticket_types is not null then false
-            else v_event_waitlist_enabled
-        end
+        waitlist_enabled = v_event_waitlist_enabled
     where event_id = p_event_id
     and group_id = p_group_id
     and deleted = false
@@ -312,6 +412,25 @@ begin
     -- Synchronize normalized ticketing data after updating the event row
     perform sync_event_discount_codes(p_event_id, v_discount_codes);
     perform sync_event_ticket_types(p_event_id, v_ticket_types);
+
+    -- Validate the settled payment shape without blocking unrelated edits
+    perform validate_event_ticketing_payload(
+        p_configured_provider,
+        v_discount_codes,
+        v_payment_currency_code,
+        v_payment_recipient,
+        v_ticket_types,
+        v_ticketing_configuration_changed
+    );
+
+    -- Fill ticket-tier capacity made available by the synchronized payload
+    if v_ticket_types is not null then
+        perform reconcile_event_enrollment(
+            p_event_id,
+            null,
+            p_configured_provider
+        );
+    end if;
 
     -- Synchronize event CFS labels
     perform sync_event_cfs_labels(p_event_id, p_event->'cfs_labels');
@@ -330,12 +449,7 @@ begin
         p_actor_user_id,
         'event',
         p_event_id,
-        (
-            select g.community_id
-            from event e
-            join "group" g on g.group_id = e.group_id
-            where e.event_id = p_event_id
-        ),
+        v_community_id,
         p_group_id,
         p_event_id
     );

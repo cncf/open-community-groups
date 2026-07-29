@@ -29,18 +29,26 @@ If a proposal you expect to see is not offered in the CFS modal, the likely caus
 Yes, within limits. You can withdraw a submission while review is still active. After a final
 decision has been made, withdraw is no longer available.
 
-## Can I Check In Without RSVP?
+## Can I Check In Without Confirmed Attendance?
 
-No. Check-in is limited to attendees, so you need to RSVP first to be eligible for event-day
-check-in.
+No. Check-in is limited to confirmed attendees, so you need a completed RSVP or
+ticket before event-day check-in.
 
 ## What Happens If An Event Is Full?
 
-That depends on whether organizers enabled a waitlist. If they did not, the event is sold out.
+That depends on the enrollment type. A full RSVP event can use one event-level
+waiting list. A sold-out public ticket tier can use its own tier waiting list.
 
-If they did, you can join the waitlist from the event page and may be promoted automatically if
-someone leaves, capacity increases, or organizers remove the capacity limit later while
-registration is open.
+An RSVP promotion confirms attendance or asks for required registration
+answers. A ticket promotion creates a time-limited offer in
+[User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
+The offer must be claimed before its deadline.
+
+## Do Free Tickets Need Stripe?
+
+No. Free-only ticketed events work without server payment configuration, a
+group payment recipient, or event currency. Stripe is required only when a
+configured or claim-time final price may be positive.
 
 ## Why Is Registration Disabled?
 
@@ -51,8 +59,20 @@ are disabled. The event page shows the open or close time when a window is confi
 If you started checkout before registration closed, the active ticket hold can still be completed
 until it expires.
 
-Organizer-created manual invitations are an exception. If organizers invite you directly, you can
-accept and answer required registration questions outside the public registration window.
+Organizer-created offers are an exception. They can be claimed and their
+required registration questions answered outside the public registration
+window until the offer expires.
+
+## How Do Ticket Offers Work?
+
+Approved ticket requests, organizer invitations, and ticket waiting-list
+promotions can create offers. The Invitations tab shows the assigned tier,
+displayed price, and exact deadline. No charge or attendance exists until the
+offer is claimed and any positive checkout completes.
+
+The ticket price is finalized on first claim. An interrupted checkout can be
+resumed with the same snapshot or canceled to release the hold. Declining an
+offer releases its reserved capacity.
 
 ## How Do Refunds Work For Paid Events?
 
@@ -69,6 +89,10 @@ A few rules apply:
 
 Before payment is complete, attendees can use `Cancel checkout` from the public event page to
 release the ticket hold and choose a different ticket or discount code.
+
+Free attendance releases capacity immediately when canceled. Paid capacity
+remains allocated while a refund is pending and is released after provider
+refund finalization or recorded manual recovery.
 
 ## Can I Use Automatic Meeting Creation on In-Person Events?
 

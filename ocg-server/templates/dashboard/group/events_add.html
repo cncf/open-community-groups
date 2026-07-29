@@ -49,7 +49,7 @@
               class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
               hx-ext="no-empty-vals-keep-zero"
-              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form {% if payments_ready %}, #payments-form{% endif %}"
+              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form, #payments-form"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
@@ -67,9 +67,7 @@
         {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
         {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_option(section = "payments", label = "Payments") -}}
-        {% endif -%}
+        {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
         {{ event_form::tab_option(section = "questions", label = "Questions") -}}
         {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
       </select>
@@ -78,9 +76,7 @@
         {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
         {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Payments") -}}
-        {% endif -%}
+        {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
         {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
         {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
       </ul>
@@ -727,19 +723,28 @@
     </div>
     {# End Sessions Tab -#}
 
-    {% if payments_ready -%}
-      {# Payments Tab -#}
-      <div data-content="payments" class="hidden">
-        <form id="payments-form">
-          <div class="space-y-12">
-            <div>
-              {{ dashboard::form_title(title = "Payments", description = "Configure event currency, ticket tiers, and optional discount codes.") -}}
+    {# Tickets Tab -#}
+    <div data-content="payments" class="hidden">
+      <form id="payments-form">
+        <div class="space-y-12">
+          <div>
+            {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
 
+            {% if payments_ready -%}
+              {% if let Some(payment_recipient) = &payment_recipient -%}
+                <div class="mt-8 flex items-start gap-3 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-green-900">
+                  <div class="svg-icon size-5 bg-green-700 icon-info mt-0.5 shrink-0"></div>
+                  <p class="text-sm/6">
+                    Paid ticket revenue is sent to Stripe recipient
+                    <span class="font-semibold">{{ payment_recipient.recipient_id }}</span>.
+                  </p>
+                </div>
+              {% endif -%}
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
                 <div class="col-span-full lg:col-span-3">
                   <label for="payment_currency_code" class="form-label">
                     Event Currency
-                    <span class="asterisk">* <sup class="text-xs font-normal">(required for ticketed events)</sup></span>
+                    <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
                   </label>
                   <div class="mt-2">
                     <select id="payment_currency_code"
@@ -751,30 +756,43 @@
                       {% endfor -%}
                     </select>
                   </div>
-                  <p class="form-legend">Single currency used for all ticket prices on this event.</p>
+                  <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
                 </div>
               </div>
-            </div>
-
-            <div class="border-t border-stone-900/10 pt-12">
-              <div>
-                <div class="flex items-center justify-between gap-3">
-                  <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
-                  <button id="add-ticket-type-button"
-                          type="button"
-                          class="btn-primary-outline btn-mini whitespace-nowrap"
-                          aria-label="Add ticket type">Add ticket type</button>
-                </div>
-                <p class="mt-1 text-sm/6 text-stone-500">
-                  Use one ticket type per tier, add price windows for early-bird or late pricing, and
-                  set the ticket amount to 0 to make a specific tier free.
+            {% else -%}
+              <div class="mt-8 flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sky-900">
+                <div class="svg-icon size-5 bg-sky-700 icon-info mt-0.5 shrink-0"></div>
+                <p class="text-sm/6">
+                  Payments are not configured for this group, but you can create and publish free ticket tiers.
                 </p>
               </div>
-              <div class="mt-10">
-                <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="false" ticket-types="[]"></ticket-types-editor>
-              </div>
-            </div>
+            {% endif -%}
+          </div>
 
+          <div class="border-t border-stone-900/10 pt-12">
+            <div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+                <button id="add-ticket-type-button"
+                        type="button"
+                        class="btn-primary-outline btn-mini whitespace-nowrap"
+                        aria-label="Add ticket type">Add ticket type</button>
+              </div>
+              <p class="mt-1 text-sm/6 text-stone-500">
+                Use one ticket type per tier and add price windows for scheduled pricing.
+                {% if payments_ready -%}
+                  Set the ticket amount to 0 to make a specific tier free.
+                {% else -%}
+                  Ticket prices are fixed at 0 until payments are configured.
+                {% endif -%}
+              </p>
+            </div>
+            <div class="mt-10">
+              <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="false" {% if !payments_ready %}free-only{% endif %} ticket-types="[]"></ticket-types-editor>
+            </div>
+          </div>
+
+          {% if payments_ready -%}
             <div class="border-t border-stone-900/10 pt-12 pb-12">
               <div>
                 <div class="flex items-center justify-between gap-3">
@@ -793,11 +811,11 @@
                 <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="false" discount-codes="[]"></discount-codes-editor>
               </div>
             </div>
-          </div>
-        </form>
-      </div>
-      {# End Payments Tab -#}
-    {% endif -%}
+          {% endif -%}
+        </div>
+      </form>
+    </div>
+    {# End Tickets Tab -#}
 
     {# Hosts & Speakers Tab -#}
     <div data-content="hosts-sponsors" class="hidden">

@@ -1,15 +1,20 @@
+-- Tests reconciling provider checkout sessions with event purchases.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(33);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set activeEventID '79000000-0000-0000-0000-000000000004'
+\set activeOfferRefundOfferID '79000000-0000-0000-0000-000000000116'
+\set activeOfferRefundPurchaseID '79000000-0000-0000-0000-000000000117'
+\set activeOfferRefundUserID '79000000-0000-0000-0000-000000000118'
 \set activePriceWindowID '79000000-0000-0000-0000-000000000010'
 \set activeTicketTypeID '79000000-0000-0000-0000-000000000006'
 \set canceledEventID '79000000-0000-0000-0000-000000000005'
@@ -20,6 +25,13 @@ select plan(23);
 \set eventCategoryID '79000000-0000-0000-0000-000000000003'
 \set groupCategoryID '79000000-0000-0000-0000-000000000008'
 \set groupID '79000000-0000-0000-0000-000000000009'
+\set linkedOfferID '79000000-0000-0000-0000-000000000038'
+\set linkedLatePurchaseID '79000000-0000-0000-0000-00000000003e'
+\set linkedPurchaseID '79000000-0000-0000-0000-000000000039'
+\set linkedUserID '79000000-0000-0000-0000-00000000003a'
+\set dueOfferID '79000000-0000-0000-0000-00000000003b'
+\set duePurchaseID '79000000-0000-0000-0000-00000000003c'
+\set dueUserID '79000000-0000-0000-0000-00000000003d'
 \set purchaseCanceledID '79000000-0000-0000-0000-000000000014'
 \set purchaseCompleteID '79000000-0000-0000-0000-000000000012'
 \set purchaseConfirmedID '79000000-0000-0000-0000-000000000028'
@@ -32,6 +44,12 @@ select plan(23);
 \set purchaseRecoveryID '79000000-0000-0000-0000-000000000035'
 \set purchaseRecoveryReplacementID '79000000-0000-0000-0000-000000000036'
 \set purchaseStartedID '79000000-0000-0000-0000-000000000022'
+\set raceEventID '79000000-0000-0000-0000-000000000110'
+\set racePriceWindowID '79000000-0000-0000-0000-000000000112'
+\set racePurchaseID '79000000-0000-0000-0000-000000000113'
+\set raceQueueUserID '79000000-0000-0000-0000-000000000115'
+\set raceTicketTypeID '79000000-0000-0000-0000-000000000111'
+\set raceUserID '79000000-0000-0000-0000-000000000114'
 \set registrationQuestionID '79000000-0000-0000-0000-000000000101'
 \set openUntilStartEventID '79000000-0000-0000-0000-000000000032'
 \set openUntilStartTicketTypeID '79000000-0000-0000-0000-000000000033'
@@ -82,6 +100,13 @@ values (:'eventCategoryID', :'communityID', 'General');
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
+    (
+        :'activeOfferRefundUserID',
+        'hash-active-offer-refund',
+        'active-offer-refund@example.com',
+        true,
+        'active-offer-refund'
+    ),
     (:'user1ID', 'hash-1', 'user1@example.com', true, 'buyer-1'),
     (:'user2ID', 'hash-2', 'user2@example.com', true, 'buyer-2'),
     (:'user3ID', 'hash-3', 'user3@example.com', true, 'buyer-3'),
@@ -91,11 +116,28 @@ values
     (:'user7ID', 'hash-7', 'user7@example.com', true, 'buyer-7'),
     (:'user8ID', 'hash-8', 'user8@example.com', true, 'buyer-8'),
     (:'user9ID', 'hash-9', 'user9@example.com', true, 'buyer-9'),
-    (:'user10ID', 'hash-10', 'user10@example.com', true, 'buyer-10');
+    (:'user10ID', 'hash-10', 'user10@example.com', true, 'buyer-10'),
+    (:'dueUserID', 'hash-due', 'due@example.com', true, 'due-buyer'),
+    (:'linkedUserID', 'hash-linked', 'linked@example.com', true, 'linked-buyer'),
+    (:'raceQueueUserID', 'hash-race-queue', 'race-queue@example.com', true, 'race-queue'),
+    (:'raceUserID', 'hash-race', 'race@example.com', true, 'race-buyer');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Complete Group', 'complete-group');
+insert into "group" (
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    payment_recipient,
+    slug
+) values (
+    :'communityID',
+    :'groupCategoryID',
+    :'groupID',
+    'Complete Group',
+    '{"provider":"stripe","recipient_id":"acct_complete"}'::jsonb,
+    'complete-group'
+);
 
 -- Events
 insert into event (
@@ -187,12 +229,40 @@ insert into event (
     null
 );
 
+-- Payment-race event whose only seat remains reserved during refund handoff
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'Late payment capacity race',
+    :'eventCategoryID',
+    :'raceEventID',
+    'in-person',
+    :'groupID',
+    'Late Payment Capacity Race',
+    'USD',
+    true,
+    'late-payment-capacity-race',
+    current_timestamp + interval '1 day',
+    'UTC'
+);
+
 -- Ticket types
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values
     (:'activeTicketTypeID', :'activeEventID', 1, 10, 'General admission'),
     (:'canceledTicketTypeID', :'canceledEventID', 1, 10, 'General admission'),
     (:'openUntilStartTicketTypeID', :'openUntilStartEventID', 1, 10, 'General admission'),
+    (:'raceTicketTypeID', :'raceEventID', 1, 1, 'Race admission'),
     (:'startedTicketTypeID', :'startedEventID', 1, 10, 'General admission');
 
 -- Ticket price windows
@@ -202,7 +272,8 @@ insert into event_ticket_price_window (
     event_ticket_type_id
 ) values
     (:'activePriceWindowID', 2500, :'activeTicketTypeID'),
-    (:'canceledPriceWindowID', 2500, :'canceledTicketTypeID');
+    (:'canceledPriceWindowID', 2500, :'canceledTicketTypeID'),
+    (:'racePriceWindowID', 2500, :'raceTicketTypeID');
 
 -- Discount code used by the expired purchase
 insert into event_discount_code (
@@ -436,6 +507,223 @@ insert into event_purchase (
     :'user5ID'
 );
 
+-- Expired provider checkout whose payment must reserve the only race-event seat
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'USD',
+    :'raceEventID',
+    :'racePurchaseID',
+    :'raceTicketTypeID',
+    current_timestamp - interval '15 minutes',
+    'stripe',
+    'cs_capacity_race',
+    'pi_capacity_race',
+    'pending',
+    'Race admission',
+    :'raceUserID'
+);
+
+-- Expired direct checkout that paid after the user received an offer
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'activeOfferRefundPurchaseID',
+    2500,
+    'USD',
+    :'activeEventID',
+    :'activeTicketTypeID',
+    current_timestamp - interval '15 minutes',
+    'stripe',
+    'cs_expired_active_offer',
+    'pi_expired_active_offer',
+    'expired',
+    'General admission',
+    :'activeOfferRefundUserID'
+);
+
+-- Active organizer offer created after the direct checkout expired
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'activeOfferRefundOfferID',
+    :'activeEventID',
+    :'activeTicketTypeID',
+    current_timestamp + interval '1 day',
+    'organizer_invitation',
+    'pending',
+    :'activeOfferRefundUserID'
+);
+
+-- Queue head that must not be promoted ahead of the paid refund reservation
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'raceEventID', :'raceTicketTypeID', :'raceQueueUserID');
+
+-- Active and deadline-expired checkout offers for provider completion
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id,
+
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    ticket_title
+) values
+    (
+        :'linkedOfferID',
+        current_timestamp,
+        :'activeEventID',
+        :'activeTicketTypeID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'checkout_pending',
+        :'linkedUserID',
+
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        'General admission'
+    ),
+    (
+        :'dueOfferID',
+        current_timestamp - interval '2 hours',
+        :'activeEventID',
+        :'activeTicketTypeID',
+        current_timestamp - interval '1 hour',
+        'waitlist',
+        'checkout_pending',
+        :'dueUserID',
+
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        'General admission'
+    );
+
+-- Purchases linked to the active and deadline-expired offers
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+) values
+    (
+        :'linkedOfferID',
+        2500,
+        'USD',
+        0,
+        :'activeEventID',
+        :'linkedPurchaseID',
+        :'activeTicketTypeID',
+        current_timestamp + interval '15 minutes',
+        'stripe',
+        'cs_offer_complete',
+        null,
+        'pending',
+        'General admission',
+        :'linkedUserID'
+    ),
+    (
+        :'dueOfferID',
+        2500,
+        'USD',
+        0,
+        :'activeEventID',
+        :'duePurchaseID',
+        :'activeTicketTypeID',
+        current_timestamp + interval '15 minutes',
+        'stripe',
+        'cs_offer_due',
+        'pi_offer_due',
+        'pending',
+        'General admission',
+        :'dueUserID'
+    );
+
+-- Canceled first checkout that can pay after its replacement completes
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'linkedOfferID',
+    2500,
+    current_timestamp - interval '1 hour',
+    'USD',
+    0,
+    :'activeEventID',
+    :'linkedLatePurchaseID',
+    :'activeTicketTypeID',
+    current_timestamp - interval '45 minutes',
+    'stripe',
+    'cs_offer_late',
+    'expired',
+    'General admission',
+    :'linkedUserID'
+);
+
 -- Pending attendee row with registration answers created during checkout
 insert into event_attendee (event_id, user_id, registration_answers, status)
 values
@@ -491,6 +779,50 @@ select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_missing', 'pi_missing')::jsonb,
     '{"outcome":"noop"}'::jsonb,
     'Should return noop when there is no matching checkout session'
+);
+
+-- Should reserve capacity before reconciling a late paid checkout
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe',
+        'cs_capacity_race',
+        'pi_capacity_race'
+    )::jsonb,
+    jsonb_build_object('outcome', 'refund_queued'),
+    'Should reserve capacity before reconciling a late paid checkout'
+);
+
+-- Should keep the queue head waiting while the late payment awaits refund
+select results_eq(
+    format(
+        $$
+            select
+                ep.status,
+                exists (
+                    select 1
+                    from event_waitlist ew
+                    where ew.event_id = %L::uuid
+                    and ew.event_ticket_type_id = %L::uuid
+                    and ew.user_id = %L::uuid
+                ),
+                not exists (
+                    select 1
+                    from admission_offer ao
+                    where ao.event_id = %L::uuid
+                    and ao.user_id = %L::uuid
+                )
+            from event_purchase ep
+            where ep.event_purchase_id = %L::uuid
+        $$,
+        :'raceEventID',
+        :'raceTicketTypeID',
+        :'raceQueueUserID',
+        :'raceEventID',
+        :'raceQueueUserID',
+        :'racePurchaseID'
+    ),
+    $$ values ('refund-pending'::text, true, true) $$,
+    'Should keep the queue head waiting while the late payment awaits refund'
 );
 
 -- Should return noop for expired purchases whose hold has not expired locally
@@ -574,6 +906,126 @@ select results_eq(
         )
     $$,
     'Should persist the completed purchase fields and confirm a non-manually invited attendee'
+);
+
+-- Should complete an active offer-linked checkout
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe',
+        'cs_offer_complete',
+        'pi_offer_complete'
+    )::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'activeEventID'::uuid,
+        'outcome', 'completed',
+        'user_id', :'linkedUserID'::uuid
+    ),
+    'Should complete an active offer-linked checkout'
+);
+
+select results_eq(
+    format(
+        $$
+            select
+                ao.status,
+                ep.status,
+                ea.manually_invited,
+                ea.status
+            from admission_offer ao
+            join event_purchase ep using (admission_offer_id)
+            join event_attendee ea
+                on ea.event_id = ep.event_id
+                and ea.user_id = ep.user_id
+            where ao.admission_offer_id = %L::uuid
+            and ep.event_purchase_id = %L::uuid
+        $$,
+        :'linkedOfferID',
+        :'linkedPurchaseID'
+    ),
+    $$ values ('completed'::text, 'completed'::text, true, 'confirmed'::text) $$,
+    'Should complete the linked organizer offer with invitation provenance'
+);
+
+-- Capture allocated seats before reconciling the late payment
+select get_event_ticket_type_allocated_seat_count(
+    :'activeEventID',
+    :'activeTicketTypeID'
+) as linked_allocated_before \gset
+
+-- Should queue a late offer payment after its replacement completed
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe',
+        'cs_offer_late',
+        'pi_offer_late'
+    )::jsonb,
+    jsonb_build_object('outcome', 'refund_queued'),
+    'Should queue a late offer payment after its replacement completed'
+);
+
+-- Should preserve the replacement while refunding the late payment
+select results_eq(
+    format(
+        $$
+            select
+                late_purchase.status,
+                replacement.status,
+                (
+                    select count(*)::int
+                    from event_purchase_refund epr
+                    where epr.event_purchase_id = late_purchase.event_purchase_id
+                ),
+                get_event_ticket_type_allocated_seat_count(
+                    late_purchase.event_id,
+                    late_purchase.event_ticket_type_id
+                ) = %L::int
+            from event_purchase late_purchase
+            join event_purchase replacement
+                on replacement.event_purchase_id = %L::uuid
+            where late_purchase.event_purchase_id = %L::uuid
+        $$,
+        :'linked_allocated_before',
+        :'linkedPurchaseID',
+        :'linkedLatePurchaseID'
+    ),
+    $$ values ('refund-pending'::text, 'completed'::text, 1::int, true) $$,
+    'Should preserve the replacement and count one seat while refunding the late payment'
+);
+
+-- Should refund provider success after the linked offer deadline
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe',
+        'cs_offer_due',
+        null
+    )::jsonb,
+    jsonb_build_object('outcome', 'refund_queued'),
+    'Should refund provider success after the linked offer deadline'
+);
+
+select results_eq(
+    format(
+        $$
+            select
+                ao.status,
+                ep.status,
+                epr.kind
+            from admission_offer ao
+            join event_purchase ep using (admission_offer_id)
+            join event_purchase_refund epr using (event_purchase_id)
+            where ao.admission_offer_id = %L::uuid
+            and ep.event_purchase_id = %L::uuid
+        $$,
+        :'dueOfferID',
+        :'duePurchaseID'
+    ),
+    $$ values (
+        'expired'::text,
+        'refund-pending'::text,
+        'automatic-unfulfillable-checkout'::text
+    ) $$,
+    'Should keep the expired offer terminal and queue its purchase refund'
 );
 
 -- Should require refund for expired local holds
@@ -878,6 +1330,39 @@ select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_done', null)::jsonb,
     '{"outcome":"noop"}'::jsonb,
     'Should noop for already completed purchases'
+);
+
+-- Should queue a late direct payment while a newer offer remains active
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe',
+        'cs_expired_active_offer',
+        'pi_expired_active_offer'
+    )::jsonb,
+    jsonb_build_object('outcome', 'refund_queued'),
+    'Should queue a late direct payment while a newer offer remains active'
+);
+
+select results_eq(
+    format(
+        $$
+            select
+                ao.status,
+                ep.status,
+                epr.status
+            from admission_offer ao
+            join event_purchase ep
+                on ep.event_id = ao.event_id
+                and ep.user_id = ao.user_id
+            join event_purchase_refund epr using (event_purchase_id)
+            where ao.admission_offer_id = %L::uuid
+            and ep.event_purchase_id = %L::uuid
+        $$,
+        :'activeOfferRefundOfferID',
+        :'activeOfferRefundPurchaseID'
+    ),
+    $$ values ('pending'::text, 'refund-pending'::text, 'provider-pending'::text) $$,
+    'Should preserve the active offer and durable refund handoff'
 );
 
 -- ============================================================================

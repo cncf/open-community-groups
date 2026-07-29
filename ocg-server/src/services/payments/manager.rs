@@ -11,7 +11,9 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig, db::DynDB, services::notifications::DynNotificationsManager,
+    config::HttpServerConfig,
+    db::{DynDB, payments::CompleteEventPurchaseRefundRecoveryInput},
+    services::notifications::DynNotificationsManager,
     types::payments::PreparedEventCheckout,
 };
 
@@ -143,14 +145,18 @@ impl PgPaymentsManager {
 
         // Complete local state and enqueue any notification atomically
         self.db
-            .complete_event_purchase_refund_recovery(
-                input.actor_user_id,
-                input.group_id,
-                context.event_purchase_refund_id,
-                input.recovery_reference.clone(),
-                input.recovery_note.clone(),
+            .complete_event_purchase_refund_recovery(&CompleteEventPurchaseRefundRecoveryInput {
+                actor_user_id: input.actor_user_id,
+                event_purchase_refund_id: context.event_purchase_refund_id,
+                group_id: input.group_id,
+                recovery_note: input.recovery_note.clone(),
+                recovery_reference: input.recovery_reference.clone(),
                 notification_template_data,
-            )
+                payment_provider: self
+                    .payments_provider
+                    .as_ref()
+                    .map(|provider| provider.provider()),
+            })
             .await
     }
 
@@ -185,8 +191,17 @@ impl PgPaymentsManager {
 
         // Load the payment provider required to open a fresh checkout session
         let payments_provider = self.payments_provider()?;
+        let currency_code = prepared_checkout
+            .purchase
+            .currency_code
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing currency_code"))?;
+        let recipient = prepared_checkout
+            .recipient
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing a payment recipient"))?;
 
-        if prepared_checkout.recipient.provider != payments_provider.provider() {
+        if recipient.provider != payments_provider.provider() {
             bail!("group payments recipient is not configured for this provider");
         }
 
@@ -196,12 +211,12 @@ impl PgPaymentsManager {
                 amount_minor: prepared_checkout.purchase.amount_minor,
                 base_url: self.server_cfg.base_url.clone(),
                 community_name: prepared_checkout.community_name.clone(),
-                currency_code: prepared_checkout.purchase.currency_code.clone(),
+                currency_code: currency_code.clone(),
                 event_id: prepared_checkout.event_id,
                 event_slug: prepared_checkout.event_slug.clone(),
                 group_slug: prepared_checkout.group_slug.clone(),
                 purchase_id: prepared_checkout.purchase.event_purchase_id,
-                recipient: prepared_checkout.recipient.clone(),
+                recipient: recipient.clone(),
                 ticket_title: prepared_checkout.purchase.ticket_title.clone(),
                 user_id,
 

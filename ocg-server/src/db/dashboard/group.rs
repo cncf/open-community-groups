@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::cached;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -39,8 +40,8 @@ use crate::{
             BadgeInput, GroupAwardedBadges, GroupBadges,
         },
         event::{
-            EventCategory, EventKindSummary as EventKind, EventLeaveOutcome,
-            SessionKindSummary as SessionKind,
+            EventCategory, EventEnrollmentReconciliationOutcome, EventKindSummary as EventKind,
+            EventLeaveOutcome, EventSummary, SessionKindSummary as SessionKind,
         },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
         payments::{GroupPaymentRecipient, PaymentProvider},
@@ -57,7 +58,9 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
-    ) -> Result<()>;
+        event_ticket_type_id: Option<Uuid>,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventAdmissionAllocationResult>;
 
     /// Adds a badge definition to a group.
     async fn add_badge(
@@ -84,6 +87,7 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<Uuid>;
 
     /// Adds a linked recurring event series to the database.
@@ -94,6 +98,7 @@ pub(crate) trait DBDashboardGroup {
         events: &[serde_json::Value],
         recurrence: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<Vec<Uuid>>;
 
     /// Adds a new sponsor to the database.
@@ -126,6 +131,15 @@ pub(crate) trait DBDashboardGroup {
     async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
     -> Result<()>;
 
+    /// Cancels a group-scoped active admission offer.
+    async fn cancel_event_admission_offer(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        admission_offer_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventEnrollmentReconciliationOutcome>;
+
     /// Cancels a confirmed event attendee from the group dashboard.
     async fn cancel_event_attendee_attendance(
         &self,
@@ -133,16 +147,8 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<EventLeaveOutcome>;
-
-    /// Cancels a pending organizer-created event invitation.
-    async fn cancel_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()>;
 
     /// Cancels event series events atomically.
     async fn cancel_event_series_events(
@@ -205,6 +211,14 @@ pub(crate) trait DBDashboardGroup {
         cfs_submission_id: Uuid,
     ) -> Result<CfsSubmissionNotificationData>;
 
+    /// Gets summary event details extended with dashboard-only information.
+    async fn get_event_summary_dashboard(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventSummary>;
+
     /// Gets the configured payment recipient for a group.
     async fn get_group_payment_recipient(
         &self,
@@ -233,9 +247,9 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
-        user_id: Option<Uuid>,
-        email: Option<String>,
-    ) -> Result<Uuid>;
+        invitation: &EventAttendeeInvitationInput,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventAdmissionAllocationResult>;
 
     /// Lists searchable group badge award history.
     async fn list_awarded_badges(
@@ -383,18 +397,18 @@ pub(crate) trait DBDashboardGroup {
     async fn publish_event(
         &self,
         actor_user_id: Uuid,
-        configured_provider: Option<PaymentProvider>,
         group_id: Uuid,
         event_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()>;
 
     /// Publishes event series events atomically.
     async fn publish_event_series_events(
         &self,
         actor_user_id: Uuid,
-        configured_provider: Option<PaymentProvider>,
         group_id: Uuid,
         event_ids: &[Uuid],
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()>;
 
     /// Rejects a pending event invitation request.
@@ -493,6 +507,7 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<Vec<Uuid>>;
 
     /// Updates an existing sponsor.
@@ -536,12 +551,33 @@ where
         group_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
-    ) -> Result<()> {
-        self.execute(
-            "select accept_event_invitation_request($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
-            &[&actor_user_id, &group_id, &event_id, &user_id],
-        )
-        .await
+        event_ticket_type_id: Option<Uuid>,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventAdmissionAllocationResult> {
+        let output: EventAdmissionAllocationOutput = self
+            .fetch_json_one(
+                "
+                select accept_event_invitation_request(
+                    $1::uuid,
+                    $2::uuid,
+                    $3::uuid,
+                    $4::uuid,
+                    $5::uuid,
+                    $6::text
+                )
+                ",
+                &[
+                    &actor_user_id,
+                    &group_id,
+                    &event_id,
+                    &user_id,
+                    &event_ticket_type_id,
+                    &payment_provider.map(|provider| provider.to_string()),
+                ],
+            )
+            .await?;
+
+        Ok(output.into())
     }
 
     /// [`DBDashboardGroup::add_badge`].
@@ -584,14 +620,16 @@ where
         group_id: Uuid,
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            "select add_event($1::uuid, $2::uuid, $3::jsonb, $4::jsonb)::uuid",
+            "select add_event($1::uuid, $2::uuid, $3::jsonb, $4::jsonb, $5::text)::uuid",
             &[
                 &actor_user_id,
                 &group_id,
                 &Json(event),
                 &Json(cfg_max_participants),
+                &payment_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -606,15 +644,17 @@ where
         events: &[serde_json::Value],
         recurrence: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<Vec<Uuid>> {
         self.fetch_scalar_one(
-            "select add_event_series($1::uuid, $2::uuid, $3::jsonb, $4::jsonb, $5::jsonb)::uuid[]",
+            "select add_event_series($1::uuid, $2::uuid, $3::jsonb, $4::jsonb, $5::jsonb, $6::text)::uuid[]",
             &[
                 &actor_user_id,
                 &group_id,
                 &Json(events),
                 &Json(recurrence),
                 &Json(cfg_max_participants),
+                &payment_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -689,7 +729,35 @@ where
         .await
     }
 
-    /// [`DBDashboardGroup::cancel_event_attendee_attendance`]
+    /// [`DBDashboardGroup::cancel_event_admission_offer`].
+    #[instrument(skip(self), err)]
+    async fn cancel_event_admission_offer(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        admission_offer_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventEnrollmentReconciliationOutcome> {
+        self.fetch_json_one(
+            "
+            select cancel_event_admission_offer(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::text
+            )
+            ",
+            &[
+                &actor_user_id,
+                &group_id,
+                &admission_offer_id,
+                &payment_provider.map(|provider| provider.to_string()),
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::cancel_event_attendee_attendance`].
     #[instrument(skip(self), err)]
     async fn cancel_event_attendee_attendance(
         &self,
@@ -697,26 +765,17 @@ where
         group_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<EventLeaveOutcome> {
         self.fetch_json_one(
-            "select cancel_event_attendee_attendance($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
-            &[&actor_user_id, &group_id, &event_id, &user_id],
-        )
-        .await
-    }
-
-    /// [`DBDashboardGroup::cancel_event_attendee_invitation`]
-    #[instrument(skip(self), err)]
-    async fn cancel_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()> {
-        self.execute(
-            "select cancel_event_attendee_invitation($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
-            &[&actor_user_id, &group_id, &event_id, &user_id],
+            "select cancel_event_attendee_attendance($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::text)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_id,
+                &user_id,
+                &payment_provider.map(|provider| provider.to_string()),
+            ],
         )
         .await
     }
@@ -842,6 +901,21 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::get_event_summary_dashboard`].
+    #[instrument(skip(self), err)]
+    async fn get_event_summary_dashboard(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventSummary> {
+        self.fetch_json_one(
+            "select get_event_summary_dashboard($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &event_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::get_group_payment_recipient`]
     #[instrument(skip(self), err)]
     async fn get_group_payment_recipient(
@@ -913,20 +987,41 @@ where
     }
 
     /// [`DBDashboardGroup::invite_event_attendee`]
-    #[instrument(skip(self, email), err)]
+    #[instrument(skip(self, invitation), err)]
     async fn invite_event_attendee(
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
-        user_id: Option<Uuid>,
-        email: Option<String>,
-    ) -> Result<Uuid> {
-        self.fetch_scalar_one(
-            "select invite_event_attendee($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::text)::uuid",
-            &[&actor_user_id, &group_id, &event_id, &user_id, &email],
-        )
-        .await
+        invitation: &EventAttendeeInvitationInput,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventAdmissionAllocationResult> {
+        let output: EventAdmissionAllocationOutput = self
+            .fetch_json_one(
+                "
+                select invite_event_attendee(
+                    $1::uuid,
+                    $2::uuid,
+                    $3::uuid,
+                    $4::uuid,
+                    $5::text,
+                    $6::uuid,
+                    $7::text
+                )
+                ",
+                &[
+                    &actor_user_id,
+                    &group_id,
+                    &event_id,
+                    &invitation.user_id,
+                    &invitation.email,
+                    &invitation.event_ticket_type_id,
+                    &payment_provider.map(|provider| provider.to_string()),
+                ],
+            )
+            .await?;
+
+        Ok(output.into())
     }
 
     /// [`DBDashboardGroup::list_awarded_badges`].
@@ -1285,9 +1380,9 @@ where
     async fn publish_event(
         &self,
         actor_user_id: Uuid,
-        configured_provider: Option<PaymentProvider>,
         group_id: Uuid,
         event_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()> {
         self.execute(
             "select publish_event($1::uuid, $2::uuid, $3::uuid, $4::text)",
@@ -1295,7 +1390,7 @@ where
                 &actor_user_id,
                 &group_id,
                 &event_id,
-                &configured_provider.map(|provider| provider.to_string()),
+                &payment_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -1306,9 +1401,9 @@ where
     async fn publish_event_series_events(
         &self,
         actor_user_id: Uuid,
-        configured_provider: Option<PaymentProvider>,
         group_id: Uuid,
         event_ids: &[Uuid],
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()> {
         self.execute(
             "select publish_event_series_events($1::uuid, $2::uuid, $3::uuid[], $4::text)",
@@ -1316,7 +1411,7 @@ where
                 &actor_user_id,
                 &group_id,
                 &event_ids,
-                &configured_provider.map(|provider| provider.to_string()),
+                &payment_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -1505,15 +1600,17 @@ where
         event_id: Uuid,
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<Vec<Uuid>> {
         self.fetch_json_one(
-            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::jsonb)",
+            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::jsonb, $6::text)",
             &[
                 &actor_user_id,
                 &group_id,
                 &event_id,
                 &Json(event),
                 &Json(cfg_max_participants),
+                &payment_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -1566,4 +1663,105 @@ where
         )
         .await
     }
+}
+
+/// Successful organizer-controlled event allocation.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
+pub(crate) struct EventAdmissionAllocation {
+    /// Allocation result kind.
+    pub outcome: EventAdmissionAllocationOutcome,
+    /// Non-ticketed waitlist users promoted while reconciling before allocation.
+    pub promoted_user_ids: Vec<Uuid>,
+}
+
+/// Conflict returned while allocating organizer-controlled event capacity.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventAdmissionAllocationConflict {
+    /// The non-ticketed event has no available capacity.
+    EventCapacityFull,
+    /// Queue reconciliation consumed the final available seat.
+    QueueHasPriority,
+    /// The selected ticket tier has no available capacity.
+    TicketTypeSoldOut,
+}
+
+/// Successful organizer-controlled event allocation kind.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventAdmissionAllocationOutcome {
+    /// User became a confirmed attendee for a non-ticketed event.
+    Attendee,
+    /// A new organizer-controlled offer was created.
+    OfferCreated,
+    /// Queue reconciliation created the user's waitlist offer.
+    QueueOffer,
+}
+
+/// Result of allocating organizer-controlled event capacity.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum EventAdmissionAllocationResult {
+    /// Allocation could not proceed without violating capacity priority.
+    Conflict {
+        /// Conflict kind.
+        conflict: EventAdmissionAllocationConflict,
+        /// Non-ticketed waitlist users promoted while reconciling before allocation.
+        promoted_user_ids: Vec<Uuid>,
+    },
+    /// Allocation succeeded.
+    Success(EventAdmissionAllocation),
+}
+
+impl EventAdmissionAllocationResult {
+    /// Non-ticketed waitlist users promoted while reconciling before allocation.
+    pub(crate) fn promoted_user_ids(&self) -> &[Uuid] {
+        match self {
+            Self::Conflict {
+                promoted_user_ids, ..
+            } => promoted_user_ids,
+            Self::Success(allocation) => &allocation.promoted_user_ids,
+        }
+    }
+}
+
+impl From<EventAdmissionAllocationOutput> for EventAdmissionAllocationResult {
+    /// Converts database allocation output into the caller-facing result.
+    fn from(output: EventAdmissionAllocationOutput) -> Self {
+        match output {
+            EventAdmissionAllocationOutput::Conflict {
+                conflict,
+                promoted_user_ids,
+            } => Self::Conflict {
+                conflict,
+                promoted_user_ids,
+            },
+            EventAdmissionAllocationOutput::Success(allocation) => Self::Success(allocation),
+        }
+    }
+}
+
+/// Target payload for an organizer-created event invitation.
+#[derive(Debug, Clone)]
+pub(crate) struct EventAttendeeInvitationInput {
+    /// Email address used to create or reissue an invitation.
+    pub email: Option<String>,
+    /// Ticket type assigned to a ticketed invitation.
+    pub event_ticket_type_id: Option<Uuid>,
+    /// Existing registered user identifier.
+    pub user_id: Option<Uuid>,
+}
+
+/// Database output returned after allocating organizer-controlled event capacity.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum EventAdmissionAllocationOutput {
+    /// Allocation could not proceed without violating capacity priority.
+    Conflict {
+        /// Conflict kind.
+        conflict: EventAdmissionAllocationConflict,
+        /// Non-ticketed waitlist users promoted while reconciling before allocation.
+        promoted_user_ids: Vec<Uuid>,
+    },
+    /// Allocation succeeded.
+    Success(EventAdmissionAllocation),
 }
