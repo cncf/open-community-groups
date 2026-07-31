@@ -17,21 +17,18 @@ import {
 } from "/static/js/common/media/image-upload.js";
 import "/static/js/common/svg-spinner.js";
 
-const ANIMATED_IMAGE_ERROR_MESSAGE =
-  "Animated images cannot be cropped because their animation would be lost. " +
+const GIF_IMAGE_ERROR_MESSAGE =
+  "GIF images cannot be cropped because their animation would be lost. " +
   "Choose a static SVG, PNG, JPEG or WEBP image.";
 const IMAGE_KIND = {
   AVATAR: "avatar",
   BANNER: "banner",
   LOGO: "logo",
 };
-
 const IMAGE_TARGET = {
   BADGE: "badge",
   OPEN_GRAPH: "open_graph",
 };
-const SVG_ANIMATION_PATTERN =
-  /<(?:animate|animateMotion|animateTransform|discard|set)[\s/>]|@keyframes|(?:^|[;{"'\s])(?:-webkit-)?animation(?:-name)?\s*:/i;
 
 /**
  * ImageField renders upload controls with drag-and-drop support and a preview.
@@ -76,6 +73,7 @@ export class ImageField extends LitWrapper {
     submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
+    _isPreparing: { state: true },
     _pendingUploadFile: { state: true },
   };
 
@@ -90,6 +88,7 @@ export class ImageField extends LitWrapper {
     this._filePickerTrigger = null;
     this._filePreparationToken = 0;
     this._isDragActive = false;
+    this._isPreparing = false;
     this._isUploading = false;
     this._pendingUploadFile = null;
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
@@ -110,6 +109,7 @@ export class ImageField extends LitWrapper {
   /** Invalidate pending file preparation when the field leaves the document. */
   disconnectedCallback() {
     this._filePreparationToken += 1;
+    this._isPreparing = false;
     super.disconnectedCallback();
   }
 
@@ -133,6 +133,10 @@ export class ImageField extends LitWrapper {
 
   get _hasImage() {
     return typeof this.value === "string" && this.value.trim().length > 0;
+  }
+
+  get _isPending() {
+    return this._isPreparing || this._isUploading;
   }
 
   /** Return a dashboard-safe preview URL for unsaved badge artwork. */
@@ -198,7 +202,7 @@ export class ImageField extends LitWrapper {
    * Open the native file picker when the preview tile is activated.
    */
   _triggerFilePicker(event) {
-    if (this._isUploading) {
+    if (this._isPending) {
       return;
     }
     this._filePickerTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null;
@@ -221,10 +225,10 @@ export class ImageField extends LitWrapper {
    * Highlight the drop target while dragging files over the preview.
    */
   _handleDragOver(event) {
-    if (this._isUploading) {
+    event.preventDefault();
+    if (this._isPending) {
       return;
     }
-    event.preventDefault();
     this._isDragActive = true;
     this.requestUpdate();
   }
@@ -233,7 +237,7 @@ export class ImageField extends LitWrapper {
    * Reset drop-target styles when the pointer leaves the preview area.
    */
   _handleDragLeave(event) {
-    if (this._isUploading) {
+    if (this._isPending) {
       return;
     }
     if (event.relatedTarget && this.contains(event.relatedTarget)) {
@@ -248,10 +252,10 @@ export class ImageField extends LitWrapper {
    * Accept dropped files and initiate the upload flow.
    */
   async _handleDrop(event) {
-    if (this._isUploading) {
+    event.preventDefault();
+    if (this._isPending) {
       return;
     }
-    event.preventDefault();
     this._isDragActive = false;
     const file = event.dataTransfer?.files?.[0];
     if (!file) {
@@ -308,27 +312,33 @@ export class ImageField extends LitWrapper {
    */
   async _processFile(file, resetCallback, focusOrigin = null) {
     const preparationToken = ++this._filePreparationToken;
-    const cropper = getElementById(this, this._cropperId);
-    const isAnimated = cropper ? await isAnimatedImage(file) : false;
-    if (preparationToken !== this._filePreparationToken) {
-      return;
-    }
-    if (isAnimated) {
-      showErrorAlert(ANIMATED_IMAGE_ERROR_MESSAGE, true);
-      resetCallback?.();
-      return;
-    }
+    this._pendingUploadFile = null;
+    this._isPreparing = true;
 
-    const preparedFile = cropper ? await cropper.edit(file, { focusOrigin }) : file;
-    if (preparationToken !== this._filePreparationToken) {
-      return;
-    }
-    if (!preparedFile) {
-      resetCallback?.();
-      return;
-    }
+    try {
+      const cropper = getElementById(this, this._cropperId);
+      const isGif = file.type.toLowerCase() === "image/gif" || file.name.toLowerCase().endsWith(".gif");
+      if (cropper && isGif) {
+        showErrorAlert(GIF_IMAGE_ERROR_MESSAGE, true);
+        resetCallback?.();
+        return;
+      }
 
-    await this._uploadFile(preparedFile, resetCallback);
+      const preparedFile = cropper ? await cropper.edit(file, { focusOrigin }) : file;
+      if (preparationToken !== this._filePreparationToken) {
+        return;
+      }
+      if (!preparedFile) {
+        resetCallback?.();
+        return;
+      }
+
+      await this._uploadFile(preparedFile, resetCallback);
+    } finally {
+      if (preparationToken === this._filePreparationToken) {
+        this._isPreparing = false;
+      }
+    }
   }
 
   /**
@@ -360,7 +370,7 @@ export class ImageField extends LitWrapper {
 
   /** Retry a failed upload without asking the user to repeat the crop. */
   async _retryUpload() {
-    if (this._isUploading || !this._pendingUploadFile) {
+    if (this._isPending || !this._pendingUploadFile) {
       return;
     }
 
@@ -391,7 +401,7 @@ export class ImageField extends LitWrapper {
   }
 
   _handleRemove() {
-    if (!this._hasImage || this._isUploading) {
+    if (!this._hasImage || this._isPending) {
       return;
     }
 
@@ -455,8 +465,8 @@ export class ImageField extends LitWrapper {
     const isOpenGraphTarget = this.target === IMAGE_TARGET.OPEN_GRAPH;
     const isBadgeTarget = this.target === IMAGE_TARGET.BADGE;
     const cropTarget = this.cropTarget || this.target;
-    const removeDisabled = !this._hasImage || this._isUploading;
-    const submitDisabled = !this._hasImage || this._isUploading;
+    const removeDisabled = !this._hasImage || this._isPending;
+    const submitDisabled = !this._hasImage || this._isPending;
     const helpPrefixText = (this.helpPrefixText || "").trim();
     const requiresCropping = ImageCropper.hasRequiredSize(cropTarget);
     const supportedFormatsText = requiresCropping
@@ -493,11 +503,13 @@ export class ImageField extends LitWrapper {
           class="relative ${
             isWide ? "w-full sm:max-w-md h-24" : "size-24"
           } min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${
-            this._isDragActive && !this._isUploading ? "ring-2 ring-primary-300" : ""
+            this._isDragActive && !this._isPending ? "ring-2 ring-primary-300" : ""
           } cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"
           tabindex="0"
           aria-label="Upload image"
+          aria-busy=${this._isPending ? "true" : "false"}
+          aria-disabled=${this._isPending ? "true" : "false"}
           data-image-upload-preview
           @click=${this._triggerFilePicker}
           @keydown=${this._handlePreviewKeyDown}
@@ -507,13 +519,14 @@ export class ImageField extends LitWrapper {
         >
           <div
             class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${
-              this._isUploading ? "opacity-100" : "opacity-0 pointer-events-none"
+              this._isPending ? "opacity-100" : "opacity-0 pointer-events-none"
             } transition-opacity duration-200"
+            aria-hidden=${this._isPending ? "false" : "true"}
           >
             <svg-spinner
               size="size-8"
               background-color="var(--color-primary-100)"
-              label="Uploading..."
+              label=${this._isUploading ? "Uploading..." : "Preparing image..."}
             ></svg-spinner>
           </div>
           ${this._renderPlaceholder(isWide)}
@@ -526,10 +539,10 @@ export class ImageField extends LitWrapper {
               type="button"
               class="btn-primary btn-mini items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
                 this.hideUploadButton ? "hidden" : "inline-flex"
-              } ${this._isUploading ? "opacity-75 pointer-events-none" : ""}"
+              } ${this._isPending ? "opacity-75 pointer-events-none" : ""}"
               data-image-upload-trigger
               aria-label="Upload image for ${this.label}"
-              aria-disabled=${this._isUploading ? "true" : "false"}
+              aria-disabled=${this._isPending ? "true" : "false"}
               @click=${this._triggerFilePicker}
             >
               Upload image
@@ -540,7 +553,7 @@ export class ImageField extends LitWrapper {
               class="hidden"
               accept=${acceptedFormats}
               @change=${this._handleFileChange}
-              ?disabled=${this._isUploading}
+              ?disabled=${this._isPending}
             />
             ${
               this._pendingUploadFile
@@ -548,10 +561,10 @@ export class ImageField extends LitWrapper {
                     <button
                       type="button"
                       class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${
-                        this._isUploading ? "opacity-75 pointer-events-none" : ""
+                        this._isPending ? "opacity-75 pointer-events-none" : ""
                       }"
                       aria-label="Retry upload for ${this.label}"
-                      aria-disabled=${this._isUploading ? "true" : "false"}
+                      aria-disabled=${this._isPending ? "true" : "false"}
                       @click=${this._retryUpload}
                     >
                       Retry upload
@@ -614,52 +627,5 @@ export class ImageField extends LitWrapper {
     `;
   }
 }
-
-/** Return whether a PNG container declares an animation control chunk. */
-const hasPngAnimation = (bytes) => {
-  // APNG requires the acTL chunk to appear before the first IDAT data chunk.
-  const header = new TextDecoder("latin1").decode(bytes);
-  const animationIndex = header.indexOf("acTL");
-  const dataIndex = header.indexOf("IDAT");
-  return animationIndex !== -1 && (dataIndex === -1 || animationIndex < dataIndex);
-};
-
-/** Return whether an SVG source declares animation. */
-const hasSvgAnimation = (source) => SVG_ANIMATION_PATTERN.test(source);
-
-/** Return whether a WebP container declares animation frames. */
-const hasWebpAnimation = (bytes) =>
-  // Animated WebP requires a leading VP8X chunk with the animation flag set.
-  bytes.length > 20 &&
-  readChunkType(bytes, 0) === "RIFF" &&
-  readChunkType(bytes, 8) === "WEBP" &&
-  readChunkType(bytes, 12) === "VP8X" &&
-  (bytes[20] & 0x02) !== 0;
-
-/** Return whether cropping the file would discard declared animation frames. */
-const isAnimatedImage = async (file) => {
-  const fileName = file.name.toLowerCase();
-  const fileType = file.type.toLowerCase();
-  if (fileType === "image/gif" || fileName.endsWith(".gif")) {
-    return true;
-  }
-
-  const isPng = fileType === "image/png" || fileType === "image/apng" || /\.a?png$/.test(fileName);
-  const isSvg = fileType === "image/svg+xml" || fileName.endsWith(".svg");
-  const isWebp = fileType === "image/webp" || fileName.endsWith(".webp");
-  if (isSvg) {
-    return hasSvgAnimation(await file.text());
-  }
-  if (!isPng && !isWebp) {
-    return false;
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  return isPng ? hasPngAnimation(bytes) : hasWebpAnimation(bytes);
-};
-
-/** Read a four-byte image container marker. */
-const readChunkType = (bytes, offset) =>
-  String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
 
 customElements.define("image-field", ImageField);

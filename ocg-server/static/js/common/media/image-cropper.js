@@ -37,6 +37,7 @@ const CROPPER_TEMPLATE = `
     </cropper-selection>
   </cropper-canvas>
 `;
+const CROP_BOUNDARY_TOLERANCE = 0.1;
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const IMAGE_TARGET_SIZES = Object.freeze({
   ad_banner: Object.freeze({ height: 300, width: 2400 }),
@@ -61,6 +62,16 @@ const STATUS = {
   PROCESSING: "processing",
   READY: "ready",
 };
+const SVG_ABSOLUTE_LENGTH_PATTERN = /^([+]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(cm|in|mm|pc|pt|px|q)?$/i;
+const SVG_LENGTH_UNIT_TO_PIXELS = Object.freeze({
+  cm: 96 / 2.54,
+  in: 96,
+  mm: 96 / 25.4,
+  pc: 16,
+  pt: 96 / 72,
+  px: 1,
+  q: 96 / 101.6,
+});
 
 /**
  * ImageCropper owns the modal workflow for mandatory image dimensions.
@@ -87,6 +98,7 @@ export class ImageCropper extends LitWrapper {
     this._focusOrigin = null;
     this._isOpen = false;
     this._initialImageScale = 1;
+    this._initialImageTransform = null;
     this._objectUrl = "";
     this._removeDismissListeners = null;
     this._resolveEdit = null;
@@ -94,6 +106,7 @@ export class ImageCropper extends LitWrapper {
     this._sourceFile = null;
     this._status = STATUS.LOADING;
     this._uniqueId = `image-cropper-${Math.random().toString(36).slice(2, 9)}`;
+    this._wasTransformRejected = false;
     this._zoomPercent = 100;
     this._handleDocumentKeyDown = this._handleDocumentKeyDown.bind(this);
     this._handleImageTransform = this._handleImageTransform.bind(this);
@@ -115,23 +128,158 @@ export class ImageCropper extends LitWrapper {
   }
 
   /**
-   * Open the editor for a selected file.
+   * Prepare a selected file, opening the editor only when cropping is required.
    * @param {File} file Selected source image.
    * @param {Object} [options={}] Editor options.
    * @param {HTMLElement|null} [options.focusOrigin=null] Control that opened the editor.
    * @returns {Promise<File|null>} Edited file, or null when cancelled.
    */
-  edit(file, { focusOrigin = null } = {}) {
+  async edit(file, { focusOrigin = null } = {}) {
     const requiredSize = this._requiredSize;
     if (!requiredSize) {
-      return Promise.resolve(file);
+      return file;
     }
 
     if (this._resolveEdit) {
       this._close(null, { restoreFocus: false });
     }
 
-    this._editToken += 1;
+    const editToken = ++this._editToken;
+    let decodedImage;
+
+    try {
+      decodedImage = await this._decodeImage(file);
+    } catch {
+      if (!this.isConnected || editToken !== this._editToken) {
+        return null;
+      }
+      return this._openEditor(file, { focusOrigin });
+    }
+
+    try {
+      if (!this.isConnected || editToken !== this._editToken) {
+        return null;
+      }
+
+      const sourceSize = decodedImage.size;
+      const requiresUpscaling =
+        sourceSize.width < requiredSize.width || sourceSize.height < requiredSize.height;
+      if (requiresUpscaling) {
+        const shouldContinue = await confirmAction({
+          message:
+            `This image is ${sourceSize.width} × ${sourceSize.height} px, smaller than the ` +
+            `required ${requiredSize.width} × ${requiredSize.height} px. Enlarging it may reduce ` +
+            "image quality. Do you want to continue?",
+          confirmText: "Continue",
+          cancelText: "Cancel",
+        });
+        if (!this.isConnected || editToken !== this._editToken) {
+          return null;
+        }
+        if (!shouldContinue) {
+          if (focusOrigin instanceof HTMLElement && document.contains(focusOrigin)) {
+            focusOrigin.focus();
+          }
+          return null;
+        }
+      }
+
+      const hasRequiredDimensions =
+        sourceSize.width === requiredSize.width && sourceSize.height === requiredSize.height;
+      const canUploadWithoutProcessing =
+        hasRequiredDimensions &&
+        file.size <= MAX_OUTPUT_SIZE_BYTES &&
+        Object.hasOwn(OUTPUT_TYPE_EXTENSIONS, file.type.toLowerCase());
+      if (canUploadWithoutProcessing) {
+        return file;
+      }
+
+      const hasRequiredAspectRatio =
+        sourceSize.width * requiredSize.height === sourceSize.height * requiredSize.width;
+      if (hasRequiredAspectRatio) {
+        try {
+          const resizedFile = await this._resizeImage(decodedImage.image, file);
+          if (!this.isConnected || editToken !== this._editToken) {
+            return null;
+          }
+          return resizedFile;
+        } catch {
+          // Fall through to the editor so automatic processing failures stay recoverable.
+        }
+      }
+    } finally {
+      URL.revokeObjectURL(decodedImage.objectUrl);
+    }
+
+    if (!this.isConnected || editToken !== this._editToken) {
+      return null;
+    }
+    return this._openEditor(file, { focusOrigin });
+  }
+
+  /** Decode a source file for dimension checks and automatic resizing. */
+  async _decodeImage(file) {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      await new Promise((resolve, reject) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", reject, { once: true });
+        image.src = objectUrl;
+      });
+      return {
+        image,
+        objectUrl,
+        size: await this._getSourceSize(file, image),
+      };
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      throw error;
+    }
+  }
+
+  /** Read raster dimensions or an SVG's explicit dimensions and view box. */
+  async _getSourceSize(file, image) {
+    const fileName = file.name.toLowerCase();
+    const fileType = file.type.toLowerCase();
+    if (fileType !== "image/svg+xml" && !fileName.endsWith(".svg")) {
+      return { height: image.naturalHeight, width: image.naturalWidth };
+    }
+
+    const documentElement = new DOMParser().parseFromString(
+      await file.text(),
+      "image/svg+xml",
+    ).documentElement;
+    const explicitHeight = parseSvgAbsoluteLength(documentElement.getAttribute("height"));
+    const explicitWidth = parseSvgAbsoluteLength(documentElement.getAttribute("width"));
+    const viewBox = (documentElement.getAttribute("viewBox") || "")
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
+    const viewBoxHeight = viewBox.length === 4 ? viewBox[3] : 0;
+    const viewBoxWidth = viewBox.length === 4 ? viewBox[2] : 0;
+    const hasExplicitHeight = explicitHeight !== null;
+    const hasExplicitWidth = explicitWidth !== null;
+    const hasViewBox = viewBoxWidth > 0 && viewBoxHeight > 0;
+
+    if (hasExplicitHeight && hasExplicitWidth) {
+      return { height: explicitHeight, width: explicitWidth };
+    }
+    if (hasExplicitWidth && hasViewBox) {
+      return { height: (explicitWidth * viewBoxHeight) / viewBoxWidth, width: explicitWidth };
+    }
+    if (hasExplicitHeight && hasViewBox) {
+      return { height: explicitHeight, width: (explicitHeight * viewBoxWidth) / viewBoxHeight };
+    }
+    if (hasViewBox) {
+      return { height: viewBoxHeight, width: viewBoxWidth };
+    }
+    return { height: image.naturalHeight, width: image.naturalWidth };
+  }
+
+  /** Open the interactive editor for a source whose aspect ratio must change. */
+  _openEditor(file, { focusOrigin = null } = {}) {
     this._errorMessage = "";
     this._focusOrigin =
       focusOrigin instanceof HTMLElement
@@ -179,7 +327,7 @@ export class ImageCropper extends LitWrapper {
         height: this._requiredSize.height,
         width: this._requiredSize.width,
       });
-      const outputFile = await this._createOutputFile(canvas);
+      const outputFile = await this._createOutputFile(canvas, this._sourceFile);
 
       if (this._isOpen && editToken === this._editToken) {
         this._close(outputFile);
@@ -237,7 +385,8 @@ export class ImageCropper extends LitWrapper {
       selectionRect.height / imageRect.height,
     );
     this._cropperImage.$scale(selectionScale);
-    const [scaleX, scaleY] = this._cropperImage.$getTransform();
+    this._initialImageTransform = this._cropperImage.$getTransform();
+    const [scaleX, scaleY] = this._initialImageTransform;
     this._initialImageScale = Math.hypot(scaleX, scaleY);
     this._zoomPercent = 100;
   }
@@ -276,10 +425,9 @@ export class ImageCropper extends LitWrapper {
    * Build the upload file from the cropped canvas. Keeps the source type when
    * supported and falls back to WEBP at decreasing qualities to fit the limit.
    */
-  async _createOutputFile(canvas) {
-    const preferredType = Object.hasOwn(OUTPUT_TYPE_EXTENSIONS, this._sourceFile?.type)
-      ? this._sourceFile.type
-      : "image/webp";
+  async _createOutputFile(canvas, sourceFile) {
+    const sourceType = sourceFile?.type.toLowerCase();
+    const preferredType = Object.hasOwn(OUTPUT_TYPE_EXTENSIONS, sourceType) ? sourceType : "image/webp";
     let outputType = preferredType;
     let blob = await this._canvasToBlob(canvas, outputType, OUTPUT_QUALITIES[0]);
 
@@ -297,7 +445,7 @@ export class ImageCropper extends LitWrapper {
       throw new Error(OUTPUT_SIZE_ERROR_MESSAGE);
     }
 
-    const sourceName = this._sourceFile?.name || "image";
+    const sourceName = sourceFile?.name || "image";
     const baseName = sourceName.replace(/\.[^.]+$/, "") || "image";
     const extension = OUTPUT_TYPE_EXTENSIONS[outputType];
 
@@ -307,12 +455,26 @@ export class ImageCropper extends LitWrapper {
     });
   }
 
+  /** Resize a decoded image to the mandatory output dimensions without cropping. */
+  async _resizeImage(image, sourceFile) {
+    const canvas = document.createElement("canvas");
+    canvas.height = this._requiredSize.height;
+    canvas.width = this._requiredSize.width;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Image canvas is unavailable");
+    }
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return this._createOutputFile(canvas, sourceFile);
+  }
+
   /** Detach vendor listeners and drop the cropper instance references. */
   _destroyCropper() {
     this._cropperImage?.removeEventListener("transform", this._handleImageTransform);
     this._cropper?.destroy();
     this._cropper = null;
     this._cropperImage = null;
+    this._initialImageTransform = null;
     this._selection = null;
   }
 
@@ -406,7 +568,7 @@ export class ImageCropper extends LitWrapper {
 
   /**
    * Keep the selection covered by the image by measuring the proposed transform
-   * on an invisible clone and cancelling moves that would expose empty space.
+   * on an invisible clone and clamping movement on each constrained axis.
    */
   _handleImageTransform(event) {
     const cropperCanvas = this._cropper?.getCropperCanvas();
@@ -423,16 +585,37 @@ export class ImageCropper extends LitWrapper {
     const selectionRect = this._selection.getBoundingClientRect();
     imageClone.remove();
 
-    if (
-      imageRect.width > 0 &&
-      imageRect.height > 0 &&
-      (selectionRect.left < imageRect.left ||
-        selectionRect.top < imageRect.top ||
-        selectionRect.right > imageRect.right ||
-        selectionRect.bottom > imageRect.bottom)
-    ) {
+    const hasMeasurableBounds = imageRect.width > 0 && imageRect.height > 0;
+    const isImageTooSmall =
+      imageRect.width < selectionRect.width - CROP_BOUNDARY_TOLERANCE ||
+      imageRect.height < selectionRect.height - CROP_BOUNDARY_TOLERANCE;
+    if (hasMeasurableBounds && isImageTooSmall) {
+      this._wasTransformRejected = true;
       event.preventDefault();
       return;
+    }
+
+    let horizontalCorrection = 0;
+    let verticalCorrection = 0;
+    if (selectionRect.left < imageRect.left - CROP_BOUNDARY_TOLERANCE) {
+      horizontalCorrection = selectionRect.left - imageRect.left;
+    } else if (selectionRect.right > imageRect.right + CROP_BOUNDARY_TOLERANCE) {
+      horizontalCorrection = selectionRect.right - imageRect.right;
+    }
+    if (selectionRect.top < imageRect.top - CROP_BOUNDARY_TOLERANCE) {
+      verticalCorrection = selectionRect.top - imageRect.top;
+    } else if (selectionRect.bottom > imageRect.bottom + CROP_BOUNDARY_TOLERANCE) {
+      verticalCorrection = selectionRect.bottom - imageRect.bottom;
+    }
+
+    if (hasMeasurableBounds && (horizontalCorrection !== 0 || verticalCorrection !== 0)) {
+      const correctedMatrix = [...event.detail.matrix];
+      correctedMatrix[4] += horizontalCorrection;
+      correctedMatrix[5] += verticalCorrection;
+      event.preventDefault();
+      this._cropperImage.removeEventListener("transform", this._handleImageTransform);
+      this._cropperImage.$setTransform(correctedMatrix);
+      this._cropperImage.addEventListener("transform", this._handleImageTransform);
     }
 
     const [scaleX, scaleY] = event.detail.matrix;
@@ -503,13 +686,14 @@ export class ImageCropper extends LitWrapper {
 
   /** Restore the initial image transform without re-triggering the boundary guard. */
   _resetCrop() {
-    if (!this._cropperImage) {
+    if (!this._cropperImage || !this._initialImageTransform) {
       return;
     }
 
     this._cropperImage.removeEventListener("transform", this._handleImageTransform);
-    this._centerImageOnSelection();
+    this._cropperImage.$setTransform(this._initialImageTransform);
     this._cropperImage.addEventListener("transform", this._handleImageTransform);
+    this._zoomPercent = 100;
   }
 
   /** Enable or disable pointer interactions on the vendor crop surface. */
@@ -546,9 +730,10 @@ export class ImageCropper extends LitWrapper {
   _zoom(amount) {
     if (this._status === STATUS.READY && this._cropperImage && (amount >= 0 || this._zoomPercent > 100)) {
       const previousZoomPercent = this._zoomPercent;
+      this._wasTransformRejected = false;
       this._cropperImage.$zoom(amount);
 
-      if (this._zoomPercent === previousZoomPercent) {
+      if (!this._wasTransformRejected && this._zoomPercent === previousZoomPercent) {
         const zoomFactor = amount < 0 ? 1 / (1 - amount) : 1 + amount;
         this._zoomPercent = Math.max(100, Math.round(previousZoomPercent * zoomFactor));
       }
@@ -565,6 +750,7 @@ export class ImageCropper extends LitWrapper {
     const isProcessing = this._status === STATUS.PROCESSING;
     const titleId = `${this._uniqueId}-title`;
     const instructionsId = `${this._uniqueId}-instructions`;
+    const zoomLabel = this._zoomPercent === 100 ? "Fit" : `${this._zoomPercent}%`;
 
     return html`
       <div
@@ -613,7 +799,7 @@ export class ImageCropper extends LitWrapper {
                 class="mb-3 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700"
               >
                 <p class="leading-6">
-                  Drag the image to position it. Use the arrow keys to move and
+                  Animation is not preserved. Drag the image to position it. Use the arrow keys to move and
                   <kbd
                     class="mx-1 inline-flex min-w-6 items-center justify-center rounded-md border border-stone-300 bg-white px-1.5 py-0.5 font-sans text-xs font-semibold leading-4 text-stone-700 shadow-sm"
                     >+</kbd
@@ -678,7 +864,7 @@ export class ImageCropper extends LitWrapper {
                     aria-live="polite"
                     aria-atomic="true"
                   >
-                    ${this._zoomPercent}%
+                    ${zoomLabel}
                   </span>
                   <button
                     type="button"
@@ -732,5 +918,18 @@ export class ImageCropper extends LitWrapper {
     `;
   }
 }
+
+/** Parse an absolute SVG length into CSS pixels, or null for relative lengths. */
+const parseSvgAbsoluteLength = (value) => {
+  const match = value?.trim().match(SVG_ABSOLUTE_LENGTH_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  const length = Number.parseFloat(match[1]);
+  const unitScale = SVG_LENGTH_UNIT_TO_PIXELS[match[2]?.toLowerCase() || "px"];
+  const pixelLength = length * unitScale;
+  return Number.isFinite(pixelLength) && pixelLength > 0 ? pixelLength : null;
+};
 
 customElements.define("image-cropper", ImageCropper);

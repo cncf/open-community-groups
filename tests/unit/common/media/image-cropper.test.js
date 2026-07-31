@@ -1,9 +1,22 @@
 import { expect, waitUntil } from "@open-wc/testing";
 
 import { ImageCropper } from "/static/js/common/media/image-cropper.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
+const createPngFile = async ({ height, name, width }) => {
+  const canvas = document.createElement("canvas");
+  canvas.height = height;
+  canvas.width = width;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#0094ff";
+  context.fillRect(0, 0, width, height);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  return new File([blob], name, { type: "image/png" });
+};
+
 describe("image-cropper", () => {
+  const env = useDashboardTestEnv({ withSwal: true });
   useMountedElementsCleanup("image-cropper");
 
   it("supports every target with mandatory dimensions", () => {
@@ -27,6 +40,7 @@ describe("image-cropper", () => {
         type: "image/png",
       }),
     );
+    await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
 
     // Verify the required size is shown and the edit closes without a result.
@@ -48,6 +62,7 @@ describe("image-cropper", () => {
 
     // Open the editor for a selected file.
     const resultPromise = element.edit(new File(["not-an-image"], "banner.png", { type: "image/png" }));
+    await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
 
     // The required size and modal state are exposed to the user.
@@ -60,6 +75,8 @@ describe("image-cropper", () => {
     expect(requiredSizeBadge.textContent).to.include("2428 × 192 px");
     expect(requiredSizeBadge.classList.contains("normal-case")).to.equal(true);
     const instructions = document.getElementById(dialog.getAttribute("aria-describedby"));
+    expect(instructions.textContent).to.include("Animation is not preserved.");
+    expect(instructions.querySelectorAll("p")).to.have.length(1);
     expect(instructions.classList.contains("border-stone-200")).to.equal(true);
     expect(instructions.classList.contains("bg-stone-50")).to.equal(true);
     expect(instructions.querySelector(".svg-icon")).to.equal(null);
@@ -97,6 +114,7 @@ describe("image-cropper", () => {
       const resultPromise = element.edit(new File(["not-an-image"], "logo.png", { type: "image/png" }), {
         focusOrigin: trigger,
       });
+      await waitUntil(() => element._isOpen, "the crop editor should open");
       await element.updateComplete;
       const objectUrl = element._objectUrl;
       expect(document.activeElement).to.equal(element.querySelector("[data-image-cropper-stage]"));
@@ -106,7 +124,8 @@ describe("image-cropper", () => {
       expect(await resultPromise).to.equal(null);
       expect(document.body.style.overflow).to.equal("");
       expect(document.body.dataset.modalOpenCount).to.equal("0");
-      expect(revokedUrls).to.deep.equal([objectUrl]);
+      expect(revokedUrls).to.have.length(2);
+      expect(revokedUrls).to.include(objectUrl);
       expect(document.activeElement).to.not.equal(trigger);
 
       // Its detached document listener no longer reacts to Escape.
@@ -147,6 +166,7 @@ describe("image-cropper", () => {
       target: "logo",
     });
     const resultPromise = element.edit(new File(["source"], "logo.png", { type: "image/png" }));
+    await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
     const image = element.querySelector("img");
 
@@ -167,11 +187,12 @@ describe("image-cropper", () => {
       target: "logo",
     });
     const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="360" height="360">
-        <rect width="360" height="360" fill="#0094ff" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="720" height="360">
+        <rect width="720" height="360" fill="#0094ff" />
       </svg>
     `;
     const firstResult = element.edit(new File([source], "first-logo.svg", { type: "image/svg+xml" }));
+    await waitUntil(() => element._isOpen, "the first crop editor should open");
     await element.updateComplete;
     const staleImage = element.querySelector("img");
     element._close(null, { restoreFocus: false });
@@ -180,6 +201,7 @@ describe("image-cropper", () => {
 
     // Start another edit before the detached source reports a late load.
     const secondResult = element.edit(new File([source], "second-logo.svg", { type: "image/svg+xml" }));
+    await waitUntil(() => element._isOpen, "the second crop editor should open");
     await element.updateComplete;
     const activeCropper = element._cropper;
     await element._handleImageLoad({ currentTarget: staleImage });
@@ -230,14 +252,160 @@ describe("image-cropper", () => {
     expect(await resultPromise).to.equal(null);
   });
 
-  it("fits a wide source image around the crop selection", async () => {
-    // Open an already correctly sized banner in the real vendor cropper.
+  it("uploads an exact supported image without opening the crop editor", async () => {
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const file = await createPngFile({
+      height: 360,
+      name: "community-logo.png",
+      width: 360,
+    });
+
+    const result = await element.edit(file);
+
+    expect(result).to.equal(file);
+    expect(result.size).to.be.lessThan(1_000_000);
+    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+  });
+
+  it("automatically resizes an image with the required aspect ratio", async () => {
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const source = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720">
+        <rect width="720" height="720" fill="#0094ff" />
+      </svg>
+    `;
+
+    const result = await element.edit(new File([source], "community-logo.svg", { type: "image/svg+xml" }));
+    const bitmap = await createImageBitmap(result);
+
+    expect(result.name).to.equal("community-logo-cropped.webp");
+    expect(result.type).to.equal("image/webp");
+    expect(bitmap.width).to.equal(360);
+    expect(bitmap.height).to.equal(360);
+    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+    bitmap.close();
+  });
+
+  it("uses view boxes for relative SVG sizes and converts absolute units", async () => {
+    // Define relative and physical SVG dimensions around stable source geometry.
+    const element = await mountLitComponent("image-cropper", {
+      target: "open_graph",
+    });
+    const relativeSource = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1200 630">
+        <rect width="1200" height="630" fill="#0094ff" />
+      </svg>
+    `;
+    const absoluteSource = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="3.75in" height="95.25mm">
+        <rect width="100%" height="100%" fill="#0094ff" />
+      </svg>
+    `;
+
+    // Parse both forms through the source-size boundary used by preparation.
+    const relativeSize = await element._getSourceSize(
+      new File([relativeSource], "relative.svg", { type: "image/svg+xml" }),
+      new Image(),
+    );
+    const absoluteSize = await element._getSourceSize(
+      new File([absoluteSource], "absolute.svg", { type: "image/svg+xml" }),
+      new Image(),
+    );
+
+    // Relative sizes use the view box and physical units resolve to CSS pixels.
+    expect(relativeSize).to.deep.equal({ height: 630, width: 1200 });
+    expect(absoluteSize.height).to.be.closeTo(360, 0.001);
+    expect(absoluteSize.width).to.be.closeTo(360, 0.001);
+  });
+
+  it("discards an automatic resize superseded by a newer edit", async () => {
+    // Hold the first same-ratio resize while a second exact image is prepared.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const firstFile = new File(["first"], "first.png", { type: "image/png" });
+    const secondFile = new File(["second"], "second.png", { type: "image/png" });
+    element._decodeImage = async (file) => ({
+      image: new Image(),
+      objectUrl: `blob:${file.name}`,
+      size: file === firstFile ? { height: 720, width: 720 } : { height: 360, width: 360 },
+    });
+    let resolveFirstResize;
+    element._resizeImage = () =>
+      new Promise((resolve) => {
+        resolveFirstResize = resolve;
+      });
+    const firstResultPromise = element.edit(firstFile);
+    await waitUntil(() => resolveFirstResize, "the first automatic resize should start");
+
+    const secondResult = await element.edit(secondFile);
+    resolveFirstResize(new File(["resized"], "first-cropped.png", { type: "image/png" }));
+
+    // Only the latest edit can resolve with an uploadable file.
+    expect(secondResult).to.equal(secondFile);
+    expect(await firstResultPromise).to.equal(null);
+  });
+
+  it("warns before automatically upscaling a small image", async () => {
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const source = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">
+        <rect width="180" height="180" fill="#0094ff" />
+      </svg>
+    `;
+
+    const result = await element.edit(new File([source], "small-logo.svg", { type: "image/svg+xml" }));
+    const warning = env.current.swal.calls.at(-1);
+
+    expect(warning.icon).to.equal("warning");
+    expect(warning.text).to.include("180 × 180 px");
+    expect(warning.text).to.include("required 360 × 360 px");
+    expect(warning.confirmButtonText).to.equal("Continue");
+    expect(warning.cancelButtonText).to.equal("Cancel");
+    expect(result).to.be.instanceOf(File);
+    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+  });
+
+  it("cancels preparation when small-image upscaling is declined", async () => {
+    const focusOrigin = document.createElement("button");
+    const displacedFocus = document.createElement("button");
+    document.body.append(focusOrigin, displacedFocus);
+    displacedFocus.focus();
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const source = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">
+        <rect width="180" height="180" fill="#0094ff" />
+      </svg>
+    `;
+    env.current.swal.setNextResult({ isConfirmed: false });
+
+    const result = await element.edit(new File([source], "small-logo.svg", { type: "image/svg+xml" }), {
+      focusOrigin,
+    });
+
+    expect(result).to.equal(null);
+    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+    expect(document.activeElement).to.equal(focusOrigin);
+    focusOrigin.remove();
+    displacedFocus.remove();
+  });
+
+  it("fits a mismatched source image around the crop selection", async () => {
+    // Open a banner that needs interactive cropping in the real vendor module.
     const element = await mountLitComponent("image-cropper", {
       target: "banner",
     });
     const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="2428" height="192">
-        <rect width="2428" height="192" fill="#0094ff" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="2500" height="300">
+        <rect width="2500" height="300" fill="#0094ff" />
       </svg>
     `;
     const resultPromise = element.edit(new File([source], "banner.svg", { type: "image/svg+xml" }));
@@ -247,6 +415,7 @@ describe("image-cropper", () => {
     // The source covers the fixed selection without being expanded to the full canvas.
     const canvasRect = element._cropper.getCropperCanvas().getBoundingClientRect();
     const imageRect = element._cropperImage.getBoundingClientRect();
+    const initialImageTransform = element._cropperImage.$getTransform();
     const selectionRect = element._selection.getBoundingClientRect();
     expect(imageRect.width).to.be.at.least(selectionRect.width);
     expect(imageRect.height).to.be.at.least(selectionRect.height);
@@ -254,6 +423,20 @@ describe("image-cropper", () => {
       Math.min(imageRect.width - selectionRect.width, imageRect.height - selectionRect.height),
     ).to.be.lessThan(1);
     expect(imageRect.width).to.be.lessThan(canvasRect.width);
+
+    // Move along the overflowing axis while keeping the fitted axis clamped.
+    const stage = element.querySelector("[data-image-cropper-stage]");
+    stage.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    const keyboardTransform = element._cropperImage.$getTransform();
+    expect(keyboardTransform[4]).to.be.closeTo(initialImageTransform[4], 0.1);
+    expect(keyboardTransform[5]).to.be.closeTo(initialImageTransform[5] + 8, 0.1);
+
+    element._resetCrop();
+    element._cropperImage.$move(8, 8);
+    const diagonalTransform = element._cropperImage.$getTransform();
+    expect(diagonalTransform[4]).to.be.closeTo(initialImageTransform[4], 0.1);
+    expect(diagonalTransform[5]).to.be.closeTo(initialImageTransform[5] + 8, 0.1);
+    element._resetCrop();
 
     // Exporting the wide selection preserves both mandatory dimensions.
     const outputCanvas = await element._selection.$toCanvas({ height: 192, width: 2428 });
@@ -273,7 +456,7 @@ describe("image-cropper", () => {
     const applyButton = [...element.querySelectorAll("button")].find(
       (button) => button.textContent.trim() === "Apply crop",
     );
-    expect(zoomControls.textContent).to.include("100%");
+    expect(zoomControls.textContent).to.include("Fit");
     expect(zoomControls.querySelector('[aria-live="polite"]')).to.not.equal(null);
     expect(resetButton.classList.contains("btn-primary-outline")).to.equal(true);
     expect(cancelButton.classList.contains("btn-primary-outline")).to.equal(true);
@@ -288,14 +471,16 @@ describe("image-cropper", () => {
 
     zoomOutButton.click();
     await element.updateComplete;
-    expect(zoomControls.textContent).to.include("100%");
+    expect(zoomControls.textContent).to.include("Fit");
     expect(zoomOutButton.disabled).to.equal(true);
 
     zoomInButton.click();
     await element.updateComplete;
+    expect(element._cropperImage.$getTransform()).to.not.deep.equal(initialImageTransform);
     resetButton.click();
     await element.updateComplete;
-    expect(zoomControls.textContent).to.include("100%");
+    expect(element._cropperImage.$getTransform()).to.deep.equal(initialImageTransform);
+    expect(zoomControls.textContent).to.include("Fit");
     expect(zoomOutButton.disabled).to.equal(true);
 
     // Close the fixture without producing an upload file.
@@ -310,8 +495,8 @@ describe("image-cropper", () => {
       target: "logo",
     });
     const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="360" height="360">
-        <rect width="360" height="360" fill="#0094ff" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="720" height="360">
+        <rect width="720" height="360" fill="#0094ff" />
       </svg>
     `;
     const resultPromise = element.edit(new File([source], "community-logo.svg", { type: "image/svg+xml" }));
@@ -350,8 +535,8 @@ describe("image-cropper", () => {
       target: "logo",
     });
     const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="360" height="360">
-        <rect width="360" height="360" fill="#0094ff" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="720" height="360">
+        <rect width="720" height="360" fill="#0094ff" />
       </svg>
     `;
     const resultPromise = element.edit(new File([source], "community-logo.svg", { type: "image/svg+xml" }));
@@ -426,6 +611,62 @@ describe("image-cropper", () => {
     element._close(null, { restoreFocus: false });
   });
 
+  it("keeps the zoom level unchanged when the crop boundary rejects a zoom", async () => {
+    // Arrange a zoom whose proposed image bounds no longer cover the selection.
+    const element = await mountLitComponent("image-cropper", {
+      target: "logo",
+    });
+    const cropperCanvas = document.createElement("div");
+    let transformRejected = false;
+    element._cropper = {
+      destroy() {},
+      getCropperCanvas() {
+        return cropperCanvas;
+      },
+    };
+    element._cropperImage = {
+      $zoom() {
+        element._handleImageTransform({
+          detail: { matrix: [1, 0, 0, 1, 0, 0] },
+          preventDefault() {
+            transformRejected = true;
+          },
+        });
+      },
+      cloneNode() {
+        const clone = document.createElement("div");
+        clone.getBoundingClientRect = () => ({
+          bottom: 90,
+          height: 80,
+          left: 10,
+          right: 90,
+          top: 10,
+          width: 80,
+        });
+        return clone;
+      },
+      removeEventListener() {},
+    };
+    element._selection = {
+      getBoundingClientRect: () => ({
+        bottom: 100,
+        height: 100,
+        left: 0,
+        right: 100,
+        top: 0,
+        width: 100,
+      }),
+    };
+    element._status = "ready";
+    element._zoomPercent = 110;
+
+    // Apply the rejected zoom and preserve the last accepted visual state.
+    element._zoom(-0.1);
+
+    expect(transformRejected).to.equal(true);
+    expect(element._zoomPercent).to.equal(110);
+  });
+
   it("cancels an earlier edit when another image is selected", async () => {
     // Open two edits on the same reusable component.
     const element = await mountLitComponent("image-cropper", {
@@ -436,6 +677,7 @@ describe("image-cropper", () => {
 
     // The stale edit resolves without affecting the active modal.
     expect(await firstResult).to.equal(null);
+    await waitUntil(() => element._isOpen, "the active crop editor should open");
     expect(element._isOpen).to.equal(true);
 
     // Close the active edit and verify modal scroll state is restored.
@@ -450,6 +692,7 @@ describe("image-cropper", () => {
       target: "open_graph",
     });
     const resultPromise = element.edit(new File(["source"], "social-image.png", { type: "image/png" }));
+    await waitUntil(() => element._isOpen, "the crop editor should open");
     await element.updateComplete;
     const movements = [];
     const zooms = [];

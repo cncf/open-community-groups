@@ -59,17 +59,22 @@ export const uploadImageField = async (page, fieldName, filePath) => {
   const imageField = page.locator(`image-field[name="${fieldName}"]`);
   const cropper = imageField.locator("image-cropper");
   if ((await cropper.count()) > 0) {
+    const dialog = cropper.getByRole("dialog");
+    const uploadResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/images") &&
+        response.status() === 201,
+    );
     await imageField.locator('input[type="file"]').setInputFiles(filePath);
-    await expect(cropper.getByRole("dialog")).toBeVisible();
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/images") &&
-          response.status() === 201,
-      ),
-      cropper.getByRole("button", { name: "Apply crop" }).click(),
+    const preparationResult = await Promise.race([
+      dialog.waitFor({ state: "visible" }).then(() => "crop"),
+      uploadResponsePromise.then(() => "uploaded"),
     ]);
+    if (preparationResult === "crop") {
+      await cropper.getByRole("button", { name: "Apply crop" }).click();
+      await uploadResponsePromise;
+    }
   } else {
     await Promise.all([
       page.waitForResponse(

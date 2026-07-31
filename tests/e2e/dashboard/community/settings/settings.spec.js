@@ -25,6 +25,8 @@ test.describe("community dashboard settings view", () => {
 
     // Open the crop editor and verify its required size and controls.
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateBanner);
+    await expect(adminCommunityPage.getByText("Enlarging it may reduce image quality.")).toBeVisible();
+    await adminCommunityPage.getByRole("button", { name: "Continue" }).click();
     const dialog = cropper.getByRole("dialog", { name: "Crop Banner Image" });
     const cropArea = cropper.getByRole("application", {
       name: "Image crop area",
@@ -37,7 +39,7 @@ test.describe("community dashboard settings view", () => {
     await cropper.getByRole("button", { name: "Zoom in" }).click();
     await expect(cropper.getByText("110%", { exact: true })).toBeVisible();
     await cropper.getByRole("button", { name: "Reset position" }).click();
-    await expect(cropper.getByText("100%", { exact: true })).toBeVisible();
+    await expect(cropper.getByText("Fit", { exact: true })).toBeVisible();
 
     // Cancel without uploading or changing the saved form value.
     await cropper.getByRole("button", { name: "Cancel" }).click();
@@ -48,7 +50,24 @@ test.describe("community dashboard settings view", () => {
     expect(uploadRequests).toHaveLength(0);
 
     // Reopen the editor and upload the mandatory crop.
+    await adminCommunityPage.evaluate(() => {
+      const nativeFetch = window.fetch;
+      window.fetch = (input, init) => {
+        if (input === "/images" && init?.body instanceof FormData) {
+          const uploadFile = init.body.get("file");
+          if (uploadFile instanceof File) {
+            window.imageUploadMetadata = {
+              name: uploadFile.name,
+              type: uploadFile.type,
+            };
+          }
+        }
+
+        return nativeFetch(input, init);
+      };
+    });
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateBanner);
+    await adminCommunityPage.getByRole("button", { name: "Continue" }).click();
     await expect(cropper.getByRole("button", { name: "Apply crop" })).toBeEnabled();
     const uploadResponsePromise = adminCommunityPage.waitForResponse(
       (response) =>
@@ -57,12 +76,14 @@ test.describe("community dashboard settings view", () => {
         response.status() === 201,
     );
     await cropper.getByRole("button", { name: "Apply crop" }).click();
-    const uploadResponse = await uploadResponsePromise;
+    await uploadResponsePromise;
 
     // Verify the generated file and the uploaded preview dimensions.
-    const uploadRequestBody = uploadResponse.request().postDataBuffer()?.toString("latin1") ?? "";
-    expect(uploadRequestBody).toContain('filename="community-secondary-banner-cropped.webp"');
-    expect(uploadRequestBody).toContain("Content-Type: image/webp");
+    const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
+    expect(uploadMetadata).toEqual({
+      name: "community-secondary-banner-cropped.webp",
+      type: "image/webp",
+    });
     await expect(dialog).toBeHidden();
     await expect(valueInput).toHaveValue(/\/images\//);
     await expect(advertisementBannerField.getByRole("img", { name: "Image preview" })).toHaveJSProperty(

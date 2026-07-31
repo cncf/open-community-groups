@@ -192,69 +192,70 @@ describe("image-field", () => {
     expect(uploadButton.getAttribute("aria-disabled")).to.equal("false");
   });
 
-  it("rejects animated files before mandatory cropping", async () => {
-    // Use minimal animated containers that drag-and-drop can pass to the crop flow.
+  it("rejects GIF files before mandatory cropping", async () => {
+    // Drag-and-drop can bypass the file picker's accepted-format filter.
     const element = await mountLitComponent("image-field", {
       target: "banner",
     });
-    const animatedPng = new Uint8Array([
-      137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0, 97, 99, 84, 76, 0, 0, 0, 0,
-    ]);
-    const animatedWebp = new Uint8Array([
-      82, 73, 70, 70, 22, 0, 0, 0, 87, 69, 66, 80, 86, 80, 56, 88, 10, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ]);
-    const animatedFiles = [
-      new File(["gif"], "animated.gif", { type: "image/gif" }),
-      new File([animatedPng], "animated.png", { type: "image/png" }),
-      new File(
-        ['<svg xmlns="http://www.w3.org/2000/svg"><animate attributeName="opacity" /></svg>'],
-        "animated.svg",
-        { type: "image/svg+xml" },
-      ),
-      new File([animatedWebp], "animated.webp", { type: "image/webp" }),
-    ];
     let resetCalls = 0;
-    for (const animatedFile of animatedFiles) {
-      await element._processFile(animatedFile, () => {
-        resetCalls += 1;
-      });
-    }
+    await element._processFile(new File(["gif"], "animated.gif", { type: "image/gif" }), () => {
+      resetCalls += 1;
+    });
 
-    // Animation is never silently flattened into the cropper's static output.
+    // GIF animation is never silently flattened into the cropper's static output.
     expect(fetchMock.calls).to.have.length(0);
-    expect(resetCalls).to.equal(animatedFiles.length);
+    expect(resetCalls).to.equal(1);
     expect(env.current.swal.calls.at(-1).html).to.include("animation would be lost");
   });
 
-  it("keeps only the latest file when animation scans finish out of order", async () => {
-    // Delay the first PNG scan until a newer selection reaches the cropper.
+  it("discards a retained retry when another file begins preparation", async () => {
+    // Retain a failed crop, then hold a replacement file in crop preparation.
     const element = await mountLitComponent("image-field", {
       target: "logo",
     });
-    const firstFile = new File(["first"], "first.png", { type: "image/png" });
-    let resolveFirstScan;
-    firstFile.arrayBuffer = () =>
-      new Promise((resolve) => {
-        resolveFirstScan = resolve;
-      });
-    const secondFile = new File(["second"], "second.png", {
+    element._pendingUploadFile = new File(["old"], "old-logo.webp", {
+      type: "image/webp",
+    });
+    await element.updateComplete;
+    const replacementFile = new File(["replacement"], "replacement.png", {
       type: "image/png",
     });
-    const croppedFiles = [];
-    element.querySelector("image-cropper").edit = async (file) => {
-      croppedFiles.push(file);
-      return null;
-    };
+    let resolveReplacementCrop;
+    element.querySelector("image-cropper").edit = () =>
+      new Promise((resolve) => {
+        resolveReplacementCrop = resolve;
+      });
 
-    const firstProcess = element._processFile(firstFile);
-    await element._processFile(secondFile);
-    resolveFirstScan(new ArrayBuffer(0));
-    await firstProcess;
+    const preparationPromise = element._processFile(replacementFile);
+    await element.updateComplete;
 
-    expect(croppedFiles).to.deep.equal([secondFile]);
+    // The obsolete retry cannot start an upload while the replacement is pending.
+    expect(element._pendingUploadFile).to.equal(null);
+    expect(element._isPreparing).to.equal(true);
+    expect(element.textContent).to.not.include("Retry upload");
+    expect(element.querySelector("[data-image-upload-preview]").getAttribute("aria-busy")).to.equal("true");
+    expect(element.querySelector("svg-spinner").parentElement.getAttribute("aria-hidden")).to.equal("false");
+    expect(element.querySelector("svg-spinner").getAttribute("label")).to.equal("Preparing image...");
+    await element._retryUpload();
+    expect(fetchMock.calls).to.have.length(0);
+
+    // Ignore another drop without allowing the browser to navigate away.
+    const pendingDragEvent = new Event("dragover", { cancelable: true });
+    const pendingDropEvent = new Event("drop", { cancelable: true });
+    element._handleDragOver(pendingDragEvent);
+    await element._handleDrop(pendingDropEvent);
+    expect(pendingDragEvent.defaultPrevented).to.equal(true);
+    expect(pendingDropEvent.defaultPrevented).to.equal(true);
+
+    resolveReplacementCrop(null);
+    await preparationPromise;
+    await element.updateComplete;
+    expect(element._isPreparing).to.equal(false);
+    expect(element.querySelector("[data-image-upload-preview]").getAttribute("aria-busy")).to.equal("false");
+    expect(element.querySelector("svg-spinner").parentElement.getAttribute("aria-hidden")).to.equal("true");
   });
 
-  it("ignores a pending animation scan after the field disconnects", async () => {
+  it("ignores pending crop preparation after the field disconnects", async () => {
     // Hold file preparation open while the field and its cropper leave the document.
     const element = await mountLitComponent("image-field", {
       target: "logo",
@@ -262,23 +263,21 @@ describe("image-field", () => {
     const pendingFile = new File(["pending"], "pending.png", {
       type: "image/png",
     });
-    let resolveScan;
-    pendingFile.arrayBuffer = () =>
-      new Promise((resolve) => {
-        resolveScan = resolve;
-      });
+    let resolveCrop;
     let cropCalls = 0;
-    element.querySelector("image-cropper").edit = async () => {
-      cropCalls += 1;
-      return null;
-    };
+    element.querySelector("image-cropper").edit = () =>
+      new Promise((resolve) => {
+        resolveCrop = resolve;
+        cropCalls += 1;
+      });
 
     const processingPromise = element._processFile(pendingFile);
+    await waitUntil(() => cropCalls === 1, "crop preparation should start");
     element.remove();
-    resolveScan(new ArrayBuffer(0));
+    resolveCrop(pendingFile);
     await processingPromise;
 
-    expect(cropCalls).to.equal(0);
+    expect(fetchMock.calls).to.have.length(0);
     expect(document.body.style.overflow).to.equal("");
   });
 
@@ -373,8 +372,8 @@ describe("image-field", () => {
     const fileInput = element.querySelector('input[type="file"]');
     const cropper = element.querySelector("image-cropper");
     const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="2428" height="192">
-        <rect width="2428" height="192" fill="#0094ff" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="2500" height="300">
+        <rect width="2500" height="300" fill="#0094ff" />
       </svg>
     `;
 
