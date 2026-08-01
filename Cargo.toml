@@ -14,7 +14,7 @@ rust-version = "1.96.1"
 
 [workspace.dependencies]
 anyhow = "1.0.103"
-base64 = "0.22"
+base64 = "0.23"
 askama = { version = "0.16.0", features = ["serde_json"] }
 async-trait = "0.1.89"
 aws-credential-types = "1.2.14"
@@ -43,7 +43,7 @@ hex = "0.4"
 hmac = "0.13.0"
 icalendar = "0.17.12"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
-iref = "3.2.2"
+iref = "4.2.0"
 lettre = { version = "0.11.22", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
 markdown = "1.0.0"
 mime_guess = "2.0.5"
@@ -62,7 +62,7 @@ qrcode = { version = "0.14.1", features = ["svg"] }
 reqwest = { version = "0.13.4", features = ["json"] }
 # Keep this exact pin so the workspace resolves to patched rkyv 0.7.46.
 # parcel_sourcemap otherwise pulls vulnerable rkyv 0.7.45 (RUSTSEC-2026-0001).
-rkyv = "=0.7.46"
+rkyv = "=0.8.17"
 rust-embed = "8.11.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
@@ -99,7 +99,7 @@ tokio-postgres = { version = "0.7.18", features = [
 tokio-util = { version = "0.7.18", features = ["full"] }
 tower = "0.5.3"
 tower-http = { version = "0.7.0", features = ["auth", "fs", "set-header", "trace"] }
-tower-sessions = { version = "0.14.0", features = ["signed"] }
+tower-sessions = { version = "0.15.0", features = ["signed"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 unicode-segmentation = "1.13.3"
