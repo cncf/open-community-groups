@@ -1,9 +1,11 @@
+-- Tests unpublishing events and closing their enrollment state.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +15,8 @@ select plan(12);
 \set eventCategoryID '3a360000-0000-0000-0000-000000000002'
 \set eventID '3a360000-0000-0000-0000-000000000003'
 \set eventNoMeetingID '3a360000-0000-0000-0000-000000000004'
+\set eventNoMeetingTicketTypeID '3a360000-0000-0000-0000-000000000015'
+\set eventTicketTypeID '3a360000-0000-0000-0000-000000000014'
 \set groupCategoryID '3a360000-0000-0000-0000-000000000005'
 \set groupID '3a360000-0000-0000-0000-000000000006'
 \set missingGroupID '3a360000-0000-0000-0000-000000000007'
@@ -205,17 +209,18 @@ insert into session (
     false
 );
 
--- Active organizer offer canceled when the event is unpublished
+-- Ticket types satisfying the event enrollment invariant
 insert into event_ticket_type (
     event_id,
     event_ticket_type_id,
     "order",
     seats_total,
     title
-)
-select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
-from event e;
+) values
+    (:'eventID', :'eventTicketTypeID', 1, 100, 'General Admission'),
+    (:'eventNoMeetingID', :'eventNoMeetingTicketTypeID', 1, 100, 'General Admission');
 
+-- Active organizer offer canceled when the event is unpublished
 insert into admission_offer (
     admission_offer_id,
     event_id,
@@ -316,6 +321,28 @@ select results_eq(
         :'eventID'
     ),
     'Should create the expected audit row'
+);
+
+-- Should allow replaying an already unpublished event
+select lives_ok(
+    format(
+        'select unpublish_event(null::uuid, %L::uuid, %L::uuid)',
+        :'groupID',
+        :'eventID'
+    ),
+    'Should allow replaying an already unpublished event'
+);
+
+-- Should not duplicate the unpublish audit row on replay
+select is(
+    (
+        select count(*)::int
+        from audit_log
+        where action = 'event_unpublished'
+        and event_id = :'eventID'::uuid
+    ),
+    1,
+    'Should not duplicate the unpublish audit row on replay'
 );
 
 -- Should cancel active offers and clear queues when unpublishing

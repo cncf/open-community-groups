@@ -810,7 +810,7 @@ fn test_delivery_worker_prepare_content_event_admission_offer_created_without_rs
 }
 
 #[test]
-fn test_delivery_worker_prepare_content_free_rsvp_admission_offer_created() {
+fn test_delivery_worker_prepare_content_event_admission_offer_created_without_ticket_for_rsvp() {
     // Setup a simple-RSVP organizer offer
     let mut template_data = sample_event_admission_offer_created_template_data();
     template_data
@@ -1284,7 +1284,7 @@ fn test_delivery_worker_prepare_content_event_ticket_request_approved_without_rs
 }
 
 #[test]
-fn test_delivery_worker_prepare_content_free_rsvp_ticket_request_approved() {
+fn test_delivery_worker_prepare_content_event_ticket_request_approved_without_ticket_for_rsvp() {
     // Setup a simple-RSVP approval payload
     let mut template_data = sample_free_event_ticket_offer_template_data();
     template_data
@@ -1367,7 +1367,7 @@ fn test_delivery_worker_prepare_content_event_ticket_waitlist_offer_without_rsvp
 }
 
 #[test]
-fn test_delivery_worker_prepare_content_free_rsvp_ticket_waitlist_offer() {
+fn test_delivery_worker_prepare_content_event_ticket_waitlist_offer_without_ticket_for_rsvp() {
     // Setup a simple-RSVP waitlist payload
     let mut template_data = sample_free_event_ticket_offer_template_data();
     template_data

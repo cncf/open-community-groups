@@ -26,8 +26,8 @@ select plan(12);
 \set groupCategoryID '0c090000-0000-0000-0000-00000000000d'
 \set groupID '0c090000-0000-0000-0000-00000000000e'
 \set groupNoLogoID '0c090000-0000-0000-0000-00000000000f'
-\set pendingInviteID '0c090000-0000-0000-0000-000000000010'
 \set mainTicketTypeID '0c090000-0000-0000-0000-00000000001c'
+\set pendingInviteID '0c090000-0000-0000-0000-000000000010'
 \set privateTicketPriceWindowID '0c090000-0000-0000-0000-00000000001a'
 \set privateTicketTypeID '0c090000-0000-0000-0000-00000000001b'
 \set questionID '0c090000-0000-0000-0000-000000000011'
@@ -155,7 +155,8 @@ insert into "group" (
     slug,
 
     active,
-    logo_url
+    logo_url,
+    slug_pretty
 ) values (
     :'groupID',
     :'communityID',
@@ -164,7 +165,8 @@ insert into "group" (
     'abc1234',
 
     true,
-    'https://example.com/group-logo.png'
+    'https://example.com/group-logo.png',
+    'seattle-kubernetes'
 );
 
 -- Group without logo
@@ -390,10 +392,13 @@ insert into event (
     true,
     '2030-01-02 10:00:00+00',
     '2030-01-01 10:00:00+00',
-    format(
-        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
-        :'questionID'
-    )::jsonb
+    jsonb_build_array(jsonb_build_object(
+        'id', :'questionID',
+        'kind', 'free-text',
+        'options', jsonb_build_array(),
+        'prompt', 'Note',
+        'required', true
+    ))
 );
 
 -- Event ticket type
@@ -581,7 +586,8 @@ select is(
         "venue_state": "NY",
         "waitlist_count": 1,
         "waitlist_enabled": true,
-        "zip_code": "10001"
+        "zip_code": "10001",
+        "group_slug_pretty": "seattle-kubernetes"
     }', :'eventID', :'eventSeriesID')::jsonb,
     'Should return correct event summary data as JSON'
 );
@@ -673,7 +679,6 @@ select is(
 );
 
 -- Should include pretty group slug when available
-update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
 select is(
     (
         get_event_summary(

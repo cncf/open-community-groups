@@ -546,11 +546,6 @@ mock! {
         async fn list_cfs_submission_statuses_for_review(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
-        async fn list_group_audit_logs(
-            &self,
-            group_id: Uuid,
-            filters: &crate::templates::dashboard::audit::AuditLogFilters,
-        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_event_attendees_ids(
             &self,
             group_id: Uuid,
@@ -592,6 +587,11 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_group_audit_logs(
+            &self,
+            group_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_group_events(
             &self,
             group_id: Uuid,

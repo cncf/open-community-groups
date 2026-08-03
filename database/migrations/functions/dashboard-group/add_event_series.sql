@@ -51,7 +51,7 @@ begin
         raise exception 'recurring events require starts_at';
     end if;
 
-    -- Create the series row shared by every generated event.
+    -- Create the series row shared by every generated event
     insert into event_series (
         group_id,
         recurrence_additional_occurrences,
@@ -71,7 +71,7 @@ begin
     )
     returning event_series_id into v_event_series_id;
 
-    -- Create each event using the existing single-event behavior and then link it.
+    -- Create each event using the existing single-event behavior and then link it
     for v_event in select jsonb_array_elements(p_events)
     loop
         v_event_id := add_event(

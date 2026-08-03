@@ -51,13 +51,13 @@ insert into community (
     'enrollment-reconciliation-community'
 );
 
--- Group category used by the reconciliation group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
 -- Event category used by the reconciliation event
 insert into event_category (community_id, event_category_id, name)
 values (:'communityID', :'eventCategoryID', 'General');
+
+-- Group category used by the reconciliation group
+insert into group_category (community_id, group_category_id, name)
+values (:'communityID', :'groupCategoryID', 'Technology');
 
 -- Users owning due, future, and queued enrollment state
 insert into "user" (auth_hash, email, email_verified, user_id, username)

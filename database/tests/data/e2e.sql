@@ -2175,7 +2175,7 @@ insert into event_ticket_type (
 )
 select
     e.event_id,
-    gen_random_uuid(),
+    md5(e.event_id::text || ':ticket-type')::uuid,
     1,
     greatest(coalesce(e.capacity, 100), 1),
     'General Admission'
@@ -2277,7 +2277,7 @@ values
     (
         '55555555-5555-5555-5555-555555555909',
         (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555909' order by "order" limit 1),
-        current_timestamp + interval '24 hours',
+        '2099-12-31 00:00:00+00',
         'waitlist',
         'pending',
         '77777777-7777-7777-7777-777777777706'
@@ -2285,7 +2285,7 @@ values
     (
         '55555555-5555-5555-5555-555555555910',
         (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555910' order by "order" limit 1),
-        current_timestamp + interval '24 hours',
+        '2099-12-31 00:00:00+00',
         'organizer_invitation',
         'pending',
         '77777777-7777-7777-7777-777777777706'
@@ -2293,7 +2293,7 @@ values
     (
         '55555555-5555-5555-5555-555555555527',
         (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555527' order by "order" limit 1),
-        current_timestamp + interval '24 hours',
+        '2099-12-31 00:00:00+00',
         'organizer_invitation',
         'pending',
         '77777777-7777-7777-7777-777777777702'
@@ -2301,7 +2301,7 @@ values
     (
         '55555555-5555-5555-5555-555555555527',
         (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555527' order by "order" limit 1),
-        current_timestamp + interval '24 hours',
+        '2099-12-31 00:00:00+00',
         'waitlist',
         'pending',
         '77777777-7777-7777-7777-777777777704'
@@ -2591,7 +2591,7 @@ insert into event_ticket_price_window (
     event_ticket_price_window_id,
     event_ticket_type_id
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.event_ticket_type_id
 from event_ticket_type ett
 where not exists (
     select 1

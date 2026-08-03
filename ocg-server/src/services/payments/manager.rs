@@ -33,9 +33,6 @@ pub(crate) trait PaymentsManager {
     /// Approves a pending refund request and queues the provider refund.
     async fn approve_refund_request(&self, input: &ApproveRefundRequestInput) -> Result<()>;
 
-    /// Completes an externally resolved terminal provider refund.
-    async fn complete_refund_recovery(&self, input: &CompleteRefundRecoveryInput) -> Result<()>;
-
     /// Completes a free checkout and enqueues the attendee welcome notification.
     async fn complete_free_checkout(
         &self,
@@ -44,6 +41,9 @@ pub(crate) trait PaymentsManager {
         event_purchase_id: Uuid,
         user_id: Uuid,
     ) -> Result<()>;
+
+    /// Completes an externally resolved terminal provider refund.
+    async fn complete_refund_recovery(&self, input: &CompleteRefundRecoveryInput) -> Result<()>;
 
     /// Creates or reuses the provider checkout URL for a pending event purchase.
     async fn get_or_create_checkout_redirect_url(
@@ -121,6 +121,23 @@ impl PgPaymentsManager {
             .await
     }
 
+    /// Completes a free checkout and enqueues the attendee welcome notification.
+    pub(crate) async fn complete_free_checkout(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        event_purchase_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        // Finalize the free purchase before notifying the attendee
+        self.db.complete_free_event_purchase(event_purchase_id).await?;
+        self.notification_composer
+            .enqueue_event_welcome_notification(community_id, event_id, user_id)
+            .await;
+
+        Ok(())
+    }
+
     /// Completes an externally resolved terminal provider refund.
     pub(crate) async fn complete_refund_recovery(
         &self,
@@ -158,23 +175,6 @@ impl PgPaymentsManager {
                     .map(|provider| provider.provider()),
             })
             .await
-    }
-
-    /// Completes a free checkout and enqueues the attendee welcome notification.
-    pub(crate) async fn complete_free_checkout(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-        event_purchase_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()> {
-        // Finalize the free purchase before notifying the attendee
-        self.db.complete_free_event_purchase(event_purchase_id).await?;
-        self.notification_composer
-            .enqueue_event_welcome_notification(community_id, event_id, user_id)
-            .await;
-
-        Ok(())
     }
 
     /// Creates or reuses the provider checkout URL for a pending event purchase.

@@ -352,14 +352,14 @@ select throws_ok(
     'Should reject a provider-incomplete refund'
 );
 
--- Should reject a stale worker claim
+-- Should reject a worker that no longer owns the refund claim
 select throws_ok(
     format(
         'select finalize_event_purchase_refund(%L::uuid, %L::uuid, %L::jsonb)',
         :'staleRefundID', :'wrongClaimID', '{}'
     ),
     'event purchase refund claim is not provider-complete',
-    'Should reject a stale worker claim'
+    'Should reject a worker that no longer owns the refund claim'
 );
 
 -- Should require notification data before mutating provider-complete work
@@ -600,7 +600,7 @@ select results_eq(
     'Should preserve automatic refund cancellation ownership and released discount inventory'
 );
 
--- Should finalize an automatic refund after a replacement purchase completes.
+-- Should finalize an automatic refund after a replacement purchase completes
 select lives_ok(
     format(
         $$
@@ -616,7 +616,7 @@ select lives_ok(
     'Should finalize an automatic refund after a replacement purchase completes'
 );
 
--- Should preserve attendance owned by the completed replacement purchase.
+-- Should preserve attendance owned by the completed replacement purchase
 select results_eq(
     format($$
         select

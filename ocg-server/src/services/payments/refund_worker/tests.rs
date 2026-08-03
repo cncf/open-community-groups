@@ -194,6 +194,7 @@ async fn process_next_refund_finds_existing_success_without_creating_refund() {
     let mut db = MockDB::new();
     let expected_template_data = expect_refund_approval_context(&mut db, &claimed_refund);
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_succeeded()
@@ -259,6 +260,7 @@ async fn process_next_refund_handles_persisted_success_finalization_error() {
     let mut db = MockDB::new();
     let expected_template_data = expect_refund_approval_context(&mut db, &claimed_refund);
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_finalize_event_purchase_refund()
@@ -314,6 +316,7 @@ async fn process_next_refund_persists_pending_provider_result() {
     // Setup durable pending-state recording without finalization
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_pending()
@@ -374,6 +377,7 @@ async fn process_next_refund_persists_terminal_provider_failure() {
     // Setup durable terminal-failure persistence
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_terminal_failed()
@@ -432,6 +436,7 @@ async fn process_next_refund_records_retryable_failure_after_creation_error() {
     // Setup claim release after provider refund creation fails
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_retryable_failure()
@@ -486,6 +491,7 @@ async fn process_next_refund_records_retryable_failure_after_finalization_error(
     let mut db = MockDB::new();
     let expected_template_data = expect_refund_approval_context(&mut db, &claimed_refund);
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_succeeded()
@@ -550,6 +556,7 @@ async fn process_next_refund_records_retryable_failure_after_lookup_error() {
     // Setup claim release after a retryable provider error
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_retryable_failure()
@@ -598,6 +605,7 @@ async fn process_next_refund_records_retryable_failure_after_missing_pinned_refu
     // Setup claim release after the pinned provider refund cannot be found
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_retryable_failure()
@@ -650,6 +658,7 @@ async fn process_next_refund_records_retryable_failure_after_notification_contex
     // Fail notification context loading before finalization and release the claim
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_finalize_event_purchase_refund().never();
@@ -707,6 +716,7 @@ async fn process_next_refund_records_retryable_failure_after_success_persistence
     // Fail provider-success persistence and release the claim for reconciliation
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_succeeded()
@@ -771,6 +781,7 @@ async fn process_next_refund_records_retryable_failure_when_payment_reference_is
     // Setup claim release for the local validation failure
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_retryable_failure()
@@ -902,6 +913,7 @@ async fn refund_worker_run_stops_during_provider_request_after_cancellation() {
     let claimed_refund = sample_refund(claim_id, purchase_id, refund_id);
     let mut db = MockDB::new();
     db.expect_claim_event_purchase_refund()
+        .with(eq(PaymentProvider::Stripe))
         .times(1)
         .return_once(move |_| Ok(Some(claimed_refund)));
     db.expect_record_event_purchase_refund_retryable_failure().never();

@@ -1,3 +1,5 @@
+-- Tests validating event ticketing payloads.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -159,7 +161,7 @@ select throws_ok(
     'Should delegate discount code validation'
 );
 
--- Should require ticket types when discount codes are present
+-- Should require positive ticket pricing when discount codes are present
 select throws_ok(
     $$select validate_event_ticketing_payload(
         null,
@@ -189,7 +191,7 @@ select throws_ok(
     'Should require positive ticket pricing when discount codes are present'
 );
 
--- Should require ticket types when a payment currency is present
+-- Should require positive ticket pricing when a payment currency is present
 select throws_ok(
     $$select validate_event_ticketing_payload(
         null,

@@ -1,3 +1,5 @@
+-- Tests completing free event purchases.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -29,8 +31,8 @@ select plan(13);
 \set priceWindowID '79430000-0000-0000-0000-000000000015'
 \set recoveryPurchaseID '79430000-0000-0000-0000-000000000026'
 \set recoveryReplacementPurchaseID '79430000-0000-0000-0000-000000000027'
-\set reactivationPurchaseID '79430000-0000-0000-0000-000000000029'
 \set reactivationOfferID '79430000-0000-0000-0000-00000000002b'
+\set reactivationPurchaseID '79430000-0000-0000-0000-000000000029'
 \set registrationQuestionID '79430000-0000-0000-0000-000000000016'
 \set user1ID '79430000-0000-0000-0000-000000000017'
 \set user2ID '79430000-0000-0000-0000-000000000018'
@@ -185,8 +187,8 @@ insert into event (
     'UTC',
     null,
     now() + interval '1 day',
-    true,
-    now(),
+    false,
+    null,
     '[]'::jsonb,
     null
 ), (
@@ -586,15 +588,11 @@ select throws_ok(
     'Should reject expired purchase holds'
 );
 
--- Should reject free purchases when the event becomes inactive
-update event
-set published = false
-where event_id = :'eventInactiveID'::uuid;
-
+-- Should reject free purchases when the event is inactive
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'inactivePurchaseID'),
     'event not found or inactive',
-    'Should reject free purchases when the event becomes inactive'
+    'Should reject free purchases when the event is inactive'
 );
 
 -- Should reject a free replacement while refund recovery is unresolved

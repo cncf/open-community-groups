@@ -170,6 +170,7 @@ insert into event (
     true
 );
 
+-- Ticket type assigned to the promoted-offer event
 insert into event_ticket_type (
     event_id,
     event_ticket_type_id,
@@ -184,6 +185,7 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Free price window for the promoted-offer ticket type
 insert into event_ticket_price_window (
     amount_minor,
     event_ticket_price_window_id,

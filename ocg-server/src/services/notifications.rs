@@ -194,7 +194,7 @@ impl EnqueueWorker {
             let pause = match self.enqueue_due_notifications().await {
                 Ok(_) => PAUSE_ON_ENQUEUE_NONE,
                 Err(err) => {
-                    error!(?err, "error enqueueing due notifications");
+                    error!(error = %err, "error enqueueing due notifications");
                     PAUSE_ON_ENQUEUE_ERROR
                 }
             };
@@ -235,7 +235,7 @@ impl DeliveryRecoveryWorker {
                     PAUSE_ON_DELIVERY_RECOVERY_NONE
                 }
                 Err(err) => {
-                    error!(?err, "error recovering stale notification deliveries");
+                    error!(error = %err, "error recovering stale notification deliveries");
                     PAUSE_ON_DELIVERY_RECOVERY_ERROR
                 }
             };
@@ -290,7 +290,7 @@ impl DeliveryWorker {
                 Err(err) => {
                     // Something went wrong delivering the notification, pause
                     // unless we've been asked to stop
-                    error!(?err, "error delivering notification");
+                    error!(error = %err, "error delivering notification");
                     tokio::select! {
                         () = sleep(PAUSE_ON_DELIVERY_ERROR) => {},
                         () = self.cancellation_token.cancelled() => break,
@@ -1000,7 +1000,7 @@ pub(crate) async fn load_event_notification_context(
     community_id: Uuid,
     event_id: Uuid,
 ) -> Result<(EventSummary, SiteSettings)> {
-    // Load site settings first to preserve existing short-circuit behavior
+    // Load the independent site and event notification context concurrently
     let (site_settings, event) = tokio::try_join!(
         db.get_site_settings(),
         db.get_event_summary_by_id(community_id, event_id),

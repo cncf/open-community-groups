@@ -2,7 +2,7 @@
 
 begin;
 
--- Simulate the schema-68 function catalog before its enrollment APIs are removed.
+-- Simulate the schema-68 function catalog before its enrollment APIs are removed
 create or replace function complete_non_ticketed_event_admission_offer(
     uuid,
     uuid,
@@ -14,58 +14,66 @@ returns boolean as $$
     select true;
 $$ language sql;
 
+\set activeOfferID '69000000-0000-0000-0000-000000000040'
 \set communityID '69000000-0000-0000-0000-000000000001'
-\set groupCategoryID '69000000-0000-0000-0000-000000000002'
+\set confirmedUserID '69000000-0000-0000-0000-000000000030'
 \set eventCategoryID '69000000-0000-0000-0000-000000000003'
+\set groupCategoryID '69000000-0000-0000-0000-000000000002'
 \set groupID '69000000-0000-0000-0000-000000000004'
 \set limitedEventID '69000000-0000-0000-0000-000000000010'
-\set pastEventID '69000000-0000-0000-0000-000000000011'
 \set overbookedEventID '69000000-0000-0000-0000-000000000012'
-\set unlimitedEventID '69000000-0000-0000-0000-000000000013'
-\set ticketedEventID '69000000-0000-0000-0000-000000000014'
-\set privateEventID '69000000-0000-0000-0000-000000000015'
-\set publicTicketTypeID '69000000-0000-0000-0000-000000000020'
-\set secondaryTicketTypeID '69000000-0000-0000-0000-000000000021'
-\set privateTicketTypeID '69000000-0000-0000-0000-000000000022'
-\set confirmedUserID '69000000-0000-0000-0000-000000000030'
-\set pendingUserID '69000000-0000-0000-0000-000000000031'
-\set pastPendingUserID '69000000-0000-0000-0000-000000000032'
 \set overbookedUser1ID '69000000-0000-0000-0000-000000000033'
 \set overbookedUser2ID '69000000-0000-0000-0000-000000000034'
-\set waitlistUserID '69000000-0000-0000-0000-000000000035'
-\set requestUserID '69000000-0000-0000-0000-000000000036'
-\set terminalOfferUserID '69000000-0000-0000-0000-000000000037'
+\set pastEventID '69000000-0000-0000-0000-000000000011'
+\set pastPendingUserID '69000000-0000-0000-0000-000000000032'
+\set pendingUserID '69000000-0000-0000-0000-000000000031'
+\set privateEventID '69000000-0000-0000-0000-000000000015'
+\set privatePriceWindowID '69000000-0000-0000-0000-000000000052'
 \set privateRequestUserID '69000000-0000-0000-0000-000000000038'
-\set activeOfferID '69000000-0000-0000-0000-000000000040'
+\set privateTicketTypeID '69000000-0000-0000-0000-000000000022'
+\set publicPriceWindowID '69000000-0000-0000-0000-000000000050'
+\set publicTicketTypeID '69000000-0000-0000-0000-000000000020'
+\set requestUserID '69000000-0000-0000-0000-000000000036'
+\set secondaryPriceWindowID '69000000-0000-0000-0000-000000000051'
+\set secondaryTicketTypeID '69000000-0000-0000-0000-000000000021'
 \set terminalOfferID '69000000-0000-0000-0000-000000000041'
+\set terminalOfferUserID '69000000-0000-0000-0000-000000000037'
+\set ticketedEventID '69000000-0000-0000-0000-000000000014'
+\set unlimitedEventID '69000000-0000-0000-0000-000000000013'
+\set waitlistUserID '69000000-0000-0000-0000-000000000035'
 
+-- Community hosting the migration fixtures
 insert into community (
+    community_id,
     banner_mobile_url,
     banner_url,
-    community_id,
     description,
     display_name,
     logo_url,
     name
 ) values (
+    :'communityID',
     'https://example.test/banner-mobile.png',
     'https://example.test/banner.png',
-    :'communityID',
     'Migration upgrade fixtures',
     'Migration Community',
     'https://example.test/logo.png',
     'migration-community'
 );
 
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Migration groups');
-
+-- Event category shared by the migrated events
 insert into event_category (community_id, event_category_id, name)
 values (:'communityID', :'eventCategoryID', 'Migration events');
 
+-- Group category used by the migration fixture group
+insert into group_category (community_id, group_category_id, name)
+values (:'communityID', :'groupCategoryID', 'Migration groups');
+
+-- Group owning every migrated event
 insert into "group" (community_id, group_category_id, group_id, name, slug)
 values (:'communityID', :'groupCategoryID', :'groupID', 'Migration Group', 'migration-group');
 
+-- Users covering the migrated enrollment states
 insert into "user" (auth_hash, email, email_verified, user_id, username)
 values
     ('hash', 'confirmed@example.test', true, :'confirmedUserID', 'migration-confirmed'),
@@ -78,6 +86,7 @@ values
     ('hash', 'terminal@example.test', true, :'terminalOfferUserID', 'migration-terminal'),
     ('hash', 'private@example.test', true, :'privateRequestUserID', 'migration-private');
 
+-- Events covering legacy capacity and enrollment shapes
 insert into event (
     attendee_approval_required,
     capacity,
@@ -191,6 +200,7 @@ insert into event (
         'UTC'
     );
 
+-- Existing ticket types preserved by the migration
 insert into event_ticket_type (
     availability,
     event_id,
@@ -203,15 +213,17 @@ insert into event_ticket_type (
     ('invitation_only', :'ticketedEventID', :'secondaryTicketTypeID', 2, 5, 'Private tier'),
     ('invitation_only', :'privateEventID', :'privateTicketTypeID', 1, 5, 'Private admission');
 
+-- Price windows attached to the existing ticket types
 insert into event_ticket_price_window (
     amount_minor,
     event_ticket_price_window_id,
     event_ticket_type_id
 ) values
-    (0, '69000000-0000-0000-0000-000000000050', :'publicTicketTypeID'),
-    (0, '69000000-0000-0000-0000-000000000051', :'secondaryTicketTypeID'),
-    (0, '69000000-0000-0000-0000-000000000052', :'privateTicketTypeID');
+    (0, :'publicPriceWindowID', :'publicTicketTypeID'),
+    (0, :'secondaryPriceWindowID', :'secondaryTicketTypeID'),
+    (0, :'privatePriceWindowID', :'privateTicketTypeID');
 
+-- Active and terminal legacy offers migrated to ticket types
 insert into admission_offer (
     admission_offer_id,
     created_at,
@@ -240,6 +252,7 @@ insert into admission_offer (
         :'terminalOfferUserID'
     );
 
+-- Legacy attendee states migrated to ticket-aware enrollment
 insert into event_attendee (created_at, event_id, status, user_id)
 values
     ('2026-01-01 09:00:00+00', :'limitedEventID', 'confirmed', :'confirmedUserID'),
@@ -248,9 +261,11 @@ values
     ('2026-01-01 09:00:00+00', :'overbookedEventID', 'confirmed', :'overbookedUser1ID'),
     ('2026-01-01 09:01:00+00', :'overbookedEventID', 'confirmed', :'overbookedUser2ID');
 
+-- Legacy waitlist entry assigned a ticket type by the migration
 insert into event_waitlist (event_id, user_id)
 values (:'ticketedEventID', :'waitlistUserID');
 
+-- Legacy invitation requests assigned ticket types by the migration
 insert into event_invitation_request (event_id, status, user_id)
 values
     (:'ticketedEventID', 'pending', :'requestUserID'),

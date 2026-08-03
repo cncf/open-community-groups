@@ -346,21 +346,21 @@ values (:'eventID', :'ticketTypeID', :'waitlistUserID');
 -- TESTS
 -- ============================================================================
 
--- Should return confirmed attendance and check-in state.
+-- Should return confirmed attendance and check-in state
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'attendeeID')::jsonb,
     '{"is_checked_in": true, "manually_invited": true, "purchase_amount_minor": 0, "refund_request_status": null, "resume_checkout_url": null, "status": "attendee"}'::jsonb,
-    'returns confirmed attendance and check-in state'
+    'Should return confirmed attendance and check-in state'
 );
 
--- Should return a resumable pending checkout.
+-- Should return a resumable pending checkout
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'pendingPaymentUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": 500, "refund_request_status": null, "resume_checkout_url": "https://example.test/checkout/resume", "status": "pending-payment"}'::jsonb,
-    'returns a resumable pending checkout'
+    'Should return a resumable pending checkout'
 );
 
--- Should return an active organizer offer.
+-- Should return an active organizer offer
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'offeredUserID')::jsonb,
     format(
@@ -368,63 +368,63 @@ select is(
         :'offerID',
         :'ticketTypeID'
     )::jsonb,
-    'returns an active organizer offer'
+    'Should return an active organizer offer'
 );
 
--- Should return a generic pending approval request.
+-- Should return a generic pending approval request
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'pendingRequestUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "pending-approval"}'::jsonb,
-    'returns a generic pending approval request'
+    'Should return a generic pending approval request'
 );
 
--- Should return a rejected approval request.
+-- Should return a rejected approval request
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'rejectedRequestUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "rejected"}'::jsonb,
-    'returns a rejected approval request'
+    'Should return a rejected approval request'
 );
 
--- Should return a tier-scoped waitlist entry.
+-- Should return a tier-scoped waitlist entry
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'waitlistUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "waitlisted"}'::jsonb,
-    'returns a tier waitlist entry'
+    'Should return a tier-scoped waitlist entry'
 );
 
--- Should return the latest expired offer state.
+-- Should return the latest expired offer state
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'expiredUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "offer-expired"}'::jsonb,
-    'returns the latest expired offer state'
+    'Should return the latest expired offer state'
 );
 
--- Should suppress offers already linked to a refunding purchase.
+-- Should suppress offers already linked to a refunding purchase
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'refundOfferUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
-    'suppresses offers already linked to a refunding purchase'
+    'Should suppress offers already linked to a refunding purchase'
 );
 
--- Should return the refund request state for an attendee purchase.
+-- Should return the refund request state for an attendee purchase
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'refundUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": 0, "refund_request_status": "pending", "resume_checkout_url": null, "status": "attendee"}'::jsonb,
-    'returns the refund request state for an attendee purchase'
+    'Should return the refund request state for an attendee purchase'
 );
 
--- Should ignore approval requests when approval is disabled.
+-- Should ignore approval requests when approval is disabled
 select is(
     get_event_enrollment(:'communityID', :'openEventID', :'openRequestUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
-    'ignores approval requests when approval is disabled'
+    'Should ignore approval requests when approval is disabled'
 );
 
--- Should not expose enrollment across communities.
+-- Should not expose enrollment across communities
 select is(
     get_event_enrollment(:'otherCommunityID', :'eventID', :'attendeeID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
-    'does not expose enrollment across communities'
+    'Should not expose enrollment across communities'
 );
 
 -- ============================================================================

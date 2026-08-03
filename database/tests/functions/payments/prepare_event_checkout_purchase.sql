@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(44);
+select plan(45);
 
 -- ============================================================================
 -- VARIABLES
@@ -810,7 +810,7 @@ insert into admission_offer (
 -- TESTS
 -- ============================================================================
 
--- Should prepare intrinsic zero-price checkout without provider or recipient setup.
+-- Should prepare intrinsic zero-price checkout without provider or recipient setup
 select results_eq(
     $$
         with prepared_checkout as (
@@ -1119,7 +1119,7 @@ select is(
     'Should persist reconciliation before rejecting direct checkout'
 );
 
--- Should reject attempts to claim another user's offer.
+-- Should reject attempts to claim another user's offer
 select is(
     prepare_event_checkout_purchase(
             :'communityID'::uuid,
@@ -1135,7 +1135,7 @@ select is(
     'Should reject claiming an offer owned by another user'
 );
 
--- Should prepare a paid checkout for an invitation-only offer.
+-- Should prepare a paid checkout for an invitation-only offer
 select lives_ok(
     format(
         $$
@@ -1157,6 +1157,20 @@ select lives_ok(
         :'offerPaidID'
     ),
     'Should prepare paid checkout for an invitation-only offer'
+);
+
+-- Should require the offer checkout path while its linked hold remains active
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'mainEventID'::uuid,
+        :'offerPrivateTicketTypeID'::uuid,
+        :'offerPaidUserID'::uuid,
+        null,
+        'stripe'
+    ),
+    '{"conflict":"admission-offer-required"}'::jsonb,
+    'Should require the offer checkout path while its linked hold remains active'
 );
 
 select results_eq(
@@ -1218,7 +1232,7 @@ select is(
     'Should reuse the pending checkout for the same offer'
 );
 
--- Should retain the first claim snapshot across canceled checkout retries.
+-- Should retain the first claim snapshot across canceled checkout retries
 select lives_ok(
     format(
         $$ select cancel_event_checkout(%L, %L, %L, 'stripe') $$,
@@ -1528,7 +1542,7 @@ select results_eq(
     'Should reuse the discounted-to-zero offer snapshot for its retry purchase'
 );
 
--- Should prepare an intrinsic-free offer without payment configuration.
+-- Should prepare an intrinsic-free offer without payment configuration
 select lives_ok(
     format(
         $$

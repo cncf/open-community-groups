@@ -14,8 +14,8 @@ declare
     v_event_published boolean;
     v_event_starts_at timestamptz;
     v_event_ticket_type_id uuid;
-    v_group_id uuid;
     v_group_active boolean;
+    v_group_id uuid;
     v_hold_expires_at timestamptz;
     v_manually_invited boolean;
     v_purchase_hold_expired boolean;
@@ -26,15 +26,15 @@ begin
     -- Resolve immutable parent identifiers before taking locks
     select
         ep.event_id,
-        e.group_id,
         ep.event_ticket_type_id,
+        e.group_id,
         ep.status in ('expired', 'pending')
             and ep.hold_expires_at is not null
             and ep.hold_expires_at <= current_timestamp
     into
         v_event_id,
-        v_group_id,
         v_event_ticket_type_id,
+        v_group_id,
         v_purchase_hold_expired
     from event_purchase ep
     join event e on e.event_id = ep.event_id

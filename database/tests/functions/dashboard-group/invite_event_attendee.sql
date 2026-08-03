@@ -643,7 +643,7 @@ insert into admission_offer (
 -- TESTS
 -- ============================================================================
 
--- Should reject invitations with both user_id and email.
+-- Should reject invitations with both user_id and email
 select throws_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, 'registered@example.com') $$,
@@ -654,7 +654,7 @@ select throws_ok(
     'Should reject invitations with both user_id and email'
 );
 
--- Should invite a registered user.
+-- Should invite a registered user
 select is(
     invite_event_attendee(
         :'actorID',
@@ -681,7 +681,7 @@ select results_eq(
     'Should create a pending organizer invitation offer for a registered user'
 );
 
--- Should create the expected audit row for a registered user invitation.
+-- Should create the expected audit row for a registered user invitation
 select results_eq(
     format(
         $$
@@ -787,7 +787,7 @@ select is(
     'Should use ticket wording for a private-tier invitation on a simple RSVP event'
 );
 
--- Should reject re-inviting users with a pending invitation.
+-- Should reject re-inviting users with a pending invitation
 select throws_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
@@ -798,7 +798,7 @@ select throws_ok(
     'Should reject re-inviting users with a pending invitation'
 );
 
--- Should reject re-inviting confirmed attendees.
+-- Should reject re-inviting confirmed attendees
 select throws_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
@@ -809,7 +809,7 @@ select throws_ok(
     'Should reject re-inviting confirmed attendees'
 );
 
--- Should preserve queue priority before allocating organizer invitations.
+-- Should preserve queue priority before allocating organizer invitations
 select is(
     (
         select status
@@ -842,7 +842,7 @@ select is(
     'Should remove the invited user from the waitlist'
 );
 
--- Should pre-register an email invitee and keep them out of normal registration state.
+-- Should pre-register an email invitee and keep them out of normal registration state
 select ok(
     invite_event_attendee(
         :'actorID',
@@ -891,7 +891,7 @@ select results_eq(
     'Should create a pending offer for an email invite'
 );
 
--- Should reject email invites for registered users with unverified email.
+-- Should reject email invites for registered users with unverified email
 select throws_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, null, 'unverified@example.com', %L) $$,
@@ -927,7 +927,7 @@ select lives_ok(
     'Should allow re-inviting after cancellation'
 );
 
--- Should reuse a canceled attendance row when inviting the attendee again.
+-- Should reuse a canceled attendance row when inviting the attendee again
 select is(
     invite_event_attendee(
         :'actorID',
@@ -963,7 +963,7 @@ select results_eq(
     'Should retain canceled attendance history while creating the invitation offer'
 );
 
--- Should allow organizers to re-invite users that declined an earlier invitation.
+-- Should allow organizers to re-invite users that declined an earlier invitation
 select lives_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
@@ -1253,7 +1253,7 @@ select is(
     'Should enqueue complete organizer offer notification context'
 );
 
--- Should reject unpublished events.
+-- Should reject unpublished events
 select throws_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
@@ -1264,7 +1264,7 @@ select throws_ok(
     'Should reject unpublished events'
 );
 
--- Should reject canceled events.
+-- Should reject canceled events
 select throws_ok(
     format(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
@@ -1345,7 +1345,7 @@ select is(
     'Should persist the queue offer when expired reservations release capacity'
 );
 
--- Should commit queue promotion before reporting an invitation conflict.
+-- Should commit queue promotion before reporting an invitation conflict
 select is(
     invite_event_attendee(
         :'actorID',

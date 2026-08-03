@@ -1,3 +1,5 @@
+-- Tests counting event-level occupied seats.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -14,18 +16,27 @@ select plan(4);
 \set confirmedUserID '0c070000-0000-0000-0000-000000000003'
 \set eventCategoryID '0c070000-0000-0000-0000-000000000004'
 \set expiredCheckoutUserID '0c070000-0000-0000-0000-000000000005'
+\set expiredOfferUserID '0c070000-0000-0000-0000-000000000016'
+\set freeEventID '0c070000-0000-0000-0000-00000000000d'
+\set freePendingUserID '0c070000-0000-0000-0000-00000000000e'
+\set freePriceWindowID '0c070000-0000-0000-0000-000000000019'
+\set freeTicketTypeID '0c070000-0000-0000-0000-000000000011'
 \set groupCategoryID '0c070000-0000-0000-0000-000000000006'
 \set groupID '0c070000-0000-0000-0000-000000000007'
 \set manualPendingUserID '0c070000-0000-0000-0000-000000000008'
+\set offerEventID '0c070000-0000-0000-0000-000000000012'
+\set offerPriceWindowID '0c070000-0000-0000-0000-000000000017'
+\set offerTicketTypeID '0c070000-0000-0000-0000-000000000013'
 \set question1ID '0c070000-0000-0000-0000-000000000009'
 \set question2ID '0c070000-0000-0000-0000-00000000000a'
+\set refundEventID '0c070000-0000-0000-0000-000000000014'
+\set refundPriceWindowID '0c070000-0000-0000-0000-000000000018'
 \set refundPurchaseUserID '0c070000-0000-0000-0000-00000000000f'
+\set refundTicketTypeID '0c070000-0000-0000-0000-000000000015'
 \set ticketedEventID '0c070000-0000-0000-0000-00000000000b'
 \set ticketOfferUserID '0c070000-0000-0000-0000-000000000010'
+\set ticketPriceWindowID '0c070000-0000-0000-0000-00000000001a'
 \set ticketTypeID '0c070000-0000-0000-0000-00000000000c'
-\set freeEventID '0c070000-0000-0000-0000-00000000000d'
-\set freePendingUserID '0c070000-0000-0000-0000-00000000000e'
-\set freeTicketTypeID '0c070000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
@@ -88,6 +99,12 @@ insert into "user" (
     true,
     'expired-checkout'
 ), (
+    :'expiredOfferUserID',
+    gen_random_bytes(32),
+    'expired-offer@example.com',
+    true,
+    'expired-offer'
+), (
     :'manualPendingUserID',
     gen_random_bytes(32),
     'manual-pending@example.com',
@@ -139,10 +156,13 @@ insert into event (
     5,
     'USD',
     '2030-01-01 10:00:00+00',
-    format(
-        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
-        :'question1ID'
-    )::jsonb
+    jsonb_build_array(jsonb_build_object(
+        'id', :'question1ID',
+        'kind', 'free-text',
+        'options', jsonb_build_array(),
+        'prompt', 'Note',
+        'required', true
+    ))
 ), (
     :'freeEventID',
     :'groupID',
@@ -155,26 +175,60 @@ insert into event (
     5,
     null,
     '2030-01-02 10:00:00+00',
-    format(
-        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
-        :'question2ID'
-    )::jsonb
+    jsonb_build_array(jsonb_build_object(
+        'id', :'question2ID',
+        'kind', 'free-text',
+        'options', jsonb_build_array(),
+        'prompt', 'Note',
+        'required', true
+    ))
+), (
+    :'offerEventID',
+    :'groupID',
+    'Offer Event',
+    'offer-event',
+    'Event for active and expired offer counts',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    5,
+    'USD',
+    '2030-01-03 10:00:00+00',
+    '[]'::jsonb
+), (
+    :'refundEventID',
+    :'groupID',
+    'Refund Event',
+    'refund-event',
+    'Event for refund reservation counts',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    5,
+    'USD',
+    '2030-01-04 10:00:00+00',
+    '[]'::jsonb
 );
 
 -- Ticket types
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values
     (:'ticketTypeID', :'ticketedEventID', 1, 5, 'General admission'),
-    (:'freeTicketTypeID', :'freeEventID', 1, 5, 'General admission');
+    (:'freeTicketTypeID', :'freeEventID', 1, 5, 'General admission'),
+    (:'offerTicketTypeID', :'offerEventID', 1, 5, 'General admission'),
+    (:'refundTicketTypeID', :'refundEventID', 1, 5, 'General admission');
 
+-- Price windows supporting the event ticket fixtures
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
     event_ticket_type_id
 )
 values
-    (gen_random_uuid(), 1000, :'ticketTypeID'),
-    (gen_random_uuid(), 0, :'freeTicketTypeID');
+    (:'ticketPriceWindowID', 1000, :'ticketTypeID'),
+    (:'freePriceWindowID', 0, :'freeTicketTypeID'),
+    (:'offerPriceWindowID', 1000, :'offerTicketTypeID'),
+    (:'refundPriceWindowID', 1000, :'refundTicketTypeID');
 
 -- Attendees
 insert into event_attendee (
@@ -245,6 +299,7 @@ insert into event_purchase (
 
 -- Active free organizer invitation offer
 insert into admission_offer (
+    created_at,
     event_id,
     event_ticket_type_id,
     expires_at,
@@ -252,12 +307,70 @@ insert into admission_offer (
     status,
     user_id
 ) values (
+    current_timestamp,
     :'freeEventID',
     :'freeTicketTypeID',
     current_timestamp + interval '1 hour',
     'organizer_invitation',
     'pending',
     :'manualPendingUserID'
+);
+
+-- Active organizer offer counted for the dedicated offer event
+insert into admission_offer (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'offerEventID',
+    :'offerTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'ticketOfferUserID'
+);
+
+-- Expired organizer offer excluded from the dedicated offer event
+insert into admission_offer (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    current_timestamp - interval '2 hours',
+    :'offerEventID',
+    :'offerTicketTypeID',
+    current_timestamp - interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'expiredOfferUserID'
+);
+
+-- Refund-processing purchase reserving the dedicated refund event
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    1000,
+    'USD',
+    :'refundEventID',
+    :'refundTicketTypeID',
+    'refund-pending',
+    'General admission',
+    :'refundPurchaseUserID'
 );
 
 -- ============================================================================
@@ -271,51 +384,17 @@ select is(
     'Should count confirmed and active checkout pending seats only'
 );
 
--- An unclaimed ticket offer reserves event-level capacity.
-insert into admission_offer (
-    event_id,
-    event_ticket_type_id,
-    expires_at,
-    source,
-    status,
-    user_id
-) values (
-    :'ticketedEventID',
-    :'ticketTypeID',
-    current_timestamp + interval '1 hour',
-    'organizer_invitation',
-    'pending',
-    :'ticketOfferUserID'
-);
-
+-- Should count active offers without counting expired offers
 select is(
-    get_event_occupied_seat_count(:'ticketedEventID'::uuid),
-    3,
-    'Should count unclaimed ticket offers in event capacity'
+    get_event_occupied_seat_count(:'offerEventID'::uuid),
+    1,
+    'Should count active offers without counting expired offers'
 );
 
--- A refund-processing purchase keeps its event-level seat reserved.
-insert into event_purchase (
-    amount_minor,
-    currency_code,
-    event_id,
-    event_ticket_type_id,
-    status,
-    ticket_title,
-    user_id
-) values (
-    1000,
-    'USD',
-    :'ticketedEventID',
-    :'ticketTypeID',
-    'refund-pending',
-    'General admission',
-    :'refundPurchaseUserID'
-);
-
+-- Should count refund-processing purchases without attendee rows
 select is(
-    get_event_occupied_seat_count(:'ticketedEventID'::uuid),
-    4,
+    get_event_occupied_seat_count(:'refundEventID'::uuid),
+    1,
     'Should count refund-processing purchases without attendee rows'
 );
 

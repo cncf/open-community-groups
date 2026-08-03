@@ -26,9 +26,13 @@ select plan(19);
 \set ticketType3ID '3a350000-0000-0000-0000-000000000009'
 \set ticketTypeExpiredOffersID '3a350000-0000-0000-0000-000000000023'
 \set ticketTypeGuardedID '3a350000-0000-0000-0000-000000000019'
+\set ticketTypeGuardedRetainedID '3a350000-0000-0000-0000-000000000028'
 \set ticketTypeProtectedID '3a350000-0000-0000-0000-000000000010'
+\set ticketTypeProtectedRetainedID '3a350000-0000-0000-0000-000000000029'
 \set ticketTypeRequestedID '3a350000-0000-0000-0000-00000000001e'
+\set ticketTypeRequestedRetainedID '3a350000-0000-0000-0000-00000000002a'
 \set ticketTypeWaitlistRemovalID '3a350000-0000-0000-0000-000000000021'
+\set ticketTypeWaitlistRetainedID '3a350000-0000-0000-0000-00000000002b'
 \set offerGuardedID '3a350000-0000-0000-0000-00000000001a'
 \set offerExpiredCheckoutID '3a350000-0000-0000-0000-000000000024'
 \set offerExpiredPendingID '3a350000-0000-0000-0000-000000000025'
@@ -252,8 +256,11 @@ insert into event_ticket_type (
     ('invitation_only', :'ticketType1ID', :'eventID', 1, 10, 'General admission'),
     ('public', :'ticketType2ID', :'eventID', 2, 5, 'VIP pass'),
     ('public', :'ticketTypeGuardedID', :'eventGuardedID', 1, 5, 'Guarded pass'),
+    ('public', :'ticketTypeGuardedRetainedID', :'eventGuardedID', 2, 5, 'Retained pass'),
     ('public', :'ticketTypeProtectedID', :'eventProtectedID', 1, 2, 'Protected pass'),
+    ('public', :'ticketTypeProtectedRetainedID', :'eventProtectedID', 2, 5, 'Retained pass'),
     ('public', :'ticketTypeRequestedID', :'eventRequestedID', 1, 5, 'Requested pass'),
+    ('public', :'ticketTypeRequestedRetainedID', :'eventRequestedID', 2, 5, 'Retained pass'),
     (
         'public',
         :'ticketTypeWaitlistRemovalID',
@@ -261,6 +268,14 @@ insert into event_ticket_type (
         1,
         5,
         'Waitlist removal pass'
+    ),
+    (
+        'public',
+        :'ticketTypeWaitlistRetainedID',
+        :'eventWaitlistRemovalID',
+        2,
+        5,
+        'Retained pass'
     );
 
 -- Ticket type whose expired offers should not block a seat reduction
@@ -589,40 +604,56 @@ select throws_ok(
 -- Should reject removing ticket types with admission offers
 select throws_ok(
     format(
-        $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
-        :'eventGuardedID'
+        $$select sync_event_ticket_types(
+            %L::uuid,
+            '[{"active": true, "availability": "public", "event_ticket_type_id": "%s", "order": 1, "price_windows": [], "seats_total": 5, "title": "Retained pass"}]'::jsonb
+        )$$,
+        :'eventGuardedID',
+        :'ticketTypeGuardedRetainedID'
     ),
-    'events require at least one ticket type',
+    'ticket types with admission offers cannot be removed; deactivate them instead',
     'Should reject removing ticket types with admission offers'
 );
 
 -- Should reject removing ticket types with invitation requests
 select throws_ok(
     format(
-        $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
-        :'eventRequestedID'
+        $$select sync_event_ticket_types(
+            %L::uuid,
+            '[{"active": true, "availability": "public", "event_ticket_type_id": "%s", "order": 1, "price_windows": [], "seats_total": 5, "title": "Retained pass"}]'::jsonb
+        )$$,
+        :'eventRequestedID',
+        :'ticketTypeRequestedRetainedID'
     ),
-    'events require at least one ticket type',
+    'ticket types with invitation requests cannot be removed; deactivate them instead',
     'Should reject removing ticket types with invitation requests'
 );
 
 -- Should reject removing ticket types with purchases
 select throws_ok(
     format(
-        $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
-        :'eventProtectedID'
+        $$select sync_event_ticket_types(
+            %L::uuid,
+            '[{"active": true, "availability": "public", "event_ticket_type_id": "%s", "order": 1, "price_windows": [], "seats_total": 5, "title": "Retained pass"}]'::jsonb
+        )$$,
+        :'eventProtectedID',
+        :'ticketTypeProtectedRetainedID'
     ),
-    'events require at least one ticket type',
+    'ticket types with purchases cannot be removed; deactivate them instead',
     'Should reject removing ticket types with purchases'
 );
 
 -- Should reject removing ticket types with waitlist entries
 select throws_ok(
     format(
-        $$select sync_event_ticket_types('%s'::uuid, '[]'::jsonb)$$,
-        :'eventWaitlistRemovalID'
+        $$select sync_event_ticket_types(
+            %L::uuid,
+            '[{"active": true, "availability": "public", "event_ticket_type_id": "%s", "order": 1, "price_windows": [], "seats_total": 5, "title": "Retained pass"}]'::jsonb
+        )$$,
+        :'eventWaitlistRemovalID',
+        :'ticketTypeWaitlistRetainedID'
     ),
-    'events require at least one ticket type',
+    'ticket types with waitlist entries cannot be removed; deactivate them instead',
     'Should reject removing ticket types with waitlist entries'
 );
 

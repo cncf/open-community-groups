@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
+/// ISO currency codes displayed without fractional units.
+const ZERO_DECIMAL_CURRENCY_CODES: [&str; 16] = [
+    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV",
+    "XAF", "XOF", "XPF",
+];
+
 /// Discount type supported by event admission tiers.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -373,21 +379,15 @@ pub(crate) fn format_amount_minor(amount_minor: i64, currency_code: &str) -> Str
     format!("{normalized_currency_code} {whole}.{fraction:02}")
 }
 
-// Normalize user and database currency inputs before display formatting
+/// Normalizes user and database currency inputs before display formatting.
 fn normalized_currency_code(currency_code: &str) -> String {
     currency_code.trim().to_ascii_uppercase()
 }
 
-// Detect currencies whose displayed amount does not include fractional units
+/// Returns whether a currency is displayed without fractional units.
 fn uses_zero_decimal_minor_units(currency_code: &str) -> bool {
     ZERO_DECIMAL_CURRENCY_CODES.contains(&currency_code)
 }
-
-// ISO currency codes that are displayed without a fractional component
-const ZERO_DECIMAL_CURRENCY_CODES: [&str; 16] = [
-    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV",
-    "XAF", "XOF", "XPF",
-];
 
 #[cfg(test)]
 mod tests {

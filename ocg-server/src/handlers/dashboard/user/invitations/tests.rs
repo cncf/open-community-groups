@@ -317,9 +317,9 @@ async fn test_decline_event_admission_offer_success() {
         })
         .returning(move |_, _, _| {
             Ok(EventEnrollmentReconciliationOutcome {
-                community_id: Uuid::new_v4(),
-                event_id: Uuid::new_v4(),
-                group_id: Uuid::new_v4(),
+                community_id: Uuid::from_u128(1),
+                event_id: Uuid::from_u128(2),
+                group_id: Uuid::from_u128(3),
             })
         });
     db.expect_update_session()

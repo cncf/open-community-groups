@@ -19,11 +19,11 @@ declare
     v_discount_available int;
     v_discount_available_override_active boolean;
     v_discount_ends_at timestamptz;
-    v_event_discount_code_id uuid;
     v_discount_kind text;
     v_discount_percentage int;
     v_discount_starts_at timestamptz;
     v_discount_total_available int;
+    v_event_discount_code_id uuid;
     v_price_window_amount_minor bigint;
     v_redemptions int;
     v_seats_total int;
@@ -128,6 +128,7 @@ begin
 
         select
             edc.active,
+            edc.amount_minor,
             edc.available,
             edc.available_override_active,
             edc.ends_at,
@@ -135,10 +136,10 @@ begin
             edc.kind,
             edc.percentage,
             edc.starts_at,
-            edc.total_available,
-            edc.amount_minor
+            edc.total_available
         into
             v_discount_active,
+            v_amount_minor,
             v_discount_available,
             v_discount_available_override_active,
             v_discount_ends_at,
@@ -146,8 +147,7 @@ begin
             v_discount_kind,
             v_discount_percentage,
             v_discount_starts_at,
-            v_discount_total_available,
-            v_amount_minor
+            v_discount_total_available
         from event_discount_code edc
         where edc.event_id = p_event_id
         and upper(edc.code) = p_discount_code;

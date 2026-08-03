@@ -461,7 +461,6 @@ select columns_are('event_purchase', array[
     'event_purchase_id',
     'amount_minor',
     'created_at',
-    'currency_code',
     'discount_amount_minor',
     'event_id',
     'event_ticket_type_id',
@@ -472,6 +471,7 @@ select columns_are('event_purchase', array[
 
     'admission_offer_id',
     'completed_at',
+    'currency_code',
     'discount_code',
     'event_discount_code_id',
     'hold_expires_at',
@@ -592,7 +592,6 @@ select columns_are('event_waitlist', array[
     'event_id',
     'user_id',
     'created_at',
-
     'event_ticket_type_id'
 ]);
 

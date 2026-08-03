@@ -340,6 +340,54 @@ insert into "user" (
         'contract-rejected-request'
     ),
     (
+        'contract_hash_queue_blocker',
+        'queue-blocker.contract@example.com',
+        true,
+        'Contract Queue Blocker',
+        '00000000-0000-0000-0000-00000000c104',
+        'contract-queue-blocker'
+    ),
+    (
+        'contract_hash_queue_invitee',
+        'queue-invitee.contract@example.com',
+        true,
+        'Contract Queue Invitee',
+        '00000000-0000-0000-0000-00000000c103',
+        'contract-queue-invitee'
+    ),
+    (
+        'contract_hash_status_canceled',
+        'status-canceled.contract@example.com',
+        true,
+        'Contract Status Canceled',
+        '00000000-0000-0000-0000-00000000c10e',
+        'contract-status-canceled'
+    ),
+    (
+        'contract_hash_status_declined',
+        'status-declined.contract@example.com',
+        true,
+        'Contract Status Declined',
+        '00000000-0000-0000-0000-00000000c10f',
+        'contract-status-declined'
+    ),
+    (
+        'contract_hash_status_expired',
+        'status-expired.contract@example.com',
+        true,
+        'Contract Status Expired',
+        '00000000-0000-0000-0000-00000000c10d',
+        'contract-status-expired'
+    ),
+    (
+        'contract_hash_status_pending_payment',
+        'status-pending-payment.contract@example.com',
+        true,
+        'Contract Status Pending Payment',
+        '00000000-0000-0000-0000-00000000c10c',
+        'contract-status-pending-payment'
+    ),
+    (
         'contract_hash_reconcile_stale',
         'reconcile-stale.contract@example.com',
         true,
@@ -1355,7 +1403,7 @@ insert into event_purchase_refund (
         null,
         null,
         're_contract_refund_approve',
-        current_timestamp
+        '2024-01-11 10:00:00+00'
     ),
     (
         '00000000-0000-0000-0000-00000000c0fe',
@@ -1369,7 +1417,7 @@ insert into event_purchase_refund (
 
         null,
         'provider refund failed: re_contract_refund_failed',
-        current_timestamp,
+        '2024-01-12 10:00:00+00',
         null,
         null
     );
@@ -1419,7 +1467,7 @@ insert into event_ticket_type (
 )
 select
     e.event_id,
-    gen_random_uuid(),
+    md5(e.event_id::text || ':ticket-type')::uuid,
     1,
     100,
     'General Admission'
@@ -1434,7 +1482,7 @@ insert into event_ticket_price_window (
     event_ticket_price_window_id,
     event_ticket_type_id
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.event_ticket_type_id
 from event_ticket_type ett
 where ett.event_id in (
     '00000000-0000-0000-0000-00000000c0d5',
@@ -1637,7 +1685,7 @@ insert into event_ticket_type (
 )
 select
     e.event_id,
-    gen_random_uuid(),
+    md5(e.event_id::text || ':ticket-type')::uuid,
     1,
     greatest(coalesce(e.capacity, 100), 1),
     'General Admission'
@@ -1650,12 +1698,233 @@ where e.event_id in (
     '00000000-0000-0000-0000-00000000c0de'
 );
 
+-- Ticketed event dedicated to the queue-offer allocation contract
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone,
+    waitlist_enabled
+) values (
+    1,
+    'An invite event whose released seat belongs to the queued target',
+    '2099-08-08 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000c105',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Queue Invite Event',
+    true,
+    'contract-queue-invite-event',
+    '2099-08-08 10:00:00+00',
+    true,
+    'UTC',
+    true
+);
+
+-- Free ticket type allocated by the queue-offer contract
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000c105',
+    '00000000-0000-0000-0000-00000000c106',
+    1,
+    1,
+    'General Admission'
+);
+
+-- Free price window for the queue-offer ticket type
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    0,
+    '00000000-0000-0000-0000-00000000c107',
+    '00000000-0000-0000-0000-00000000c106'
+);
+
+-- Expired offer whose released seat is reconciled before invitation allocation
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    '00000000-0000-0000-0000-00000000c108',
+    '2024-01-01 09:00:00+00',
+    '00000000-0000-0000-0000-00000000c105',
+    '00000000-0000-0000-0000-00000000c106',
+    '2024-01-01 10:00:00+00',
+    'organizer_invitation',
+    'pending',
+    '00000000-0000-0000-0000-00000000c104'
+);
+
+-- Queue head promoted when the organizer invites the same user
+insert into event_waitlist (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    '2024-01-01 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c105',
+    '00000000-0000-0000-0000-00000000c106',
+    '00000000-0000-0000-0000-00000000c103'
+);
+
+-- Event dedicated to attendee-facing enrollment and terminal offer encodings
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    10,
+    'An event used to validate enrollment and offer status encodings',
+    '2099-08-09 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000c109',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Status Event',
+    'USD',
+    true,
+    'contract-status-event',
+    '2099-08-09 10:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Paid ticket type used by the status encoding fixtures
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000c109',
+    '00000000-0000-0000-0000-00000000c10a',
+    1,
+    10,
+    'Status Admission'
+);
+
+-- Paid price window used by the pending-payment fixture
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    '00000000-0000-0000-0000-00000000c10b',
+    '00000000-0000-0000-0000-00000000c10a'
+);
+
+-- Pending purchase returned as pending-payment enrollment
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'USD',
+    0,
+    '00000000-0000-0000-0000-00000000c109',
+    '00000000-0000-0000-0000-00000000c110',
+    '00000000-0000-0000-0000-00000000c10a',
+    '2099-08-09 09:30:00+00',
+    'https://example.test/checkout/status-pending',
+    'pending',
+    'Status Admission',
+    '00000000-0000-0000-0000-00000000c10c'
+);
+
+-- Terminal organizer offers returned through attendee search status encodings
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values
+    (
+        '00000000-0000-0000-0000-00000000c112',
+        '2024-01-02 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c109',
+        '00000000-0000-0000-0000-00000000c10a',
+        '2099-08-09 09:00:00+00',
+        'organizer_invitation',
+        'canceled',
+        '00000000-0000-0000-0000-00000000c10e'
+    ),
+    (
+        '00000000-0000-0000-0000-00000000c113',
+        '2024-01-03 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c109',
+        '00000000-0000-0000-0000-00000000c10a',
+        '2099-08-09 09:00:00+00',
+        'organizer_invitation',
+        'declined',
+        '00000000-0000-0000-0000-00000000c10f'
+    ),
+    (
+        '00000000-0000-0000-0000-00000000c111',
+        '2024-01-01 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c109',
+        '00000000-0000-0000-0000-00000000c10a',
+        '2024-01-01 11:00:00+00',
+        'organizer_invitation',
+        'expired',
+        '00000000-0000-0000-0000-00000000c10d'
+    );
+
 insert into event_ticket_price_window (
     amount_minor,
     event_ticket_price_window_id,
     event_ticket_type_id
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.event_ticket_type_id
 from event_ticket_type ett
 where ett.event_id in (
     '00000000-0000-0000-0000-00000000c0d8',
@@ -2127,7 +2396,7 @@ insert into event_ticket_type (
 )
 select
     e.event_id,
-    gen_random_uuid(),
+    md5(e.event_id::text || ':ticket-type')::uuid,
     1,
     greatest(coalesce(e.capacity, 100), 1),
     'General Admission'
@@ -2143,7 +2412,7 @@ insert into event_ticket_price_window (
     event_ticket_price_window_id,
     event_ticket_type_id
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.event_ticket_type_id
 from event_ticket_type ett
 where not exists (
     select 1

@@ -321,25 +321,28 @@ pub(crate) async fn attend_event(
             PrepareEventCheckoutPurchaseResult::Prepared(checkout) => *checkout,
         };
 
+        // Resolve checkout states that no longer require payment orchestration
         if let Some(updated_enrollment_status) =
             get_checkout_status_response(prepared_checkout.purchase.status)?
         {
             enrollment_status = updated_enrollment_status;
-        } else {
-            if prepared_checkout.purchase.amount_minor != 0 {
-                let redirect_url = payments_manager
-                    .get_or_create_checkout_redirect_url(&prepared_checkout, user.user_id)
-                    .await?;
+        } else if prepared_checkout.purchase.amount_minor != 0 {
+            // Create or reuse the provider redirect for a paid pending purchase
+            let redirect_url = payments_manager
+                .get_or_create_checkout_redirect_url(&prepared_checkout, user.user_id)
+                .await?;
 
-                return Ok((
-                    StatusCode::OK,
-                    Json(json!({
-                        "hold_expires_at": prepared_checkout.purchase.hold_expires_at,
-                        "redirect_url": redirect_url,
-                        "status": EventEnrollmentStatus::PendingPayment,
-                    })),
-                ));
-            }
+            // Return the redirect while the checkout hold remains active
+            return Ok((
+                StatusCode::OK,
+                Json(json!({
+                    "hold_expires_at": prepared_checkout.purchase.hold_expires_at,
+                    "redirect_url": redirect_url,
+                    "status": EventEnrollmentStatus::PendingPayment,
+                })),
+            ));
+        } else {
+            // Finalize the zero-price purchase and its attendee notification
             payments_manager
                 .complete_free_checkout(
                     community_id,
@@ -377,33 +380,24 @@ pub(crate) async fn attend_event(
         }
     };
 
-    // Build the notification that matches the new enrollment status
+    // Notify the user only when this request added them to the waitlist
     let notification_result = match &enrollment_status {
-        EventEnrollmentStatus::Attendee
-        | EventEnrollmentStatus::InvitationApproved
-        | EventEnrollmentStatus::OfferExpired
-        | EventEnrollmentStatus::PendingApproval
-        | EventEnrollmentStatus::PendingPayment
-        | EventEnrollmentStatus::RegistrationQuestionsPending
-        | EventEnrollmentStatus::Rejected => Ok(()),
+        EventEnrollmentStatus::Waitlisted => match build_event_waitlist_joined_notification(
+            &event,
+            user.user_id,
+            &server_cfg,
+            &site_settings,
+        ) {
+            Ok(notification) => notifications_manager.enqueue(&notification).await,
+            Err(err) => {
+                warn!(error = %err, "failed to build event waitlist join notification");
+                Ok(())
+            }
+        },
         EventEnrollmentStatus::None => {
             unreachable!("attend_event cannot return an unattached enrollment status")
         }
-        EventEnrollmentStatus::Waitlisted => {
-            // Let the user know they were added to the waitlist
-            match build_event_waitlist_joined_notification(
-                &event,
-                user.user_id,
-                &server_cfg,
-                &site_settings,
-            ) {
-                Ok(notification) => notifications_manager.enqueue(&notification).await,
-                Err(err) => {
-                    warn!(error = %err, "failed to build event waitlist join notification");
-                    Ok(())
-                }
-            }
-        }
+        _ => Ok(()),
     };
 
     if let Err(err) = notification_result {
@@ -456,7 +450,7 @@ pub(crate) async fn check_in(
 }
 
 /// Handler that returns the current user's event enrollment state.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn enrollment_state(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,

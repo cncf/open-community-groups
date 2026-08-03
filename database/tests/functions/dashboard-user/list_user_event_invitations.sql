@@ -12,7 +12,9 @@ select plan(6);
 -- ============================================================================
 
 \set acceptedUserID '4a0b0000-0000-0000-0000-000000000001'
+\set acceptedOfferID '4a0b0000-0000-0000-0000-00000000001a'
 \set canceledEventID '4a0b0000-0000-0000-0000-000000000002'
+\set canceledOfferID '4a0b0000-0000-0000-0000-000000000018'
 \set communityID '4a0b0000-0000-0000-0000-000000000003'
 \set eventCategoryID '4a0b0000-0000-0000-0000-000000000004'
 \set eventID '4a0b0000-0000-0000-0000-000000000005'
@@ -21,6 +23,7 @@ select plan(6);
 \set groupID '4a0b0000-0000-0000-0000-000000000007'
 \set inactiveGroupEventID '4a0b0000-0000-0000-0000-000000000008'
 \set inactiveGroupID '4a0b0000-0000-0000-0000-000000000009'
+\set inactiveGroupOfferID '4a0b0000-0000-0000-0000-000000000019'
 \set invitedUserID '4a0b0000-0000-0000-0000-000000000010'
 \set invitedOfferID '4a0b0000-0000-0000-0000-000000000013'
 \set privateOfferID '4a0b0000-0000-0000-0000-00000000001e'
@@ -29,6 +32,10 @@ select plan(6);
 \set privateUserID '4a0b0000-0000-0000-0000-000000000021'
 \set priceWindowID '4a0b0000-0000-0000-0000-000000000014'
 \set questionID '4a0b0000-0000-0000-0000-00000000001c'
+\set refundOfferID '4a0b0000-0000-0000-0000-000000000022'
+\set refundPurchaseID '4a0b0000-0000-0000-0000-000000000023'
+\set refundUserID '4a0b0000-0000-0000-0000-000000000024'
+\set rejectedOfferID '4a0b0000-0000-0000-0000-00000000001b'
 \set rejectedUserID '4a0b0000-0000-0000-0000-000000000011'
 \set ticketOfferID '4a0b0000-0000-0000-0000-000000000015'
 \set ticketPurchaseID '4a0b0000-0000-0000-0000-00000000001d'
@@ -102,6 +109,13 @@ insert into "user" (
     true,
     'private-user',
     'Private User'
+), (
+    :'refundUserID',
+    'hash-refund',
+    'refund@example.com',
+    true,
+    'refund-user',
+    'Refund User'
 ), (
     :'ticketUserID',
     'hash-ticket',
@@ -227,7 +241,7 @@ insert into event_ticket_type (
     seats_total,
     title
 )
-select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
+select e.event_id, md5(e.event_id::text || ':ticket-type')::uuid, 1, 100, 'General Admission'
 from event e
 where not exists (
     select 1
@@ -241,7 +255,7 @@ insert into event_ticket_price_window (
     event_ticket_price_window_id,
     event_ticket_type_id
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.event_ticket_type_id
 from event_ticket_type ett
 where not exists (
     select 1
@@ -313,7 +327,7 @@ values
         :'invitedUserID'
     ),
     (
-        '4a0b0000-0000-0000-0000-000000000018',
+        :'canceledOfferID',
         0,
         '2024-01-03 10:00:00+00',
         null,
@@ -327,7 +341,7 @@ values
         :'invitedUserID'
     ),
     (
-        '4a0b0000-0000-0000-0000-000000000019',
+        :'inactiveGroupOfferID',
         0,
         '2024-01-04 10:00:00+00',
         null,
@@ -341,7 +355,7 @@ values
         :'invitedUserID'
     ),
     (
-        '4a0b0000-0000-0000-0000-00000000001a',
+        :'acceptedOfferID',
         0,
         '2024-01-05 10:00:00+00',
         null,
@@ -361,7 +375,7 @@ values
         :'acceptedUserID'
     ),
     (
-        '4a0b0000-0000-0000-0000-00000000001b',
+        :'rejectedOfferID',
         0,
         '2024-01-06 10:00:00+00',
         null,
@@ -407,6 +421,20 @@ values
         'pending',
         'Private supporter',
         :'privateUserID'
+    ),
+    (
+        :'refundOfferID',
+        1000,
+        '2024-01-09 10:00:00+00',
+        'USD',
+        0,
+        :'eventTicketedID',
+        :'ticketTypeID',
+        '2099-01-05 10:00:00+00',
+        'approval',
+        'checkout_pending',
+        'General admission',
+        :'refundUserID'
     );
 
 -- Accepted ticket request that supplies claim-time registration answers
@@ -476,11 +504,36 @@ insert into event_purchase (
     :'ticketOfferID'
 );
 
+-- Refund-processing purchase that suppresses its linked offer
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'refundOfferID',
+    1000,
+    'USD',
+    0,
+    :'eventTicketedID',
+    :'refundPurchaseID',
+    :'ticketTypeID',
+    'refund-pending',
+    'General admission',
+    :'refundUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should list active pending event invitations for a user.
+-- Should list active pending event invitations for a user
 select is(
     list_user_event_invitations(:'invitedUserID'::uuid)::jsonb,
     format(
@@ -520,7 +573,7 @@ select is(
     'Should list active pending event invitations for the user'
 );
 
--- Should expose the exact assigned tier on an owned ticket offer.
+-- Should expose the exact assigned tier on an owned ticket offer
 select is(
     list_user_event_invitations(:'ticketUserID'::uuid)::jsonb,
     format(
@@ -545,14 +598,14 @@ select is(
                     "registration_answers": {
                         "answers": [
                             {
-                                "question_id": "4a0b0000-0000-0000-0000-00000000001c",
+                                "question_id": "%s",
                                 "value": "Vegetarian"
                             }
                         ]
                     },
                     "registration_questions": [
                         {
-                            "id": "4a0b0000-0000-0000-0000-00000000001c",
+                            "id": "%s",
                             "kind": "free-text",
                             "options": [],
                             "prompt": "Meal",
@@ -565,7 +618,11 @@ select is(
                 }
             ]
         $json$,
-        :'ticketOfferID', :'eventTicketedID', :'ticketTypeID'
+        :'ticketOfferID',
+        :'eventTicketedID',
+        :'ticketTypeID',
+        :'questionID',
+        :'questionID'
     )::jsonb,
     'Should expose the exact assigned tier on an owned ticket offer'
 );
@@ -578,24 +635,20 @@ select is(
 );
 
 -- Automatic refunds keep the ticket offer unavailable until they finish
-update event_purchase
-set status = 'refund-pending'
-where event_purchase_id = :'ticketPurchaseID';
-
 select is(
-    list_user_event_invitations(:'ticketUserID'::uuid)::text,
+    list_user_event_invitations(:'refundUserID'::uuid)::text,
     '[]',
     'Should hide ticket offers while their automatic refund is pending'
 );
 
--- Should not list accepted event invitations.
+-- Should not list accepted event invitations
 select is(
     list_user_event_invitations(:'acceptedUserID'::uuid)::text,
     '[]',
     'Should not list accepted event invitations'
 );
 
--- Should not list rejected event invitations.
+-- Should not list rejected event invitations
 select is(
     list_user_event_invitations(:'rejectedUserID'::uuid)::text,
     '[]',

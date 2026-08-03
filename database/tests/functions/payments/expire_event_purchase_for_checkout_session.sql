@@ -1,9 +1,11 @@
+-- Tests expiring purchases by checkout session.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,7 +18,7 @@ select plan(5);
 \set eventCategoryID '79440000-0000-0000-0000-000000000005'
 \set eventID '79440000-0000-0000-0000-000000000006'
 \set eventTicketTypeID '79440000-0000-0000-0000-000000000007'
-\set offerID '79440000-0000-0000-0000-000000000012'
+\set offerID '79440000-0000-0000-0000-000000000013'
 \set groupCategoryID '79440000-0000-0000-0000-000000000008'
 \set groupID '79440000-0000-0000-0000-000000000009'
 \set pendingPurchaseID '79440000-0000-0000-0000-000000000010'
@@ -311,6 +313,12 @@ select lives_ok(
 );
 
 -- Should leave completed purchases unchanged
+select lives_ok(
+    $$select expire_event_purchase_for_checkout_session('stripe', 'cs_completed')$$,
+    'Should leave completed purchases unchanged'
+);
+
+-- Should preserve completed purchase state
 select is(
     (
         select status
@@ -318,7 +326,7 @@ select is(
         where event_purchase_id = :'completedPurchaseID'::uuid
     ),
     'completed',
-    'Should leave completed purchases unchanged'
+    'Should preserve completed purchase state'
 );
 
 -- ============================================================================

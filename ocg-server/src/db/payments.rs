@@ -824,6 +824,8 @@ pub(crate) enum EventPurchaseRefundStatus {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum PrepareEventCheckoutPurchaseConflict {
+    /// An active admission offer must be claimed through its dedicated checkout path.
+    AdmissionOfferRequired,
     /// The selected admission offer is no longer claimable.
     AdmissionOfferUnavailable,
     /// The selected ticket requires payment setup that is currently unavailable.
@@ -903,6 +905,10 @@ mod tests {
     #[test]
     fn prepare_event_checkout_purchase_output_maps_conflicts() {
         for (value, expected) in [
+            (
+                "admission-offer-required",
+                PrepareEventCheckoutPurchaseConflict::AdmissionOfferRequired,
+            ),
             (
                 "admission-offer-unavailable",
                 PrepareEventCheckoutPurchaseConflict::AdmissionOfferUnavailable,

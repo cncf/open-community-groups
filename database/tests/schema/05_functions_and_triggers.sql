@@ -140,6 +140,10 @@ select has_function(
 );
 select has_function('complete_free_event_purchase', array['uuid']::name[]);
 select has_function('deactivate_group', array['uuid', 'uuid', 'uuid']::name[]);
+select has_function(
+    'decline_event_admission_offer',
+    array['uuid', 'uuid', 'text']::name[]
+);
 select has_function('delete_badge', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_badge_artwork', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_community_team_member', array['uuid', 'uuid', 'uuid']::name[]);
@@ -153,10 +157,6 @@ select has_function('delete_group_team_member', array['uuid', 'uuid', 'uuid']::n
 select has_function('delete_meeting', array['uuid', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
 select has_function('delete_region', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_session_proposal', array['uuid', 'uuid']::name[]);
-select has_function(
-    'decline_event_admission_offer',
-    array['uuid', 'uuid', 'text']::name[]
-);
 select has_function('enqueue_due_event_reminders', array['text']::name[]);
 select has_function('enqueue_notification', array['text', 'jsonb', 'jsonb', 'uuid[]']::name[]);
 select has_function('enqueue_tracked_custom_notification', array['text', 'jsonb', 'jsonb', 'uuid[]', 'uuid', 'uuid', 'uuid', 'integer', 'text', 'text']::name[]);

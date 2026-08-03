@@ -21,6 +21,24 @@ select plan(6);
 \set eventSimpleID '0c150000-0000-0000-0000-000000000008'
 \set groupCategoryID '0c150000-0000-0000-0000-000000000009'
 \set groupID '0c150000-0000-0000-0000-00000000000a'
+\set ticketInactiveActiveID '0c150000-0000-0000-0000-000000000010'
+\set ticketInactiveDisabledID '0c150000-0000-0000-0000-000000000011'
+\set ticketMultipleFirstID '0c150000-0000-0000-0000-000000000012'
+\set ticketMultipleSecondID '0c150000-0000-0000-0000-000000000013'
+\set ticketNoCurrentPriceID '0c150000-0000-0000-0000-000000000014'
+\set ticketPaidID '0c150000-0000-0000-0000-000000000015'
+\set ticketPrivateOnlyID '0c150000-0000-0000-0000-000000000016'
+\set ticketSimplePrivateID '0c150000-0000-0000-0000-000000000018'
+\set ticketSimplePublicID '0c150000-0000-0000-0000-000000000017'
+\set windowInactiveActiveID '0c150000-0000-0000-0000-000000000020'
+\set windowInactiveDisabledID '0c150000-0000-0000-0000-000000000021'
+\set windowMultipleFirstID '0c150000-0000-0000-0000-000000000022'
+\set windowMultipleSecondID '0c150000-0000-0000-0000-000000000023'
+\set windowNoCurrentPriceID '0c150000-0000-0000-0000-000000000024'
+\set windowPaidID '0c150000-0000-0000-0000-000000000025'
+\set windowPrivateOnlyID '0c150000-0000-0000-0000-000000000026'
+\set windowSimplePrivateID '0c150000-0000-0000-0000-000000000028'
+\set windowSimplePublicID '0c150000-0000-0000-0000-000000000027'
 
 -- ============================================================================
 -- SEED DATA
@@ -152,15 +170,15 @@ insert into event_ticket_type (
     seats_total,
     title
 ) values
-    (true, 'public', :'eventInactiveID', '0c150000-0000-0000-0000-000000000010', 1, 10, 'Active free'),
-    (false, 'public', :'eventInactiveID', '0c150000-0000-0000-0000-000000000011', 2, 10, 'Inactive free'),
-    (true, 'public', :'eventMultipleID', '0c150000-0000-0000-0000-000000000012', 1, 10, 'Free one'),
-    (true, 'public', :'eventMultipleID', '0c150000-0000-0000-0000-000000000013', 2, 10, 'Free two'),
-    (true, 'public', :'eventNoCurrentPriceID', '0c150000-0000-0000-0000-000000000014', 1, 10, 'Expired free'),
-    (true, 'public', :'eventPaidID', '0c150000-0000-0000-0000-000000000015', 1, 10, 'Paid'),
-    (true, 'invitation_only', :'eventPrivateOnlyID', '0c150000-0000-0000-0000-000000000016', 1, 10, 'Private free'),
-    (true, 'public', :'eventSimpleID', '0c150000-0000-0000-0000-000000000017', 1, 10, 'General admission'),
-    (true, 'invitation_only', :'eventSimpleID', '0c150000-0000-0000-0000-000000000018', 2, 10, 'Private paid');
+    (true, 'public', :'eventInactiveID', :'ticketInactiveActiveID', 1, 10, 'Active free'),
+    (false, 'public', :'eventInactiveID', :'ticketInactiveDisabledID', 2, 10, 'Inactive free'),
+    (true, 'public', :'eventMultipleID', :'ticketMultipleFirstID', 1, 10, 'Free one'),
+    (true, 'public', :'eventMultipleID', :'ticketMultipleSecondID', 2, 10, 'Free two'),
+    (true, 'public', :'eventNoCurrentPriceID', :'ticketNoCurrentPriceID', 1, 10, 'Expired free'),
+    (true, 'public', :'eventPaidID', :'ticketPaidID', 1, 10, 'Paid'),
+    (true, 'invitation_only', :'eventPrivateOnlyID', :'ticketPrivateOnlyID', 1, 10, 'Private free'),
+    (true, 'public', :'eventSimpleID', :'ticketSimplePublicID', 1, 10, 'General admission'),
+    (true, 'invitation_only', :'eventSimpleID', :'ticketSimplePrivateID', 2, 10, 'Private paid');
 
 -- Price windows covering current free, current paid, and expired prices
 insert into event_ticket_price_window (
@@ -169,15 +187,15 @@ insert into event_ticket_price_window (
     event_ticket_price_window_id,
     event_ticket_type_id
 ) values
-    (0, null, '0c150000-0000-0000-0000-000000000020', '0c150000-0000-0000-0000-000000000010'),
-    (0, null, '0c150000-0000-0000-0000-000000000021', '0c150000-0000-0000-0000-000000000011'),
-    (0, null, '0c150000-0000-0000-0000-000000000022', '0c150000-0000-0000-0000-000000000012'),
-    (0, null, '0c150000-0000-0000-0000-000000000023', '0c150000-0000-0000-0000-000000000013'),
-    (0, current_timestamp - interval '1 hour', '0c150000-0000-0000-0000-000000000024', '0c150000-0000-0000-0000-000000000014'),
-    (2500, null, '0c150000-0000-0000-0000-000000000025', '0c150000-0000-0000-0000-000000000015'),
-    (0, null, '0c150000-0000-0000-0000-000000000026', '0c150000-0000-0000-0000-000000000016'),
-    (0, null, '0c150000-0000-0000-0000-000000000027', '0c150000-0000-0000-0000-000000000017'),
-    (2500, null, '0c150000-0000-0000-0000-000000000028', '0c150000-0000-0000-0000-000000000018');
+    (0, null, :'windowInactiveActiveID', :'ticketInactiveActiveID'),
+    (0, null, :'windowInactiveDisabledID', :'ticketInactiveDisabledID'),
+    (0, null, :'windowMultipleFirstID', :'ticketMultipleFirstID'),
+    (0, null, :'windowMultipleSecondID', :'ticketMultipleSecondID'),
+    (0, current_timestamp - interval '1 hour', :'windowNoCurrentPriceID', :'ticketNoCurrentPriceID'),
+    (2500, null, :'windowPaidID', :'ticketPaidID'),
+    (0, null, :'windowPrivateOnlyID', :'ticketPrivateOnlyID'),
+    (0, null, :'windowSimplePublicID', :'ticketSimplePublicID'),
+    (2500, null, :'windowSimplePrivateID', :'ticketSimplePrivateID');
 
 -- ============================================================================
 -- TESTS

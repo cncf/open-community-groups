@@ -5,8 +5,8 @@ create or replace function expire_event_purchase_for_checkout_session(
 )
 returns void as $$
 declare
-    v_event_id uuid;
     v_event_discount_code_id uuid;
+    v_event_id uuid;
     v_event_ticket_type_id uuid;
     v_user_id uuid;
 begin

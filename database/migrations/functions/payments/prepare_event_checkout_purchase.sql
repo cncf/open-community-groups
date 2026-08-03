@@ -87,22 +87,22 @@ begin
     -- Lock and validate the owned offer before selecting or reusing a purchase
     if p_admission_offer_id is not null then
         select
-            ao.expires_at,
-            ao.status,
             ao.amount_minor,
             ao.currency_code,
             ao.discount_amount_minor,
             ao.discount_code,
             ao.event_discount_code_id,
+            ao.expires_at,
+            ao.status,
             ao.ticket_title
         into
-            v_admission_offer_expires_at,
-            v_admission_offer_status,
             v_admission_offer_snapshot_amount_minor,
             v_admission_offer_snapshot_currency_code,
             v_admission_offer_snapshot_discount_amount_minor,
             v_admission_offer_snapshot_discount_code,
             v_admission_offer_snapshot_event_discount_code_id,
+            v_admission_offer_expires_at,
+            v_admission_offer_status,
             v_admission_offer_snapshot_ticket_title
         from admission_offer ao
         where ao.admission_offer_id = p_admission_offer_id
@@ -134,6 +134,18 @@ begin
                 nullif(btrim(v_admission_offer_snapshot_discount_code), '')
             );
         end if;
+    end if;
+
+    -- Require direct callers to claim an active owned admission offer explicitly
+    if p_admission_offer_id is null and exists (
+        select 1
+        from admission_offer ao
+        where ao.event_id = p_event_id
+        and ao.user_id = p_user_id
+        and ao.status in ('checkout_pending', 'pending')
+        and ao.expires_at > current_timestamp
+    ) then
+        return jsonb_build_object('conflict', 'admission-offer-required');
     end if;
 
     -- Reuse an equivalent purchase or return an active completed purchase
@@ -184,10 +196,10 @@ begin
     -- Reject new or replacement checkout holds outside the registration window
     if p_admission_offer_id is null
        and not is_registration_window_open(
-        v_event_registration_starts_at,
-        v_event_registration_ends_at,
-        v_event_starts_at
-    ) then
+            v_event_registration_starts_at,
+            v_event_registration_ends_at,
+            v_event_starts_at
+        ) then
         raise exception 'event registration is not open';
     end if;
 

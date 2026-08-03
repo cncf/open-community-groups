@@ -663,7 +663,7 @@ async fn test_cfs_modal_db_error() {
 }
 
 #[tokio::test]
-async fn test_attend_event_returns_capacity_conflict() {
+async fn test_attend_event_capacity_conflict() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -741,7 +741,7 @@ async fn test_attend_event_returns_capacity_conflict() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_attend_event_success_with_registration_answers() {
+async fn test_attend_event_completes_with_registration_answers() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1312,7 +1312,7 @@ async fn test_attend_event_routes_newly_available_ticket_to_checkout() {
 }
 
 #[tokio::test]
-async fn test_attend_event_waitlist_success_without_registration_answers() {
+async fn test_attend_event_sends_waitlist_success_without_registration_answers() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1417,7 +1417,7 @@ async fn test_attend_event_waitlist_success_without_registration_answers() {
 }
 
 #[tokio::test]
-async fn test_attend_event_success_when_notification_context_load_fails() {
+async fn test_attend_event_suppresses_notification_context_errors() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1512,7 +1512,7 @@ async fn test_attend_event_success_when_notification_context_load_fails() {
 }
 
 #[tokio::test]
-async fn test_attend_event_returns_inactive_error_before_loading_enrollment_state() {
+async fn test_attend_event_validates_inactive_event_before_loading_enrollment_state() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1896,7 +1896,7 @@ async fn test_check_in_success() {
 }
 
 #[tokio::test]
-async fn test_leave_event_success() {
+async fn test_leave_event_completes_successfully() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1977,7 +1977,7 @@ async fn test_leave_event_success() {
 }
 
 #[tokio::test]
-async fn test_leave_waitlist_success() {
+async fn test_leave_event_drops_waitlist_entry() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -2342,7 +2342,7 @@ fn test_get_checkout_status_response_rejects_refund_recovery_pending() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_start_checkout_rejects_refund_requested_purchase() {
+async fn test_start_checkout_blocks_refund_requested_purchase() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -2607,7 +2607,7 @@ async fn test_start_checkout_completes_free_ticket_without_payments_config() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_start_checkout_allows_active_hold_after_registration_window_closes() {
+async fn test_start_checkout_keeps_active_hold_after_registration_window_closes() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -2736,7 +2736,7 @@ async fn test_start_checkout_allows_active_hold_after_registration_window_closes
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
+async fn test_start_checkout_keeps_active_hold_when_tickets_are_unavailable() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -3013,7 +3013,7 @@ async fn test_start_checkout_returns_sold_out_conflict() {
 }
 
 #[tokio::test]
-async fn test_start_checkout_rejects_missing_ticket_type() {
+async fn test_start_checkout_validates_missing_ticket_type() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();

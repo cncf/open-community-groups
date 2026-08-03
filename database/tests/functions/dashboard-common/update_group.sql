@@ -1,9 +1,11 @@
+-- Tests updating group settings and relationships.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(28);
+select plan(29);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,24 +13,26 @@ select plan(28);
 
 \set communityID '1c020000-0000-0000-0000-000000000001'
 \set eventCategoryID '1c020000-0000-0000-0000-000000000002'
-\set eventID '1c020000-0000-0000-0000-000000000003'
 \set eventFreeID '1c020000-0000-0000-0000-000000000014'
+\set eventID '1c020000-0000-0000-0000-000000000003'
 \set eventUnpublishedID '1c020000-0000-0000-0000-000000000004'
 \set group2ID '1c020000-0000-0000-0000-000000000005'
 \set group3ID '1c020000-0000-0000-0000-000000000006'
 \set group4ID '1c020000-0000-0000-0000-000000000007'
 \set group5ID '1c020000-0000-0000-0000-000000000008'
 \set group6ID '1c020000-0000-0000-0000-000000000015'
+\set groupAdminID '1c020000-0000-0000-0000-000000000010'
 \set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
 \set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
 \set groupID '1c020000-0000-0000-0000-00000000000c'
-\set groupAdminID '1c020000-0000-0000-0000-000000000010'
+\set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
+\set inactiveParentedGroupID '1c020000-0000-0000-0000-00000000001b'
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
-\set priceWindowID '1c020000-0000-0000-0000-000000000016'
 \set priceWindowFreeID '1c020000-0000-0000-0000-000000000017'
+\set priceWindowID '1c020000-0000-0000-0000-000000000016'
 \set priceWindowUnpublishedID '1c020000-0000-0000-0000-000000000018'
 \set ticketTypeFreeID '1c020000-0000-0000-0000-000000000019'
 \set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
@@ -120,6 +124,44 @@ insert into "group" (
         'Parent group without actor permissions',
         '2024-01-15 10:00:00+00'
     );
+
+-- Inactive parent and its existing child used by the no-op parent scenario
+insert into "group" (
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    slug,
+
+    active,
+    description,
+    parent_group_id
+) values (
+    :'communityID',
+    :'groupCategory1ID',
+    :'inactiveParentGroupID',
+    'Inactive Parent Group',
+    'inactive-parent-group',
+
+    true,
+    'Inactive parent for hierarchy tests',
+    null
+), (
+    :'communityID',
+    :'groupCategory1ID',
+    :'inactiveParentedGroupID',
+    'Inactive Parented Group',
+    'inactive-parented-group',
+
+    true,
+    'Group with an inactive existing parent',
+    :'inactiveParentGroupID'
+);
+
+-- Inactivate the established parent without changing the existing relationship
+update "group"
+set active = false
+where group_id = :'inactiveParentGroupID';
 
 -- Parent group team
 insert into group_team (group_id, user_id, role, accepted)
@@ -928,10 +970,6 @@ select is(
 );
 
 -- Should allow unchanged parent values even when the current parent is inactive
-update "group"
-set active = false
-where group_id = :'parentGroupID';
-
 select lives_ok(
     format(
         $$select update_group(
@@ -948,11 +986,22 @@ select lives_ok(
     )$$,
         :'noPermissionUserID',
         :'communityID',
-        :'groupID',
+        :'inactiveParentedGroupID',
         :'groupCategory1ID',
-        :'parentGroupID'
+        :'inactiveParentGroupID'
     ),
     'Should allow unchanged parent values even when the current parent is inactive'
+);
+
+-- Should preserve the inactive parent on an unchanged update
+select is(
+    (
+        select parent_group_id
+        from "group"
+        where group_id = :'inactiveParentedGroupID'::uuid
+    ),
+    :'inactiveParentGroupID'::uuid,
+    'Should preserve the inactive parent on an unchanged update'
 );
 
 -- Should allow clearing a parent without parent-side permission

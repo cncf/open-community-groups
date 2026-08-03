@@ -1,4 +1,4 @@
--- claim_pending_notification claims the next notification pending delivery.
+-- Claims the next deliverable notification within the configured rate limit.
 create or replace function claim_pending_notification(
     p_delivery_rate_limit integer default 15000,
     p_delivery_rate_limit_window_seconds integer default 60

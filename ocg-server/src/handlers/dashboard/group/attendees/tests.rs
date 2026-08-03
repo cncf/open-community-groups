@@ -586,7 +586,7 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
 }
 
 #[tokio::test]
-async fn test_cancel_event_admission_offer_returns_no_content() {
+async fn test_cancel_event_offer_returns_no_content() {
     // Setup identifiers and data structures
     let admission_offer_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -632,7 +632,7 @@ async fn test_cancel_event_admission_offer_returns_no_content() {
         .returning(move |_, _, _, _| {
             Ok(EventEnrollmentReconciliationOutcome {
                 community_id,
-                event_id: Uuid::new_v4(),
+                event_id: Uuid::from_u128(1),
                 group_id,
             })
         });
@@ -1324,7 +1324,7 @@ async fn test_invite_event_attendee_returns_created_for_registered_user() {
 }
 
 #[tokio::test]
-async fn test_invite_event_attendee_returns_conflict_when_ticket_type_is_sold_out() {
+async fn test_invite_event_attendee_returns_ticket_type_sold_out_conflict() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();

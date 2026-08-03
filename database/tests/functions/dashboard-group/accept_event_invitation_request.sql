@@ -1386,7 +1386,7 @@ select results_eq(
     'Should bound the in-progress offer by event end'
 );
 
--- Should reissue a reviewed ticket request after its previous offer is canceled.
+-- Should reissue a reviewed ticket request after its previous offer is canceled
 select lives_ok(
     format(
         $$

@@ -1,3 +1,5 @@
+-- Tests updating event meeting settings.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -378,7 +380,7 @@ where e.group_id = :'group1ID';
 -- TESTS
 -- ============================================================================
 
--- Should preserve meeting_in_sync=false when updating unrelated fields
+-- Should execute unrelated update with pending event meeting sync
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -399,13 +401,15 @@ select lives_ok(
     )$$,
     'Should execute unrelated update with pending event meeting sync'
 );
+
+-- Should keep event meeting_in_sync=false after unrelated update
 select is(
     (select meeting_in_sync from event where event_id = :'event5ID'::uuid),
     false,
     'Should keep event meeting_in_sync=false after unrelated update'
 );
 
--- Should keep meeting_in_sync=false when meeting_requested changes to false
+-- Should execute update when event meeting_requested changes to false
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -424,13 +428,15 @@ select lives_ok(
     )$$,
     'Should execute update when event meeting_requested changes to false'
 );
+
+-- Should keep event meeting_in_sync=false when meeting_requested changes to false
 select is(
     (select meeting_in_sync from event where event_id = :'event5ID'::uuid),
     false,
     'Should keep event meeting_in_sync=false when meeting_requested changes to false'
 );
 
--- Should persist event recording override for automatic meetings
+-- Should execute update when automatic event meeting recording override is provided
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -454,23 +460,29 @@ select lives_ok(
     )$$,
     'Should execute update when automatic event meeting recording override is provided'
 );
+
+-- Should persist event recording override for automatic meetings
 select is(
     (select meeting_recording_url from event where event_id = :'event5ID'::uuid),
     'https://youtube.com/watch?v=event-override',
     'Should persist event recording override for automatic meetings'
 );
+
+-- Should persist event recording visibility when unpublished
 select is(
     (select meeting_recording_published from event where event_id = :'event5ID'::uuid),
     false,
     'Should persist event recording visibility when unpublished'
 );
+
+-- Should persist event meeting recording preference when disabled
 select is(
     (select meeting_recording_requested from event where event_id = :'event5ID'::uuid),
     false,
     'Should persist event meeting recording preference when disabled'
 );
 
--- Should clear event recording override and fall back to synced meeting recording
+-- Should execute update when automatic event meeting recording override is cleared
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -492,6 +504,8 @@ select lives_ok(
     )$$,
     'Should execute update when automatic event meeting recording override is cleared'
 );
+
+-- Should keep synced event meeting recording hidden after clearing unpublished override
 select is(
     (
         select get_event_full(
@@ -504,7 +518,7 @@ select is(
     'Should keep synced event meeting recording hidden after clearing unpublished override'
 );
 
--- Should preserve session meeting_in_sync=false when updating unrelated fields
+-- Should execute unrelated update with pending session meeting sync
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -534,13 +548,15 @@ select lives_ok(
     )$$,
     'Should execute unrelated update with pending session meeting sync'
 );
+
+-- Should keep session meeting_in_sync=false after unrelated update
 select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
     false,
     'Should keep session meeting_in_sync=false after unrelated update'
 );
 
--- Should keep session meeting_in_sync=false when meeting_requested changes to false
+-- Should execute update when session meeting_requested changes to false
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -569,13 +585,15 @@ select lives_ok(
     )$$,
     'Should execute update when session meeting_requested changes to false'
 );
+
+-- Should keep session meeting_in_sync=false when meeting_requested changes to false
 select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
     false,
     'Should keep session meeting_in_sync=false when meeting_requested changes to false'
 );
 
--- Should persist session recording override for automatic meetings
+-- Should execute update when automatic session meeting recording override is provided
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -607,18 +625,22 @@ select lives_ok(
     )$$,
     'Should execute update when automatic session meeting recording override is provided'
 );
+
+-- Should persist session recording visibility when unpublished
 select is(
     (select meeting_recording_published from session where session_id = :'session1ID'::uuid),
     false,
     'Should persist session recording visibility when unpublished'
 );
+
+-- Should persist session recording override for automatic meetings
 select is(
     (select meeting_recording_url from session where session_id = :'session1ID'::uuid),
     'https://youtube.com/watch?v=session-override',
     'Should persist session recording override for automatic meetings'
 );
 
--- Should clear session recording override and fall back to synced meeting recording
+-- Should execute update when automatic session meeting recording override is cleared
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -649,6 +671,8 @@ select lives_ok(
     )$$,
     'Should execute update when automatic session meeting recording override is cleared'
 );
+
+-- Should keep synced session meeting recording hidden after clearing unpublished override
 select is(
     (
         with payload as (
@@ -668,7 +692,7 @@ select is(
     'Should keep synced session meeting recording hidden after clearing unpublished override'
 );
 
--- Should keep started synced event automatic meeting archived after meeting setting changes
+-- Should execute update for started synced event automatic meeting settings
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -690,6 +714,8 @@ select lives_ok(
     )$$,
     'Should execute update for started synced event automatic meeting settings'
 );
+
+-- Should keep started synced event meeting archived as in sync
 select is(
     (
         select jsonb_build_object(
@@ -708,7 +734,7 @@ select is(
     'Should keep started synced event meeting archived as in sync'
 );
 
--- Should keep started synced session automatic meeting archived after meeting setting changes
+-- Should execute update for started synced session automatic meeting settings
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -740,6 +766,8 @@ select lives_ok(
     )$$,
     'Should execute update for started synced session automatic meeting settings'
 );
+
+-- Should keep started synced session meeting archived as in sync
 select is(
     (
         select jsonb_build_object(
@@ -756,7 +784,7 @@ select is(
     'Should keep started synced session meeting archived as in sync'
 );
 
--- Update event without the session (removes it via cascade)
+-- Should remove omitted sessions on update
 select lives_ok(
     $$select update_event(
         null::uuid,
@@ -776,16 +804,18 @@ select lives_ok(
     'Should remove omitted sessions on update'
 );
 
--- Should verify session is deleted and meeting is orphan after update
+-- Should delete the session after update_event receives empty sessions
 select is(
     (select count(*) from session where session_id = :'session2ID'),
     0::bigint,
-    'Session is deleted after update_event with empty sessions'
+    'Should delete the session after update_event receives empty sessions'
 );
+
+-- Should orphan the meeting after session deletion
 select is(
     (select jsonb_build_object('meeting_id', meeting_id, 'session_id', session_id) from meeting where meeting_id = :'meeting1ID'),
     jsonb_build_object('meeting_id', :'meeting1ID'::uuid, 'session_id', null),
-    'Meeting becomes orphan (session_id set to null) after session deletion'
+    'Should orphan the meeting after session deletion'
 );
 
 -- ============================================================================

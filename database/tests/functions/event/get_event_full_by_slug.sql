@@ -139,7 +139,8 @@ insert into "group" (
     slug,
     active,
     created_at,
-    logo_url
+    logo_url,
+    slug_pretty
 ) values (
     :'groupID',
     :'communityID',
@@ -148,7 +149,8 @@ insert into "group" (
     'abc1234',
     true,
     '2025-02-11 10:00:00+00',
-    'https://example.com/group-logo.png'
+    'https://example.com/group-logo.png',
+    'test-group-pretty'
 );
 
 -- Event
@@ -498,7 +500,6 @@ select is(
 );
 
 -- Should resolve event by group pretty slug
-update "group" set slug_pretty = 'test-group-pretty' where group_id = :'groupID';
 select is(
     get_event_full_by_slug(:'communityID'::uuid, 'test-group-pretty', 'def5678')::jsonb,
 get_public_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,

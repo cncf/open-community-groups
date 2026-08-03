@@ -95,6 +95,56 @@ async fn approve_refund_request_propagates_queue_failure() {
 }
 
 #[tokio::test]
+async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
+    // Setup checkout identifiers and notification context
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+
+    // Setup free-purchase completion and notification context expectations
+    let mut db = MockDB::new();
+    db.expect_complete_free_event_purchase()
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .times(1)
+        .returning(move |_| {
+            Ok(CompletedEventPurchase {
+                community_id,
+                event_id,
+                user_id,
+            })
+        });
+    db.expect_get_event_summary_by_id()
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .times(1)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
+
+    // Setup the attendee welcome notification expectation
+    let mut notifications_manager = MockNotificationsManager::new();
+    notifications_manager
+        .expect_enqueue()
+        .withf(move |notification| {
+            notification.attachments.len() == 1
+                && matches!(notification.kind, NotificationKind::EventWelcome)
+                && notification.recipients == vec![user_id]
+        })
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Complete the free checkout
+    let manager = sample_payments_manager(db, notifications_manager, None);
+
+    manager
+        .complete_free_checkout(community_id, event_id, event_purchase_id, user_id)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn complete_refund_recovery_composes_template_data_before_atomic_completion() {
     // Setup authoritative recovery and event context
     let actor_user_id = Uuid::new_v4();
@@ -201,56 +251,6 @@ async fn complete_refund_recovery_skips_composition_after_local_finalization() {
             recovery_note: "Verified bank receipt".to_string(),
             recovery_reference: "bank-transfer-123".to_string(),
         })
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
-async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
-    // Setup checkout identifiers and notification context
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-
-    // Setup free-purchase completion and notification context expectations
-    let mut db = MockDB::new();
-    db.expect_complete_free_event_purchase()
-        .withf(move |purchase_id| *purchase_id == event_purchase_id)
-        .times(1)
-        .returning(move |_| {
-            Ok(CompletedEventPurchase {
-                community_id,
-                event_id,
-                user_id,
-            })
-        });
-    db.expect_get_event_summary_by_id()
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .times(1)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
-
-    // Setup the attendee welcome notification expectation
-    let mut notifications_manager = MockNotificationsManager::new();
-    notifications_manager
-        .expect_enqueue()
-        .withf(move |notification| {
-            notification.attachments.len() == 1
-                && matches!(notification.kind, NotificationKind::EventWelcome)
-                && notification.recipients == vec![user_id]
-        })
-        .times(1)
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Complete the free checkout
-    let manager = sample_payments_manager(db, notifications_manager, None);
-
-    manager
-        .complete_free_checkout(community_id, event_id, event_purchase_id, user_id)
         .await
         .unwrap();
 }

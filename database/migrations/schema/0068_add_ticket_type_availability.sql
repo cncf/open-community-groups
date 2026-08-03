@@ -193,13 +193,12 @@ create unique index event_purchase_event_id_user_id_active_idx
     ]::text[]);
 
 -- Replace enrollment mutations with provider-aware reconciliation boundaries.
-drop function if exists attend_event(uuid, uuid, uuid, jsonb);
-drop function if exists accept_event_invitation_request(uuid, uuid, uuid, uuid);
 drop function if exists accept_event_attendee_invitation(uuid, uuid);
+drop function if exists accept_event_invitation_request(uuid, uuid, uuid, uuid);
+drop function if exists attend_event(uuid, uuid, uuid, jsonb);
 drop function if exists cancel_event_attendee_attendance(uuid, uuid, uuid, uuid);
-drop function if exists cancel_event_checkout(uuid, uuid, uuid);
 drop function if exists cancel_event_attendee_invitation(uuid, uuid, uuid, uuid);
-drop function if exists complete_non_ticketed_event_admission_offer(uuid, uuid, uuid, jsonb);
+drop function if exists cancel_event_checkout(uuid, uuid, uuid);
 drop function if exists complete_event_purchase_refund_recovery(
     uuid,
     uuid,
@@ -208,9 +207,10 @@ drop function if exists complete_event_purchase_refund_recovery(
     text,
     jsonb
 );
+drop function if exists complete_non_ticketed_event_admission_offer(uuid, uuid, uuid, jsonb);
 drop function if exists finalize_event_purchase_refund(uuid, uuid, jsonb);
-drop function if exists leave_event(uuid, uuid, uuid);
 drop function if exists invite_event_attendee(uuid, uuid, uuid, uuid, text);
+drop function if exists leave_event(uuid, uuid, uuid);
 drop function if exists prepare_event_checkout_find_existing_purchase(uuid, uuid, uuid, text);
 drop function if exists prepare_event_checkout_purchase(uuid, uuid, uuid, uuid, text, text, jsonb);
 drop function if exists prepare_event_checkout_validate_and_resolve_pricing(uuid, uuid, uuid, text);
@@ -744,8 +744,8 @@ create constraint trigger event_ticketing_consistency_on_event_ticket_price_wind
     execute function check_event_ticketing_consistency();
 
 -- Remove superseded operation signatures before loading provider-aware functions.
-drop function if exists add_event_series(uuid, uuid, jsonb, jsonb, jsonb);
 drop function if exists add_event(uuid, uuid, jsonb, jsonb);
+drop function if exists add_event_series(uuid, uuid, jsonb, jsonb, jsonb);
 drop function if exists cancel_event_admission_offer(uuid, uuid, uuid, text);
 drop function if exists decline_event_admission_offer(uuid, uuid, text);
 drop function if exists prepare_event_checkout_validate_event(uuid, uuid, text);

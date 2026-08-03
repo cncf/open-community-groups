@@ -107,6 +107,13 @@ begin
             raise exception 'registered user not found';
         end if;
     else
+        -- Serialize pre-registration by normalized email across different events
+        perform pg_advisory_xact_lock(
+            hashtext('invite-event-attendee-email'),
+            hashtext(v_normalized_email)
+        );
+
+        -- Recheck the user catalog after acquiring the email lock
         select
             u.email_verified,
             u.registration_status,

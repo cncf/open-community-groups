@@ -36,10 +36,11 @@ begin
     -- Validate registration questions before writing the event
     perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
 
-    -- Load group payment state for paid-capable ticket validation
-    select payment_recipient into v_payment_recipient
-    from "group"
-    where group_id = p_group_id;
+    -- Lock group payment state through paid-capable ticket validation and insertion
+    select g.payment_recipient into v_payment_recipient
+    from "group" g
+    where g.group_id = p_group_id
+    for update of g;
 
     -- Validate enrollment and ticketing payload rules
     perform validate_event_enrollment_payload(

@@ -58,13 +58,13 @@ insert into community (
     'offer-cancellation-community'
 );
 
--- Group category
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
 -- Event category
 insert into event_category (community_id, event_category_id, name)
 values (:'communityID', :'eventCategoryID', 'General');
+
+-- Group category
+insert into group_category (community_id, group_category_id, name)
+values (:'communityID', :'groupCategoryID', 'Technology');
 
 -- Users: organizer actor and both offer recipients
 insert into "user" (auth_hash, email, email_verified, user_id, username)

@@ -465,14 +465,14 @@ select is(
     'Should report a pending purchase'
 );
 
--- Should ignore a pending checkout after its hold expires
+-- Should allow a canceled event after its pending checkout hold expires
 select is(
     get_event_delete_eligibility(:'groupID', :'expiredPendingEventID'),
     'allowed',
     'Should allow a canceled event after its pending checkout hold expires'
 );
 
--- Should keep an attached provider checkout blocking after the local hold expires
+-- Should block deletion while an attached provider checkout can still complete
 select is(
     get_event_delete_eligibility(:'groupID', :'providerPendingEventID'),
     'refunds-pending',

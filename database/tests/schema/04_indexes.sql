@@ -259,10 +259,10 @@ select indexes_are('event_host', array[
 -- Test: event_invitation_request indexes should match expected
 select indexes_are('event_invitation_request', array[
     'event_invitation_request_pkey',
-    'event_invitation_request_event_ticket_type_status_created_idx',
+    'event_invitation_request_event_id_registration_answers_idx',
     'event_invitation_request_event_id_status_created_at_idx',
-    'event_invitation_request_user_id_idx',
-    'event_invitation_request_event_id_registration_answers_idx'
+    'event_invitation_request_event_ticket_type_status_created_idx',
+    'event_invitation_request_user_id_idx'
 ]);
 
 -- Test: event_kind indexes should match expected
@@ -285,9 +285,9 @@ select indexes_are('event_purchase', array[
     'event_purchase_admission_offer_id_created_at_idx',
     'event_purchase_event_id_idx',
     'event_purchase_event_id_status_idx',
-    'event_purchase_user_id_idx',
+    'event_purchase_event_id_user_id_active_idx',
     'event_purchase_provider_checkout_session_idx',
-    'event_purchase_event_id_user_id_active_idx'
+    'event_purchase_user_id_idx'
 ]);
 select index_is_unique('event_purchase', 'event_purchase_admission_offer_id_active_idx');
 select index_is_unique('event_purchase', 'event_purchase_event_id_user_id_active_idx');
@@ -296,8 +296,8 @@ select index_is_unique('event_purchase', 'event_purchase_event_id_user_id_active
 select indexes_are('event_purchase_refund', array[
     'event_purchase_refund_pkey',
     'event_purchase_refund_event_purchase_id_key',
-    'event_purchase_refund_idempotency_key_key',
     'event_purchase_refund_event_refund_request_id_idx',
+    'event_purchase_refund_idempotency_key_key',
     'event_purchase_refund_payment_provider_refund_id_idx',
     'event_purchase_refund_status_idx'
 ]);
