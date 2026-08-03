@@ -4,6 +4,7 @@ import {
   closestElementWithinRoot,
   getElementById,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 import "/static/js/common/media/logo-image.js";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
@@ -48,6 +49,7 @@ const getInvitationSearchField = (root) =>
 const getInvitationControls = (root) => ({
   form: getElementById(root, "attendee-invitation-form"),
   submit: getElementById(root, "submit-attendee-invitation"),
+  ticketTypeEmptyState: root.querySelector?.("[data-attendee-invitation-ticket-empty]") || null,
   ticketTypeInput: getElementById(root, "attendee-invitation-ticket-type"),
   userInput: getElementById(root, "attendee-invitation-user-id"),
   emailInput: getElementById(root, "attendee-invitation-email"),
@@ -188,13 +190,21 @@ const renderInvitationSelectedEmail = (root, email) => {
  * @returns {void}
  */
 const updateInvitationSubmitState = (root) => {
-  const { emailInput, form, submit, ticketTypeInput, userInput } = getInvitationControls(root);
+  const { emailInput, form, submit, ticketTypeEmptyState, ticketTypeInput, userInput } =
+    getInvitationControls(root);
   if (!form || !submit) return;
 
   const userId = userInput?.value || "";
   const email = emailInput?.value.trim() || "";
   const hasRecipient = userId !== "" || isValidInvitationEmail(email);
-  const hasTicketType = !ticketTypeInput || ticketTypeInput.value !== "";
+  const hasAssignableTicketType =
+    !ticketTypeInput ||
+    Array.from(ticketTypeInput.options).some((option) => option.value !== "" && !option.disabled);
+  const hasTicketType = hasAssignableTicketType && (!ticketTypeInput || ticketTypeInput.value !== "");
+  if (ticketTypeInput) {
+    ticketTypeInput.disabled = !hasAssignableTicketType;
+  }
+  setElementHidden(ticketTypeEmptyState, hasAssignableTicketType);
   submit.disabled = !hasRecipient || !hasTicketType;
 };
 

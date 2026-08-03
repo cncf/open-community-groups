@@ -404,39 +404,39 @@
                   <p class="mt-1 text-xs text-stone-500">Complete these answers before claiming the offer.</p>
                 </div>
                 {% let radio_name_prefix -%}offer-question-{{ invitation.admission_offer_id }}{%- endlet %}
-              {{ question_answers::fields(questions = invitation.registration_questions,
-                answers = invitation.registration_answers.as_ref() ,
-                answer_attr = "data-question-answer",
-                radio_name_prefix = radio_name_prefix) -}}
-              {{ question_answers::required_note() -}}
-            </div>
-  {% endif -%}
-  <input type="hidden"
-         data-user-event-offer-answers
-         name="registration_answers">
+                {{ question_answers::fields(questions = invitation.registration_questions,
+                  answers = invitation.registration_answers.as_ref() ,
+                  answer_attr = "data-question-answer",
+                  radio_name_prefix = radio_name_prefix) -}}
+                {{ question_answers::required_note() -}}
+              </div>
+            {% endif -%}
+            <input type="hidden"
+                   data-user-event-offer-answers
+                   name="registration_answers">
 
-  {% if invitation.discount_code_available() -%}
-    <div>
-      <label for="event-offer-discount-{{ invitation.admission_offer_id }}"
-             class="form-label">Discount code (optional)</label>
-      <input id="event-offer-discount-{{ invitation.admission_offer_id }}"
-             type="text"
-             name="discount_code"
-             maxlength="{{ crate::validation::MAX_LEN_S }}"
-             class="input-primary mt-2"
-             placeholder="Discount code">
+            {% if invitation.discount_code_available() -%}
+              <div>
+                <label for="event-offer-discount-{{ invitation.admission_offer_id }}"
+                       class="form-label">Discount code (optional)</label>
+                <input id="event-offer-discount-{{ invitation.admission_offer_id }}"
+                       type="text"
+                       name="discount_code"
+                       maxlength="{{ crate::validation::MAX_LEN_S }}"
+                       class="input-primary mt-2"
+                       placeholder="Discount code">
+              </div>
+            {% endif -%}
+
+            <div class="flex flex-col-reverse gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:justify-end">
+              <button data-user-event-offer-close type="button" class="btn-primary-outline">Cancel</button>
+              <button type="submit" class="btn-primary">{{ invitation.claim_label() }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   {% endif -%}
-
-  <div class="flex flex-col-reverse gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:justify-end">
-    <button data-user-event-offer-close type="button" class="btn-primary-outline">Cancel</button>
-    <button type="submit" class="btn-primary">{{ invitation.claim_label() }}</button>
-  </div>
-  </form>
-  </div>
-  </div>
-  </div>
-{% endif -%}
 {% endfor -%}
 {# End event offer claim modals -#}
 {# End Event Invitations -#}

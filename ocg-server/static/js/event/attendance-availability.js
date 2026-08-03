@@ -260,10 +260,49 @@ const renderTicketPriceBadge = (card, ticket) => {
 };
 
 /**
+ * Updates a ticket description from fresh availability.
+ * @param {HTMLElement|null|undefined} card Ticket card element.
+ * @param {Object} ticket Public ticket availability payload.
+ * @returns {void}
+ */
+const renderTicketDescription = (card, ticket) => {
+  const descriptionText = getAvailabilityStringValue(ticket.description);
+  const currentDescription = card?.querySelector(
+    '[data-attendance-role="ticket-type-description"]',
+  );
+  if (!descriptionText) {
+    currentDescription?.remove();
+    return;
+  }
+
+  if (currentDescription instanceof HTMLElement) {
+    currentDescription.textContent = descriptionText;
+    return;
+  }
+
+  const statusLabel = card?.querySelector('[data-attendance-role="ticket-type-status-label"]');
+  const statusRow = statusLabel?.closest("div");
+  if (!(statusRow instanceof HTMLElement)) {
+    return;
+  }
+
+  const nextDescription = document.createElement("p");
+  nextDescription.dataset.attendanceRole = "ticket-type-description";
+  nextDescription.className = "col-start-2 form-legend min-w-0";
+  nextDescription.textContent = descriptionText;
+  statusRow.before(nextDescription);
+};
+
+/**
  * Updates a ticket status label and marker from fresh availability.
  * @param {HTMLInputElement} option Ticket radio input.
  * @param {Object} ticket Public ticket availability payload.
- * @param {{attendeeApprovalRequired: boolean, canceled: boolean, registrationWindowOpen: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta Attendance metadata.
+ * @param {object} meta Attendance metadata.
+ * @param {boolean} meta.attendeeApprovalRequired Whether approval is required.
+ * @param {boolean} meta.canceled Whether the event is canceled.
+ * @param {boolean} meta.registrationWindowOpen Whether registration is open.
+ * @param {boolean} meta.ticketPurchaseAvailable Whether tickets can be purchased.
+ * @param {boolean} meta.waitlistEnabled Whether the waitlist is enabled.
  * @returns {boolean} Whether the ticket is currently selectable.
  */
 const renderTicketAvailability = (option, ticket, meta) => {
@@ -290,6 +329,7 @@ const renderTicketAvailability = (option, ticket, meta) => {
   if (title instanceof HTMLElement) {
     title.textContent = getAvailabilityStringValue(ticket.title) || "Ticket";
   }
+  renderTicketDescription(card, ticket);
   if (!isSelectable && option.checked) {
     option.checked = false;
   }
@@ -334,7 +374,12 @@ const renderTicketAvailability = (option, ticket, meta) => {
  * Creates a ticket card for availability entries missing from cached markup.
  * @param {HTMLElement} container Attendance container element.
  * @param {Object} ticket Public ticket availability payload.
- * @param {{attendeeApprovalRequired: boolean, canceled: boolean, registrationWindowOpen: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta Attendance metadata.
+ * @param {object} meta Attendance metadata.
+ * @param {boolean} meta.attendeeApprovalRequired Whether approval is required.
+ * @param {boolean} meta.canceled Whether the event is canceled.
+ * @param {boolean} meta.registrationWindowOpen Whether registration is open.
+ * @param {boolean} meta.ticketPurchaseAvailable Whether tickets can be purchased.
+ * @param {boolean} meta.waitlistEnabled Whether the waitlist is enabled.
  * @returns {HTMLInputElement|null} The created ticket option, if any.
  */
 const createTicketAvailabilityCard = (container, ticket, meta) => {

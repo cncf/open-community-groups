@@ -271,21 +271,24 @@
                              data-attendance-role="ticket-type-option"
                              data-ticket-purchasable="{{ ticket_type.is_sellable_now() }}"
                              data-ticket-price-minor="{{ ticket_type.current_amount_minor().unwrap_or_default() }}"
+                             data-ticket-selectable="{{ ticket_type.current_price.is_some() && (event.attendee_approval_required || ticket_type.is_sellable_now() || (ticket_type.sold_out && event.waitlist_enabled)) && event.registration_window_is_open() }}"
                              data-ticket-sold-out="{{ ticket_type.sold_out }}"
                              type="radio"
                              name="event_ticket_type_id"
                              value="{{ ticket_type.event_ticket_type_id }}"
                              class="sr-only"
-                             {% if (!event.attendee_approval_required && !ticket_type.is_sellable_now() && !(ticket_type.sold_out && event.waitlist_enabled)) || !event.registration_window_is_open() %}disabled{% endif %}>
+                             {% if ticket_type.current_price.is_none() || (!event.attendee_approval_required && !ticket_type.is_sellable_now() && !(ticket_type.sold_out && event.waitlist_enabled)) || !event.registration_window_is_open() %}disabled{% endif %}>
                       <div data-attendance-role="ticket-type-card-body"
-                           class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200
-                                  {% if (event.attendee_approval_required || ticket_type.is_sellable_now() || (ticket_type.sold_out && event.waitlist_enabled)) && event.registration_window_is_open() %}
+                           class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200 group-has-[input:focus-visible]:border-primary-500 group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-primary-200
+                                  {% if ticket_type.current_price.is_some() && (event.attendee_approval_required || ticket_type.is_sellable_now() || (ticket_type.sold_out && event.waitlist_enabled)) && event.registration_window_is_open() %}
                                     bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm
                                   {% else %}
                                     bg-stone-50 cursor-not-allowed opacity-60
                                   {% endif %}">
                         <div class="grid grid-cols-[1.25rem] items-start gap-x-2.5 gap-y-2">
-                          <span class="row-start-1 inline-flex h-5 w-5 shrink-0 items-center self-center">
+                          <span data-attendance-role="ticket-type-indicator"
+                                aria-hidden="true"
+                                class="row-start-1 inline-flex h-5 w-5 shrink-0 items-center self-center">
                             <span class="relative flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 transition-colors group-has-[input:checked]:border-primary-500">
                               <span class="hidden h-2.5 w-2.5 rounded-full bg-primary-500 group-has-[input:checked]:block"></span>
                             </span>
@@ -309,7 +312,8 @@
                             {% endif -%}
                           </div>
                           {% if let Some(description) = &ticket_type.description -%}
-                            <p class="col-start-2 form-legend min-w-0">{{ description }}</p>
+                            <p data-attendance-role="ticket-type-description"
+                               class="col-start-2 form-legend min-w-0">{{ description }}</p>
                           {% endif -%}
                           <div class="col-start-2 flex items-center gap-2 text-xs font-medium">
                             {% if ticket_type.sold_out -%}

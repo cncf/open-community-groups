@@ -29,6 +29,10 @@ class AttendanceTicketCard extends LitWrapper {
     return toTrimmedString(this.ticket?.event_ticket_type_id);
   }
 
+  get _description() {
+    return toTrimmedString(this.ticket?.description);
+  }
+
   get _priceLabel() {
     return toTrimmedString(this.ticket?.current_price_label);
   }
@@ -73,6 +77,14 @@ class AttendanceTicketCard extends LitWrapper {
     return this._isSellableNow ? "Available now" : "Not on sale";
   }
 
+  get _statusDotClass() {
+    if (this.ticket?.sold_out === true) {
+      return "bg-red-500";
+    }
+
+    return this._isDisabled ? "bg-stone-300" : "bg-green-500";
+  }
+
   render() {
     return html`
       <label data-attendance-role="ticket-type-card" class="group block">
@@ -89,37 +101,66 @@ class AttendanceTicketCard extends LitWrapper {
         />
         <div
           data-attendance-role="ticket-type-card-body"
-          class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200 ${
+          class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200 group-has-[input:focus-visible]:border-primary-500 group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-primary-200 ${
             this._cardStateClasses
           }"
         >
-          <div
-            data-attendance-role="ticket-type-summary"
-            class="flex min-w-0 items-center justify-between gap-2.5"
-          >
-            <div
-              data-attendance-role="ticket-type-title"
-              class="min-w-0 truncate text-left text-sm font-semibold text-stone-900"
+          <div class="grid grid-cols-[1.25rem] items-start gap-x-2.5 gap-y-2">
+            <span
+              data-attendance-role="ticket-type-indicator"
+              aria-hidden="true"
+              class="row-start-1 inline-flex h-5 w-5 shrink-0 items-center self-center"
             >
-              ${this._title}
+              <span
+                class="relative flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 transition-colors group-has-[input:checked]:border-primary-500"
+              >
+                <span
+                  class="hidden h-2.5 w-2.5 rounded-full bg-primary-500 group-has-[input:checked]:block"
+                ></span>
+              </span>
+            </span>
+            <div
+              data-attendance-role="ticket-type-summary"
+              class="row-start-1 flex w-full min-w-0 items-center justify-between gap-2.5"
+            >
+              <div
+                data-attendance-role="ticket-type-title"
+                class="min-w-0 truncate text-left text-sm font-semibold text-stone-900"
+              >
+                ${this._title}
+              </div>
+              ${
+                this._priceLabel
+                  ? html`
+                      <div
+                        data-attendance-role="ticket-type-price-badge"
+                        class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                      >
+                        ${this._priceLabel}
+                      </div>
+                    `
+                  : nothing
+              }
             </div>
             ${
-              this._priceLabel
-                ? html`
-                    <div
-                      data-attendance-role="ticket-type-price-badge"
-                      class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800"
-                    >
-                      ${this._priceLabel}
-                    </div>
-                  `
+              this._description
+                ? html`<p
+                    data-attendance-role="ticket-type-description"
+                    class="col-start-2 form-legend min-w-0"
+                  >
+                    ${this._description}
+                  </p>`
                 : nothing
             }
-          </div>
-          <div class="mt-2 text-xs font-medium">
-            <span data-attendance-role="ticket-type-status-label" class="text-stone-500">
-              ${this._statusLabel}
-            </span>
+            <div class="col-start-2 flex items-center gap-2 text-xs font-medium">
+              <span
+                data-attendance-role="ticket-type-status-dot"
+                class="inline-flex h-2 w-2 rounded-full ${this._statusDotClass}"
+              ></span>
+              <span data-attendance-role="ticket-type-status-label" class="text-stone-500">
+                ${this._statusLabel}
+              </span>
+            </div>
           </div>
         </div>
       </label>

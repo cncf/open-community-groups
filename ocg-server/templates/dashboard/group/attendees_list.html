@@ -1049,7 +1049,7 @@
                   <option value="">Select ticket type</option>
                   {% if let Some(ticket_types) = &event.ticket_types -%}
                     {% for ticket_type in ticket_types -%}
-                      {% if ticket_type.active && ticket_type.current_price.is_some() -%}
+                      {% if ticket_type.active && !ticket_type.sold_out && ticket_type.current_price.is_some() -%}
                         <option value="{{ ticket_type.event_ticket_type_id }}">
                           {{ ticket_type.title }}
                           {% if ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly -%}
@@ -1063,6 +1063,11 @@
                   {% endif -%}
                 </select>
               </div>
+              <p data-attendee-invitation-ticket-empty
+                 class="form-legend hidden text-amber-800">
+                No ticket types can be assigned. Add capacity or activate a ticket type with a current
+                price before sending an invitation.
+              </p>
               <p class="form-legend">The selected ticket is reserved when the invitation is sent.</p>
             </div>
           {% endif -%}

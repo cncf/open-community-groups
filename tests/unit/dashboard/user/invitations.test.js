@@ -70,13 +70,15 @@ describe("dashboard user invitations", () => {
     expect(modal.classList.contains("hidden")).to.equal(true);
   });
 
-  it("restores focus after closing an offer modal with Escape", () => {
-    // Open the offer modal from a focused claim action.
+  it("restores focus to an unfocused offer trigger after closing with Escape", () => {
+    // Keep focus elsewhere while opening through the claim action.
     const { modal, openButton } = renderOfferDom();
-    openButton.focus();
+    const previousButton = document.createElement("button");
+    document.body.prepend(previousButton);
+    previousButton.focus();
     openButton.click();
 
-    // Escape closes the modal and returns focus to its trigger.
+    // Escape closes the modal and returns focus to the explicit trigger.
     document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
     expect(modal.classList.contains("hidden")).to.equal(true);
     expect(document.activeElement).to.equal(openButton);

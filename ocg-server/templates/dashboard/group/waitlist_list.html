@@ -275,7 +275,8 @@
                   && (entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
                   || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)) -%}
                   {% if let Some(admission_offer_id) = entry.admission_offer_id -%}
-                    <button type="button"
+                    <button id="cancel-waitlist-offer-{{ admission_offer_id }}"
+                            type="button"
                             aria-label="Cancel waiting list offer for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
                             hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
                             hx-indicator="#dashboard-spinner"
@@ -301,6 +302,7 @@
                             aria-label="Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
                             aria-haspopup="menu"
                             aria-controls="dropdown-actions-waitlist-{{ entry.user.user_id }}"
+                            aria-expanded="false"
                             class="btn-actions btn-tertiary flex items-center justify-center p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50">
                       <div class="svg-icon size-4 icon-vertical-dots"></div>
                     </button>

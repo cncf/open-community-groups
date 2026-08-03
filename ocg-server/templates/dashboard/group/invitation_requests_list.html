@@ -355,6 +355,7 @@
                               data-event-id="invitation-request-{{ request.user.user_id }}"
                               aria-label="Open actions for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
                               aria-controls="dropdown-actions-invitation-request-{{ request.user.user_id }}"
+                              aria-expanded="false"
                               class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
                                      {% if !can_manage_events || event.canceled || event.is_past() -%}
                                        opacity-50 cursor-not-allowed
@@ -393,12 +394,14 @@
                                            class="mb-1 block text-xs font-semibold text-stone-700">Invitation-only ticket</label>
                                     <select id="request-ticket-type-{{ request.user.user_id }}"
                                             name="event_ticket_type_id"
+                                            data-invitation-request-ticket-type
                                             class="select-primary text-sm"
                                             required>
                                       <option value="">Select ticket type</option>
                                       {% if let Some(ticket_types) = &event.ticket_types -%}
                                         {% for ticket_type in ticket_types -%}
                                           {% if ticket_type.active
+                                            && !ticket_type.sold_out
                                             && ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly
                                             && ticket_type.current_price.is_some() -%}
                                             <option value="{{ ticket_type.event_ticket_type_id }}"
@@ -409,9 +412,15 @@
                                         {% endfor -%}
                                       {% endif -%}
                                     </select>
+                                    <p data-invitation-request-ticket-empty
+                                       class="form-legend hidden text-amber-800">
+                                      No invitation-only ticket types can be assigned. Add capacity or
+                                      activate a ticket type with a current price before accepting this request.
+                                    </p>
                                   </div>
                                 {% endif -%}
                                 <button type="submit"
+                                        data-invitation-request-ticket-submit
                                         class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
                                   <div class="flex items-center">
                                     <div class="svg-icon size-4 icon-check bg-stone-600"></div>
@@ -431,7 +440,8 @@
                             || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
                             {% if let Some(admission_offer_id) = request.admission_offer_id -%}
                               <li>
-                                <button type="button"
+                                <button id="cancel-invitation-request-offer-{{ admission_offer_id }}"
+                                        type="button"
                                         class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
                                         hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
                                         hx-indicator="#dashboard-spinner"
@@ -440,7 +450,6 @@
                                         data-confirm-action
                                         data-confirm-message="Are you sure you want to cancel this ticket offer?"
                                         data-confirm-text="Yes"
-                                        data-invitation-request-action
                                         data-success-message="Ticket offer canceled."
                                         data-error-message="Something went wrong canceling this ticket offer. Please try again later.">
                                   <div class="flex items-center">
@@ -463,8 +472,7 @@
                                       data-confirm-action
                                       data-confirm-message="Are you sure you want to reject this invitation request?"
                                       data-confirm-text="Yes"
-                                      data-error-message="Something went wrong rejecting this invitation request. Please try again later."
-                                      data-invitation-request-action>
+                                      data-error-message="Something went wrong rejecting this invitation request. Please try again later.">
                                 <div class="flex items-center">
                                   <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
                                   <div class="ms-2">Reject</div>

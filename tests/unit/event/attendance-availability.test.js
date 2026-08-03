@@ -238,6 +238,48 @@ describe("attendance availability", () => {
     expect(ticketTitle.textContent.trim()).to.equal("General admission");
   });
 
+  it("renders appended ticket details with visible selection and focus affordances", async () => {
+    document.body.innerHTML = `
+      <div data-attendance-container>
+        <div data-attendance-role="ticket-type-list"></div>
+      </div>
+    `;
+    const container = document.querySelector("[data-attendance-container]");
+
+    renderAttendanceAvailability(container, {
+      attendee_approval_required: false,
+      canceled: false,
+      has_sellable_ticket_types: true,
+      is_ticketed: true,
+      registration_window_open: true,
+      ticket_types: [
+        {
+          active: true,
+          current_price_label: "EUR 20.00",
+          description: "Includes lunch and workshop materials.",
+          event_ticket_type_id: "ticket-1",
+          is_sellable_now: true,
+          sold_out: false,
+          title: "General admission",
+        },
+      ],
+      waitlist_enabled: false,
+    });
+
+    const card = container.querySelector("attendance-ticket-card");
+    await card.updateComplete;
+    const ticketOption = card.querySelector('[data-attendance-role="ticket-type-option"]');
+    const ticketCardBody = card.querySelector('[data-attendance-role="ticket-type-card-body"]');
+
+    ticketOption.focus();
+
+    expect(card.querySelector('[data-attendance-role="ticket-type-indicator"]')).to.not.equal(null);
+    expect(card.querySelector('[data-attendance-role="ticket-type-status-dot"]')).to.not.equal(null);
+    expect(card.textContent).to.include("Includes lunch and workshop materials.");
+    expect(ticketCardBody.classList.contains("group-has-[input:focus-visible]:ring-2")).to.equal(true);
+    expect(document.activeElement).to.equal(ticketOption);
+  });
+
   it("keeps price-ineligible approval tickets unavailable", () => {
     // Build cached markup containing a ticket that has since become inactive.
     document.body.innerHTML = `
@@ -293,6 +335,56 @@ describe("attendance availability", () => {
     expect(inactiveOption.disabled).to.equal(true);
     expect(inactiveOption.checked).to.equal(false);
     expect(container.querySelector('[value="ticket-future"]')).to.equal(null);
+  });
+
+  it("updates and clears cached ticket descriptions from fresh availability", () => {
+    // Build cached ticket markup with an existing description.
+    document.body.innerHTML = `
+      <div data-attendance-container>
+        <div data-attendance-role="ticket-type-list">
+          <label data-attendance-role="ticket-type-card">
+            <input data-attendance-role="ticket-type-option" value="ticket-1" />
+            <div data-attendance-role="ticket-type-card-body"></div>
+            <div data-attendance-role="ticket-type-summary">
+              <span data-attendance-role="ticket-type-title">General admission</span>
+            </div>
+            <p data-attendance-role="ticket-type-description">Old description</p>
+            <div><span data-attendance-role="ticket-type-status-label"></span></div>
+          </label>
+        </div>
+      </div>
+    `;
+    const container = document.querySelector("[data-attendance-container]");
+    const availability = {
+      attendee_approval_required: false,
+      canceled: false,
+      has_sellable_ticket_types: true,
+      is_ticketed: true,
+      registration_window_open: true,
+      ticket_types: [
+        {
+          active: true,
+          current_price_label: "EUR 20.00",
+          description: "Updated description",
+          event_ticket_type_id: "ticket-1",
+          is_sellable_now: true,
+          sold_out: false,
+          title: "General admission",
+        },
+      ],
+      waitlist_enabled: false,
+    };
+
+    // Fresh copy replaces the cached description.
+    renderAttendanceAvailability(container, availability);
+    expect(container.querySelector('[data-attendance-role="ticket-type-description"]').textContent).to.equal(
+      "Updated description",
+    );
+
+    // Removing the description from availability also removes stale cached copy.
+    availability.ticket_types[0].description = null;
+    renderAttendanceAvailability(container, availability);
+    expect(container.querySelector('[data-attendance-role="ticket-type-description"]')).to.equal(null);
   });
 
   it("removes cached tickets missing from public availability", () => {

@@ -135,6 +135,7 @@ describe("dashboard group waitlist list template", () => {
       "Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
     );
     expect(template).to.include('data-event-id="waitlist-{{ entry.user.user_id }}"');
+    expect(template).to.include('aria-expanded="false"');
     expect(template).to.include('id="dropdown-actions-waitlist-{{ entry.user.user_id }}"');
     expect(template).to.include("data-event-actions-dropdown");
     expect(template).to.include('hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"');
@@ -173,6 +174,8 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include('label = "Ticket claimed"');
     expect(template).to.include('label = "Offer expired"');
     expect(template).to.include('label = "Offer canceled"');
+    expect(template).to.include('id="cancel-waitlist-offer-{{ admission_offer_id }}"');
+    expect(template).to.include('hx-trigger="confirmed"');
     expect(template).to.include('label = "Offer declined"');
     expect(template).to.include(
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',

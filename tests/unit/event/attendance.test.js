@@ -679,6 +679,43 @@ describe("event attendance", () => {
     expect(questionsModal.classList.contains("hidden")).to.equal(false);
   });
 
+  it("completes ticketed pending questions without reopening ticket selection", () => {
+    // Render a ticketed promoted-attendee state with required questions.
+    const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
+      includeRegistrationQuestions: true,
+    });
+    container.dataset.hasVisibleTicketTypes = "true";
+    container.dataset.isTicketed = "true";
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+        <div id="ticket-modal" data-attendance-role="ticket-modal" class="hidden">
+          <input data-attendance-role="ticket-type-option" type="radio" value="ticket-1" />
+        </div>
+      `,
+    );
+    const ticketModal = container.querySelector('[data-attendance-role="ticket-modal"]');
+    const registrationAnswer = questionsModal.querySelector("[data-question-answer]");
+    const registrationForm = questionsModal.querySelector('[data-attendance-role="registration-form"]');
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "registration-questions-pending" }),
+    });
+    const unansweredEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    expect(unansweredEvent.defaultPrevented).to.equal(true);
+    attendButton.click();
+    registrationAnswer.value = "Vegetarian lunch";
+    registrationForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    // Valid answers resume the attendance request without looping through ticket choice.
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+    expect(ticketModal.classList.contains("hidden")).to.equal(true);
+    const resumedEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    expect(resumedEvent.defaultPrevented).to.equal(false);
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
+    expect(loadingButton.classList.contains("hidden")).to.equal(false);
+  });
+
   it("shows sign-in info for waitlists and confirms leaving the waitlist", async () => {
     // Render the attendance fixture.
     const { signinButton, leaveButton } = renderAttendanceDom();

@@ -65,290 +65,530 @@ const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
 const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
 
 /**
- * Returns the attendee refund-control state for the current response.
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_request_status?: string}} response - Attendance response
- * @returns {{disabled?: boolean, label?: string|null, title?: string|null}} Render state
+ * Initializes attendance UI elements for a container.
+ * @param {HTMLElement} container - Attendance container element
  */
-const getRefundState = (meta, response) => {
-  if (response.refund_request_status === "pending") {
-    return {
-      disabled: true,
-      label: REFUND_REQUESTED_LABEL,
-      title: REFUND_PENDING_TITLE,
-    };
-  }
-
-  if (response.refund_request_status === "approving") {
-    return {
-      disabled: true,
-      label: REFUND_PROCESSING_LABEL,
-      title: REFUND_PROCESSING_TITLE,
-    };
-  }
-
-  if (response.refund_request_status === "rejected") {
-    return {
-      disabled: true,
-      label: REFUND_UNAVAILABLE_LABEL,
-      title: REFUND_REJECTED_TITLE,
-    };
-  }
-
-  if (response.can_request_refund) {
-    return { label: REQUEST_REFUND_LABEL };
-  }
-
-  return {
-    disabled: true,
-    label: REFUND_UNAVAILABLE_LABEL,
-    title: REFUND_CLOSED_TITLE,
-  };
-};
-
-/**
- * Updates the disabled styling for a control.
- * @param {HTMLElement|null} control - Control to update
- * @param {boolean} disabled - Whether the control is disabled
- */
-const setDisabledStyles = (control, disabled) => {
-  control?.classList.toggle("cursor-not-allowed", disabled);
-  control?.classList.toggle("opacity-50", disabled);
-};
-
-/**
- * Hides an attendance control.
- * @param {HTMLElement|null} control - Control to hide
- */
-const hideControl = (control) => {
-  if (!(control instanceof HTMLElement)) {
+export const initializeAttendanceContainer = (container) => {
+  if (!container || isDatasetReady(container, "attendanceReady")) {
     return;
   }
 
-  control.classList.remove("opacity-100");
-  setElementHidden(control, true);
-  control.classList.add("opacity-0", "transition-opacity", "duration-150");
+  const meta = getAttendanceMeta(container);
+  const { attendButton, leaveButton, refundButton, signinButton } = getPrimaryControls(container);
+
+  renderControl(attendButton, { ...getAttendState(meta), visible: false });
+  renderControl(leaveButton, {
+    ...withEventActionState(meta, { label: CANCEL_ATTENDANCE_LABEL }),
+    visible: false,
+  });
+  renderControl(refundButton, {
+    ...withEventActionState(meta, { label: REQUEST_REFUND_LABEL }),
+    visible: false,
+  });
+  renderControl(signinButton, {
+    ...withEventActionState(meta, { label: getSigninLabel(meta) }),
+    visible: false,
+  });
+  initializeTicketModalControls(container);
+  markDatasetReady(container, "attendanceReady");
 };
 
 /**
- * Returns event price badges rendered inside a primary attendance control.
- * @param {HTMLElement} control - Attendance control to inspect
- * @returns {HTMLElement[]} Matching price badges
+ * Closes the event questions modal if it is open.
+ * @param {HTMLElement} container - Attendance container element
  */
-const getControlPriceBadges = (control) =>
-  Array.from(control.children).filter(
-    (child) =>
-      child instanceof HTMLElement &&
-      child.tagName === "SPAN" &&
-      !child.hasAttribute("data-attendance-label") &&
-      (child.dataset.attendanceRole === "control-price-badge" ||
-        (child.classList.contains("absolute") && child.classList.contains("left-1/2"))),
-  );
+export const closeQuestionsModal = (container) => {
+  const questionsModal = getAttendanceControl(container, "registration-modal");
+  if (!(questionsModal instanceof HTMLElement) || !questionsModal.id || isElementHidden(questionsModal)) {
+    return;
+  }
+
+  toggleModalVisibility(questionsModal.id);
+};
 
 /**
- * Toggles event price badges rendered inside primary attendance controls.
+ * Closes the refund request modal if it is open.
  * @param {HTMLElement} container - Attendance container element
- * @param {boolean} hidden - Whether the badges should be hidden
  */
-const setControlPriceBadgesHidden = (container, hidden) => {
-  const { signinButton, attendButton } = getPrimaryControls(container);
-  [signinButton, attendButton].forEach((control) => {
-    if (!(control instanceof HTMLElement)) {
-      return;
-    }
+export const closeRefundModal = (container) => {
+  const refundModal = getAttendanceControl(container, "refund-modal");
+  if (!(refundModal instanceof HTMLElement) || !refundModal.id || isElementHidden(refundModal)) {
+    return;
+  }
 
-    getControlPriceBadges(control).forEach((priceBadge) => {
-      priceBadge.hidden = hidden;
-      setElementHidden(priceBadge, hidden);
-      priceBadge.style.display = hidden ? "none" : "";
+  toggleModalVisibility(refundModal.id);
+};
+
+/**
+ * Closes the ticket purchase modal if it is open.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const closeTicketModal = (container) => {
+  const ticketModal = getAttendanceControl(container, "ticket-modal");
+  if (!(ticketModal instanceof HTMLElement) || !isTicketModalOpen(ticketModal)) {
+    return;
+  }
+
+  toggleModalVisibility(ticketModal.id);
+};
+
+/**
+ * Opens the event questions modal.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const openQuestionsModal = (container) => {
+  const questionsModal = getAttendanceControl(container, "registration-modal");
+  if (!(questionsModal instanceof HTMLElement) || !questionsModal.id) {
+    return;
+  }
+
+  if (isElementHidden(questionsModal)) {
+    toggleModalVisibility(questionsModal.id);
+  }
+};
+
+/**
+ * Opens the refund request modal.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {HTMLElement|null} trigger - Element that opened the modal
+ */
+export const openRefundModal = (container, trigger = null) => {
+  const refundForm = getAttendanceControl(container, "refund-form");
+  const refundModal = getAttendanceControl(container, "refund-modal");
+  if (!(refundModal instanceof HTMLElement) || !refundModal.id) {
+    return;
+  }
+
+  if (refundForm instanceof HTMLFormElement) {
+    refundForm.reset();
+  }
+  restoreRefundModalControls(container);
+  if (isElementHidden(refundModal)) {
+    toggleModalVisibility(refundModal.id, trigger);
+  }
+};
+
+/**
+ * Opens the ticket purchase modal.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const openTicketModal = (container) => {
+  const ticketModal = getAttendanceControl(container, "ticket-modal");
+  if (!(ticketModal instanceof HTMLElement)) {
+    return;
+  }
+
+  syncTicketModalState(container);
+  if (!isTicketModalOpen(ticketModal)) {
+    toggleModalVisibility(ticketModal.id);
+  }
+};
+
+/**
+ * Toggles meeting detail visibility based on attendance status.
+ * @param {boolean} isAttendee - Whether the user is attending
+ * @param {{attendeeMeetingAccessOpen: boolean, canceled: boolean}} meta - Attendance metadata
+ */
+export const renderMeetingDetails = (isAttendee, meta) => {
+  const sections = document.querySelectorAll("[data-meeting-details]");
+  const showAttendeeMeetingAccess = isAttendee && meta.attendeeMeetingAccessOpen && !meta.canceled;
+
+  sections.forEach((section) => {
+    const sectionHasRecording = section.dataset?.hasRecording === "true";
+    setElementHidden(section, !(sectionHasRecording || showAttendeeMeetingAccess));
+    section.querySelectorAll("[data-join-link-always]").forEach((link) => {
+      setElementHidden(link, !showAttendeeMeetingAccess);
     });
   });
+
+  const joinLinksLive = document.querySelectorAll("[data-join-link]");
+  joinLinksLive.forEach((link) => {
+    setElementHidden(link, !showAttendeeMeetingAccess);
+    link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
+  });
+
+  const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");
+  joinLinksMenu.forEach((link) => {
+    setElementHidden(link, !showAttendeeMeetingAccess);
+    link.classList.toggle("max-xl:flex", showAttendeeMeetingAccess);
+  });
 };
 
 /**
- * Applies a rendered state to a control.
- * @param {HTMLElement|null} control - Control to update
- * @param {object} state - Render state
+ * Restores the modal checkout controls after a request completes or is canceled.
+ * @param {HTMLElement} container - Attendance container element
  */
-const renderControl = (control, state = {}) => {
-  if (!(control instanceof HTMLElement)) {
+export const restoreCheckoutModalControls = (container) => {
+  setCheckoutLoadingState(container, false);
+  updateCheckoutButtonState(container);
+};
+
+/**
+ * Restores a primary control after a failed request.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {string} role - Attendance control role
+ */
+export const restorePrimaryRequestControl = (container, role) => {
+  const loadingButton = getAttendanceControl(container, "loading-btn");
+  const targetControl = getAttendanceControl(container, role);
+  if (!loadingButton || !targetControl) {
     return;
   }
 
-  const {
-    ariaLabel = null,
-    disabled = false,
-    hidePriceBadge = false,
-    icon = null,
-    label = null,
-    resumeUrl = null,
-    title = null,
-    visible = true,
-  } = state;
-
-  if (visible) {
-    const wasHidden = isElementHidden(control);
-    control.classList.add("opacity-0", "transition-opacity", "duration-150");
-    setElementHidden(control, false);
-    const showControl = () => {
-      control.classList.remove("opacity-0");
-      control.classList.add("opacity-100");
-    };
-    if (wasHidden && typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(showControl);
-    } else {
-      showControl();
-    }
+  setElementHidden(loadingButton, true);
+  if (role === "checkout-cancel-btn") {
+    setElementHidden(getAttendanceControl(container, "attend-btn"), false);
+    const actionsMenu = getAttendanceControl(container, "actions-menu");
+    setElementHidden(actionsMenu, false);
   }
-  if (icon !== null) {
-    setAttendanceControlIcon(control, icon);
-  }
-  if (label !== null) {
-    setAttendanceControlLabel(control, label);
-  }
-
-  // Price badges describe fresh ticket purchase options, not user-specific states.
-  const shouldHidePriceBadge =
-    hidePriceBadge || (label !== null && label !== GET_TICKET_LABEL && label !== GET_FREE_TICKET_LABEL);
-  getControlPriceBadges(control).forEach((priceBadge) => {
-    priceBadge.hidden = shouldHidePriceBadge;
-    setElementHidden(priceBadge, shouldHidePriceBadge);
-    priceBadge.style.display = shouldHidePriceBadge ? "none" : "";
-  });
-
-  if (control instanceof HTMLButtonElement) {
-    control.disabled = disabled;
-  }
-
-  if (ariaLabel) {
-    control.setAttribute("aria-label", ariaLabel);
-  } else {
-    control.removeAttribute("aria-label");
-  }
-
-  if (title) {
-    control.title = title;
-  } else {
-    control.removeAttribute("title");
-  }
-
-  if (control instanceof HTMLButtonElement) {
-    if (resumeUrl) {
-      control.dataset.resumeUrl = resumeUrl;
-    } else {
-      delete control.dataset.resumeUrl;
-    }
-  }
-
-  setDisabledStyles(control, disabled);
+  setElementHidden(targetControl, false);
 };
 
 /**
- * Applies event-level action restrictions when needed.
- * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
- * @param {object} state - Base render state
- * @returns {object} Render state
+ * Restores the refund modal controls after a request completes.
+ * @param {HTMLElement} container - Attendance container element
  */
-const withEventActionState = (meta, state) => {
-  if (meta.canceled) {
-    return {
-      ...state,
+export const restoreRefundModalControls = (container) => {
+  setRefundLoadingState(container, false);
+};
+
+/**
+ * Shows a link to the dashboard surface that owns an active admission offer.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{admission_offer_id?: string, event_ticket_type_id?: string}} response - Attendance response
+ */
+export const showAdmissionOfferState = (container, meta, response) => {
+  const offerUrl = `/dashboard/user?tab=invitations#event-offer-${encodeURIComponent(
+    response.admission_offer_id,
+  )}`;
+  const isTicketOffer = Boolean(response.event_ticket_type_id);
+
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withEventActionState(meta, {
+      icon: "icon-ticket",
+      label: isTicketOffer ? CLAIM_TICKET_LABEL : ACCEPT_INVITATION_LABEL,
+      resumeUrl: offerUrl,
+    }),
+  );
+};
+
+/**
+ * Shows the attendee state for an active attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_request_status?: string}} response - Attendance response
+ */
+export const showAttendeeState = (container, meta, response) => {
+  const { leaveButton, refundButton } = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+
+  if (
+    response.refund_request_status ||
+    response.can_request_refund ||
+    (response.purchase_amount_minor || 0) > 0
+  ) {
+    renderControl(refundButton, getRefundState(meta, response));
+  } else {
+    renderControl(
+      leaveButton,
+      withEventActionState(meta, {
+        icon: CANCEL_ACTION_ICON,
+        label: CANCEL_ATTENDANCE_LABEL,
+      }),
+    );
+  }
+
+  renderMeetingDetails(true, meta);
+};
+
+/**
+ * Shows the modal checkout loading state before the checkout request starts.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const showCheckoutLoadingState = (container) => {
+  const checkoutButton = getAttendanceControl(container, "checkout-btn");
+  if (!(checkoutButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  checkoutButton.disabled = true;
+  setDisabledStyles(checkoutButton, true);
+  setCheckoutLoadingState(container, true);
+};
+
+/**
+ * Shows the terminal state for the user's latest expired ticket offer.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ */
+export const showExpiredOfferState = (container, meta) => {
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withEventActionState(meta, {
       disabled: true,
-      title: CANCELED_EVENT_TITLE,
-    };
+      icon: "icon-ticket",
+      label: TICKET_OFFER_EXPIRED_LABEL,
+    }),
+  );
+};
+
+/**
+ * Shows the guest state for an authenticated non-attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ */
+export const showGuestAttendanceState = (container, meta) => {
+  showPrimaryAttendanceState(container, meta, "attendButton", getAttendState(meta));
+};
+
+/**
+ * Shows the approved invitation state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{manually_invited?: boolean}} response - Attendance response
+ */
+export const showInvitationApprovedAttendanceState = (container, meta, response = {}) => {
+  const allowManualInvitation = response.manually_invited === true;
+
+  if (meta.canceled) {
+    showPrimaryAttendanceState(
+      container,
+      meta,
+      "attendButton",
+      withEventActionState(meta, {
+        icon: ATTEND_EVENT_ICON,
+        label: ATTEND_EVENT_LABEL,
+      }),
+    );
+    return;
   }
 
-  if (!meta.isPastEvent) {
-    return state;
+  if (!meta.registrationWindowOpen) {
+    showPrimaryAttendanceState(
+      container,
+      meta,
+      "attendButton",
+      withRegistrationWindowState(
+        meta,
+        {
+          icon: ATTEND_EVENT_ICON,
+          label: ATTEND_EVENT_LABEL,
+        },
+        {
+          allowManualInvitation,
+        },
+      ),
+    );
+    return;
   }
 
-  return {
-    ...state,
+  if (!allowManualInvitation && !meta.isPastEvent && meta.hasNoCapacity) {
+    showPrimaryAttendanceState(container, meta, "attendButton", {
+      disabled: true,
+      icon: ATTEND_EVENT_ICON,
+      label: ATTEND_EVENT_LABEL,
+      title: NO_CAPACITY_TITLE,
+    });
+    return;
+  }
+
+  if (!allowManualInvitation && !meta.isPastEvent && meta.isSoldOut) {
+    showPrimaryAttendanceState(container, meta, "attendButton", {
+      disabled: true,
+      icon: ATTEND_EVENT_ICON,
+      label: ATTEND_EVENT_LABEL,
+      title: SOLD_OUT_TITLE,
+    });
+    return;
+  }
+
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withRegistrationWindowState(
+      meta,
+      {
+        icon: ATTEND_EVENT_ICON,
+        label: ATTEND_EVENT_LABEL,
+      },
+      {
+        allowManualInvitation,
+      },
+    ),
+  );
+};
+
+/**
+ * Shows the pending invitation request state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ */
+export const showPendingApprovalAttendanceState = (container, meta) => {
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "leaveButton",
+    withEventActionState(meta, {
+      ariaLabel: REQUEST_PENDING_CANCEL_ARIA_LABEL,
+      icon: CANCEL_ACTION_ICON,
+      label: REQUEST_PENDING_LABEL,
+      title: INVITATION_PENDING_TITLE,
+    }),
+  );
+};
+
+/**
+ * Shows the pending-payment state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{resume_checkout_url?: string}} response - Attendance response
+ */
+export const showPendingPaymentState = (container, meta, response) => {
+  const { actionsMenu, attendButton, checkoutCancelButton } = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+  setControlPriceBadgesHidden(container, true);
+  renderControl(actionsMenu);
+  renderControl(
+    attendButton,
+    withEventActionState(meta, {
+      icon: "icon-ticket",
+      label: CONTINUE_CHECKOUT_LABEL,
+      resumeUrl: response.resume_checkout_url || "",
+    }),
+  );
+  renderControl(checkoutCancelButton, {
+    icon: "icon-cancel",
+    label: CANCEL_CHECKOUT_LABEL,
+    title: CANCEL_CHECKOUT_TITLE,
+  });
+  renderMeetingDetails(false, meta);
+};
+
+/**
+ * Shows the loading state for a primary attendance action.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {string} role - Attendance control role
+ */
+export const showPrimaryRequestLoading = (container, role) => {
+  const loadingButton = getAttendanceControl(container, "loading-btn");
+  const targetControl = getAttendanceControl(container, role);
+  if (!loadingButton || !targetControl) {
+    return;
+  }
+
+  if (role === "checkout-cancel-btn") {
+    setElementHidden(getAttendanceControl(container, "attend-btn"), true);
+    const actionsMenu = getAttendanceControl(container, "actions-menu");
+    setElementHidden(actionsMenu, true);
+    if (actionsMenu instanceof HTMLDetailsElement) {
+      actionsMenu.open = false;
+    }
+  }
+  setElementHidden(targetControl, true);
+  setElementHidden(loadingButton, false);
+};
+
+/**
+ * Shows the refund modal loading state before the request starts.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const showRefundLoadingState = (container) => {
+  setRefundLoadingState(container, true);
+};
+
+/**
+ * Shows the state for attendees promoted from the waitlist who need answers.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
+ */
+export const showRegistrationQuestionsPendingState = (container, meta, response = {}) => {
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withRegistrationWindowState(
+      meta,
+      {
+        icon: QUESTIONS_TAB_ICON,
+        label: COMPLETE_REGISTRATION_LABEL,
+      },
+      {
+        allowManualInvitation: response.manually_invited === true,
+      },
+    ),
+  );
+
+  const { attendButton } = getPrimaryControls(container);
+  if (attendButton instanceof HTMLButtonElement) {
+    attendButton.dataset.registrationQuestionsPending = "true";
+  }
+};
+
+/**
+ * Shows the rejected invitation request state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const showRejectedInvitationState = (container, meta) => {
+  showPrimaryAttendanceState(container, meta, "attendButton", {
     disabled: true,
-    title: PAST_EVENT_TITLE,
-  };
+    label: REQUEST_REJECTED_LABEL,
+    title: INVITATION_REJECTED_TITLE,
+  });
 };
 
 /**
- * Applies registration-window restrictions to attendee registration actions.
- * @param {{registrationWindowOpen: boolean, registrationWindowUnavailableTitle?: string}} meta - Attendance metadata
- * @param {object} state - Base render state
- * @param {{allowManualInvitation?: boolean}} options - Override options
- * @returns {object} Render state
+ * Shows the signed-out state for a container.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
-const withRegistrationWindowState = (meta, state, { allowManualInvitation = false } = {}) => {
-  const eventState = withEventActionState(meta, state);
-  if (eventState.disabled || allowManualInvitation || meta.registrationWindowOpen) {
-    return eventState;
+export const showSignedOutAttendanceState = (container, meta) => {
+  const { attendButton, signinButton } = getPrimaryControls(container);
+  const attendState = getAttendState(meta);
+
+  resetPrimaryControls(container);
+  if (meta.canceled) {
+    renderControl(attendButton, attendState);
+    return;
   }
 
-  return {
-    ...eventState,
-    disabled: true,
-    title: meta.registrationWindowUnavailableTitle,
-  };
+  if (meta.isTicketed && attendState.disabled) {
+    renderControl(attendButton, attendState);
+    return;
+  }
+
+  if (meta.isSoldOut && !meta.waitlistEnabled && !meta.attendeeApprovalRequired) {
+    renderControl(attendButton, getAttendState(meta));
+    return;
+  }
+
+  renderControl(signinButton, getSigninState(meta));
 };
 
 /**
- * Returns the default sign-in label for a container.
- * @param {{attendeeApprovalRequired: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
- * @returns {string} Label text
+ * Shows the waitlist state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
  */
-const getSigninLabel = (meta) => {
-  if (meta.isTicketed) {
-    if (meta.attendeeApprovalRequired) {
-      return REQUEST_TICKET_LABEL;
-    }
-
-    if (!meta.hasVisibleTicketTypes) {
-      return TICKETS_BY_INVITATION_LABEL;
-    }
-
-    if (meta.ticketPurchaseAvailable) {
-      return meta.ticketIsFreeOnly ? GET_FREE_TICKET_LABEL : GET_TICKET_LABEL;
-    }
-
-    if (meta.waitlistEnabled && meta.hasSoldOutTicketTypes) {
-      return JOIN_WAITLIST_LABEL;
-    }
-
-    return meta.paidCapable ? PAID_TICKETS_UNAVAILABLE_LABEL : TICKETS_UNAVAILABLE_LABEL;
-  }
-
-  if (meta.attendeeApprovalRequired) {
-    return REQUEST_INVITATION_LABEL;
-  }
-
-  return meta.isSoldOut && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
-};
-
-const getSigninState = (meta) => {
-  const state = withEventActionState(meta, { label: getSigninLabel(meta) });
-  if (meta.isTicketed) {
-    return state;
-  }
-
-  return {
-    ...state,
-    icon: meta.attendeeApprovalRequired ? REQUEST_INVITATION_ICON : ATTEND_EVENT_ICON,
-  };
-};
-
-/**
- * Returns the default attend label for a container.
- * @param {{attendeeApprovalRequired: boolean, isTicketed: boolean}} meta - Attendance metadata
- * @returns {string} Label text
- */
-const getDefaultAttendLabel = (meta) => {
-  if (meta.isTicketed) {
-    if (meta.attendeeApprovalRequired) {
-      return REQUEST_TICKET_LABEL;
-    }
-
-    return meta.ticketIsFreeOnly ? GET_FREE_TICKET_LABEL : GET_TICKET_LABEL;
-  }
-
-  return meta.attendeeApprovalRequired ? REQUEST_INVITATION_LABEL : ATTEND_EVENT_LABEL;
+export const showWaitlistedAttendanceState = (container, meta) => {
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "leaveButton",
+    withEventActionState(meta, {
+      ariaLabel: ON_WAITLIST_CANCEL_ARIA_LABEL,
+      icon: CANCEL_ACTION_ICON,
+      label: ON_WAITLIST_LABEL,
+    }),
+  );
 };
 
 /**
@@ -447,6 +687,238 @@ const getAttendState = (meta) => {
 };
 
 /**
+ * Returns event price badges rendered inside a primary attendance control.
+ * @param {HTMLElement} control - Attendance control to inspect
+ * @returns {HTMLElement[]} Matching price badges
+ */
+const getControlPriceBadges = (control) =>
+  Array.from(control.children).filter(
+    (child) =>
+      child instanceof HTMLElement &&
+      child.tagName === "SPAN" &&
+      !child.hasAttribute("data-attendance-label") &&
+      (child.dataset.attendanceRole === "control-price-badge" ||
+        (child.classList.contains("absolute") && child.classList.contains("left-1/2"))),
+  );
+
+/**
+ * Returns the default attend label for a container.
+ * @param {{attendeeApprovalRequired: boolean, isTicketed: boolean}} meta - Attendance metadata
+ * @returns {string} Label text
+ */
+const getDefaultAttendLabel = (meta) => {
+  if (meta.isTicketed) {
+    if (meta.attendeeApprovalRequired) {
+      return REQUEST_TICKET_LABEL;
+    }
+
+    return meta.ticketIsFreeOnly ? GET_FREE_TICKET_LABEL : GET_TICKET_LABEL;
+  }
+
+  return meta.attendeeApprovalRequired ? REQUEST_INVITATION_LABEL : ATTEND_EVENT_LABEL;
+};
+
+/**
+ * Returns the attendee refund-control state for the current response.
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_request_status?: string}} response - Attendance response
+ * @returns {{disabled?: boolean, label?: string|null, title?: string|null}} Render state
+ */
+const getRefundState = (meta, response) => {
+  if (response.refund_request_status === "pending") {
+    return {
+      disabled: true,
+      label: REFUND_REQUESTED_LABEL,
+      title: REFUND_PENDING_TITLE,
+    };
+  }
+
+  if (response.refund_request_status === "approving") {
+    return {
+      disabled: true,
+      label: REFUND_PROCESSING_LABEL,
+      title: REFUND_PROCESSING_TITLE,
+    };
+  }
+
+  if (response.refund_request_status === "rejected") {
+    return {
+      disabled: true,
+      label: REFUND_UNAVAILABLE_LABEL,
+      title: REFUND_REJECTED_TITLE,
+    };
+  }
+
+  if (response.can_request_refund) {
+    return { label: REQUEST_REFUND_LABEL };
+  }
+
+  return {
+    disabled: true,
+    label: REFUND_UNAVAILABLE_LABEL,
+    title: REFUND_CLOSED_TITLE,
+  };
+};
+
+/**
+ * Returns the default sign-in label for a container.
+ * @param {{attendeeApprovalRequired: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @returns {string} Label text
+ */
+const getSigninLabel = (meta) => {
+  if (meta.isTicketed) {
+    if (meta.attendeeApprovalRequired) {
+      return REQUEST_TICKET_LABEL;
+    }
+
+    if (!meta.hasVisibleTicketTypes) {
+      return TICKETS_BY_INVITATION_LABEL;
+    }
+
+    if (meta.ticketPurchaseAvailable) {
+      return meta.ticketIsFreeOnly ? GET_FREE_TICKET_LABEL : GET_TICKET_LABEL;
+    }
+
+    if (meta.waitlistEnabled && meta.hasSoldOutTicketTypes) {
+      return JOIN_WAITLIST_LABEL;
+    }
+
+    return meta.paidCapable ? PAID_TICKETS_UNAVAILABLE_LABEL : TICKETS_UNAVAILABLE_LABEL;
+  }
+
+  if (meta.attendeeApprovalRequired) {
+    return REQUEST_INVITATION_LABEL;
+  }
+
+  return meta.isSoldOut && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
+};
+
+const getSigninState = (meta) => {
+  const state = withEventActionState(meta, { label: getSigninLabel(meta) });
+  if (meta.isTicketed) {
+    return state;
+  }
+
+  return {
+    ...state,
+    icon: meta.attendeeApprovalRequired ? REQUEST_INVITATION_ICON : ATTEND_EVENT_ICON,
+  };
+};
+
+/**
+ * Hides an attendance control.
+ * @param {HTMLElement|null} control - Control to hide
+ */
+const hideControl = (control) => {
+  if (!(control instanceof HTMLElement)) {
+    return;
+  }
+
+  control.classList.remove("opacity-100");
+  setElementHidden(control, true);
+  control.classList.add("opacity-0", "transition-opacity", "duration-150");
+};
+
+/**
+ * Registers one-time listeners for ticket modal form controls.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const initializeTicketModalControls = (container) => {
+  if (!markDatasetReady(container, "ticketModalReady")) {
+    syncTicketModalState(container);
+    return;
+  }
+
+  container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((ticketTypeOption) => {
+    if (ticketTypeOption instanceof HTMLInputElement) {
+      ticketTypeOption.addEventListener("change", () => {
+        updateCheckoutButtonState(container);
+      });
+    }
+  });
+
+  syncTicketModalState(container);
+};
+
+/**
+ * Applies a rendered state to a control.
+ * @param {HTMLElement|null} control - Control to update
+ * @param {object} state - Render state
+ */
+const renderControl = (control, state = {}) => {
+  if (!(control instanceof HTMLElement)) {
+    return;
+  }
+
+  const {
+    ariaLabel = null,
+    disabled = false,
+    hidePriceBadge = false,
+    icon = null,
+    label = null,
+    resumeUrl = null,
+    title = null,
+    visible = true,
+  } = state;
+
+  if (visible) {
+    const wasHidden = isElementHidden(control);
+    control.classList.add("opacity-0", "transition-opacity", "duration-150");
+    setElementHidden(control, false);
+    const showControl = () => {
+      control.classList.remove("opacity-0");
+      control.classList.add("opacity-100");
+    };
+    if (wasHidden && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(showControl);
+    } else {
+      showControl();
+    }
+  }
+  if (icon !== null) {
+    setAttendanceControlIcon(control, icon);
+  }
+  if (label !== null) {
+    setAttendanceControlLabel(control, label);
+  }
+
+  // Price badges describe fresh ticket purchase options, not user-specific states.
+  const shouldHidePriceBadge =
+    hidePriceBadge || (label !== null && label !== GET_TICKET_LABEL && label !== GET_FREE_TICKET_LABEL);
+  getControlPriceBadges(control).forEach((priceBadge) => {
+    priceBadge.hidden = shouldHidePriceBadge;
+    setElementHidden(priceBadge, shouldHidePriceBadge);
+    priceBadge.style.display = shouldHidePriceBadge ? "none" : "";
+  });
+
+  if (control instanceof HTMLButtonElement) {
+    control.disabled = disabled;
+  }
+
+  if (ariaLabel) {
+    control.setAttribute("aria-label", ariaLabel);
+  } else {
+    control.removeAttribute("aria-label");
+  }
+
+  if (title) {
+    control.title = title;
+  } else {
+    control.removeAttribute("title");
+  }
+
+  if (control instanceof HTMLButtonElement) {
+    if (resumeUrl) {
+      control.dataset.resumeUrl = resumeUrl;
+    } else {
+      delete control.dataset.resumeUrl;
+    }
+  }
+
+  setDisabledStyles(control, disabled);
+};
+
+/**
  * Hides all primary attendance controls for a container.
  * @param {HTMLElement} container - Attendance container element
  */
@@ -485,61 +957,66 @@ const resetPrimaryControls = (container) => {
 };
 
 /**
- * Toggles meeting detail visibility based on attendance status.
- * @param {boolean} isAttendee - Whether the user is attending
- * @param {{attendeeMeetingAccessOpen: boolean, canceled: boolean}} meta - Attendance metadata
+ * Toggles the checkout button loading affordance.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {boolean} isLoading - Whether checkout is loading
  */
-export const renderMeetingDetails = (isAttendee, meta) => {
-  const sections = document.querySelectorAll("[data-meeting-details]");
-  const showAttendeeMeetingAccess = isAttendee && meta.attendeeMeetingAccessOpen && !meta.canceled;
+const setCheckoutLoadingState = (container, isLoading) => {
+  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
+  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
 
-  sections.forEach((section) => {
-    const sectionHasRecording = section.dataset?.hasRecording === "true";
-    setElementHidden(section, !(sectionHasRecording || showAttendeeMeetingAccess));
-    section.querySelectorAll("[data-join-link-always]").forEach((link) => {
-      setElementHidden(link, !showAttendeeMeetingAccess);
+  setElementHidden(checkoutSpinner, !isLoading);
+  checkoutSpinner?.classList.toggle("flex", isLoading);
+  checkoutLabel?.classList.toggle("invisible", isLoading);
+};
+
+/**
+ * Toggles event price badges rendered inside primary attendance controls.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {boolean} hidden - Whether the badges should be hidden
+ */
+const setControlPriceBadgesHidden = (container, hidden) => {
+  const { signinButton, attendButton } = getPrimaryControls(container);
+  [signinButton, attendButton].forEach((control) => {
+    if (!(control instanceof HTMLElement)) {
+      return;
+    }
+
+    getControlPriceBadges(control).forEach((priceBadge) => {
+      priceBadge.hidden = hidden;
+      setElementHidden(priceBadge, hidden);
+      priceBadge.style.display = hidden ? "none" : "";
     });
-  });
-
-  const joinLinksLive = document.querySelectorAll("[data-join-link]");
-  joinLinksLive.forEach((link) => {
-    setElementHidden(link, !showAttendeeMeetingAccess);
-    link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
-  });
-
-  const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");
-  joinLinksMenu.forEach((link) => {
-    setElementHidden(link, !showAttendeeMeetingAccess);
-    link.classList.toggle("max-xl:flex", showAttendeeMeetingAccess);
   });
 };
 
 /**
- * Shows the signed-out state for a container.
- * @param {HTMLElement} container - Attendance container element
- * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * Updates the disabled styling for a control.
+ * @param {HTMLElement|null} control - Control to update
+ * @param {boolean} disabled - Whether the control is disabled
  */
-export const showSignedOutAttendanceState = (container, meta) => {
-  const { attendButton, signinButton } = getPrimaryControls(container);
-  const attendState = getAttendState(meta);
+const setDisabledStyles = (control, disabled) => {
+  control?.classList.toggle("cursor-not-allowed", disabled);
+  control?.classList.toggle("opacity-50", disabled);
+};
 
-  resetPrimaryControls(container);
-  if (meta.canceled) {
-    renderControl(attendButton, attendState);
-    return;
+/**
+ * Toggles the refund form loading affordance.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {boolean} isLoading - Whether the refund request is loading
+ */
+const setRefundLoadingState = (container, isLoading) => {
+  const refundSubmitButton = getAttendanceControl(container, "refund-modal-submit");
+  const refundSubmitLabel = getAttendanceControl(container, "refund-modal-submit-label");
+  const refundSubmitSpinner = getAttendanceControl(container, "refund-modal-submit-spinner");
+
+  if (refundSubmitButton instanceof HTMLButtonElement) {
+    refundSubmitButton.disabled = isLoading;
+    setDisabledStyles(refundSubmitButton, isLoading);
   }
-
-  if (meta.isTicketed && attendState.disabled) {
-    renderControl(attendButton, attendState);
-    return;
-  }
-
-  if (meta.isSoldOut && !meta.waitlistEnabled && !meta.attendeeApprovalRequired) {
-    renderControl(attendButton, getAttendState(meta));
-    return;
-  }
-
-  renderControl(signinButton, getSigninState(meta));
+  setElementHidden(refundSubmitSpinner, !isLoading);
+  refundSubmitSpinner?.classList.toggle("flex", isLoading);
+  refundSubmitLabel?.classList.toggle("invisible", isLoading);
 };
 
 /**
@@ -559,267 +1036,44 @@ const showPrimaryAttendanceState = (container, meta, controlName, state, isAtten
 };
 
 /**
- * Shows the guest state for an authenticated non-attendee.
- * @param {HTMLElement} container - Attendance container element
- * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
- */
-export const showGuestAttendanceState = (container, meta) => {
-  showPrimaryAttendanceState(container, meta, "attendButton", getAttendState(meta));
-};
-
-/**
- * Shows the state for attendees promoted from the waitlist who need answers.
- * @param {HTMLElement} container - Attendance container element
- * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
- */
-export const showRegistrationQuestionsPendingState = (container, meta, response = {}) => {
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
-    withRegistrationWindowState(
-      meta,
-      {
-        icon: QUESTIONS_TAB_ICON,
-        label: COMPLETE_REGISTRATION_LABEL,
-      },
-      {
-        allowManualInvitation: response.manually_invited === true,
-      },
-    ),
-  );
-
-  const { attendButton } = getPrimaryControls(container);
-  if (attendButton instanceof HTMLButtonElement) {
-    attendButton.dataset.registrationQuestionsPending = "true";
-  }
-};
-
-/**
- * Shows the approved invitation state for an attendee.
- * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{manually_invited?: boolean}} response - Attendance response
- */
-export const showInvitationApprovedAttendanceState = (container, meta, response = {}) => {
-  const allowManualInvitation = response.manually_invited === true;
-
-  if (meta.canceled) {
-    showPrimaryAttendanceState(
-      container,
-      meta,
-      "attendButton",
-      withEventActionState(meta, {
-        icon: ATTEND_EVENT_ICON,
-        label: ATTEND_EVENT_LABEL,
-      }),
-    );
-    return;
-  }
-
-  if (!meta.registrationWindowOpen) {
-    showPrimaryAttendanceState(
-      container,
-      meta,
-      "attendButton",
-      withRegistrationWindowState(
-        meta,
-        {
-          icon: ATTEND_EVENT_ICON,
-          label: ATTEND_EVENT_LABEL,
-        },
-        {
-          allowManualInvitation,
-        },
-      ),
-    );
-    return;
-  }
-
-  if (!allowManualInvitation && !meta.isPastEvent && meta.hasNoCapacity) {
-    showPrimaryAttendanceState(container, meta, "attendButton", {
-      disabled: true,
-      icon: ATTEND_EVENT_ICON,
-      label: ATTEND_EVENT_LABEL,
-      title: NO_CAPACITY_TITLE,
-    });
-    return;
-  }
-
-  if (!allowManualInvitation && !meta.isPastEvent && meta.isSoldOut) {
-    showPrimaryAttendanceState(container, meta, "attendButton", {
-      disabled: true,
-      icon: ATTEND_EVENT_ICON,
-      label: ATTEND_EVENT_LABEL,
-      title: SOLD_OUT_TITLE,
-    });
-    return;
-  }
-
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
-    withRegistrationWindowState(
-      meta,
-      {
-        icon: ATTEND_EVENT_ICON,
-        label: ATTEND_EVENT_LABEL,
-      },
-      {
-        allowManualInvitation,
-      },
-    ),
-  );
-};
-
-/**
- * Shows a link to the dashboard surface that owns an active admission offer.
- * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{admission_offer_id?: string, event_ticket_type_id?: string}} response - Attendance response
- */
-export const showAdmissionOfferState = (container, meta, response) => {
-  const offerUrl = `/dashboard/user?tab=invitations#event-offer-${encodeURIComponent(
-    response.admission_offer_id,
-  )}`;
-  const isTicketOffer = Boolean(response.event_ticket_type_id);
-
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
-    withEventActionState(meta, {
-      icon: "icon-ticket",
-      label: isTicketOffer ? CLAIM_TICKET_LABEL : ACCEPT_INVITATION_LABEL,
-      resumeUrl: offerUrl,
-    }),
-  );
-};
-
-/**
- * Shows the terminal state for the user's latest expired ticket offer.
- * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- */
-export const showExpiredOfferState = (container, meta) => {
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
-    withEventActionState(meta, {
-      disabled: true,
-      icon: "icon-ticket",
-      label: TICKET_OFFER_EXPIRED_LABEL,
-    }),
-  );
-};
-
-/**
- * Shows the waitlist state for an attendee.
- * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- */
-export const showWaitlistedAttendanceState = (container, meta) => {
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "leaveButton",
-    withEventActionState(meta, {
-      ariaLabel: ON_WAITLIST_CANCEL_ARIA_LABEL,
-      icon: CANCEL_ACTION_ICON,
-      label: ON_WAITLIST_LABEL,
-    }),
-  );
-};
-
-/**
- * Shows the pending invitation request state for an attendee.
- * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- */
-export const showPendingApprovalAttendanceState = (container, meta) => {
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "leaveButton",
-    withEventActionState(meta, {
-      ariaLabel: REQUEST_PENDING_CANCEL_ARIA_LABEL,
-      icon: CANCEL_ACTION_ICON,
-      label: REQUEST_PENDING_LABEL,
-      title: INVITATION_PENDING_TITLE,
-    }),
-  );
-};
-
-/**
- * Shows the rejected invitation request state for an attendee.
+ * Synchronizes the ticket modal controls for the current modal mode.
  * @param {HTMLElement} container - Attendance container element
  */
-export const showRejectedInvitationState = (container, meta) => {
-  showPrimaryAttendanceState(container, meta, "attendButton", {
-    disabled: true,
-    label: REQUEST_REJECTED_LABEL,
-    title: INVITATION_REJECTED_TITLE,
+const syncTicketModalState = (container) => {
+  const ticketModalForm = getAttendanceControl(container, "ticket-modal-form");
+  const meta = getAttendanceMeta(container);
+  const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
+
+  setElementHidden(ticketModalForm, false);
+  setCheckoutLoadingState(container, false);
+
+  ticketTypeOptions.forEach((ticketTypeOption) => {
+    if (ticketTypeOption instanceof HTMLInputElement) {
+      const ticketTypeDisabled =
+        meta.canceled ||
+        !meta.registrationWindowOpen ||
+        ticketTypeOption.dataset.ticketSelectable === "false" ||
+        (!meta.attendeeApprovalRequired &&
+          (!meta.ticketPurchaseAvailable || ticketTypeOption.dataset.ticketPurchasable !== "true") &&
+          !(meta.waitlistEnabled && ticketTypeOption.dataset.ticketSoldOut === "true"));
+      const ticketTypeCardBody = ticketTypeOption
+        .closest('[data-attendance-role="ticket-type-card"]')
+        ?.querySelector('[data-attendance-role="ticket-type-card-body"]');
+
+      ticketTypeOption.disabled = ticketTypeDisabled;
+      if (ticketTypeCardBody instanceof HTMLElement) {
+        ticketTypeCardBody.classList.toggle("bg-white", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("cursor-pointer", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("hover:border-primary-300", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("hover:shadow-sm", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("bg-stone-50", ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("cursor-not-allowed", ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("opacity-60", ticketTypeDisabled);
+      }
+    }
   });
-};
 
-/**
- * Shows the pending-payment state for an attendee.
- * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{resume_checkout_url?: string}} response - Attendance response
- */
-export const showPendingPaymentState = (container, meta, response) => {
-  const { actionsMenu, attendButton, checkoutCancelButton } = getPrimaryControls(container);
-
-  resetPrimaryControls(container);
-  setControlPriceBadgesHidden(container, true);
-  renderControl(actionsMenu);
-  renderControl(
-    attendButton,
-    withEventActionState(meta, {
-      icon: "icon-ticket",
-      label: CONTINUE_CHECKOUT_LABEL,
-      resumeUrl: response.resume_checkout_url || "",
-    }),
-  );
-  renderControl(checkoutCancelButton, {
-    icon: "icon-cancel",
-    label: CANCEL_CHECKOUT_LABEL,
-    title: CANCEL_CHECKOUT_TITLE,
-  });
-  renderMeetingDetails(false, meta);
-};
-
-/**
- * Shows the attendee state for an active attendee.
- * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_request_status?: string}} response - Attendance response
- */
-export const showAttendeeState = (container, meta, response) => {
-  const { leaveButton, refundButton } = getPrimaryControls(container);
-
-  resetPrimaryControls(container);
-
-  if (
-    response.refund_request_status ||
-    response.can_request_refund ||
-    (response.purchase_amount_minor || 0) > 0
-  ) {
-    renderControl(refundButton, getRefundState(meta, response));
-  } else {
-    renderControl(
-      leaveButton,
-      withEventActionState(meta, {
-        icon: CANCEL_ACTION_ICON,
-        label: CANCEL_ATTENDANCE_LABEL,
-      }),
-    );
-  }
-
-  renderMeetingDetails(true, meta);
+  updateCheckoutButtonState(container);
 };
 
 /**
@@ -890,301 +1144,47 @@ const updateCheckoutButtonState = (container) => {
 };
 
 /**
- * Toggles the checkout button loading affordance.
- * @param {HTMLElement} container - Attendance container element
- * @param {boolean} isLoading - Whether checkout is loading
+ * Applies event-level action restrictions when needed.
+ * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
+ * @param {object} state - Base render state
+ * @returns {object} Render state
  */
-const setCheckoutLoadingState = (container, isLoading) => {
-  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
-  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
+const withEventActionState = (meta, state) => {
+  if (meta.canceled) {
+    return {
+      ...state,
+      disabled: true,
+      title: CANCELED_EVENT_TITLE,
+    };
+  }
 
-  setElementHidden(checkoutSpinner, !isLoading);
-  checkoutSpinner?.classList.toggle("flex", isLoading);
-  checkoutLabel?.classList.toggle("invisible", isLoading);
+  if (!meta.isPastEvent) {
+    return state;
+  }
+
+  return {
+    ...state,
+    disabled: true,
+    title: PAST_EVENT_TITLE,
+  };
 };
 
 /**
- * Toggles the refund form loading affordance.
- * @param {HTMLElement} container - Attendance container element
- * @param {boolean} isLoading - Whether the refund request is loading
+ * Applies registration-window restrictions to attendee registration actions.
+ * @param {{registrationWindowOpen: boolean, registrationWindowUnavailableTitle?: string}} meta - Attendance metadata
+ * @param {object} state - Base render state
+ * @param {{allowManualInvitation?: boolean}} options - Override options
+ * @returns {object} Render state
  */
-const setRefundLoadingState = (container, isLoading) => {
-  const refundSubmitButton = getAttendanceControl(container, "refund-modal-submit");
-  const refundSubmitLabel = getAttendanceControl(container, "refund-modal-submit-label");
-  const refundSubmitSpinner = getAttendanceControl(container, "refund-modal-submit-spinner");
-
-  if (refundSubmitButton instanceof HTMLButtonElement) {
-    refundSubmitButton.disabled = isLoading;
-    setDisabledStyles(refundSubmitButton, isLoading);
-  }
-  setElementHidden(refundSubmitSpinner, !isLoading);
-  refundSubmitSpinner?.classList.toggle("flex", isLoading);
-  refundSubmitLabel?.classList.toggle("invisible", isLoading);
-};
-
-/**
- * Synchronizes the ticket modal controls for the current modal mode.
- * @param {HTMLElement} container - Attendance container element
- */
-const syncTicketModalState = (container) => {
-  const ticketModalForm = getAttendanceControl(container, "ticket-modal-form");
-  const meta = getAttendanceMeta(container);
-  const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
-
-  setElementHidden(ticketModalForm, false);
-  setCheckoutLoadingState(container, false);
-
-  ticketTypeOptions.forEach((ticketTypeOption) => {
-    if (ticketTypeOption instanceof HTMLInputElement) {
-      const ticketTypeDisabled =
-        meta.canceled ||
-        !meta.registrationWindowOpen ||
-        ticketTypeOption.dataset.ticketSelectable === "false" ||
-        (!meta.attendeeApprovalRequired &&
-          (!meta.ticketPurchaseAvailable || ticketTypeOption.dataset.ticketPurchasable !== "true") &&
-          !(meta.waitlistEnabled && ticketTypeOption.dataset.ticketSoldOut === "true"));
-      const ticketTypeCardBody = ticketTypeOption
-        .closest('[data-attendance-role="ticket-type-card"]')
-        ?.querySelector('[data-attendance-role="ticket-type-card-body"]');
-
-      ticketTypeOption.disabled = ticketTypeDisabled;
-      if (ticketTypeCardBody instanceof HTMLElement) {
-        ticketTypeCardBody.classList.toggle("bg-white", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("cursor-pointer", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("hover:border-primary-300", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("hover:shadow-sm", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("bg-stone-50", ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("cursor-not-allowed", ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("opacity-60", ticketTypeDisabled);
-      }
-    }
-  });
-
-  updateCheckoutButtonState(container);
-};
-
-/**
- * Restores the modal checkout controls after a request completes or is canceled.
- * @param {HTMLElement} container - Attendance container element
- */
-export const restoreCheckoutModalControls = (container) => {
-  setCheckoutLoadingState(container, false);
-  updateCheckoutButtonState(container);
-};
-
-/**
- * Restores the refund modal controls after a request completes.
- * @param {HTMLElement} container - Attendance container element
- */
-export const restoreRefundModalControls = (container) => {
-  setRefundLoadingState(container, false);
-};
-
-/**
- * Shows the modal checkout loading state before the checkout request starts.
- * @param {HTMLElement} container - Attendance container element
- */
-export const showCheckoutLoadingState = (container) => {
-  const checkoutButton = getAttendanceControl(container, "checkout-btn");
-  if (!(checkoutButton instanceof HTMLButtonElement)) {
-    return;
+const withRegistrationWindowState = (meta, state, { allowManualInvitation = false } = {}) => {
+  const eventState = withEventActionState(meta, state);
+  if (eventState.disabled || allowManualInvitation || meta.registrationWindowOpen) {
+    return eventState;
   }
 
-  checkoutButton.disabled = true;
-  setDisabledStyles(checkoutButton, true);
-  setCheckoutLoadingState(container, true);
-};
-
-/**
- * Shows the refund modal loading state before the request starts.
- * @param {HTMLElement} container - Attendance container element
- */
-export const showRefundLoadingState = (container) => {
-  setRefundLoadingState(container, true);
-};
-
-/**
- * Registers one-time listeners for ticket modal form controls.
- * @param {HTMLElement} container - Attendance container element
- */
-const initializeTicketModalControls = (container) => {
-  if (!markDatasetReady(container, "ticketModalReady")) {
-    syncTicketModalState(container);
-    return;
-  }
-
-  container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((ticketTypeOption) => {
-    if (ticketTypeOption instanceof HTMLInputElement) {
-      ticketTypeOption.addEventListener("change", () => {
-        updateCheckoutButtonState(container);
-      });
-    }
-  });
-
-  syncTicketModalState(container);
-};
-
-/**
- * Opens the ticket purchase modal.
- * @param {HTMLElement} container - Attendance container element
- */
-export const openTicketModal = (container) => {
-  const ticketModal = getAttendanceControl(container, "ticket-modal");
-  if (!(ticketModal instanceof HTMLElement)) {
-    return;
-  }
-
-  syncTicketModalState(container);
-  if (!isTicketModalOpen(ticketModal)) {
-    toggleModalVisibility(ticketModal.id);
-  }
-};
-
-/**
- * Opens the event questions modal.
- * @param {HTMLElement} container - Attendance container element
- */
-export const openQuestionsModal = (container) => {
-  const questionsModal = getAttendanceControl(container, "registration-modal");
-  if (!(questionsModal instanceof HTMLElement) || !questionsModal.id) {
-    return;
-  }
-
-  if (isElementHidden(questionsModal)) {
-    toggleModalVisibility(questionsModal.id);
-  }
-};
-
-/**
- * Opens the refund request modal.
- * @param {HTMLElement} container - Attendance container element
- * @param {HTMLElement|null} trigger - Element that opened the modal
- */
-export const openRefundModal = (container, trigger = null) => {
-  const refundForm = getAttendanceControl(container, "refund-form");
-  const refundModal = getAttendanceControl(container, "refund-modal");
-  if (!(refundModal instanceof HTMLElement) || !refundModal.id) {
-    return;
-  }
-
-  if (refundForm instanceof HTMLFormElement) {
-    refundForm.reset();
-  }
-  restoreRefundModalControls(container);
-  if (isElementHidden(refundModal)) {
-    toggleModalVisibility(refundModal.id, trigger);
-  }
-};
-
-/**
- * Closes the ticket purchase modal if it is open.
- * @param {HTMLElement} container - Attendance container element
- */
-export const closeTicketModal = (container) => {
-  const ticketModal = getAttendanceControl(container, "ticket-modal");
-  if (!(ticketModal instanceof HTMLElement) || !isTicketModalOpen(ticketModal)) {
-    return;
-  }
-
-  toggleModalVisibility(ticketModal.id);
-};
-
-/**
- * Closes the event questions modal if it is open.
- * @param {HTMLElement} container - Attendance container element
- */
-export const closeQuestionsModal = (container) => {
-  const questionsModal = getAttendanceControl(container, "registration-modal");
-  if (!(questionsModal instanceof HTMLElement) || !questionsModal.id || isElementHidden(questionsModal)) {
-    return;
-  }
-
-  toggleModalVisibility(questionsModal.id);
-};
-
-/**
- * Closes the refund request modal if it is open.
- * @param {HTMLElement} container - Attendance container element
- */
-export const closeRefundModal = (container) => {
-  const refundModal = getAttendanceControl(container, "refund-modal");
-  if (!(refundModal instanceof HTMLElement) || !refundModal.id || isElementHidden(refundModal)) {
-    return;
-  }
-
-  toggleModalVisibility(refundModal.id);
-};
-
-/**
- * Shows the loading state for a primary attendance action.
- * @param {HTMLElement} container - Attendance container element
- * @param {string} role - Attendance control role
- */
-export const showPrimaryRequestLoading = (container, role) => {
-  const loadingButton = getAttendanceControl(container, "loading-btn");
-  const targetControl = getAttendanceControl(container, role);
-  if (!loadingButton || !targetControl) {
-    return;
-  }
-
-  if (role === "checkout-cancel-btn") {
-    setElementHidden(getAttendanceControl(container, "attend-btn"), true);
-    const actionsMenu = getAttendanceControl(container, "actions-menu");
-    setElementHidden(actionsMenu, true);
-    if (actionsMenu instanceof HTMLDetailsElement) {
-      actionsMenu.open = false;
-    }
-  }
-  setElementHidden(targetControl, true);
-  setElementHidden(loadingButton, false);
-};
-
-/**
- * Restores a primary control after a failed request.
- * @param {HTMLElement} container - Attendance container element
- * @param {string} role - Attendance control role
- */
-export const restorePrimaryRequestControl = (container, role) => {
-  const loadingButton = getAttendanceControl(container, "loading-btn");
-  const targetControl = getAttendanceControl(container, role);
-  if (!loadingButton || !targetControl) {
-    return;
-  }
-
-  setElementHidden(loadingButton, true);
-  if (role === "checkout-cancel-btn") {
-    setElementHidden(getAttendanceControl(container, "attend-btn"), false);
-    const actionsMenu = getAttendanceControl(container, "actions-menu");
-    setElementHidden(actionsMenu, false);
-  }
-  setElementHidden(targetControl, false);
-};
-
-/**
- * Initializes attendance UI elements for a container.
- * @param {HTMLElement} container - Attendance container element
- */
-export const initializeAttendanceContainer = (container) => {
-  if (!container || isDatasetReady(container, "attendanceReady")) {
-    return;
-  }
-
-  const meta = getAttendanceMeta(container);
-  const { attendButton, leaveButton, refundButton, signinButton } = getPrimaryControls(container);
-
-  renderControl(attendButton, { ...getAttendState(meta), visible: false });
-  renderControl(leaveButton, {
-    ...withEventActionState(meta, { label: CANCEL_ATTENDANCE_LABEL }),
-    visible: false,
-  });
-  renderControl(refundButton, {
-    ...withEventActionState(meta, { label: REQUEST_REFUND_LABEL }),
-    visible: false,
-  });
-  renderControl(signinButton, {
-    ...withEventActionState(meta, { label: getSigninLabel(meta) }),
-    visible: false,
-  });
-  initializeTicketModalControls(container);
-  markDatasetReady(container, "attendanceReady");
+  return {
+    ...eventState,
+    disabled: true,
+    title: meta.registrationWindowUnavailableTitle,
+  };
 };

@@ -88,7 +88,11 @@ describe("dashboard group attendees", () => {
     </div>
   `;
 
-  const attendeeInvitationMarkup = ({ ticketed = false } = {}) => `
+  const attendeeInvitationMarkup = ({
+    hasTicketOption = true,
+    ticketed = false,
+    ticketOptionDisabled = false,
+  } = {}) => `
     <button id="open-attendee-invitation-modal" type="button">Invite</button>
     <div id="attendee-invitation-modal" class="hidden">
       <button id="close-attendee-invitation-modal" type="button">Close</button>
@@ -112,8 +116,15 @@ describe("dashboard group attendees", () => {
               <label for="attendee-invitation-ticket-type">Ticket type</label>
               <select id="attendee-invitation-ticket-type" name="event_ticket_type_id" required>
                 <option value="">Select ticket type</option>
-                <option value="ticket-1">General admission</option>
+                ${
+                  hasTicketOption
+                    ? `<option value="ticket-1" ${ticketOptionDisabled ? "disabled" : ""}>General admission</option>`
+                    : ""
+                }
               </select>
+              <p data-attendee-invitation-ticket-empty class="hidden">
+                No ticket types can be assigned.
+              </p>
             `
             : ""
         }
@@ -1137,6 +1148,50 @@ describe("dashboard group attendees", () => {
     expect(
       new FormData(document.getElementById("attendee-invitation-form")).get("event_ticket_type_id"),
     ).to.equal("ticket-1");
+  });
+
+  it("explains when a ticketed invitation has no assignable ticket types", () => {
+    // Render ticketed invitation controls without an eligible ticket option.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ hasTicketOption: false, ticketed: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // Select a recipient and verify the unavailable ticket state stays actionable.
+    attendeesRoot.dispatchEvent(
+      new CustomEvent("user-selected", {
+        bubbles: true,
+        detail: { user: { user_id: "user-1", username: "invitee" } },
+      }),
+    );
+
+    expect(document.getElementById("attendee-invitation-ticket-type").disabled).to.equal(true);
+    expect(document.getElementById("submit-attendee-invitation").disabled).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-invitation-ticket-empty]").classList.contains("hidden"),
+    ).to.equal(false);
+  });
+
+  it("treats a disabled sold-out ticket as unavailable for invitations", () => {
+    // Render a ticketed invitation whose only priced tier is unavailable.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ ticketed: true, ticketOptionDisabled: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // The unavailable option cannot satisfy the invitation contract.
+    const ticketTypeInput = document.getElementById("attendee-invitation-ticket-type");
+    expect(ticketTypeInput.disabled).to.equal(true);
+    expect(document.getElementById("submit-attendee-invitation").disabled).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-invitation-ticket-empty]").classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("enables attendee invitation for a typed email when no user matches", async () => {

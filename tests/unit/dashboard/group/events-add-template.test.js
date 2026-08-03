@@ -97,6 +97,18 @@ describe("dashboard group event add template", () => {
     expect(template).to.include("{{ payment_recipient.recipient_id }}");
   });
 
+  it("describes paid enrollment modes as mutually exclusive alternatives", async () => {
+    // Load the event add template before checking enrollment guidance.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert paid approval and waitlist modes are described without stale restrictions.
+    expect(template).to.include("Paid ticket events can use invitation approval.");
+    expect(template).to.include("including paid ticket events");
+    expect(template).to.include("Invitation approval and the waitlist cannot be enabled together.");
+    expect(template).to.not.include("waitlist or paid tickets");
+    expect(template).to.not.include("Paid events disable waitlist automatically.");
+  });
+
   it("keeps the event form navigation in the shared page scroll", async () => {
     // Load the event add template before checking sidebar scroll behavior.
     const template = normalizeWhitespace(await loadTemplate());

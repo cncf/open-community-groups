@@ -29,7 +29,14 @@ const scopedActionMarkup = ({ hasRelatedEvents = false } = {}) => `
 const mountEventsList = ({ hasRelatedEvents = false } = {}) => {
   document.body.innerHTML = `
     <div id="events-list-root">
-      <button class="btn-actions" data-event-id="123">Actions</button>
+      <button
+        class="btn-actions"
+        data-event-id="123"
+        aria-controls="dropdown-actions-123"
+        aria-expanded="false"
+      >
+        Actions
+      </button>
       <div id="dropdown-actions-123" data-event-actions-dropdown class="dropdown hidden">
         ${scopedActionMarkup({ hasRelatedEvents })}
       </div>
@@ -78,6 +85,19 @@ describe("events list page", () => {
     expect(template).to.include('title="{{ delete_title }}"');
   });
 
+  it("renders event action buttons as accessible disclosures", async () => {
+    // Load production event actions before checking their disclosure contract.
+    const template = await loadTemplate();
+
+    // Both upcoming and past actions expose their label, target, and collapsed state.
+    expect(template.match(/aria-label="Open actions for \{\{ event\.name \}\}"/g)).to.have.length(2);
+    expect(
+      template.match(/aria-controls="dropdown-actions-\{\{ event\.event_id \}\}"/g),
+    ).to.have.length(2);
+    expect(template.match(/aria-expanded="false"/g)).to.have.length(2);
+    expect(template).to.not.include("dropdownDefaultButton");
+  });
+
   it("toggles event action dropdowns with delegated handlers", () => {
     // Prepare root for toggling event action dropdowns with delegated handlers.
     const root = mountEventsList();
@@ -90,16 +110,19 @@ describe("events list page", () => {
     // Verify toggles event action dropdowns.
     actionsButton.click();
     expect(dropdown.classList.contains("hidden")).to.equal(false);
+    expect(actionsButton.getAttribute("aria-expanded")).to.equal("true");
 
     // Click outside the dropdown to close it.
     root.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(dropdown.classList.contains("hidden")).to.equal(true);
+    expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
 
     // Reopen and click outside the events list root.
     actionsButton.click();
     expect(dropdown.classList.contains("hidden")).to.equal(false);
     document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(dropdown.classList.contains("hidden")).to.equal(true);
+    expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
   });
 
   it("toggles event action dropdowns added after initialization", () => {
@@ -128,6 +151,44 @@ describe("events list page", () => {
 
     expect(clickEvent.defaultPrevented).to.equal(true);
     expect(root.querySelector(".dropdown").classList.contains("hidden")).to.equal(false);
+  });
+
+  it("restores disclosure focus when Escape closes an actions dropdown", () => {
+    // Open an actions dropdown and move focus into its controls.
+    const root = mountEventsList();
+    initializeEventsListPage(root);
+    const actionsButton = root.querySelector(".btn-actions");
+    const dropdown = root.querySelector("[data-event-actions-dropdown]");
+    actionsButton.click();
+    dropdown.querySelector("button").focus();
+
+    // Escape closes the dropdown, synchronizes state, and restores focus.
+    document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+    expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
+    expect(document.activeElement).to.equal(actionsButton);
+  });
+
+  it("disables invitation request assignment without an eligible ticket tier", () => {
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <form>
+          <select data-invitation-request-ticket-type>
+            <option value="">Select ticket type</option>
+            <option value="sold-out" disabled>Sold out</option>
+          </select>
+          <p data-invitation-request-ticket-empty class="hidden">No tickets available.</p>
+          <button data-invitation-request-ticket-submit type="submit">Accept</button>
+        </form>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    initializeEventsListPage(root);
+
+    expect(root.querySelector("select").disabled).to.equal(true);
+    expect(root.querySelector("button").disabled).to.equal(true);
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(false);
   });
 
   it("confirms a single-event action and rewrites the HTMX request path", async () => {

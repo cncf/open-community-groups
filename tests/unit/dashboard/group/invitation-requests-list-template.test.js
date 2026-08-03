@@ -143,11 +143,19 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include(
       "ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly",
     );
+    expect(template).to.include("!ticket_type.sold_out");
+    expect(template).to.include("data-invitation-request-ticket-type");
+    expect(template).to.include("data-invitation-request-ticket-empty");
+    expect(template).to.include("data-invitation-request-ticket-submit");
+    expect(template).to.include("No invitation-only ticket types can be assigned.");
     expect(template).to.include("request.requested_event_ticket_type_id");
     expect(template).to.include('name="event_ticket_type_id" value="{{ requested_event_ticket_type_id }}"');
 
     // Verify active offers can be canceled and only expired approval offers can be reissued.
     expect(template).to.include('hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"');
+    expect(template).to.include(
+      'id="cancel-invitation-request-offer-{{ admission_offer_id }}"',
+    );
     expect(template).to.include("Cancel offer");
     expect(template).to.include("Reissue offer");
     expect(template).to.include(
@@ -169,11 +177,28 @@ describe("dashboard group invitation requests list template", () => {
     expect(actionDisclosure).to.include(
       'aria-label="Open actions for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"',
     );
+    expect(actionDisclosure).to.include('aria-expanded="false"');
     expect(actionDisclosure).to.not.include('aria-label="Open actions menu for');
     expect(actionDisclosure).to.not.include('aria-haspopup="menu"');
     expect(actionDisclosure).to.not.include(
       '<ul class="py-2 text-sm text-stone-700" role="menu">',
     );
     expect(actionDisclosure).to.not.include('role="menuitem"');
+
+    // Confirmation-owned controls do not duplicate response handling.
+    const cancelOfferStart = actionDisclosure.indexOf(
+      'id="cancel-invitation-request-offer-{{ admission_offer_id }}"',
+    );
+    const cancelOfferEnd = actionDisclosure.indexOf("</button>", cancelOfferStart);
+    const cancelOffer = actionDisclosure.slice(cancelOfferStart, cancelOfferEnd);
+    expect(cancelOffer).to.include("data-confirm-action");
+    expect(cancelOffer).to.not.include("data-invitation-request-action");
+    const rejectRequestStart = actionDisclosure.indexOf(
+      'id="reject-invitation-request-{{ request.user.user_id }}"',
+    );
+    const rejectRequestEnd = actionDisclosure.indexOf("</button>", rejectRequestStart);
+    const rejectRequest = actionDisclosure.slice(rejectRequestStart, rejectRequestEnd);
+    expect(rejectRequest).to.include("data-confirm-action");
+    expect(rejectRequest).to.not.include("data-invitation-request-action");
   });
 });

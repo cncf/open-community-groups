@@ -404,8 +404,9 @@
             <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
           </label>
           <p class="form-legend">
-            Let people request an invitation for organizer review. This cannot be combined with
-            waitlist or paid tickets.
+            Let people request organizer approval before attending or claiming a ticket. Paid ticket
+            events can use invitation approval. Invitation approval and the waitlist cannot be enabled
+            together.
           </p>
         </div>
         {# End Attendee approval required -#}
@@ -431,11 +432,9 @@
             <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
           </label>
           <p class="form-legend">
-            Allow full events to add people to a waiting list instead of rejecting them.
-            Set a capacity first to enable waitlist safely.
-            {% if payments_enabled -%}
-              Paid events disable waitlist automatically.
-            {% endif -%}
+            Allow full events, including paid ticket events, to add people to a waiting list instead
+            of rejecting them. Set a capacity first. Invitation approval and the waitlist cannot be
+            enabled together.
           </p>
         </div>
         {# End Waitlist enabled -#}

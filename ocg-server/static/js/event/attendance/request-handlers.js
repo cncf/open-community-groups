@@ -16,9 +16,19 @@ import {
 } from "/static/js/event/attendance-view.js";
 import { refreshAvailabilityAndRenderAttendance } from "/static/js/event/attendance/availability-refresh.js";
 import { showProfileAwareInfoAlert } from "/static/js/event/attendance/feedback.js";
-import { blockAttendanceRequestForQuestions } from "/static/js/event/attendance/questions.js";
+import {
+  blockAttendanceRequestForQuestions,
+  isCompletingRegistrationQuestions,
+  shouldCollectQuestionAnswers,
+} from "/static/js/event/attendance/questions.js";
 import { renderAttendanceCheckResponse } from "/static/js/event/attendance/status-renderer.js";
 import { parseJsonResponse, PRIMARY_REQUEST_ROLES } from "/static/js/event/attendance/shared.js";
+
+const CHECKOUT_ACTION_ERROR_MESSAGES = {
+  checkout: "Something went wrong starting checkout. Please try again later.",
+  request: "Something went wrong requesting this ticket. Please try again later.",
+  waitlist: "Something went wrong joining the ticket waiting list. Please try again later.",
+};
 
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
@@ -242,6 +252,9 @@ const blockInterceptedAttendRequest = (event, target, container) => {
   }
 
   const meta = getAttendanceMeta(container);
+  if (isCompletingRegistrationQuestions(target) && !shouldCollectQuestionAnswers(container)) {
+    return false;
+  }
   if (!meta.ticketModalRequired && !target.dataset.resumeUrl) {
     return false;
   }
@@ -266,11 +279,20 @@ const handleCheckoutAfterRequest = (event) => {
     return;
   }
 
+  const selectedTicketType = container.querySelector(
+    '[data-attendance-role="ticket-type-option"]:checked',
+  );
+  const meta = getAttendanceMeta(container);
+  const actionMode = meta.attendeeApprovalRequired
+    ? "request"
+    : selectedTicketType?.dataset.ticketSoldOut === "true"
+      ? "waitlist"
+      : "checkout";
   const xhr = event.detail?.xhr;
   const ok = handleHtmxResponse({
     xhr,
     successMessage: "",
-    errorMessage: "Something went wrong starting checkout. Please try again later.",
+    errorMessage: CHECKOUT_ACTION_ERROR_MESSAGES[actionMode],
   });
 
   if (!ok) {

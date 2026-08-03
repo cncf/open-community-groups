@@ -12,7 +12,6 @@ import {
   ATTEND_EVENT_LABEL,
   CANCEL_ATTENDANCE_LABEL,
   CANCEL_INVITATION_REQUEST_LABEL,
-  closeQuestionsModal,
   closeRefundModal,
   closeTicketModal,
   LEAVE_WAITLIST_LABEL,
@@ -23,6 +22,7 @@ import {
   restoreCheckoutModalControls,
 } from "/static/js/event/attendance-view.js";
 import {
+  dismissQuestionAnswers,
   isCompletingRegistrationQuestions,
   isWaitlistJoinAction,
   requestQuestionAnswers,
@@ -89,7 +89,11 @@ export const handleAttendanceClick = (event) => {
   }
 
   // Ticketed actions choose a tier before deciding whether answers are required
-  if (attendButton instanceof HTMLButtonElement && meta.ticketModalRequired) {
+  if (
+    attendButton instanceof HTMLButtonElement &&
+    meta.ticketModalRequired &&
+    !completingRegistrationQuestions
+  ) {
     event.preventDefault();
     openTicketModal(container);
     return;
@@ -168,8 +172,7 @@ export const handleAttendanceClick = (event) => {
     '[data-attendance-role="registration-modal-close"], [data-attendance-role="registration-modal-cancel"], [data-attendance-role="registration-modal-overlay"]',
   );
   if (closeQuestionsModalTrigger) {
-    delete container.dataset.questionsContinueAction;
-    closeQuestionsModal(container);
+    dismissQuestionAnswers(container);
   }
 };
 
@@ -188,21 +191,22 @@ export const handleAttendanceKeydown = (event) => {
       return;
     }
 
-    const ticketModal = getAttendanceControl(container, "ticket-modal");
-    if (ticketModal && !isElementHidden(ticketModal)) {
-      restoreCheckoutModalControls(container);
-      closeTicketModal(container);
+    const questionsModal = getAttendanceControl(container, "registration-modal");
+    if (questionsModal && !isElementHidden(questionsModal)) {
+      dismissQuestionAnswers(container);
+      return;
     }
 
     const refundModal = getAttendanceControl(container, "refund-modal");
     if (refundModal && !isElementHidden(refundModal)) {
       closeRefundModal(container);
+      return;
     }
 
-    const questionsModal = getAttendanceControl(container, "registration-modal");
-    if (questionsModal && !isElementHidden(questionsModal)) {
-      delete container.dataset.questionsContinueAction;
-      closeQuestionsModal(container);
+    const ticketModal = getAttendanceControl(container, "ticket-modal");
+    if (ticketModal && !isElementHidden(ticketModal)) {
+      restoreCheckoutModalControls(container);
+      closeTicketModal(container);
     }
   });
 };

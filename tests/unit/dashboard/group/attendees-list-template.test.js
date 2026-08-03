@@ -99,6 +99,18 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-actions-menu");
   });
 
+  it("explains when ticketed invitations have no assignable ticket type", async () => {
+    // Load the invitation modal before checking its ticket empty state.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify organizers receive a recovery path when the select has no options.
+    expect(template).to.include("data-attendee-invitation-ticket-empty");
+    expect(template).to.include("ticket_type.active && !ticket_type.sold_out");
+    expect(template).to.include(
+      "No ticket types can be assigned. Add capacity or activate a ticket type with a current price before sending an invitation.",
+    );
+  });
+
   it("collects an optional review note before rejecting a refund", async () => {
     // Load the attendee refund rejection action and modal contracts.
     const template = normalizeWhitespace(await loadTemplate());
