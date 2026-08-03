@@ -21,39 +21,39 @@
         {% endif -%}
       </div>
       {% if path != "/" %}</a>{% endif %}
-      {# End logo -#}
+    {# End logo -#}
 
-      {# Desktop links -#}
-      <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
-        {{ header::link(content = "Home", href = "/", current_path = path) -}}
-        {{ header::link(content = "Explore", href = explore_events, current_path = path, path = "/explore") -}}
-        {{ header::link(content = "Stats", href = "/stats", current_path = path, path = "/stats") -}}
-        {{ header::link(content = "Docs", href = "/docs", current_path = path, path = "/docs", hx_boost = "false") -}}
+    {# Desktop links -#}
+    <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
+      {{ header::link(content = "Home", href = "/", current_path = path) -}}
+      {{ header::link(content = "Explore", href = explore_events, current_path = path, path = "/explore") -}}
+      {{ header::link(content = "Stats", href = "/stats", current_path = path, path = "/stats") -}}
+      {{ header::link(content = "Docs", href = "/docs", current_path = path, path = "/docs", hx_boost = "false") -}}
+    </div>
+    {# End desktop links -#}
+  </div>
+
+  {# Desktop user menu -#}
+  <div class="flex flex-1 justify-end">
+    {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::SiteStats || page_id == PageId::SiteDocs || page_id == PageId::SiteNotFound || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
+      <div hx-get="/section/user-menu"
+           hx-trigger="load"
+           hx-target="this"
+           hx-boost="true"
+           class="relative">
+        <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-primary-500 text-primary-700 size-[38px] p-0.5 overflow-hidden"
+                disabled>
+          {{ ui::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "3", htmx = false) -}}
+          <div class="svg-icon size-4 mx-auto bg-primary-500 icon-user"></div>
+        </button>
       </div>
-      {# End desktop links -#}
-    </div>
-
-    {# Desktop user menu -#}
-    <div class="flex flex-1 justify-end">
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::SiteStats || page_id == PageId::SiteDocs || page_id == PageId::SiteNotFound || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
-        <div hx-get="/section/user-menu"
-             hx-trigger="load"
-             hx-target="this"
-             hx-boost="true"
-             class="relative">
-          <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-primary-500 text-primary-700 size-[38px] p-0.5 overflow-hidden"
-                  disabled>
-            {{ ui::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "3", htmx = false) -}}
-            <div class="svg-icon size-4 mx-auto bg-primary-500 icon-user"></div>
-          </button>
-        </div>
-      {% else -%}
-        {{ user_menu(user) -}}
-      {% endif -%}
-    </div>
-    {# End desktop user menu -#}
-  </nav>
-  {# End navigation bar -#}
+    {% else -%}
+      {{ user_menu(user) -}}
+    {% endif -%}
+  </div>
+  {# End desktop user menu -#}
+</nav>
+{# End navigation bar -#}
 </header>
 {# End header -#}
 

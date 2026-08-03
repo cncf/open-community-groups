@@ -29,6 +29,13 @@ const renderPaidAttendanceDom = ({
   registrationWindowUnavailableTitle = "",
   waitlistEnabled = "false",
 } = {}) => {
+  const purchasableTicketSelectable =
+    registrationWindowOpen === "true" &&
+    (attendeeApprovalRequired === "true" || ticketPurchaseAvailable === "true");
+  const soldOutTicketSelectable =
+    registrationWindowOpen === "true" &&
+    (attendeeApprovalRequired === "true" || waitlistEnabled === "true");
+
   document.body.innerHTML = `
     <div
       data-attendance-container
@@ -139,6 +146,7 @@ const renderPaidAttendanceDom = ({
                   data-attendance-role="ticket-type-option"
                   data-ticket-purchasable="true"
                   data-ticket-price-minor="0"
+                  data-ticket-selectable="${purchasableTicketSelectable}"
                   data-ticket-sold-out="false"
                   type="radio"
                   name="event_ticket_type_id"
@@ -159,6 +167,7 @@ const renderPaidAttendanceDom = ({
                   data-attendance-role="ticket-type-option"
                   data-ticket-purchasable="true"
                   data-ticket-price-minor="5000"
+                  data-ticket-selectable="${purchasableTicketSelectable}"
                   data-ticket-sold-out="false"
                   type="radio"
                   name="event_ticket_type_id"
@@ -179,6 +188,7 @@ const renderPaidAttendanceDom = ({
                   data-attendance-role="ticket-type-option"
                   data-ticket-purchasable="false"
                   data-ticket-price-minor="2500"
+                  data-ticket-selectable="${soldOutTicketSelectable}"
                   data-ticket-sold-out="true"
                   type="radio"
                   name="event_ticket_type_id"
@@ -414,7 +424,7 @@ describe("event attendance paid modal", () => {
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Get ticket");
     expect(attendButton.querySelector(".ticket-price-badge")?.textContent?.trim()).to.equal("From EUR 50.00");
     expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(false);
-    expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("");
+    expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(false);
 
     // Verify opens the paid ticket modal for guests.
     attendButton.click();
@@ -728,7 +738,7 @@ describe("event attendance paid modal", () => {
       "Paid tickets temporarily unavailable",
     );
     expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
-    expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("none");
+    expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
     expect(Array.from(ticketTypeOptions).every((option) => option.disabled)).to.equal(true);
     ticketCardBodies.forEach((cardBody) => {
       expect(cardBody.classList.contains("cursor-not-allowed")).to.equal(true);
@@ -1317,7 +1327,6 @@ describe("event attendance paid modal", () => {
     expect(checkoutResumeButton.classList.contains("hidden")).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
-    expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("none");
     expect(signinButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
     expect(actionsMenu.classList.contains("hidden")).to.equal(false);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);

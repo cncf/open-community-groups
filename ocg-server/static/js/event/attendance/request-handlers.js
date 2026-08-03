@@ -5,12 +5,14 @@ import {
   getAttendanceMeta,
 } from "/static/js/event/attendance-dom.js";
 import {
-  closeRefundModal,
   closeTicketModal,
   restoreCheckoutModalControls,
+  showCheckoutLoadingState,
+} from "/static/js/event/attendance-ticket-view.js";
+import {
+  closeRefundModal,
   restorePrimaryRequestControl,
   restoreRefundModalControls,
-  showCheckoutLoadingState,
   showPrimaryRequestLoading,
   showRefundLoadingState,
 } from "/static/js/event/attendance-view.js";
@@ -96,16 +98,10 @@ const handleCheckoutConfigRequest = (event) => {
     selectedTicketType instanceof HTMLInputElement && selectedTicketType.dataset.ticketSoldOut === "true";
   if (isRequest || isWaitlist) {
     event.detail.path = target.dataset.attendUrl || event.detail.path;
-    delete params.discount_code;
-    if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
-      delete event.detail.unfilteredParameters.discount_code;
-    }
+    deleteRequestParameter(event, "discount_code");
 
     if (isWaitlist && !isRequest) {
-      delete params.registration_answers;
-      if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
-        delete event.detail.unfilteredParameters.registration_answers;
-      }
+      deleteRequestParameter(event, "registration_answers");
     }
     return;
   }
@@ -116,10 +112,7 @@ const handleCheckoutConfigRequest = (event) => {
     return;
   }
   if (discountCodeInput.disabled) {
-    delete params.discount_code;
-    if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
-      delete event.detail.unfilteredParameters.discount_code;
-    }
+    deleteRequestParameter(event, "discount_code");
     return;
   }
 
@@ -134,9 +127,24 @@ const handleCheckoutConfigRequest = (event) => {
     return;
   }
 
-  delete params.discount_code;
-  if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
-    delete event.detail.unfilteredParameters.discount_code;
+  deleteRequestParameter(event, "discount_code");
+};
+
+/**
+ * Removes a request parameter from HTMX's filtered and unfiltered payloads.
+ * @param {Event} event HTMX configuration event.
+ * @param {string} parameterName Request parameter name.
+ * @returns {void}
+ */
+const deleteRequestParameter = (event, parameterName) => {
+  const parameters = event.detail?.parameters;
+  if (parameters && typeof parameters === "object") {
+    delete parameters[parameterName];
+  }
+
+  const unfilteredParameters = event.detail?.unfilteredParameters;
+  if (unfilteredParameters && typeof unfilteredParameters === "object") {
+    delete unfilteredParameters[parameterName];
   }
 };
 
@@ -279,9 +287,7 @@ const handleCheckoutAfterRequest = (event) => {
     return;
   }
 
-  const selectedTicketType = container.querySelector(
-    '[data-attendance-role="ticket-type-option"]:checked',
-  );
+  const selectedTicketType = container.querySelector('[data-attendance-role="ticket-type-option"]:checked');
   const meta = getAttendanceMeta(container);
   const actionMode = meta.attendeeApprovalRequired
     ? "request"

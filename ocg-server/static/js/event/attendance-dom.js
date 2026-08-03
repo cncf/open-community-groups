@@ -67,6 +67,17 @@ export const getPrimaryControls = (container) => ({
 });
 
 /**
+ * Updates the disabled styling for an attendance control.
+ * @param {HTMLElement|null} control Control to update.
+ * @param {boolean} disabled Whether the control is disabled.
+ * @returns {void}
+ */
+export const setAttendanceControlDisabledStyles = (control, disabled) => {
+  control?.classList.toggle("cursor-not-allowed", disabled);
+  control?.classList.toggle("opacity-50", disabled);
+};
+
+/**
  * Sets the visible label for an attendance control.
  * @param {HTMLElement|null} button - Attendance control button
  * @param {string} label - Label to display

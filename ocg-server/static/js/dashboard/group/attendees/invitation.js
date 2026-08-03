@@ -90,24 +90,6 @@ const clearInvitationState = (root) => {
 };
 
 /**
- * Clear the selected invitation user display.
- * @param {Document|Element} root Query root.
- * @returns {void}
- */
-const clearInvitationSelectedUser = (root) => {
-  clearInvitationState(root);
-};
-
-/**
- * Reset the attendee invitation form to its empty state.
- * @param {Document|Element} root Query root.
- * @returns {void}
- */
-const resetInvitationForm = (root) => {
-  clearInvitationState(root);
-};
-
-/**
  * Render the selected invitation chip with the shared user/email style.
  * @param {Document|Element} root Query root.
  * @param {Object} config Chip render configuration.
@@ -258,11 +240,13 @@ export const initializeInvitationModal = (root = document) => {
     return;
   }
 
+  updateInvitationSubmitState(root);
+
   root.addEventListener("click", (event) => {
     if (closestElementWithinRoot(event.target, "#open-attendee-invitation-modal", root)) {
       // Opening the modal always starts from a clean search and selection state.
       event.stopPropagation();
-      resetInvitationForm(root);
+      clearInvitationState(root);
       setScopedModalVisibility(root, invitationModalId, true);
       getInvitationSearchField(root)?.focusInput?.();
       return;
@@ -275,7 +259,7 @@ export const initializeInvitationModal = (root = document) => {
     );
     if (clearUserButton instanceof HTMLElement) {
       event.preventDefault();
-      clearInvitationSelectedUser(root);
+      clearInvitationState(root);
       return;
     }
 
@@ -346,7 +330,7 @@ export const initializeInvitationModal = (root = document) => {
     if (ok) {
       // The attendee list refreshes through HTMX; reset local modal state now.
       closeInvitationModal(root);
-      resetInvitationForm(root);
+      clearInvitationState(root);
     }
   });
 

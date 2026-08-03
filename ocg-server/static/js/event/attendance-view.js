@@ -1,46 +1,49 @@
-import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import {
   isDatasetReady,
   isElementHidden,
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
-
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
+import {
+  ATTEND_EVENT_LABEL,
+  CANCEL_ATTENDANCE_LABEL,
+  CANCEL_INVITATION_REQUEST_LABEL,
+  CANCELED_EVENT_TITLE,
+  CONTINUE_CHECKOUT_LABEL,
+  GET_FREE_TICKET_LABEL,
+  GET_TICKET_LABEL,
+  JOIN_WAITLIST_LABEL,
+  LEAVE_WAITLIST_LABEL,
+  ON_WAITLIST_LABEL,
+  REQUEST_INVITATION_LABEL,
+  REQUEST_PENDING_LABEL,
+  REQUEST_TICKET_LABEL,
+} from "/static/js/event/attendance-copy.js";
 import {
   getAttendanceControl,
   getAttendanceMeta,
   getPrimaryControls,
-  getSelectedTicketTypeOption,
-  isTicketModalOpen,
+  setAttendanceControlDisabledStyles,
   setAttendanceControlIcon,
   setAttendanceControlLabel,
 } from "/static/js/event/attendance-dom.js";
+import { initializeTicketModalControls } from "/static/js/event/attendance-ticket-view.js";
 
-export const ATTEND_EVENT_LABEL = "Attend event";
 const ACCEPT_INVITATION_LABEL = "Accept invitation";
+const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 const CLAIM_TICKET_LABEL = "Claim ticket";
-export const GET_FREE_TICKET_LABEL = "Get free ticket";
-export const GET_TICKET_LABEL = "Get ticket";
-export const JOIN_WAITLIST_LABEL = "Join waiting list";
-export const ON_WAITLIST_LABEL = "On waiting list";
+const COMPLETE_REGISTRATION_LABEL = "Complete registration";
 const PAID_TICKETS_UNAVAILABLE_LABEL = "Paid tickets temporarily unavailable";
-export const REQUEST_INVITATION_LABEL = "Request invitation";
-export const REQUEST_PENDING_LABEL = "Request pending";
-export const REQUEST_TICKET_LABEL = "Request ticket";
+const REFUND_PROCESSING_LABEL = "Refund processing";
+const REFUND_REQUESTED_LABEL = "Refund requested";
+const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
+const REQUEST_REFUND_LABEL = "Request refund";
+const REQUEST_REJECTED_LABEL = "Request rejected";
 const TICKET_OFFER_EXPIRED_LABEL = "Ticket offer expired";
 const TICKETS_BY_INVITATION_LABEL = "Tickets are available by invitation only";
 const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
-const COMPLETE_REGISTRATION_LABEL = "Complete registration";
-const CONTINUE_CHECKOUT_LABEL = "Continue to checkout";
-export const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
-const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
-export const CANCEL_INVITATION_REQUEST_LABEL = "Cancel request";
-const REQUEST_REJECTED_LABEL = "Request rejected";
-export const LEAVE_WAITLIST_LABEL = "Leave waiting list";
-const REQUEST_REFUND_LABEL = "Request refund";
-const REFUND_REQUESTED_LABEL = "Refund requested";
-const REFUND_PROCESSING_LABEL = "Refund processing";
-const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
+
 const ON_WAITLIST_CANCEL_ARIA_LABEL = `${ON_WAITLIST_LABEL} – leave waiting list`;
 const REQUEST_PENDING_CANCEL_ARIA_LABEL = `${REQUEST_PENDING_LABEL} – cancel request`;
 
@@ -48,21 +51,19 @@ const ATTEND_EVENT_ICON = "icon-user-plus";
 const CANCEL_ACTION_ICON = "icon-cancel";
 const QUESTIONS_TAB_ICON = "icon-list-check";
 const REQUEST_INVITATION_ICON = "icon-request-invitation";
-const CANCELED_EVENT_TITLE = "This event has been canceled.";
+
+const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
+const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
+const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
 const NO_CAPACITY_TITLE = "This event has no attendee capacity.";
 const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
-const TICKETS_UNAVAILABLE_TITLE = "Tickets are not currently available for this event.";
-const TICKETS_BY_INVITATION_TITLE = "Tickets for this event are available by invitation only.";
-const SOLD_OUT_TITLE = "This event is sold out.";
-const CHOOSE_TICKET_TITLE = "Choose a ticket to continue.";
+const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
 const REFUND_PENDING_TITLE = "Your refund request is waiting for organizer review.";
 const REFUND_PROCESSING_TITLE = "Your refund is being processed.";
 const REFUND_REJECTED_TITLE = "Your refund request was rejected. Contact the organizers for help.";
-const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
-const PAST_CHECKOUT_TITLE = "You cannot get tickets because the event has already started.";
-const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
-const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
-const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
+const SOLD_OUT_TITLE = "This event is sold out.";
+const TICKETS_BY_INVITATION_TITLE = "Tickets for this event are available by invitation only.";
+const TICKETS_UNAVAILABLE_TITLE = "Tickets are not currently available for this event.";
 
 /**
  * Initializes attendance UI elements for a container.
@@ -120,19 +121,6 @@ export const closeRefundModal = (container) => {
 };
 
 /**
- * Closes the ticket purchase modal if it is open.
- * @param {HTMLElement} container - Attendance container element
- */
-export const closeTicketModal = (container) => {
-  const ticketModal = getAttendanceControl(container, "ticket-modal");
-  if (!(ticketModal instanceof HTMLElement) || !isTicketModalOpen(ticketModal)) {
-    return;
-  }
-
-  toggleModalVisibility(ticketModal.id);
-};
-
-/**
  * Opens the event questions modal.
  * @param {HTMLElement} container - Attendance container element
  */
@@ -169,22 +157,6 @@ export const openRefundModal = (container, trigger = null) => {
 };
 
 /**
- * Opens the ticket purchase modal.
- * @param {HTMLElement} container - Attendance container element
- */
-export const openTicketModal = (container) => {
-  const ticketModal = getAttendanceControl(container, "ticket-modal");
-  if (!(ticketModal instanceof HTMLElement)) {
-    return;
-  }
-
-  syncTicketModalState(container);
-  if (!isTicketModalOpen(ticketModal)) {
-    toggleModalVisibility(ticketModal.id);
-  }
-};
-
-/**
  * Toggles meeting detail visibility based on attendance status.
  * @param {boolean} isAttendee - Whether the user is attending
  * @param {{attendeeMeetingAccessOpen: boolean, canceled: boolean}} meta - Attendance metadata
@@ -212,15 +184,6 @@ export const renderMeetingDetails = (isAttendee, meta) => {
     setElementHidden(link, !showAttendeeMeetingAccess);
     link.classList.toggle("max-xl:flex", showAttendeeMeetingAccess);
   });
-};
-
-/**
- * Restores the modal checkout controls after a request completes or is canceled.
- * @param {HTMLElement} container - Attendance container element
- */
-export const restoreCheckoutModalControls = (container) => {
-  setCheckoutLoadingState(container, false);
-  updateCheckoutButtonState(container);
 };
 
 /**
@@ -304,21 +267,6 @@ export const showAttendeeState = (container, meta, response) => {
   }
 
   renderMeetingDetails(true, meta);
-};
-
-/**
- * Shows the modal checkout loading state before the checkout request starts.
- * @param {HTMLElement} container - Attendance container element
- */
-export const showCheckoutLoadingState = (container) => {
-  const checkoutButton = getAttendanceControl(container, "checkout-btn");
-  if (!(checkoutButton instanceof HTMLButtonElement)) {
-    return;
-  }
-
-  checkoutButton.disabled = true;
-  setDisabledStyles(checkoutButton, true);
-  setCheckoutLoadingState(container, true);
 };
 
 /**
@@ -820,27 +768,6 @@ const hideControl = (control) => {
 };
 
 /**
- * Registers one-time listeners for ticket modal form controls.
- * @param {HTMLElement} container - Attendance container element
- */
-const initializeTicketModalControls = (container) => {
-  if (!markDatasetReady(container, "ticketModalReady")) {
-    syncTicketModalState(container);
-    return;
-  }
-
-  container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((ticketTypeOption) => {
-    if (ticketTypeOption instanceof HTMLInputElement) {
-      ticketTypeOption.addEventListener("change", () => {
-        updateCheckoutButtonState(container);
-      });
-    }
-  });
-
-  syncTicketModalState(container);
-};
-
-/**
  * Applies a rendered state to a control.
  * @param {HTMLElement|null} control - Control to update
  * @param {object} state - Render state
@@ -886,9 +813,7 @@ const renderControl = (control, state = {}) => {
   const shouldHidePriceBadge =
     hidePriceBadge || (label !== null && label !== GET_TICKET_LABEL && label !== GET_FREE_TICKET_LABEL);
   getControlPriceBadges(control).forEach((priceBadge) => {
-    priceBadge.hidden = shouldHidePriceBadge;
-    setElementHidden(priceBadge, shouldHidePriceBadge);
-    priceBadge.style.display = shouldHidePriceBadge ? "none" : "";
+    setControlPriceBadgeHidden(priceBadge, shouldHidePriceBadge);
   });
 
   if (control instanceof HTMLButtonElement) {
@@ -915,7 +840,7 @@ const renderControl = (control, state = {}) => {
     }
   }
 
-  setDisabledStyles(control, disabled);
+  setAttendanceControlDisabledStyles(control, disabled);
 };
 
 /**
@@ -957,17 +882,14 @@ const resetPrimaryControls = (container) => {
 };
 
 /**
- * Toggles the checkout button loading affordance.
- * @param {HTMLElement} container - Attendance container element
- * @param {boolean} isLoading - Whether checkout is loading
+ * Keeps native and utility-class badge visibility synchronized.
+ * @param {HTMLElement} priceBadge Price badge to update.
+ * @param {boolean} hidden Whether the badge should be hidden.
+ * @returns {void}
  */
-const setCheckoutLoadingState = (container, isLoading) => {
-  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
-  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
-
-  setElementHidden(checkoutSpinner, !isLoading);
-  checkoutSpinner?.classList.toggle("flex", isLoading);
-  checkoutLabel?.classList.toggle("invisible", isLoading);
+const setControlPriceBadgeHidden = (priceBadge, hidden) => {
+  priceBadge.hidden = hidden;
+  setElementHidden(priceBadge, hidden);
 };
 
 /**
@@ -983,21 +905,9 @@ const setControlPriceBadgesHidden = (container, hidden) => {
     }
 
     getControlPriceBadges(control).forEach((priceBadge) => {
-      priceBadge.hidden = hidden;
-      setElementHidden(priceBadge, hidden);
-      priceBadge.style.display = hidden ? "none" : "";
+      setControlPriceBadgeHidden(priceBadge, hidden);
     });
   });
-};
-
-/**
- * Updates the disabled styling for a control.
- * @param {HTMLElement|null} control - Control to update
- * @param {boolean} disabled - Whether the control is disabled
- */
-const setDisabledStyles = (control, disabled) => {
-  control?.classList.toggle("cursor-not-allowed", disabled);
-  control?.classList.toggle("opacity-50", disabled);
 };
 
 /**
@@ -1012,7 +922,7 @@ const setRefundLoadingState = (container, isLoading) => {
 
   if (refundSubmitButton instanceof HTMLButtonElement) {
     refundSubmitButton.disabled = isLoading;
-    setDisabledStyles(refundSubmitButton, isLoading);
+    setAttendanceControlDisabledStyles(refundSubmitButton, isLoading);
   }
   setElementHidden(refundSubmitSpinner, !isLoading);
   refundSubmitSpinner?.classList.toggle("flex", isLoading);
@@ -1033,114 +943,6 @@ const showPrimaryAttendanceState = (container, meta, controlName, state, isAtten
   resetPrimaryControls(container);
   renderControl(controls[controlName], state);
   renderMeetingDetails(isAttendee, meta);
-};
-
-/**
- * Synchronizes the ticket modal controls for the current modal mode.
- * @param {HTMLElement} container - Attendance container element
- */
-const syncTicketModalState = (container) => {
-  const ticketModalForm = getAttendanceControl(container, "ticket-modal-form");
-  const meta = getAttendanceMeta(container);
-  const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
-
-  setElementHidden(ticketModalForm, false);
-  setCheckoutLoadingState(container, false);
-
-  ticketTypeOptions.forEach((ticketTypeOption) => {
-    if (ticketTypeOption instanceof HTMLInputElement) {
-      const ticketTypeDisabled =
-        meta.canceled ||
-        !meta.registrationWindowOpen ||
-        ticketTypeOption.dataset.ticketSelectable === "false" ||
-        (!meta.attendeeApprovalRequired &&
-          (!meta.ticketPurchaseAvailable || ticketTypeOption.dataset.ticketPurchasable !== "true") &&
-          !(meta.waitlistEnabled && ticketTypeOption.dataset.ticketSoldOut === "true"));
-      const ticketTypeCardBody = ticketTypeOption
-        .closest('[data-attendance-role="ticket-type-card"]')
-        ?.querySelector('[data-attendance-role="ticket-type-card-body"]');
-
-      ticketTypeOption.disabled = ticketTypeDisabled;
-      if (ticketTypeCardBody instanceof HTMLElement) {
-        ticketTypeCardBody.classList.toggle("bg-white", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("cursor-pointer", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("hover:border-primary-300", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("hover:shadow-sm", !ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("bg-stone-50", ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("cursor-not-allowed", ticketTypeDisabled);
-        ticketTypeCardBody.classList.toggle("opacity-60", ticketTypeDisabled);
-      }
-    }
-  });
-
-  updateCheckoutButtonState(container);
-};
-
-/**
- * Updates the enabled state for the modal checkout button.
- * @param {HTMLElement} container - Attendance container element
- */
-const updateCheckoutButtonState = (container) => {
-  const meta = getAttendanceMeta(container);
-  const checkoutButton = getAttendanceControl(container, "checkout-btn");
-  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
-  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
-  const discountCodeInput = getAttendanceControl(container, "discount-code-input");
-  if (!(checkoutButton instanceof HTMLButtonElement)) {
-    return;
-  }
-
-  const selectedTicketType = getSelectedTicketTypeOption(container);
-  const isRequest = selectedTicketType && meta.attendeeApprovalRequired;
-  const isWaitlist =
-    selectedTicketType &&
-    !meta.attendeeApprovalRequired &&
-    meta.waitlistEnabled &&
-    selectedTicketType.dataset.ticketSoldOut === "true";
-  const isCheckout = meta.ticketPurchaseAvailable && selectedTicketType?.dataset.ticketPurchasable === "true";
-  const isSelectedTicketAction = isRequest || isWaitlist || isCheckout;
-  const shouldDisable =
-    meta.canceled || !meta.registrationWindowOpen || meta.isPastEvent || !isSelectedTicketAction;
-
-  checkoutButton.disabled = shouldDisable;
-  setDisabledStyles(checkoutButton, shouldDisable);
-
-  if (meta.canceled) {
-    checkoutButton.title = CANCELED_EVENT_TITLE;
-  } else if (!meta.registrationWindowOpen) {
-    checkoutButton.title = meta.registrationWindowUnavailableTitle;
-  } else if (meta.isPastEvent) {
-    checkoutButton.title = PAST_CHECKOUT_TITLE;
-  } else if (!isSelectedTicketAction) {
-    checkoutButton.title = CHOOSE_TICKET_TITLE;
-  } else {
-    checkoutButton.removeAttribute("title");
-  }
-
-  if (checkoutSpinner instanceof HTMLElement && !isElementHidden(checkoutSpinner)) {
-    checkoutButton.disabled = true;
-  }
-
-  if (checkoutLabel instanceof HTMLElement) {
-    if (isRequest) {
-      checkoutLabel.textContent = REQUEST_TICKET_LABEL;
-    } else if (isWaitlist) {
-      checkoutLabel.textContent = JOIN_WAITLIST_LABEL;
-    } else if (selectedTicketType?.dataset.ticketPriceMinor === "0") {
-      checkoutLabel.textContent = GET_FREE_TICKET_LABEL;
-    } else {
-      checkoutLabel.textContent = CONTINUE_CHECKOUT_LABEL;
-    }
-  }
-
-  if (discountCodeInput instanceof HTMLInputElement) {
-    discountCodeInput.disabled =
-      meta.canceled ||
-      !meta.registrationWindowOpen ||
-      meta.attendeeApprovalRequired ||
-      selectedTicketType?.dataset.ticketPurchasable !== "true" ||
-      selectedTicketType?.dataset.ticketPriceMinor === "0";
-  }
 };
 
 /**

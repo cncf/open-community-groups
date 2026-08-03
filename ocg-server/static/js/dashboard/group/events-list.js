@@ -155,9 +155,8 @@ const closeTableFilterMenus = (exceptMenu = null) => {
  * @returns {HTMLElement|null} Owning disclosure button.
  */
 const getActionsDropdownButton = (root, dropdown) =>
-  Array.from(root.querySelectorAll?.(EVENT_ACTIONS_BUTTON_SELECTOR) || []).find(
-    (button) => `dropdown-actions-${button.dataset.eventId}` === dropdown.id,
-  ) || null;
+  root.querySelector?.(`${EVENT_ACTIONS_BUTTON_SELECTOR}[aria-controls="${CSS.escape(dropdown.id)}"]`) ??
+  null;
 
 /**
  * Toggles the event actions dropdown owned by a disclosure button.
@@ -296,11 +295,7 @@ const initializeInvitationRequestTicketControl = (ticketTypeInput) => {
  * @returns {void}
  */
 const initializeInvitationRequestTicketControls = (root) => {
-  initializeMatchingRoots(
-    root,
-    INVITATION_REQUEST_TICKET_SELECTOR,
-    initializeInvitationRequestTicketControl,
-  );
+  initializeMatchingRoots(root, INVITATION_REQUEST_TICKET_SELECTOR, initializeInvitationRequestTicketControl);
 };
 
 /**

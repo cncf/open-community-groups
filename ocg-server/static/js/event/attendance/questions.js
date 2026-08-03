@@ -5,12 +5,8 @@ import {
   getAttendanceControl,
   getAttendanceMeta,
 } from "/static/js/event/attendance-dom.js";
-import {
-  closeQuestionsModal,
-  closeTicketModal,
-  openQuestionsModal,
-  openTicketModal,
-} from "/static/js/event/attendance-view.js";
+import { closeTicketModal, openTicketModal } from "/static/js/event/attendance-ticket-view.js";
+import { closeQuestionsModal, openQuestionsModal } from "/static/js/event/attendance-view.js";
 import {
   QUESTIONS_CONTINUE_ACTION_ATTEND,
   QUESTIONS_CONTINUE_ACTION_TICKET,

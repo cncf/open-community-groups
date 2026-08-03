@@ -41,117 +41,23 @@
   {# End loading spinner -#}
 
   {# Sign in prompt -#}
-  {% if event.is_ticketed() -%}
-    <button id="signin-btn-{{ attendance_instance }}"
-            data-attendance-role="signin-btn"
-            data-path="{{ path }}"
-            class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
-      {% if !event.is_past() -%}
-        {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-          {{ attendance::control_content_with_badge(label = "Get ticket",
-            icon_class = "icon-ticket",
-            badge_label = ticket_price_badge,
-            badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex max-md:hidden -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500") -}}
-        {% else -%}
-          {{ attendance::control_content(label = "Get ticket", icon_class = "icon-ticket") -}}
-        {% endif -%}
-      {% else -%}
-        {{ attendance::control_content(label = "Get ticket", icon_class = "icon-ticket") -}}
-      {% endif -%}
-    </button>
-  {% else -%}
-    <button id="signin-btn-{{ attendance_instance }}"
-            data-attendance-role="signin-btn"
-            data-path="{{ path }}"
-            class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
-      {% if !event.is_past() -%}
-        {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-          {% if event.attendee_approval_required -%}
-            {{ attendance::control_content_with_badge(label = "Request invitation",
-              icon_class = "icon-request-invitation",
-              badge_label = ticket_price_badge,
-              badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex max-md:hidden -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500") -}}
-          {% else -%}
-            {{ attendance::control_content_with_badge(label = "Attend event",
-              icon_class = "icon-user-plus",
-              badge_label = ticket_price_badge,
-              badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex max-md:hidden -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500") -}}
-          {% endif -%}
-        {% else -%}
-          {% if event.attendee_approval_required -%}
-            {{ attendance::control_content(label = "Request invitation", icon_class = "icon-request-invitation") -}}
-          {% else -%}
-            {{ attendance::control_content(label = "Attend event", icon_class = "icon-user-plus") -}}
-          {% endif -%}
-        {% endif -%}
-      {% else -%}
-        {% if event.attendee_approval_required -%}
-          {{ attendance::control_content(label = "Request invitation", icon_class = "icon-request-invitation") -}}
-        {% else -%}
-          {{ attendance::control_content(label = "Attend event", icon_class = "icon-user-plus") -}}
-        {% endif -%}
-      {% endif -%}
-    </button>
-  {% endif -%}
+  <button id="signin-btn-{{ attendance_instance }}"
+          data-attendance-role="signin-btn"
+          data-path="{{ path }}"
+          class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+    {{ attendance::initial_control_content(event = event) -}}
+  </button>
   {# End sign in prompt -#}
 
   {# Attend button -#}
-  {% if event.is_ticketed() -%}
-    <button id="attend-btn-{{ attendance_instance }}"
-            data-attendance-role="attend-btn"
-            hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
-            hx-include="#registration-answers-input-{{ attendance_instance }}"
-            hx-swap="none"
-            class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
-      {% if !event.is_past() -%}
-        {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-          {{ attendance::control_content_with_badge(label = "Get ticket",
-            icon_class = "icon-ticket",
-            badge_label = ticket_price_badge,
-            badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex max-md:hidden -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500") -}}
-        {% else -%}
-          {{ attendance::control_content(label = "Get ticket", icon_class = "icon-ticket") -}}
-        {% endif -%}
-      {% else -%}
-        {{ attendance::control_content(label = "Get ticket", icon_class = "icon-ticket") -}}
-      {% endif -%}
-    </button>
-  {% else -%}
-    <button id="attend-btn-{{ attendance_instance }}"
-            data-attendance-role="attend-btn"
-            hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
-            hx-include="#registration-answers-input-{{ attendance_instance }}"
-            hx-swap="none"
-            class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
-      {% if !event.is_past() -%}
-        {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-          {% if event.attendee_approval_required -%}
-            {{ attendance::control_content_with_badge(label = "Request invitation",
-              icon_class = "icon-request-invitation",
-              badge_label = ticket_price_badge,
-              badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex max-md:hidden -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500") -}}
-          {% else -%}
-            {{ attendance::control_content_with_badge(label = "Attend event",
-              icon_class = "icon-user-plus",
-              badge_label = ticket_price_badge,
-              badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex max-md:hidden -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500") -}}
-          {% endif -%}
-        {% else -%}
-          {% if event.attendee_approval_required -%}
-            {{ attendance::control_content(label = "Request invitation", icon_class = "icon-request-invitation") -}}
-          {% else -%}
-            {{ attendance::control_content(label = "Attend event", icon_class = "icon-user-plus") -}}
-          {% endif -%}
-        {% endif -%}
-      {% else -%}
-        {% if event.attendee_approval_required -%}
-          {{ attendance::control_content(label = "Request invitation", icon_class = "icon-request-invitation") -}}
-        {% else -%}
-          {{ attendance::control_content(label = "Attend event", icon_class = "icon-user-plus") -}}
-        {% endif -%}
-      {% endif -%}
-    </button>
-  {% endif -%}
+  <button id="attend-btn-{{ attendance_instance }}"
+          data-attendance-role="attend-btn"
+          hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
+          hx-include="#registration-answers-input-{{ attendance_instance }}"
+          hx-swap="none"
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+    {{ attendance::initial_control_content(event = event) -}}
+  </button>
   {# End attend button -#}
 
   {# Registration questions modal -#}
@@ -263,7 +169,9 @@
               <div class="min-w-0">
                 <div class="form-label">Ticket type</div>
                 <div data-attendance-role="ticket-type-list" class="mt-2 space-y-3">
+                  {% let ticket_price_badge_classes = "inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800" -%}
                   {% for ticket_type in visible_ticket_types -%}
+                    {% let ticket_type_selectable = !event.canceled && ticket_type.active && ticket_type.current_price.is_some() && (event.attendee_approval_required || ticket_type.is_sellable_now() || (ticket_type.sold_out && event.waitlist_enabled)) && event.registration_window_is_open() -%}
                     <label for="ticket-type-{{ attendance_instance }}-{{ loop.index0 }}"
                            data-attendance-role="ticket-type-card"
                            class="group block">
@@ -271,16 +179,16 @@
                              data-attendance-role="ticket-type-option"
                              data-ticket-purchasable="{{ ticket_type.is_sellable_now() }}"
                              data-ticket-price-minor="{{ ticket_type.current_amount_minor().unwrap_or_default() }}"
-                             data-ticket-selectable="{{ ticket_type.current_price.is_some() && (event.attendee_approval_required || ticket_type.is_sellable_now() || (ticket_type.sold_out && event.waitlist_enabled)) && event.registration_window_is_open() }}"
+                             data-ticket-selectable="{{ ticket_type_selectable }}"
                              data-ticket-sold-out="{{ ticket_type.sold_out }}"
                              type="radio"
                              name="event_ticket_type_id"
                              value="{{ ticket_type.event_ticket_type_id }}"
                              class="sr-only"
-                             {% if ticket_type.current_price.is_none() || (!event.attendee_approval_required && !ticket_type.is_sellable_now() && !(ticket_type.sold_out && event.waitlist_enabled)) || !event.registration_window_is_open() %}disabled{% endif %}>
+                             {% if !ticket_type_selectable %}disabled{% endif %}>
                       <div data-attendance-role="ticket-type-card-body"
                            class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200 group-has-[input:focus-visible]:border-primary-500 group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-primary-200
-                                  {% if ticket_type.current_price.is_some() && (event.attendee_approval_required || ticket_type.is_sellable_now() || (ticket_type.sold_out && event.waitlist_enabled)) && event.registration_window_is_open() %}
+                                  {% if ticket_type_selectable %}
                                     bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm
                                   {% else %}
                                     bg-stone-50 cursor-not-allowed opacity-60
@@ -299,15 +207,11 @@
                                  class="min-w-0 truncate text-left text-sm font-semibold text-stone-900">{{ ticket_type.title }}</div>
                             {% if ticket_type.current_amount_minor() == Some(0) -%}
                               <div data-attendance-role="ticket-type-price-badge"
-                                   class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                                Free
-                              </div>
+                                   class="{{ ticket_price_badge_classes }}">Free</div>
                             {% else if let Some(currency_code) = &event.payment_currency_code -%}
                               {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) -%}
                                 <div data-attendance-role="ticket-type-price-badge"
-                                     class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                                  {{ price_label }}
-                                </div>
+                                     class="{{ ticket_price_badge_classes }}">{{ price_label }}</div>
                               {% endif -%}
                             {% endif -%}
                           </div>
@@ -316,41 +220,21 @@
                                class="col-start-2 form-legend min-w-0">{{ description }}</p>
                           {% endif -%}
                           <div class="col-start-2 flex items-center gap-2 text-xs font-medium">
-                            {% if ticket_type.sold_out -%}
-                              <span data-attendance-role="ticket-type-status-dot"
-                                    class="inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                              <span data-attendance-role="ticket-type-status-label"
-                                    class="text-stone-500">Sold out</span>
-                            {% else if ticket_type.is_sellable_now() && event.registration_window_is_open() -%}
-                              <span data-attendance-role="ticket-type-status-dot"
-                                    class="inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-                              {% if let Some(current_price) = &ticket_type.current_price -%}
-                                {% if let Some(ends_at) = &current_price.ends_at -%}
-                                  <span data-attendance-role="ticket-type-status-label"
-                                        class="text-stone-500">
-                                    Available until
-                                    {{ ends_at.with_timezone(event.timezone).format("%b %-e at %-I:%M %p") }}
-                                  </span>
-                                {% else -%}
-                                  <span data-attendance-role="ticket-type-status-label"
-                                        class="text-stone-500">Available now</span>
-                                {% endif -%}
+                            <span data-attendance-role="ticket-type-status-dot"
+                                  class="inline-flex h-2 w-2 rounded-full
+                                         {% if ticket_type.sold_out %}bg-red-500{% else if ticket_type_selectable %}bg-green-500{% else %}bg-stone-300{% endif %}"></span>
+                            <span data-attendance-role="ticket-type-status-label"
+                                  class="text-stone-500">
+                              {% if ticket_type.sold_out -%}
+                                Sold out
+                              {% else if !event.registration_window_is_open() -%}
+                                Registration not open
+                              {% else if ticket_type.is_sellable_now() -%}
+                                Available now
                               {% else -%}
-                                <span data-attendance-role="ticket-type-status-label"
-                                      class="text-stone-500">Available now</span>
+                                Not on sale
                               {% endif -%}
-                            {% else -%}
-                              <span data-attendance-role="ticket-type-status-dot"
-                                    class="inline-flex h-2 w-2 rounded-full bg-stone-300"></span>
-                              <span data-attendance-role="ticket-type-status-label"
-                                    class="text-stone-500">
-                                {% if event.registration_window_is_open() -%}
-                                  Not on sale
-                                {% else -%}
-                                  Registration not open
-                                {% endif -%}
-                              </span>
-                            {% endif -%}
+                            </span>
                           </div>
                         </div>
                       </div>

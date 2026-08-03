@@ -12,15 +12,16 @@ import {
   ATTEND_EVENT_LABEL,
   CANCEL_ATTENDANCE_LABEL,
   CANCEL_INVITATION_REQUEST_LABEL,
-  closeRefundModal,
-  closeTicketModal,
   LEAVE_WAITLIST_LABEL,
   ON_WAITLIST_LABEL,
-  openRefundModal,
-  openTicketModal,
   REQUEST_PENDING_LABEL,
+} from "/static/js/event/attendance-copy.js";
+import {
+  closeTicketModal,
+  openTicketModal,
   restoreCheckoutModalControls,
-} from "/static/js/event/attendance-view.js";
+} from "/static/js/event/attendance-ticket-view.js";
+import { closeRefundModal, openRefundModal } from "/static/js/event/attendance-view.js";
 import {
   dismissQuestionAnswers,
   isCompletingRegistrationQuestions,

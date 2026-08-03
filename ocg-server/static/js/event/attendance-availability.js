@@ -1,25 +1,13 @@
 import { setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { getAttendanceControl, getAttendanceMeta } from "/static/js/event/attendance-dom.js";
-import { restoreCheckoutModalControls } from "/static/js/event/attendance-view.js";
+import {
+  applyTicketCardState,
+  deriveTicketCardState,
+  TICKET_PRICE_BADGE_CLASSES,
+} from "/static/js/event/attendance-ticket-state.js";
+import { restoreCheckoutModalControls } from "/static/js/event/attendance-ticket-view.js";
 import "/static/js/event/attendance-ticket-card.js";
-
-const TICKET_PRICE_BADGE_CLASSES = [
-  "inline-flex",
-  "w-fit",
-  "shrink-0",
-  "self-center",
-  "rounded-full",
-  "border",
-  "border-green-800",
-  "bg-green-100",
-  "px-2",
-  "py-0.5",
-  "text-[11px]",
-  "font-semibold",
-  "text-green-800",
-];
-const TICKET_STATUS_CLASSES = ["bg-green-500", "bg-red-500", "bg-stone-300"];
 
 /**
  * Returns a trimmed string value from an availability payload field.
@@ -267,9 +255,7 @@ const renderTicketPriceBadge = (card, ticket) => {
  */
 const renderTicketDescription = (card, ticket) => {
   const descriptionText = getAvailabilityStringValue(ticket.description);
-  const currentDescription = card?.querySelector(
-    '[data-attendance-role="ticket-type-description"]',
-  );
+  const currentDescription = card?.querySelector('[data-attendance-role="ticket-type-description"]');
   if (!descriptionText) {
     currentDescription?.remove();
     return;
@@ -307,67 +293,17 @@ const renderTicketDescription = (card, ticket) => {
  */
 const renderTicketAvailability = (option, ticket, meta) => {
   const card = option.closest('[data-attendance-role="ticket-type-card"]');
-  const cardBody = card?.querySelector('[data-attendance-role="ticket-type-card-body"]');
-  const statusDot = card?.querySelector('[data-attendance-role="ticket-type-status-dot"]');
-  const statusLabel = card?.querySelector('[data-attendance-role="ticket-type-status-label"]');
   const title = card?.querySelector('[data-attendance-role="ticket-type-title"]');
-  const hasCurrentPriceBadge = renderTicketPriceBadge(card, ticket);
-  const isActive = ticket.active !== false;
-  const isSellableNow = isActive && ticket.is_sellable_now === true && hasCurrentPriceBadge;
-  const isApprovalSelectable = meta.attendeeApprovalRequired && isActive && hasCurrentPriceBadge;
-  const isWaitlistSelectable =
-    meta.waitlistEnabled && isActive && hasCurrentPriceBadge && ticket.sold_out === true;
-  const isSelectable =
-    !meta.canceled &&
-    meta.registrationWindowOpen &&
-    (isApprovalSelectable || (meta.ticketPurchaseAvailable && isSellableNow) || isWaitlistSelectable);
+  const state = deriveTicketCardState(ticket, meta);
 
-  option.dataset.ticketPurchasable = String(isSellableNow);
-  option.dataset.ticketPriceMinor = String(ticket.current_price_minor ?? "");
-  option.dataset.ticketSelectable = String(isSelectable);
-  option.dataset.ticketSoldOut = String(ticket.sold_out === true);
+  renderTicketPriceBadge(card, ticket);
   if (title instanceof HTMLElement) {
     title.textContent = getAvailabilityStringValue(ticket.title) || "Ticket";
   }
   renderTicketDescription(card, ticket);
-  if (!isSelectable && option.checked) {
-    option.checked = false;
-  }
+  applyTicketCardState(option, state);
 
-  if (cardBody instanceof HTMLElement) {
-    cardBody.classList.toggle("bg-white", isSelectable);
-    cardBody.classList.toggle("cursor-pointer", isSelectable);
-    cardBody.classList.toggle("hover:border-primary-300", isSelectable);
-    cardBody.classList.toggle("hover:shadow-sm", isSelectable);
-    cardBody.classList.toggle("bg-stone-50", !isSelectable);
-    cardBody.classList.toggle("cursor-not-allowed", !isSelectable);
-    cardBody.classList.toggle("opacity-60", !isSelectable);
-  }
-
-  if (statusDot instanceof HTMLElement) {
-    statusDot.classList.remove(...TICKET_STATUS_CLASSES);
-    if (ticket.sold_out === true) {
-      statusDot.classList.add("bg-red-500");
-    } else if (isSelectable) {
-      statusDot.classList.add("bg-green-500");
-    } else {
-      statusDot.classList.add("bg-stone-300");
-    }
-  }
-
-  if (statusLabel instanceof HTMLElement) {
-    if (ticket.sold_out === true) {
-      statusLabel.textContent = "Sold out";
-    } else if (!meta.registrationWindowOpen) {
-      statusLabel.textContent = "Registration not open";
-    } else if (isSellableNow) {
-      statusLabel.textContent = "Available now";
-    } else if (!isSellableNow) {
-      statusLabel.textContent = "Not on sale";
-    }
-  }
-
-  return isSelectable;
+  return state.selectable;
 };
 
 /**
@@ -398,7 +334,7 @@ const createTicketAvailabilityCard = (container, ticket, meta) => {
   card.attendeeApprovalRequired = meta.attendeeApprovalRequired;
   card.canceled = meta.canceled;
   card.registrationWindowOpen = meta.registrationWindowOpen;
-  card.ticketPurchaseAvailable = meta.ticketPurchaseAvailable && meta.registrationWindowOpen;
+  card.ticketPurchaseAvailable = meta.ticketPurchaseAvailable;
   card.waitlistEnabled = meta.waitlistEnabled;
   card.addEventListener("change", () => {
     restoreCheckoutModalControls(container);
@@ -444,7 +380,7 @@ const renderTicketAvailabilities = (container, ticketTypes = []) => {
       return;
     }
 
-    option.disabled = !renderTicketAvailability(option, ticket, meta);
+    renderTicketAvailability(option, ticket, meta);
   });
 
   restoreCheckoutModalControls(container);

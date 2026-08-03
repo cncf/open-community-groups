@@ -1,15 +1,14 @@
 import { parseJsonText } from "/static/js/common/utils.js";
-import { getAttendanceControlLabel } from "/static/js/event/attendance-dom.js";
 import {
   ATTEND_EVENT_LABEL,
   GET_FREE_TICKET_LABEL,
   GET_TICKET_LABEL,
   JOIN_WAITLIST_LABEL,
-  renderMeetingDetails,
   REQUEST_INVITATION_LABEL,
   REQUEST_TICKET_LABEL,
-  showSignedOutAttendanceState,
-} from "/static/js/event/attendance-view.js";
+} from "/static/js/event/attendance-copy.js";
+import { getAttendanceControlLabel } from "/static/js/event/attendance-dom.js";
+import { renderMeetingDetails, showSignedOutAttendanceState } from "/static/js/event/attendance-view.js";
 
 export const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn"]);
 export const QUESTIONS_CONTINUE_ACTION_ATTEND = "attend";
