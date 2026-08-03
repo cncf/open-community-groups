@@ -6,8 +6,12 @@ import {
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+  expectPaginationNavigation,
+  expectTableColumnsAtViewport,
+  expectTableHeaders,
   navigateToGroup,
   navigateToPath,
+  waitForActionResponse,
 } from "../../../utils.js";
 
 const groupId = TEST_GROUP_IDS.community1.alpha;
@@ -21,15 +25,10 @@ const leavePublicGroup = async (page) => {
 
   await leaveButton.click();
   await expect(page.getByRole("button", { name: "Yes" })).toBeVisible();
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "DELETE" &&
-        response.url().includes(`/group/${groupId}/leave`) &&
-        response.ok(),
-    ),
-    page.getByRole("button", { name: "Yes" }).click(),
-  ]);
+  await waitForActionResponse(page, () => page.getByRole("button", { name: "Yes" }).click(), {
+    method: "DELETE",
+    urlIncludes: `/group/${groupId}/leave`,
+  });
   await expect(getMembershipContainer(page).locator("#join-btn")).toBeVisible();
 };
 
@@ -46,12 +45,39 @@ const waitForMembershipState = async (page) => {
 };
 
 test.describe("user dashboard my groups view", () => {
-  test("empty state explains when the user has no groups", async ({ pending1Page }) => {
-    // Load My Groups for a user without a group relationship
-    await navigateToPath(pending1Page, "/dashboard/user?tab=groups");
-    const dashboardContent = pending1Page.locator("#dashboard-content");
+  test("my groups table exposes its responsive columns", async ({ member1Page }) => {
+    // Load My Groups before checking table structure.
+    await navigateToPath(member1Page, "/dashboard/user?tab=groups");
 
-    // Verify the empty result remains explicit
+    // Find the groups table.
+    const groupsTable = member1Page.locator("#dashboard-content").getByRole("table");
+
+    // Verify header order; every column stays visible at desktop dashboard widths.
+    await expectTableColumnsAtViewport(
+      member1Page,
+      groupsTable,
+      1024,
+      ["Group", "Member since", "Role", "Actions"],
+      [],
+    );
+    await expectTableHeaders(groupsTable, ["Group", "Member since", "Role", "Actions"]);
+  });
+
+  test("member can move between group result pages", async ({ member1Page }) => {
+    // Paginate the seeded user-group rows with one result per page.
+    await expectPaginationNavigation(
+      member1Page,
+      "/dashboard/user?tab=groups&limit=1&offset=0",
+      "#dashboard-content tbody tr",
+    );
+  });
+
+  test("empty state explains when the user has no groups", async ({ emptyUserPage }) => {
+    // Load My Groups for the dedicated user without group relationships.
+    await navigateToPath(emptyUserPage, "/dashboard/user?tab=groups");
+    const dashboardContent = emptyUserPage.locator("#dashboard-content");
+
+    // Verify the empty result remains explicit.
     await expect(dashboardContent).toContainText("0 groups");
     await expect(dashboardContent).toContainText("You don't belong to any groups yet.");
   });
@@ -81,15 +107,10 @@ test.describe("user dashboard my groups view", () => {
 
     // Join the group through the public membership action
     const joinButton = getMembershipContainer(pending2Page).locator("#join-btn");
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes(`/group/${groupId}/join`) &&
-          response.ok(),
-      ),
-      joinButton.click(),
-    ]);
+    await waitForActionResponse(pending2Page, () => joinButton.click(), {
+      method: "POST",
+      urlIncludes: `/group/${groupId}/join`,
+    });
 
     // Load My Groups and verify the new relationship row
     await navigateToPath(pending2Page, "/dashboard/user?tab=groups");
@@ -113,15 +134,14 @@ test.describe("user dashboard my groups view", () => {
     );
 
     // Confirm the mutation and verify the row is removed
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().includes(`/dashboard/user/groups/${TEST_COMMUNITY_NAME}/${groupId}/membership`) &&
-          response.ok(),
-      ),
-      pending2Page.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      pending2Page,
+      () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "DELETE",
+        urlIncludes: `/dashboard/user/groups/${TEST_COMMUNITY_NAME}/${groupId}/membership`,
+      },
+    );
     await expect(groupRow).toHaveCount(0);
   });
 

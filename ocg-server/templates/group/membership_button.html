@@ -45,7 +45,7 @@
   <div id="membership-checker"
        hx-get="/{{ group.community.name }}/group/{{ group.group_id }}/membership"
        hx-trigger="load, membership-changed from:body"
-       hx-swap="none"></div>
+       hx-swap="none ignoreTitle:true"></div>
   {# End membership checker -#}
 </div>
 {# End membership button section -#}

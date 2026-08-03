@@ -7,11 +7,23 @@ export const TEST_COMMUNITY_NAME_2 = "e2e-second-community";
 export const TEST_COMMUNITY_IDS = {
   community1: "11111111-1111-1111-1111-111111111111",
   community2: "11111111-1111-1111-1111-111111111112",
+  empty: "11111111-1111-1111-1111-111111111113",
 };
 export const TEST_GROUP_SLUG = process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
 export const TEST_EVENT_SLUG = process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
 export const TEST_GROUP_NAME = "Platform Ops Meetup";
 export const TEST_EVENT_NAME = "Upcoming In-Person Event";
+export const TEST_CANCELED_PUBLIC_EVENT = {
+  id: "55555555-5555-5555-5555-555555555531",
+  name: "Canceled Public Event",
+  slug: "alpha-canceled-public-event",
+};
+export const TEST_APPROVAL_REQUIRED_EVENT = {
+  id: "55555555-5555-5555-5555-555555555530",
+  name: "Approval Required Attendance",
+  offerId: "62555555-5555-5555-5555-555555555530",
+  slug: "alpha-approval-required-attendance",
+};
 export const TEST_EVENT_PAGE_BADGE_EVENT = {
   id: "55555555-5555-5555-5555-555555555524",
   name: "Test Event Page Badge",
@@ -22,10 +34,37 @@ export const TEST_EVENT_CANCELLATION = {
   name: "Event Cancellation Lifecycle",
   slug: "alpha-event-cancellation-lifecycle",
 };
+export const TEST_CFS_WINDOW_EVENTS = {
+  closed: {
+    id: "55555555-5555-5555-5555-555555555534",
+    name: "Closed Call for Speakers Window",
+    slug: "alpha-cfs-closed",
+  },
+  upcoming: {
+    id: "55555555-5555-5555-5555-555555555533",
+    name: "Upcoming Call for Speakers Window",
+    slug: "alpha-cfs-upcoming",
+  },
+};
 export const TEST_INVITATION_CANCELLATION = {
   id: "55555555-5555-5555-5555-555555555528",
   name: "Canceled Invitation History",
   slug: "alpha-canceled-invitation-history",
+};
+export const TEST_OPEN_CHECK_IN_EVENT = {
+  id: "55555555-5555-5555-5555-555555555529",
+  name: "Open Public Check-In",
+  slug: "alpha-open-public-check-in",
+};
+export const TEST_MULTI_DAY_EVENT = {
+  id: "55555555-5555-5555-5555-555555555535",
+  name: "Multi Day Summit",
+  slug: "alpha-multi-day-summit",
+};
+export const TEST_UNPUBLISHED_EVENT = {
+  id: "55555555-5555-5555-5555-555555555532",
+  name: "Unpublished Public Event",
+  slug: "alpha-unpublished-public-event",
 };
 export const TEST_REGISTRATION_QUESTIONS_EVENT = {
   id: "55555555-5555-5555-5555-555555555525",
@@ -105,6 +144,7 @@ export const TEST_COMMUNITY_BANNER_MOBILE_URL = "/static/images/e2e/community-pr
 export const TEST_GROUP_NAMES = {
   alpha: "Platform Ops Meetup",
   beta: "Inactive Local Chapter",
+  empty: "Empty Coverage Group",
   gamma: "Observability Guild",
 };
 
@@ -120,6 +160,7 @@ export const TEST_GROUP_SLUGS = {
   community1: {
     alpha: "test-group-alpha",
     beta: "test-group-beta",
+    empty: "empty-coverage-group",
     gamma: "test-group-gamma",
   },
   community2: {
@@ -134,6 +175,7 @@ export const TEST_GROUP_IDS = {
   community1: {
     alpha: "44444444-4444-4444-4444-444444444441",
     beta: "44444444-4444-4444-4444-444444444442",
+    empty: "44444444-4444-4444-4444-444444444447",
     gamma: "44444444-4444-4444-4444-444444444443",
   },
   community2: {
@@ -254,6 +296,7 @@ export const TEST_USER_IDS = {
 export const TEST_USER_CREDENTIALS = {
   admin1: { username: "e2e-admin-1", password: "Password123!" },
   admin2: { username: "e2e-admin-2", password: "Password123!" },
+  empty: { username: "e2e-empty", password: "Password123!" },
   organizer1: { username: "e2e-organizer-1", password: "Password123!" },
   organizer2: { username: "e2e-organizer-2", password: "Password123!" },
   member1: { username: "e2e-member-1", password: "Password123!" },
@@ -278,10 +321,11 @@ export const TEST_USER_CREDENTIALS = {
   },
 };
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
+const LOGIN_NAVIGATION_TIMEOUT_MS = 5_000;
+const LOGIN_RETRY_ATTEMPTS = 3;
+const NAVIGATION_ATTEMPT_TIMEOUT_MS = 2_000;
 const NAVIGATION_RETRY_ATTEMPTS = 10;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
-const LOGIN_RETRY_ATTEMPTS = 3;
-const LOGIN_NAVIGATION_TIMEOUT_MS = 5_000;
 
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
 
@@ -301,8 +345,13 @@ const isServerUnavailableNavigationError = (error) => {
 
   return (
     message.includes("Could not connect to the server") ||
+    message.includes("ERR_CONNECTION_RESET") ||
     message.includes("ERR_CONNECTION_REFUSED") ||
+    message.includes("Navigation completed without a server response") ||
+    message.includes("NS_ERROR_NET_RESET") ||
     message.includes("NS_ERROR_CONNECTION_REFUSED") ||
+    message.includes("page.goto: Timeout") ||
+    message.includes("ECONNRESET") ||
     message.includes("ECONNREFUSED")
   );
 };
@@ -315,7 +364,14 @@ const navigateToUrl = async (page, url) => {
 
   for (let attempt = 1; attempt <= NAVIGATION_RETRY_ATTEMPTS; attempt += 1) {
     try {
-      await page.goto(url);
+      const response = await page.goto(url, {
+        timeout: NAVIGATION_ATTEMPT_TIMEOUT_MS,
+        waitUntil: "domcontentloaded",
+      });
+
+      if (!response) {
+        throw new Error("Navigation completed without a server response");
+      }
 
       return;
     } catch (error) {
@@ -503,8 +559,7 @@ export const getSectionLink = (page, heading, linkName, viewport) => {
 /**
  * Selects a community banner on the site home page.
  */
-export const getCommunityBanner = (page, displayName) =>
-  page.getByAltText(`${displayName} banner`).first();
+export const getCommunityBanner = (page, displayName) => page.getByAltText(`${displayName} banner`).first();
 
 /**
  * Selects the public attendance controls container.
@@ -639,6 +694,25 @@ export const navigateToPath = async (page, path) => {
 };
 
 /**
+ * Runs an action and waits for a response matching method, URL, and status.
+ * Status defaults to any successful response when not provided.
+ */
+export const waitForActionResponse = async (page, action, { method, urlIncludes, urlEndsWith, status }) => {
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (candidate) =>
+        candidate.request().method() === method &&
+        (!urlIncludes || candidate.url().includes(urlIncludes)) &&
+        (!urlEndsWith || candidate.url().endsWith(urlEndsWith)) &&
+        (status === undefined ? candidate.ok() : candidate.status() === status),
+    ),
+    action(),
+  ]);
+
+  return response;
+};
+
+/**
  * Declines a pending offer for the shared waitlist lab event.
  */
 const clearSeededWaitlistOffer = async (memberPage) => {
@@ -659,16 +733,140 @@ const clearSeededWaitlistOffer = async (memberPage) => {
   });
   await declineButton.click();
   await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
+  await waitForActionResponse(memberPage, () => memberPage.getByRole("button", { name: "Yes" }).click(), {
+    method: "PUT",
+    urlIncludes: "/dashboard/user/invitations/event-offers/",
+    urlEndsWith: "/decline",
+  });
+};
+
+/**
+ * Verifies the ordered, user-facing column names for a table.
+ */
+export const expectTableHeaders = async (table, expectedHeaders) => {
+  const columnHeaders = table.locator("thead th");
+
+  await expect(columnHeaders).toHaveCount(expectedHeaders.length);
+
+  for (const [index, expectedHeader] of expectedHeaders.entries()) {
+    await expect(columnHeaders.nth(index)).toContainText(expectedHeader);
+  }
+};
+
+/**
+ * Verifies responsive table-column visibility at one viewport width.
+ */
+export const expectTableColumnsAtViewport = async (
+  page,
+  table,
+  viewportWidth,
+  visibleHeaders,
+  hiddenHeaders,
+) => {
+  await page.setViewportSize({ width: viewportWidth, height: 900 });
+
+  for (const header of visibleHeaders) {
+    const columnHeader = table.locator("thead th").filter({
+      has: page.getByText(header, { exact: true }),
+    });
+
+    await expect(columnHeader).toBeVisible();
+  }
+
+  for (const header of hiddenHeaders) {
+    const columnHeader = table.locator("thead th").filter({
+      has: page.getByText(header, { exact: true }),
+    });
+
+    await expect(columnHeader).toBeHidden();
+  }
+};
+
+/**
+ * Adds query parameters to the next matching browser request.
+ */
+export const routeNextRequestWithQuery = async (page, urlIncludes, query) => {
+  const queryParameters = new URLSearchParams(query);
+
+  await page.route(
+    `**${urlIncludes}*`,
+    async (route) => {
+      const requestUrl = new URL(route.request().url());
+
+      for (const [name, value] of queryParameters) {
+        requestUrl.searchParams.set(name, value);
+      }
+
+      await route.continue({ url: requestUrl.toString() });
+    },
+    { times: 1 },
+  );
+};
+
+/**
+ * Verifies loaded forward and backward pagination while preserving the first result.
+ */
+export const expectCurrentPaginationNavigation = async (page, resultSelector) => {
+  // Capture the first result and initial disabled boundary controls.
+  const pagination = page.locator(".pagination");
+  const results = page.locator(resultSelector);
+  const initialResult = (await results.first().innerText()).trim();
+  await expect(initialResult).not.toEqual("");
+  await expect(pagination.getByRole("button", { name: "First" })).toBeDisabled();
+  await expect(pagination.getByRole("button", { name: "Prev" })).toBeDisabled();
+
+  // Move forward and verify both link contracts and visible results change.
+  const nextLink = pagination.getByRole("link", { name: "Next" });
+  const lastLink = pagination.getByRole("link", { name: "Last" });
+  await expect(nextLink).toHaveAttribute("href", /limit=1.*offset=1|offset=1.*limit=1/);
+  await expect(nextLink).toHaveAttribute("hx-get", /limit=1.*offset=1|offset=1.*limit=1/);
+  await expect(lastLink).toHaveAttribute("href", /limit=1.*offset=[1-9]\d*|offset=[1-9]\d*.*limit=1/);
+  await expect(lastLink).toHaveAttribute("hx-get", /limit=1.*offset=[1-9]\d*|offset=[1-9]\d*.*limit=1/);
   await Promise.all([
-    memberPage.waitForResponse(
-      (response) =>
-        response.request().method() === "PUT" &&
-        response.url().includes("/dashboard/user/invitations/event-offers/") &&
-        response.url().endsWith("/decline") &&
-        response.ok(),
-    ),
-    memberPage.getByRole("button", { name: "Yes" }).click(),
+    page.waitForResponse((response) => {
+      const searchParams = new URL(response.url()).searchParams;
+      const hasNextOffset = [...searchParams.entries()].some(
+        ([key, value]) => key.endsWith("offset") && value === "1",
+      );
+
+      return response.request().method() === "GET" && hasNextOffset && response.ok();
+    }),
+    nextLink.click(),
   ]);
+  await expect.poll(async () => (await results.first().innerText()).trim()).not.toBe(initialResult);
+
+  // Verify both backward controls point to the first result page.
+  const firstLink = page.locator(".pagination").getByRole("link", {
+    name: "First",
+  });
+  const previousLink = page.locator(".pagination").getByRole("link", {
+    name: "Prev",
+  });
+  await expect(firstLink).toHaveAttribute("href", /limit=1.*offset=0|offset=0.*limit=1/);
+  await expect(firstLink).toHaveAttribute("hx-get", /limit=1.*offset=0|offset=0.*limit=1/);
+  await expect(previousLink).toHaveAttribute("href", /limit=1.*offset=0|offset=0.*limit=1/);
+
+  // Return to the first page and verify the original result is restored.
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const searchParams = new URL(response.url()).searchParams;
+      const hasFirstOffset = [...searchParams.entries()].some(
+        ([key, value]) => key.endsWith("offset") && value === "0",
+      );
+
+      return response.request().method() === "GET" && hasFirstOffset && response.ok();
+    }),
+    previousLink.click(),
+  ]);
+  await expect.poll(async () => (await results.first().innerText()).trim()).toBe(initialResult);
+};
+
+/**
+ * Loads a page and verifies forward and backward pagination.
+ */
+export const expectPaginationNavigation = async (page, path, resultSelector) => {
+  await navigateToPath(page, path);
+  await expectCurrentPaginationNavigation(page, resultSelector);
 };
 
 /**
@@ -694,15 +892,10 @@ export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
   if (await getLeaveButton(memberPage).isVisible()) {
     await getLeaveButton(memberPage).click();
     await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
-    await Promise.all([
-      memberPage.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
-          response.ok(),
-      ),
-      memberPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(memberPage, () => memberPage.getByRole("button", { name: "Yes" }).click(), {
+      method: "DELETE",
+      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`,
+    });
   }
 
   // Restore organizer attendance so the one-seat event is full again.
@@ -716,15 +909,10 @@ export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
 
   if (await getAttendButton(organizerPage).isVisible()) {
     await expect(getAttendButton(organizerPage)).toContainText("Attend event");
-    await Promise.all([
-      organizerPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
-          response.ok(),
-      ),
-      getAttendButton(organizerPage).click(),
-    ]);
+    await waitForActionResponse(organizerPage, () => getAttendButton(organizerPage).click(), {
+      method: "POST",
+      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`,
+    });
     await expect(getLeaveButton(organizerPage)).toContainText("Cancel attendance");
   }
 };
@@ -755,8 +943,7 @@ export const expectRegionScreenshot = async (page, region, screenshotName, scree
     testInfo,
     useClippedPageScreenshot = false,
   } = screenshotOptions;
-  const clippedPageScreenshotDiffRatio =
-    process.env.CI === "true" && useClippedPageScreenshot ? 0.08 : undefined;
+  const clippedPageScreenshotDiffRatio = useClippedPageScreenshot ? 0.08 : undefined;
   const snapshotDiffOptions = {
     ...(maxDiffPixels === undefined ? {} : { maxDiffPixels }),
     ...((maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio) === undefined

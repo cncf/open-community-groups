@@ -8,6 +8,8 @@ import {
   TEST_COMMUNITY_TITLE,
   TEST_COMMUNITY_TITLE_2,
   TEST_EVENT_NAMES,
+  TEST_GROUP_NAME,
+  TEST_GROUP_SLUG,
   TEST_SITE_TITLE,
   getCommunityBanner,
   getSectionLink,
@@ -175,6 +177,52 @@ test.describe("site home page", () => {
 
       // Verify the latest groups grid is visible.
       await expect(groupsGrid.first()).toBeVisible();
+    });
+
+    test("event and group cards expose complete seeded metadata", async ({
+      page,
+    }) => {
+      // Find the in-person event card and verify its group, venue, and date.
+      const inPersonEventCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.alpha[0] })
+        .first();
+      await expect(inPersonEventCard).toContainText(
+        `${TEST_COMMUNITY_TITLE} · Platform Ops Meetup`,
+      );
+      await expect(inPersonEventCard).toContainText(
+        "Tech Conference Center, New York",
+      );
+      await expect(inPersonEventCard).toContainText(/\w{3} \d{1,2}, \d{4}/);
+
+      // Find the virtual event card and verify its location label.
+      const virtualEventCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.alpha[1] })
+        .first();
+      await expect(virtualEventCard).toContainText("Virtual");
+
+      // Find the hybrid event card and verify its fallback metadata.
+      const hybridEventCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.alpha[2] })
+        .first();
+      await expect(hybridEventCard).toContainText("No location provided");
+      await expect(hybridEventCard).toContainText("hybrid");
+
+      // Find the group card and verify its community, region, location, and URL.
+      const groupCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_GROUP_NAME })
+        .last();
+      await expect(groupCard).toContainText(
+        `${TEST_COMMUNITY_TITLE} · North America`,
+      );
+      await expect(groupCard).toContainText("No location provided");
+      await expect(groupCard).toHaveAttribute(
+        "href",
+        `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`,
+      );
     });
   });
 

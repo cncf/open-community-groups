@@ -1,6 +1,12 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { navigateToPath } from "../../../utils.js";
+import {
+  expectPaginationNavigation,
+  expectTableColumnsAtViewport,
+  expectTableHeaders,
+  navigateToPath,
+  waitForActionResponse,
+} from "../../../utils.js";
 
 const AWARDS_PATH = "/dashboard/group?tab=awards";
 const MENTOR_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada07";
@@ -20,6 +26,59 @@ const waitForAwardsRefresh = async (page, action) =>
   ]);
 
 test.describe("group badge award history", () => {
+  test("empty state explains where award history will appear", async ({
+    organizerEmptyGroupPage,
+  }) => {
+    // Load award history for the dedicated group without credentials.
+    await navigateToPath(organizerEmptyGroupPage, AWARDS_PATH);
+    const dashboardContent = organizerEmptyGroupPage.locator(
+      "#dashboard-content",
+    );
+
+    // Verify the zero count and durable-history guidance remain visible.
+    await expect(dashboardContent).toContainText("0 awards");
+    await expect(dashboardContent).toContainText("No awards matched");
+    await expect(dashboardContent).toContainText(
+      "Awarded badges and revoked history appear here.",
+    );
+  });
+
+  test("award history table exposes its responsive columns", async ({ organizerGroupPage }) => {
+    // Load badge award history before checking table structure.
+    await navigateToPath(organizerGroupPage, AWARDS_PATH);
+
+    // Find the award history table.
+    const awardsTable = organizerGroupPage.getByRole("table", {
+      name: "Awards list",
+    });
+
+    // Verify header order and column visibility across dashboard breakpoints.
+    await expectTableHeaders(awardsTable, ["Recipient", "Badge", "Source", "Awarded", "Status", "Actions"]);
+    await expectTableColumnsAtViewport(
+      organizerGroupPage,
+      awardsTable,
+      1024,
+      ["Recipient", "Badge", "Awarded", "Status", "Actions"],
+      ["Source"],
+    );
+    await expectTableColumnsAtViewport(
+      organizerGroupPage,
+      awardsTable,
+      1280,
+      ["Recipient", "Badge", "Source", "Awarded", "Status", "Actions"],
+      [],
+    );
+  });
+
+  test("organizer can move between badge award result pages", async ({ organizerGroupPage }) => {
+    // Paginate the seeded award rows with one result per page.
+    await expectPaginationNavigation(
+      organizerGroupPage,
+      `${AWARDS_PATH}&limit=1&offset=0`,
+      "#dashboard-content tbody tr",
+    );
+  });
+
   test("organizer can search and combine award filters", async ({ organizerGroupPage }) => {
     // Search by recipient and verify the result set.
     await navigateToPath(organizerGroupPage, AWARDS_PATH);
@@ -109,15 +168,15 @@ test.describe("group badge award history", () => {
       name: "Revoke Mentor",
     });
     await revokeDialog.getByLabel("Internal reason").fill("Credential revoked by the manager E2E scenario.");
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().endsWith(`/badges/awards/${MENTOR_CREDENTIAL_ID}/revoke`) &&
-          response.status() === 204,
-      ),
-      revokeDialog.getByRole("button", { name: "Permanently revoke" }).click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => revokeDialog.getByRole("button", { name: "Permanently revoke" }).click(),
+      {
+        method: "POST",
+        urlEndsWith: `/badges/awards/${MENTOR_CREDENTIAL_ID}/revoke`,
+        status: 204,
+      },
+    );
 
     // Verify the durable history retains the reason and disables the action.
     await expect(mentorRow).toContainText("Revoked");

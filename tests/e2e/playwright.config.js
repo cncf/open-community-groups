@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Base URL used by browser contexts and the optional web server health check. */
 const baseURL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
-/** Enables CI-specific retries and screenshot tolerance when running in CI. */
+/** Enables CI-specific retries when running in CI. */
 const isCI = process.env.CI === "true";
 /** Starts the application server as part of the Playwright run when requested. */
 const shouldStartServer = process.env.OCG_E2E_START_SERVER === "true";
@@ -29,21 +29,13 @@ const smokeSpecPaths = [
   "site/common/header.spec.js",
   "site/home/home.spec.js",
 ];
-/** Matches visual regression specs that live next to the pages they cover. */
-const visualSpecPattern = /(^|\/)[^/]+_visual\.spec\.js$/u;
-/** Detects visual-only runs so deep projects ignore the right specs. */
-const isVisualOnlyRun = process.argv.some(
-  (arg) => visualSpecPattern.test(arg) || arg.includes("@visual"),
-);
-/** Visual runs need a deterministic browser environment for stable snapshots. */
-const visualUseOverrides = isVisualOnlyRun
-  ? {
-      colorScheme: "light",
-      locale: "en-US",
-      reducedMotion: "reduce",
-      timezoneId: "UTC",
-    }
-  : {};
+/** Deep runs need a deterministic browser environment for stable snapshots. */
+const deepUseOverrides = {
+  colorScheme: "light",
+  locale: "en-US",
+  reducedMotion: "reduce",
+  timezoneId: "UTC",
+};
 /** Matches tests that should only execute in the mobile project. */
 const mobileTestPattern = /@mobile/;
 
@@ -64,12 +56,11 @@ export default defineConfig({
   workers: 1,
   retries: isCI ? 2 : 0,
   expect: {
-    toHaveScreenshot: isCI ? { maxDiffPixelRatio: 0.03 } : undefined,
+    toHaveScreenshot: { maxDiffPixelRatio: 0.03 },
   },
   reporter: [["html", { open: "never", outputFolder: reportDir }], ["list"]],
   outputDir: resultsDir,
-  snapshotPathTemplate:
-    "{testFileDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}",
+  snapshotPathTemplate: "{testFileDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}",
   use: {
     baseURL,
     screenshot: "only-on-failure",
@@ -97,19 +88,14 @@ export default defineConfig({
     },
     {
       name: "chromium-deep",
-      testIgnore: isVisualOnlyRun
-        ? smokeSpecPaths
-        : [...smokeSpecPaths, visualSpecPattern],
+      testIgnore: smokeSpecPaths,
       grepInvert: mobileTestPattern,
-      use: { ...devices["Desktop Chrome"], ...visualUseOverrides },
+      use: { ...devices["Desktop Chrome"], ...deepUseOverrides },
     },
     {
       name: "chromium-mobile-deep",
-      testIgnore: isVisualOnlyRun
-        ? smokeSpecPaths
-        : [...smokeSpecPaths, visualSpecPattern],
       grep: mobileTestPattern,
-      use: { ...devices["iPhone 12"], ...visualUseOverrides },
+      use: { ...devices["iPhone 12"], ...deepUseOverrides },
     },
   ],
   webServer,

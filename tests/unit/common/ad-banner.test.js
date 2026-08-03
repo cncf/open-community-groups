@@ -81,6 +81,55 @@ describe("advertisement banner", () => {
     expect(localStorage.getItem(getAdBannerStorageKey(imageUrl, linkUrl))).to.equal("true");
   });
 
+  it("hides a banner whose image failed before initialization", () => {
+    // Create a completed image without loaded pixels.
+    const { banner, image } = createFloatingBanner();
+    Object.defineProperties(image, {
+      complete: { value: true },
+      naturalWidth: { value: 0 },
+    });
+    document.body.append(banner);
+
+    initializeFloatingAdBanners(document);
+
+    // Verify the missed image error still hides the banner.
+    expect(banner.hasAttribute("hidden")).to.equal(true);
+    expect(banner.classList.contains("translate-y-0")).to.equal(false);
+  });
+
+  it("hides a banner whose fallback image loaded before initialization", () => {
+    // Create a completed fallback image with loaded pixels.
+    const { banner, image } = createFloatingBanner();
+    image.dataset.ocgBrokenImagePlaceholder = "true";
+    Object.defineProperties(image, {
+      complete: { value: true },
+      naturalWidth: { value: 100 },
+    });
+    document.body.append(banner);
+
+    initializeFloatingAdBanners(document);
+
+    // Verify the successful fallback load does not reveal the banner.
+    expect(banner.hasAttribute("hidden")).to.equal(true);
+    expect(banner.classList.contains("translate-y-0")).to.equal(false);
+  });
+
+  it("keeps a failed banner hidden when its fallback image loads", () => {
+    // Create a floating banner before its configured image fails.
+    const { banner, image } = createFloatingBanner();
+    document.body.append(banner);
+    initializeFloatingAdBanners(document);
+
+    // Simulate the configured image error followed by a fallback image load.
+    image.dispatchEvent(new Event("error"));
+    image.dispatchEvent(new Event("load"));
+
+    // Verify the fallback cannot reopen the failed banner.
+    expect(banner.hasAttribute("hidden")).to.equal(true);
+    expect(banner.classList.contains("translate-y-0")).to.equal(false);
+    expect(banner.classList.contains("translate-y-[150%]")).to.equal(true);
+  });
+
   it("shows a changed banner after a previous one was closed", () => {
     // Store a closed marker for a different banner/link combination.
     const oldKey = getAdBannerStorageKey("https://example.com/banner.png", "https://example.com/event");

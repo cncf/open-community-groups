@@ -71,11 +71,16 @@ const initializeFloatingAdBanner = (banner) => {
   banner.removeAttribute("hidden");
   const image = banner.querySelector("img");
   const closeButton = banner.querySelector(AD_BANNER_CLOSE_SELECTOR);
+  let imageFailed = false;
 
   /**
    * Slides the banner into view after its image is ready.
    */
   const markLoaded = () => {
+    if (imageFailed) {
+      return;
+    }
+
     banner.classList.remove(BANNER_HIDDEN_TRANSLATE_CLASS);
     banner.classList.add(BANNER_VISIBLE_TRANSLATE_CLASS);
   };
@@ -83,7 +88,10 @@ const initializeFloatingAdBanner = (banner) => {
   /**
    * Hides the banner when the configured image cannot be loaded.
    */
-  const handleImageError = () => hideAdBanner(banner);
+  const handleImageError = () => {
+    imageFailed = true;
+    hideAdBanner(banner);
+  };
 
   /**
    * Closes the banner and remembers the current image/link combination.
@@ -96,8 +104,14 @@ const initializeFloatingAdBanner = (banner) => {
   if (image instanceof HTMLImageElement) {
     image.addEventListener("load", markLoaded, { once: true });
     image.addEventListener("error", handleImageError, { once: true });
-    if (image.complete && image.naturalWidth > 0) {
-      markLoaded();
+    if (image.dataset.ocgBrokenImagePlaceholder === "true") {
+      handleImageError();
+    } else if (image.complete) {
+      if (image.naturalWidth > 0) {
+        markLoaded();
+      } else {
+        handleImageError();
+      }
     }
   } else {
     markLoaded();

@@ -9,6 +9,9 @@ import {
   TEST_GROUP_SLUGS,
   TEST_TICKETING_EVENTS,
   TEST_USER_IDS,
+  expectTableColumnsAtViewport,
+  expectTableHeaders,
+  waitForActionResponse,
 } from "../../../utils.js";
 
 import {
@@ -128,15 +131,14 @@ test.describe("user dashboard invitations view", () => {
     );
 
     // Canceling the hold keeps the underlying offer available to claim again.
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${event.id}/checkout`) &&
-          response.ok(),
-      ),
-      pending2Page.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      pending2Page,
+      () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "DELETE",
+        urlIncludes: `/event/${event.id}/checkout`,
+      },
+    );
     await expect(pending2Page.locator(".swal2-popup")).toContainText(
       "Your checkout has been canceled. The offer is ready to claim again.",
     );
@@ -172,19 +174,121 @@ test.describe("user dashboard invitations view", () => {
     );
 
     // Confirming the decline removes the waiting-list offer from the dashboard.
-    await Promise.all([
-      member1Page.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response
-            .url()
-            .includes("/dashboard/user/invitations/event-offers/") &&
-          response.url().endsWith("/decline") &&
-          response.ok(),
-      ),
-      member1Page.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(member1Page, () => member1Page.getByRole("button", { name: "Yes" }).click(), {
+      method: "PUT",
+      urlEndsWith: "/decline",
+      urlIncludes: "/dashboard/user/invitations/event-offers/",
+    });
     await expect(offerRow).toHaveCount(0);
+  });
+
+  test("empty state covers every invitation category", async ({
+    emptyUserPage,
+  }) => {
+    // Load invitations for the dedicated user without pending relationships.
+    await openUserDashboardPath(
+      "/dashboard/user?tab=invitations",
+      emptyUserPage,
+    );
+    const dashboardContent = emptyUserPage.locator("#dashboard-content");
+
+    // Verify each independently empty invitation table remains explicit.
+    await expect(dashboardContent).toContainText(
+      "You don't have any pending community invitation.",
+    );
+    await expect(dashboardContent).toContainText(
+      "You don't have any pending group invitation.",
+    );
+    await expect(dashboardContent).toContainText(
+      "You don't have any pending event invitation.",
+    );
+  });
+
+  test("invitation tables expose every user-facing column", async ({
+    adminCommunityPage,
+    pending1Page,
+  }) => {
+    // Restore every invitation kind before checking the table contracts.
+    await resetCommunityInvitation(
+      adminCommunityPage,
+      TEST_USER_IDS.pending1,
+      "viewer",
+    );
+    await resetGroupInvitation(
+      adminCommunityPage,
+      TEST_GROUP_IDS.community1.beta,
+      TEST_USER_IDS.pending1,
+      "events-manager",
+    );
+    await ensureEventInvitation(
+      adminCommunityPage,
+      TEST_GROUP_IDS.community1.alpha,
+      TEST_EVENT_IDS.alpha.one,
+      TEST_USER_IDS.pending1,
+    );
+    await openUserDashboardPath(
+      "/dashboard/user?tab=invitations",
+      pending1Page,
+    );
+
+    // Find the community, group, and event invitation tables.
+    const invitationsContent = pending1Page.locator("#dashboard-content");
+    const communityTable = invitationsContent.locator("table", {
+      has: pending1Page.getByRole("columnheader", { name: "Community" }),
+    });
+    const groupTable = invitationsContent
+      .locator("table", {
+        has: pending1Page.getByRole("columnheader", {
+          name: "Group",
+          exact: true,
+        }),
+      })
+      .first();
+    const eventTable = invitationsContent.locator("table", {
+      has: pending1Page.getByRole("columnheader", { name: "Event" }),
+    });
+
+    // Verify each table exposes its complete ordered header set.
+    await expectTableHeaders(communityTable, [
+      "Community",
+      "Role",
+      "Created",
+      "Actions",
+    ]);
+    await expectTableHeaders(groupTable, [
+      "Group",
+      "Role",
+      "Created",
+      "Actions",
+    ]);
+    await expectTableHeaders(eventTable, [
+      "Event",
+      "Offer",
+      "Starts",
+      "Expires",
+      "Actions",
+    ]);
+    await expectTableColumnsAtViewport(
+      pending1Page,
+      communityTable,
+      1024,
+      ["Community", "Role", "Created", "Actions"],
+      [],
+    );
+    await expectTableColumnsAtViewport(
+      pending1Page,
+      groupTable,
+      1024,
+      ["Group", "Role", "Created", "Actions"],
+      [],
+    );
+    await expectTableColumnsAtViewport(
+      pending1Page,
+      eventTable,
+      1024,
+      ["Event", "Offer", "Starts", "Expires", "Actions"],
+      [],
+    );
   });
 
   test("invitations page shows pending community and group roles", async ({
@@ -274,16 +378,11 @@ test.describe("user dashboard invitations view", () => {
 
     // Click the approve community invitation button.
     try {
-      await Promise.all([
-        pending1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response.url().includes("/dashboard/user/invitations/community/") &&
-            response.url().endsWith("/accept"),
-        ),
-        approveCommunityInvitationButton.click(),
-      ]);
+      await waitForActionResponse(pending1Page, () => approveCommunityInvitationButton.click(), {
+        method: "PUT",
+        urlEndsWith: "/accept",
+        urlIncludes: "/dashboard/user/invitations/community/",
+      });
 
       // Reload the invited user dashboard.
       await pending1Page.reload();
@@ -297,16 +396,11 @@ test.describe("user dashboard invitations view", () => {
       await expect(approveGroupInvitationButton).toBeVisible();
 
       // Click the approve group invitation button.
-      await Promise.all([
-        pending1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response.url().includes("/dashboard/user/invitations/group/") &&
-            response.url().endsWith("/accept"),
-        ),
-        approveGroupInvitationButton.click(),
-      ]);
+      await waitForActionResponse(pending1Page, () => approveGroupInvitationButton.click(), {
+        method: "PUT",
+        urlEndsWith: "/accept",
+        urlIncludes: "/dashboard/user/invitations/group/",
+      });
 
       // Reload the invited user dashboard.
       await pending1Page.reload();
@@ -384,16 +478,15 @@ test.describe("user dashboard invitations view", () => {
       );
 
       // Click Yes.
-      await Promise.all([
-        pending2Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response.url().includes("/dashboard/user/invitations/group/") &&
-            response.url().endsWith("/reject"),
-        ),
-        pending2Page.getByRole("button", { name: "Yes" }).click(),
-      ]);
+      await waitForActionResponse(
+        pending2Page,
+        () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "PUT",
+          urlEndsWith: "/reject",
+          urlIncludes: "/dashboard/user/invitations/group/",
+        },
+      );
 
       // Reload the invited user dashboard.
       await pending2Page.reload();
@@ -436,7 +529,7 @@ test.describe("user dashboard invitations view", () => {
       communityInvitationRow.getByTitle("Reject");
 
     try {
-      // Verify rejecting a pending community invitation removes it from the user dashboard.
+      // Verify rejection removes the pending invitation from the user dashboard.
       await expect(
         dashboardContent.getByText("Community Invitations", { exact: true }),
       ).toBeVisible();
@@ -449,16 +542,15 @@ test.describe("user dashboard invitations view", () => {
       );
 
       // Click Yes.
-      await Promise.all([
-        pending2Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response.url().includes("/dashboard/user/invitations/community/") &&
-            response.url().endsWith("/reject"),
-        ),
-        pending2Page.getByRole("button", { name: "Yes" }).click(),
-      ]);
+      await waitForActionResponse(
+        pending2Page,
+        () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "PUT",
+          urlEndsWith: "/reject",
+          urlIncludes: "/dashboard/user/invitations/community/",
+        },
+      );
 
       // Reload the invited user dashboard.
       await pending2Page.reload();
@@ -521,19 +613,14 @@ test.describe("user dashboard invitations view", () => {
       await expect(claimModal).toBeVisible();
 
       // Complete the free offer through the unified checkout endpoint.
-      await Promise.all([
-        pending1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response.ok() &&
-            response
-              .url()
-              .includes(`/event/${TEST_EVENT_IDS.alpha.two}/checkout`),
-        ),
-        claimModal
-          .getByRole("button", { name: "Claim offer", exact: true })
-          .click(),
-      ]);
+      await waitForActionResponse(
+        pending1Page,
+        () => claimModal.getByRole("button", { name: "Claim offer", exact: true }).click(),
+        {
+          method: "POST",
+          urlIncludes: `/event/${TEST_EVENT_IDS.alpha.two}/checkout`,
+        },
+      );
 
       // Reload the invited user dashboard.
       await pending1Page.reload();
@@ -589,17 +676,14 @@ test.describe("user dashboard invitations view", () => {
         name: "Claim offer",
       });
       await expect(claimModal).toBeVisible();
-      await Promise.all([
-        member2Page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response.ok() &&
-            response.url().includes(`/event/${eventId}/checkout`),
-        ),
-        claimModal
-          .getByRole("button", { name: "Claim offer", exact: true })
-          .click(),
-      ]);
+      await waitForActionResponse(
+        member2Page,
+        () => claimModal.getByRole("button", { name: "Claim offer", exact: true }).click(),
+        {
+          method: "POST",
+          urlIncludes: `/event/${eventId}/checkout`,
+        },
+      );
       await expect(offerRow).toHaveCount(0);
     } finally {
       // Restore the seeded full-event state for repeatable local runs.
@@ -667,18 +751,15 @@ test.describe("user dashboard invitations view", () => {
       );
 
       // Click Yes.
-      await Promise.all([
-        pending1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response
-              .url()
-              .includes("/dashboard/user/invitations/event-offers/") &&
-            response.url().endsWith("/decline"),
-        ),
-        pending1Page.getByRole("button", { name: "Yes" }).click(),
-      ]);
+      await waitForActionResponse(
+        pending1Page,
+        () => pending1Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "PUT",
+          urlEndsWith: "/decline",
+          urlIncludes: "/dashboard/user/invitations/event-offers/",
+        },
+      );
 
       // Reload the invited user dashboard.
       await pending1Page.reload();

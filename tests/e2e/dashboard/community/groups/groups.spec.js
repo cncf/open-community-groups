@@ -6,8 +6,12 @@ import {
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+  expectPaginationNavigation,
+  expectTableColumnsAtViewport,
+  expectTableHeaders,
   navigateToPath,
   selectGroupContext,
+  waitForActionResponse,
 } from "../../../utils.js";
 import {
   TEST_UPLOAD_ASSET_PATHS,
@@ -20,33 +24,82 @@ import {
 } from "../../form-helpers.js";
 
 test.describe("community dashboard groups view", () => {
-  test("admin can deactivate and reactivate a group from the list", async ({
-    adminCommunityPage,
+  test("empty state guides the first community group", async ({
+    adminEmptyCommunityPage,
   }) => {
+    // Load groups for the dedicated community without group records.
+    await navigateToPath(
+      adminEmptyCommunityPage,
+      "/dashboard/community?tab=groups",
+    );
+    const dashboardContent = adminEmptyCommunityPage.locator(
+      "#dashboard-content",
+    );
+
+    // Verify first-use guidance and the creation action remain available.
+    await expect(dashboardContent).toContainText(
+      "It looks like you haven't created any groups yet.",
+    );
+    await expect(
+      dashboardContent.getByRole("button", { name: "Add Group" }),
+    ).toBeVisible();
+  });
+
+  test("groups table exposes every column at its responsive breakpoint", async ({ adminCommunityPage }) => {
+    // Load the groups dashboard before checking table structure.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+
+    // Find the groups table and its complete ordered header set.
+    const groupsTable = adminCommunityPage.locator("#dashboard-content").getByRole("table");
+    const headers = ["Name", "Location", "Created", "Category", "Actions"];
+
+    // Verify header order and column visibility across dashboard breakpoints.
+    await expectTableColumnsAtViewport(
+      adminCommunityPage,
+      groupsTable,
+      1024,
+      ["Name", "Actions"],
+      ["Location", "Created", "Category"],
+    );
+    await expectTableColumnsAtViewport(
+      adminCommunityPage,
+      groupsTable,
+      1280,
+      ["Name", "Location", "Category", "Actions"],
+      ["Created"],
+    );
+    await expectTableColumnsAtViewport(adminCommunityPage, groupsTable, 1536, headers, []);
+    await expectTableHeaders(groupsTable, headers);
+  });
+
+  test("admin can move between community group result pages", async ({ adminCommunityPage }) => {
+    // Paginate the seeded group rows with one result per page.
+    await expectPaginationNavigation(
+      adminCommunityPage,
+      "/dashboard/community?tab=groups&limit=1&offset=0",
+      "#dashboard-content tbody tr",
+    );
+  });
+
+  test("admin can deactivate and reactivate a group from the list", async ({ adminCommunityPage }) => {
     // Load the groups list before changing seeded group status.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
     // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Groups", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
     // Verify the seeded group starts active before changing status.
     let betaGroupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
     await expect(betaGroupRow).toBeVisible();
-    await expect(
-      betaGroupRow.getByText("Inactive", { exact: true }),
-    ).toHaveCount(0);
+    await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
 
     // Define a helper for opening the seeded group actions menu.
     const openActionsMenu = async () => {
       await dashboardContent
-        .locator(
-          `.btn-group-actions[data-group-id="${TEST_GROUP_IDS.community1.beta}"]`,
-        )
+        .locator(`.btn-group-actions[data-group-id="${TEST_GROUP_IDS.community1.beta}"]`)
         .click();
     };
 
@@ -54,9 +107,7 @@ test.describe("community dashboard groups view", () => {
     await openActionsMenu();
 
     // Deactivate the seeded group from the actions menu.
-    const deactivateButton = dashboardContent.locator(
-      `#deactivate-group-${TEST_GROUP_IDS.community1.beta}`,
-    );
+    const deactivateButton = dashboardContent.locator(`#deactivate-group-${TEST_GROUP_IDS.community1.beta}`);
     await expect(deactivateButton).toBeVisible();
     await deactivateButton.click();
     await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
@@ -64,19 +115,14 @@ test.describe("community dashboard groups view", () => {
     );
 
     // Confirm deactivation and wait for the server response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/deactivate`,
-            ) &&
-          response.ok(),
-      ),
-      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "PUT",
+        urlIncludes: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/deactivate`,
+      },
+    );
 
     // Verify the row reflects the deactivated state.
     betaGroupRow = dashboardContent.locator("tr", {
@@ -93,9 +139,7 @@ test.describe("community dashboard groups view", () => {
     await openActionsMenu();
 
     // Reactivate the seeded group from the actions menu.
-    const activateButton = dashboardContent.locator(
-      `#activate-group-${TEST_GROUP_IDS.community1.beta}`,
-    );
+    const activateButton = dashboardContent.locator(`#activate-group-${TEST_GROUP_IDS.community1.beta}`);
     await expect(activateButton).toBeVisible();
     await activateButton.click();
     await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
@@ -103,27 +147,20 @@ test.describe("community dashboard groups view", () => {
     );
 
     // Confirm reactivation and wait for the server response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/activate`,
-            ) &&
-          response.ok(),
-      ),
-      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "PUT",
+        urlIncludes: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/activate`,
+      },
+    );
 
     // Verify the row returns to the original active state.
     betaGroupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
-    await expect(
-      betaGroupRow.getByText("Inactive", { exact: true }),
-    ).toHaveCount(0);
+    await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
     await expect(
       betaGroupRow.getByRole("link", {
         name: "View group page: Inactive Local Chapter",
@@ -131,9 +168,7 @@ test.describe("community dashboard groups view", () => {
     ).toBeVisible();
   });
 
-  test("admin can add and delete a community group", async ({
-    adminCommunityPage,
-  }) => {
+  test("admin can add and delete a community group", async ({ adminCommunityPage }) => {
     // Create a unique group name for the temporary group flow.
     const groupName = `E2E Community Group ${Date.now()}`;
 
@@ -142,27 +177,17 @@ test.describe("community dashboard groups view", () => {
 
     // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Groups", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
     // Open the group form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Group" }).click();
-    await expect(
-      dashboardContent.getByText("Group Details", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
 
     // Fill the required group details for creation.
     await adminCommunityPage.getByLabel("Name").fill(groupName);
-    await adminCommunityPage
-      .getByLabel("Category")
-      .selectOption("22222222-2222-2222-2222-222222222221");
-    await adminCommunityPage
-      .getByLabel("Region")
-      .selectOption("22222222-2222-2222-2222-222222222301");
-    await adminCommunityPage
-      .getByLabel("Short Description")
-      .fill("A short e2e-created community group.");
+    await adminCommunityPage.getByLabel("Category").selectOption("22222222-2222-2222-2222-222222222221");
+    await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
+    await adminCommunityPage.getByLabel("Short Description").fill("A short e2e-created community group.");
     await fillMarkdownEditor(
       adminCommunityPage,
       "description",
@@ -170,15 +195,15 @@ test.describe("community dashboard groups view", () => {
     );
 
     // Create the temporary group and wait for the POST response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/dashboard/community/groups/add") &&
-          response.status() === 201,
-      ),
-      adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
-    ]);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
+      {
+        method: "POST",
+        status: 201,
+        urlIncludes: "/dashboard/community/groups/add",
+      },
+    );
 
     // Verify the newly-created group appears in the dashboard list.
     const groupRow = dashboardContent.locator("tr", { hasText: groupName });
@@ -200,34 +225,27 @@ test.describe("community dashboard groups view", () => {
     );
 
     // Confirm deletion and wait for the server response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().includes("/dashboard/community/groups/") &&
-          response.url().endsWith("/delete") &&
-          response.ok(),
-      ),
-      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "DELETE",
+        urlEndsWith: "/delete",
+        urlIncludes: "/dashboard/community/groups/",
+      },
+    );
 
     // Verify the deleted group is removed from the dashboard list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: groupName }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: groupName })).toHaveCount(0);
   });
 
-  test("admin can create and remove a subgroup relationship", async ({
-    adminCommunityPage,
-  }) => {
+  test("admin can create and remove a subgroup relationship", async ({ adminCommunityPage }) => {
+    // Create a unique group name for the temporary subgroup flow.
     const groupName = `E2E Child Community Group ${Date.now()}`;
     let groupWasCreated = false;
 
     const deleteTemporaryGroup = async () => {
-      await navigateToPath(
-        adminCommunityPage,
-        "/dashboard/community?tab=groups",
-      );
+      await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
       const dashboardContent = adminCommunityPage.locator("#dashboard-content");
       const groupRow = dashboardContent.locator("tr", { hasText: groupName });
@@ -249,44 +267,30 @@ test.describe("community dashboard groups view", () => {
         "Are you sure you wish to delete this group?",
       );
 
-      await Promise.all([
-        adminCommunityPage.waitForResponse(
-          (response) =>
-            response.request().method() === "DELETE" &&
-            response.url().includes("/dashboard/community/groups/") &&
-            response.url().endsWith("/delete") &&
-            response.ok(),
-        ),
-        adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-      ]);
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlEndsWith: "/delete",
+          urlIncludes: "/dashboard/community/groups/",
+        },
+      );
     };
 
     try {
-      await navigateToPath(
-        adminCommunityPage,
-        "/dashboard/community?tab=groups",
-      );
+      await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
       const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-      await expect(
-        dashboardContent.getByText("Groups", { exact: true }),
-      ).toBeVisible();
+      await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
       await dashboardContent.getByRole("button", { name: "Add Group" }).click();
-      await expect(
-        dashboardContent.getByText("Group Details", { exact: true }),
-      ).toBeVisible();
+      await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
 
       await adminCommunityPage.getByLabel("Name").fill(groupName);
-      await adminCommunityPage
-        .getByLabel("Category")
-        .selectOption("22222222-2222-2222-2222-222222222221");
-      await adminCommunityPage
-        .getByLabel("Region")
-        .selectOption("22222222-2222-2222-2222-222222222301");
-      await adminCommunityPage
-        .locator("#parent_group_id")
-        .selectOption(TEST_GROUP_IDS.community1.alpha);
+      await adminCommunityPage.getByLabel("Category").selectOption("22222222-2222-2222-2222-222222222221");
+      await adminCommunityPage.getByLabel("Region").selectOption("22222222-2222-2222-2222-222222222301");
+      await adminCommunityPage.locator("#parent_group_id").selectOption(TEST_GROUP_IDS.community1.alpha);
       await adminCommunityPage
         .getByLabel("Short Description")
         .fill("A child group created by the e2e suite.");
@@ -296,17 +300,15 @@ test.describe("community dashboard groups view", () => {
         "A child group used to verify parent group relationships.",
       );
 
-      await Promise.all([
-        adminCommunityPage.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response.url().includes("/dashboard/community/groups/add") &&
-            response.status() === 201,
-        ),
-        adminCommunityPage
-          .getByRole("button", { name: "Create Group" })
-          .click(),
-      ]);
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
+        {
+          method: "POST",
+          status: 201,
+          urlIncludes: "/dashboard/community/groups/add",
+        },
+      );
       groupWasCreated = true;
 
       const groupRow = dashboardContent.locator("tr", { hasText: groupName });
@@ -319,28 +321,19 @@ test.describe("community dashboard groups view", () => {
 
       const viewGroupHref = await viewGroupLink.getAttribute("href");
       expect(viewGroupHref).toBeTruthy();
-      const childGroupPath = new URL(viewGroupHref, "http://127.0.0.1")
-        .pathname;
+      const childGroupPath = new URL(viewGroupHref, "http://127.0.0.1").pathname;
       const childGroupSlug = childGroupPath.split("/").at(-1);
 
       await navigateToPath(
         adminCommunityPage,
         `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`,
       );
-      await expect(
-        adminCommunityPage.getByText("Subgroups", { exact: true }),
-      ).toBeVisible();
-      await expect(
-        adminCommunityPage.getByRole("link", { name: groupName, exact: true }),
-      ).toBeVisible();
+      await expect(adminCommunityPage.getByText("Subgroups", { exact: true })).toBeVisible();
+      await expect(adminCommunityPage.getByRole("link", { name: groupName, exact: true })).toBeVisible();
 
       const seeAllEventsHrefs = await adminCommunityPage
         .getByRole("link", { name: "See all events" })
-        .evaluateAll((links) =>
-          links.map((link) =>
-            decodeURIComponent(link.getAttribute("href") || ""),
-          ),
-        );
+        .evaluateAll((links) => links.map((link) => decodeURIComponent(link.getAttribute("href") || "")));
 
       expect(
         seeAllEventsHrefs.some(
@@ -351,9 +344,7 @@ test.describe("community dashboard groups view", () => {
       ).toBeTruthy();
 
       await navigateToPath(adminCommunityPage, childGroupPath);
-      await expect(
-        adminCommunityPage.getByText("Parent group", { exact: true }),
-      ).toBeVisible();
+      await expect(adminCommunityPage.getByText("Parent group", { exact: true })).toBeVisible();
       await expect(
         adminCommunityPage.getByRole("link", {
           name: TEST_GROUP_NAMES.alpha,
@@ -370,9 +361,7 @@ test.describe("community dashboard groups view", () => {
 
       const parentGroupSelect = adminCommunityPage.locator("#parent_group_id");
       await expect(parentGroupSelect).toBeDisabled();
-      await expect(parentGroupSelect).toContainText(
-        "Unavailable while this group has subgroups",
-      );
+      await expect(parentGroupSelect).toContainText("Unavailable while this group has subgroups");
       await expect(parentGroupSelect).toHaveCSS("cursor", "not-allowed");
       await expect(parentGroupSelect).toHaveCSS("opacity", "1");
     } finally {
@@ -394,22 +383,16 @@ test.describe("community dashboard groups view", () => {
       city: "Barcelona",
       countryCode: "ES",
       countryName: "Spain",
-      description:
-        "Initial rich description for a temporary community-managed group.",
-      descriptionShort:
-        "Initial community-managed group for rich update coverage.",
+      description: "Initial rich description for a temporary community-managed group.",
+      descriptionShort: "Initial community-managed group for rich update coverage.",
       extraLinks: [
         { key: "Docs", value: "https://initial-group.example.com/docs" },
         { key: "Slides", value: "https://initial-group.example.com/slides" },
       ],
       facebookUrl: "https://facebook.com/e2e-community-group-initial",
       flickrUrl: "https://flickr.com/photos/e2e-community-group-initial",
-      galleryPaths: [
-        TEST_UPLOAD_ASSET_PATHS.galleryOne,
-        TEST_UPLOAD_ASSET_PATHS.galleryTwo,
-      ],
-      githubUrl:
-        "https://github.com/open-community-groups/e2e-community-group-initial",
+      galleryPaths: [TEST_UPLOAD_ASSET_PATHS.galleryOne, TEST_UPLOAD_ASSET_PATHS.galleryTwo],
+      githubUrl: "https://github.com/open-community-groups/e2e-community-group-initial",
       instagramUrl: "https://instagram.com/e2e-community_group_initial",
       latitude: "41.3874",
       linkedinUrl: "https://linkedin.com/company/e2e-community-group-initial",
@@ -433,22 +416,16 @@ test.describe("community dashboard groups view", () => {
       city: "Madrid",
       countryCode: "PT",
       countryName: "Portugal",
-      description:
-        "Updated rich description for a temporary community-managed group.",
-      descriptionShort:
-        "Updated community-managed group for rich update coverage.",
+      description: "Updated rich description for a temporary community-managed group.",
+      descriptionShort: "Updated community-managed group for rich update coverage.",
       extraLinks: [
         { key: "Agenda", value: "https://updated-group.example.com/agenda" },
         { key: "Videos", value: "https://updated-group.example.com/videos" },
       ],
       facebookUrl: "https://facebook.com/e2e-community-group-updated",
       flickrUrl: "https://flickr.com/photos/e2e-community-group-updated",
-      galleryPaths: [
-        TEST_UPLOAD_ASSET_PATHS.galleryTwo,
-        TEST_UPLOAD_ASSET_PATHS.galleryOne,
-      ],
-      githubUrl:
-        "https://github.com/open-community-groups/e2e-community-group-updated",
+      galleryPaths: [TEST_UPLOAD_ASSET_PATHS.galleryTwo, TEST_UPLOAD_ASSET_PATHS.galleryOne],
+      githubUrl: "https://github.com/open-community-groups/e2e-community-group-updated",
       instagramUrl: "https://instagram.com/e2e.community.group.updated",
       latitude: "40.4168",
       linkedinUrl: "https://linkedin.com/company/e2e-community-group-updated",
@@ -472,31 +449,13 @@ test.describe("community dashboard groups view", () => {
       if (values.slugPretty) {
         await adminCommunityPage.locator("#slug_pretty").fill(values.slugPretty);
       }
-      await adminCommunityPage
-        .locator("#category_id")
-        .selectOption(values.categoryId);
-      await adminCommunityPage
-        .locator("#region_id")
-        .selectOption(values.regionId);
-      await adminCommunityPage
-        .locator("#description_short")
-        .fill(values.descriptionShort);
-      await fillMarkdownEditor(
-        adminCommunityPage,
-        "description",
-        values.description,
-      );
+      await adminCommunityPage.locator("#category_id").selectOption(values.categoryId);
+      await adminCommunityPage.locator("#region_id").selectOption(values.regionId);
+      await adminCommunityPage.locator("#description_short").fill(values.descriptionShort);
+      await fillMarkdownEditor(adminCommunityPage, "description", values.description);
       await uploadImageField(adminCommunityPage, "logo_url", values.logoPath);
-      await uploadImageField(
-        adminCommunityPage,
-        "banner_url",
-        values.bannerPath,
-      );
-      await uploadImageField(
-        adminCommunityPage,
-        "banner_mobile_url",
-        values.bannerMobilePath,
-      );
+      await uploadImageField(adminCommunityPage, "banner_url", values.bannerPath);
+      await uploadImageField(adminCommunityPage, "banner_mobile_url", values.bannerMobilePath);
       await fillGroupLocation(adminCommunityPage, {
         city: values.city,
         countryCode: values.countryCode,
@@ -507,34 +466,19 @@ test.describe("community dashboard groups view", () => {
       });
       await adminCommunityPage.locator("#website_url").fill(values.websiteUrl);
       await adminCommunityPage.locator("#bluesky_url").fill(values.blueskyUrl);
-      await adminCommunityPage
-        .locator("#facebook_url")
-        .fill(values.facebookUrl);
+      await adminCommunityPage.locator("#facebook_url").fill(values.facebookUrl);
       await adminCommunityPage.locator("#flickr_url").fill(values.flickrUrl);
       await adminCommunityPage.locator("#github_url").fill(values.githubUrl);
-      await adminCommunityPage
-        .locator("#instagram_url")
-        .fill(values.instagramUrl);
-      await adminCommunityPage
-        .locator("#linkedin_url")
-        .fill(values.linkedinUrl);
+      await adminCommunityPage.locator("#instagram_url").fill(values.instagramUrl);
+      await adminCommunityPage.locator("#linkedin_url").fill(values.linkedinUrl);
       await adminCommunityPage.locator("#slack_url").fill(values.slackUrl);
       await adminCommunityPage.locator("#twitter_url").fill(values.twitterUrl);
       await adminCommunityPage.locator("#wechat_url").fill(values.wechatUrl);
       await adminCommunityPage.locator("#youtube_url").fill(values.youtubeUrl);
-      await fillMultipleInputs(
-        adminCommunityPage.locator('multiple-inputs[field-name="tags"]'),
-        values.tags,
-      );
-      await uploadGalleryImages(
-        adminCommunityPage,
-        "photos_urls",
-        values.galleryPaths,
-      );
+      await fillMultipleInputs(adminCommunityPage.locator('multiple-inputs[field-name="tags"]'), values.tags);
+      await uploadGalleryImages(adminCommunityPage, "photos_urls", values.galleryPaths);
       await fillKeyValueInputs(
-        adminCommunityPage.locator(
-          'key-value-inputs[field-name="extra_links"]',
-        ),
+        adminCommunityPage.locator('key-value-inputs[field-name="extra_links"]'),
         values.extraLinks,
       );
     };
@@ -545,9 +489,7 @@ test.describe("community dashboard groups view", () => {
       await expect(updateButton).toBeVisible();
       await expect(updateButton).toBeEnabled();
       await updateButton.click();
-      await expect(
-        adminCommunityPage.getByRole("button", { name: "Update Group" }),
-      ).toBeVisible({
+      await expect(adminCommunityPage.getByRole("button", { name: "Update Group" })).toBeVisible({
         timeout: 10000,
       });
       await expect(adminCommunityPage.locator("#name")).toBeVisible({
@@ -560,29 +502,25 @@ test.describe("community dashboard groups view", () => {
 
     // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Groups", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
     // Open the group form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Group" }).click();
-    await expect(
-      dashboardContent.getByText("Group Details", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
 
     // Fill the form with the initial rich values.
     await fillGroupForm(initialValues);
 
     // Submit the group and wait for the created response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/dashboard/community/groups/add") &&
-          response.status() === 201,
-      ),
-      adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
-    ]);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
+      {
+        method: "POST",
+        status: 201,
+        urlIncludes: "/dashboard/community/groups/add",
+      },
+    );
 
     // Verify the initial temporary group appears in the dashboard list.
     let groupRow = dashboardContent.locator("tr", {
@@ -612,63 +550,33 @@ test.describe("community dashboard groups view", () => {
 
     // Reopen the form and verify the rich values persisted.
     await openGroupUpdateForm(groupRow);
-    await expect(adminCommunityPage.locator("#name")).toHaveValue(
-      updatedValues.name,
+    await expect(adminCommunityPage.locator("#name")).toHaveValue(updatedValues.name);
+    await expect(adminCommunityPage.locator("#slug_pretty")).toHaveValue(updatedValues.slugPretty);
+    await expect(adminCommunityPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
+    await expect(adminCommunityPage.locator("#region_id")).toHaveValue(updatedValues.regionId);
+    await expect(adminCommunityPage.locator("#group-location-search-city")).toHaveValue(updatedValues.city);
+    await expect(adminCommunityPage.locator("#group-location-search-state")).toHaveValue(updatedValues.state);
+    await expect(adminCommunityPage.locator("#group-location-search-country_name")).toHaveValue(
+      updatedValues.countryName,
     );
-    await expect(adminCommunityPage.locator("#slug_pretty")).toHaveValue(
-      updatedValues.slugPretty,
-    );
-    await expect(adminCommunityPage.locator("#category_id")).toHaveValue(
-      updatedValues.categoryId,
-    );
-    await expect(adminCommunityPage.locator("#region_id")).toHaveValue(
-      updatedValues.regionId,
-    );
+    await expect(adminCommunityPage.locator("#website_url")).toHaveValue(updatedValues.websiteUrl);
+    await expect(adminCommunityPage.locator("#bluesky_url")).toHaveValue(updatedValues.blueskyUrl);
+    await expect(adminCommunityPage.locator("#github_url")).toHaveValue(updatedValues.githubUrl);
     await expect(
-      adminCommunityPage.locator("#group-location-search-city"),
-    ).toHaveValue(updatedValues.city);
-    await expect(
-      adminCommunityPage.locator("#group-location-search-state"),
-    ).toHaveValue(updatedValues.state);
-    await expect(
-      adminCommunityPage.locator("#group-location-search-country_name"),
-    ).toHaveValue(updatedValues.countryName);
-    await expect(adminCommunityPage.locator("#website_url")).toHaveValue(
-      updatedValues.websiteUrl,
-    );
-    await expect(adminCommunityPage.locator("#bluesky_url")).toHaveValue(
-      updatedValues.blueskyUrl,
-    );
-    await expect(adminCommunityPage.locator("#github_url")).toHaveValue(
-      updatedValues.githubUrl,
-    );
-    await expect(
-      adminCommunityPage.locator(
-        'image-field[name="logo_url"] input[name="logo_url"]',
-      ),
+      adminCommunityPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
     ).toHaveValue(/\/images\//);
     await expect(
-      adminCommunityPage.locator(
-        'image-field[name="banner_url"] input[name="banner_url"]',
-      ),
+      adminCommunityPage.locator('image-field[name="banner_url"] input[name="banner_url"]'),
     ).toHaveValue(/\/images\//);
     await expect(
-      adminCommunityPage.locator(
-        'image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]',
-      ),
+      adminCommunityPage.locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]'),
     ).toHaveValue(/\/images\//);
     await expect(
-      adminCommunityPage.locator(
-        'multiple-inputs[field-name="tags"] input[name="tags[]"]',
-      ),
+      adminCommunityPage.locator('multiple-inputs[field-name="tags"] input[name="tags[]"]'),
     ).toHaveCount(updatedValues.tags.length);
     await expect(
-      adminCommunityPage.locator(
-        'gallery-field[field-name="photos_urls"] input[name="photos_urls[]"]',
-      ),
-    ).toHaveCount(
-      initialValues.galleryPaths.length + updatedValues.galleryPaths.length,
-    );
+      adminCommunityPage.locator('gallery-field[field-name="photos_urls"] input[name="photos_urls[]"]'),
+    ).toHaveCount(initialValues.galleryPaths.length + updatedValues.galleryPaths.length);
     await expect(
       adminCommunityPage.locator(
         `key-value-inputs[field-name="extra_links"] input[name="extra_links[${updatedValues.extraLinks[0].key}]"]`,
@@ -683,10 +591,7 @@ test.describe("community dashboard groups view", () => {
       groupRow.getByRole("link", {
         name: `View group page: ${updatedValues.name}`,
       }),
-    ).toHaveAttribute(
-      "href",
-      new RegExp(`/group/${updatedValues.slugPretty}$`),
-    );
+    ).toHaveAttribute("href", new RegExp(`/group/${updatedValues.slugPretty}$`));
 
     // Open the actions menu for the updated temporary group.
     await groupRow
@@ -704,34 +609,27 @@ test.describe("community dashboard groups view", () => {
     );
 
     // Confirm deletion and wait for the server response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().includes("/dashboard/community/groups/") &&
-          response.url().endsWith("/delete") &&
-          response.ok(),
-      ),
-      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () => adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "DELETE",
+        urlEndsWith: "/delete",
+        urlIncludes: "/dashboard/community/groups/",
+      },
+    );
 
     // Verify the deleted group is removed from the dashboard list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: updatedValues.name }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: updatedValues.name })).toHaveCount(0);
   });
 
-  test("admin can search community groups and clear the filter", async ({
-    adminCommunityPage,
-  }) => {
+  test("admin can search community groups and clear the filter", async ({ adminCommunityPage }) => {
     // Load the groups list before applying search filters.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
     // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Groups", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
     // Target the search input used to submit dashboard filters.
     const searchInput = dashboardContent.getByRole("textbox", {
@@ -742,28 +640,15 @@ test.describe("community dashboard groups view", () => {
     await searchInput.fill("Observability");
 
     // Submit the matching search and wait for filtered results.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes("/dashboard/community/groups?ts_query=Observability") &&
-          response.ok(),
-      ),
-      searchInput.press("Enter"),
-    ]);
+    await waitForActionResponse(adminCommunityPage, () => searchInput.press("Enter"), {
+      method: "GET",
+      urlIncludes: "/dashboard/community/groups?ts_query=Observability",
+    });
 
     // Verify the matching result and durable search URL.
-    await expect(adminCommunityPage).toHaveURL(
-      /tab=groups.*ts_query=Observability/,
-    );
-    await expect(
-      dashboardContent.locator("tr", { hasText: "Observability Guild" }),
-    ).toBeVisible();
-    await expect(
-      dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
-    ).toHaveCount(0);
+    await expect(adminCommunityPage).toHaveURL(/tab=groups.*ts_query=Observability/);
+    await expect(dashboardContent.locator("tr", { hasText: "Observability Guild" })).toBeVisible();
+    await expect(dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" })).toHaveCount(0);
 
     // Target the search form for programmatic submission.
     const searchForm = dashboardContent.locator("#groups-search-form");
@@ -773,21 +658,19 @@ test.describe("community dashboard groups view", () => {
     await searchInput.fill("zzzzzzzzzzzz");
 
     // Submit the empty-result search and wait for the response.
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes("/dashboard/community/groups?ts_query=zzzzzzzzzzzz") &&
-          response.ok(),
-      ),
-      searchForm.evaluate((form) => {
-        if (form instanceof HTMLFormElement) {
-          form.requestSubmit();
-        }
-      }),
-    ]);
+    await waitForActionResponse(
+      adminCommunityPage,
+      () =>
+        searchForm.evaluate((form) => {
+          if (form instanceof HTMLFormElement) {
+            form.requestSubmit();
+          }
+        }),
+      {
+        method: "GET",
+        urlIncludes: "/dashboard/community/groups?ts_query=zzzzzzzzzzzz",
+      },
+    );
 
     // Verify the empty result message is shown.
     await expect(
@@ -820,45 +703,31 @@ test.describe("community dashboard groups view", () => {
     ]);
 
     // Verify clearing removes the empty state and restores seeded rows.
-    await expect(adminCommunityPage).toHaveURL(
-      /\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/,
-    );
+    await expect(adminCommunityPage).toHaveURL(/\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/);
     await expect(
       dashboardContent
         .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
         .filter({ hasText: "No groups found matching your search." }),
     ).toHaveCount(0);
-    await expect(
-      dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
-    ).toBeVisible();
-    await expect(
-      dashboardContent.locator("tr", { hasText: "Observability Guild" }),
-    ).toBeVisible();
+    await expect(dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" })).toBeVisible();
+    await expect(dashboardContent.locator("tr", { hasText: "Observability Guild" })).toBeVisible();
     await expect(searchInput).toHaveValue("");
   });
 
-  test("viewer sees read-only controls on community groups", async ({
-    communityViewerPage,
-  }) => {
+  test("viewer sees read-only controls on community groups", async ({ communityViewerPage }) => {
     // Load the groups list as a read-only community viewer.
-    await navigateToPath(
-      communityViewerPage,
-      "/dashboard/community?tab=groups",
-    );
+    await navigateToPath(communityViewerPage, "/dashboard/community?tab=groups");
 
     // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = communityViewerPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Groups", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
 
     // Verify the list actions expose disabled read-only controls.
-    await expect(
-      dashboardContent.getByRole("button", { name: "Add Group" }),
-    ).toBeDisabled();
-    await expect(
-      dashboardContent.getByRole("button", { name: "Add Group" }),
-    ).toHaveAttribute("title", "Your role cannot add groups.");
+    await expect(dashboardContent.getByRole("button", { name: "Add Group" })).toBeDisabled();
+    await expect(dashboardContent.getByRole("button", { name: "Add Group" })).toHaveAttribute(
+      "title",
+      "Your role cannot add groups.",
+    );
 
     // Locate the seeded group row used for read-only action checks.
     const betaGroupRow = dashboardContent.locator("tr", {
@@ -877,42 +746,30 @@ test.describe("community dashboard groups view", () => {
     );
 
     // Open details and verify the form remains read-only.
-    await Promise.all([
-      communityViewerPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update`,
-            ) &&
-          response.ok(),
-      ),
-      betaGroupRow
-        .locator(
-          `button[hx-get="/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update"]`,
-        )
-        .click(),
-    ]);
+    await waitForActionResponse(
+      communityViewerPage,
+      () =>
+        betaGroupRow
+          .locator(`button[hx-get="/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update"]`)
+          .click(),
+      {
+        method: "GET",
+        urlIncludes: `/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update`,
+      },
+    );
 
     // Verify the details form communicates the read-only state.
-    await expect(
-      dashboardContent.getByText("Group Details", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
     await expect(
       dashboardContent.getByText("Your role cannot update groups.", {
         exact: true,
       }),
     ).toBeVisible();
-    await expect(dashboardContent.locator(".inert-form")).toHaveAttribute(
-      "inert",
-      "",
+    await expect(dashboardContent.locator(".inert-form")).toHaveAttribute("inert", "");
+    await expect(dashboardContent.getByRole("button", { name: "Update Group" })).toBeDisabled();
+    await expect(dashboardContent.getByRole("button", { name: "Update Group" })).toHaveAttribute(
+      "title",
+      "Your role cannot update groups.",
     );
-    await expect(
-      dashboardContent.getByRole("button", { name: "Update Group" }),
-    ).toBeDisabled();
-    await expect(
-      dashboardContent.getByRole("button", { name: "Update Group" }),
-    ).toHaveAttribute("title", "Your role cannot update groups.");
   });
 });

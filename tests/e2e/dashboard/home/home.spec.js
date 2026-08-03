@@ -1,6 +1,6 @@
 import { expect, test } from "../../fixtures.js";
 
-import { navigateToPath } from "../../utils.js";
+import { buildE2eUrl, navigateToPath } from "../../utils.js";
 
 const DASHBOARD_ROUTES = [
   "/dashboard/community",
@@ -21,6 +21,72 @@ test.describe("dashboard home", () => {
       await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
     });
   }
+
+  for (const route of ["/dashboard/community", "/dashboard/group"]) {
+    test(`forbids a plain member from ${route}`, async ({ member2Page }) => {
+      // Request the privileged dashboard route with a regular member session.
+      const response = await member2Page.goto(buildE2eUrl(route));
+
+      // Verify members without team roles are sent back to their own dashboard.
+      expect(response).not.toBeNull();
+      expect(response.status()).toBe(200);
+      await expect(member2Page).toHaveURL(
+        buildE2eUrl("/dashboard/user?tab=invitations"),
+      );
+    });
+  }
+
+  test("community viewers cannot call protected write endpoints", async ({
+    communityViewerPage,
+  }) => {
+    // Probe one endpoint from every community write-permission bucket.
+    const protectedRequests = [
+      { method: "POST", path: "/dashboard/community/groups/add" },
+      { method: "PUT", path: "/dashboard/community/settings/update" },
+      { method: "POST", path: "/dashboard/community/event-categories/add" },
+      { method: "POST", path: "/dashboard/community/team/add" },
+    ];
+
+    // Verify read access never grants direct mutation access.
+    for (const protectedRequest of protectedRequests) {
+      const response = await communityViewerPage.request.fetch(
+        buildE2eUrl(protectedRequest.path),
+        {
+          form: {},
+          method: protectedRequest.method,
+        },
+      );
+
+      expect(response.status()).toBe(403);
+    }
+  });
+
+  test("group viewers cannot call protected write endpoints", async ({
+    groupViewerPage,
+  }) => {
+    // Probe one endpoint from every group write-permission bucket.
+    const protectedRequests = [
+      { method: "POST", path: "/dashboard/group/badges" },
+      { method: "POST", path: "/dashboard/group/events/add" },
+      { method: "POST", path: "/dashboard/group/notifications" },
+      { method: "PUT", path: "/dashboard/group/settings/update" },
+      { method: "POST", path: "/dashboard/group/sponsors/add" },
+      { method: "POST", path: "/dashboard/group/team/add" },
+    ];
+
+    // Verify read access never grants direct mutation access.
+    for (const protectedRequest of protectedRequests) {
+      const response = await groupViewerPage.request.fetch(
+        buildE2eUrl(protectedRequest.path),
+        {
+          form: {},
+          method: protectedRequest.method,
+        },
+      );
+
+      expect(response.status()).toBe(403);
+    }
+  });
 
   test.describe("mobile experience @mobile", () => {
     test("community dashboard shows the mobile unsupported state", async ({

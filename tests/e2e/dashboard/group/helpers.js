@@ -1,5 +1,5 @@
 import { expect } from "../../fixtures.js";
-import { navigateToPath } from "../../utils.js";
+import { navigateToPath, waitForActionResponse } from "../../utils.js";
 
 export const ATTENDEE_NOTIFICATION_SUBJECT = "E2E attendee notification";
 export const ATTENDEE_NOTIFICATION_BODY =
@@ -22,16 +22,15 @@ export const ensureGroupViewerRole = async (page, role) => {
     return;
   }
 
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "PUT" &&
-        response.url().includes("/dashboard/group/team/") &&
-        response.url().endsWith("/role") &&
-        response.ok(),
-    ),
-    currentRoleSelect.selectOption(role),
-  ]);
+  await waitForActionResponse(
+    page,
+    () => currentRoleSelect.selectOption(role),
+    {
+      method: "PUT",
+      urlIncludes: "/dashboard/group/team/",
+      urlEndsWith: "/role",
+    },
+  );
 
   await expect(currentRoleSelect).toHaveValue(role);
 };

@@ -1,6 +1,6 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { TEST_EVENT_IDS, TEST_EVENT_NAMES, navigateToPath } from "../../../utils.js";
+import { TEST_EVENT_IDS, TEST_EVENT_NAMES, navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 const HOST_BADGE_ID = "babababa-baba-baba-baba-babababab001";
 
@@ -14,32 +14,27 @@ const openPrimaryEvent = async (page) => {
     name: new RegExp(TEST_EVENT_NAMES.alpha[0], "u"),
   });
 
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes(`/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
-        response.ok(),
-    ),
-    eventRow
-      .getByRole("button", {
-        name: `Edit event: ${TEST_EVENT_NAMES.alpha[0]}`,
-      })
-      .click(),
-  ]);
+  await waitForActionResponse(
+    page,
+    () =>
+      eventRow
+        .getByRole("button", {
+          name: `Edit event: ${TEST_EVENT_NAMES.alpha[0]}`,
+        })
+        .click(),
+    {
+      method: "GET",
+      urlIncludes: `/events/${TEST_EVENT_IDS.alpha.one}/update`,
+    },
+  );
 };
 
 const openPrimaryEventAttendees = async (page) => {
   await openPrimaryEvent(page);
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes(`/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-        response.ok(),
-    ),
-    page.locator('button[data-section="attendees"]').click(),
-  ]);
+  await waitForActionResponse(page, () => page.locator('button[data-section="attendees"]').click(), {
+    method: "GET",
+    urlIncludes: `/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+  });
   await expect(page.getByRole("table", { name: "Attendees list" })).toBeVisible();
 };
 
@@ -48,17 +43,14 @@ test.describe("group badge awarding", () => {
     // Resolve all attendees and open the shared badge picker.
     await openPrimaryEventAttendees(organizerGroupPage);
     await organizerGroupPage.getByRole("button", { name: "Award badge" }).click();
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(`/events/${TEST_EVENT_IDS.alpha.one}/badges/recipients?scope=all-attendees`) &&
-          response.ok(),
-      ),
-      organizerGroupPage.getByRole("menuitem", { name: "All attendees" }).click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.getByRole("menuitem", { name: "All attendees" }).click(),
+      {
+        method: "GET",
+        urlIncludes: `/events/${TEST_EVENT_IDS.alpha.one}/badges/recipients?scope=all-attendees`,
+      },
+    );
 
     const awardDialog = organizerGroupPage.getByRole("dialog", {
       name: "Award badge",
@@ -69,21 +61,21 @@ test.describe("group badge awarding", () => {
     });
 
     // Submit the real request; both seeded attendees already hold this badge.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().endsWith("/dashboard/group/badges/award") &&
-          response.status() === 201,
-      ),
-      awardDialog.getByRole("button", { name: "Award", exact: true }).click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => awardDialog.getByRole("button", { name: "Award", exact: true }).click(),
+      {
+        method: "POST",
+        urlEndsWith: "/dashboard/group/badges/award",
+        status: 201,
+      },
+    );
     await expect(awardDialog.getByRole("status")).toContainText("Award accepted");
     await expect(awardDialog.getByRole("status")).toContainText("2 active holders were skipped.");
     await awardDialog.getByRole("button", { name: "Close", exact: true }).click();
   });
 
-  test("organizer can choose exact attendees across the table", async ({ organizerGroupPage }) => {
+  test("organizer can award a badge to chosen attendees", async ({ organizerGroupPage }) => {
     // Enter badge selection mode from the attendee award menu.
     await openPrimaryEventAttendees(organizerGroupPage);
     await organizerGroupPage.getByRole("button", { name: "Award badge" }).click();
@@ -104,7 +96,23 @@ test.describe("group badge awarding", () => {
       name: "Award badge",
     });
     await expect(awardDialog.getByRole("radiogroup", { name: "Badge" })).toBeVisible();
-    await closeAwardDialog(organizerGroupPage);
+    await awardDialog.locator(`input[value="${HOST_BADGE_ID}"]`).check({
+      force: true,
+    });
+
+    // Submit the real request; the selected attendee already holds this badge.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => awardDialog.getByRole("button", { name: "Award", exact: true }).click(),
+      {
+        method: "POST",
+        urlEndsWith: "/dashboard/group/badges/award",
+        status: 201,
+      },
+    );
+    await expect(awardDialog.getByRole("status")).toContainText("Award accepted");
+    await expect(awardDialog.getByRole("status")).toContainText("1 active holder was skipped.");
+    await awardDialog.getByRole("button", { name: "Close", exact: true }).click();
   });
 
   test("host, speaker, and session-speaker actions use the shared picker", async ({ organizerGroupPage }) => {
@@ -144,26 +152,26 @@ test.describe("group badge awarding", () => {
       .click();
     const sessionSpeakerAwardButton = sessionSpeakerRow.locator("button[data-badge-award-open]");
     await expect(sessionSpeakerAwardButton).toBeEnabled();
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/dashboard/group/badges/options") &&
-          response.ok(),
-      ),
-      sessionSpeakerAwardButton.evaluate((button) => {
-        const badgeAwardModal = document.querySelector("badge-award-modal");
+    await waitForActionResponse(
+      organizerGroupPage,
+      () =>
+        sessionSpeakerAwardButton.evaluate((button) => {
+          const badgeAwardModal = document.querySelector("badge-award-modal");
 
-        if (!badgeAwardModal || typeof badgeAwardModal.open !== "function") {
-          throw new Error("Badge award modal is unavailable");
-        }
-        badgeAwardModal.open({
-          eventId: button.dataset.eventId,
-          trigger: button,
-          userIds: button.dataset.userIds.split(",").filter(Boolean),
-        });
-      }),
-    ]);
+          if (!badgeAwardModal || typeof badgeAwardModal.open !== "function") {
+            throw new Error("Badge award modal is unavailable");
+          }
+          badgeAwardModal.open({
+            eventId: button.dataset.eventId,
+            trigger: button,
+            userIds: button.dataset.userIds.split(",").filter(Boolean),
+          });
+        }),
+      {
+        method: "GET",
+        urlIncludes: "/dashboard/group/badges/options",
+      },
+    );
     await expect(
       organizerGroupPage
         .getByRole("dialog", { name: "Award badge" })
@@ -189,6 +197,22 @@ test.describe("group badge awarding", () => {
       name: "Award badge",
     });
     await expect(awardDialog.getByRole("radiogroup", { name: "Badge" })).toBeVisible();
-    await closeAwardDialog(organizerGroupPage);
+    await awardDialog.locator(`input[value="${HOST_BADGE_ID}"]`).check({
+      force: true,
+    });
+
+    // Submit the real request; the team member already holds this badge.
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => awardDialog.getByRole("button", { name: "Award", exact: true }).click(),
+      {
+        method: "POST",
+        urlEndsWith: "/dashboard/group/badges/award",
+        status: 201,
+      },
+    );
+    await expect(awardDialog.getByRole("status")).toContainText("Award accepted");
+    await expect(awardDialog.getByRole("status")).toContainText("1 active holder was skipped.");
+    await awardDialog.getByRole("button", { name: "Close", exact: true }).click();
   });
 });

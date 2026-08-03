@@ -262,4 +262,4 @@ e2e-tests:
 
 # Update Playwright visual snapshots for the e2e suite.
 e2e-update-snapshots:
-    cd tests/e2e && npx playwright test --config playwright.config.js --grep @visual --project=chromium-deep --project=chromium-mobile-deep --update-snapshots
+    cd tests/e2e && npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep --grep @visual --update-snapshots

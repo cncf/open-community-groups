@@ -3,7 +3,10 @@ import { expect, test } from "@playwright/test";
 import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
+  TEST_GROUP_SLUG,
+  expectPaginationNavigation,
   navigateToPath,
+  waitForActionResponse,
 } from "../../utils.js";
 
 // Format a date as YYYY-MM-DD using UTC components.
@@ -172,6 +175,161 @@ test.describe("site explore events page", () => {
     await expect(
       calendarPopover.locator("[data-localized-currency]"),
     ).toHaveCount(0);
+  });
+
+  test("moves between event result pages and restores the first card", async ({
+    page,
+  }) => {
+    // Paginate seeded event cards with one result per page.
+    await expectPaginationNavigation(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}&limit=1&offset=0`,
+      "#cards-list article",
+    );
+  });
+
+  test("restores every event filter and sort option from the URL", async ({
+    page,
+  }) => {
+    // Build a URL containing every supported event filter and sort option.
+    const filters = new URLSearchParams({
+      entity: "events",
+      "community[0]": TEST_COMMUNITY_NAME,
+      "group[0]": TEST_GROUP_SLUG,
+      "group_category[0]": "e2e-category-one",
+      "region[0]": "north-america",
+      "event_category[0]": "general",
+      "kind[0]": "hybrid",
+      date_from: "2026-01-01",
+      date_to: "2027-12-31",
+      sort_by: "date",
+      sort_direction: "desc",
+    });
+
+    // Load the filtered events page.
+    await navigateToPath(page, `/explore?${filters.toString()}`);
+
+    // Find the desktop form and verify every control restores its URL value.
+    const desktopForm = page.locator("#events-form");
+    await expect(desktopForm).toBeAttached();
+    await expect(
+      desktopForm.locator('collapsible-filter[name="community"]'),
+    ).toHaveAttribute("selected", JSON.stringify([TEST_COMMUNITY_NAME]));
+    await expect(
+      desktopForm.locator('multi-select-filter[name="group"]'),
+    ).toHaveAttribute("selected", JSON.stringify([TEST_GROUP_SLUG]));
+    await expect(
+      desktopForm.locator('collapsible-filter[name="group_category"]'),
+    ).toHaveAttribute("selected", JSON.stringify(["e2e-category-one"]));
+    await expect(
+      desktopForm.locator('collapsible-filter[name="region"]'),
+    ).toHaveAttribute("selected", JSON.stringify(["north-america"]));
+    await expect(
+      desktopForm.locator('collapsible-filter[name="event_category"]'),
+    ).toHaveAttribute("selected", JSON.stringify(["general"]));
+    await expect(
+      desktopForm.locator('input[name="kind[]"][value="hybrid"]'),
+    ).toBeChecked();
+    await expect(desktopForm.locator('input[name="date_from"]')).toHaveValue(
+      "2026-01-01",
+    );
+    await expect(desktopForm.locator('input[name="date_to"]')).toHaveValue(
+      "2027-12-31",
+    );
+    await expect(page.locator("#sort_selector")).toHaveValue("date-desc");
+    await expect(page.locator("#sort_by")).toHaveValue("date");
+    await expect(page.locator("#sort_direction")).toHaveValue("desc");
+  });
+
+  test("sorts events in both date directions", async ({ page }) => {
+    // Load community events using their default date direction.
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+    );
+
+    // Capture the initial card order before changing the sort.
+    const eventCards = page.locator("#cards-list article");
+    const initialEventNames = await eventCards
+      .locator(".card-title")
+      .allTextContents();
+
+    // Switch to descending dates and wait for the event list to refresh.
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/explore/events-section") &&
+          response.url().includes("sort_direction=desc") &&
+          response.ok(),
+      ),
+      page.locator("#sort_selector").selectOption("date-desc"),
+    ]);
+
+    // Verify the sort state and refreshed card order. Pagination and date
+    // ties make a strict reversal unreliable, so assert the order changed.
+    await expect(page.locator("#sort_selector")).toHaveValue("date-desc");
+    await expect(page.locator("#sort_direction")).toHaveValue("desc");
+    const descendingEventNames = await eventCards
+      .locator(".card-title")
+      .allTextContents();
+    expect(initialEventNames.length).toBeGreaterThan(0);
+    expect(descendingEventNames.length).toBeGreaterThan(0);
+    expect(descendingEventNames).not.toEqual(initialEventNames);
+  });
+
+  test("opens, resets, and closes the mobile filters drawer @mobile", async ({
+    page,
+  }) => {
+    // Load community events using the mobile project viewport.
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+    );
+
+    // Find the filter drawer and verify its initial hidden state.
+    const drawer = page.locator("#drawer-filters");
+    const backdrop = page.locator("#drawer-backdrop");
+    await expect(drawer).toHaveClass(/-translate-x-full/);
+    await expect(backdrop).toHaveClass(/hidden/);
+
+    // Open the drawer and verify its mobile form restores the URL filter.
+    await page.locator("#open-filters").click();
+    await expect(drawer).not.toHaveClass(/-translate-x-full/);
+    await expect(backdrop).not.toHaveClass(/hidden/);
+    await expect(drawer.getByText("Filters", { exact: true })).toBeVisible();
+    const mobileForm = page.locator("#events-form-mobile");
+    await expect(mobileForm).toBeAttached();
+    await expect(
+      mobileForm.locator('collapsible-filter[name="community"]'),
+    ).toHaveAttribute("selected", JSON.stringify([TEST_COMMUNITY_NAME]));
+
+    // Reset the mobile form and capture the unfiltered results request.
+    const resetResponse = await waitForActionResponse(
+      page,
+      () =>
+        drawer
+          .getByRole("button", { name: "Reset", exact: true })
+          .last()
+          .click(),
+      {
+        method: "GET",
+        urlIncludes: "/explore/events-section",
+      },
+    );
+    const resetRequestUrl = resetResponse.url();
+
+    // Verify reset clears the filter contract and closes the replaced drawer.
+    expect(new URL(resetRequestUrl).searchParams.getAll("community[]")).toEqual(
+      [],
+    );
+    await expect(
+      page.locator('#events-form-mobile collapsible-filter[name="community"]'),
+    ).toHaveAttribute("selected", "[]");
+    await expect(page.locator("#sort_by")).toHaveValue("date");
+    await expect(page.locator("#sort_direction")).toHaveValue("asc");
+    await expect(drawer).toHaveClass(/-translate-x-full/);
+    await expect(backdrop).toHaveClass(/hidden/);
   });
 
   test("supports kind filtering and switching to calendar view", async ({
@@ -345,15 +503,10 @@ test.describe("site explore events page", () => {
     // Navigate month by month until events appear.
     for (let step = 0; step < monthSteps; step += 1) {
       // Navigate toward the populated month and wait for calendar data.
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.request().method() === "GET" &&
-            response.url().includes("/explore/events/search") &&
-            response.ok(),
-        ),
-        navigationButton.click(),
-      ]);
+      await waitForActionResponse(page, () => navigationButton.click(), {
+        method: "GET",
+        urlIncludes: "/explore/events/search",
+      });
     }
 
     // Verify empty fallback content clears after landing on a populated month.
@@ -436,15 +589,10 @@ test.describe("site explore events page", () => {
     // Navigate month by month until the calendar has no events.
     for (let step = 0; step < Math.abs(monthDistance); step += 1) {
       // Navigate toward the empty month and wait for calendar data.
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.request().method() === "GET" &&
-            response.url().includes("/explore/events/search") &&
-            response.ok(),
-        ),
-        navigationButton.click(),
-      ]);
+      await waitForActionResponse(page, () => navigationButton.click(), {
+        method: "GET",
+        urlIncludes: "/explore/events/search",
+      });
     }
 
     // Verify the default empty state appears for the empty month.

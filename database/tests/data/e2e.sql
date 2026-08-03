@@ -50,7 +50,29 @@ insert into community (
     '/static/images/e2e/community-secondary-banner.svg',
     '/static/images/e2e/community-secondary-banner-mobile.svg',
     '/static/images/e2e/community-secondary-logo.svg'
+), (
+    '11111111-1111-1111-1111-111111111113',
+    'e2e-empty-community',
+    'Empty Coverage Community',
+    'Dedicated community for empty dashboard states.',
+    null,
+    null,
+    '/static/images/e2e/community-secondary-banner.svg',
+    '/static/images/e2e/community-secondary-banner-mobile.svg',
+    '/static/images/e2e/community-secondary-logo.svg'
 );
+
+update community
+set active = false
+where community_id = '11111111-1111-1111-1111-111111111113';
+
+-- Public social links and new group instructions for community page coverage.
+update community
+set twitter_url = 'https://twitter.com/e2e-devex',
+    github_url = 'https://github.com/e2e-devex',
+    linkedin_url = 'https://linkedin.com/company/e2e-devex',
+    new_group_details = 'Open an issue in our GitHub organization to propose a new group.'
+where community_id = '11111111-1111-1111-1111-111111111112';
 
 -- ============================================================================
 -- GROUP CATEGORIES
@@ -152,6 +174,16 @@ insert into "group" (
     null,
     null,
     true
+), (
+    '44444444-4444-4444-4444-444444444447',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222221',
+    'Empty Coverage Group',
+    'empty-coverage-group',
+    'Dedicated group for empty dashboard states.',
+    null,
+    null,
+    false
 );
 
 -- Secondary community groups used for cross-community coverage
@@ -194,6 +226,18 @@ insert into "group" (
 update "group"
 set payment_recipient = '{"provider":"stripe","recipient_id":"acct_e2e_alpha"}'::jsonb
 where group_id = '44444444-4444-4444-4444-444444444441';
+
+-- Social links for the gamma group used by public page breakpoint coverage.
+update "group"
+set website_url = 'https://example.com/e2e-observability-guild',
+    twitter_url = 'https://twitter.com/e2e-observability'
+where group_id = '44444444-4444-4444-4444-444444444443';
+
+-- Location for the gamma group so explore map view renders its marker.
+update "group"
+set city = 'Seattle',
+    location = ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326)
+where group_id = '44444444-4444-4444-4444-444444444443';
 
 -- ============================================================================
 -- EVENTS
@@ -511,7 +555,8 @@ insert into event (
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
-    cfs_enabled, cfs_description, cfs_starts_at, cfs_ends_at
+    cfs_enabled, cfs_description, cfs_starts_at, cfs_ends_at,
+    meeting_recording_url
 ) values (
     '55555555-5555-5555-5555-555555555519',
     'Event With Active CFS',
@@ -527,7 +572,8 @@ insert into event (
     true,
     'Submit your best talks for our extended speaker program.',
     now() - interval '2 days',
-    now() + interval '30 days'
+    now() + interval '30 days',
+    null
 ), (
     '55555555-5555-5555-5555-555555555520',
     'Past Event For Filtering',
@@ -543,7 +589,70 @@ insert into event (
     null,
     null,
     null,
-    null
+    null,
+    'https://recordings.example.test/alpha-past-roundup'
+);
+
+-- Publish the past event recording so the public page shows the recording link.
+update event
+set meeting_recording_published = true
+where event_id = '55555555-5555-5555-5555-555555555520';
+
+-- Second past event so the dashboard past events tab can paginate.
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at
+) values (
+    '55555555-5555-5555-5555-555555555536',
+    'Past Pagination Event',
+    'alpha-past-pagination',
+    'Older past event used for past events pagination coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() - interval '20 days',
+    now() - interval '20 days' + interval '2 hours'
+);
+
+-- Events reserved for call-for-speakers window coverage.
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at,
+    cfs_enabled, cfs_description, cfs_starts_at, cfs_ends_at
+) values (
+    '55555555-5555-5555-5555-555555555533',
+    'Upcoming Call for Speakers Window',
+    'alpha-cfs-upcoming',
+    'Future event whose call for speakers has not opened yet.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '400 days',
+    now() + interval '400 days 2 hours',
+    true,
+    'Speaker submissions will open later for this event.',
+    now() + interval '300 days',
+    now() + interval '330 days'
+), (
+    '55555555-5555-5555-5555-555555555534',
+    'Closed Call for Speakers Window',
+    'alpha-cfs-closed',
+    'Future event whose call for speakers has already closed.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '400 days',
+    now() + interval '400 days 2 hours',
+    true,
+    'Speaker submissions are closed for this event.',
+    now() - interval '30 days',
+    now() - interval '5 days'
 );
 
 insert into event (
@@ -706,7 +815,133 @@ insert into event (
     ]'::jsonb
 );
 
--- Paid-tier payment fixtures reserved for the Playwright suite
+-- Public attendance workflow fixtures for Playwright coverage.
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, published, test_event, starts_at, ends_at,
+    attendee_approval_required, registration_starts_at, registration_ends_at
+) values (
+    '55555555-5555-5555-5555-555555555529',
+    'Open Public Check-In',
+    'alpha-open-public-check-in',
+    'Live event used to verify the public attendee check-in form.',
+    'Live event with public check-in available.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    true,
+    now() - interval '1 hour',
+    now() + interval '2 days',
+    false,
+    null,
+    null
+), (
+    '55555555-5555-5555-5555-555555555530',
+    'Approval Required Attendance',
+    'alpha-approval-required-attendance',
+    'Future event used to verify public invitation request states.',
+    'Future event requiring organizer approval.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    true,
+    now() + interval '120 days',
+    now() + interval '120 days 2 hours',
+    true,
+    now() - interval '1 day',
+    now() + interval '100 days'
+);
+
+-- Meeting access details for the live event used in join link coverage.
+update event
+set meeting_join_url = 'https://meet.example.com/e2e-open-check-in',
+    meeting_join_instructions = 'Use the passcode shared with attendees to join the room.'
+where event_id = '55555555-5555-5555-5555-555555555529';
+
+-- Public event state fixtures for canceled and unpublished page coverage.
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, published, test_event, canceled,
+    starts_at, ends_at, cfs_enabled, cfs_description, cfs_starts_at, cfs_ends_at,
+    meeting_join_url, meeting_join_instructions
+) values (
+    '55555555-5555-5555-5555-555555555531',
+    'Canceled Public Event',
+    'alpha-canceled-public-event',
+    'Canceled event used to verify unavailable public actions.',
+    'Canceled event with public actions disabled.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    true,
+    true,
+    now() + interval '30 days',
+    now() + interval '30 days 2 hours',
+    true,
+    'Speaker submissions would be open if the event were active.',
+    now() - interval '1 day',
+    now() + interval '10 days',
+    'https://meet.example.com/e2e-canceled-event',
+    'Join the canceled event using the private meeting room.'
+), (
+    '55555555-5555-5555-5555-555555555532',
+    'Unpublished Public Event',
+    'alpha-unpublished-public-event',
+    'Unpublished event used to verify public route protection.',
+    'Unpublished event hidden from the public site.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    false,
+    true,
+    false,
+    now() + interval '31 days',
+    now() + interval '31 days 2 hours',
+    false,
+    null,
+    null,
+    null,
+    null,
+    null
+);
+
+-- Multi-day public event used for agenda day tab coverage.
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, published, test_event, canceled,
+    starts_at, ends_at, cfs_enabled, cfs_description, cfs_starts_at, cfs_ends_at,
+    meeting_join_url, meeting_join_instructions
+) values (
+    '55555555-5555-5555-5555-555555555535',
+    'Multi Day Summit',
+    'alpha-multi-day-summit',
+    'Two-day summit used to verify the public multi-day agenda tabs.',
+    'Two-day summit with a per-day agenda.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    true,
+    false,
+    now() + interval '40 days',
+    now() + interval '41 days 2 hours',
+    false,
+    null,
+    null,
+    null,
+    null,
+    null
+);
+
+-- Ticketed payment fixtures reserved for the Playwright suite.
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, payment_currency_code, published, starts_at, ends_at,
@@ -1270,6 +1505,27 @@ insert into "user" (
     'E2E Group Viewer One',
     '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
     'f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a2'
+), (
+    '77777777-7777-7777-7777-777777777713',
+    'e2e-empty',
+    'e2e-empty@example.com',
+    true,
+    'E2E Empty User',
+    '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
+    'a8b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b3'
+);
+
+-- Member reserved for group members pagination coverage.
+insert into "user" (
+    user_id, username, email, email_verified, name, password, auth_hash
+) values (
+    '77777777-7777-7777-7777-777777777714',
+    'e2e-member-3',
+    'e2e-member-3@example.com',
+    true,
+    'E2E Member Three',
+    '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
+    'b9c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1c4d5'
 );
 
 update "user"
@@ -1313,6 +1569,11 @@ insert into images (
     '77777777-7777-7777-7777-777777777703',
     lo_get(:hostBadgeImageOid)
 );
+
+-- Use a stored image for public Open Graph page and serving coverage.
+update community
+set og_image_url = '/images/7744970faed216a0b2d3be30ffef5aeb1bd6b65c5407ccc4f3dd824d132f1656.png'
+where community_id = '11111111-1111-1111-1111-111111111111';
 
 -- Remove the temporary host image large object
 \lo_unlink :hostBadgeImageOid
@@ -1885,6 +2146,24 @@ values (
     'admin'
 );
 
+-- Accepted admin for the dedicated empty-state community
+insert into community_team (community_id, user_id, accepted, role)
+values (
+    '11111111-1111-1111-1111-111111111113',
+    '77777777-7777-7777-7777-777777777701',
+    true,
+    'admin'
+);
+
+-- Primary admin can switch to the secondary community in read-only mode.
+insert into community_team (community_id, user_id, accepted, role)
+values (
+    '11111111-1111-1111-1111-111111111112',
+    '77777777-7777-7777-7777-777777777701',
+    true,
+    'viewer'
+);
+
 -- Groups manager for the primary community
 insert into community_team (community_id, user_id, accepted, role)
 values (
@@ -1926,6 +2205,15 @@ values (
     'admin'
 );
 
+-- Accepted organizer for the dedicated empty-state group
+insert into group_team (group_id, user_id, accepted, role)
+values (
+    '44444444-4444-4444-4444-444444444447',
+    '77777777-7777-7777-7777-777777777703',
+    true,
+    'admin'
+);
+
 -- Accepted organizer for the Delta group
 insert into group_team (group_id, user_id, accepted, role)
 values (
@@ -1933,6 +2221,15 @@ values (
     '77777777-7777-7777-7777-777777777704',
     true,
     'admin'
+);
+
+-- Primary organizer can switch to another group in read-only mode.
+insert into group_team (group_id, user_id, accepted, role)
+values (
+    '44444444-4444-4444-4444-444444444443',
+    '77777777-7777-7777-7777-777777777703',
+    true,
+    'viewer'
 );
 
 -- Events manager for the primary group
@@ -1984,6 +2281,13 @@ values (
 ), (
     '44444444-4444-4444-4444-444444444442',
     '77777777-7777-7777-7777-777777777705'
+);
+
+-- Second primary group member so the members tab can paginate.
+insert into group_member (group_id, user_id)
+values (
+    '44444444-4444-4444-4444-444444444441',
+    '77777777-7777-7777-7777-777777777714'
 );
 
 -- Member of the Delta and Epsilon groups
@@ -2534,6 +2838,9 @@ values (
 ), (
     '55555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555529',
+    '77777777-7777-7777-7777-777777777708'
 );
 
 insert into event_attendee (event_id, user_id)
@@ -2545,11 +2852,56 @@ values (
     '77777777-7777-7777-7777-777777777703'
 );
 
+-- Reviewed invitation requests used by public approval-state coverage.
+insert into event_invitation_request (
+    event_id,
+    user_id,
+    status,
+    reviewed_at,
+    reviewed_by
+)
+values (
+    '55555555-5555-5555-5555-555555555530',
+    '77777777-7777-7777-7777-777777777705',
+    'accepted',
+    now() - interval '1 day',
+    '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555530',
+    '77777777-7777-7777-7777-777777777708',
+    'rejected',
+    now() - interval '1 day',
+    '77777777-7777-7777-7777-777777777703'
+);
+
+-- Claimable approval offer pairing member1's accepted invitation request.
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    '62555555-5555-5555-5555-555555555530',
+    '55555555-5555-5555-5555-555555555530',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555530' order by "order" limit 1),
+    '2099-12-31 00:00:00+00',
+    'approval',
+    'pending',
+    '77777777-7777-7777-7777-777777777705'
+);
+
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values (
     '55555555-5555-5555-5555-555555555526',
     (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555526' order by "order" limit 1),
     '77777777-7777-7777-7777-777777777706'
+), (
+    '55555555-5555-5555-5555-555555555526',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555526' order by "order" limit 1),
+    '77777777-7777-7777-7777-777777777707'
 );
 
 insert into event_attendee (event_id, user_id, manually_invited, status)
@@ -4070,6 +4422,48 @@ values (
     now() + interval '45 days 1 hour 45 minutes',
     'Approved proposal linked into the CFS agenda.',
     '99999999-9999-9999-9999-999999999913'
+), (
+    '88888888-8888-8888-8888-888888888804',
+    '55555555-5555-5555-5555-555555555535',
+    'Summit Kickoff',
+    'virtual',
+    now() + interval '40 days',
+    now() + interval '40 days 1 hour',
+    'First day opening for the multi-day summit.',
+    null
+), (
+    '88888888-8888-8888-8888-888888888805',
+    '55555555-5555-5555-5555-555555555535',
+    'Summit Wrap-Up',
+    'virtual',
+    now() + interval '41 days',
+    now() + interval '41 days 1 hour',
+    'Second day closing for the multi-day summit.',
+    null
+);
+
+-- Live event session used to verify per-session join links for attendees.
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    description,
+    meeting_join_url,
+    cfs_submission_id
+)
+values (
+    '88888888-8888-8888-8888-888888888806',
+    '55555555-5555-5555-5555-555555555529',
+    'Live Check-In Briefing',
+    'virtual',
+    now() + interval '1 hour',
+    now() + interval '2 hours',
+    'Session used to verify the attendee-only join link.',
+    'https://meet.example.com/e2e-live-briefing',
+    null
 );
 
 -- ============================================================================

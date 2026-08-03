@@ -1,9 +1,73 @@
 import { expect, test } from "../../../fixtures.js";
 
 import { TEST_UPLOAD_ASSET_PATHS, fillMarkdownEditor, setImageFieldValue } from "../../form-helpers.js";
-import { navigateToPath } from "../../../utils.js";
+import { navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 test.describe("community dashboard settings view", () => {
+  test("settings form exposes every community configuration area", async ({ adminCommunityPage }) => {
+    // Load community settings before checking the complete form contract.
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
+
+    // Find the dashboard and verify every settings section is present.
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    for (const sectionName of [
+      "General Settings",
+      "Branding",
+      "Social Links",
+      "Advertisement",
+      "Additional Content",
+    ]) {
+      await expect(dashboardContent.getByText(sectionName, { exact: true })).toBeVisible();
+    }
+
+    // Verify required controls and community-specific configuration fields.
+    await expect(adminCommunityPage.getByLabel("Display Name")).toHaveAttribute("required", "");
+    await expect(adminCommunityPage.locator("markdown-editor#description")).toHaveAttribute("required", "");
+    await expect(
+      adminCommunityPage.getByRole("checkbox", {
+        name: "Restrict group team management to community admins and groups managers",
+      }),
+    ).toBeVisible();
+    await expect(adminCommunityPage.locator('input[name="community_site_layout_id"]')).toHaveAttribute(
+      "type",
+      "hidden",
+    );
+
+    // Verify every community image field is available.
+    for (const imageFieldName of [
+      "logo_url",
+      "banner_url",
+      "banner_mobile_url",
+      "og_image_url",
+      "ad_banner_url",
+    ]) {
+      await expect(adminCommunityPage.locator(`image-field[name="${imageFieldName}"]`)).toBeVisible();
+    }
+
+    // Verify social and advertisement destinations use URL inputs.
+    for (const socialLabel of [
+      "Website",
+      "Bluesky",
+      "Facebook",
+      "Flickr",
+      "GitHub",
+      "Instagram",
+      "LinkedIn",
+      "Slack",
+      "X (formerly Twitter)",
+      "WeChat",
+      "YouTube",
+      "Banner Link URL",
+    ]) {
+      await expect(adminCommunityPage.getByLabel(socialLabel)).toHaveAttribute("type", "url");
+    }
+
+    // Verify the remaining rich content and repeatable fields.
+    await expect(adminCommunityPage.locator("markdown-editor#new_group_details")).toBeVisible();
+    await expect(adminCommunityPage.locator('gallery-field[field-name="photos_urls"]')).toBeVisible();
+    await expect(adminCommunityPage.locator('key-value-inputs[field-name="extra_links"]')).toBeVisible();
+  });
+
   test("admin can reject undersized and crop oversized advertisement banners", async ({
     adminCommunityPage,
   }) => {
@@ -162,15 +226,14 @@ test.describe("community dashboard settings view", () => {
       await adminCommunityPage.getByLabel("Website").fill(websiteUrl);
 
       // Click Update Settings.
-      await Promise.all([
-        adminCommunityPage.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().includes("/dashboard/community/settings/update") &&
-            response.ok(),
-        ),
-        adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
-      ]);
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: "/dashboard/community/settings/update",
+        },
+      );
 
       // Assert the field value was updated.
       await expect(adminCommunityPage.getByLabel("Display Name")).toHaveValue(displayName);
@@ -204,6 +267,98 @@ test.describe("community dashboard settings view", () => {
     // Save the updated settings.
     await submitSettings(updatedValues);
     await submitSettings(originalValues);
+  });
+
+  test("admin can update and restore extended community settings", async ({ adminCommunityPage }) => {
+    // Define the settings URL and the extended settings locators.
+    const settingsPath = "/dashboard/community?tab=settings";
+    const ogImageInput = adminCommunityPage.locator(
+      'image-field[name="og_image_url"] input[name="og_image_url"]',
+    );
+    const adBannerInput = adminCommunityPage.locator(
+      'image-field[name="ad_banner_url"] input[name="ad_banner_url"]',
+    );
+    const bannerLinkInput = adminCommunityPage.getByLabel("Banner Link URL");
+    const newGroupDetailsEditor = adminCommunityPage.locator("markdown-editor#new_group_details");
+    const restrictionToggle = adminCommunityPage.locator("#toggle_group_team_management_restricted");
+    const restrictionHiddenInput = adminCommunityPage.locator("#group_team_management_restricted");
+    const extraLinksField = adminCommunityPage.locator('key-value-inputs[field-name="extra_links"]');
+    const extraLinkHiddenInput = adminCommunityPage.locator('input[name="extra_links[E2E Extra Docs]"]');
+
+    // Submit the settings form and wait for the update to complete.
+    const saveSettings = async () => {
+      await waitForActionResponse(
+        adminCommunityPage,
+        () => adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: "/dashboard/community/settings/update",
+        },
+      );
+    };
+
+    // Read the current extended settings values before updating them.
+    await navigateToPath(adminCommunityPage, settingsPath);
+    const originalValues = {
+      adBannerLinkUrl: await bannerLinkInput.inputValue(),
+      adBannerUrl: await adBannerInput.inputValue(),
+      newGroupDetails: (await newGroupDetailsEditor.getAttribute("content")) ?? "",
+      ogImageUrl: await ogImageInput.inputValue(),
+      restricted: await restrictionToggle.isChecked(),
+    };
+
+    // Update the extended settings fields, including a new extra link.
+    await setImageFieldValue(adminCommunityPage, "og_image_url", "/static/images/e2e/event-banner.svg");
+    await setImageFieldValue(adminCommunityPage, "ad_banner_url", "/static/images/e2e/event-banner.svg");
+    await bannerLinkInput.fill("https://example.com/e2e-extended-banner");
+    await fillMarkdownEditor(
+      adminCommunityPage,
+      "new_group_details",
+      "Extended details shown to organizers creating new groups.",
+    );
+    await restrictionToggle.setChecked(!originalValues.restricted, {
+      force: true,
+    });
+    await expect(restrictionHiddenInput).toHaveValue(String(!originalValues.restricted));
+    await extraLinksField.getByPlaceholder("Link Name").last().fill("E2E Extra Docs");
+    await extraLinksField.getByPlaceholder("URL").last().fill("https://example.com/e2e-extra-docs");
+    await expect(extraLinkHiddenInput).toHaveValue("https://example.com/e2e-extra-docs");
+    await saveSettings();
+
+    // Reload the settings tab and verify the extended values persisted.
+    await navigateToPath(adminCommunityPage, settingsPath);
+    await expect(ogImageInput).toHaveValue("/static/images/e2e/event-banner.svg");
+    await expect(adBannerInput).toHaveValue("/static/images/e2e/event-banner.svg");
+    await expect(bannerLinkInput).toHaveValue("https://example.com/e2e-extended-banner");
+    await expect(newGroupDetailsEditor).toHaveAttribute(
+      "content",
+      "Extended details shown to organizers creating new groups.",
+    );
+    await expect(restrictionToggle).toBeChecked({
+      checked: !originalValues.restricted,
+    });
+    await expect(extraLinkHiddenInput).toHaveValue("https://example.com/e2e-extra-docs");
+
+    // Restore the original extended settings values.
+    await setImageFieldValue(adminCommunityPage, "og_image_url", originalValues.ogImageUrl);
+    await setImageFieldValue(adminCommunityPage, "ad_banner_url", originalValues.adBannerUrl);
+    await bannerLinkInput.fill(originalValues.adBannerLinkUrl);
+    await fillMarkdownEditor(adminCommunityPage, "new_group_details", originalValues.newGroupDetails);
+    await restrictionToggle.setChecked(originalValues.restricted, {
+      force: true,
+    });
+    await extraLinksField.locator('button[title="Remove item"]').first().click();
+    await expect(extraLinkHiddenInput).toHaveCount(0);
+    await saveSettings();
+
+    // Reload once more and verify the original values are back.
+    await navigateToPath(adminCommunityPage, settingsPath);
+    await expect(ogImageInput).toHaveValue(originalValues.ogImageUrl);
+    await expect(bannerLinkInput).toHaveValue(originalValues.adBannerLinkUrl);
+    await expect(restrictionToggle).toBeChecked({
+      checked: originalValues.restricted,
+    });
+    await expect(extraLinkHiddenInput).toHaveCount(0);
   });
 
   test("viewer sees read-only controls on community settings", async ({ communityViewerPage }) => {

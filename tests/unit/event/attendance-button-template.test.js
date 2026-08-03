@@ -16,6 +16,7 @@ describe("event attendance button template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include('hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"');
+    expect(template).to.include('hx-swap="none ignoreTitle:true"');
   });
 
   it("includes registration answers only when the event has questions", async () => {
