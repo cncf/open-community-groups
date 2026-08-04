@@ -35,7 +35,12 @@ use crate::{
     templates::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
-            group::{PresenceFilter, attendees::AttendeesSort},
+            group::{
+                PresenceFilter,
+                attendees::{
+                    AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesSort,
+                },
+            },
         },
         notifications::{EventAttendanceCanceled, EventCustom},
     },
@@ -691,10 +696,10 @@ async fn test_download_csv_success() {
     attendee_without_name.user.title = None;
     let mut pending_invitation = sample_attendee();
     pending_invitation.user.name = Some("Pending Invite".to_string());
-    pending_invitation.status = "invitation-pending".to_string();
+    pending_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationPending;
     let mut rejected_invitation = sample_attendee();
     rejected_invitation.user.name = Some("Rejected Invite".to_string());
-    rejected_invitation.status = "invitation-rejected".to_string();
+    rejected_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationDeclined;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
@@ -816,7 +821,7 @@ async fn test_download_csv_with_answers_success() {
     attendee_without_answers.registration_answers = None;
     let mut pending_invitation = sample_attendee();
     pending_invitation.user.name = Some("Pending Invite".to_string());
-    pending_invitation.status = "invitation-pending".to_string();
+    pending_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationPending;
     let event = sample_event_summary(event_id, group_id);
     let registration_questions = vec![
         QuestionnaireQuestion {
@@ -1494,8 +1499,8 @@ async fn test_list_page_success() {
     let pending_questions_attendee_id = Uuid::new_v4();
     let mut pending_questions_attendee = sample_attendee();
     pending_questions_attendee.checked_in = false;
+    pending_questions_attendee.enrollment_status = AttendeeEnrollmentStatus::RegistrationPending;
     pending_questions_attendee.manually_invited = false;
-    pending_questions_attendee.status = "registration-questions-pending".to_string();
     pending_questions_attendee.user.user_id = pending_questions_attendee_id;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
@@ -1539,6 +1544,7 @@ async fn test_list_page_success() {
                 && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
+                && filters.status.is_none()
         })
         .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary_dashboard()
@@ -1572,6 +1578,8 @@ async fn test_list_page_success() {
     assert!(body.contains("value=\"Test Group: Sample Event\""));
     assert!(body.contains("data-notification-recipient-total=\"2\""));
     assert!(body.contains("data-notification-scope=\"all\""));
+    assert!(body.contains("id=\"attendees-enrollment-status\""));
+    assert!(body.contains("name=\"status\"") && !body.contains("name=\"attendance\""));
     assert!(
         !body.contains(
             "No attendees with verified email addresses and email notifications enabled."
@@ -1944,6 +1952,7 @@ async fn test_list_page_with_search_query() {
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
                 && filters.sort == Some(AttendeesSort::CreatedAtDesc)
+                && filters.status == Some(AttendeeEnrollmentStatusFilter::History)
                 && filters.title == Some(PresenceFilter::Present)
                 && filters.ts_query.as_deref() == Some("ana")
         })
@@ -1968,7 +1977,7 @@ async fn test_list_page_with_search_query() {
             concat!(
                 "/dashboard/group/events/{event_id}/attendees?",
                 "checked_in=true&event_ticket_type_ids[0]={ticket_type_id}&",
-                "sort=created-at-desc&title=present&ts_query=ana"
+                "sort=created-at-desc&status=history&title=present&ts_query=ana"
             ),
             event_id = event_id,
             ticket_type_id = ticket_type_id,
@@ -1983,8 +1992,7 @@ async fn test_list_page_with_search_query() {
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("name=\"ts_query\""));
-    assert!(body.contains("value=\"ana\""));
+    assert!(body.contains("name=\"ts_query\"") && body.contains("value=\"ana\""));
     assert!(body.contains("Ana Lopez"));
     assert!(body.contains("ana@example.test"));
     assert!(body.contains("Example Co"));

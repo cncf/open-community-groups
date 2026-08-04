@@ -308,8 +308,9 @@ pub(crate) fn sample_attendee() -> Attendee {
         checked_in: true,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         email: "attendee@example.test".to_string(),
+        enrollment_status:
+            crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed,
         manually_invited: false,
-        status: "confirmed".to_string(),
         user: sample_dashboard_user_profile(
             user_id,
             "attendee",

@@ -21,21 +21,35 @@ const sliceTemplateSection = (template, startToken, endToken) => {
 };
 
 describe("dashboard group attendees list template", () => {
-  it("filters active and canceled attendance records", async () => {
-    // Load the attendees list template before checking attendance filters.
+  it("groups enrollment views and exact statuses in one selector", async () => {
+    // Load the attendees list template before checking enrollment filters.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the filters expose every supported attendance state.
-    expect(template).to.include('for="attendees-attendance"');
-    expect(template).to.include('id="attendees-attendance"');
-    expect(template).to.include('name="attendance"');
-    expect(template).to.include('value="{{ option }}"');
-    expect(template).to.include("attendance == *option");
-    expect(template).to.include("AttendanceFilter::Active");
-    expect(template).to.include("AttendanceFilter::Canceled");
-    expect(template).to.include("AttendanceFilter::All");
-    expect(template).to.include('attendee.status == "attendance-canceled"');
-    expect(template).to.include('label = "Attendance canceled"');
+    // Verify aggregate views and exact statuses are visually separated by native optgroups.
+    expect(template).to.include('for="attendees-enrollment-status"');
+    expect(template).to.include('id="attendees-enrollment-status"');
+    expect(template).to.include('name="status"');
+    expect(template).not.to.include('name="attendance"');
+    expect(template).to.include('<optgroup label="Views">');
+    expect(template).to.include('<optgroup label="Current status">');
+    expect(template).to.include('<optgroup label="Historical status">');
+
+    for (const [value, label] of [
+      ["current", "Current enrollments"],
+      ["history", "Enrollment history"],
+      ["all", "All enrollments"],
+      ["confirmed", "Confirmed"],
+      ["checkout-pending", "Checkout pending"],
+      ["invitation-pending", "Invitation pending"],
+      ["registration-pending", "Registration pending"],
+      ["attendance-canceled", "Attendance canceled"],
+      ["invitation-canceled", "Invitation canceled"],
+      ["invitation-declined", "Invitation declined"],
+      ["invitation-expired", "Invitation expired"],
+    ]) {
+      expect(template).to.include(`value="${value}"`);
+      expect(template).to.include(`>${label}</option>`);
+    }
   });
 
   it("uses filter-aware empty states", async () => {
@@ -48,7 +62,10 @@ describe("dashboard group attendees list template", () => {
 
     // Verify every table filter selects useful filtered-empty guidance.
     expect(emptyState).to.include(
-      "attendance == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled",
+      "event.canceled && status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::All",
+    );
+    expect(emptyState).to.include(
+      "!event.canceled && status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Current",
     );
     expect(emptyState).to.include("checked_in.is_some()");
     expect(emptyState).to.include("event_ticket_type_ids.is_some()");
@@ -72,11 +89,14 @@ describe("dashboard group attendees list template", () => {
       "{# End checked in toggle -#}",
     );
 
-    // Verify canceled attendees retain their date and accurate check-in label.
-    expect(enrollmentDate).to.include('attendee.status == "attendance-canceled"');
+    // Verify historical enrollments retain their date and accurate check-in label.
     expect(enrollmentDate).to.include('attendee.created_at.format("%b %d, %Y")');
     expect(checkInToggle).to.include("Canceled attendance cannot be checked in");
-    expect(checkInToggle).to.include("Rejected invitation cannot be checked in");
+    expect(checkInToggle).to.include("Pending checkout cannot be checked in");
+    expect(checkInToggle).to.include("Canceled invitation cannot be checked in");
+    expect(checkInToggle).to.include("Declined invitation cannot be checked in");
+    expect(checkInToggle).to.include("Expired invitation cannot be checked in");
+    expect(checkInToggle).to.include("Pending invitation cannot be checked in");
     expect(checkInToggle).to.include("Pending registration cannot be checked in");
     expect(checkInToggle).to.include("Your role cannot manage check-in");
   });
@@ -164,7 +184,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       "dashboard::user_profile_modal_trigger(attendee.user, self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str()))",
     );
-    expect(template).to.include('attendee.status == "invitation-pending"');
+    expect(template).to.include("AttendeeEnrollmentStatus::InvitationPending");
     expect(template).to.include("attendee.email");
   });
 
@@ -173,7 +193,7 @@ describe("dashboard group attendees list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify eligible attendees get a confirmed cancel action.
-    expect(template).to.include('attendee.status == "confirmed"');
+    expect(template).to.include("AttendeeEnrollmentStatus::Confirmed");
     expect(template).to.include('id="cancel-attendance-{{ attendee.user.user_id }}"');
     expect(template).to.include(
       'hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance"',
@@ -201,17 +221,13 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('title="Past event attendance cannot be canceled."');
   });
 
-  it("renders exact offer cancellation for manual question-pending invitations", async () => {
+  it("renders exact offer cancellation for pending invitations", async () => {
     // Load the attendees list template before checking invitation actions.
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify manual invitations cancel the exact admission offer.
-    expect(template).to.include(
-      'attendee.status == "registration-questions-pending") && attendee.user.name.is_none()',
-    );
-    expect(template).to.include(
-      'attendee.status == "registration-questions-pending" && attendee.manually_invited',
-    );
+    expect(template).to.include("AttendeeEnrollmentStatus::InvitationPending");
+    expect(template).to.include("AttendeeEnrollmentStatus::RegistrationPending && attendee.manually_invited");
     expect(template).to.include("{% if let Some(admission_offer_id) = attendee.admission_offer_id -%}");
     expect(template).to.include('id="cancel-admission-offer-{{ admission_offer_id }}"');
     expect(template).to.include('hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"');
@@ -233,8 +249,8 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("(Invitation only)");
     expect(template).to.include("(Public)");
 
-    // Verify pending and checkout offers show tier and deadline without attendee actions.
-    expect(template).to.include('label = "Offer pending"');
+    // Verify pending and checkout offers show exact enrollment states, tier, and deadline.
+    expect(template).to.include('label = "Invitation pending"');
     expect(template).to.include('label = "Checkout pending"');
     expect(template).to.include("Awaiting claim");
     expect(template).to.include("Checkout in progress");
@@ -249,7 +265,7 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify only expired organizer invitations expose reissue.
-    expect(template).to.include('label = "Offer expired"');
+    expect(template).to.include('label = "Invitation expired"');
     expect(template).to.include("Reissue invitation");
     expect(template).to.include('name="email" value="{{ attendee.email }}"');
     expect(template).to.include(

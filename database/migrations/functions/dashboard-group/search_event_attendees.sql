@@ -5,11 +5,6 @@ returns json as $$
         -- Parse filters for pagination
         filters as (
             select
-                case
-                    when lower(p_filters->>'attendance') in ('active', 'all', 'canceled')
-                        then lower(p_filters->>'attendance')
-                    else null
-                end as attendance_value,
                 (p_filters->>'checked_in')::boolean as checked_in_value,
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value,
@@ -22,6 +17,22 @@ returns json as $$
                     ) then lower(p_filters->>'sort')
                     else 'name-asc'
                 end as sort_value,
+                case
+                    when lower(p_filters->>'status') in (
+                        'all',
+                        'attendance-canceled',
+                        'checkout-pending',
+                        'confirmed',
+                        'current',
+                        'history',
+                        'invitation-canceled',
+                        'invitation-declined',
+                        'invitation-expired',
+                        'invitation-pending',
+                        'registration-pending'
+                    ) then lower(p_filters->>'status')
+                    else null
+                end as status_value,
                 case
                     when lower(p_filters->>'title') in ('missing', 'present')
                         then lower(p_filters->>'title')
@@ -72,7 +83,11 @@ returns json as $$
                 null::timestamptz as offer_expires_at,
                 ea.registration_answers,
                 0 as source_priority,
-                ea.status,
+                case
+                    when ea.status = 'invitation-rejected' then 'invitation-declined'
+                    when ea.status = 'registration-questions-pending' then 'registration-pending'
+                    else ea.status
+                end as enrollment_status,
                 null::text as ticket_title,
                 ea.user_id
             from event_attendee ea
@@ -105,10 +120,11 @@ returns json as $$
                 end as source_priority,
                 case
                     when ao.status = 'canceled' then 'invitation-canceled'
-                    when ao.status = 'declined' then 'invitation-rejected'
+                    when ao.status = 'checkout_pending' then 'checkout-pending'
+                    when ao.status = 'declined' then 'invitation-declined'
                     when ao.status = 'expired' then 'invitation-expired'
                     else 'invitation-pending'
-                end as status,
+                end as enrollment_status,
                 coalesce(ao.ticket_title, ett.title) as ticket_title,
                 ao.user_id
             from admission_offer ao
@@ -127,10 +143,10 @@ returns json as $$
                 created_at,
                 event_id,
                 event_ticket_type_id,
+                enrollment_status,
                 manually_invited,
                 offer_expires_at,
                 registration_answers,
-                status,
                 ticket_title,
                 user_id
             from (
@@ -154,9 +170,13 @@ returns json as $$
                 extract(epoch from er.created_at)::bigint as created_at,
                 er.created_at as created_at_sort,
                 u.email,
+                case
+                    when er.enrollment_status = 'registration-pending'
+                        and ep.purchase_status = 'pending' then 'checkout-pending'
+                    else er.enrollment_status
+                end as enrollment_status,
                 er.manually_invited,
                 er.registration_answers,
-                er.status,
                 e.canceled as event_canceled,
                 u.user_id,
                 u.username,
@@ -207,7 +227,7 @@ returns json as $$
                 u.website_url,
 
                 (
-                    er.status in ('confirmed', 'registration-questions-pending')
+                    er.enrollment_status in ('confirmed', 'registration-pending')
                     and er.admission_offer_id is null
                     and u.email_verified = true
                     and coalesce(u.optional_notifications_enabled, true) = true
@@ -277,24 +297,38 @@ returns json as $$
             )
             and (
                 coalesce(
-                    (select attendance_value from filters),
-                    case when event_canceled then 'all' else 'active' end
+                    (select status_value from filters),
+                    case when event_canceled then 'all' else 'current' end
                 ) = 'all'
                 or (
                     coalesce(
-                        (select attendance_value from filters),
-                        case when event_canceled then 'all' else 'active' end
-                    ) = 'active'
-                    and status <> 'attendance-canceled'
+                        (select status_value from filters),
+                        case when event_canceled then 'all' else 'current' end
+                    ) = 'current'
+                    and enrollment_status in (
+                        'checkout-pending',
+                        'confirmed',
+                        'invitation-pending',
+                        'registration-pending'
+                    )
                 )
                 or (
-                    (select attendance_value from filters) = 'canceled'
-                    and status = 'attendance-canceled'
+                    (select status_value from filters) = 'history'
+                    and enrollment_status in (
+                        'attendance-canceled',
+                        'invitation-canceled',
+                        'invitation-declined',
+                        'invitation-expired'
+                    )
                 )
+                or (select status_value from filters) = enrollment_status
             )
             and (
                 (select checked_in_value from filters) is null
-                or checked_in = (select checked_in_value from filters)
+                or (
+                    enrollment_status = 'confirmed'
+                    and checked_in = (select checked_in_value from filters)
+                )
             )
             and (
                 (select title_value from filters) is null
@@ -312,12 +346,12 @@ returns json as $$
         -- Apply pagination and project public attendee fields
         attendees as (
             select
+                can_receive_attendee_email,
                 checked_in,
                 created_at,
                 email,
+                enrollment_status,
                 manually_invited,
-                registration_answers,
-                status,
                 json_strip_nulls(json_build_object(
                     'user_id', user_id,
                     'username', username,
@@ -348,9 +382,8 @@ returns json as $$
                 offer_expires_at,
                 refund_progress,
                 refund_request_status,
-                ticket_title,
-
-                can_receive_attendee_email
+                registration_answers,
+                ticket_title
             from filtered_attendees
             cross join filters f
             order by

@@ -27,8 +27,6 @@ use crate::{
 pub(crate) struct ListPage {
     /// Number of attendees eligible for the all-attendees custom email scope.
     pub all_attendees_email_recipient_total: usize,
-    /// Attendance lifecycle filter.
-    pub attendance: AttendanceFilter,
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
     /// Whether the current user can manage events.
@@ -39,6 +37,8 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the attendee list with the current filters.
     pub refresh_url: String,
+    /// Enrollment status filter.
+    pub status: AttendeeEnrollmentStatusFilter,
     /// Total number of attendees for the selected event.
     pub total: usize,
 
@@ -63,20 +63,6 @@ pub(crate) struct ListPage {
 
 // Types.
 
-/// Attendance lifecycle rows shown in the attendee table.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub(crate) enum AttendanceFilter {
-    /// Show active attendee and invitation rows.
-    #[default]
-    Active,
-    /// Show all active and canceled history rows.
-    All,
-    /// Show only canceled attendance history.
-    Canceled,
-}
-
 /// Event attendee summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attendee {
@@ -89,10 +75,10 @@ pub struct Attendee {
     pub created_at: DateTime<Utc>,
     /// Email address for invitation placeholders and registered users.
     pub email: String,
+    /// Organizer-facing enrollment status.
+    pub enrollment_status: AttendeeEnrollmentStatus,
     /// Whether the attendee was manually invited by an organizer.
     pub manually_invited: bool,
-    /// Event attendee status.
-    pub status: String,
     /// Public profile payload for the attendee.
     pub user: User,
 
@@ -128,6 +114,59 @@ pub struct Attendee {
     pub ticket_title: Option<String>,
 }
 
+/// Exact enrollment status shown for an attendee table row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum AttendeeEnrollmentStatus {
+    /// Confirmed attendance was canceled.
+    AttendanceCanceled,
+    /// Ticket checkout is still pending.
+    CheckoutPending,
+    /// Attendance is confirmed.
+    Confirmed,
+    /// An organizer invitation was canceled.
+    InvitationCanceled,
+    /// An organizer invitation was declined.
+    InvitationDeclined,
+    /// An organizer invitation expired.
+    InvitationExpired,
+    /// An organizer invitation is waiting for the recipient.
+    InvitationPending,
+    /// Registration questions still need to be completed.
+    RegistrationPending,
+}
+
+/// Enrollment status views supported by the attendee table.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum AttendeeEnrollmentStatusFilter {
+    /// Show every current and historical enrollment row.
+    All,
+    /// Show only canceled attendance rows.
+    AttendanceCanceled,
+    /// Show only pending checkout rows.
+    CheckoutPending,
+    /// Show only confirmed attendee rows.
+    Confirmed,
+    /// Show current confirmed and pending enrollment rows.
+    #[default]
+    Current,
+    /// Show canceled attendance and terminal invitation rows.
+    History,
+    /// Show only canceled invitation rows.
+    InvitationCanceled,
+    /// Show only declined invitation rows.
+    InvitationDeclined,
+    /// Show only expired invitation rows.
+    InvitationExpired,
+    /// Show only pending invitation rows.
+    InvitationPending,
+    /// Show only pending registration rows.
+    RegistrationPending,
+}
+
 /// Supported attendee sort options.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
@@ -149,9 +188,6 @@ pub(crate) enum AttendeesSort {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct AttendeesFilters {
-    /// Attendance lifecycle filter.
-    #[garde(skip)]
-    pub attendance: Option<AttendanceFilter>,
     /// Checked-in status filter.
     #[garde(skip)]
     pub checked_in: Option<bool>,
@@ -169,6 +205,9 @@ pub(crate) struct AttendeesFilters {
     /// Sort option used to order attendees.
     #[garde(skip)]
     pub sort: Option<AttendeesSort>,
+    /// Enrollment status filter.
+    #[garde(skip)]
+    pub status: Option<AttendeeEnrollmentStatusFilter>,
     /// User title presence filter.
     #[garde(skip)]
     pub title: Option<PresenceFilter>,

@@ -43,7 +43,9 @@ use crate::{
             audit::AuditLogFilters,
             community::team::CommunityTeamFilters,
             group::{
-                attendees::AttendeesFilters,
+                attendees::{
+                    AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
+                },
                 events::{Event as EventUpdate, EventsListFilters},
                 invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
                 members::GroupMembersFilters,
@@ -2789,12 +2791,12 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     // Setup the contract database and attendee filters
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
-        attendance: None,
         checked_in: None,
         event_ticket_type_ids: None,
         limit: Some(10),
         offset: Some(0),
         sort: None,
+        status: None,
         title: None,
         ts_query: None,
     };
@@ -2857,7 +2859,10 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
         output.attendees[1].offer_expires_at,
         Some(DateTime::parse_from_rfc3339("2099-05-20T18:30:00Z")?.with_timezone(&Utc),)
     );
-    assert_eq!(output.attendees[1].status, "invitation-pending");
+    assert_eq!(
+        output.attendees[1].enrollment_status,
+        AttendeeEnrollmentStatus::InvitationPending
+    );
     assert_eq!(
         output.attendees[1].ticket_title.as_deref(),
         Some("General Admission")
@@ -2873,12 +2878,12 @@ async fn db_contracts_search_event_attendees_terminal_offer_statuses_deserialize
     // Setup the contract database and unfiltered status event search
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
-        attendance: None,
         checked_in: None,
         event_ticket_type_ids: None,
         limit: Some(10),
         offset: Some(0),
         sort: None,
+        status: Some(AttendeeEnrollmentStatusFilter::All),
         title: None,
         ts_query: None,
     };
@@ -2890,21 +2895,21 @@ async fn db_contracts_search_event_attendees_terminal_offer_statuses_deserialize
 
     // Check canceled, declined, and expired offer encodings
     assert_eq!(output.total, 3);
-    for (user_id, offer_status, status) in [
+    for (user_id, enrollment_status, offer_status) in [
         (
             status_canceled_user_id(),
+            AttendeeEnrollmentStatus::InvitationCanceled,
             EventAdmissionOfferStatus::Canceled,
-            "invitation-canceled",
         ),
         (
             status_declined_user_id(),
+            AttendeeEnrollmentStatus::InvitationDeclined,
             EventAdmissionOfferStatus::Declined,
-            "invitation-rejected",
         ),
         (
             status_expired_user_id(),
+            AttendeeEnrollmentStatus::InvitationExpired,
             EventAdmissionOfferStatus::Expired,
-            "invitation-expired",
         ),
     ] {
         let attendee = output
@@ -2912,8 +2917,8 @@ async fn db_contracts_search_event_attendees_terminal_offer_statuses_deserialize
             .iter()
             .find(|attendee| attendee.user.user_id == user_id)
             .expect("terminal offer attendee to be returned");
+        assert_eq!(attendee.enrollment_status, enrollment_status);
         assert_eq!(attendee.admission_offer_status, Some(offer_status));
-        assert_eq!(attendee.status, status);
     }
 
     Ok(())

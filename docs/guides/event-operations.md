@@ -479,16 +479,20 @@ company, title, and whether the confirmed attendee was manually invited; `Attend
 `View answers` when an attendee has submitted registration answers.
 
 The attendees table can be searched by attendee identity and visible profile details, including
-company and title. It can also be sorted by attendee name or enrollment date, and filtered by check-in
-status, title presence, or ticket type. The invitation requests table can be sorted by requester or
-request date, filtered by request status or title presence, and reset to `All` statuses when you need
-to audit accepted and rejected requests. The waitlist table can be sorted by entry name or joined
-date and filtered by title presence; the queue column still shows the FIFO promotion order.
+company and title. It can also be sorted by attendee name or enrollment date, and filtered by
+enrollment status, check-in status, title presence, or ticket type. The `Enrollment status` selector
+groups broad views separately from exact statuses. `Current enrollments` includes confirmed,
+checkout-pending, invitation-pending, and registration-pending enrollments. `Enrollment history`
+includes canceled attendance plus canceled, declined, and expired invitations. Select an exact
+status or `All enrollments` when you need a narrower or complete audit. Check-in filters apply only
+to confirmed attendees. Canceled events open on `All enrollments` so organizers can see the full
+audience and paid-refund progress.
 
-The `Active`, `Canceled`, and `All` attendance filters control whether canceled attendee history is
-shown. Canceled events open on `All` so organizers can see the full audience and paid-refund
-progress. An exhausted transient refund can be retried from its attendee row; terminal provider
-failures remain visible for operator recovery.
+The invitation requests table can be sorted by requester or request date, filtered by request status
+or title presence, and reset to `All` statuses when you need to audit accepted and rejected requests.
+The waitlist table can be sorted by entry name or joined date and filtered by title presence; the
+queue column still shows the FIFO promotion order. An exhausted transient refund can be retried from
+its attendee row; terminal provider failures remain visible for operator recovery.
 
 `Send email` in this tab sends operational updates to attendees who receive optional notifications.
 Organizers can send to all eligible attendees, including confirmed attendees and attendees who still

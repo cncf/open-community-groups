@@ -27,7 +27,7 @@
           hx-swap="innerHTML"
           hx-indicator="#dashboard-spinner">
       <label for="search_attendees" class="sr-only">Search attendees</label>
-      {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ts_query = false) -}}
+      {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ts_query = false) -}}
       <input id="search_attendees"
              name="ts_query"
              type="text"
@@ -59,31 +59,63 @@
         hx-target="#attendees-content"
         hx-swap="innerHTML"
         hx-indicator="#dashboard-spinner">
-    {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_attendance = false, include_sort = false) -}}
+    {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_status = false, include_sort = false) -}}
     <div class="flex items-center gap-3">
-      <label for="attendees-attendance"
-             class="text-sm font-semibold text-nowrap text-stone-900">Attendance</label>
-      <select id="attendees-attendance"
-              name="attendance"
-              class="block h-10 w-32 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500">
-        {% for option in [
-          crate::templates::dashboard::group::attendees::AttendanceFilter::Active,
-          crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled,
-          crate::templates::dashboard::group::attendees::AttendanceFilter::All
-        ] -%}
-          <option value="{{ option }}"
-                  {% if attendance == *option -%}
+      <label for="attendees-enrollment-status"
+             class="text-sm font-semibold text-nowrap text-stone-900">Enrollment status</label>
+      <select id="attendees-enrollment-status"
+              name="status"
+              class="block h-10 w-52 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500">
+        <optgroup label="Views">
+          <option value="current"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Current -%}
                     selected
-                  {% endif -%}>
-            {% if *option == crate::templates::dashboard::group::attendees::AttendanceFilter::Active -%}
-              Active
-            {% else if *option == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled -%}
-              Canceled
-            {% else -%}
-              All
-            {% endif -%}
-          </option>
-        {% endfor -%}
+                  {% endif -%}>Current enrollments</option>
+          <option value="history"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::History -%}
+                    selected
+                  {% endif -%}>Enrollment history</option>
+          <option value="all"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::All -%}
+                    selected
+                  {% endif -%}>All enrollments</option>
+        </optgroup>
+        <optgroup label="Current status">
+          <option value="confirmed"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Confirmed -%}
+                    selected
+                  {% endif -%}>Confirmed</option>
+          <option value="checkout-pending"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::CheckoutPending -%}
+                    selected
+                  {% endif -%}>Checkout pending</option>
+          <option value="invitation-pending"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::InvitationPending -%}
+                    selected
+                  {% endif -%}>Invitation pending</option>
+          <option value="registration-pending"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::RegistrationPending -%}
+                    selected
+                  {% endif -%}>Registration pending</option>
+        </optgroup>
+        <optgroup label="Historical status">
+          <option value="attendance-canceled"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::AttendanceCanceled -%}
+                    selected
+                  {% endif -%}>Attendance canceled</option>
+          <option value="invitation-canceled"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::InvitationCanceled -%}
+                    selected
+                  {% endif -%}>Invitation canceled</option>
+          <option value="invitation-declined"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::InvitationDeclined -%}
+                    selected
+                  {% endif -%}>Invitation declined</option>
+          <option value="invitation-expired"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::InvitationExpired -%}
+                    selected
+                  {% endif -%}>Invitation expired</option>
+        </optgroup>
       </select>
     </div>
     <div class="flex items-center gap-3">
@@ -127,7 +159,7 @@
             hx-target="#attendees-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
+        {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
         {% if active_checked_in -%}
           {% call dashboard::active_table_filter_badge("Checked In", "Yes") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
@@ -145,7 +177,7 @@
             hx-target="#attendees-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
+        {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
         {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
           {% call dashboard::active_table_filter_badge("Position", "Present") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
@@ -163,7 +195,7 @@
             hx-target="#attendees-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
+        {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
         {% call dashboard::active_table_filter_badge("Ticket type", "Selected") -%}
         {{ dashboard::active_table_filter_remove_button(label = "Remove ticket type filter") -}}
         {% endcall -%}
@@ -174,7 +206,7 @@
           hx-target="#attendees-content"
           hx-swap="innerHTML"
           hx-indicator="#dashboard-spinner">
-      {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false, include_ticket_type_ids = false, include_title = false) -}}
+      {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false, include_ticket_type_ids = false, include_title = false) -}}
       <button type="submit" class="btn-primary-outline btn-mini h-7!">Reset all</button>
     </form>
   </div>
@@ -419,7 +451,7 @@
                   hx-target="#attendees-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
+              {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
               {{ dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true) -}}
               {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present)) -}}
               {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing)) -}}
@@ -440,7 +472,7 @@
                     hx-target="#attendees-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
-                {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
+                {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
                 {% for ticket_type in ticket_types -%}
                   <label class="flex cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900"
                          title="{{ ticket_type.title }}">
@@ -470,7 +502,7 @@
                   hx-target="#attendees-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
+              {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
               {{ dashboard::table_filter_option_button(label = "All attendees", name = "checked_in", value = "", is_active = checked_in.is_none() , is_clear_option = true) -}}
               {{ dashboard::table_filter_option_button(label = "Checked in", name = "checked_in", value = "true", is_active = checked_in == Some(true)) -}}
               {{ dashboard::table_filter_option_button(label = "Not checked in", name = "checked_in", value = "false", is_active = checked_in == Some(false)) -}}
@@ -488,7 +520,8 @@
       {% if attendees.is_empty() -%}
         {# Empty state -#}
         {% let has_active_attendee_filters = (ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty())
-          || attendance == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled
+          || (event.canceled && status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::All)
+          || (!event.canceled && status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::Current)
           || checked_in.is_some()
           || event_ticket_type_ids.is_some()
           || title.is_some() -%}
@@ -524,12 +557,12 @@
             {# Email selection -#}
             <td class="hidden px-3 xl:px-5 py-4 w-12"
                 data-attendee-email-selection-column>
-              {% if can_manage_events && !event.canceled && (attendee.can_receive_attendee_email || attendee.status == "confirmed") -%}
+              {% if can_manage_events && !event.canceled && (attendee.can_receive_attendee_email || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed) -%}
                 <input type="checkbox"
                        class="checkbox-primary"
                        aria-label="Select {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                        data-attendee-email-selection-checkbox
-                       data-badge-eligible="{{ attendee.status == "confirmed" }}"
+                       data-badge-eligible="{{ attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed }}"
                        data-email-eligible="{{ attendee.can_receive_attendee_email }}"
                        data-recipient-email="{{ attendee.email }}"
                        data-recipient-id="{{ attendee.user.user_id }}"
@@ -545,30 +578,30 @@
               {% call dashboard::user_profile_modal_trigger(attendee.user, self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str())) -%}
               <div class="flex items-center space-x-3 mb-1 min-w-0">
                 <div class="font-medium text-stone-900 truncate min-w-0 group-hover:text-primary-600">
-                  {% if (attendee.status == "invitation-pending" || attendee.status == "registration-questions-pending") && attendee.user.name.is_none() -%}
+                  {% if (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending
+                    || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending
+                    || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending) && attendee.user.name.is_none() -%}
                     {{ attendee.email }}
                   {% else -%}
                     {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}
                   {% endif -%}
                 </div>
-                {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending) -%}
-                  {{ badges::invitation_badge(label = "Offer pending") -}}
-                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
+                {% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending -%}
                   {{ badges::invitation_badge(label = "Checkout pending") -}}
-                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-                  {{ badges::invitation_badge(label = "Offer expired", tone = "danger") -}}
-                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled) -%}
-                  {{ badges::invitation_badge(label = "Offer canceled", tone = "danger") -}}
-                {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Declined) -%}
-                  {{ badges::invitation_badge(label = "Offer declined", tone = "danger") -}}
-                {% else if attendee.status == "invitation-pending" -%}
-                  {{ badges::invitation_badge(label = "Invitation sent") -}}
-                {% else if attendee.status == "confirmed" && attendee.manually_invited -%}
+                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed && attendee.manually_invited -%}
                   {{ badges::invitation_badge(label = "Invited", tone = "success") -}}
-                {% else if attendee.status == "invitation-rejected" -%}
-                  {{ badges::invitation_badge(label = "Invitation rejected", tone = "danger") -}}
-                {% else if attendee.status == "attendance-canceled" -%}
+                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled -%}
                   {{ badges::invitation_badge(label = "Attendance canceled", tone = "danger") -}}
+                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled -%}
+                  {{ badges::invitation_badge(label = "Invitation canceled", tone = "danger") -}}
+                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined -%}
+                  {{ badges::invitation_badge(label = "Invitation declined", tone = "danger") -}}
+                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired -%}
+                  {{ badges::invitation_badge(label = "Invitation expired", tone = "danger") -}}
+                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending -%}
+                  {{ badges::invitation_badge(label = "Invitation pending") -}}
+                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending -%}
+                  {{ badges::invitation_badge(label = "Registration pending") -}}
                 {% endif -%}
               </div>
               {% if attendee.admission_offer_id.is_some() -%}
@@ -603,12 +636,7 @@
 
             {# Enrollment Date -#}
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
-              {% if attendee.status == "confirmed"
-                || attendee.status == "invitation-pending"
-                || attendee.status == "invitation-rejected"
-                || attendee.status == "attendance-canceled" -%}
-                <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
-              {% endif -%}
+              <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
             </td>
             {# End enrollment date -#}
 
@@ -644,8 +672,8 @@
                     </div>
                   {% endif -%}
                 </div>
-              {% else if attendee.status == "registration-questions-pending" -%}
-                {{ badges::invitation_badge(label = "Pending checkout", with_border = true) -}}
+              {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending -%}
+                {{ badges::invitation_badge(label = "Registration pending", with_border = true) -}}
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-2">
                   <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -679,7 +707,7 @@
                     {% endif -%}
                   </div>
                 </div>
-              {% else if attendee.status != "confirmed" -%}
+              {% else if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                 <div class="text-stone-500">-</div>
               {% else -%}
                 <div class="text-stone-500">Free RSVP</div>
@@ -690,17 +718,17 @@
             {# Checked In Toggle -#}
             <td class="px-3 xl:px-5 py-4 w-30">
               <label class="inline-flex items-center
-                            {% if attendee.status != "confirmed" || attendee.checked_in || !can_manage_events || event.canceled %}
+                            {% if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed || attendee.checked_in || !can_manage_events || event.canceled %}
                               cursor-not-allowed
                             {% else %}
                               cursor-pointer
                             {% endif %}">
                 <input type="checkbox"
                        class="sr-only peer check-in-toggle"
-                       aria-label="{% if attendee.status == "attendance-canceled" %} Canceled attendance cannot be checked in {% else if attendee.status == "invitation-rejected" %} Rejected invitation cannot be checked in {% else if attendee.status == "registration-questions-pending" %} Pending registration cannot be checked in {% else if attendee.status != "confirmed" %} Pending invitation cannot be checked in {% else if attendee.checked_in %} Checked in {% else if event.canceled %} Canceled event check-in unavailable {% else if !can_manage_events %} Your role cannot manage check-in {% else %} Check in attendee {% endif %}"
+                       aria-label="{% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled %} Canceled attendance cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending %} Pending checkout cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled %} Canceled invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined %} Declined invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired %} Expired invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending %} Pending invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending %} Pending registration cannot be checked in {% else if attendee.checked_in %} Checked in {% else if event.canceled %} Canceled event check-in unavailable {% else if !can_manage_events %} Your role cannot manage check-in {% else %} Check in attendee {% endif %}"
                        data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/check-in"
                        {% if attendee.checked_in %}checked{% endif %}
-                       {% if attendee.status != "confirmed" || attendee.checked_in || !can_manage_events || event.canceled %}
+                       {% if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed || attendee.checked_in || !can_manage_events || event.canceled %}
                          disabled
                        {% endif %}>
                 <div class="relative w-11 h-6 bg-stone-200 rounded-full peer peer-checked:bg-primary-500 peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white">
@@ -714,10 +742,10 @@
               <div class="relative inline-flex justify-end">
                 {% if (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || (can_manage_events
-                  && (attendee.status == "confirmed"
+                  && (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed
                   || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
-                  || attendee.status == "invitation-pending"
-                  || (attendee.status == "registration-questions-pending" && attendee.manually_invited)
+                  || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending
+                  || (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending && attendee.manually_invited)
                   || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
                   || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)
                   || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
@@ -848,14 +876,14 @@
                             </button>
                           </li>
                         {% endif -%}
-                        {% if can_manage_events && !event.canceled && attendee.status == "confirmed" -%}
+                        {% if can_manage_events && !event.canceled && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                           <li>
                             {% call badges::recipient_award_button(event_id = event.event_id, user_id = attendee.user.user_id, extra_styles = "flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left", menu_item = true) -%}
                             <span>Award badge</span>
                             {% endcall -%}
                           </li>
                         {% endif -%}
-                        {% if can_manage_events && attendee.status == "confirmed" -%}
+                        {% if can_manage_events && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                           <li>
                             <button id="cancel-attendance-{{ attendee.user.user_id }}"
                                     {% if !self::is_paid_attendee(attendee.amount_minor) && !event.canceled && !event.is_past() -%}
@@ -1268,14 +1296,14 @@
 
 {# Attendee table state fields for filter, sort, and search forms. #}
 {% macro attendee_table_state_inputs(
-  attendance,
+  status,
   checked_in,
   event_ticket_type_ids,
   limit,
   sort,
   title,
   ts_query,
-  include_attendance = true,
+  include_status = true,
   include_checked_in = true,
   include_ticket_type_ids = true,
   include_limit = true,
@@ -1283,8 +1311,8 @@
   include_title = true,
   include_ts_query = true
 ) -%}
-  {% if include_attendance -%}
-    <input type="hidden" name="attendance" value="{{ attendance }}">
+  {% if include_status -%}
+    <input type="hidden" name="status" value="{{ status }}">
   {% endif -%}
   {% if include_checked_in -%}
     {% if let Some(checked_in) = checked_in -%}

@@ -41,7 +41,10 @@ use crate::{
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
     templates::{
-        dashboard::group::attendees::{self, AttendanceFilter, Attendee, AttendeesFilters},
+        dashboard::group::attendees::{
+            self, Attendee, AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter,
+            AttendeesFilters,
+        },
         notifications::EventCustom,
     },
     types::{
@@ -58,9 +61,6 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
-
-/// Status used for rows that represent confirmed event attendees.
-const ATTENDEE_STATUS_CONFIRMED: &str = "confirmed";
 
 // Pages handlers.
 
@@ -101,20 +101,20 @@ pub(crate) async fn list_page(
         &format!("/dashboard/group/events/{event_id}/attendees"),
         &filters,
     )?;
-    let attendance = filters.attendance.unwrap_or(if event.canceled {
-        AttendanceFilter::All
+    let status = filters.status.unwrap_or(if event.canceled {
+        AttendeeEnrollmentStatusFilter::All
     } else {
-        AttendanceFilter::Active
+        AttendeeEnrollmentStatusFilter::Current
     });
     let template = attendees::ListPage {
         all_attendees_email_recipient_total: search_attendees_results
             .all_attendees_email_recipient_total,
-        attendance,
         attendees: search_attendees_results.attendees,
         can_manage_events,
         event,
         navigation_links,
         refresh_url,
+        status,
         total: search_attendees_results.total,
         checked_in: filters.checked_in,
         event_ticket_type_ids: filters.event_ticket_type_ids,
@@ -691,7 +691,7 @@ fn build_attendees_csv(
     // Write one row per confirmed attendee
     for attendee in attendees
         .iter()
-        .filter(|attendee| attendee.status == ATTENDEE_STATUS_CONFIRMED)
+        .filter(|attendee| attendee.enrollment_status == AttendeeEnrollmentStatus::Confirmed)
     {
         let mut row = vec![
             attendee

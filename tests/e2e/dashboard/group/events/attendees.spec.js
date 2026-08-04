@@ -173,12 +173,10 @@ test.describe("group dashboard attendees tab", () => {
     await expect(checkedInAttendeeRow).toContainText("Attendance canceled");
     await expect(checkedInAttendeeRow.locator(".check-in-toggle")).not.toBeChecked();
     await expect(checkedInAttendeeRow.locator(".check-in-toggle")).toBeDisabled();
-    await expect(pendingRegistrationRow).toContainText("Offer canceled");
+    await expect(pendingRegistrationRow).toContainText("Invitation canceled");
   });
 
   test("canceled invitations remain visible in attendee history", async ({ organizerGroupPage }) => {
-    test.fail(true, "Canceled invitations are currently omitted by search_event_attendees.");
-
     // Open the pre-canceled event and inspect its retained invitation.
     const attendeesContent = await openAttendeesTab(
       organizerGroupPage,
@@ -582,45 +580,45 @@ test.describe("group dashboard attendees tab", () => {
     await expect(attendeesContent.locator("tr", { hasText: "E2E Organizer One" })).toBeVisible();
   });
 
-  test("organizer retains focus while filtering attendance lifecycle", async ({ organizerGroupPage }) => {
+  test("organizer retains focus while filtering enrollment status", async ({ organizerGroupPage }) => {
     // Load the attendees tab for the seeded event.
     const attendeesContent = await openAttendeesTab(
       organizerGroupPage,
       "Upcoming In-Person Event",
       TEST_EVENT_IDS.alpha.one,
     );
-    const attendanceFilter = attendeesContent.getByLabel("Attendance", {
+    const statusFilter = attendeesContent.getByLabel("Enrollment status", {
       exact: true,
     });
 
-    // Select canceled attendance and verify the replacement control keeps focus.
-    await attendanceFilter.focus();
+    // Select enrollment history and verify the replacement control keeps focus.
+    await statusFilter.focus();
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
           response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-          response.url().includes("attendance=canceled") &&
+          response.url().includes("status=history") &&
           response.ok(),
       ),
-      attendanceFilter.selectOption("canceled"),
+      statusFilter.selectOption("history"),
     ]);
-    await expect(attendanceFilter).toBeFocused();
-    await expect(attendanceFilter).toHaveValue("canceled");
+    await expect(statusFilter).toBeFocused();
+    await expect(statusFilter).toHaveValue("history");
 
-    // Return to active attendance and preserve the same focus contract.
+    // Return to current enrollments and preserve the same focus contract.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
           response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-          response.url().includes("attendance=active") &&
+          response.url().includes("status=current") &&
           response.ok(),
       ),
-      attendanceFilter.selectOption("active"),
+      statusFilter.selectOption("current"),
     ]);
-    await expect(attendanceFilter).toBeFocused();
-    await expect(attendanceFilter).toHaveValue("active");
+    await expect(statusFilter).toBeFocused();
+    await expect(statusFilter).toHaveValue("current");
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({ organizerGroupPage }) => {
@@ -823,7 +821,7 @@ test.describe("group dashboard attendees tab", () => {
         hasText: "E2E Pending Two",
       });
       await expect(attendeeRow).toBeVisible();
-      await expect(attendeeRow).toContainText("Offer pending");
+      await expect(attendeeRow).toContainText("Invitation pending");
 
       // Cancel the temporary invitation and wait for the table to refresh.
       const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
@@ -843,8 +841,27 @@ test.describe("group dashboard attendees tab", () => {
         organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
       ]);
 
+      // Dismiss the success alert before opening enrollment history.
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Invitation canceled.");
+      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+
+      // Switch from current enrollments to history and find the canceled offer.
+      const statusFilter = attendeesContent.getByLabel("Enrollment status", {
+        exact: true,
+      });
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes(`/dashboard/group/events/${eventId}/attendees`) &&
+            response.url().includes("status=history") &&
+            response.ok(),
+        ),
+        statusFilter.selectOption("history"),
+      ]);
+
       // Canceled offers remain visible as enrollment history.
-      await expect(attendeeRow).toContainText("Offer canceled");
+      await expect(attendeeRow).toContainText("Invitation canceled");
     } finally {
       await deleteEventFromList(organizerGroupPage, eventId);
     }
