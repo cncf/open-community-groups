@@ -1156,4 +1156,45 @@ describe("ticketing editors", () => {
     expect(document.body.dataset.modalOpenCount).to.equal("0");
     expect(document.body.style.overflow).to.equal("");
   });
+
+  it("traps ticket modal focus and restores the external trigger on close", async () => {
+    // Mount the editor with the external control that opens its modal.
+    const ticketButton = document.createElement("button");
+    ticketButton.id = "add-ticket-type-button";
+    document.body.append(ticketButton);
+    const uiRoot = mountTicketTypesUi();
+    await uiRoot.updateComplete;
+    const modal = uiRoot.querySelector('[data-ticketing-role="ticket-modal"]');
+    const closeButton = modal.querySelector('[data-ticketing-action="close-modal"][type="button"]');
+    const saveButton = modal.querySelector('[data-ticketing-action="save-ticket"]');
+
+    // Open the modal and verify focus and accessible state move together.
+    ticketButton.focus();
+    ticketButton.click();
+    await uiRoot.updateComplete;
+    expect(modal.getAttribute("aria-hidden")).to.equal("false");
+    expect(document.activeElement).to.equal(closeButton);
+
+    // Forward and reverse Tab navigation remain contained by the dialog.
+    saveButton.focus();
+    const forwardEvent = new KeyboardEvent("keydown", { cancelable: true, key: "Tab" });
+    document.dispatchEvent(forwardEvent);
+    expect(forwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(closeButton);
+
+    const backwardEvent = new KeyboardEvent("keydown", {
+      cancelable: true,
+      key: "Tab",
+      shiftKey: true,
+    });
+    document.dispatchEvent(backwardEvent);
+    expect(backwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(saveButton);
+
+    // Escape closes the modal and returns focus to its opener.
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await uiRoot.updateComplete;
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.activeElement).to.equal(ticketButton);
+  });
 });

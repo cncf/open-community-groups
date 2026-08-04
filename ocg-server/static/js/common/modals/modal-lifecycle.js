@@ -80,11 +80,21 @@ export const trapModalFocus = (event, modal) => {
 };
 
 /**
- * Moves focus into an opened modal.
+ * Records the modal trigger and moves focus into an opened modal.
  * @param {Element} modal Modal element.
+ * @param {HTMLElement|null} [trigger=null] Element that opened the modal.
  * @returns {void}
  */
-const focusOpenedModal = (modal) => {
+export const focusModal = (modal, trigger = null) => {
+  if (!(modal instanceof Element)) {
+    return;
+  }
+
+  const activeElement = modal.ownerDocument?.activeElement;
+  modalFocusOrigins.set(
+    modal,
+    trigger instanceof HTMLElement ? trigger : activeElement instanceof HTMLElement ? activeElement : null,
+  );
   getModalFocusTarget(modal)?.focus();
 };
 
@@ -93,10 +103,14 @@ const focusOpenedModal = (modal) => {
  * @param {Element} modal Modal element.
  * @returns {void}
  */
-const restoreModalFocus = (modal) => {
+export const restoreModalFocus = (modal) => {
+  if (!(modal instanceof Element)) {
+    return;
+  }
+
   const focusOrigin = modalFocusOrigins.get(modal);
   modalFocusOrigins.delete(modal);
-  if (focusOrigin instanceof HTMLElement && document.contains(focusOrigin)) {
+  if (focusOrigin instanceof HTMLElement && modal.ownerDocument?.contains(focusOrigin)) {
     focusOrigin.focus();
   }
 };
@@ -166,16 +180,11 @@ export const toggleModalVisibility = (modalId, trigger = null) => {
   }
 
   const willOpen = isElementHidden(modal);
-  const activeElement = document.activeElement;
   setElementHidden(modal, !willOpen);
   modal.setAttribute("aria-hidden", String(!willOpen));
   if (willOpen) {
-    modalFocusOrigins.set(
-      modal,
-      trigger instanceof HTMLElement ? trigger : activeElement instanceof HTMLElement ? activeElement : null,
-    );
     lockBodyScroll();
-    focusOpenedModal(modal);
+    focusModal(modal, trigger);
   } else {
     unlockBodyScroll();
     restoreModalFocus(modal);

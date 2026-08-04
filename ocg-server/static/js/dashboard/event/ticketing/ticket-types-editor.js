@@ -1,6 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { toDateTimeLocalInTimezone, toUtcIsoInTimezone } from "/static/js/common/datetime.js";
-import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
 import { toBoolean, toTrimmedString, parseJsonAttribute } from "/static/js/common/utils.js";
 import { TicketingEditorBase } from "/static/js/dashboard/event/ticketing/editor-base.js";
 import {
@@ -340,7 +339,7 @@ class TicketTypesEditor extends TicketingEditorBase {
     this._isNewRow = !existingRow;
     this._editingRowId = existingRow?._row_id ?? null;
     this._draftRow = existingRow ? this._cloneTicketType(existingRow) : this._createEmptyTicketType();
-    this._isModalOpen = openModalBodyScroll(this._isModalOpen);
+    this._openModalState();
   }
 
   /**
@@ -354,9 +353,8 @@ class TicketTypesEditor extends TicketingEditorBase {
 
     this._draftRow = null;
     this._editingRowId = null;
-    const wasOpen = this._isModalOpen;
     this._isNewRow = false;
-    this._isModalOpen = closeModalBodyScroll(wasOpen);
+    this._closeModalState();
   }
 
   /**
@@ -774,6 +772,7 @@ class TicketTypesEditor extends TicketingEditorBase {
         } items-center justify-center overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-modal="true"
+        aria-hidden=${String(!this._isModalOpen)}
         aria-labelledby="ticket-type-modal-title"
         data-pending-changes-ignore
       >

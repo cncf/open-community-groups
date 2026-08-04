@@ -20,6 +20,19 @@ describe("event attendance button template", () => {
     );
   });
 
+  it("marks initially hidden attendance dialogs as hidden for assistive technology", async () => {
+    // Load the server-rendered dialogs before JavaScript initializes them.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Registration and ticket dialogs expose the same initial hidden state.
+    expect(template).to.include(
+      'data-attendance-role="registration-modal" role="dialog" aria-modal="true" aria-hidden="true"',
+    );
+    expect(template).to.include(
+      'data-attendance-role="ticket-modal" role="dialog" aria-modal="true" aria-hidden="true"',
+    );
+  });
+
   it("keeps price-ineligible approval tickets disabled in cached markup", async () => {
     // Load the cached ticket controls used when availability refresh fails.
     const template = normalizeWhitespace(await loadTemplate());

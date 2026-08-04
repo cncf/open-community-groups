@@ -11,6 +11,16 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard user invitations list template", () => {
+  it("marks initially hidden offer dialogs as hidden for assistive technology", async () => {
+    // Load the claim dialog before its delegated JavaScript initializes.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The visual and accessible initial states remain synchronized.
+    expect(template).to.include(
+      'data-user-event-offer-dialog role="dialog" aria-modal="true" aria-hidden="true"',
+    );
+  });
+
   it("renders ticket offer details and exact claim deadlines", async () => {
     // Load the invitations template before checking offer details.
     const template = normalizeWhitespace(await loadTemplate());
