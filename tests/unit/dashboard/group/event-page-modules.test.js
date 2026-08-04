@@ -3,18 +3,12 @@ import { expect } from "@open-wc/testing";
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import "/static/js/dashboard/event/sessions/section.js";
-import {
-  initializeEventAddPage,
-  initializeEventAddPageRoots,
-} from "/static/js/dashboard/group/event-add.js";
+import { initializeEventAddPage, initializeEventAddPageRoots } from "/static/js/dashboard/group/event-add.js";
 import {
   initializeEventUpdatePage,
   initializeEventUpdatePageRoots,
 } from "/static/js/dashboard/group/event-update.js";
-import {
-  waitForAnimationFrames,
-  waitForMicrotask,
-} from "/tests/unit/test-utils/async.js";
+import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
@@ -135,9 +129,7 @@ describe("event page modules", () => {
 
     // Read the add page toggles and hidden fields.
     const testEventToggle = document.getElementById("toggle_test_event");
-    const reminderToggle = document.getElementById(
-      "toggle_event_reminder_enabled",
-    );
+    const reminderToggle = document.getElementById("toggle_event_reminder_enabled");
 
     // Update the checkbox state before asserting the new state.
     testEventToggle.checked = true;
@@ -147,9 +139,7 @@ describe("event page modules", () => {
 
     // Verify initializes the add page and syncs boolean hidden fields.
     expect(document.getElementById("test_event").value).to.equal("true");
-    expect(document.getElementById("event_reminder_enabled").value).to.equal(
-      "true",
-    );
+    expect(document.getElementById("event_reminder_enabled").value).to.equal("true");
   });
 
   it("updates the add page draft event reminder from event fields", () => {
@@ -160,37 +150,21 @@ describe("event page modules", () => {
     initializeEventAddPage();
 
     // Verify initial fallback copy.
-    expect(document.getElementById("draft-event-title").textContent).to.equal(
-      "Untitled event",
-    );
-    expect(document.getElementById("draft-event-date").textContent).to.equal(
-      "Date not set yet",
-    );
+    expect(document.getElementById("draft-event-title").textContent).to.equal("Untitled event");
+    expect(document.getElementById("draft-event-date").textContent).to.equal("Date not set yet");
 
     // Update the event title and date fields.
     document.getElementById("name").value = "Platform Meetup";
-    document
-      .getElementById("name")
-      .dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("name").dispatchEvent(new Event("input", { bubbles: true }));
     document.getElementById("starts_at").value = "2026-08-29T14:15";
-    document
-      .getElementById("starts_at")
-      .dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("starts_at").dispatchEvent(new Event("input", { bubbles: true }));
     document.getElementById("ends_at").value = "2026-08-29T16:15";
-    document
-      .getElementById("ends_at")
-      .dispatchEvent(new Event("change", { bubbles: true }));
+    document.getElementById("ends_at").dispatchEvent(new Event("change", { bubbles: true }));
 
     // Verify the draft reminder reflects the form values.
-    expect(document.getElementById("draft-event-title").textContent).to.equal(
-      "Platform Meetup",
-    );
-    expect(document.getElementById("draft-event-date").textContent).to.include(
-      "2026",
-    );
-    expect(document.getElementById("draft-event-date").textContent).to.include(
-      " - ",
-    );
+    expect(document.getElementById("draft-event-title").textContent).to.equal("Platform Meetup");
+    expect(document.getElementById("draft-event-date").textContent).to.include("2026");
+    expect(document.getElementById("draft-event-date").textContent).to.include(" - ");
   });
 
   it("clears add page venue fields from the location clear button", () => {
@@ -246,9 +220,7 @@ describe("event page modules", () => {
     dispatchHtmxLoad(document.querySelector('[data-event-page="add"]'));
 
     // Verify the add page fragment is initialized from the lifecycle event.
-    expect(
-      document.querySelector('[data-event-page="add"]').dataset.eventPageReady,
-    ).to.equal("true");
+    expect(document.querySelector('[data-event-page="add"]').dataset.eventPageReady).to.equal("true");
   });
 
   it("converts event and session dates during add page HTMX config requests", () => {
@@ -278,21 +250,11 @@ describe("event page modules", () => {
     document.getElementById("add-event-button").dispatchEvent(requestEvent);
 
     // Verify converts event and session dates during add page HTMX config requests.
-    expect(requestEvent.detail.parameters.starts_at).to.equal(
-      "2026-05-10T09:30:00",
-    );
-    expect(requestEvent.detail.parameters.ends_at).to.equal(
-      "2026-05-10T11:00:00",
-    );
-    expect(requestEvent.detail.parameters.registration_starts_at).to.equal(
-      "2026-04-10T09:30:00",
-    );
-    expect(requestEvent.detail.parameters.registration_ends_at).to.equal(
-      "2026-05-09T18:00:00",
-    );
-    expect(requestEvent.detail.parameters["sessions[0][starts_at]"]).to.equal(
-      "2026-05-10T10:00:00",
-    );
+    expect(requestEvent.detail.parameters.starts_at).to.equal("2026-05-10T09:30:00");
+    expect(requestEvent.detail.parameters.ends_at).to.equal("2026-05-10T11:00:00");
+    expect(requestEvent.detail.parameters.registration_starts_at).to.equal("2026-04-10T09:30:00");
+    expect(requestEvent.detail.parameters.registration_ends_at).to.equal("2026-05-09T18:00:00");
+    expect(requestEvent.detail.parameters["sessions[0][starts_at]"]).to.equal("2026-05-10T10:00:00");
   });
 
   it("allows registration close dates without an event start", async () => {
@@ -362,14 +324,8 @@ describe("event page modules", () => {
 
     // Registration cannot close after the event starts.
     expect(requestEvent.defaultPrevented).to.equal(true);
-    expect(reportCalls).to.deep.equal([
-      "Registration close date cannot be after the event start date.",
-    ]);
-    expect(
-      document
-        .querySelector('[data-section="date-venue"]')
-        .classList.contains("active"),
-    ).to.equal(true);
+    expect(reportCalls).to.deep.equal(["Registration close date cannot be after the event start date."]);
+    expect(document.querySelector('[data-section="date-venue"]').classList.contains("active")).to.equal(true);
   });
 
   it("blocks open-only registration windows that open after the event start", async () => {
@@ -378,9 +334,7 @@ describe("event page modules", () => {
 
     // Configure an event start with a later registration open and no close.
     document.getElementById("starts_at").value = "2099-05-10T09:30";
-    const registrationStartsAt = document.getElementById(
-      "registration_starts_at",
-    );
+    const registrationStartsAt = document.getElementById("registration_starts_at");
     registrationStartsAt.value = "2099-05-10T10:00";
 
     const reportCalls = [];
@@ -404,14 +358,8 @@ describe("event page modules", () => {
 
     // Registration cannot open after the implicit close at event start.
     expect(requestEvent.defaultPrevented).to.equal(true);
-    expect(reportCalls).to.deep.equal([
-      "Registration open date cannot be after the event start date.",
-    ]);
-    expect(
-      document
-        .querySelector('[data-section="date-venue"]')
-        .classList.contains("active"),
-    ).to.equal(true);
+    expect(reportCalls).to.deep.equal(["Registration open date cannot be after the event start date."]);
+    expect(document.querySelector('[data-section="date-venue"]').classList.contains("active")).to.equal(true);
   });
 
   it("blocks registration open dates on or after registration close dates", async () => {
@@ -420,8 +368,7 @@ describe("event page modules", () => {
 
     // Configure a zero-length registration window before the event start.
     document.getElementById("starts_at").value = "2099-05-10T09:30";
-    document.getElementById("registration_starts_at").value =
-      "2099-05-09T12:00";
+    document.getElementById("registration_starts_at").value = "2099-05-09T12:00";
     const registrationEndsAt = document.getElementById("registration_ends_at");
     registrationEndsAt.value = "2099-05-09T12:00";
 
@@ -446,9 +393,7 @@ describe("event page modules", () => {
 
     // Registration open must be before registration close.
     expect(requestEvent.defaultPrevented).to.equal(true);
-    expect(reportCalls).to.deep.equal([
-      "Registration close date must be after registration open date.",
-    ]);
+    expect(reportCalls).to.deep.equal(["Registration close date must be after registration open date."]);
   });
 
   it("reports the first invalid add page select when saving", async () => {
@@ -518,19 +463,15 @@ describe("event page modules", () => {
 
     // Keep a reference to the starts at element.
     const startsAtInput = document.getElementById("starts_at");
-    const recurrencePatternSelect =
-      document.getElementById("recurrence_pattern");
+    const recurrencePatternSelect = document.getElementById("recurrence_pattern");
     const additionalOccurrencesContainer = document.getElementById(
       "recurrence-additional-occurrences-container",
     );
-    const additionalOccurrencesInput = document.getElementById(
-      "recurrence_additional_occurrences",
-    );
+    const additionalOccurrencesInput = document.getElementById("recurrence_additional_occurrences");
 
     // Return option text for assertions.
     const optionText = (value) =>
-      recurrencePatternSelect.querySelector(`option[value="${value}"]`)
-        .textContent;
+      recurrencePatternSelect.querySelector(`option[value="${value}"]`).textContent;
 
     // Update the input before asserting it updates add page recurrence labels.
     startsAtInput.value = "2026-05-13T09:30";
@@ -542,9 +483,7 @@ describe("event page modules", () => {
     expect(optionText("weekly")).to.equal("Weekly on Wednesday");
     expect(optionText("biweekly")).to.equal("Every two weeks on Wednesday");
     expect(optionText("monthly")).to.equal("Monthly on the second Wednesday");
-    expect(
-      additionalOccurrencesContainer.classList.contains("hidden"),
-    ).to.equal(true);
+    expect(additionalOccurrencesContainer.classList.contains("hidden")).to.equal(true);
     expect(additionalOccurrencesInput.disabled).to.equal(true);
     expect(additionalOccurrencesInput.required).to.equal(false);
     expect(additionalOccurrencesInput.value).to.equal("");
@@ -552,14 +491,10 @@ describe("event page modules", () => {
     // Update the input before asserting it updates add page recurrence labels.
     additionalOccurrencesInput.value = "2";
     recurrencePatternSelect.value = "weekly";
-    recurrencePatternSelect.dispatchEvent(
-      new Event("change", { bubbles: true }),
-    );
+    recurrencePatternSelect.dispatchEvent(new Event("change", { bubbles: true }));
 
     // Verify updates add page recurrence labels and additional-occurrence controls.
-    expect(
-      additionalOccurrencesContainer.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(additionalOccurrencesContainer.classList.contains("hidden")).to.equal(false);
     expect(additionalOccurrencesInput.disabled).to.equal(false);
     expect(additionalOccurrencesInput.required).to.equal(true);
     expect(additionalOccurrencesInput.value).to.equal("2");
@@ -573,14 +508,10 @@ describe("event page modules", () => {
 
     // Switch recurrence back to a single occurrence.
     recurrencePatternSelect.value = "just-once";
-    recurrencePatternSelect.dispatchEvent(
-      new Event("change", { bubbles: true }),
-    );
+    recurrencePatternSelect.dispatchEvent(new Event("change", { bubbles: true }));
 
     // Verify updates add page recurrence labels and additional-occurrence controls.
-    expect(
-      additionalOccurrencesContainer.classList.contains("hidden"),
-    ).to.equal(true);
+    expect(additionalOccurrencesContainer.classList.contains("hidden")).to.equal(true);
     expect(additionalOccurrencesInput.disabled).to.equal(true);
     expect(additionalOccurrencesInput.required).to.equal(false);
     expect(additionalOccurrencesInput.value).to.equal("");
@@ -673,9 +604,7 @@ describe("event page modules", () => {
       .dispatchEvent(new Event("click", { bubbles: true }));
 
     // Verify initializes the update page and respects the page data contract.
-    expect(
-      document.querySelector(".inert-form").hasAttribute("inert"),
-    ).to.equal(false);
+    expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(false);
   });
 
   it("syncs past-event state into update page online details", () => {
@@ -766,9 +695,7 @@ describe("event page modules", () => {
     dispatchHtmxLoad(document.querySelector('[data-event-page="update"]'));
 
     // Verify the update page fragment is initialized from the lifecycle event.
-    expect(
-      document.querySelector('[data-event-page="update"]').dataset.eventPageReady,
-    ).to.equal("true");
+    expect(document.querySelector('[data-event-page="update"]').dataset.eventPageReady).to.equal("true");
   });
 
   it("keeps canceled event review tabs interactive for event managers", () => {
@@ -779,24 +706,16 @@ describe("event page modules", () => {
     initializeEventUpdatePage();
 
     // Dispatch the click event.
-    document
-      .querySelector('[data-section="attendees"]')
-      .dispatchEvent(new Event("click", { bubbles: true }));
+    document.querySelector('[data-section="attendees"]').dispatchEvent(new Event("click", { bubbles: true }));
 
     // Verify keeps canceled event review tabs interactive for event managers.
-    expect(
-      document.querySelector(".inert-form").hasAttribute("inert"),
-    ).to.equal(false);
+    expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(false);
 
     // Verify keeps canceled event review tabs interactive.
-    document
-      .querySelector('[data-section="details"]')
-      .dispatchEvent(new Event("click", { bubbles: true }));
+    document.querySelector('[data-section="details"]').dispatchEvent(new Event("click", { bubbles: true }));
 
     // Verify keeps canceled event review tabs interactive for event managers.
-    expect(
-      document.querySelector(".inert-form").hasAttribute("inert"),
-    ).to.equal(true);
+    expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(true);
   });
 
   it("publishes a clean event after confirmation", async () => {
@@ -812,20 +731,16 @@ describe("event page modules", () => {
     // Clean events use the normal publish confirmation and request.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal("Publish this event?");
-    expect(htmx.triggerCalls).to.deep.equal([
-      [document.getElementById("publish-event-button"), "confirmed"],
-    ]);
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("publish-event-button"), "confirmed"]]);
   });
 
   it("asks to save pending changes instead of publishing the saved version", async () => {
     // Mount and initialize a manageable draft event.
     mountUpdatePageShell({ canManageEvents: true });
     let saveClicks = 0;
-    document
-      .getElementById("update-event-button")
-      .addEventListener("click", () => {
-        saveClicks += 1;
-      });
+    document.getElementById("update-event-button").addEventListener("click", () => {
+      saveClicks += 1;
+    });
     initializeEventUpdatePage();
     await waitForAnimationFrames();
 
@@ -839,9 +754,7 @@ describe("event page modules", () => {
 
     // Dirty events enter the existing save flow without publishing stale data.
     expect(swal.calls).to.have.length(1);
-    expect(swal.calls[0].text).to.equal(
-      "This event has unsaved changes. Save them before publishing.",
-    );
+    expect(swal.calls[0].text).to.equal("This event has unsaved changes. Save them before publishing.");
     expect(swal.calls[0].confirmButtonText).to.equal("Save changes");
     expect(saveClicks).to.equal(1);
     expect(htmx.triggerCalls).to.deep.equal([]);
@@ -872,9 +785,7 @@ describe("event page modules", () => {
 
     // Series publication uses the existing query-string contract.
     expect(swal.calls[0].text).to.equal("Publish this series?");
-    expect(requestEvent.detail.path).to.equal(
-      "/dashboard/group/events/123/publish?scope=series",
-    );
+    expect(requestEvent.detail.path).to.equal("/dashboard/group/events/123/publish?scope=series");
   });
 
   it("scopes add page initialization to the provided root", () => {
@@ -906,9 +817,7 @@ describe("event page modules", () => {
 
     // Verify scopes add page initialization to the provided root.
     expect(pageRoot.querySelector("#test_event").value).to.equal("true");
-    expect(document.querySelector("#outside #test_event").value).to.equal(
-      "outside",
-    );
+    expect(document.querySelector("#outside #test_event").value).to.equal("outside");
   });
 
   it("reconfigures ticketing editors to use scoped page dependencies", async () => {
@@ -953,12 +862,8 @@ describe("event page modules", () => {
     // Read the rendered DOM state for reconfiguring ticketing editors to use scoped page.
     const ticketTypesEditor = pageRoot.querySelector("#ticket-types-ui");
     const discountCodesEditor = pageRoot.querySelector("#discount-codes-ui");
-    const scopedTicketButton = pageRoot.querySelector(
-      "#add-ticket-type-button",
-    );
-    const scopedDiscountButton = pageRoot.querySelector(
-      "#add-discount-code-button",
-    );
+    const scopedTicketButton = pageRoot.querySelector("#add-ticket-type-button");
+    const scopedDiscountButton = pageRoot.querySelector("#add-discount-code-button");
     const scopedCurrency = pageRoot.querySelector("#payment_currency_code");
     const scopedTimezone = pageRoot.querySelector('[name="timezone"]');
 
@@ -979,9 +884,7 @@ describe("event page modules", () => {
     // Reconfigured ticketing editors keep using scoped dependencies.
     expect(ticketTypesEditor.textContent).to.contain("Price (EUR)");
     expect(
-      ticketTypesEditor
-        .querySelector('[data-ticketing-role="ticket-modal"]')
-        ?.classList.contains("hidden"),
+      ticketTypesEditor.querySelector('[data-ticketing-role="ticket-modal"]')?.classList.contains("hidden"),
     ).to.equal(false);
     expect(
       discountCodesEditor
@@ -1030,45 +933,31 @@ describe("event page modules", () => {
     // Verify keeps venue changes scoped when switching the event kind.
     expect(pageRoot.querySelector("#venue_name")?.value).to.equal("");
     expect(pageRoot.querySelector("#venue_address")?.value).to.equal("");
-    expect(
-      pageRoot
-        .querySelector("#venue-information-section")
-        ?.classList.contains("hidden"),
-    ).to.equal(true);
-    expect(
-      pageRoot
-        .querySelector("#online-event-details-section")
-        ?.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(pageRoot.querySelector("#venue-information-section")?.classList.contains("hidden")).to.equal(true);
+    expect(pageRoot.querySelector("#online-event-details-section")?.classList.contains("hidden")).to.equal(
+      false,
+    );
 
     // Verify keeps venue changes scoped when switching the event kind.
-    expect(document.querySelector("#outside-root #venue_name")?.value).to.equal(
-      "Outside hall",
-    );
+    expect(document.querySelector("#outside-root #venue_name")?.value).to.equal("Outside hall");
+    expect(document.querySelector("#outside-root #venue_address")?.value).to.equal("Outside street");
     expect(
-      document.querySelector("#outside-root #venue_address")?.value,
-    ).to.equal("Outside street");
-    expect(
-      document
-        .querySelector("#outside-root #venue-information-section")
-        ?.classList.contains("hidden"),
+      document.querySelector("#outside-root #venue-information-section")?.classList.contains("hidden"),
     ).to.equal(true);
   });
 
-  it("does not bind duplicate update page handlers when initialized twice", () => {
+  it("does not bind duplicate update page handlers when initialized twice", async () => {
     // Mount the update page shell.
     mountUpdatePageShell({ canManageEvents: true });
 
     // Initialize the update page behavior.
     initializeEventUpdatePage();
     initializeEventUpdatePage();
+    await waitForAnimationFrames();
 
-    // Click the update button after initializing twice.
-    document
-      .getElementById("update-event-button")
-      .dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true }),
-      );
+    // Click the publish button after initializing twice.
+    document.getElementById("publish-event-button").click();
+    await waitForMicrotask();
 
     // Initializing twice does not bind duplicate update handlers.
     expect(swal.calls).to.have.length(1);
@@ -1088,9 +977,7 @@ describe("event page modules", () => {
     scopedSessions.id = "scoped-sessions";
     scopedSessions.setAttribute(
       "approved-submissions",
-      JSON.stringify([
-        { cfs_submission_id: "12", title: "Old title", speaker_name: "Ada" },
-      ]),
+      JSON.stringify([{ cfs_submission_id: "12", title: "Old title", speaker_name: "Ada" }]),
     );
     scopedSessions.requestUpdate = () => {
       scopedSessions.dataset.updated = "true";
@@ -1129,11 +1016,9 @@ describe("event page modules", () => {
       ]),
     );
     expect(scopedSessions.dataset.updated).to.equal("true");
-    expect(
-      document
-        .getElementById("outside-sessions")
-        .getAttribute("approved-submissions"),
-    ).to.equal('[{"cfs_submission_id":"outside"}]');
+    expect(document.getElementById("outside-sessions").getAttribute("approved-submissions")).to.equal(
+      '[{"cfs_submission_id":"outside"}]',
+    );
   });
 
   it("dispatches submissions refresh from the update page root after a successful save", () => {

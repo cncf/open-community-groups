@@ -739,9 +739,7 @@ export class OnlineEventDetails extends LitWrapper {
       const capacityValue = this._getCapacityValue();
       if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
         reasons.push(
-          this._isSession()
-            ? "Set event capacity."
-            : "Add seats to at least one ticket type in Tickets.",
+          this._isSession() ? "Set event capacity." : "Add seats to at least one ticket type in Tickets.",
         );
       } else {
         const capacityLimit = this._getCapacityLimit();

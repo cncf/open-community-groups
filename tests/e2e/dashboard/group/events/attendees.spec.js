@@ -153,9 +153,7 @@ test.describe("group dashboard attendees tab", () => {
     );
     if (!cancelResponse.ok()) {
       expect(cancelResponse.status()).toBe(422);
-      expect(await cancelResponse.text()).toBe(
-        "one or more events were not found or inactive",
-      );
+      expect(await cancelResponse.text()).toBe("one or more events were not found or inactive");
     }
 
     // Open retained attendee history after the event transition completes.
@@ -584,9 +582,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(attendeesContent.locator("tr", { hasText: "E2E Organizer One" })).toBeVisible();
   });
 
-  test("organizer retains focus while filtering attendance lifecycle", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer retains focus while filtering attendance lifecycle", async ({ organizerGroupPage }) => {
     // Load the attendees tab for the seeded event.
     const attendeesContent = await openAttendeesTab(
       organizerGroupPage,
@@ -1006,8 +1002,13 @@ test.describe("group dashboard attendees tab", () => {
 
       // Reject one invitation request.
       await expect(pendingOneRow).toContainText("Pending");
-      await pendingOneRow.getByLabel("Open actions menu").click();
-      await pendingOneRow.getByRole("menuitem", { name: "Reject" }).click();
+      await pendingOneRow
+        .getByRole("button", {
+          name: "Open actions for E2E Pending One",
+          exact: true,
+        })
+        .click();
+      await pendingOneRow.getByRole("button", { name: "Reject", exact: true }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
         "Are you sure you want to reject this invitation request?",
       );
@@ -1024,14 +1025,19 @@ test.describe("group dashboard attendees tab", () => {
         ),
         organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
       ]);
-      await expect(pendingOneRow).toContainText("Rejected");
+      await expect(pendingOneRow).toContainText("Request rejected");
 
       // Accept the other invitation request.
       const pendingTwoRow = requestsContent.locator("tr", {
         hasText: "E2E Pending Two",
       });
       await expect(pendingTwoRow).toContainText("Pending");
-      await pendingTwoRow.getByLabel("Open actions menu").click();
+      await pendingTwoRow
+        .getByRole("button", {
+          name: "Open actions for E2E Pending Two",
+          exact: true,
+        })
+        .click();
       await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
@@ -1043,9 +1049,10 @@ test.describe("group dashboard attendees tab", () => {
               ) &&
             response.ok(),
         ),
-        pendingTwoRow.getByRole("menuitem", { name: "Accept" }).click(),
+        pendingTwoRow.getByRole("button", { name: "Accept", exact: true }).click(),
       ]);
-      await expect(pendingTwoRow).toContainText("Accepted");
+      await expect(pendingTwoRow).toContainText("Request accepted");
+      await expect(pendingTwoRow).toContainText("Offer pending");
     } finally {
       await deleteEventFromList(organizerGroupPage, eventId);
     }
@@ -1075,9 +1082,7 @@ test.describe("group dashboard attendees tab", () => {
 
       // Claim the approved RSVP offer through the unified checkout endpoint.
       await navigateToPath(pending1Page, "/dashboard/user?tab=invitations");
-      const approvedOfferRow = pending1Page
-        .locator("#dashboard-content tr")
-        .filter({ hasText: eventName });
+      const approvedOfferRow = pending1Page.locator("#dashboard-content tr").filter({ hasText: eventName });
       await expect(approvedOfferRow).toContainText("RSVP request approved");
       await approvedOfferRow.getByTitle("Claim offer").click();
       const claimModal = pending1Page.getByRole("dialog", {
@@ -1091,9 +1096,7 @@ test.describe("group dashboard attendees tab", () => {
             response.ok() &&
             response.url().includes(`/event/${eventId}/checkout`),
         ),
-        claimModal
-          .getByRole("button", { name: "Claim offer", exact: true })
-          .click(),
+        claimModal.getByRole("button", { name: "Claim offer", exact: true }).click(),
       ]);
       await expect(approvedOfferRow).toHaveCount(0);
     } finally {

@@ -1069,8 +1069,8 @@ describe("ticketing editors", () => {
     expect(secondaryHeaders).to.have.length(4);
     expect(secondaryHeaders[0].textContent.trim()).to.equal("Redemptions");
     secondaryHeaders.forEach((header) => {
-      expect(header.className).to.contain("2xl:table-cell");
-      expect(header.className).to.not.contain("xl:table-cell");
+      expect(header.classList.contains("2xl:table-cell")).to.equal(true);
+      expect(header.classList.contains("xl:table-cell")).to.equal(false);
     });
 
     // Verify the empty-state placeholder still spans the complete semantic table.

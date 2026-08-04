@@ -286,10 +286,7 @@ export class TicketingEditorBase extends LitWrapper {
         return;
       }
 
-      focusModal(
-        this._resolveEditorModal(),
-        activeElement instanceof HTMLElement ? activeElement : null,
-      );
+      focusModal(this._resolveEditorModal(), activeElement instanceof HTMLElement ? activeElement : null);
     });
   }
 

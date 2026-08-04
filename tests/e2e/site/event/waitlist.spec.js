@@ -7,6 +7,7 @@ import {
   getAttendButton,
   getLeaveButton,
   navigateToEvent,
+  navigateToPath,
   restoreSeededWaitlistEvent,
   waitForAttendanceState,
 } from "../../utils.js";
@@ -23,9 +24,7 @@ test.describe("event waitlist", () => {
     await restoreSeededWaitlistEvent(member2Page, organizerGroupPage);
   });
 
-  test("member can join and leave the waitlist from the public event page", async ({
-    member2Page,
-  }) => {
+  test("member can join and leave the waitlist from the public event page", async ({ member2Page }) => {
     // Load the full event where members can join the waitlist.
     await navigateToEvent(
       member2Page,
@@ -35,58 +34,43 @@ test.describe("event waitlist", () => {
     );
 
     // Verify the event offers the waitlist join action.
-    await expect(
-      member2Page.getByRole("heading", { level: 1, name: WAITLIST_EVENT_NAME }),
-    ).toBeVisible();
+    await expect(member2Page.getByRole("heading", { level: 1, name: WAITLIST_EVENT_NAME })).toBeVisible();
 
     // Wait for the current attendance state before checking the join action.
     await waitForAttendanceState(member2Page);
-    await expect(getAttendButton(member2Page)).toContainText(
-      "Join waiting list",
-    );
+    await expect(getAttendButton(member2Page)).toContainText("Join waiting list");
 
     // Join the waitlist and wait for the attendance record to be created.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
           response.ok(),
       ),
       getAttendButton(member2Page).click(),
     ]);
 
     // Verify the member is now waitlisted.
-    await expect(getLeaveButton(member2Page)).toHaveAttribute(
-      "aria-label",
-      /leave waiting list/i,
-    );
+    await expect(getLeaveButton(member2Page)).toHaveAttribute("aria-label", /leave waiting list/i);
 
     // Request waitlist removal and verify the confirmation appears.
     await getLeaveButton(member2Page).click();
-    await expect(
-      member2Page.getByRole("button", { name: "Yes" }),
-    ).toBeVisible();
+    await expect(member2Page.getByRole("button", { name: "Yes" })).toBeVisible();
 
     // Confirm waitlist removal and wait for the leave response.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
           response.ok(),
       ),
       member2Page.getByRole("button", { name: "Yes" }).click(),
     ]);
 
     // Assert the expected text is rendered.
-    await expect(getAttendButton(member2Page)).toContainText(
-      "Join waiting list",
-    );
+    await expect(getAttendButton(member2Page)).toContainText("Join waiting list");
   });
 
   test("a waitlisted user is promoted when the attendee leaves", async ({
@@ -109,19 +93,14 @@ test.describe("event waitlist", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
           response.ok(),
       ),
       getAttendButton(member2Page).click(),
     ]);
 
     // Verify the member is waiting before the attendee leaves.
-    await expect(getLeaveButton(member2Page)).toHaveAttribute(
-      "aria-label",
-      /leave waiting list/i,
-    );
+    await expect(getLeaveButton(member2Page)).toHaveAttribute("aria-label", /leave waiting list/i);
 
     // Load the attendee account that can free the event capacity.
     await navigateToEvent(
@@ -133,92 +112,57 @@ test.describe("event waitlist", () => {
 
     // Verify the attendee can cancel attendance.
     await waitForAttendanceState(organizerGroupPage);
-    await expect(getLeaveButton(organizerGroupPage)).toContainText(
-      "Cancel attendance",
-    );
+    await expect(getLeaveButton(organizerGroupPage)).toContainText("Cancel attendance");
 
     // Request attendee cancellation and verify the confirmation appears.
     await getLeaveButton(organizerGroupPage).click();
-    await expect(
-      organizerGroupPage.getByRole("button", { name: "Yes" }),
-    ).toBeVisible();
+    await expect(organizerGroupPage.getByRole("button", { name: "Yes" })).toBeVisible();
 
     // Cancel the organizer attendance to promote the waitlisted member.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
           response.ok(),
       ),
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
-    // Reload the waitlisted member after promotion.
+    // Open the promoted member's invitations and verify the waitlist offer.
+    await navigateToPath(member2Page, "/dashboard/user?tab=invitations");
+    const dashboardContent = member2Page.locator("#dashboard-content");
+    const offerRow = dashboardContent.locator("tr", {
+      hasText: WAITLIST_EVENT_NAME,
+    });
+    await expect(offerRow).toContainText("Waiting list offer");
+
+    // Claim the promoted seat through the unified checkout endpoint.
+    await offerRow.getByTitle("Claim offer").click();
+    const claimModal = member2Page.getByRole("dialog", {
+      name: "Claim offer",
+    });
+    await expect(claimModal).toBeVisible();
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/checkout`) &&
+          response.ok(),
+      ),
+      claimModal.getByRole("button", { name: "Claim offer", exact: true }).click(),
+    ]);
+    await expect(offerRow).toHaveCount(0);
+
+    // Verify the promoted member is now attending the event.
     await navigateToEvent(
       member2Page,
       TEST_COMMUNITY_NAME,
       TEST_GROUP_SLUGS.community1.alpha,
       WAITLIST_EVENT_SLUG,
     );
-
-    // Verify the promoted member can now cancel attendance.
     await waitForAttendanceState(member2Page);
-    await expect(getLeaveButton(member2Page)).toContainText(
-      "Cancel attendance",
-    );
-
-    // Request promoted member cancellation and verify confirmation appears.
-    await getLeaveButton(member2Page).click();
-    await expect(
-      member2Page.getByRole("button", { name: "Yes" }),
-    ).toBeVisible();
-
-    // Cancel the promoted member attendance before restoring the organizer.
-    await Promise.all([
-      member2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
-          response.ok(),
-      ),
-      member2Page.getByRole("button", { name: "Yes" }).click(),
-    ]);
-
-    // Reload the organizer event page before restoring attendance.
-    await navigateToEvent(
-      organizerGroupPage,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
-      WAITLIST_EVENT_SLUG,
-    );
-
-    // Run wait for attendance state.
-    await waitForAttendanceState(organizerGroupPage);
-    await expect(getAttendButton(organizerGroupPage)).toContainText(
-      "Attend event",
-    );
-
-    // Restore the organizer attendance for the waitlist event.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
-          response.ok(),
-      ),
-      getAttendButton(organizerGroupPage).click(),
-    ]);
-
-    // Verify organizer attendance is restored.
-    await expect(getLeaveButton(organizerGroupPage)).toContainText(
-      "Cancel attendance",
-    );
+    await expect(getLeaveButton(member2Page)).toBeVisible();
+    await expect(getLeaveButton(member2Page)).toContainText("Cancel attendance");
   });
 });
