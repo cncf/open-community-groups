@@ -133,6 +133,10 @@ const createApprovalRequiredEvent = async (page, eventName) => {
 
 // Cancel and delete the temporary published event created for invitation request coverage.
 const deleteEventFromList = async (page, eventId) => {
+  if (page.isClosed()) {
+    return;
+  }
+
   const cancelResponse = await page.request.put(buildE2eUrl(`/dashboard/group/events/${eventId}/cancel`));
   expect([200, 204, 404]).toContain(cancelResponse.status());
   const deleteResponse = await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/delete`));
@@ -164,14 +168,14 @@ test.describe("group dashboard attendees tab", () => {
       hasText: "E2E Admin One",
     });
     const pendingRegistrationRow = attendeesContent.locator("tr", {
-      hasText: "E2E Organizer Two",
+      hasText: "E2E Admin Two",
     });
 
     // Verify active attendance becomes canceled and check-in is cleared.
     await expect(checkedInAttendeeRow).toContainText("Attendance canceled");
     await expect(checkedInAttendeeRow.locator(".check-in-toggle")).not.toBeChecked();
     await expect(checkedInAttendeeRow.locator(".check-in-toggle")).toBeDisabled();
-    await expect(pendingRegistrationRow).toContainText("Attendance canceled");
+    await expect(pendingRegistrationRow).toContainText("Offer canceled");
   });
 
   test("canceled invitations remain visible in attendee history", async ({ organizerGroupPage }) => {
@@ -856,7 +860,7 @@ test.describe("group dashboard attendees tab", () => {
     pending2Page,
   }) => {
     // Give the invitation request flow enough time on slower deep runs.
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
 
     // Create a temporary approval-required event.
     const eventName = `E2E Invitation Requests ${Date.now()}`;

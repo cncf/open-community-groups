@@ -258,7 +258,7 @@ test.describe("group dashboard waitlist tab", () => {
     ).toBeVisible();
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(2)).toHaveText("1");
+    await expect(waitlistRow.locator("td").nth(2)).toContainText("Queue #1");
     await expectUserProfileModalFromRow(
       organizerGroupPage,
       waitlistRow,
@@ -303,7 +303,7 @@ test.describe("group dashboard waitlist tab", () => {
     // Verify the matching result is shown with a queue position.
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(2)).toHaveText("1");
+    await expect(waitlistRow.locator("td").nth(2)).toContainText("Queue #1");
     await expect(searchInput).toHaveValue("Two");
 
     // Enter a query expected to return no waitlist entries.

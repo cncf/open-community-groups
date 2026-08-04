@@ -59,8 +59,9 @@ test.describe("event waitlist", () => {
     ]);
 
     // Verify the member is now waitlisted.
-    await expect(getLeaveButton(member2Page)).toContainText(
-      "Leave waiting list",
+    await expect(getLeaveButton(member2Page)).toHaveAttribute(
+      "aria-label",
+      /leave waiting list/i,
     );
 
     // Request waitlist removal and verify the confirmation appears.
@@ -117,8 +118,9 @@ test.describe("event waitlist", () => {
     ]);
 
     // Verify the member is waiting before the attendee leaves.
-    await expect(getLeaveButton(member2Page)).toContainText(
-      "Leave waiting list",
+    await expect(getLeaveButton(member2Page)).toHaveAttribute(
+      "aria-label",
+      /leave waiting list/i,
     );
 
     // Load the attendee account that can free the event capacity.

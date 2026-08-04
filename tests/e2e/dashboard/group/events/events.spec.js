@@ -55,6 +55,15 @@ const openPaymentsSection = async (page) => {
   }
 };
 
+// Open the event details section and wait until it is active.
+const openDetailsSection = async (page) => {
+  const detailsSectionButton = page.locator('button[data-section="details"]');
+
+  await detailsSectionButton.scrollIntoViewIfNeeded();
+  await detailsSectionButton.click({ force: true });
+  await expect(detailsSectionButton).toHaveAttribute("data-active", "true");
+};
+
 // Open the event update form by row action and wait for HTMX content.
 const openEventUpdateFormByName = async (page, eventName, eventId) => {
   const editButton = page.locator(
@@ -176,6 +185,17 @@ const editTicketType = async (page, currentTitle, values) => {
   await modal.locator("#ticket-description-draft").fill(values.description);
   await modal.locator('[data-ticketing-action="save-ticket"]').click();
   await expect(modal).toBeHidden();
+};
+
+// Keep automatic meeting coverage within the configured provider capacity.
+const setAutomaticMeetingCapacity = async (page) => {
+  await openPaymentsSection(page);
+  await editTicketType(page, "General Admission", {
+    description: "Default free admission tier.",
+    seatsTotal: "50",
+    title: "General Admission",
+  });
+  await openDetailsSection(page);
 };
 
 // Add a discount code through the ticketing modal and save it.
@@ -390,9 +410,17 @@ test.describe("group dashboard events view", () => {
     // Load the events dashboard before opening the add form.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    const additionalInformationToggles = organizerGroupPage.locator(
+      "label:has(#toggle_waitlist_enabled), label:has(#toggle_attendee_approval_required), label:has(#toggle_test_event)",
+    );
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
     await expect(organizerGroupPage.locator("#name")).toBeVisible();
+    await expect(additionalInformationToggles).toHaveText([
+      "Enable Waitlist",
+      "Require Invitation Approval",
+      "Test Event",
+    ]);
 
     // The add form exposes authoring tabs and omits review-only tabs.
     const addSectionSelect = organizerGroupPage.locator(
@@ -416,6 +444,11 @@ test.describe("group dashboard events view", () => {
       "Full Event With Waitlist",
       TEST_EVENT_IDS.alpha.waitlistLab,
     );
+    await expect(additionalInformationToggles).toHaveText([
+      "Enable Waitlist",
+      "Require Invitation Approval",
+      "Test Event",
+    ]);
 
     const editSectionSelect = organizerGroupPage.locator(
       'select[aria-label="Event form section"]',
@@ -475,6 +508,11 @@ test.describe("group dashboard events view", () => {
       "description",
       "A dashboard event created and removed by the e2e suite.",
     );
+
+    // Configure a meeting-safe capacity before automatic meeting selection.
+    if (E2E_MEETINGS_ENABLED) {
+      await setAutomaticMeetingCapacity(organizerGroupPage);
+    }
 
     // Fill schedule and online meeting details.
     await organizerGroupPage.locator("button[data-section-next]").click();
@@ -642,6 +680,11 @@ test.describe("group dashboard events view", () => {
       "description",
       "A dashboard event created and canceled by the e2e suite.",
     );
+
+    // Configure a meeting-safe capacity before automatic meeting selection.
+    if (E2E_MEETINGS_ENABLED) {
+      await setAutomaticMeetingCapacity(organizerGroupPage);
+    }
 
     // Fill schedule and online meeting details.
     await organizerGroupPage.locator("button[data-section-next]").click();
@@ -1208,6 +1251,9 @@ test.describe("group dashboard events view", () => {
       "description",
       "Coverage for automatic event and session recording overrides.",
     );
+    // Configure a meeting-safe capacity before selecting automatic recording.
+    await setAutomaticMeetingCapacity(organizerGroupPage);
+
     // Fill the event schedule before configuring online recording.
     await organizerGroupPage
       .locator('button[data-section="date-venue"]')
@@ -1400,7 +1446,7 @@ test.describe("group dashboard events view", () => {
     await expect(sessionDialog).toBeHidden();
   });
 
-  test("organizer does not see the payments tab when group payments are unavailable", async ({
+  test("organizer sees free-only tickets when group payments are unavailable", async ({
     organizerGroupWithoutPaymentsPage,
   }) => {
     // Open the create form for a group without payment settings.
@@ -1414,14 +1460,24 @@ test.describe("group dashboard events view", () => {
       organizerGroupWithoutPaymentsPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
 
-    // Verify the create form hides unavailable payment controls.
+    // Verify the create form exposes free-only ticket controls.
     await expect(
       organizerGroupWithoutPaymentsPage.locator(
         'button[data-section="payments"]',
       ),
+    ).toBeVisible();
+    await openPaymentsSection(organizerGroupWithoutPaymentsPage);
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator("#payment_currency_code"),
     ).toHaveCount(0);
     await expect(
-      organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]'),
+      organizerGroupWithoutPaymentsPage.locator("#add-ticket-type-button"),
+    ).toBeEnabled();
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator("#ticket-types-ui"),
+    ).toHaveAttribute("free-only", "");
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator("#add-discount-code-button"),
     ).toHaveCount(0);
 
     // Return to the events list before checking an existing event.
@@ -1448,14 +1504,24 @@ test.describe("group dashboard events view", () => {
       eventRow.locator('td button[aria-label^="Edit event:"]').click(),
     ]);
 
-    // Verify the update form hides unavailable payment controls.
+    // Verify the update form exposes free-only ticket controls.
     await expect(
       organizerGroupWithoutPaymentsPage.locator(
         'button[data-section="payments"]',
       ),
+    ).toBeVisible();
+    await openPaymentsSection(organizerGroupWithoutPaymentsPage);
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator("#payment_currency_code"),
     ).toHaveCount(0);
     await expect(
-      organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]'),
+      organizerGroupWithoutPaymentsPage.locator("#ticket-types-ui"),
+    ).toHaveAttribute("free-only", "");
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator("#add-ticket-type-button"),
+    ).toBeEnabled();
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator("#add-discount-code-button"),
     ).toHaveCount(0);
   });
 
@@ -1544,6 +1610,11 @@ test.describe("group dashboard events view", () => {
     await organizerGroupPage
       .locator("#toggle_waitlist_enabled")
       .check({ force: true });
+
+    // Configure a meeting-safe capacity before automatic meeting selection.
+    if (E2E_MEETINGS_ENABLED) {
+      await setAutomaticMeetingCapacity(organizerGroupPage);
+    }
 
     // Fill schedule and online meeting details.
     await organizerGroupPage
@@ -1978,6 +2049,7 @@ test.describe("group dashboard events view", () => {
         seatsTotal: values.seatsTotal,
         title: "General Admission",
       });
+      await openDetailsSection(organizerGroupPage);
       if (values.testEvent) {
         await organizerGroupPage
           .locator("#toggle_test_event")

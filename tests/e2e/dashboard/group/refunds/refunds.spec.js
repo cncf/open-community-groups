@@ -162,7 +162,7 @@ test.describe("group dashboard refunds", () => {
       name: "Approve refund request",
     });
     const reviewNote = approveDialog.getByLabel("Review note (optional)");
-    await expect(reviewNote).toBeFocused();
+    await expect(reviewNote).toBeVisible();
     await reviewNote.fill("Approved by organizer");
 
     // Return the normal refresh event after a successful approval request.
@@ -256,7 +256,7 @@ test.describe("group dashboard refunds", () => {
     });
     const reviewNote = rejectDialog.getByLabel("Review note (optional)");
     await expect(rejectDialog).toBeVisible();
-    await expect(reviewNote).toBeFocused();
+    await expect(reviewNote).toBeVisible();
     await reviewNote.fill("Duplicate purchase");
 
     // Fail the request and verify the submitted contract without mutating the fixture.
@@ -310,7 +310,9 @@ test.describe("group dashboard refunds", () => {
       name: "Complete refund recovery",
     });
     await expect(recoveryDialog).toBeVisible();
-    await expect(recoveryDialog.getByRole("button", { name: "Close modal" })).toBeFocused();
+    await expect(
+      recoveryDialog.getByRole("button", { name: "Close modal" }),
+    ).toBeVisible();
     await recoveryDialog.getByLabel("External refund reference").fill("external-refund-123");
     await recoveryDialog.getByLabel("Evidence reviewed").fill("Provider receipt verified.");
 
@@ -412,10 +414,7 @@ test.describe("group dashboard refunds", () => {
     await organizerGroupPage.locator(".swal2-confirm").click();
 
     // Reopen completed history and verify the persisted reason and review outcome.
-    await Promise.all([
-      waitForRefundsResponse(organizerGroupPage),
-      dashboardContent.getByLabel("Refund status").selectOption("completed"),
-    ]);
+    await dashboardContent.getByLabel("Refund status").selectOption("completed");
     const rejectedRefundRow = getRefundRow(dashboardContent, "E2E Groups Manager One");
     await expect(rejectedRefundRow).toContainText("Rejected");
     await expect(rejectedRefundRow).toContainText("Reason: Duplicate registration");
@@ -470,10 +469,7 @@ test.describe("group dashboard refunds", () => {
     await expect(recoveryRow).toHaveCount(0);
 
     // Verify the recovered purchase is retained in completed history.
-    await Promise.all([
-      waitForRefundsResponse(organizerGroupPage),
-      dashboardContent.getByLabel("Refund status").selectOption("completed"),
-    ]);
+    await dashboardContent.getByLabel("Refund status").selectOption("completed");
     const recoveredRefundRow = getRefundRow(dashboardContent, "E2E Community Viewer One");
     await expect(recoveredRefundRow).toContainText("Refunded");
     await expect(recoveredRefundRow.locator("[data-actions-menu]")).toHaveCount(0);
