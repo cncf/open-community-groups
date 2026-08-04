@@ -202,7 +202,6 @@ describe("event-selector", () => {
       <image-field name="banner_mobile_url"></image-field>
       <input id="description_short" />
       <textarea id="description-textarea"></textarea>
-      <input id="capacity" />
       <input id="toggle_event_reminder_enabled" type="checkbox" />
       <input id="event_reminder_enabled" type="hidden" />
       <input id="meetup_url" />
@@ -304,7 +303,6 @@ describe("event-selector", () => {
       banner_mobile_url: "https://example.com/banner-mobile.png",
       description_short: "Short description",
       description: "Long description",
-      capacity: 300,
       event_reminder_enabled: true,
       meetup_url: "https://meetup.com/cloud-native-malaga",
       luma_url: "https://luma.com/cloud-native-malaga",
@@ -373,7 +371,6 @@ describe("event-selector", () => {
       "Short description",
     );
     expect(editorTextarea.value).to.equal("Long description");
-    expect(document.getElementById("capacity")?.value).to.equal("300");
     expect(
       document.getElementById("toggle_event_reminder_enabled")?.checked,
     ).to.equal(true);

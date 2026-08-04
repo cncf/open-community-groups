@@ -74,7 +74,6 @@ const mountUpdatePageShell = ({
   eventCanceled = false,
   eventPast = false,
   hasRelatedEvents = false,
-  waitlistCount = "2",
 } = {}) => {
   document.body.innerHTML = `
     <div id="event-update-page"
@@ -92,8 +91,7 @@ const mountUpdatePageShell = ({
       <section data-content="submissions" class="hidden"></section>
       <section data-content="attendees" class="hidden"></section>
       <div class="inert-form" inert></div>
-      <input id="capacity" value="" />
-      <button id="update-event-button" type="button" data-waitlist-count="${waitlistCount}"></button>
+      <button id="update-event-button" type="button"></button>
       <button id="publish-event-button"
               type="button"
               data-action-url="/dashboard/group/events/123/publish"
@@ -801,33 +799,9 @@ describe("event page modules", () => {
     ).to.equal(true);
   });
 
-  it("warns before clearing capacity with a populated waitlist on the update page", async () => {
-    // Mount the update page shell.
-    mountUpdatePageShell({ canManageEvents: true });
-
-    // Initialize the update page behavior.
-    initializeEventUpdatePage();
-
-    // Click the update button with a populated waitlist.
-    document
-      .getElementById("update-event-button")
-      .dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true }),
-      );
-    await waitForMicrotask();
-    await waitForMicrotask();
-
-    // Clearing capacity with a populated waitlist shows a warning.
-    expect(swal.calls).to.have.length(1);
-    expect(swal.calls[0].text).to.contain("currently on the waitlist");
-    expect(htmx.triggerCalls).to.deep.equal([
-      ["#update-event-button", "confirmed"],
-    ]);
-  });
-
   it("publishes a clean event after confirmation", async () => {
     // Mount and initialize a manageable draft event.
-    mountUpdatePageShell({ canManageEvents: true, waitlistCount: "0" });
+    mountUpdatePageShell({ canManageEvents: true });
     initializeEventUpdatePage();
     await waitForAnimationFrames();
 
@@ -845,7 +819,7 @@ describe("event page modules", () => {
 
   it("asks to save pending changes instead of publishing the saved version", async () => {
     // Mount and initialize a manageable draft event.
-    mountUpdatePageShell({ canManageEvents: true, waitlistCount: "0" });
+    mountUpdatePageShell({ canManageEvents: true });
     let saveClicks = 0;
     document
       .getElementById("update-event-button")
@@ -878,7 +852,6 @@ describe("event page modules", () => {
     mountUpdatePageShell({
       canManageEvents: true,
       hasRelatedEvents: true,
-      waitlistCount: "0",
     });
     swal.setNextResult({ isDenied: true });
     initializeEventUpdatePage();
@@ -1165,7 +1138,7 @@ describe("event page modules", () => {
 
   it("dispatches submissions refresh from the update page root after a successful save", () => {
     // Mount the update page shell.
-    mountUpdatePageShell({ canManageEvents: true, waitlistCount: "0" });
+    mountUpdatePageShell({ canManageEvents: true });
 
     // Keep a reference to the event update page element.
     const pageRoot = document.getElementById("event-update-page");

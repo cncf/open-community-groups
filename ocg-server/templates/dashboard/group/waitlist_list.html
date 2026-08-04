@@ -294,13 +294,15 @@
                           class="btn-actions btn-tertiary flex cursor-not-allowed items-center justify-center p-2 opacity-50"
                           disabled
                           {% if !can_manage_events -%}
-                            title="Your role cannot invite attendees."
+                            title="Your role cannot manage waiting list offers."
                           {% else if event.canceled -%}
-                            title="Canceled events cannot invite attendees."
+                            title="Canceled events have no available waiting list actions."
                           {% else if event.is_past() -%}
-                            title="Past events cannot invite attendees."
+                            title="Past events have no available waiting list actions."
                           {% else if entry.admission_offer_id.is_some() -%}
-                            title="Waitlist offers cannot be manually reissued."
+                            title="This waiting list offer is no longer active."
+                          {% else -%}
+                            title="No active waiting list offer to cancel."
                           {% endif -%}
                           aria-label="Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}">
                     <div class="svg-icon size-4 icon-vertical-dots"></div>

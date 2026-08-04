@@ -77,7 +77,6 @@ export const applyCopiedEventDetails = async (details) => {
   setImageFieldValue("banner_mobile_url", details.banner_mobile_url);
   setTextValue("description_short", details.description_short);
   updateMarkdownContent(details.description);
-  setTextValue("capacity", details.capacity);
   setEventReminderEnabled(details.event_reminder_enabled !== false);
   setRegistrationQuestions(details.registration_questions);
   // Clear mutually exclusive enrollment state before dependent sync runs.

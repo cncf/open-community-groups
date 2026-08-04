@@ -123,15 +123,16 @@ describe("dashboard group waitlist list template", () => {
     expect(template).not.to.include("refresh_limit");
   });
 
-  it("keeps waitlist actions disabled for unsupported invite states", async () => {
-    // Load the waitlist list template before checking disabled invite states.
+  it("explains disabled waitlist actions for unsupported offer states", async () => {
+    // Load the waitlist list template before checking disabled offer states.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify unsupported invite states keep the waitlist action unavailable.
-    expect(template).to.include('title="Your role cannot invite attendees."');
-    expect(template).to.include('title="Canceled events cannot invite attendees."');
-    expect(template).to.include('title="Past events cannot invite attendees."');
-    expect(template).to.include('title="Waitlist offers cannot be manually reissued."');
+    // Verify every unsupported offer state explains why actions are unavailable.
+    expect(template).to.include('title="Your role cannot manage waiting list offers."');
+    expect(template).to.include('title="Canceled events have no available waiting list actions."');
+    expect(template).to.include('title="Past events have no available waiting list actions."');
+    expect(template).to.include('title="This waiting list offer is no longer active."');
+    expect(template).to.include('title="No active waiting list offer to cancel."');
     expect(template).to.include(
       "Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
     );

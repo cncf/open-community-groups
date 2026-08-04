@@ -169,6 +169,17 @@ describe("dashboard group event update template", () => {
     expect(template).to.include("{{ payment_recipient.recipient_id }}");
   });
 
+  it("uses neutral icon-free payment guidance", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      'class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600"',
+    );
+    expect(template).to.not.include("border-green-200 bg-green-50");
+    expect(template).to.not.include("border-sky-200 bg-sky-50");
+    expect(template).to.not.include("icon-info");
+  });
+
   it("describes paid enrollment modes as mutually exclusive alternatives", async () => {
     // Load the event update template before checking enrollment guidance.
     const template = normalizeWhitespace(await loadTemplate());

@@ -2307,6 +2307,64 @@ values
         '77777777-7777-7777-7777-777777777704'
     );
 
+-- Terminal waitlist offers cover unavailable dashboard action reasons.
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555520',
+    current_timestamp - interval '7 days',
+    '55555555-5555-5555-5555-555555555520',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555520'
+        order by "order"
+        limit 1
+    ),
+    current_timestamp - interval '6 days',
+    'waitlist',
+    'expired',
+    '77777777-7777-7777-7777-777777777702'
+), (
+    '59555555-5555-5555-5555-555555555526',
+    current_timestamp - interval '2 days',
+    '55555555-5555-5555-5555-555555555526',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555526'
+        order by "order"
+        limit 1
+    ),
+    current_timestamp - interval '1 day',
+    'waitlist',
+    'expired',
+    '77777777-7777-7777-7777-777777777701'
+), (
+    '59555555-5555-5555-5555-555555555528',
+    current_timestamp - interval '2 days',
+    '55555555-5555-5555-5555-555555555528',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555528'
+        order by "order"
+        limit 1
+    ),
+    current_timestamp + interval '1 day',
+    'waitlist',
+    'canceled',
+    '77777777-7777-7777-7777-777777777705'
+);
+
 -- Canceled invitation retained for attendee history regression coverage.
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values (

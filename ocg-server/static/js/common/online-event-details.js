@@ -526,6 +526,11 @@ export class OnlineEventDetails extends LitWrapper {
                 option.reasons && option.reasons.length > 0
                   ? html`
                       <p class="${reasonClasses} mt-2">${option.reasonsIntro}</p>
+                      ${
+                        option.requirementsHelper
+                          ? html`<p class="${reasonClasses} mt-1">${option.requirementsHelper}</p>`
+                          : ""
+                      }
                       <ul class="list-disc list-inside ${reasonClasses} mt-1">
                         ${option.reasons.map((r) => html`<li>${r}</li>`)}
                       </ul>
@@ -733,11 +738,19 @@ export class OnlineEventDetails extends LitWrapper {
     if (!this.meetingInSync) {
       const capacityValue = this._getCapacityValue();
       if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
-        reasons.push("Set event capacity.");
+        reasons.push(
+          this._isSession()
+            ? "Set event capacity."
+            : "Add seats to at least one ticket type in Tickets.",
+        );
       } else {
         const capacityLimit = this._getCapacityLimit();
         if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
-          reasons.push(`Capacity exceeds meeting limit (${capacityLimit}).`);
+          reasons.push(
+            this._isSession()
+              ? `Capacity exceeds meeting limit (${capacityLimit}).`
+              : `Total ticket seats (${capacityValue}) exceed the meeting limit (${capacityLimit}). Reduce ticket seats in Tickets.`,
+          );
         }
       }
     }
@@ -762,6 +775,7 @@ export class OnlineEventDetails extends LitWrapper {
       endsAtValue: this.endsAt,
       capacityValue: this._getCapacityValue(),
       capacityLimit: this._getCapacityLimit(),
+      capacityFromTicketTypes: !this._isSession(),
       showError: showErrorAlert,
       displaySection,
     });
@@ -916,7 +930,9 @@ export class OnlineEventDetails extends LitWrapper {
     const capacityLimit = this._getCapacityLimit();
 
     if (Number.isFinite(capacityLimit) && Number.isFinite(capacityValue) && capacityValue > capacityLimit) {
-      this._capacityWarning = `Capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Ensure your meeting provider supports this many participants.`;
+      this._capacityWarning = this._isSession()
+        ? `Capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Ensure your meeting provider supports this many participants.`
+        : `Total ticket seats (${capacityValue}) exceed the configured meeting participant limit (${capacityLimit}). Reduce ticket seats in Tickets.`;
       return;
     }
 
@@ -1306,6 +1322,9 @@ export class OnlineEventDetails extends LitWrapper {
           : "",
         reasons: automaticReasons,
         reasonsIntro: automaticReasonsIntro,
+        requirementsHelper: this._isSession()
+          ? ""
+          : "Automatic meeting capacity is based on total seats across all ticket types.",
         disabled: this.disabled || !availability.allowed,
       },
     ];

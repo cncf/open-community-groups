@@ -244,6 +244,9 @@ describe("online-event-details", () => {
       'input[type="radio"][value="automatic"]',
     );
     expect(automaticModeInput.disabled).to.equal(false);
+    expect(element.textContent).not.to.include(
+      "Automatic meeting capacity is based on total seats across all ticket types.",
+    );
 
     // Recalculate the warning whenever ticket capacity changes.
     element._mode = "automatic";
@@ -255,7 +258,41 @@ describe("online-event-details", () => {
     );
     await element.updateComplete;
 
-    expect(element._capacityWarning).to.include("Capacity (150) exceeds");
+    expect(element._capacityWarning).to.include("Total ticket seats (150) exceed");
+    expect(element.textContent).to.include(
+      "Total ticket seats (150) exceed the meeting limit (100).",
+    );
+    expect(element.textContent).to.include(
+      "Automatic meeting capacity is based on total seats across all ticket types.",
+    );
+  });
+
+  it("explains that automatic meetings require ticket seats", async () => {
+    // Provide an event ticket editor without available seats.
+    const ticketTypesEditor = document.createElement("div");
+    ticketTypesEditor.id = "ticket-types-ui";
+    ticketTypesEditor.getConfiguredSeatTotal = () => 0;
+    document.body.append(ticketTypesEditor);
+
+    // Render otherwise valid automatic meeting settings.
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2030-05-10T12:00",
+      kind: "virtual",
+      meetingMaxParticipants: { zoom: 100 },
+      startsAt: "2030-05-10T10:00",
+    });
+    const automaticModeInput = element.renderRoot.querySelector(
+      'input[type="radio"][value="automatic"]',
+    );
+
+    // The disabled option identifies ticket seats as the capacity source.
+    expect(automaticModeInput.disabled).to.equal(true);
+    expect(element.textContent).to.include(
+      "Automatic meeting capacity is based on total seats across all ticket types.",
+    );
+    expect(element.textContent).to.include(
+      "Add seats to at least one ticket type in Tickets.",
+    );
   });
 
   it("disables automatic meeting creation for past events", async () => {

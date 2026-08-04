@@ -1038,8 +1038,8 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector("#discount-code-draft")?.disabled).to.equal(true);
   });
 
-  it("preserves persisted remaining counts after discount row rerenders", async () => {
-    // Prepare ui root for preserves persisted remaining counts after discount.
+  it("renders compact discount usage and responsive secondary columns", async () => {
+    // Prepare the discount row with a persisted remaining count.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -1059,8 +1059,23 @@ describe("ticketing editors", () => {
     // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Verify preserves persisted remaining counts after discount row rerenders.
-    expect(uiRoot.textContent).to.contain("12 remaining");
+    // Verify remaining and total uses share one compact value.
+    const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
+    expect(rowCells[0].textContent).to.contain("12 / 50 left");
+    expect(rowCells[1].textContent.trim()).to.equal("12 / 50 left");
+
+    // Verify secondary columns stay hidden until the widest layout.
+    const secondaryHeaders = uiRoot.querySelectorAll("thead th.hidden");
+    expect(secondaryHeaders).to.have.length(4);
+    expect(secondaryHeaders[0].textContent.trim()).to.equal("Redemptions");
+    secondaryHeaders.forEach((header) => {
+      expect(header.className).to.contain("2xl:table-cell");
+      expect(header.className).to.not.contain("xl:table-cell");
+    });
+
+    // Verify the empty-state placeholder still spans the complete semantic table.
+    expect(uiRoot.querySelector('[data-ticketing-role="empty-state"] td')?.colSpan).to.equal(7);
+    expect(uiRoot.textContent).to.contain("Leave blank to let OCG track remaining uses automatically.");
 
     // Keep a reference to the payment currency code element.
     const currencyField = document.getElementById("payment_currency_code");
@@ -1068,8 +1083,8 @@ describe("ticketing editors", () => {
     currencyField.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
-    // Verify preserves persisted remaining counts after discount row rerenders.
-    expect(uiRoot.textContent).to.contain("12 remaining");
+    // Verify the compact usage survives dependent rerenders.
+    expect(uiRoot.textContent).to.contain("12 / 50 left");
   });
 
   it("self-bootstraps ticketing editors from page controls after reconnecting", async () => {

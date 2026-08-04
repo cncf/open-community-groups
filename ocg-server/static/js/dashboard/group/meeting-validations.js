@@ -34,6 +34,7 @@ export const updateSectionVisibility = (kind, root = document) => {
  * @param {string} params.endsAtValue End datetime-local string
  * @param {number} [params.capacityValue] Event capacity value
  * @param {number} [params.capacityLimit] Meeting provider capacity limit
+ * @param {boolean} [params.capacityFromTicketTypes=false] Whether tickets define capacity
  * @param {function} params.showError Function to display error messages
  * @param {function} [params.displaySection] Optional section switcher
  * @param {HTMLElement} [params.startsAtInput] Start input element to focus
@@ -47,6 +48,7 @@ export const validateMeetingRequest = ({
   endsAtValue,
   capacityValue,
   capacityLimit,
+  capacityFromTicketTypes = false,
   showError,
   displaySection,
   startsAtInput,
@@ -109,16 +111,22 @@ export const validateMeetingRequest = ({
   }
 
   if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
-    showError("Event capacity is required for automatic meeting creation.");
-    displaySection?.("details");
+    showError(
+      capacityFromTicketTypes
+        ? "Add seats to at least one ticket type before enabling automatic meeting creation."
+        : "Event capacity is required for automatic meeting creation.",
+    );
+    displaySection?.(capacityFromTicketTypes ? "payments" : "details");
     return false;
   }
 
   if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
     showError(
-      `Event capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Reduce capacity or disable automatic meeting creation.`,
+      capacityFromTicketTypes
+        ? `Total ticket seats (${capacityValue}) exceed the configured meeting participant limit (${capacityLimit}). Reduce ticket seats or disable automatic meeting creation.`
+        : `Event capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Reduce capacity or disable automatic meeting creation.`,
     );
-    displaySection?.("details");
+    displaySection?.(capacityFromTicketTypes ? "payments" : "details");
     return false;
   }
 

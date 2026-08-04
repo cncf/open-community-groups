@@ -32,8 +32,8 @@ import { initializeTicketModalControls } from "/static/js/event/attendance-ticke
 
 const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 const CLAIM_TICKET_LABEL = "Claim ticket";
-const CONFIRM_RSVP_LABEL = "Confirm RSVP";
 const COMPLETE_REGISTRATION_LABEL = "Complete registration";
+const CONFIRM_RSVP_LABEL = "Confirm RSVP";
 const PAID_TICKETS_UNAVAILABLE_LABEL = "Paid tickets temporarily unavailable";
 const REFUND_PROCESSING_LABEL = "Refund processing";
 const REFUND_REQUESTED_LABEL = "Refund requested";
@@ -743,6 +743,11 @@ const getSigninLabel = (meta) => {
   return isSimpleRsvpSoldOut(meta) && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
 };
 
+/**
+ * Returns the sign-in control state for the current attendance metadata.
+ * @param {object} meta - Attendance metadata
+ * @returns {object} Render state
+ */
 const getSigninState = (meta) => {
   const state = withEventActionState(meta, { label: getSigninLabel(meta) });
   if (!meta.isSimpleRsvp) {
@@ -754,17 +759,6 @@ const getSigninState = (meta) => {
     icon: meta.attendeeApprovalRequired ? REQUEST_INVITATION_ICON : ATTEND_EVENT_ICON,
   };
 };
-
-/**
- * Returns whether the sole public RSVP tier has no selectable capacity.
- * @param {{hasNoCapacity: boolean, hasSoldOutTicketTypes: boolean, isSimpleRsvp: boolean, isSoldOut: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
- * @returns {boolean} Whether simple RSVP attendance is sold out
- */
-const isSimpleRsvpSoldOut = (meta) =>
-  meta.isSimpleRsvp &&
-  ((meta.hasNoCapacity && meta.waitlistEnabled) ||
-    meta.isSoldOut ||
-    (!meta.ticketPurchaseAvailable && meta.hasSoldOutTicketTypes));
 
 /**
  * Hides an attendance control.
@@ -779,6 +773,23 @@ const hideControl = (control) => {
   setElementHidden(control, true);
   control.classList.add("opacity-0", "transition-opacity", "duration-150");
 };
+
+/**
+ * Returns whether the sole public RSVP tier has no selectable capacity.
+ * @param {object} meta - Attendance metadata
+ * @param {boolean} meta.hasNoCapacity - Whether the tier has no capacity
+ * @param {boolean} meta.hasSoldOutTicketTypes - Whether ticket tiers are sold out
+ * @param {boolean} meta.isSimpleRsvp - Whether the event uses simple RSVP
+ * @param {boolean} meta.isSoldOut - Whether the event is sold out
+ * @param {boolean} meta.ticketPurchaseAvailable - Whether tickets can be selected
+ * @param {boolean} meta.waitlistEnabled - Whether the waiting list is enabled
+ * @returns {boolean} Whether simple RSVP attendance is sold out
+ */
+const isSimpleRsvpSoldOut = (meta) =>
+  meta.isSimpleRsvp &&
+  ((meta.hasNoCapacity && meta.waitlistEnabled) ||
+    meta.isSoldOut ||
+    (!meta.ticketPurchaseAvailable && meta.hasSoldOutTicketTypes));
 
 /**
  * Applies a rendered state to a control.

@@ -150,7 +150,6 @@
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
-              data-waitlist-count="{{ event.waitlist_count }}"
               {% if event.canceled -%}
                 disabled title="Canceled events are read-only."
               {% else if !can_manage_events -%}
@@ -863,8 +862,7 @@
 
         {% if payments_ready -%}
           {% if let Some(payment_recipient) = &payment_recipient -%}
-            <div class="mt-8 flex items-start gap-3 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-green-900">
-              <div class="svg-icon size-5 bg-green-700 icon-info mt-0.5 shrink-0"></div>
+            <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
               <p class="text-sm/6">
                 Paid ticket revenue is sent to Stripe recipient
                 <span class="font-semibold">{{ payment_recipient.recipient_id }}</span>.
@@ -872,8 +870,7 @@
             </div>
           {% endif -%}
         {% else -%}
-          <div class="mt-8 flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sky-900">
-            <div class="svg-icon size-5 bg-sky-700 icon-info mt-0.5 shrink-0"></div>
+          <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
             <p class="text-sm/6">
               {% if paid_ticketing_read_only -%}
                 Paid ticket settings are read-only until server payments and a matching group recipient are configured.
