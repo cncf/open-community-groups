@@ -327,28 +327,33 @@
       {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
-        {# Test event -#}
+        {# Waitlist enabled -#}
         <div class="col-span-full 2xl:col-span-3">
-          <label class="inline-flex items-center cursor-pointer">
-            <input id="toggle_test_event"
-                   name="toggle_test_event"
+          <label data-enrollment-toggle-label="waitlist"
+                 class="inline-flex items-center cursor-pointer transition-opacity">
+            <input id="toggle_waitlist_enabled"
+                   name="toggle_waitlist_enabled"
                    value="enabled"
                    type="checkbox"
                    class="sr-only peer"
-                   {% if event.test_event %}
+                   {% if event.waitlist_enabled %}
                      checked
                    {% endif %}>
             <input type="hidden"
-                   id="test_event"
-                   name="test_event"
-                   value="{{ event.test_event }}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+                   id="waitlist_enabled"
+                   name="waitlist_enabled"
+                   value="{{ event.waitlist_enabled }}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
             </div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
+            <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
           </label>
-          <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
+          <p class="form-legend">
+            Allow full events, including paid ticket events, to add people to a waiting list instead
+            of rejecting them. Capacity is the total of ticket seats. Invitation approval and the waitlist cannot be
+            enabled together.
+          </p>
         </div>
-        {# End Test event -#}
+        {# End Waitlist enabled -#}
 
         {# Attendee approval required -#}
         <div class="col-span-full 2xl:col-span-3">
@@ -378,33 +383,28 @@
         </div>
         {# End Attendee approval required -#}
 
-        {# Waitlist enabled -#}
+        {# Test event -#}
         <div class="col-span-full 2xl:col-span-3">
-          <label data-enrollment-toggle-label="waitlist"
-                 class="inline-flex items-center cursor-pointer transition-opacity">
-            <input id="toggle_waitlist_enabled"
-                   name="toggle_waitlist_enabled"
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_test_event"
+                   name="toggle_test_event"
                    value="enabled"
                    type="checkbox"
                    class="sr-only peer"
-                   {% if event.waitlist_enabled %}
+                   {% if event.test_event %}
                      checked
                    {% endif %}>
             <input type="hidden"
-                   id="waitlist_enabled"
-                   name="waitlist_enabled"
-                   value="{{ event.waitlist_enabled }}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+                   id="test_event"
+                   name="test_event"
+                   value="{{ event.test_event }}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
             </div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
+            <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
           </label>
-          <p class="form-legend">
-            Allow full events, including paid ticket events, to add people to a waiting list instead
-            of rejecting them. Capacity is the total of ticket seats. Invitation approval and the waitlist cannot be
-            enabled together.
-          </p>
+          <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
         </div>
-        {# End Waitlist enabled -#}
+        {# End Test event -#}
 
         <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 2xl:grid-cols-2">
           {# Meetup URL -#}
