@@ -565,6 +565,26 @@ describe("event attendance", () => {
     expect(env.current.swal.calls).to.have.length(0);
   });
 
+  it("shows invitation guidance when attendance requires a pending offer", () => {
+    // Render simple attendance controls before submitting the attend action.
+    const { attendButton, loadingButton } = renderAttendanceDom();
+
+    // Submit the attend action and return the admission offer conflict.
+    dispatchHtmxBeforeRequest(attendButton);
+    dispatchHtmxAfterRequest(attendButton, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "admission-offer-required" }),
+    });
+
+    // Restore the action and point the attendee to their pending invitation.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
+    expect(env.current.swal.calls.at(-1)).to.include({
+      icon: "error",
+      text: "You have a pending invitation for this event. Please claim it from the Event Invitations section in your dashboard to register.",
+    });
+  });
+
   it("defers mixed-tier waitlist questions until an offer is claimed", () => {
     // Render ticketed controls where one tier remains purchasable.
     const { attendButton, container, questionsModal } = renderAttendanceDom({

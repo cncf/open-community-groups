@@ -20,6 +20,16 @@ describe("event attendance button template", () => {
     );
   });
 
+  it("includes registration answers only when the event has questions", async () => {
+    // Load the attend action that submits the optional answers payload.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The hx-include guard matches the conditional hidden answers input.
+    expect(template).to.include(
+      '{% if !event.registration_questions.is_empty() -%} hx-include="#registration-answers-input-{{ attendance_instance }}" {% endif -%}',
+    );
+  });
+
   it("marks initially hidden attendance dialogs as hidden for assistive technology", async () => {
     // Load the server-rendered dialogs before JavaScript initializes them.
     const template = normalizeWhitespace(await loadTemplate());

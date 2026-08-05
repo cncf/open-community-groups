@@ -1,4 +1,4 @@
-import { handleHtmxResponse, showInfoAlert } from "/static/js/common/alerts.js";
+import { handleHtmxResponse, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import {
   getAttendanceContainer,
   getAttendanceControl,
@@ -31,6 +31,10 @@ import {
   QUESTIONS_CONTINUE_ACTION_ATTEND,
   QUESTIONS_CONTINUE_ACTION_TICKET,
 } from "/static/js/event/attendance/shared.js";
+
+// Actionable guidance shown when registration must go through a pending invitation.
+const ADMISSION_OFFER_REQUIRED_MESSAGE =
+  "You have a pending invitation for this event. Please claim it from the Event Invitations section in your dashboard to register.";
 
 const CHECKOUT_ACTION_ERROR_MESSAGES = {
   checkout: "Something went wrong starting checkout. Please try again later.",
@@ -94,6 +98,20 @@ const recoverRegistrationAnswers = (container, xhr, continueAction) => {
   }
 
   requestQuestionAnswers(container, continueAction);
+  return true;
+};
+
+/**
+ * Shows invitation-claim guidance when registration requires a pending offer.
+ * @param {XMLHttpRequest|undefined} xhr - HTMX request object
+ * @returns {boolean} Whether the conflict was handled
+ */
+const notifyAdmissionOfferRequired = (xhr) => {
+  if (xhr?.status !== 409 || parseJsonResponse(xhr)?.conflict !== "admission-offer-required") {
+    return false;
+  }
+
+  showErrorAlert(ADMISSION_OFFER_REQUIRED_MESSAGE);
   return true;
 };
 
@@ -238,6 +256,10 @@ const handlePrimaryActionAfterRequest = (event) => {
     restorePrimaryRequestControl(container, role);
     return;
   }
+  if (role === "attend-btn" && notifyAdmissionOfferRequired(xhr)) {
+    restorePrimaryRequestControl(container, role);
+    return;
+  }
   const ok = handleHtmxResponse({
     xhr,
     successMessage: "",
@@ -323,6 +345,11 @@ const handleCheckoutAfterRequest = (event) => {
   const xhr = event.detail?.xhr;
   if (recoverRegistrationAnswers(container, xhr, QUESTIONS_CONTINUE_ACTION_TICKET)) {
     restoreCheckoutModalControls(container);
+    return;
+  }
+  if (notifyAdmissionOfferRequired(xhr)) {
+    restoreCheckoutModalControls(container);
+    closeTicketModal(container);
     return;
   }
   const ok = handleHtmxResponse({

@@ -1654,6 +1654,32 @@ describe("event attendance paid modal", () => {
     expect(env.current.swal.calls).to.have.length(0);
   });
 
+  it("shows invitation guidance when checkout requires a pending offer", async () => {
+    // Render paid attendance controls before submitting checkout.
+    const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    // Select a purchasable tier and return the admission offer conflict.
+    attendButton.click();
+    ticketTypeOptions[0].checked = true;
+    ticketTypeOptions[0].dispatchEvent(new Event("change", { bubbles: true }));
+    dispatchHtmxBeforeRequest(checkoutForm);
+    dispatchHtmxAfterRequest(checkoutForm, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "admission-offer-required" }),
+    });
+
+    // Close the modal and point the attendee to their pending invitation.
+    expect(ticketModal.classList.contains("hidden")).to.equal(true);
+    expect(env.current.swal.calls.at(-1)).to.include({
+      icon: "error",
+      text: "You have a pending invitation for this event. Please claim it from the Event Invitations section in your dashboard to register.",
+    });
+  });
+
   it("closes the ticket modal when checkout fails", async () => {
     // Render paid attendance controls before simulating checkout failure.
     const {
