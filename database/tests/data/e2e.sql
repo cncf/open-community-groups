@@ -981,6 +981,184 @@ insert into event (
     '[{"id":"57555555-5555-5555-5555-555555555911","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb
 );
 
+-- Ticketing workflow fixtures for payment returns, offers, and request coverage.
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, payment_currency_code, published,
+    test_event, starts_at, ends_at, waitlist_enabled, attendee_approval_required,
+    registration_questions
+) values (
+    '55555555-5555-5555-5555-555555555912',
+    'Payment Return States Lab',
+    'alpha-payment-return-states',
+    'Paid event with confirmed and pending checkout return states.',
+    'Payment return state coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '110 days',
+    now() + interval '110 days 2 hours',
+    false,
+    false,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555913',
+    'Ticket Request Lab',
+    'alpha-ticket-request-lab',
+    'Approval-required paid event with public and invitation-only tickets.',
+    'Public ticket request coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '111 days',
+    now() + interval '111 days 2 hours',
+    false,
+    true,
+    '[{"id":"57555555-5555-5555-5555-555555555913","kind":"free-text","prompt":"Why would you like this ticket?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555914',
+    'Invitation Request Lifecycle Lab',
+    'alpha-invitation-request-lifecycle',
+    'Approval-required event with assignable private ticket tiers.',
+    'Invitation request lifecycle coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '112 days',
+    now() + interval '112 days 2 hours',
+    false,
+    true,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555915',
+    'No Assignable Invitation Tier Lab',
+    'alpha-no-assignable-invitation-tier',
+    'Approval-required event without an assignable private ticket tier.',
+    'Unavailable private tier coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '113 days',
+    now() + interval '113 days 2 hours',
+    false,
+    true,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555916',
+    'Paid Event Offers Lab',
+    'alpha-paid-event-offers',
+    'Paid private-ticket event with pending and checkout-started offers.',
+    'Paid dashboard offer coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '114 days',
+    now() + interval '114 days 2 hours',
+    false,
+    false,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555917',
+    'Paid Registration Questions Lab',
+    'alpha-paid-registration-questions',
+    'Paid ticket event that collects registration answers before checkout.',
+    'Paid registration question coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '115 days',
+    now() + interval '115 days 2 hours',
+    false,
+    false,
+    '[{"id":"57555555-5555-5555-5555-555555555917","kind":"free-text","prompt":"What should the organizers prepare for you?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555918',
+    'Sold Out Ticket States Lab',
+    'alpha-sold-out-ticket-states',
+    'Ticketed event with a sold-out public tier and waiting list.',
+    'Sold-out ticket and waitlist coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '116 days',
+    now() + interval '116 days 2 hours',
+    true,
+    false,
+    '[{"id":"57555555-5555-5555-5555-555555555918","kind":"free-text","prompt":"What would you like to learn?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555919',
+    'Migrated Unlimited Capacity Event',
+    'alpha-migrated-unlimited-capacity',
+    'Event shaped like an unlimited-capacity event after ticket migration.',
+    'Migration-shaped ticket capacity coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '117 days',
+    now() + interval '117 days 2 hours',
+    false,
+    false,
+    '[]'::jsonb
+);
+
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, payment_currency_code, published,
+    test_event, starts_at, ends_at, capacity, waitlist_enabled,
+    attendee_approval_required, registration_questions
+) values (
+    '55555555-5555-5555-5555-555555555920',
+    'Refunded Capacity Release Lab',
+    'alpha-refunded-capacity-release',
+    'One-seat paid event whose finalized refund released its capacity.',
+    'Finalized refund capacity coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '118 days',
+    now() + interval '118 days 2 hours',
+    1,
+    false,
+    false,
+    '[]'::jsonb
+);
+
 update event
 set payment_currency_code = 'USD'
 where event_id in (
@@ -2165,6 +2343,135 @@ values (
     'Sellable pass used for pending payment dashboard coverage.'
 );
 
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title,
+    description
+)
+values (
+    '56555555-5555-5555-5555-555555555912',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555912',
+    1,
+    20,
+    'Payment return pass',
+    'Paid admission used for checkout return coverage.'
+), (
+    '56555555-5555-5555-5555-555555555913',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555913',
+    1,
+    20,
+    'Requested conference pass',
+    'Public tier attendees can request for organizer approval.'
+), (
+    '56555555-5555-5555-5555-655555555913',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555913',
+    2,
+    5,
+    'Private supporter pass',
+    'Private tier assigned only through organizer offers.'
+), (
+    '56555555-5555-5555-5555-555555555914',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555914',
+    1,
+    30,
+    'General Admission',
+    'Free public RSVP tier used to create unscoped requests.'
+), (
+    '56555555-5555-5555-5555-655555555914',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555914',
+    2,
+    4,
+    'Sponsor allocation',
+    'Private sponsor tier available for organizer assignment.'
+), (
+    '56555555-5555-5555-5555-755555555914',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555914',
+    3,
+    4,
+    'VIP allocation',
+    'Private VIP tier available for organizer assignment.'
+), (
+    '56555555-5555-5555-5555-555555555915',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555915',
+    1,
+    30,
+    'General Admission',
+    'Free public RSVP tier used to create unscoped requests.'
+), (
+    '56555555-5555-5555-5555-655555555915',
+    false,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555915',
+    2,
+    4,
+    'Inactive private allocation',
+    'Inactive tier used to explain why no private ticket can be assigned.'
+), (
+    '56555555-5555-5555-5555-555555555916',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555916',
+    1,
+    10,
+    'Private paid offer',
+    'Paid private tier used by dashboard offer claims.'
+), (
+    '56555555-5555-5555-5555-555555555917',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555917',
+    1,
+    20,
+    'Questions conference pass',
+    'Paid tier combined with registration questions.'
+), (
+    '56555555-5555-5555-5555-555555555918',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555918',
+    1,
+    1,
+    'Limited conference pass',
+    'Sold-out paid tier used for ticket state and waiting-list coverage.'
+), (
+    '56555555-5555-5555-5555-555555555919',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555919',
+    1,
+    500,
+    'General Admission',
+    'Migration fallback tier for a formerly unlimited-capacity event.'
+), (
+    '56555555-5555-5555-5555-555555555920',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555920',
+    1,
+    1,
+    'Refunded conference pass',
+    'Paid tier whose prior purchase has been fully refunded.'
+);
+
 -- Every other event uses one free General Admission tier
 insert into event_ticket_type (
     event_id,
@@ -2224,6 +2531,18 @@ values (
 ), (
     '55555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777712'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777703'
+);
+
+insert into event_attendee (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555912',
+    '77777777-7777-7777-7777-777777777711'
+), (
+    '55555555-5555-5555-5555-555555555918',
+    '77777777-7777-7777-7777-777777777703'
 );
 
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)
@@ -2262,6 +2581,51 @@ values (
     now() - interval '1 hour',
     false,
     'confirmed'
+);
+
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    status,
+    user_id,
+    reviewed_at,
+    reviewed_by
+)
+values (
+    '55555555-5555-5555-5555-555555555914',
+    null,
+    'pending',
+    '77777777-7777-7777-7777-777777777707',
+    null,
+    null
+), (
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-555555555914',
+    'pending',
+    '77777777-7777-7777-7777-777777777708',
+    null,
+    null
+), (
+    '55555555-5555-5555-5555-555555555914',
+    null,
+    'accepted',
+    '77777777-7777-7777-7777-777777777702',
+    now() - interval '4 days',
+    '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555914',
+    null,
+    'accepted',
+    '77777777-7777-7777-7777-777777777704',
+    now() - interval '2 days',
+    '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555915',
+    null,
+    'pending',
+    '77777777-7777-7777-7777-777777777710',
+    null,
+    null
 );
 
 -- Claim offers replace the old pending-invitation and pending-question seats
@@ -2305,6 +2669,22 @@ values
         'waitlist',
         'pending',
         '77777777-7777-7777-7777-777777777704'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555916',
+        '56555555-5555-5555-5555-555555555916',
+        current_timestamp + interval '7 days',
+        'organizer_invitation',
+        'pending',
+        '77777777-7777-7777-7777-777777777707'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555916',
+        '56555555-5555-5555-5555-555555555916',
+        current_timestamp + interval '7 days',
+        'waitlist',
+        'pending',
+        '77777777-7777-7777-7777-777777777705'
     );
 
 -- Terminal waitlist offers cover unavailable dashboard action reasons.
@@ -2363,6 +2743,54 @@ values (
     'waitlist',
     'canceled',
     '77777777-7777-7777-7777-777777777705'
+), (
+    '59555555-5555-5555-5555-555555555914',
+    current_timestamp - interval '3 days',
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-655555555914',
+    current_timestamp - interval '2 days',
+    'approval',
+    'expired',
+    '77777777-7777-7777-7777-777777777702'
+);
+
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-655555555914',
+    4500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-755555555914',
+    current_timestamp + interval '5 days',
+    'approval',
+    'checkout_pending',
+    'VIP allocation',
+    '77777777-7777-7777-7777-777777777704'
+), (
+    '59555555-5555-5555-5555-555555555916',
+    4000,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555916',
+    '56555555-5555-5555-5555-555555555916',
+    current_timestamp + interval '5 days',
+    'organizer_invitation',
+    'checkout_pending',
+    'Private paid offer',
+    '77777777-7777-7777-7777-777777777708'
 );
 
 -- Canceled invitation retained for attendee history regression coverage.
@@ -2641,6 +3069,84 @@ values (
     '56555555-5555-5555-5555-555555555911',
     null,
     null
+), (
+    '57555555-5555-5555-5555-555555555912',
+    2500,
+    '56555555-5555-5555-5555-555555555912',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555913',
+    3500,
+    '56555555-5555-5555-5555-555555555913',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-655555555913',
+    3000,
+    '56555555-5555-5555-5555-655555555913',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555914',
+    0,
+    '56555555-5555-5555-5555-555555555914',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-655555555914',
+    0,
+    '56555555-5555-5555-5555-655555555914',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-755555555914',
+    4500,
+    '56555555-5555-5555-5555-755555555914',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555915',
+    0,
+    '56555555-5555-5555-5555-555555555915',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-655555555915',
+    0,
+    '56555555-5555-5555-5555-655555555915',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555916',
+    4000,
+    '56555555-5555-5555-5555-555555555916',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555917',
+    3000,
+    '56555555-5555-5555-5555-555555555917',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555918',
+    3000,
+    '56555555-5555-5555-5555-555555555918',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555919',
+    0,
+    '56555555-5555-5555-5555-555555555919',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555920',
+    3000,
+    '56555555-5555-5555-5555-555555555920',
+    null,
+    null
 );
 
 -- Default tiers receive one open-ended free price window
@@ -2742,6 +3248,20 @@ values (
     1,
     0,
     true
+), (
+    '58555555-5555-5555-5555-555555555916',
+    true,
+    'OFFER25',
+    '55555555-5555-5555-5555-555555555916',
+    'percentage',
+    'Offer claimant discount',
+    null,
+    25,
+    null,
+    null,
+    null,
+    null,
+    false
 );
 
 -- ============================================================================
@@ -2996,6 +3516,186 @@ values (
     'pending',
     'General admission',
     '77777777-7777-7777-7777-777777777708'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-755555555912',
+    2500,
+    now() - interval '1 day',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555912',
+    '56555555-5555-5555-5555-555555555912',
+    'stripe',
+    'cs_e2e_payment_return_confirmed',
+    'https://checkout.stripe.test/cs_e2e_payment_return_confirmed',
+    'pi_e2e_payment_return_confirmed',
+    'completed',
+    'Payment return pass',
+    '77777777-7777-7777-7777-777777777711'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-655555555914',
+    '59555555-5555-5555-5555-655555555914',
+    4500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-755555555914',
+    current_timestamp + interval '5 days',
+    'stripe',
+    'cs_e2e_invitation_request_checkout',
+    'https://example.test/checkout/invitation-request',
+    'pending',
+    'VIP allocation',
+    '77777777-7777-7777-7777-777777777704'
+), (
+    '59555555-5555-5555-5555-555555555916',
+    '59555555-5555-5555-5555-555555555916',
+    4000,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555916',
+    '56555555-5555-5555-5555-555555555916',
+    current_timestamp + interval '5 days',
+    'stripe',
+    'cs_e2e_paid_offer_checkout',
+    'https://example.test/checkout/paid-offer',
+    'pending',
+    'Private paid offer',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-655555555912',
+    2500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555912',
+    '56555555-5555-5555-5555-555555555912',
+    current_timestamp + interval '5 days',
+    'stripe',
+    'cs_e2e_payment_return_pending',
+    'https://example.test/checkout/payment-return',
+    'pending',
+    'Payment return pass',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    refunded_at,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555920',
+    3000,
+    current_timestamp - interval '5 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555920',
+    '56555555-5555-5555-5555-555555555920',
+    'stripe',
+    'cs_e2e_refunded_capacity',
+    'https://checkout.stripe.test/cs_e2e_refunded_capacity',
+    'pi_e2e_refunded_capacity',
+    current_timestamp - interval '1 day',
+    'refunded',
+    'Refunded conference pass',
+    '77777777-7777-7777-7777-777777777702'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555531',
+    5000,
+    current_timestamp - interval '1 day',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_action_available',
+    'https://checkout.stripe.test/cs_e2e_refund_action_available',
+    'pi_e2e_refund_action_available',
+    'completed',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777703'
 );
 
 -- Confirmed attendees own capacity through completed zero-value purchases

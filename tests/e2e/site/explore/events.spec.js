@@ -103,6 +103,77 @@ const findCalendarNavigationScenario = async (page) => {
 };
 
 test.describe("site explore events page", () => {
+  test("omits free badges from explore and calendar event cards", async ({
+    page,
+  }) => {
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+    );
+
+    // Free list cards do not render an empty-value price badge.
+    const freeEventName = TEST_EVENT_NAMES.alpha[0];
+    const exploreCard = page
+      .getByRole("link")
+      .filter({ hasText: freeEventName })
+      .first();
+    await expect(exploreCard).toBeVisible();
+    await expect(exploreCard.getByText("Free", { exact: true })).toHaveCount(0);
+    await expect(exploreCard.locator("[data-localized-currency]")).toHaveCount(
+      0,
+    );
+
+    // Find the event's seeded month so the same assertion reaches its calendar popover.
+    const startsAt = await page.evaluate(
+      async ({ communityName, eventName }) => {
+        const params = new URLSearchParams();
+        params.append("community[0]", communityName);
+        params.set("view_mode", "calendar");
+        params.set("date_from", "1900-01-01");
+        params.set("date_to", "2100-12-31");
+        const response = await fetch(
+          `/explore/events/search?${params.toString()}`,
+          {
+            headers: { Accept: "application/json" },
+          },
+        );
+        if (!response.ok) {
+          throw new Error(`Unable to load event data: ${response.status}`);
+        }
+        const data = await response.json();
+        const event = data.events.find((item) => item.name === eventName);
+        return event?.starts_at ?? null;
+      },
+      { communityName: TEST_COMMUNITY_NAME, eventName: freeEventName },
+    );
+    expect(startsAt).not.toBeNull();
+    const eventMonth = new Date(startsAt * 1000);
+    const calendarRange = getMonthRange(eventMonth);
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}` +
+        `&view_mode=calendar&date_from=${calendarRange.first}` +
+        `&date_to=${calendarRange.last}`,
+    );
+
+    const calendarEvent = page
+      .locator(".fc-daygrid-event")
+      .filter({ hasText: freeEventName })
+      .first();
+    await expect(calendarEvent).toBeVisible();
+    await calendarEvent.hover();
+    const calendarPopover = page
+      .locator('[data-popover="true"]')
+      .filter({ hasText: freeEventName });
+    await expect(calendarPopover).toBeVisible();
+    await expect(
+      calendarPopover.getByText("Free", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      calendarPopover.locator("[data-localized-currency]"),
+    ).toHaveCount(0);
+  });
+
   test("supports kind filtering and switching to calendar view", async ({
     page,
   }) => {

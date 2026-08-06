@@ -76,6 +76,11 @@ test.describe("event registration windows", () => {
     await expect(getTicketOption(member2Page)).toBeDisabled();
     await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
+    await expect(
+      getTicketModal(member2Page).locator(
+        '[data-attendance-role="ticket-type-status-label"]',
+      ),
+    ).toHaveText("Registration not open");
   });
 
   test("paid events disable checkout after registration closes", async ({
@@ -98,6 +103,11 @@ test.describe("event registration windows", () => {
     await expect(getTicketOption(member2Page)).toBeDisabled();
     await expect(getDiscountCodeInput(member2Page)).toBeDisabled();
     await expect(getCheckoutButton(member2Page)).toBeDisabled();
+    await expect(
+      getTicketModal(member2Page).locator(
+        '[data-attendance-role="ticket-type-status-label"]',
+      ),
+    ).toHaveText("Registration not open");
   });
 
   test("paid events allow checkout controls while registration is open", async ({

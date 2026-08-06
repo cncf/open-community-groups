@@ -1,10 +1,13 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
+  E2E_PAYMENTS_ENABLED,
   buildE2eUrl,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_GROUP_IDS,
+  TEST_GROUP_SLUGS,
+  TEST_TICKETING_EVENTS,
   TEST_USER_IDS,
 } from "../../../utils.js";
 
@@ -24,6 +27,166 @@ const openEventOfferActions = async (offerRow) => {
 };
 
 test.describe("user dashboard invitations view", () => {
+  test("paid offer claims normalize discounts and follow checkout redirects", async ({
+    pending1Page,
+  }) => {
+    test.skip(
+      !E2E_PAYMENTS_ENABLED,
+      "Payments are disabled in this environment.",
+    );
+
+    const event = TEST_TICKETING_EVENTS.paidOffers;
+
+    // Open the seeded paid offer and launch its claim modal.
+    await openUserDashboardPath(
+      "/dashboard/user?tab=invitations",
+      pending1Page,
+    );
+    const offerRow = pending1Page.locator("#dashboard-content tr", {
+      hasText: event.name,
+    });
+    await expect(offerRow).toContainText("Private paid offer");
+    await openEventOfferActions(offerRow);
+    await offerRow.getByRole("menuitem", { name: "Claim offer" }).click();
+
+    const claimModal = pending1Page.getByRole("dialog", {
+      name: "Claim offer",
+    });
+    const discountInput = claimModal.getByRole("textbox", {
+      name: "Discount code (optional)",
+    });
+    await expect(discountInput).toBeVisible();
+    await discountInput.fill("  OFFER25  ");
+
+    // Return a local redirect so the browser handoff can be asserted deterministically.
+    const checkoutUrl = `**/event/${event.id}/checkout`;
+    await pending1Page.route(checkoutUrl, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          redirect_url:
+            `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${event.slug}` +
+            "?checkout=redirected",
+        }),
+        contentType: "application/json",
+        status: 200,
+      });
+    });
+
+    try {
+      const checkoutRequest = pending1Page.waitForRequest(
+        (request) =>
+          request.method() === "POST" &&
+          request.url().includes(`/event/${event.id}/checkout`),
+      );
+      await Promise.all([
+        pending1Page.waitForURL(/checkout=redirected/u),
+        claimModal
+          .getByRole("button", { name: "Claim offer", exact: true })
+          .click(),
+      ]);
+      const requestData = new URLSearchParams(
+        (await checkoutRequest).postData() ?? "",
+      );
+
+      // Verify the offer and trimmed discount reach the unified checkout endpoint.
+      expect(requestData.get("discount_code")).toBe("OFFER25");
+      expect(requestData.get("event_ticket_type_id")).toBe(
+        "56555555-5555-5555-5555-555555555916",
+      );
+      expect(requestData.get("admission_offer_id")).not.toBeNull();
+      await expect(pending1Page).toHaveURL(/checkout=redirected/u);
+    } finally {
+      await pending1Page.unroute(checkoutUrl);
+    }
+  });
+
+  test("checkout-started offers expose continue and cancel actions", async ({
+    pending2Page,
+  }) => {
+    test.skip(
+      !E2E_PAYMENTS_ENABLED,
+      "Payments are disabled in this environment.",
+    );
+
+    const event = TEST_TICKETING_EVENTS.paidOffers;
+
+    // Open the user dashboard for the offer whose provider checkout has started.
+    await openUserDashboardPath(
+      "/dashboard/user?tab=invitations",
+      pending2Page,
+    );
+    const offerRow = pending2Page.locator("#dashboard-content tr", {
+      hasText: event.name,
+    });
+    await openEventOfferActions(offerRow);
+    await expect(
+      offerRow.getByRole("menuitem", { name: "Continue to checkout" }),
+    ).toHaveAttribute("href", "https://example.test/checkout/paid-offer");
+    await offerRow.getByRole("menuitem", { name: "Cancel checkout" }).click();
+    await expect(pending2Page.locator(".swal2-popup")).toContainText(
+      "Are you sure you want to cancel this checkout? Your ticket hold will be released.",
+    );
+
+    // Canceling the hold keeps the underlying offer available to claim again.
+    await Promise.all([
+      pending2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes(`/event/${event.id}/checkout`) &&
+          response.ok(),
+      ),
+      pending2Page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+    await expect(pending2Page.locator(".swal2-popup")).toContainText(
+      "Your checkout has been canceled. The offer is ready to claim again.",
+    );
+    await pending2Page.getByRole("button", { name: "OK" }).click();
+    await openEventOfferActions(offerRow);
+    await expect(
+      offerRow.getByRole("menuitem", { name: "Claim offer" }),
+    ).toBeVisible();
+  });
+
+  test("member can decline a waiting-list ticket offer", async ({
+    member1Page,
+  }) => {
+    test.skip(
+      !E2E_PAYMENTS_ENABLED,
+      "Payments are disabled in this environment.",
+    );
+
+    const event = TEST_TICKETING_EVENTS.paidOffers;
+
+    // Open the dedicated waiting-list offer row.
+    await openUserDashboardPath("/dashboard/user?tab=invitations", member1Page);
+    const offerRow = member1Page.locator("#dashboard-content tr", {
+      hasText: event.name,
+    });
+    await expect(offerRow).toContainText("Waiting list offer");
+    await openEventOfferActions(offerRow);
+    await offerRow
+      .getByRole("menuitem", { name: "Decline offer", exact: true })
+      .click();
+    await expect(member1Page.locator(".swal2-popup")).toContainText(
+      "Are you sure you would like to decline this offer?",
+    );
+
+    // Confirming the decline removes the waiting-list offer from the dashboard.
+    await Promise.all([
+      member1Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response
+            .url()
+            .includes("/dashboard/user/invitations/event-offers/") &&
+          response.url().endsWith("/decline") &&
+          response.ok(),
+      ),
+      member1Page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+    await expect(offerRow).toHaveCount(0);
+  });
+
   test("invitations page shows pending community and group roles", async ({
     adminCommunityPage,
     pending1Page,

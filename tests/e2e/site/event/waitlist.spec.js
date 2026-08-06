@@ -76,7 +76,13 @@ test.describe("event waitlist", () => {
   test("a waitlisted user is promoted when the attendee leaves", async ({
     member2Page,
     organizerGroupPage,
+    page,
   }) => {
+    // The public page starts sold out while the only seeded seat is occupied.
+    await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha, WAITLIST_EVENT_SLUG);
+    const soldOutRibbon = page.locator("[data-availability-sold-out-ribbon]");
+    await expect(soldOutRibbon).toBeVisible();
+
     // Load the waitlist event before creating a waitlisted member.
     await navigateToEvent(
       member2Page,
@@ -129,6 +135,10 @@ test.describe("event waitlist", () => {
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Promotion reserves the released seat, so capacity remains sold out.
+    await page.reload();
+    await expect(soldOutRibbon).toBeVisible();
+
     // Open the promoted member's invitations and verify the waitlist offer.
     await navigateToPath(member2Page, "/dashboard/user?tab=invitations");
     const dashboardContent = member2Page.locator("#dashboard-content");
@@ -155,6 +165,10 @@ test.describe("event waitlist", () => {
     ]);
     await expect(offerRow).toHaveCount(0);
 
+    // Claiming the promoted offer keeps the single seat allocated.
+    await page.reload();
+    await expect(soldOutRibbon).toBeVisible();
+
     // Verify the promoted member is now attending the event.
     await navigateToEvent(
       member2Page,
@@ -165,5 +179,19 @@ test.describe("event waitlist", () => {
     await waitForAttendanceState(member2Page);
     await expect(getLeaveButton(member2Page)).toBeVisible();
     await expect(getLeaveButton(member2Page)).toContainText("Cancel attendance");
+
+    // Cancel the claimed attendance and verify the public capacity reopens.
+    await getLeaveButton(member2Page).click();
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
+          response.ok(),
+      ),
+      member2Page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+    await page.reload();
+    await expect(soldOutRibbon).toBeHidden();
   });
 });

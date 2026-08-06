@@ -796,6 +796,7 @@ test.describe("community dashboard groups view", () => {
         .filter({ hasText: "No groups found matching your search." })
         .first(),
     ).toBeVisible();
+    await expect(dashboardContent).not.toHaveClass(/htmx-settling/);
 
     // Target the clear-filter control shown for empty results.
     const clearFilterButton = dashboardContent.getByRole("button", {

@@ -1,9 +1,11 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
+  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
   TEST_GROUP_SLUGS,
+  TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
   TEST_REGISTRATION_WINDOW_EVENTS,
@@ -109,12 +111,63 @@ test.describe("user dashboard my events view", () => {
 
     // Verify the danger state and complete organizer-provided reason.
     await expect(refundEventRow).toBeVisible();
+    const refundStatusButton = refundEventRow.getByRole("button", {
+      name: "Refund rejected",
+    });
+    const rejectionReason = refundEventRow.getByRole("tooltip");
+    await expect(refundStatusButton).toBeVisible();
+    await refundStatusButton.focus();
+    await expect(rejectionReason).toBeVisible();
+    await expect(rejectionReason.getByText("Refund request")).toBeVisible();
     await expect(
-      refundEventRow.getByText("Refund rejected", { exact: true }),
+      rejectionReason.getByText("Reason", { exact: true }),
     ).toBeVisible();
-    await expect(refundEventRow).toContainText(
-      "Reason: The request falls outside the refund policy window.",
+    await expect(
+      rejectionReason.getByText(
+        "The request falls outside the refund policy window.",
+      ),
+    ).toBeVisible();
+  });
+
+  test("my events exposes the eligibility-gated request refund action", async ({
+    organizerGroupPage,
+  }) => {
+    test.skip(
+      !E2E_PAYMENTS_ENABLED,
+      "Payments are disabled in this environment.",
     );
+
+    // Load My Events and wait for the paid row's eligibility check.
+    const eligibilityResponse = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response
+          .url()
+          .includes(`/event/${TEST_PAYMENT_EVENT_IDS.refunds}/enrollment`) &&
+        response.ok(),
+    );
+    await navigateToPath(organizerGroupPage, "/dashboard/user?tab=events");
+    await eligibilityResponse;
+
+    const refundEventRow = organizerGroupPage
+      .locator("#dashboard-content")
+      .locator("tr", { hasText: TEST_PAYMENT_EVENT_NAMES.refunds });
+    await openEventActions(refundEventRow);
+    const refundAction = refundEventRow.getByRole("menuitem", {
+      name: "Request refund",
+    });
+
+    // The eligible action opens the event's refund control in a new tab.
+    await expect(refundAction).toBeVisible();
+    const popupPromise = organizerGroupPage.waitForEvent("popup");
+    await refundAction.click();
+    const refundPage = await popupPromise;
+    await refundPage.waitForLoadState("domcontentloaded");
+    await expect(refundPage).toHaveURL(/#refund-btn-main$/u);
+    await expect(
+      refundPage.locator('[data-attendance-role="refund-btn"]'),
+    ).toContainText("Request refund");
+    await refundPage.close();
   });
 
   test("my events actions update registration answers and cancel attendance", async ({

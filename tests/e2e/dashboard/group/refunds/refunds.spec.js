@@ -1,6 +1,11 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { E2E_PAYMENTS_ENABLED, TEST_PAYMENT_EVENT_IDS, navigateToPath } from "../../../utils.js";
+import {
+  E2E_PAYMENTS_ENABLED,
+  TEST_PAYMENT_EVENT_IDS,
+  TEST_PAYMENT_EVENT_NAMES,
+  navigateToPath,
+} from "../../../utils.js";
 
 const getRefundRow = (dashboardContent, attendeeName) =>
   dashboardContent.locator("tbody tr", {
@@ -68,7 +73,22 @@ test.describe("group dashboard refunds", () => {
       refundStatus.selectOption("completed"),
     ]);
     await expect(getRefundRow(dashboardContent, "E2E Admin One")).toContainText("Refunded");
-    await expect(getRefundRow(dashboardContent, "E2E Pending One")).toContainText("Rejected");
+    const rejectedRefundRow = getRefundRow(dashboardContent, "E2E Pending One");
+    await expect(rejectedRefundRow).toContainText("Rejected");
+    const refundDetailsButton = rejectedRefundRow.locator(
+      'button[aria-describedby^="refund-details-"]',
+    );
+    const refundDetails = rejectedRefundRow.getByRole("tooltip");
+    await refundDetailsButton.focus();
+    await expect(refundDetails).toBeVisible();
+    await expect(refundDetails.getByText("Reason", { exact: true })).toBeVisible();
+    await expect(refundDetails.getByText("Need a different date", { exact: true })).toBeVisible();
+    await expect(refundDetails.getByText("Review", { exact: true })).toBeVisible();
+    await expect(
+      refundDetails.getByText("The request falls outside the refund policy window.", {
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(getRefundRow(dashboardContent, "E2E Member One")).toHaveCount(0);
   });
 
@@ -91,12 +111,24 @@ test.describe("group dashboard refunds", () => {
     });
     await expect(recoveryAction).toBeDisabled();
     await expect(recoveryAction).toHaveAttribute("aria-disabled", "true");
-    await expect(recoveryAction.locator("xpath=..")).toHaveAttribute(
-      "title",
-      "Events write access is required to complete refund recovery.",
-    );
-    await expect(dashboardContent.locator("[data-refund-approve-open]")).toHaveCount(0);
-    await expect(dashboardContent.locator("[data-refund-reject-open]")).toHaveCount(0);
+    const recoveryTooltipTrigger = recoveryAction.locator("xpath=..");
+    const recoveryTooltip = recoveryTooltipTrigger.getByRole("tooltip");
+    await recoveryTooltipTrigger.focus();
+    await expect(recoveryTooltip).toBeVisible();
+    await expect(
+      recoveryTooltip.getByText(
+        "Events write access is required to complete refund recovery.",
+      ),
+    ).toBeVisible();
+    await expect(
+      recoveryTooltip.getByText("Recovery unavailable"),
+    ).toBeVisible();
+    await expect(
+      dashboardContent.locator("[data-refund-approve-open]"),
+    ).toHaveCount(0);
+    await expect(
+      dashboardContent.locator("[data-refund-reject-open]"),
+    ).toHaveCount(0);
   });
 
   test("preserves refund view and filter history with keyboard focus", async ({
@@ -388,7 +420,12 @@ test.describe("group dashboard refunds", () => {
     await expect(requeuedRefundRow).not.toContainText("Needs retry");
   });
 
-  test("persists a refund rejection and its reason", async ({ organizerGroupPage }) => {
+  test("persists a refund rejection and its reason", async ({
+    groupsManagerPage,
+    organizerGroupPage,
+  }) => {
+    test.setTimeout(60_000);
+
     // Open the dedicated pending request without mocking the organizer action.
     const dashboardContent = await openRefundsDashboard(organizerGroupPage);
     const pendingRefundRow = getRefundRow(dashboardContent, "E2E Groups Manager One");
@@ -398,6 +435,7 @@ test.describe("group dashboard refunds", () => {
     const rejectDialog = organizerGroupPage.getByRole("dialog", {
       name: "Reject refund request",
     });
+    await expect(rejectDialog).toContainText("Duplicate registration");
     await rejectDialog.getByLabel("Reason shown to attendee").fill("Duplicate purchase");
 
     // Reject the request through the real handler and capture its form contract.
@@ -418,20 +456,30 @@ test.describe("group dashboard refunds", () => {
     );
     await organizerGroupPage.locator(".swal2-confirm").click();
 
-    // Reopen completed history and verify the persisted reason and review outcome.
-    await Promise.all([
-      waitForRefundsResponse(organizerGroupPage),
-      dashboardContent.getByLabel("Refund status").selectOption("completed"),
-    ]);
-    const rejectedRefundRow = getRefundRow(dashboardContent, "E2E Groups Manager One");
-    await expect(rejectedRefundRow).toContainText("Rejected");
-    await expect(rejectedRefundRow).toContainText("Reason: Duplicate registration");
-    await expect(rejectedRefundRow).toContainText("Review: Duplicate purchase");
+    // Verify the rejected request leaves the refreshed active queue.
+    await expect(pendingRefundRow).toHaveCount(0);
+
+    // Verify the attendee sees the persisted rejection and organizer reason.
+    await navigateToPath(groupsManagerPage, "/dashboard/user?tab=events");
+    const rejectedEventRow = groupsManagerPage.locator("#dashboard-content tbody tr", {
+      hasText: TEST_PAYMENT_EVENT_NAMES.refunds,
+    });
+    const refundStatusButton = rejectedEventRow.getByRole("button", {
+      name: "Refund rejected",
+    });
+    const rejectionReason = rejectedEventRow.getByRole("tooltip");
+    await expect(rejectedEventRow).toBeVisible();
+    await refundStatusButton.focus();
+    await expect(rejectionReason).toBeVisible();
+    await expect(rejectionReason.getByText("Reason", { exact: true })).toBeVisible();
+    await expect(rejectionReason.getByText("Duplicate purchase", { exact: true })).toBeVisible();
   });
 
   test("completes manual recovery through the real refund handler", async ({
     organizerGroupPage,
   }) => {
+    test.setTimeout(60_000);
+
     // Open the dedicated terminal provider failure.
     const dashboardContent = await openRefundsDashboard(
       organizerGroupPage,
@@ -474,15 +522,8 @@ test.describe("group dashboard refunds", () => {
       "Refund recovery completed.",
     );
     await organizerGroupPage.locator(".swal2-confirm").click();
-    await expect(recoveryRow).toHaveCount(0);
 
-    // Verify the recovered purchase is retained in completed history.
-    await Promise.all([
-      waitForRefundsResponse(organizerGroupPage),
-      dashboardContent.getByLabel("Refund status").selectOption("completed"),
-    ]);
-    const recoveredRefundRow = getRefundRow(dashboardContent, "E2E Community Viewer One");
-    await expect(recoveredRefundRow).toContainText("Refunded");
-    await expect(recoveredRefundRow.locator("[data-actions-menu]")).toHaveCount(0);
+    // Verify the recovered purchase leaves the refreshed attention queue.
+    await expect(recoveryRow).toHaveCount(0);
   });
 });

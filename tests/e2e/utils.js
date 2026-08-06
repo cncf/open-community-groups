@@ -173,6 +173,55 @@ export const TEST_PAYMENT_EVENT_SLUGS = {
   refunds: "alpha-payments-refunds",
 };
 
+/** Ticketing workflow events with isolated mutable state. */
+export const TEST_TICKETING_EVENTS = {
+  invitationRequests: {
+    id: "55555555-5555-5555-5555-555555555914",
+    name: "Invitation Request Lifecycle Lab",
+    slug: "alpha-invitation-request-lifecycle",
+  },
+  migratedCapacity: {
+    id: "55555555-5555-5555-5555-555555555919",
+    name: "Migrated Unlimited Capacity Event",
+    slug: "alpha-migrated-unlimited-capacity",
+  },
+  noAssignableTier: {
+    id: "55555555-5555-5555-5555-555555555915",
+    name: "No Assignable Invitation Tier Lab",
+    slug: "alpha-no-assignable-invitation-tier",
+  },
+  paidOffers: {
+    id: "55555555-5555-5555-5555-555555555916",
+    name: "Paid Event Offers Lab",
+    slug: "alpha-paid-event-offers",
+  },
+  paidQuestions: {
+    id: "55555555-5555-5555-5555-555555555917",
+    name: "Paid Registration Questions Lab",
+    slug: "alpha-paid-registration-questions",
+  },
+  paymentReturn: {
+    id: "55555555-5555-5555-5555-555555555912",
+    name: "Payment Return States Lab",
+    slug: "alpha-payment-return-states",
+  },
+  refundedCapacity: {
+    id: "55555555-5555-5555-5555-555555555920",
+    name: "Refunded Capacity Release Lab",
+    slug: "alpha-refunded-capacity-release",
+  },
+  soldOut: {
+    id: "55555555-5555-5555-5555-555555555918",
+    name: "Sold Out Ticket States Lab",
+    slug: "alpha-sold-out-ticket-states",
+  },
+  ticketRequest: {
+    id: "55555555-5555-5555-5555-555555555913",
+    name: "Ticket Request Lab",
+    slug: "alpha-ticket-request-lab",
+  },
+};
+
 /** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
 export const TEST_PAYMENT_GROUP_RECIPIENT = "acct_e2e_alpha";
 export const E2E_PAYMENTS_ENABLED =
@@ -194,6 +243,7 @@ export const TEST_EVENT_SLUGS = {
 /** Pre-seeded user ids for state resets and dashboard assertions. */
 export const TEST_USER_IDS = {
   communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
+  member1: "77777777-7777-7777-7777-777777777705",
   member2: "77777777-7777-7777-7777-777777777706",
   organizer1: "77777777-7777-7777-7777-777777777703",
   pending1: "77777777-7777-7777-7777-777777777707",
@@ -252,6 +302,7 @@ const isServerUnavailableNavigationError = (error) => {
   return (
     message.includes("Could not connect to the server") ||
     message.includes("ERR_CONNECTION_REFUSED") ||
+    message.includes("NS_ERROR_CONNECTION_REFUSED") ||
     message.includes("ECONNREFUSED")
   );
 };
