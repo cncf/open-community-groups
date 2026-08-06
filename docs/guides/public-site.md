@@ -102,6 +102,11 @@ one of these states:
   is currently open, ticket tiers are disabled, or tickets are sold out
   without a waiting list.
 
+On the public event page, `Capacity` and `Remaining` describe seats in active public ticket tiers
+with a current price. Invitation-only seats are excluded. `Remaining` accounts for confirmed
+purchases and unexpired admission offers and checkout holds; pending approval requests do not
+reserve seats.
+
 Registration questions appear at the stage where the answers are needed:
 before a direct checkout, with an approval request, or when an organizer or
 waitlist offer is claimed. Joining a ticket waiting list does not collect
