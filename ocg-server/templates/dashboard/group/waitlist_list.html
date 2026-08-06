@@ -157,9 +157,10 @@
           </div>
           {% endcall -%}
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-1.5 w-20">Queue</th>
-        <th scope="col" class="px-3 xl:px-5 py-1.5">Enrollment</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-44">Queue</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5">Enrollment</th>
+        <th scope="col"
+            class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40">
           <span class="whitespace-nowrap">Created</span>
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
@@ -172,7 +173,7 @@
       {% if waitlist.is_empty() -%}
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
-          <td class="xl:hidden px-8 py-12 text-center" colspan="4">
+          <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
             {% else if event.waitlist_enabled -%}
@@ -182,6 +183,16 @@
             {% endif -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
+              colspan="4">
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
+            {% else if event.waitlist_enabled -%}
+              {% include "dashboard/placeholders/group_waitlist_table.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
+            {% endif -%}
+          </td>
+          <td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center"
               colspan="5">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
@@ -191,7 +202,8 @@
               {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
+          <td class="hidden min-[1920px]:table-cell px-8 py-12 text-center"
+              colspan="6">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
             {% else if event.waitlist_enabled -%}
@@ -224,51 +236,39 @@
             </td>
             {# End position -#}
             {# Queue -#}
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap w-20 text-stone-900">
-              {% if let Some(waitlist_position) = entry.waitlist_position -%}
-                #{{ waitlist_position }}
-              {% else -%}
-                —
-              {% endif -%}
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap w-44 text-stone-900">
+              <div class="flex flex-col items-start gap-1.5">
+                {% if let Some(waitlist_position) = entry.waitlist_position -%}
+                  <span>#{{ waitlist_position }}</span>
+                {% endif -%}
+                {% if let Some(offer_status) = entry.admission_offer_status -%}
+                  {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
+                    {{ waitlist_offer_status_badge(entry, event, "Offer pending", false, false) -}}
+                  {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
+                    {{ waitlist_offer_status_badge(entry, event, "Checkout pending", false, false) -}}
+                  {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
+                    {{ badges::status_badge(label = "Ticket claimed", published = true) -}}
+                  {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                    {{ waitlist_offer_status_badge(entry, event, "Offer expired", true, false) -}}
+                  {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
+                    {{ badges::status_badge(label = "Offer canceled", canceled = true) -}}
+                  {% else -%}
+                    {{ badges::status_badge(label = "Offer declined", canceled = true) -}}
+                  {% endif -%}
+                {% endif -%}
+              </div>
             </td>
             {# End queue -#}
             {# Enrollment -#}
-            <td class="px-3 xl:px-5 py-4">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
               <div class="flex min-w-0 flex-col gap-1.5">
                 <div class="max-w-[260px] truncate font-medium text-stone-900"
                      title="{{ entry.ticket_title }}">{{ entry.ticket_title }}</div>
-                {% if let Some(offer_status) = entry.admission_offer_status -%}
-                  <div>
-                    {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
-                      {{ badges::invitation_badge(label = "Offer pending") -}}
-                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
-                      {{ badges::invitation_badge(label = "Checkout pending") -}}
-                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
-                      {{ badges::invitation_badge(label = "Ticket claimed", tone = "success") -}}
-                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
-                      {{ badges::invitation_badge(label = "Offer expired", tone = "danger") -}}
-                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
-                      {{ badges::invitation_badge(label = "Offer canceled", tone = "danger") -}}
-                    {% else -%}
-                      {{ badges::invitation_badge(label = "Offer declined", tone = "danger") -}}
-                    {% endif -%}
-                  </div>
-                {% endif -%}
-                {% if let Some(offer_expires_at) = &entry.offer_expires_at -%}
-                  <div class="text-xs text-stone-500">
-                    {% if entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-                      Expired
-                    {% else -%}
-                      Deadline
-                    {% endif -%}
-                    {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-                  </div>
-                {% endif -%}
               </div>
             </td>
             {# End enrollment -#}
             {# Created date -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+            <td class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {{ entry.created_at.format("%b %d, %Y") }}
             </td>
             {# End created date -#}
@@ -279,21 +279,41 @@
                   && (entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
                   || entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)) -%}
                   {% if let Some(admission_offer_id) = entry.admission_offer_id -%}
-                    <button id="cancel-waitlist-offer-{{ admission_offer_id }}"
-                            type="button"
-                            aria-label="Cancel waiting list offer for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
-                            hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
-                            hx-indicator="#dashboard-spinner"
-                            hx-disabled-elt="this"
-                            hx-trigger="confirmed"
-                            data-confirm-action
-                            data-confirm-message="Are you sure you want to cancel this waiting list offer?"
-                            data-confirm-text="Yes"
-                            data-success-message="Waiting list offer canceled."
-                            data-error-message="Something went wrong canceling this waiting list offer. Please try again later."
-                            class="btn-actions btn-tertiary flex items-center justify-center p-2">
-                      <div class="svg-icon size-4 icon-cancel"></div>
-                    </button>
+                    <div class="group relative inline-flex justify-end">
+                      <button type="button"
+                              class="btn-actions btn-tertiary flex items-center justify-center p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
+                              data-event-id="waitlist-offer-{{ admission_offer_id }}"
+                              aria-controls="dropdown-actions-waitlist-offer-{{ admission_offer_id }}"
+                              aria-expanded="false"
+                              aria-label="Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
+                              title="Open waitlist actions">
+                        <div class="svg-icon size-4 icon-vertical-dots"></div>
+                      </button>
+                      <div id="dropdown-actions-waitlist-offer-{{ admission_offer_id }}"
+                           data-event-actions-dropdown
+                           class="dropdown absolute end-0 top-8 z-10 hidden w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                        <ul class="text-sm text-stone-700" role="menu">
+                          <li>
+                            <button id="cancel-waitlist-offer-{{ admission_offer_id }}"
+                                    type="button"
+                                    role="menuitem"
+                                    hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
+                                    hx-indicator="#dashboard-spinner"
+                                    hx-disabled-elt="this"
+                                    hx-trigger="confirmed"
+                                    data-confirm-action
+                                    data-confirm-message="Are you sure you want to cancel this waiting list offer?"
+                                    data-confirm-text="Yes"
+                                    data-success-message="Waiting list offer canceled."
+                                    data-error-message="Something went wrong canceling this waiting list offer. Please try again later."
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                              <span>Cancel offer</span>
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   {% endif -%}
                 {% else -%}
                   <button type="button"
@@ -331,6 +351,40 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#waitlist-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Waitlist offer status badge and deadline. #}
+{% macro waitlist_offer_status_badge(entry, event, label, canceled, published) -%}
+  {% if let Some(offer_expires_at) = &entry.offer_expires_at -%}
+    {% let waitlist_offer_tooltip_id -%}waitlist-offer-deadline-{{ entry.user.user_id }}{%- endlet %}
+  <span class="group/offer-deadline relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            aria-describedby="{{ waitlist_offer_tooltip_id }}">
+      {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+                   {% if canceled %}bg-red-800{% else if published %}bg-green-800{% else %}bg-amber-800{% endif %}"
+            aria-hidden="true"></span>
+    </button>
+    {% call dashboard::tooltip_panel(
+      id = waitlist_offer_tooltip_id,
+      title = "Ticket offer",
+      visibility_classes = "group-hover/offer-deadline:visible group-hover/offer-deadline:opacity-100 group-focus-within/offer-deadline:visible group-focus-within/offer-deadline:opacity-100"
+    ) -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">
+        {% if entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Expired{% else %}Deadline{% endif %}
+      </span>
+      <span class="mt-0.5 block text-stone-900">
+        {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+      </span>
+    </span>
+    {% endcall -%}
+  </span>
+{% else -%}
+  {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
+{% endif -%}
+{% endmacro waitlist_offer_status_badge -%}
+{# End waitlist offer status badge. #}
 
 {# Waitlist table state fields for filter, sort, and search forms. #}
 {% macro waitlist_table_state_inputs(

@@ -27,6 +27,7 @@ describe("dashboard group attendees list template", () => {
 
     // Verify aggregate views and exact statuses are visually separated by native optgroups.
     expect(template).to.include('for="attendees-enrollment-status"');
+    expect(template).to.include('text-stone-900">Status</label>');
     expect(template).to.include('id="attendees-enrollment-status"');
     expect(template).to.include('name="status"');
     expect(template).not.to.include('name="attendance"');
@@ -127,6 +128,12 @@ describe("dashboard group attendees list template", () => {
       'hx-put="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/retry"',
     );
     expect(template).to.include("data-actions-menu");
+    expect(template).to.include(
+      'class="dropdown absolute end-0 top-8 z-10 w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
+    );
+    expect(template).to.include(
+      "gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50",
+    );
   });
 
   it("labels completed paid offers as claimed tickets", async () => {
@@ -299,22 +306,41 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("(Invitation only)");
     expect(template).to.include("(Public)");
 
-    // Verify offer states use consistent badges in the dedicated status column.
-    expect(template).to.include('badges::status_badge(label = "Offer pending")');
-    expect(template).to.include('badges::status_badge(label = "Checkout pending")');
-    expect(template).to.include("{{ attendee_status(attendee, event) -}}");
+    // Verify offer states use consistent badges in each responsive location.
+    expect(template).to.include(
+      'attendee_offer_status_badge(attendee, event, "Offer pending", false, status_instance)',
+    );
+    expect(template).to.include(
+      'attendee_offer_status_badge(attendee, event, "Checkout pending", false, status_instance)',
+    );
+    expect(template).to.include(
+      'attendee_offer_status_badge(attendee, event, "Offer expired", true, status_instance)',
+    );
+    expect(template).to.include('{{ attendee_status(attendee, event, "mobile") -}}');
+    expect(template).to.include('{{ attendee_status(attendee, event, "ticket") -}}');
+    expect(template).to.include('{{ attendee_status(attendee, event, "desktop") -}}');
     expect(template).to.not.include("Awaiting claim");
     expect(template).to.not.include("Checkout in progress");
     expect(template).to.not.include("badges::invitation_badge");
 
-    // Verify offer deadlines are available from an info tooltip on hover and focus.
-    expect(template).to.include('role="tooltip"');
-    expect(template).to.include("icon-info");
-    expect(template).to.include('aria-label="{% if attendee.admission_offer_status');
-    expect(template).to.include("group-hover/deadline-tooltip:visible");
-    expect(template).to.include("group-focus-within/deadline-tooltip:visible");
+    // Verify offer deadlines appear from the status badge on hover and focus.
+    expect(template).not.to.include("icon-info");
+    expect(template).to.include("relative inline-flex cursor-help rounded-full");
+    expect(template).to.include(
+      "attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}",
+    );
+    expect(template).to.include('aria-describedby="{{ attendee_offer_tooltip_id }}"');
+    expect(template).to.include("dashboard::tooltip_panel(");
+    expect(template).to.include('title = "Ticket offer"');
+    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white");
+    expect(template).to.include("bg-red-800");
+    expect(template).to.include("bg-amber-800");
+    expect(template).to.include('<span class="block font-semibold text-stone-500">');
+    expect(template).to.include('<span class="mt-0.5 block text-stone-900">');
+    expect(template).to.include("group-hover/offer-deadline:visible");
+    expect(template).to.include("group-focus-within/offer-deadline:visible");
     expect(attendeeCell.indexOf("{% endcall -%}")).to.be.lessThan(
-      attendeeCell.indexOf("{{ attendee_status(attendee, event) -}}"),
+      attendeeCell.indexOf('{{ attendee_status(attendee, event, "mobile") -}}'),
     );
     expect(template).to.include(
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
@@ -327,7 +353,6 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify only expired organizer invitations expose reissue.
-    expect(template).to.include('badges::status_badge(label = "Offer expired", canceled = true)');
     expect(template).to.include("Reissue invitation");
     expect(template).to.include('name="email" value="{{ attendee.email }}"');
     expect(template).to.include(
@@ -426,14 +451,40 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-44"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
+    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44"');
+    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"');
+    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"',
+    );
+    expect(template).to.include(
+      '<div class="mt-2 lg:hidden">{{ attendee_status(attendee, event, "mobile") -}}</div>',
+    );
+    expect(template).to.include(
+      '<div class="mt-2 2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>',
+    );
+    expect(template).to.include('class="mt-1 truncate text-xs text-stone-600 lg:hidden"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include('<span class="whitespace-nowrap">Attendee</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Enrollment Date</span>');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
+    );
+    expect(template).to.include('<td class="lg:hidden px-8 py-12 text-center" colspan="3">');
+    expect(template).to.include(
+      '<td class="hidden lg:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4">',
+    );
+    expect(template).to.include(
+      '<td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center" colspan="5">',
+    );
+    expect(template).to.include(
+      '<td class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="7">',
+    );
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
     );
@@ -496,8 +547,8 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-checkbox");
     expect(template).to.include('class="checkbox-primary"');
     expect(template).to.include("attendee.can_receive_attendee_email");
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle"');
+    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"');
+    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"');
     expect(template).to.include('class="btn-primary-outline btn-mini h-7!"');
     expect(template).to.include('class="btn-primary btn-mini h-7!"');
     expect(template).to.include("Continue");

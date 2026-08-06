@@ -511,14 +511,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
                 ${row.code?.trim() || "CODE"}
               </div>
               <div class="mt-3 flex flex-wrap items-center gap-2 2xl:hidden">
-                <span
-                  class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
-                >
+                <span class="custom-badge inline-flex items-center bg-stone-100 px-2.5 py-0.5 text-stone-700">
                   ${this._discountRedemptionsSummary(row)}
                 </span>
-                <span
-                  class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
-                >
+                <span class="custom-badge inline-flex items-center bg-stone-100 px-2.5 py-0.5 text-stone-700">
                   ${this._discountValueSummary(row)}
                 </span>
                 ${

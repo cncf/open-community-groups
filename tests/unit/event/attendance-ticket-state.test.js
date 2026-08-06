@@ -4,6 +4,7 @@ import {
   applyTicketCardState,
   deriveTicketCardState,
   readTicketCardState,
+  TICKET_PRICE_BADGE_CLASSES,
 } from "/static/js/event/attendance-ticket-state.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -26,6 +27,10 @@ const defaultTicket = {
 describe("attendance ticket state", () => {
   afterEach(() => {
     resetDom();
+  });
+
+  it("keeps refreshed ticket prices uppercase", () => {
+    expect(TICKET_PRICE_BADGE_CLASSES).to.include("uppercase");
   });
 
   it("derives purchasable ticket state", () => {

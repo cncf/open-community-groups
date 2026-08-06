@@ -86,13 +86,13 @@
                 {% endif -%}
                 <div class="mt-2 xl:hidden inline-flex items-center gap-2">
                   <span class="text-xs text-stone-400 uppercase">Status</span>
-                  {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase")) -}}
+                  {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5")) -}}
                 </div>
               </td>
               {# End proposal -#}
               {# Status -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
-                {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase")) -}}
+                {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5")) -}}
               </td>
               {# End status -#}
               {# Updated date -#}

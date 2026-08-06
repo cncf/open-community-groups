@@ -8,7 +8,7 @@
 {# Event Invitations -#}
 <div class="mt-10">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-10">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-12">
       {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
@@ -46,125 +46,148 @@
               {# End event -#}
               {# Offer -#}
               <td class="px-3 xl:px-5 py-4">
-                <div class="font-medium text-stone-700">
-                  {% if invitation.is_simple_rsvp -%}RSVP{% else -%}{{ invitation.ticket_title }}{% endif -%}
-                </div>
-                <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
-                {% if !invitation.is_simple_rsvp -%}
-                  {% if let Some(price_label) = invitation.price_label() -%}
-                    <div class="mt-1 text-xs font-semibold text-green-800"
-                         data-localized-currency>{{ price_label }}</div>
+                {% if invitation.is_simple_rsvp -%}
+                  <div class="font-medium text-stone-700">RSVP</div>
+                  <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
+                {% else if let Some(price_label) = invitation.price_label() -%}
+                  {% let event_offer_tooltip_id -%}event-offer-details-{{ invitation.admission_offer_id }}{%- endlet %}
+                <span class="group/event-offer-details relative inline-flex shrink-0">
+                  <button type="button"
+                          class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                          aria-describedby="{{ event_offer_tooltip_id }}">
+                    <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
+                          data-localized-currency>{{ price_label }}</span>
+                    <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500"
+                          aria-hidden="true"></span>
+                  </button>
+                  {% call dashboard::tooltip_panel(
+                    id = event_offer_tooltip_id,
+                    title = "Ticket offer",
+                    visibility_classes = "group-hover/event-offer-details:visible group-hover/event-offer-details:opacity-100 group-focus-within/event-offer-details:visible group-focus-within/event-offer-details:opacity-100"
+                  ) -%}
+                  <span class="block">
+                    <span class="block font-semibold text-stone-500">Ticket type</span>
+                    <span class="mt-0.5 block text-stone-900">{{ invitation.ticket_title }}</span>
+                  </span>
+                  <span class="block">
+                    <span class="block font-semibold text-stone-500">Offer</span>
+                    <span class="mt-0.5 block text-stone-900">{{ invitation.source_label() }}</span>
+                  </span>
+                  {% endcall -%}
+                </span>
+          {% else -%}
+            <div class="font-medium text-stone-700">{{ invitation.ticket_title }}</div>
+            <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
+          {% endif -%}
+          </td>
+        {# End offer -#}
+        {# Starts date -#}
+        <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+          {% if let Some(starts_at) = &invitation.starts_at -%}
+            {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
+          {% else -%}
+            -
+          {% endif -%}
+          </td>
+        {# End starts date -#}
+        {# Expiration date -#}
+        <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+          {{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y") }}
+          <div class="text-xs text-stone-400">
+            {{ invitation.expires_at.with_timezone(invitation.timezone).format("%-I:%M %p %Z") }}
+          </div>
+          </td>
+        {# End expiration date -#}
+        {# Actions -#}
+        <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+          <details data-actions-menu class="group relative inline-flex justify-end">
+            <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                     aria-label="Open offer actions for {{ invitation.event_name }}"
+                     title="Open offer actions">
+              <div class="svg-icon size-4 icon-vertical-dots"></div>
+            </summary>
+            <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+              <ul class="text-sm text-stone-700" role="menu">
+                <li>
+                  {% if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}
+                    <a href="{{ resume_checkout_url }}"
+                       role="menuitem"
+                       class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                      <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+                      <span>Continue to checkout</span>
+                    </a>
+                  {% else -%}
+                    <button type="button"
+                            data-user-event-offer-open
+                            data-user-event-offer-modal="event-offer-modal-{{ invitation.admission_offer_id }}"
+                            role="menuitem"
+                            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                      <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+                      <span>Claim offer</span>
+                    </button>
                   {% endif -%}
+                </li>
+                {% if invitation.checkout_started() -%}
+                  <li>
+                    <button id="cancel-event-offer-checkout-{{ invitation.admission_offer_id }}"
+                            type="button"
+                            hx-delete="/{{ invitation.community_name }}/event/{{ invitation.event_id }}/checkout"
+                            hx-indicator="#dashboard-spinner"
+                            hx-trigger="confirmed"
+                            hx-swap="none"
+                            hx-disabled-elt="this"
+                            data-confirm-action
+                            data-user-event-offer-checkout-cancel
+                            data-confirm-message="Are you sure you want to cancel this checkout? Your ticket hold will be released."
+                            data-confirm-text="Yes"
+                            data-error-message="Something went wrong canceling checkout. Please try again later."
+                            role="menuitem"
+                            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                      <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                      <span>Cancel checkout</span>
+                    </button>
+                  </li>
                 {% endif -%}
-              </td>
-              {# End offer -#}
-              {# Starts date -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                {% if let Some(starts_at) = &invitation.starts_at -%}
-                  {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
-                {% else -%}
-                  -
-                {% endif -%}
-              </td>
-              {# End starts date -#}
-              {# Expiration date -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                {{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y") }}
-                <div class="text-xs text-stone-400">
-                  {{ invitation.expires_at.with_timezone(invitation.timezone).format("%-I:%M %p %Z") }}
-                </div>
-              </td>
-              {# End expiration date -#}
-              {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
-                <details data-actions-menu class="group relative inline-flex justify-end">
-                  <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
-                           aria-label="Open offer actions for {{ invitation.event_name }}"
-                           title="Open offer actions">
-                    <div class="svg-icon size-4 icon-vertical-dots"></div>
-                  </summary>
-                  <div class="dropdown absolute z-10 end-0 top-8 w-[230px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                    <ul class="py-2 text-sm text-stone-700" role="menu">
-                      <li>
-                        {% if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}
-                          <a href="{{ resume_checkout_url }}"
-                             role="menuitem"
-                             class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                            <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-500"></div>
-                            <span>Continue to checkout</span>
-                          </a>
-                        {% else -%}
-                          <button type="button"
-                                  data-user-event-offer-open
-                                  data-user-event-offer-modal="event-offer-modal-{{ invitation.admission_offer_id }}"
-                                  role="menuitem"
-                                  class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                            <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-500"></div>
-                            <span>Claim offer</span>
-                          </button>
-                        {% endif -%}
-                      </li>
-                      {% if invitation.checkout_started() -%}
-                        <li>
-                          <button id="cancel-event-offer-checkout-{{ invitation.admission_offer_id }}"
-                                  type="button"
-                                  hx-delete="/{{ invitation.community_name }}/event/{{ invitation.event_id }}/checkout"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-trigger="confirmed"
-                                  hx-swap="none"
-                                  hx-disabled-elt="this"
-                                  data-confirm-action
-                                  data-user-event-offer-checkout-cancel
-                                  data-confirm-message="Are you sure you want to cancel this checkout? Your ticket hold will be released."
-                                  data-confirm-text="Yes"
-                                  data-error-message="Something went wrong canceling checkout. Please try again later."
-                                  role="menuitem"
-                                  class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                            <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
-                            <span>Cancel checkout</span>
-                          </button>
-                        </li>
-                      {% endif -%}
-                      <li>
-                        <button id="decline-event-offer-{{ invitation.admission_offer_id }}"
-                                hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/decline"
-                                hx-indicator="#dashboard-spinner"
-                                hx-trigger="confirmed"
-                                hx-disabled-elt="this"
-                                data-confirm-action
-                                data-confirm-message="Are you sure you would like to decline this offer?"
-                                data-confirm-text="Yes"
-                                data-error-message="Something went wrong declining this offer. Please try again later."
-                                role="menuitem"
-                                class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left reject-modal">
-                          <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
-                          <span>Decline offer</span>
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-                </details>
-              </td>
-              {# End actions -#}
-            </tr>
-            {# End invitation row -#}
-          {% endfor -%}
-        {% endif -%}
-      </tbody>
-    </table>
-  </div>
+                <li>
+                  <button id="decline-event-offer-{{ invitation.admission_offer_id }}"
+                          hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/decline"
+                          hx-indicator="#dashboard-spinner"
+                          hx-trigger="confirmed"
+                          hx-disabled-elt="this"
+                          data-confirm-action
+                          data-confirm-message="Are you sure you would like to decline this offer?"
+                          data-confirm-text="Yes"
+                          data-error-message="Something went wrong declining this offer. Please try again later."
+                          role="menuitem"
+                          class="reject-modal flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                    <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                    <span>Decline offer</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </details>
+          </td>
+        {# End actions -#}
+          </tr>
+        {# End invitation row -#}
+      {% endfor -%}
+    {% endif -%}
+  </tbody>
+</table>
+</div>
 </div>
 {# End Event Invitations -#}
 
 {# Groups Invitations -#}
-<div class="pt-12">
+<div>
   {{ dashboard::form_title(title = "Group Invitations",
     description = "Manage invitations to join groups.") -}}
 </div>
 
 <div class="mt-10">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-10">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-12">
       {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
@@ -199,7 +222,7 @@
               {# End group -#}
 
               {# Role -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ badges::common_badge(content = invitation.role) -}}</td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</td>
               {# End role -#}
 
               {# Created at date -#}
@@ -247,7 +270,7 @@
 {# End Groups Invitations -#}
 
 {# Community Invitations -#}
-<div class="pt-12">
+<div>
   {{ dashboard::form_title(title = "Community Invitations",
     description = "Manage invitations to join communities.") -}}
 </div>
@@ -289,7 +312,7 @@
               {# End community -#}
 
               {# Role -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ badges::common_badge(content = invitation.role) -}}</td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ badges::common_badge(content = invitation.role, extra_styles = Some("px-2.5 py-0.5")) -}}</td>
               {# End role -#}
 
               {# Created at date -#}
@@ -387,7 +410,7 @@
                 </div>
                 {% if !invitation.is_simple_rsvp -%}
                   {% if let Some(price_label) = invitation.price_label() -%}
-                    <div class="rounded-full border border-green-800 bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800"
+                    <div class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
                          data-localized-currency>{{ price_label }}</div>
                   {% endif -%}
                 {% endif -%}

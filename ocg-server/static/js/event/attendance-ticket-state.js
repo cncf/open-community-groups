@@ -20,6 +20,7 @@ export const TICKET_PRICE_BADGE_CLASSES = [
   "py-0.5",
   "text-[11px]",
   "font-semibold",
+  "uppercase",
   "text-green-800",
 ];
 export const TICKET_STATUS_CLASSES = ["bg-green-500", "bg-red-500", "bg-stone-300"];

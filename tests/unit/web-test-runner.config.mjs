@@ -17,7 +17,13 @@ export default {
   files: `${repoRootDir}/tests/unit/**/*.test.js`,
   hostname: "127.0.0.1",
   nodeResolve: true,
-  browsers: [playwrightLauncher({ product: "chromium" })],
+  browsers: [
+    playwrightLauncher({
+      product: "chromium",
+      createBrowserContext: ({ browser }) =>
+        browser.newContext({ locale: "en-US" }),
+    }),
+  ],
   testRunnerHtml: (testFrameworkImport) => `<!DOCTYPE html>
 <html lang="en">
   <head>

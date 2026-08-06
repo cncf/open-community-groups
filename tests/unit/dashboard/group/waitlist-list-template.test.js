@@ -42,7 +42,7 @@ describe("dashboard group waitlist list template", () => {
       'pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry", plural_label = "waitlist entries")',
     );
     expect(template).to.include("dashboard/placeholders/group_waitlist_no_results.html");
-    expect(template).to.include('<th scope="col" class="px-3 xl:px-5 py-1.5 w-20">Queue</th>');
+    expect(template).to.include('<th scope="col" class="px-3 xl:px-5 py-1.5 w-44">Queue</th>');
     expect(template).to.include("{% if let Some(waitlist_position) = entry.waitlist_position -%}");
     expect(template).to.include("#{{ waitlist_position }}");
     expect(template).not.to.include("queue_label");
@@ -80,7 +80,8 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include('<span class="whitespace-nowrap">Entry</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Created</span>');
@@ -111,11 +112,20 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify the table columns and placeholders keep matching responsive spans.
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"');
-    expect(template).to.include('<td class="xl:hidden px-8 py-12 text-center" colspan="4">');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4"');
     expect(template).to.include(
-      '<td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="5">',
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
     );
-    expect(template).to.include('<td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">');
+    expect(template).to.include('<td class="xl:hidden px-8 py-12 text-center" colspan="3">');
+    expect(template).to.include(
+      '<td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4">',
+    );
+    expect(template).to.include(
+      '<td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center" colspan="5">',
+    );
+    expect(template).to.include(
+      '<td class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="6">',
+    );
   });
 
   it("preserves current filters for waitlist refreshes", async () => {
@@ -151,17 +161,56 @@ describe("dashboard group waitlist list template", () => {
     // Verify ticket tiers, queue positions, offer states, and deadlines remain visible.
     expect(template).to.include("{{ entry.ticket_title }}");
     expect(template).to.include("#{{ waitlist_position }}");
-    expect(template).to.include('label = "Offer pending"');
-    expect(template).to.include('label = "Checkout pending"');
-    expect(template).to.include('label = "Ticket claimed"');
-    expect(template).to.include('label = "Offer expired"');
-    expect(template).to.include('label = "Offer canceled"');
-    expect(template).to.include('id="cancel-waitlist-offer-{{ admission_offer_id }}"');
-    expect(template).to.include('hx-trigger="confirmed"');
-    expect(template).to.include('label = "Offer declined"');
+    expect(template).not.to.include("—");
+    expect(template).to.include('waitlist_offer_status_badge(entry, event, "Offer pending", false, false)');
+    expect(template).to.include(
+      'waitlist_offer_status_badge(entry, event, "Checkout pending", false, false)',
+    );
+    expect(template).to.include('badges::status_badge(label = "Ticket claimed", published = true)');
+    expect(template).to.include('waitlist_offer_status_badge(entry, event, "Offer expired", true, false)');
+    expect(template).to.include('badges::status_badge(label = "Offer canceled", canceled = true)');
+    expect(template).to.include('badges::status_badge(label = "Offer declined", canceled = true)');
+    expect(template).not.to.include('waitlist_offer_status_badge(entry, event, "Ticket claimed"');
+    expect(template).not.to.include('waitlist_offer_status_badge(entry, event, "Offer canceled"');
+    expect(template).not.to.include('waitlist_offer_status_badge(entry, event, "Offer declined"');
+    expect(template).to.include("badges::status_badge");
+    expect(template).not.to.include("badges::invitation_badge");
+    expect(template.indexOf("#{{ waitlist_position }}")).to.be.lessThan(
+      template.indexOf('waitlist_offer_status_badge(entry, event, "Offer pending"'),
+    );
+    expect(template.indexOf('waitlist_offer_status_badge(entry, event, "Offer pending"')).to.be.lessThan(
+      template.indexOf("{{ entry.ticket_title }}"),
+    );
+
+    // Active and expired offer details remain available with mouse or keyboard.
+    expect(template).to.include("waitlist-offer-deadline-{{ entry.user.user_id }}");
+    expect(template).to.include('aria-describedby="{{ waitlist_offer_tooltip_id }}"');
+    expect(template).to.include("dashboard::tooltip_panel(");
+    expect(template).to.include('title = "Ticket offer"');
+    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white");
+    expect(template).to.include('<span class="block font-semibold text-stone-500">');
+    expect(template).to.include('<span class="mt-0.5 block text-stone-900">');
+    expect(template).to.include("group-hover/offer-deadline:visible");
+    expect(template).to.include("group-focus-within/offer-deadline:visible");
     expect(template).to.include(
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
     );
+
+    // Active offers use the shared table action-menu presentation.
+    expect(template).to.include('data-event-id="waitlist-offer-{{ admission_offer_id }}"');
+    expect(template).to.include(
+      'aria-controls="dropdown-actions-waitlist-offer-{{ admission_offer_id }}"',
+    );
+    expect(template).to.include('aria-expanded="false"');
+    expect(template).to.include('aria-label="Open waitlist actions for');
+    expect(template).to.include("icon-vertical-dots");
+    expect(template).to.include(
+      'id="dropdown-actions-waitlist-offer-{{ admission_offer_id }}" data-event-actions-dropdown class="dropdown absolute end-0 top-8 z-10 hidden w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
+    );
+    expect(template).to.include('id="cancel-waitlist-offer-{{ admission_offer_id }}"');
+    expect(template).to.include('hx-trigger="confirmed"');
+    expect(template).to.include('role="menuitem"');
+    expect(template).to.include("<span>Cancel offer</span>");
     expect(template).not.to.include("Reissue offer");
   });
 });

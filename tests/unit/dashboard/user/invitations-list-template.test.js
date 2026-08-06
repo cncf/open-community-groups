@@ -23,8 +23,11 @@ describe("dashboard user invitations list template", () => {
     expect(eventInvitations).to.be.greaterThan(-1);
     expect(groupInvitations).to.be.greaterThan(eventInvitations);
     expect(communityInvitations).to.be.greaterThan(groupInvitations);
-    expect(template).to.include('{# Groups Invitations -#} <div class="pt-12">');
-    expect(template).to.include('{# Community Invitations -#} <div class="pt-12">');
+    expect(template.match(/mb-12/gu)).to.have.length(2);
+    expect(template).to.include('{# Groups Invitations -#} <div>');
+    expect(template).to.include('{# Community Invitations -#} <div>');
+    expect(template).not.to.include("mb-10");
+    expect(template).not.to.include('class="pt-12"');
     expect(template).to.not.include("border-t border-stone-900/10");
   });
 
@@ -45,14 +48,40 @@ describe("dashboard user invitations list template", () => {
     // Ticket offers expose their tier, price, source, deadline, and pricing warning.
     expect(template).to.include("{{ invitation.ticket_title }}");
     expect(template).to.include("{{ invitation.source_label() }}");
-    expect(template).to.include("{% if !invitation.is_simple_rsvp -%}");
-    expect(template).to.include("{% if let Some(price_label) = invitation.price_label() -%}");
+    expect(template).to.include("{% else if let Some(price_label) = invitation.price_label() -%}");
     expect(template).to.include("data-localized-currency");
+    expect(template).to.include("group/event-offer-details relative inline-flex shrink-0");
+    expect(template).to.include(
+      'class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"',
+    );
+    expect(template).to.include(
+      "event-offer-details-{{ invitation.admission_offer_id }}",
+    );
+    expect(template).to.include('aria-describedby="{{ event_offer_tooltip_id }}"');
+    expect(template).to.include("dashboard::tooltip_panel(");
+    expect(template).to.include('title = "Ticket offer"');
+    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500");
+    expect(template).to.include("group-hover/event-offer-details:visible");
+    expect(template).to.include("group-focus-within/event-offer-details:visible");
+    expect(template).to.include(
+      '<span class="block font-semibold text-stone-500">Ticket type</span>',
+    );
+    expect(template).to.include(
+      '<span class="mt-0.5 block text-stone-900">{{ invitation.ticket_title }}</span>',
+    );
+    expect(template).to.include('<span class="block font-semibold text-stone-500">Offer</span>');
+    expect(template).to.include(
+      '<span class="mt-0.5 block text-stone-900">{{ invitation.source_label() }}</span>',
+    );
+    expect(template).not.to.include("mt-1 text-xs font-semibold text-green-800");
     expect(template).to.include(
       '{{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}',
     );
     expect(template).to.include(
       "Your price is confirmed when you first claim the offer. If checkout has already started, retries keep that confirmed price.",
+    );
+    expect(template).to.include(
+      'class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"',
     );
     expect(template).to.include("{% if invitation.is_simple_rsvp %}Confirm by{% else %}Claim by{% endif %}");
   });
@@ -66,6 +95,12 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include("data-actions-menu");
     expect(template).to.include('aria-label="Open offer actions for {{ invitation.event_name }}"');
     expect(template).to.include("icon-vertical-dots");
+    expect(template).to.include(
+      'class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
+    );
+    expect(template).to.include(
+      "gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50",
+    );
     expect(template).to.include("<span>Claim offer</span>");
     expect(template).to.include("<span>Continue to checkout</span>");
     expect(template).to.include("data-user-event-offer-checkout-cancel");

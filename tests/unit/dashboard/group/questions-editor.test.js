@@ -68,6 +68,11 @@ describe("questions-editor", () => {
     expect(
       element.querySelector('input[name="registration_questions[0][options][0][label]"]')?.value,
     ).to.equal("Vegetarian");
+    expect(
+      [...element.querySelectorAll(".custom-badge")].some(
+        (badge) => badge.textContent.trim() === "Vegetarian",
+      ),
+    ).to.equal(true);
   });
 
   it("does not submit options for free-text questions", async () => {

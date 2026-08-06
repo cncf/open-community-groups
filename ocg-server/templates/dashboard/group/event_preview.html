@@ -38,7 +38,7 @@
                   <div class="text-sm font-semibold">Missing or incomplete details</div>
                   <div class="mt-2 flex flex-wrap gap-2">
                     {% for field in event.missing_fields -%}
-                      <span class="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-amber-900 ring-1 ring-amber-200">{{ field }}</span>
+                      <span class="custom-badge border-amber-200 bg-white px-2.5 py-0.5 text-amber-900">{{ field }}</span>
                     {% endfor -%}
                   </div>
                 </div>
@@ -304,7 +304,7 @@
                         <div class="mb-2 text-sm text-stone-500/75">{{ session.time_label }}</div>
                         <div class="flex flex-col items-start gap-2 sm:flex-row">
                           <h3 class="font-semibold text-stone-900 md:text-lg">{{ session.name_label() }}</h3>
-                          {{ badges::event_badge(kind = session.kind_display_label() , extra_styles = Some("mt-1 md:mt-1.5")) -}}
+                          {{ badges::event_badge(kind = session.kind_display_label() , extra_styles = Some("mt-1 px-2.5 py-0.5 md:mt-1.5")) -}}
                         </div>
                         {% if let Some(location) = &session.location -%}
                           <div class="mb-3 text-sm/6 italic text-stone-500">{{ location }}</div>

@@ -159,7 +159,7 @@
     </div>
   </div>
 
-  <div class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[12rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0">
+  <div class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[11rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0">
     <aside class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8">
       <select id="update-event-section-select"
               data-section-select
@@ -168,8 +168,8 @@
         {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
         {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
-        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
         {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
+        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
         {{ event_form::tab_option(section = "questions", label = "Questions") -}}
         {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
         {{ event_form::tab_option(section = "submissions", label = "Submissions") -}}
@@ -183,8 +183,8 @@
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
         {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
-        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
         {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
+        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
         {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
         {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
         {% let submissions_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/submissions" hx-trigger="click once" hx-target="#submissions-content" hx-swap="innerHTML" hx-indicator="#submissions-loading"{%- endlet %}
@@ -857,31 +857,18 @@
 <div data-content="payments" class="hidden">
   <form id="payments-form">
     <div class="space-y-12">
-      <div>
-        {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
+      {% if payments_ready || event.is_paid_capable() -%}
+        <div>
+          {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
 
-        {% if payments_ready -%}
-          {% if let Some(payment_recipient) = &payment_recipient -%}
+          {% if paid_ticketing_read_only -%}
             <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
               <p class="text-sm/6">
-                Paid ticket revenue is sent to Stripe recipient
-                <span class="font-semibold">{{ payment_recipient.recipient_id }}</span>.
+                Paid ticket settings are read-only until server payments and a matching group recipient are configured.
               </p>
             </div>
           {% endif -%}
-        {% else -%}
-          <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
-            <p class="text-sm/6">
-              {% if paid_ticketing_read_only -%}
-                Paid ticket settings are read-only until server payments and a matching group recipient are configured.
-              {% else -%}
-                Payments are not configured for this group, but free ticket tiers remain editable.
-              {% endif -%}
-            </p>
-          </div>
-        {% endif -%}
 
-        {% if payments_ready || event.is_paid_capable() -%}
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
             <div class="col-span-full 2xl:col-span-3">
               <label for="payment_currency_code" class="form-label">
@@ -903,10 +890,10 @@
               <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
             </div>
           </div>
-        {% endif -%}
-      </div>
+        </div>
+      {% endif -%}
 
-      <div class="border-t border-stone-900/10 pt-12">
+      <div>
         <div>
           <div class="flex items-center justify-between gap-3">
             <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
@@ -933,7 +920,7 @@
       </div>
 
       {% if payments_ready || event.is_paid_capable() -%}
-        <div class="border-t border-stone-900/10 pt-12 pb-12">
+        <div class="pb-12">
           <div>
             <div class="flex items-center justify-between gap-3">
               <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
@@ -965,7 +952,7 @@
   <form id="hosts-sponsors-form">
     <div class="space-y-12">
       {# Hosts Section -#}
-      <div class="border-b border-stone-900/10 pb-12">
+      <div>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
           {% if can_manage_events && !event.canceled -%}
@@ -988,7 +975,7 @@
       {# End Hosts Section -#}
 
       {# Speakers Section -#}
-      <div class="border-b border-stone-900/10 pb-12">
+      <div>
         {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
           {% if !legacy_speakers.is_empty() -%}
             {{ dashboard::permission_warning(message = "This event has legacy speakers imported from the previous platform. These speakers cannot be edited.", extra_classes = "mb-4") -}}

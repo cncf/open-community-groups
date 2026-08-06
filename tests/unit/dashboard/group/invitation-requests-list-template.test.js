@@ -75,17 +75,29 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('<span class="whitespace-nowrap">Ticket type</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Requested</span>');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
+    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"',
+    );
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48"');
+    expect(template).to.include('class="truncate text-xs text-stone-600 2xl:hidden"');
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
+    );
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
     expect(template).to.include('<span class="sr-only">Actions</span>');
-    expect(template).to.include('class="xl:hidden px-8 py-12 text-center" colspan="3"');
-    expect(template).to.include('class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="5"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="7"');
+    expect(template).to.include('class="2xl:hidden px-8 py-12 text-center" colspan="3"');
+    expect(template).not.to.include("hidden xl:table-cell 2xl:hidden");
+    expect(template).to.include(
+      'class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center" colspan="5"',
+    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="7"');
     expect(tableHeader.indexOf("Status")).to.be.lessThan(tableHeader.indexOf("Ticket type"));
     expect(tableHeader.indexOf("Ticket type")).to.be.lessThan(tableHeader.indexOf("Requested"));
     expect(tableHeader.indexOf("Requested")).to.be.lessThan(tableHeader.indexOf("Reviewed"));
@@ -139,15 +151,32 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("Private admission");
     expect(template).to.include("request.offered_ticket_title.as_deref()");
     expect(template).to.include("Ticket offer");
-    expect(template).to.include('data-actions-menu class="group relative shrink-0"');
-    expect(template).to.include("icon-info");
-    expect(template).to.include("View ticket offer details for");
+    expect(template).to.include("group/request-offer relative inline-flex shrink-0");
+    expect(template).to.include(
+      "invitation-request-offer-details-{{ request.user.user_id }}",
+    );
+    expect(template).to.include('aria-describedby="{{ request_offer_tooltip_id }}"');
+    expect(template).to.include("dashboard::tooltip_panel(");
+    expect(template).to.include('title = "Ticket offer"');
+    expect(template).to.include("group-hover/request-offer:visible");
+    expect(template).to.include("group-focus-within/request-offer:visible");
+    expect(template).to.include("border-2 border-white");
+    expect(template).to.include("bg-amber-800");
+    expect(template).to.include("bg-red-800");
+    expect(template).to.include("bg-green-800");
+    expect(template).not.to.include("icon-info");
     expect(template).to.include("Offer status");
     expect(template).to.include("Checkout in progress");
     expect(template).to.include("Expired");
-    expect(template).to.include("> Pending </span>");
-    expect(template).to.include("> Rejected </span>");
-    expect(template).to.include("> Accepted </span>");
+    expect(template).to.include(
+      'invitation_request_status_badge(request, event, "Pending", false, false)',
+    );
+    expect(template).to.include(
+      'invitation_request_status_badge(request, event, "Rejected", true, false)',
+    );
+    expect(template).to.include(
+      'invitation_request_status_badge(request, event, "Accepted", false, true)',
+    );
     expect(template).to.not.include("Request pending");
     expect(template).to.not.include("Request rejected");
     expect(template).to.not.include("Request accepted");
@@ -198,6 +227,13 @@ describe("dashboard group invitation requests list template", () => {
     expect(actionDisclosure).to.not.include('aria-haspopup="menu"');
     expect(actionDisclosure).to.not.include('<ul class="py-2 text-sm text-stone-700" role="menu">');
     expect(actionDisclosure).to.not.include('role="menuitem"');
+    expect(template).to.not.include('<div class="text-right text-stone-400">-</div>');
+    expect(actionDisclosure).to.include(
+      'class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
+    );
+    expect(actionDisclosure).to.include(
+      "px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50",
+    );
 
     // Confirmation-owned controls do not duplicate response handling.
     const cancelOfferStart = actionDisclosure.indexOf(

@@ -953,7 +953,7 @@ class TicketTypesEditor extends TicketingEditorBase {
                 </label>
               </div>
 
-              <div class="space-y-4">
+              <div class="space-y-4 border-t border-stone-200 pt-6">
                 <div class="flex items-center justify-between gap-3">
                   <div>
                     <div class="text-sm font-semibold text-stone-900">Price windows</div>

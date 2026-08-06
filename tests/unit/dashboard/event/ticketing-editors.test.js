@@ -508,10 +508,16 @@ describe("ticketing editors", () => {
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Assert that editing opens the ticket modal.
+    // Assert that editing opens the modal and separates its price windows.
     expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
       "Edit ticket type",
     );
+    const priceWindowsSection = uiRoot.querySelector(
+      '[data-ticketing-role="price-windows-list"]',
+    )?.parentElement;
+    expect(priceWindowsSection?.classList.contains("border-t")).to.equal(true);
+    expect(priceWindowsSection?.classList.contains("border-stone-200")).to.equal(true);
+    expect(priceWindowsSection?.classList.contains("pt-6")).to.equal(true);
   });
 
   it("parses ticket type JSON from the element attribute", async () => {
@@ -1068,6 +1074,7 @@ describe("ticketing editors", () => {
     const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
     expect(rowCells[0].textContent).to.contain("12 / 50");
     expect(rowCells[1].textContent.trim()).to.equal("12 / 50");
+    expect(rowCells[0].querySelectorAll(".custom-badge")).to.have.length(3);
 
     // Verify secondary columns stay hidden until the widest layout.
     const secondaryHeaders = uiRoot.querySelectorAll("thead th.hidden");

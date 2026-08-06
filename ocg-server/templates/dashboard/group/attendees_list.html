@@ -62,7 +62,7 @@
     {{ attendee_table_state_inputs(status, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_status = false, include_sort = false) -}}
     <div class="flex items-center gap-3">
       <label for="attendees-enrollment-status"
-             class="text-sm font-semibold text-nowrap text-stone-900">Enrollment status</label>
+             class="text-sm font-semibold text-nowrap text-stone-900">Status</label>
       <select id="attendees-enrollment-status"
               name="status"
               class="block h-10 w-52 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500">
@@ -444,7 +444,8 @@
         <th scope="col" class="px-3 xl:px-5 py-1.5">
           <span class="whitespace-nowrap">Attendee</span>
         </th>
-        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
+        <th scope="col"
+            class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5">
           {% call dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position", is_active = title.is_some()) -%}
           <div class="py-2">
             <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
@@ -459,10 +460,10 @@
           </div>
           {% endcall -%}
         </th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-44">
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44">
           <span class="whitespace-nowrap">Status</span>
         </th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48">
+        <th scope="col" class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48">
           {% if let Some(ticket_types) = &event.ticket_types -%}
             {% if !ticket_types.is_empty() -%}
               {% call dashboard::table_filter_menu(id = "attendees-ticket-filter", label = "Ticket type", is_active = event_ticket_type_ids.is_some()) -%}
@@ -495,7 +496,8 @@
             <span class="whitespace-nowrap">Ticket type</span>
           {% endif -%}
         </th>
-        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">
+        <th scope="col"
+            class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40">
           <span class="whitespace-nowrap">Enrollment Date</span>
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5 w-30">
@@ -529,14 +531,22 @@
           || event_ticket_type_ids.is_some()
           || title.is_some() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="xl:hidden px-8 py-12 text-center" colspan="3">
+          <td class="lg:hidden px-8 py-12 text-center" colspan="3">
             {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
               {% include "dashboard/placeholders/group_attendees_empty.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
+          <td class="hidden lg:table-cell 2xl:hidden px-8 py-12 text-center"
+              colspan="4">
+            {% if has_active_attendee_filters -%}
+              {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_attendees_empty.html" -%}
+            {% endif -%}
+          </td>
+          <td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center"
               colspan="5">
             {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
@@ -544,7 +554,8 @@
               {% include "dashboard/placeholders/group_attendees_empty.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="7">
+          <td class="hidden min-[1920px]:table-cell px-8 py-12 text-center"
+              colspan="7">
             {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
@@ -591,15 +602,15 @@
                 </div>
               </div>
               {% endcall -%}
-              <div class="mt-2 xl:hidden">{{ attendee_status(attendee, event) -}}</div>
+              <div class="mt-2 lg:hidden">{{ attendee_status(attendee, event, "mobile") -}}</div>
               {% if attendee.ticket_title.is_some() -%}
-                <div class="mt-1 truncate text-xs text-stone-600 xl:hidden">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
+                <div class="mt-1 truncate text-xs text-stone-600 lg:hidden">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
               {% endif -%}
             </td>
             {# End attendee -#}
 
             {# Position -#}
-            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0">
+            <td class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0">
               <div class="flex flex-col space-y-1">
                 <div class="font-medium text-stone-900 truncate">{{ attendee.user.company.as_deref() |assigned_or("-") }}</div>
                 {% if let Some(title) = &attendee.user.title -%}
@@ -610,13 +621,13 @@
             {# End position -#}
 
             {# Status -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle w-44">
-              {{ attendee_status(attendee, event) -}}
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 align-middle w-44">
+              {{ attendee_status(attendee, event, "desktop") -}}
             </td>
             {# End status -#}
 
             {# Ticket type -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle">
+            <td class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle">
               {% if attendee.admission_offer_status.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-1">
                   <div class="max-w-full truncate font-medium text-stone-900"
@@ -646,11 +657,12 @@
               {% else -%}
                 <div class="text-stone-500">Free RSVP</div>
               {% endif -%}
+              <div class="mt-2 2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>
             </td>
             {# End ticket type -#}
 
             {# Enrollment Date -#}
-            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+            <td class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
             </td>
             {# End enrollment date -#}
@@ -698,8 +710,8 @@
                              title="Open attendee actions">
                       <div class="svg-icon size-4 icon-vertical-dots"></div>
                     </summary>
-                    <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                      <ul class="py-2 text-sm text-stone-700" role="menu">
+                    <div class="dropdown absolute end-0 top-8 z-10 w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                      <ul class="text-sm text-stone-700" role="menu">
                         {% if attendee.registration_answers.is_some() && !registration_questions.is_empty() -%}
                           <li>
                             <button type="button"
@@ -707,8 +719,8 @@
                                     data-attendee-answers-source="attendee-answers-{{ attendee.user.user_id }}"
                                     data-attendee-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                                     role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                              <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-600"></div>
                               <span>View answers</span>
                             </button>
                             <div id="attendee-answers-{{ attendee.user.user_id }}" hidden>
@@ -765,9 +777,9 @@
                                       data-success-message="Invitation canceled."
                                       data-error-message="Something went wrong canceling this invitation. Please try again later."
                                       role="menuitem"
-                                      class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
                                       type="button">
-                                <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                                <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                                 <span>Cancel invitation</span>
                               </button>
                             </li>
@@ -792,8 +804,8 @@
                               {% endif -%}
                               <button type="submit"
                                       role="menuitem"
-                                      class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                                <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-500"></div>
+                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                                <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
                                 <span>Reissue invitation</span>
                               </button>
                             </form>
@@ -810,15 +822,15 @@
                                     data-recipient-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                                     data-recipient-username="{{ attendee.user.username }}"
                                     role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                              <div class="svg-icon size-4 icon-email shrink-0 bg-stone-500"></div>
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <div class="svg-icon size-4 icon-email shrink-0 bg-stone-600"></div>
                               <span>Send email</span>
                             </button>
                           </li>
                         {% endif -%}
                         {% if can_manage_events && !event.canceled && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                           <li>
-                            {% call badges::recipient_award_button(event_id = event.event_id, user_id = attendee.user.user_id, extra_styles = "flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left", menu_item = true) -%}
+                            {% call badges::recipient_award_button(event_id = event.event_id, user_id = attendee.user.user_id, extra_styles = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900", menu_item = true) -%}
                             <span>Award badge</span>
                             {% endcall -%}
                           </li>
@@ -836,9 +848,9 @@
                                       disabled title="Past event attendance cannot be canceled."
                                     {% endif -%}
                                     role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
                                     type="button">
-                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                               <span>Cancel attendance</span>
                             </button>
                           </li>
@@ -852,9 +864,9 @@
                                     data-refund-attendee-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                                     data-refund-event-name="{{ event.name }}"
                                     role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
                                     type="button">
-                              <div class="svg-icon size-4 icon-check shrink-0 bg-stone-500"></div>
+                              <div class="svg-icon size-4 icon-check shrink-0 bg-stone-600"></div>
                               <span>Approve refund</span>
                             </button>
                           </li>
@@ -865,9 +877,9 @@
                                     data-refund-attendee-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                                     data-refund-event-name="{{ event.name }}"
                                     role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
                                     type="button">
-                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                               <span>Reject refund</span>
                             </button>
                           </li>
@@ -882,9 +894,9 @@
                                     data-success-message="Refund requeued."
                                     data-error-message="Something went wrong requeueing this refund. Please try again later."
                                     role="menuitem"
-                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
                                     type="button">
-                              <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-500"></div>
+                              <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
                               <span>Retry refund</span>
                             </button>
                           </li>
@@ -1224,15 +1236,49 @@
 </div>
 {# End QR code modal -#}
 
+{# Active offer badge with deadline tooltip. #}
+{% macro attendee_offer_status_badge(attendee, event, label, canceled, status_instance) -%}
+  {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
+    {% let attendee_offer_tooltip_id -%}attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}{%- endlet %}
+  <span class="group/offer-deadline relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            aria-describedby="{{ attendee_offer_tooltip_id }}">
+      {{ badges::status_badge(label = label, canceled = canceled) -}}
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+                   {% if canceled %}bg-red-800{% else %}bg-amber-800{% endif %}"
+            aria-hidden="true"></span>
+    </button>
+    {% call dashboard::tooltip_panel(
+      id = attendee_offer_tooltip_id,
+      title = "Ticket offer",
+      visibility_classes = "group-hover/offer-deadline:visible group-hover/offer-deadline:opacity-100 group-focus-within/offer-deadline:visible group-focus-within/offer-deadline:opacity-100"
+    ) -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">
+        {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Expired{% else %}Deadline{% endif %}
+      </span>
+      <span class="mt-0.5 block text-stone-900">
+        {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+      </span>
+    </span>
+    {% endcall -%}
+  </span>
+{% else -%}
+  {{ badges::status_badge(label = label, canceled = canceled) -}}
+{% endif -%}
+{% endmacro attendee_offer_status_badge -%}
+{# End active offer badge. #}
+
 {# Attendee status badge and active offer deadline. #}
-{% macro attendee_status(attendee, event) -%}
+{% macro attendee_status(attendee, event, status_instance) -%}
   <div class="flex min-w-0 items-center gap-1.5">
     {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending) -%}
-      {{ badges::status_badge(label = "Offer pending") -}}
+      {{ attendee_offer_status_badge(attendee, event, "Offer pending", false, status_instance) -}}
     {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
-      {{ badges::status_badge(label = "Checkout pending") -}}
+      {{ attendee_offer_status_badge(attendee, event, "Checkout pending", false, status_instance) -}}
     {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-      {{ badges::status_badge(label = "Offer expired", canceled = true) -}}
+      {{ attendee_offer_status_badge(attendee, event, "Offer expired", true, status_instance) -}}
     {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled) -%}
       {{ badges::status_badge(label = "Offer canceled", canceled = true) -}}
     {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Declined) -%}
@@ -1279,28 +1325,6 @@
       {{ badges::status_badge(label = "Registration pending") -}}
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
       {{ badges::status_badge(label = "Active", published = true) -}}
-    {% endif -%}
-    {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
-      || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
-      || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-      {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
-        <span class="group/deadline-tooltip relative inline-flex shrink-0">
-          <button type="button"
-                  class="inline-flex size-5 items-center justify-center rounded-full border border-stone-200 bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                  aria-label="{% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}Expired{% else -%}Deadline{% endif -%} {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}">
-            <span class="svg-icon size-2.5 icon-info bg-stone-500"></span>
-          </button>
-          <span role="tooltip"
-                class="pointer-events-none invisible absolute bottom-full start-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-md bg-stone-900 px-3 py-2 text-center text-xs font-normal leading-4 text-white opacity-0 shadow-lg transition-opacity group-hover/deadline-tooltip:visible group-hover/deadline-tooltip:opacity-100 group-focus-within/deadline-tooltip:visible group-focus-within/deadline-tooltip:opacity-100">
-            {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-              Expired
-            {% else -%}
-              Deadline
-            {% endif -%}
-            {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-          </span>
-        </span>
-      {% endif -%}
     {% endif -%}
   </div>
 {% endmacro attendee_status -%}

@@ -199,15 +199,15 @@
               {# Status -#}
               <td class="px-3 xl:px-5 py-4">
                 {% if session_proposal.linked_session_id.is_some() -%}
-                  {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
+                  {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5") , title = "This session proposal has been approved and linked to an event's session.") -}}
                 {% else if session_proposal.has_submissions -%}
-                  {{ badges::status_badge(label = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal has already been submitted to at least one event call for speakers.") -}}
+                  {{ badges::status_badge(label = "Submitted", extra_styles = Some("px-2.5 py-0.5") , title = "This proposal has already been submitted to at least one event call for speakers.") -}}
                 {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal can be submitted to event call for speakers.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5") , title = "This proposal can be submitted to event call for speakers.") -}}
                 {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.") -}}
                 {% else -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5") , title = "This proposal is waiting for co-speaker response.") -}}
                 {% endif -%}
               </td>
               {# End status -#}

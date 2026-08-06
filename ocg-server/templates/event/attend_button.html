@@ -173,7 +173,7 @@
               <div class="min-w-0">
                 <div class="form-label">Ticket type</div>
                 <div data-attendance-role="ticket-type-list" class="mt-2 space-y-3">
-                  {% let ticket_price_badge_classes = "inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800" -%}
+                  {% let ticket_price_badge_classes = "inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-green-800" -%}
                   {% for ticket_type in visible_ticket_types -%}
                     {% let ticket_type_selectable = !event.canceled && ticket_type.active && ticket_type.current_price.is_some() && (event.attendee_approval_required || ticket_type.is_sellable_now() || (ticket_type.sold_out && event.waitlist_enabled)) && event.registration_window_is_open() -%}
                     <label for="ticket-type-{{ attendance_instance }}-{{ loop.index0 }}"
@@ -266,12 +266,6 @@
                 </div>
               {% endif -%}
             </div>
-
-            {% if event.is_paid_capable() -%}
-              <div class="text-sm text-stone-600">
-                Refund policy: attendees can request a full refund from this page until the event starts.
-              </div>
-            {% endif -%}
 
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
               <button id="cancel-ticket-modal-{{ attendance_instance }}"

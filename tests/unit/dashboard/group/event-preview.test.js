@@ -239,6 +239,34 @@ describe("event preview", () => {
     }
   });
 
+  it("renders event tags with the shared dashboard badge treatment", () => {
+    // Prepare a preview page with a current event tag.
+    const pageRoot = mountPreviewPage();
+    const tagInput = document.createElement("input");
+    tagInput.name = "tags";
+    tagInput.value = "Accessibility";
+    pageRoot.querySelector("#details-form").append(tagInput);
+    const modalRoot = document.getElementById("event-preview-modal-root");
+
+    // Open preview markup that supports the enhanced tags section.
+    openEventPreviewModal(
+      modalRoot,
+      `<div id="event-preview-modal">
+        <section class="hidden" data-event-preview-tags-section></section>
+        <button type="button" data-event-preview-close>Close</button>
+      </div>`,
+      pageRoot,
+    );
+
+    // Verify preview tags use the compact uppercase badge foundation.
+    const tagsSection = modalRoot.querySelector("[data-event-preview-tags-section]");
+    const tagBadge = tagsSection.querySelector(".custom-badge");
+    expect(tagsSection.classList.contains("hidden")).to.equal(false);
+    expect(tagBadge.textContent).to.equal("Accessibility");
+
+    modalRoot.querySelector("[data-event-preview-close]").click();
+  });
+
   it("shows the test badge in the preview modal when test event is enabled", () => {
     // Prepare page root for showing the test badge in the preview modal when test.
     const pageRoot = mountPreviewPage({ testEvent: true });

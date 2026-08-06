@@ -84,6 +84,7 @@ describe("event attendance button template", () => {
 
     // Signed-in and signed-out controls use one macro and the same badge size.
     expect(template.match(/attendance::initial_control_content/g)).to.have.length(2);
+    expect(template).to.include("font-semibold uppercase text-green-800");
     expect(macros).to.include("text-[11px]");
     expect(macros).to.not.include("text-[12px]");
   });

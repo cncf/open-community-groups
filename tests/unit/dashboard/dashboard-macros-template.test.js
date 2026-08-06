@@ -60,8 +60,29 @@ describe("dashboard macros template", () => {
 
     // Verify active filter badges display the filter title beside the value.
     expect(template).to.include("macro active_table_filter_badge(title, label)");
+    expect(template).to.include(
+      "custom-badge inline-flex items-center gap-1.5 bg-stone-50 px-2.5 py-0.5 text-stone-700",
+    );
     expect(template).to.include('<span class="font-semibold text-stone-900">{{ title }}:</span>');
     expect(template).to.include("<span>{{ label }}</span>");
+  });
+
+  it("renders a consistent titled tooltip panel", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("macro tooltip_panel(");
+    expect(template).to.include('width_classes = "w-64"');
+    expect(template).to.include('alignment_classes = "start-1/2 -translate-x-1/2"');
+    expect(template).to.include('id="{{ id }}" role="tooltip"');
+    expect(template).to.include("role=\"tooltip\" data-tooltip-panel");
+    expect(template).to.include("rounded-lg border border-stone-200 bg-white");
+    expect(template).to.include("max-w-[calc(100vw-2rem)]");
+    expect(template).to.include("break-words whitespace-normal");
+    expect(template).to.include("text-left text-xs font-normal leading-5 text-stone-700");
+    expect(template).to.include(
+      "border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-900",
+    );
+    expect(template).to.include('<span class="block space-y-2 px-3 py-3">{{ caller() }}</span>');
   });
 
   it("renders shared refund review modal contracts", async () => {

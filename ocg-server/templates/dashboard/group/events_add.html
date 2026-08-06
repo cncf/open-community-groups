@@ -66,8 +66,8 @@
         {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
         {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
-        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
         {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
+        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
         {{ event_form::tab_option(section = "questions", label = "Questions") -}}
         {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
       </select>
@@ -75,8 +75,8 @@
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
         {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
-        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
         {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
+        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
         {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
         {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
       </ul>
@@ -696,18 +696,10 @@
     <div data-content="payments" class="hidden">
       <form id="payments-form">
         <div class="space-y-12">
-          <div>
-            {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
+          {% if payments_ready -%}
+            <div>
+              {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
 
-            {% if payments_ready -%}
-              {% if let Some(payment_recipient) = &payment_recipient -%}
-                <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
-                  <p class="text-sm/6">
-                    Paid ticket revenue is sent to Stripe recipient
-                    <span class="font-semibold">{{ payment_recipient.recipient_id }}</span>.
-                  </p>
-                </div>
-              {% endif -%}
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
                 <div class="col-span-full lg:col-span-3">
                   <label for="payment_currency_code" class="form-label">
@@ -727,16 +719,10 @@
                   <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
                 </div>
               </div>
-            {% else -%}
-              <div class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600">
-                <p class="text-sm/6">
-                  Payments are not configured for this group, but you can create and publish free ticket tiers.
-                </p>
-              </div>
-            {% endif -%}
-          </div>
+            </div>
+          {% endif -%}
 
-          <div class="border-t border-stone-900/10 pt-12">
+          <div>
             <div>
               <div class="flex items-center justify-between gap-3">
                 <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
@@ -760,7 +746,7 @@
           </div>
 
           {% if payments_ready -%}
-            <div class="border-t border-stone-900/10 pt-12 pb-12">
+            <div class="pb-12">
               <div>
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
@@ -789,7 +775,7 @@
       <form id="hosts-sponsors-form">
         <div class="space-y-12">
           {# Hosts Section -#}
-          <div class="border-b border-stone-900/10 pb-12">
+          <div>
             <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
             <div class="mt-5">
               <user-search-selector id="event-hosts-selector" field-name="hosts" dashboard-type="group" display-mode="table" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
@@ -798,7 +784,7 @@
           {# End Hosts Section -#}
 
           {# Speakers Section -#}
-          <div class="border-b border-stone-900/10 pb-12">
+          <div>
             <speakers-selector id="event-speakers-selector" dashboard-type="group" display-mode="table" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
             <div class="mt-8 border-t border-stone-200 pt-8">
               <h3 class="form-label m-0">Session-level speakers</h3>

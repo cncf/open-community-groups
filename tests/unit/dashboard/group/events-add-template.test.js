@@ -96,24 +96,30 @@ describe("dashboard group event add template", () => {
     );
   });
 
-  it("names the recipient for paid ticket revenue", async () => {
-    // Load the event add template before checking paid ticket guidance.
+  it("does not expose payment recipient details", async () => {
+    // Load the event add template before checking payment recipient copy.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Assert paid-ready organizers can see the configured recipient.
-    expect(template).to.include("Paid ticket revenue is sent to Stripe recipient");
-    expect(template).to.include("{{ payment_recipient.recipient_id }}");
+    // Assert payment recipient details are not shown in the ticket form.
+    expect(template).not.to.include("Paid ticket revenue is sent to Stripe recipient");
+    expect(template).not.to.include("{{ payment_recipient.recipient_id }}");
   });
 
-  it("uses neutral icon-free payment guidance", async () => {
+  it("starts free-only ticketing at ticket types without setup guidance", async () => {
     const template = normalizeWhitespace(await loadTemplate());
+    const ticketForm = template.slice(
+      template.indexOf('<form id="payments-form">'),
+      template.indexOf("{# End Tickets Tab -#}"),
+    );
 
-    expect(template).to.include(
+    expect(ticketForm).to.include(
+      '{% if payments_ready -%} <div> {{ dashboard::form_title(title = "Tickets"',
+    );
+    expect(ticketForm).to.include(">Ticket Types</div>");
+    expect(ticketForm).not.to.include("Payments are not configured for this group");
+    expect(ticketForm).not.to.include(
       'class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600"',
     );
-    expect(template).to.not.include("border-green-200 bg-green-50");
-    expect(template).to.not.include("border-sky-200 bg-sky-50");
-    expect(template).to.not.include("icon-info");
   });
 
   it("describes paid enrollment modes as mutually exclusive alternatives", async () => {
@@ -126,6 +132,23 @@ describe("dashboard group event add template", () => {
     expect(template).to.include("Invitation approval and the waitlist cannot be enabled together.");
     expect(template).to.not.include("waitlist or paid tickets");
     expect(template).to.not.include("Paid events disable waitlist automatically.");
+  });
+
+  it("spaces ticket sections without separators", async () => {
+    // Load and isolate the ticket form before checking section spacing.
+    const template = normalizeWhitespace(await loadTemplate());
+    const ticketForm = template.slice(
+      template.indexOf('<form id="payments-form">'),
+      template.indexOf("{# End Tickets Tab -#}"),
+    );
+
+    // Keep the large section rhythm without rendering divider borders.
+    expect(ticketForm).to.include('<div class="space-y-12">');
+    expect(ticketForm.match(/class="pb-12"/gu)).to.have.length(1);
+    expect(ticketForm).not.to.include('class="pt-12"');
+    expect(ticketForm).not.to.include("pt-12 pb-12");
+    expect(ticketForm).not.to.include("border-t");
+    expect(ticketForm).not.to.include("border-stone-900/10");
   });
 
   it("keeps the event form navigation in the shared page scroll", async () => {
@@ -169,5 +192,20 @@ describe("dashboard group event add template", () => {
     );
     expect(template).not.to.include("can-award-badges");
     expect(template).not.to.include("show-award-all");
+  });
+
+  it("spaces contributor sections without separators", async () => {
+    // Load and isolate the contributor form before checking section spacing.
+    const template = normalizeWhitespace(await loadTemplate());
+    const contributorForm = template.slice(
+      template.indexOf('<form id="hosts-sponsors-form">'),
+      template.indexOf("{# End Hosts & Speakers Tab -#}"),
+    );
+
+    // Keep the large section rhythm without rendering divider borders.
+    expect(contributorForm).to.include('<div class="space-y-12">');
+    expect(contributorForm.match(/class="pb-12"/gu)).to.have.length(1);
+    expect(contributorForm).not.to.include("border-b");
+    expect(contributorForm).not.to.include("border-stone-900/10");
   });
 });
