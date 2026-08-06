@@ -153,6 +153,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("dashboard::refund_review_modal");
     expect(template).to.include('id_prefix = "attendee-refund-reject"');
     expect(template).to.include('review_note_id = "attendee-refund-review-note"');
+    expect(template).to.include("review_note_required = true");
   });
 
   it("collects an optional review note before approving a refund", async () => {

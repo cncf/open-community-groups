@@ -800,6 +800,8 @@ pub struct EventEnrollmentState {
     pub manually_invited: bool,
     /// Purchase amount associated with the user and event.
     pub purchase_amount_minor: Option<i64>,
+    /// Attendee-visible reason for a rejected refund request.
+    pub refund_rejection_reason: Option<String>,
     /// Refund request state associated with the user purchase.
     pub refund_request_status: Option<EventRefundRequestStatus>,
     /// Provider URL for resuming a pending checkout.

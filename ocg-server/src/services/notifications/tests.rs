@@ -1029,14 +1029,16 @@ fn test_delivery_worker_prepare_content_event_refund_approved() {
 
 #[test]
 fn test_delivery_worker_prepare_content_event_refund_rejected() {
-    // Setup notification
+    // Setup notification with attendee-visible organizer text
+    let mut template_data = sample_event_reminder_template_data();
+    template_data["rejection_reason"] = json!("Not eligible\n<script>alert('xss')</script>");
     let notification = Notification {
         attachments: vec![],
         delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventRefundRejected,
         notification_id: Uuid::new_v4(),
-        template_data: Some(sample_event_reminder_template_data()),
+        template_data: Some(template_data),
     };
 
     // Prepare content
@@ -1045,6 +1047,9 @@ fn test_delivery_worker_prepare_content_event_refund_rejected() {
     // Check content matches expectations
     assert_eq!(subject, "[Notification Group] Refund request update");
     assert!(body.contains("Reminder Event"));
+    assert!(body.contains("Not eligible"));
+    assert!(body.contains("&#60;script&#62;alert(&#39;xss&#39;)&#60;/script&#62;"));
+    assert!(!body.contains("<script>"));
 }
 
 #[test]

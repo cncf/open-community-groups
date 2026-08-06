@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -38,6 +38,9 @@ select plan(11);
 \set refundPurchaseID '6e000000-0000-0000-0000-000000000023'
 \set refundRequestID '6e000000-0000-0000-0000-000000000024'
 \set refundUserID '6e000000-0000-0000-0000-000000000025'
+\set rejectedRefundPurchaseID '6e000000-0000-0000-0000-000000000030'
+\set rejectedRefundRequestID '6e000000-0000-0000-0000-000000000031'
+\set rejectedRefundUserID '6e000000-0000-0000-0000-000000000032'
 \set rejectedRequestUserID '6e000000-0000-0000-0000-000000000026'
 \set waitlistUserID '6e000000-0000-0000-0000-000000000027'
 
@@ -97,6 +100,7 @@ values
     ('hash', 'request@example.test', true, :'pendingRequestUserID', 'enrollment-request'),
     ('hash', 'refund-offer@example.test', true, :'refundOfferUserID', 'enrollment-refund-offer'),
     ('hash', 'refund@example.test', true, :'refundUserID', 'enrollment-refund'),
+    ('hash', 'refund-rejected@example.test', true, :'rejectedRefundUserID', 'enrollment-refund-rejected'),
     ('hash', 'rejected@example.test', true, :'rejectedRequestUserID', 'enrollment-rejected'),
     ('hash', 'waitlist@example.test', true, :'waitlistUserID', 'enrollment-waitlist');
 
@@ -178,7 +182,8 @@ insert into event_attendee (
     user_id
 ) values
     (true, '2026-01-01 10:00:00+00', :'eventID', true, 'confirmed', :'attendeeID'),
-    (false, null, :'eventID', false, 'confirmed', :'refundUserID');
+    (false, null, :'eventID', false, 'confirmed', :'refundUserID'),
+    (false, null, :'eventID', false, 'confirmed', :'rejectedRefundUserID');
 
 -- Seed active, expired, and refund-linked admission offers.
 insert into admission_offer (
@@ -308,6 +313,20 @@ insert into event_purchase (
         'refund-requested',
         'General admission',
         :'refundUserID'
+    ),
+    (
+        null,
+        0,
+        '2026-01-04 10:00:00+00',
+        null,
+        :'eventID',
+        :'rejectedRefundPurchaseID',
+        :'ticketTypeID',
+        null,
+        null,
+        'completed',
+        'General admission',
+        :'rejectedRefundUserID'
     );
 
 -- Seed a pending refund review for a confirmed attendee.
@@ -317,6 +336,27 @@ insert into event_refund_request (
     requested_by_user_id,
     status
 ) values (:'refundPurchaseID', :'refundRequestID', :'refundUserID', 'pending');
+
+-- Seed a rejected refund review with its attendee-visible reason.
+insert into event_refund_request (
+    event_purchase_id,
+    event_refund_request_id,
+    requested_by_user_id,
+    status,
+
+    review_note,
+    reviewed_at,
+    reviewed_by_user_id
+) values (
+    :'rejectedRefundPurchaseID',
+    :'rejectedRefundRequestID',
+    :'rejectedRefundUserID',
+    'rejected',
+
+    'Outside the refund policy window',
+    '2026-01-04 11:00:00+00',
+    :'attendeeID'
+);
 
 -- Seed pending, rejected, and approval-disabled invitation requests.
 insert into event_invitation_request (
@@ -411,6 +451,13 @@ select is(
     get_event_enrollment(:'communityID', :'eventID', :'refundUserID')::jsonb,
     '{"is_checked_in": false, "purchase_amount_minor": 0, "refund_request_status": "pending", "resume_checkout_url": null, "status": "attendee"}'::jsonb,
     'Should return the refund request state for an attendee purchase'
+);
+
+-- Should return the reason for a rejected refund request
+select is(
+    get_event_enrollment(:'communityID', :'eventID', :'rejectedRefundUserID')::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": 0, "refund_rejection_reason": "Outside the refund policy window", "refund_request_status": "rejected", "resume_checkout_url": null, "status": "attendee"}'::jsonb,
+    'Should return the reason for a rejected refund request'
 );
 
 -- Should ignore approval requests when approval is disabled

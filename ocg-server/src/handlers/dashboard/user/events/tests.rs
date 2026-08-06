@@ -61,6 +61,7 @@ async fn test_cancel_attendance_enqueues_cancellation_notification() {
                 event_ticket_type_id: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
             })
@@ -165,6 +166,7 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
                 event_ticket_type_id: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
             })
@@ -257,6 +259,7 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
                 event_ticket_type_id: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
             })
@@ -406,6 +409,8 @@ async fn test_list_page_success() {
             event_ticket_type_id: None,
             offer_expires_at: None,
             registration_answers: None,
+            refund_rejection_reason: None,
+            refund_request_status: None,
             resume_checkout_url: None,
             ticket_title: None,
         }],

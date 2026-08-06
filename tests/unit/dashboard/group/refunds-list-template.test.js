@@ -1,5 +1,13 @@
 import { expect } from "@open-wc/testing";
 
+const loadDashboardMacros = async () => {
+  const response = await fetch("/ocg-server/templates/macros/dashboard.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
 const loadTemplate = async () => {
   const response = await fetch("/ocg-server/templates/dashboard/group/refunds_list.html");
 
@@ -11,6 +19,23 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group refunds list template", () => {
+  it("requires an attendee-visible reason only for refund rejections", async () => {
+    // Load the shared modal macro before checking both review variants.
+    const macros = normalizeWhitespace(await loadDashboardMacros());
+
+    // Rejections expose required attendee-visible copy and accessible helper text.
+    expect(macros).to.include("review_note_required = false");
+    expect(macros).to.include("Reason shown to attendee");
+    expect(macros).to.include("Review note (optional)");
+    expect(macros).to.include(
+      'aria-describedby="{{ review_note_id }}-help" required',
+    );
+    expect(macros).to.include('id="{{ review_note_id }}-help"');
+    expect(macros).to.include(
+      "This reason appears in the attendee's email, My Events, and the event page.",
+    );
+  });
+
   it("refreshes the active refunds partial without losing its filters", async () => {
     // Load the refunds list template before checking refresh markup.
     const template = normalizeWhitespace(await loadTemplate());
@@ -110,8 +135,9 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include('id_prefix = "refund-reject"');
     expect(template).to.include('review_note_id = "refund-review-note"');
     expect(template).to.include(
-      "Add a review note to explain why this refund request is being rejected.",
+      "Explain why this refund request is being rejected.",
     );
+    expect(template).to.include("review_note_required = true");
     expect(template).to.include('id_prefix = "refund-approve"');
     expect(template).to.include('review_note_id = "refund-approve-review-note"');
     expect(template.match(/show_reason = true/g)).to.have.lengthOf(2);

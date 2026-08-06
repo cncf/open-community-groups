@@ -1269,7 +1269,7 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event_purchase_id: Uuid,
-            review_note: Option<String>,
+            review_note: String,
         ) -> Result<crate::db::payments::CompletedEventPurchase>;
         async fn request_event_refund(
             &self,

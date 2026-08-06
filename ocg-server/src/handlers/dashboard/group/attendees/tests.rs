@@ -2143,6 +2143,134 @@ async fn test_reject_invitation_request_returns_no_content() {
 }
 
 #[tokio::test]
+async fn test_reject_refund_request_rejects_missing_reason_without_calling_payments_manager() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Reject invalid input before calling the payments manager
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_reject_refund_request().never();
+
+    // Submit a rejection without the required reason
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/refunds/{event_purchase_id}/reject"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check validation fails without side effects
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_reject_refund_request_rejects_whitespace_reason_without_calling_payments_manager() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Reject invalid input before calling the payments manager
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_reject_refund_request().never();
+
+    // Submit a rejection with a whitespace-only reason
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/refunds/{event_purchase_id}/reject"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from("review_note=%20%20%20"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check validation fails without side effects
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_reject_refund_request_returns_no_content_when_payments_manager_succeeds() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -2188,7 +2316,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
             input.actor_user_id == user_id
                 && input.event_purchase_id == event_purchase_id
                 && input.group_id == group_id
-                && input.review_note.is_none()
+                && input.review_note == "Outside the refund policy window"
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -2207,7 +2335,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(""))
+        .body(Body::from("review_note=Outside+the+refund+policy+window"))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();

@@ -61,6 +61,25 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(">Status / role</th>");
   });
 
+  it("renders rejected refund status and escaped wrapping reason content", async () => {
+    // Load the user events template before checking rejected refund feedback.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Rejected rows always get a danger badge and only render a present reason as normal text.
+    expect(template).to.include(
+      "item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected)",
+    );
+    expect(template).to.include(
+      '{{ badges::invitation_badge(label = "Refund rejected", tone = "danger", with_border = true) -}}',
+    );
+    expect(template).to.include(
+      "{% if let Some(refund_rejection_reason) = &item.refund_rejection_reason -%}",
+    );
+    expect(template).to.include('<span class="font-medium">Reason:</span>');
+    expect(template).to.include('<span class="whitespace-pre-wrap">{{ refund_rejection_reason }}</span>');
+    expect(template).not.to.include("refund_rejection_reason|safe");
+  });
+
   it("renders active checkout recovery and cancellation actions", async () => {
     // Load the user events template before checking checkout actions.
     const template = normalizeWhitespace(await loadTemplate());

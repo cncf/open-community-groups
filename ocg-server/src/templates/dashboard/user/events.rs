@@ -13,6 +13,7 @@ use crate::{
             EventSummary,
         },
         pagination::{self, Pagination, ToRawQuery},
+        payments::EventRefundRequestStatus,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
     validation::MAX_PAGINATION_LIMIT,
@@ -77,6 +78,10 @@ pub(crate) struct UserEvent {
     pub offer_expires_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Existing registration answers submitted by the user.
     pub registration_answers: Option<QuestionnaireAnswers>,
+    /// Attendee-visible reason for the latest rejected refund request.
+    pub refund_rejection_reason: Option<String>,
+    /// Latest refund review status for the user's event purchases.
+    pub refund_request_status: Option<EventRefundRequestStatus>,
     /// Checkout URL where the user can complete payment.
     pub resume_checkout_url: Option<String>,
     /// Assigned ticket title.
@@ -352,6 +357,8 @@ mod tests {
             event_ticket_type_id: None,
             offer_expires_at: None,
             registration_answers: None,
+            refund_rejection_reason: None,
+            refund_request_status: None,
             resume_checkout_url: None,
             ticket_title: None,
         }

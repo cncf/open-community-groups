@@ -28,6 +28,7 @@ select plan(13);
 \set eventPaidID '4a0c0000-0000-0000-0000-000000000011'
 \set eventPaidPriceWindowID '4a0c0000-0000-0000-0000-000000000012'
 \set eventPaidPurchaseID '4a0c0000-0000-0000-0000-000000000013'
+\set eventPaidRefundRequestID '4a0c0000-0000-0000-0000-000000000044'
 \set eventPaidTicketTypeID '4a0c0000-0000-0000-0000-000000000014'
 \set eventPastID '4a0c0000-0000-0000-0000-000000000015'
 \set eventPendingInvitationID '4a0c0000-0000-0000-0000-000000000016'
@@ -625,6 +626,29 @@ insert into event_purchase (
     :'userPaidID'
 );
 
+-- Rejected refund request shown with the paid event in My Events
+insert into event_refund_request (
+    event_purchase_id,
+    event_refund_request_id,
+    requested_by_user_id,
+    status,
+
+    requested_reason,
+    review_note,
+    reviewed_at,
+    reviewed_by_user_id
+) values (
+    :'eventPaidPurchaseID',
+    :'eventPaidRefundRequestID',
+    :'userPaidID',
+    'rejected',
+
+    'Plans changed',
+    'Outside the refund policy window',
+    '2026-01-04 11:00:00+00',
+    :'userID'
+);
+
 -- Pending checkout purchases used to distinguish active and expired holds
 insert into event_purchase (
     event_purchase_id,
@@ -866,6 +890,10 @@ select is(
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'refund_rejection_reason',
+                'Outside the refund policy window',
+                'refund_request_status',
+                'rejected',
                 'resume_checkout_url',
                 null,
                 'roles',

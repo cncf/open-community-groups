@@ -278,6 +278,9 @@ impl PgPaymentsManager {
         &self,
         input: &RejectRefundRequestInput,
     ) -> Result<()> {
+        // Normalize the attendee-visible reason once for persistence and delivery
+        let rejection_reason = input.review_note.trim().to_string();
+
         // Persist the refund rejection in the database
         let purchase = self
             .db
@@ -285,7 +288,7 @@ impl PgPaymentsManager {
                 input.actor_user_id,
                 input.group_id,
                 input.event_purchase_id,
-                input.review_note.clone(),
+                rejection_reason.clone(),
             )
             .await?;
 
@@ -295,6 +298,7 @@ impl PgPaymentsManager {
                 purchase.community_id,
                 purchase.event_id,
                 purchase.user_id,
+                &rejection_reason,
             )
             .await;
 
@@ -465,6 +469,6 @@ pub(crate) struct RejectRefundRequestInput {
     /// Group containing the event.
     pub group_id: Uuid,
 
-    /// Optional review note stored with the rejection.
-    pub review_note: Option<String>,
+    /// Attendee-visible reason stored with the rejection.
+    pub review_note: String,
 }

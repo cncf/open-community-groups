@@ -252,6 +252,14 @@ insert into "user" (
         'contract-buyer-refund-reject'
     ),
     (
+        'contract_hash_buyer_refund_rejected',
+        'buyer-refund-rejected.contract@example.com',
+        true,
+        'Contract Buyer Refund Rejected',
+        '00000000-0000-0000-0000-00000000c114',
+        'contract-buyer-refund-rejected'
+    ),
+    (
         'contract_hash_buyer_refund_lifecycle',
         'buyer-refund-lifecycle.contract@example.com',
         true,
@@ -1168,6 +1176,7 @@ insert into event_attendee (
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e5'),
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e6'),
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e7'),
+    ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c114'),
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0ea');
 
 insert into event_purchase (
@@ -1279,6 +1288,21 @@ insert into event_purchase (
         2500,
         'USD',
         '00000000-0000-0000-0000-00000000c0d0',
+        '00000000-0000-0000-0000-00000000c115',
+        '00000000-0000-0000-0000-00000000c0d1',
+        'completed',
+        'Contract Paid Ticket',
+        '00000000-0000-0000-0000-00000000c114',
+        '2024-02-01 10:00:00+00',
+        null,
+        'stripe',
+        'cs_contract_refund_rejected',
+        'pi_contract_refund_rejected'
+    ),
+    (
+        2500,
+        'USD',
+        '00000000-0000-0000-0000-00000000c0d0',
         '00000000-0000-0000-0000-00000000c0fb',
         '00000000-0000-0000-0000-00000000c0d1',
         'refund-requested',
@@ -1371,6 +1395,29 @@ insert into event_refund_request (
         'Cannot attend anymore',
         'approving'
     );
+
+-- Rejected refund request used by attendee-facing read contracts
+insert into event_refund_request (
+    event_purchase_id,
+    event_refund_request_id,
+    requested_by_user_id,
+    status,
+
+    requested_reason,
+    review_note,
+    reviewed_at,
+    reviewed_by_user_id
+) values (
+    '00000000-0000-0000-0000-00000000c115',
+    '00000000-0000-0000-0000-00000000c116',
+    '00000000-0000-0000-0000-00000000c114',
+    'rejected',
+
+    'Cannot attend anymore',
+    'Outside the refund policy window',
+    '2024-02-02 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c041'
+);
 
 -- Provider refund records used by approval and recovery contracts
 insert into event_purchase_refund (

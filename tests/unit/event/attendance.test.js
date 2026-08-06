@@ -92,6 +92,7 @@ const renderAttendanceDom = ({
         <div class="svg-icon icon-refund" data-attendance-icon></div>
         <span data-attendance-label>Request refund</span>
       </button>
+      <p data-attendance-role="refund-rejection-reason" class="hidden"></p>
       ${
         includeRegistrationQuestions
           ? `
@@ -153,6 +154,7 @@ const renderAttendanceDom = ({
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
     leaveButton: document.querySelector('[data-attendance-role="leave-btn"]'),
     refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
+    refundRejectionReason: document.querySelector('[data-attendance-role="refund-rejection-reason"]'),
     questionsModal: document.querySelector('[data-attendance-role="registration-modal"]'),
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
@@ -1545,6 +1547,54 @@ describe("event attendance", () => {
     expect(refundButton.disabled).to.equal(false);
     expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request refund");
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows escaped refund rejection reasons and clears stale reason state", () => {
+    // Render the attendee refund controls with their reason container.
+    const { checker, refundButton, refundRejectionReason } = renderAttendanceDom();
+
+    // Render a rejected request with organizer-provided markup-like text.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        purchase_amount_minor: 2500,
+        refund_rejection_reason: "Outside policy\n<strong>Contact support</strong>",
+        refund_request_status: "rejected",
+        status: "attendee",
+      }),
+    });
+
+    // Verify the rejected state preserves lines and treats the reason as text.
+    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Refund rejected");
+    expect(refundButton.disabled).to.equal(true);
+    expect(refundRejectionReason.classList.contains("hidden")).to.equal(false);
+    expect(refundRejectionReason.textContent).to.equal(
+      "Reason: Outside policy\n<strong>Contact support</strong>",
+    );
+    expect(refundRejectionReason.innerHTML).to.include("&lt;strong&gt;");
+    expect(refundRejectionReason.querySelector("strong")).to.equal(null);
+
+    // Move to a different refund state and clear the previous reason.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        purchase_amount_minor: 2500,
+        refund_request_status: "pending",
+        status: "attendee",
+      }),
+    });
+    expect(refundRejectionReason.classList.contains("hidden")).to.equal(true);
+    expect(refundRejectionReason.textContent).to.equal("");
+
+    // Keep a usable generic rejected state when the reason is malformed or absent.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        purchase_amount_minor: 2500,
+        refund_request_status: "rejected",
+        status: "attendee",
+      }),
+    });
+    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Refund rejected");
+    expect(refundRejectionReason.classList.contains("hidden")).to.equal(true);
+    expect(refundRejectionReason.textContent).to.equal("");
   });
 
   it("leaves standalone ticket price badge text untouched", async () => {

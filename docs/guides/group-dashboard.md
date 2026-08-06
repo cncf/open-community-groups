@@ -345,6 +345,10 @@ Organizers with events write access can approve or reject pending requests and
 retry exhausted non-terminal provider failures from the refund row. Read-only
 roles can inspect every state but cannot use those actions.
 
+Rejecting a request requires a reason. The modal identifies it as attendee-visible because the
+same reason appears in the attendee's email, `My Events`, and the public event page. Approval notes
+remain optional and are kept for organizer review.
+
 When a provider outcome requires recovery, the refund row also offers
 `Complete recovery`. Organizers with events write access can use it. Other
 roles see the action disabled with an explanation of the requirement. After

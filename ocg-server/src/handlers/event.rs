@@ -478,6 +478,7 @@ pub(crate) async fn enrollment_state(
         "is_checked_in": enrollment.is_checked_in,
         "manually_invited": enrollment.manually_invited,
         "purchase_amount_minor": enrollment.purchase_amount_minor,
+        "refund_rejection_reason": enrollment.refund_rejection_reason,
         "refund_request_status": enrollment.refund_request_status,
         "resume_checkout_url": enrollment.resume_checkout_url,
         "status": enrollment.status

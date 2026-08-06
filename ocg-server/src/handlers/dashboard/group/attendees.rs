@@ -170,7 +170,7 @@ pub(crate) async fn approve_refund_request(
     SelectedGroupId(group_id): SelectedGroupId,
     State(payments_manager): State<DynPaymentsManager>,
     Path(event_purchase_id): Path<Uuid>,
-    ValidatedForm(review): ValidatedForm<RefundReviewInput>,
+    ValidatedForm(review): ValidatedForm<RefundApprovalInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     payments_manager
         .approve_refund_request(&ApproveRefundRequestInput {
@@ -403,7 +403,7 @@ pub(crate) async fn reject_refund_request(
     SelectedGroupId(group_id): SelectedGroupId,
     State(payments_manager): State<DynPaymentsManager>,
     Path(event_purchase_id): Path<Uuid>,
-    ValidatedForm(review): ValidatedForm<RefundReviewInput>,
+    ValidatedForm(review): ValidatedForm<RefundRejectionInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     payments_manager
         .reject_refund_request(&RejectRefundRequestInput {
@@ -656,12 +656,20 @@ pub(crate) struct EventInvitationRequestAcceptance {
     pub event_ticket_type_id: Option<Uuid>,
 }
 
-/// Form data for refund reviews.
+/// Form data for refund approvals.
 #[derive(Debug, Deserialize, Serialize, Validate)]
-pub(crate) struct RefundReviewInput {
-    /// Optional note captured when reviewing a request.
+pub(crate) struct RefundApprovalInput {
+    /// Optional internal note captured when approving a request.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub review_note: Option<String>,
+}
+
+/// Form data for refund rejections.
+#[derive(Debug, Deserialize, Serialize, Validate)]
+pub(crate) struct RefundRejectionInput {
+    /// Attendee-visible reason for rejecting the request.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub review_note: String,
 }
 
 // Helpers.

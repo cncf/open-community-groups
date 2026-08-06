@@ -454,6 +454,7 @@ async fn test_check_in_page_success() {
                 event_ticket_type_id: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
             })
@@ -1602,6 +1603,7 @@ async fn test_enrollment_state_success() {
                 event_ticket_type_id: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
             })
@@ -1638,6 +1640,7 @@ async fn test_enrollment_state_success() {
             "is_checked_in": false,
             "manually_invited": false,
             "purchase_amount_minor": null,
+            "refund_rejection_reason": null,
             "refund_request_status": null,
             "resume_checkout_url": null,
             "status": "attendee",
@@ -1681,6 +1684,7 @@ async fn test_enrollment_state_stale_event_returns_none_without_summary_lookup()
                 event_ticket_type_id: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
             })
@@ -1713,6 +1717,7 @@ async fn test_enrollment_state_stale_event_returns_none_without_summary_lookup()
             "is_checked_in": false,
             "manually_invited": false,
             "purchase_amount_minor": null,
+            "refund_rejection_reason": null,
             "refund_request_status": null,
             "resume_checkout_url": null,
             "status": "none",
@@ -1765,6 +1770,7 @@ async fn test_cancel_checkout_success() {
                 event_ticket_type_id: Some(Uuid::from_u128(2)),
                 manually_invited: false,
                 purchase_amount_minor: None,
+                refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
             })

@@ -118,6 +118,9 @@ A few details shape event enrollment:
 - Canceling RSVP is immediate through `Cancel attendance`.
 - Free ticket attendees can also cancel attendance immediately.
 - Paid attendees request a refund instead of leaving directly.
+- When an organizer rejects a refund request, the event page shows `Refund rejected` and the
+  organizer's reason. If an older malformed rejection has no reason, the generic rejected state is
+  still shown.
 - After attendance is confirmed, OCG sends a confirmation message with a
   calendar file attached.
 - If the event is virtual or hybrid and meeting access is configured,

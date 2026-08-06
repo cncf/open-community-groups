@@ -314,8 +314,10 @@ Refunds follow a request-and-review model. Paid attendees do not use `Leave even
 `Event -> Attendees` or the group dashboard `Refunds` tab and approve or reject them. Refund
 requests must be submitted before the event starts, though organizers can still approve or reject
 a request later if it was submitted before the start time. Approved refunds are full refunds only,
-and rejecting a request leaves the attendee and ticket unchanged. Approval queues the provider
-refund; both dashboard views show its progress until the refund completes or needs intervention.
+and rejecting a request leaves the attendee and ticket unchanged. A rejection requires a reason;
+the attendee sees the same reason in their notification, on the event page, and in `My Events`.
+Approval notes remain optional and organizer-only. Approval queues the provider refund; both
+dashboard views show its progress until the refund completes or needs intervention.
 
 Canceling an event is the other way a refund begins. OCG immediately cancels active attendance,
 completes free-ticket refunds locally, and queues every paid ticket for a full provider refund.
@@ -326,7 +328,8 @@ recovery action disabled with an explanation of the requirement.
 
 Refund requests, approvals, rejections, and completed refunds are all written to audit logs.
 Organizers are notified when attendees request refunds. Attendees are notified when a rejection
-is recorded or an approved or automatic paid refund has completed.
+is recorded, including the rejection reason, or an approved or automatic paid refund has
+completed.
 
 Capacity is released immediately for a canceled free ticket. Paid capacity
 remains allocated through refund-requested, provider-pending, and recovery

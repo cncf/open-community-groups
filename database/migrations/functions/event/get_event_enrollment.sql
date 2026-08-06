@@ -139,7 +139,11 @@ returns json as $$
     ),
     -- Attach the latest active review state for the selected purchase.
     refund_request_state as (
-        select err.status
+        select
+            case
+                when err.status = 'rejected' then nullif(btrim(err.review_note), '')
+            end as rejection_reason,
+            err.status
         from event_refund_request err
         join purchase_state ps using (event_purchase_id)
         where err.status in ('approved', 'approving', 'pending', 'rejected')
@@ -157,7 +161,8 @@ returns json as $$
         )
         || jsonb_strip_nulls(jsonb_build_object(
             'admission_offer_id', (select admission_offer_id from active_offer),
-            'event_ticket_type_id', (select event_ticket_type_id from active_offer)
+            'event_ticket_type_id', (select event_ticket_type_id from active_offer),
+            'refund_rejection_reason', (select rejection_reason from refund_request_state)
         ))
         || case
             when es.manually_invited then jsonb_build_object('manually_invited', true)

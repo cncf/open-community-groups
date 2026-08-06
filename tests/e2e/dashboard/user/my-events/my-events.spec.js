@@ -4,6 +4,7 @@ import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
   TEST_GROUP_SLUGS,
+  TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
   TEST_REGISTRATION_WINDOW_EVENTS,
   getAttendButton,
@@ -94,6 +95,26 @@ test.describe("user dashboard my events view", () => {
     await expect(
       dashboardContent.getByText(TEST_EVENT_NAMES.beta[0]),
     ).toHaveCount(0);
+  });
+
+  test("my events shows rejected refund status and reason", async ({
+    pending1Page,
+  }) => {
+    // Load My Events for the attendee with a seeded rejected refund request.
+    await navigateToPath(pending1Page, "/dashboard/user?tab=events");
+    const dashboardContent = pending1Page.locator("#dashboard-content");
+    const refundEventRow = dashboardContent.locator("tr", {
+      hasText: TEST_PAYMENT_EVENT_NAMES.refunds,
+    });
+
+    // Verify the danger state and complete organizer-provided reason.
+    await expect(refundEventRow).toBeVisible();
+    await expect(
+      refundEventRow.getByText("Refund rejected", { exact: true }),
+    ).toBeVisible();
+    await expect(refundEventRow).toContainText(
+      "Reason: The request falls outside the refund policy window.",
+    );
   });
 
   test("my events actions update registration answers and cancel attendance", async ({

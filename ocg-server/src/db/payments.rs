@@ -165,7 +165,7 @@ pub(crate) trait DBPayments {
         actor_user_id: Uuid,
         group_id: Uuid,
         event_purchase_id: Uuid,
-        review_note: Option<String>,
+        review_note: String,
     ) -> Result<CompletedEventPurchase>;
 
     /// Creates a refund request for an attendee purchase.
@@ -562,7 +562,7 @@ where
         actor_user_id: Uuid,
         group_id: Uuid,
         event_purchase_id: Uuid,
-        review_note: Option<String>,
+        review_note: String,
     ) -> Result<CompletedEventPurchase> {
         self.fetch_json_one(
             "

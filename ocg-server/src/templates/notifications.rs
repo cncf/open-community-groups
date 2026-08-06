@@ -264,6 +264,8 @@ pub(crate) struct EventRefundRejected {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
+    /// Attendee-visible reason supplied by the organizer.
+    pub rejection_reason: String,
     /// Theme configuration for the community.
     pub theme: Theme,
 }

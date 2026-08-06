@@ -78,7 +78,8 @@ use crate::{
         },
         group::GroupRole,
         payments::{
-            EventPurchaseStatus, EventTicketType, EventTicketTypeAvailability, PaymentProvider,
+            EventPurchaseStatus, EventRefundRequestStatus, EventTicketType,
+            EventTicketTypeAvailability, PaymentProvider,
         },
         questionnaire::QuestionnaireAnswerValue,
         search::{SearchEventsFilters, SearchGroupsFilters},
@@ -808,6 +809,13 @@ async fn db_contracts_get_event_enrollment_deserializes() -> Result<()> {
     let refund_offer_enrollment = db
         .get_event_enrollment(community_id(), refund_event_id(), refund_offer_user_id())
         .await?;
+    let rejected_refund_enrollment = db
+        .get_event_enrollment(
+            community_id(),
+            refund_event_id(),
+            refund_rejected_buyer_id(),
+        )
+        .await?;
     let rejected_request_enrollment = db
         .get_event_enrollment(
             community_id(),
@@ -847,6 +855,18 @@ async fn db_contracts_get_event_enrollment_deserializes() -> Result<()> {
 
     // Refund processing and disabled approval suppress stale offer/request actions
     assert_eq!(refund_offer_enrollment.status, EventEnrollmentStatus::None);
+    assert_eq!(
+        rejected_refund_enrollment.status,
+        EventEnrollmentStatus::Attendee
+    );
+    assert_eq!(
+        rejected_refund_enrollment.refund_rejection_reason.as_deref(),
+        Some("Outside the refund policy window")
+    );
+    assert_eq!(
+        rejected_refund_enrollment.refund_request_status,
+        Some(EventRefundRequestStatus::Rejected)
+    );
     assert_eq!(
         rejected_request_enrollment.status,
         EventEnrollmentStatus::None
@@ -2335,6 +2355,7 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     let pending_checkout_output = db
         .list_user_events(status_pending_payment_user_id(), &filters)
         .await?;
+    let rejected_refund_output = db.list_user_events(refund_rejected_buyer_id(), &filters).await?;
 
     // Check attendance and registration question state
     assert_eq!(output.total, 1);
@@ -2398,6 +2419,18 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
         Some(invitation_offer_id())
     );
     assert_eq!(offered_output.events[0].roles, vec![UserEventRole::Offer]);
+
+    // Check rejected refund feedback remains visible in My Events
+    assert_eq!(rejected_refund_output.total, 1);
+    assert_eq!(rejected_refund_output.events.len(), 1);
+    assert_eq!(
+        rejected_refund_output.events[0].refund_rejection_reason.as_deref(),
+        Some("Outside the refund policy window")
+    );
+    assert_eq!(
+        rejected_refund_output.events[0].refund_request_status,
+        Some(EventRefundRequestStatus::Rejected)
+    );
 
     // Load the persisted registration answers
     let answers = output.events[0]
@@ -2809,7 +2842,7 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
             organizer_id(),
             group_id(),
             refund_reject_purchase_id(),
-            Some("Rejected by contract test".to_string()),
+            "Rejected by contract test".to_string(),
         )
         .await?;
 
@@ -3284,6 +3317,8 @@ const REFUND_RECOVERY_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c0fe";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
 /// Purchase fixture whose refund request is ready for rejection.
 const REFUND_REJECT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f8";
+/// Buyer fixture with a rejected refund reason for attendee-facing contracts.
+const REFUND_REJECTED_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c114";
 const REJECTED_REQUEST_USER_ID: &str = "00000000-0000-0000-0000-00000000c102";
 const REQUEST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d9";
 const REQUESTER_ID: &str = "00000000-0000-0000-0000-00000000c0ee";
@@ -3725,6 +3760,11 @@ fn refund_reject_buyer_id() -> Uuid {
 /// Returns the purchase fixture ready for refund rejection.
 fn refund_reject_purchase_id() -> Uuid {
     parse_uuid(REFUND_REJECT_PURCHASE_ID)
+}
+
+/// Returns the buyer whose rejected refund is visible on attendee surfaces.
+fn refund_rejected_buyer_id() -> Uuid {
+    parse_uuid(REFUND_REJECTED_BUYER_ID)
 }
 
 /// Returns the rejected requester ignored after approval is disabled.

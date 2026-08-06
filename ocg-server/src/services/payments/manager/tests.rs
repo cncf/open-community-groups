@@ -683,7 +683,7 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
             *actor == actor_user_id
                 && *group == group_id
                 && *purchase == event_purchase_id
-                && note.as_deref() == Some("Not eligible")
+                && note == "Not eligible"
         })
         .times(1)
         .returning(move |_, _, _, _| {
@@ -706,6 +706,12 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventRefundRejected)
                 && notification.recipients == vec![target_user_id]
+                && notification
+                    .template_data
+                    .as_ref()
+                    .and_then(|data| data.get("rejection_reason"))
+                    .and_then(serde_json::Value::as_str)
+                    == Some("Not eligible")
         })
         .times(1)
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -717,7 +723,7 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
             actor_user_id,
             event_purchase_id,
             group_id,
-            review_note: Some("Not eligible".to_string()),
+            review_note: "  Not eligible  ".to_string(),
         })
         .await
         .unwrap();

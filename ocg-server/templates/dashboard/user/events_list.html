@@ -115,10 +115,21 @@
                 {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
                   {{ badges::status_badge(label = enrollment_status_label, extra_styles = Some("uppercase")) -}}
                 {% endif -%}
+                {% if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected) -%}
+                  {{ badges::invitation_badge(label = "Refund rejected", tone = "danger", with_border = true) -}}
+                {% endif -%}
                 {% for role in item.roles -%}
                   {{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}
                 {% endfor -%}
               </div>
+              {% if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected) -%}
+                {% if let Some(refund_rejection_reason) = &item.refund_rejection_reason -%}
+                  <p class="mt-2 break-words text-sm text-red-800">
+                    <span class="font-medium">Reason:</span>
+                    <span class="whitespace-pre-wrap">{{ refund_rejection_reason }}</span>
+                  </p>
+                {% endif -%}
+              {% endif -%}
             </td>
             {# End role -#}
 

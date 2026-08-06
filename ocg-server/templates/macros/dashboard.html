@@ -235,7 +235,7 @@
 
 {# Refund review modal -#}
 {# Used by refund approval and rejection actions across group dashboard lists. -#}
-{% macro refund_review_modal(id_prefix, title_id, close_id, title, description, attendee_field_suffix, review_note_id, submit_label, success_message, error_message, show_reason = false) -%}
+{% macro refund_review_modal(id_prefix, title_id, close_id, title, description, attendee_field_suffix, review_note_id, submit_label, success_message, error_message, review_note_required = false, show_reason = false) -%}
   {% let refund_review_subtitle -%}
   <p id="{{ id_prefix }}-modal-description"
      class="mt-1 text-sm text-stone-600">{{ description }}</p>
@@ -286,12 +286,24 @@
             {% endif -%}
           </dl>
           <div class="mt-5">
-            <label for="{{ review_note_id }}" class="form-label">Review note (optional)</label>
+            <label for="{{ review_note_id }}" class="form-label">
+              {% if review_note_required -%}
+                Reason shown to attendee
+              {% else -%}
+                Review note (optional)
+              {% endif -%}
+            </label>
             <textarea id="{{ review_note_id }}"
                       class="input-primary mt-2 min-h-28"
                       name="review_note"
+                      {% if review_note_required %}aria-describedby="{{ review_note_id }}-help" required{% endif %}
                       autofocus
                       maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
+            {% if review_note_required -%}
+              <p id="{{ review_note_id }}-help" class="mt-2 text-sm text-stone-600">
+                This reason appears in the attendee's email, My Events, and the event page.
+              </p>
+            {% endif -%}
           </div>
         </div>
         <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">

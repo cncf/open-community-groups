@@ -163,6 +163,7 @@ test.describe("group dashboard refunds", () => {
     });
     const reviewNote = approveDialog.getByLabel("Review note (optional)");
     await expect(reviewNote).toBeVisible();
+    await expect(reviewNote).not.toHaveAttribute("required", "");
     await reviewNote.fill("Approved by organizer");
 
     // Return the normal refresh event after a successful approval request.
@@ -239,7 +240,7 @@ test.describe("group dashboard refunds", () => {
     await organizerGroupPage.locator(".swal2-confirm").click();
   });
 
-  test("submits and preserves an optional refund rejection note", async ({ organizerGroupPage }) => {
+  test("submits and preserves a required refund rejection reason", async ({ organizerGroupPage }) => {
     // Open the pending refund rejection without changing its seeded state.
     const dashboardContent = await openRefundsDashboard(organizerGroupPage);
     const pendingRefundRow = dashboardContent.locator("tr", {
@@ -250,13 +251,17 @@ test.describe("group dashboard refunds", () => {
     await actionsSummary.click();
     await actionsMenu.getByRole("button", { name: "Reject refund" }).click();
 
-    // Enter the review note after focus moves into the rejection dialog.
+    // Enter the attendee-visible reason after focus moves into the rejection dialog.
     const rejectDialog = organizerGroupPage.getByRole("dialog", {
       name: "Reject refund request",
     });
-    const reviewNote = rejectDialog.getByLabel("Review note (optional)");
+    const reviewNote = rejectDialog.getByLabel("Reason shown to attendee");
     await expect(rejectDialog).toBeVisible();
     await expect(reviewNote).toBeVisible();
+    await expect(reviewNote).toHaveAttribute("required", "");
+    await expect(rejectDialog).toContainText(
+      "This reason appears in the attendee's email, My Events, and the event page.",
+    );
     await reviewNote.fill("Duplicate purchase");
 
     // Fail the request and verify the submitted contract without mutating the fixture.
@@ -383,7 +388,7 @@ test.describe("group dashboard refunds", () => {
     await expect(requeuedRefundRow).not.toContainText("Needs retry");
   });
 
-  test("persists a refund rejection and its review note", async ({ organizerGroupPage }) => {
+  test("persists a refund rejection and its reason", async ({ organizerGroupPage }) => {
     // Open the dedicated pending request without mocking the organizer action.
     const dashboardContent = await openRefundsDashboard(organizerGroupPage);
     const pendingRefundRow = getRefundRow(dashboardContent, "E2E Groups Manager One");
@@ -393,7 +398,7 @@ test.describe("group dashboard refunds", () => {
     const rejectDialog = organizerGroupPage.getByRole("dialog", {
       name: "Reject refund request",
     });
-    await rejectDialog.getByLabel("Review note (optional)").fill("Duplicate purchase");
+    await rejectDialog.getByLabel("Reason shown to attendee").fill("Duplicate purchase");
 
     // Reject the request through the real handler and capture its form contract.
     const [rejectResponse] = await Promise.all([

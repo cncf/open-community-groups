@@ -36,6 +36,7 @@ const COMPLETE_REGISTRATION_LABEL = "Complete registration";
 const CONFIRM_RSVP_LABEL = "Confirm RSVP";
 const PAID_TICKETS_UNAVAILABLE_LABEL = "Paid tickets temporarily unavailable";
 const REFUND_PROCESSING_LABEL = "Refund processing";
+const REFUND_REJECTED_LABEL = "Refund rejected";
 const REFUND_REQUESTED_LABEL = "Refund requested";
 const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 const REQUEST_REFUND_LABEL = "Request refund";
@@ -241,7 +242,7 @@ export const showAdmissionOfferState = (container, meta, response) => {
  * Shows the attendee state for an active attendee.
  * @param {HTMLElement} container - Attendance container element
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_request_status?: string}} response - Attendance response
+ * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_rejection_reason?: string, refund_request_status?: string}} response - Attendance response
  */
 export const showAttendeeState = (container, meta, response) => {
   const { leaveButton, refundButton } = getPrimaryControls(container);
@@ -254,6 +255,7 @@ export const showAttendeeState = (container, meta, response) => {
     (response.purchase_amount_minor || 0) > 0
   ) {
     renderControl(refundButton, getRefundState(meta, response));
+    renderRefundRejectionReason(container, response);
   } else {
     renderControl(
       leaveButton,
@@ -671,7 +673,7 @@ const getDefaultAttendLabel = (meta) => {
 /**
  * Returns the attendee refund-control state for the current response.
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_request_status?: string}} response - Attendance response
+ * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_rejection_reason?: string, refund_request_status?: string}} response - Attendance response
  * @returns {{disabled?: boolean, label?: string|null, title?: string|null}} Render state
  */
 const getRefundState = (meta, response) => {
@@ -694,7 +696,7 @@ const getRefundState = (meta, response) => {
   if (response.refund_request_status === "rejected") {
     return {
       disabled: true,
-      label: REFUND_UNAVAILABLE_LABEL,
+      label: REFUND_REJECTED_LABEL,
       title: REFUND_REJECTED_TITLE,
     };
   }
@@ -868,6 +870,24 @@ const renderControl = (control, state = {}) => {
 };
 
 /**
+ * Shows an escaped attendee-visible reason for a rejected refund request.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{refund_rejection_reason?: string, refund_request_status?: string}} response - Attendance response
+ */
+const renderRefundRejectionReason = (container, response) => {
+  const reason = getAttendanceControl(container, "refund-rejection-reason");
+  const reasonText =
+    typeof response.refund_rejection_reason === "string" ? response.refund_rejection_reason.trim() : "";
+
+  if (!(reason instanceof HTMLElement) || response.refund_request_status !== "rejected" || !reasonText) {
+    return;
+  }
+
+  reason.textContent = `Reason: ${reasonText}`;
+  setElementHidden(reason, false);
+};
+
+/**
  * Hides all primary attendance controls for a container.
  * @param {HTMLElement} container - Attendance container element
  */
@@ -882,6 +902,7 @@ const resetPrimaryControls = (container) => {
     leaveButton,
     refundButton,
   } = getPrimaryControls(container);
+  const refundRejectionReason = getAttendanceControl(container, "refund-rejection-reason");
 
   setElementHidden(actionsMenu, false);
   hideControl(loadingButton);
@@ -891,6 +912,10 @@ const resetPrimaryControls = (container) => {
   hideControl(checkoutResumeButton);
   hideControl(leaveButton);
   hideControl(refundButton);
+  if (refundRejectionReason instanceof HTMLElement) {
+    refundRejectionReason.textContent = "";
+    setElementHidden(refundRejectionReason, true);
+  }
   setControlPriceBadgesHidden(container, false);
 
   if (attendButton instanceof HTMLButtonElement) {

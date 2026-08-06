@@ -18,6 +18,7 @@ fn event_enrollment_state_can_request_refund_allows_tbd_events() {
         event_ticket_type_id: None,
         manually_invited: false,
         purchase_amount_minor: Some(2_500),
+        refund_rejection_reason: None,
         refund_request_status: None,
         resume_checkout_url: None,
     };

@@ -3055,45 +3055,73 @@ insert into event_refund_request (
     event_refund_request_id,
     event_purchase_id,
     requested_by_user_id,
+    status,
+
     requested_reason,
-    status
+    review_note,
+    reviewed_at,
+    reviewed_by_user_id
 )
 values (
     '60555555-5555-5555-5555-555555555521',
     '59555555-5555-5555-5555-555555555521',
     '77777777-7777-7777-7777-777777777705',
+    'pending',
+
     'Need to cancel',
-    'pending'
+    null,
+    null,
+    null
 ), (
     '60555555-5555-5555-5555-555555555522',
     '59555555-5555-5555-5555-555555555522',
     '77777777-7777-7777-7777-777777777706',
+    'approving',
+
     'Schedule conflict',
-    'approving'
+    'Approved by the organizer',
+    now() - interval '2 days',
+    '77777777-7777-7777-7777-777777777701'
 ), (
     '60555555-5555-5555-5555-555555555523',
     '59555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777707',
+    'rejected',
+
     'Need a different date',
-    'rejected'
+    'The request falls outside the refund policy window.',
+    now() - interval '3 days',
+    '77777777-7777-7777-7777-777777777701'
 ), (
     '60555555-5555-5555-5555-555555555524',
     '59555555-5555-5555-5555-555555555525',
     '77777777-7777-7777-7777-777777777712',
+    'approved',
+
     'Refund completed',
-    'approved'
+    'Approved by the organizer',
+    now() - interval '4 days',
+    '77777777-7777-7777-7777-777777777701'
 ), (
     '60555555-5555-5555-5555-555555555529',
     '59555555-5555-5555-5555-555555555529',
     '77777777-7777-7777-7777-777777777709',
+    'pending',
+
     'Duplicate registration',
-    'pending'
+    null,
+    null,
+    null
 ), (
     '60555555-5555-5555-5555-555555555530',
     '59555555-5555-5555-5555-555555555530',
     '77777777-7777-7777-7777-777777777710',
+    'approving',
+
     'Provider completed the refund outside OCG',
-    'approving'
+    'Approved by the organizer',
+    now() - interval '10 days',
+    '77777777-7777-7777-7777-777777777701'
 );
 
 -- Durable refunds used by recovery and operational state coverage.

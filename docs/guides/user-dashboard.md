@@ -74,6 +74,8 @@ Each row includes:
   `Speaker`, or multiple roles).
 - Your attendance status when action is still needed, such as `Payment pending` or
   `Registration pending`.
+- A `Refund rejected` badge and the organizer's full reason when a refund request was rejected. A
+  legacy rejection without a reason still shows the badge.
 
 When a row is marked `Payment pending`, use the row actions menu to complete checkout while the
 ticket hold is still active, even if public registration closes after checkout started. You can

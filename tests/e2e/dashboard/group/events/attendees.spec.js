@@ -1160,25 +1160,29 @@ test.describe("group dashboard attendees tab", () => {
         name: "Approve refund request",
       });
       await expect(approveDialog).toBeVisible();
-      await expect(approveDialog.getByLabel("Review note (optional)")).toBeFocused();
+      const approvalNote = approveDialog.getByLabel("Review note (optional)");
+      await expect(approvalNote).toBeFocused();
+      await expect(approvalNote).not.toHaveAttribute("required", "");
       await approveDialog.getByRole("button", { name: "Cancel" }).click();
       await expect(approveDialog).toBeHidden();
       await expect(rowActionsMenu.locator("summary")).toBeFocused();
 
-      // Verify rejection opens the optional review-note modal.
+      // Verify rejection opens the attendee-visible reason modal.
       await rowActionsMenu.locator("summary").click();
       await rejectRefundAction.click();
       const rejectDialog = organizerGroupPage.getByRole("dialog", {
         name: "Reject refund request",
       });
       await expect(rejectDialog).toBeVisible();
-      await expect(rejectDialog.getByLabel("Review note (optional)")).toBeFocused();
+      await expect(rejectDialog.getByLabel("Reason shown to attendee")).toBeFocused();
       await rejectDialog.getByRole("button", { name: "Cancel" }).click();
       await expect(rejectDialog).toBeHidden();
       await expect(rowActionsMenu.locator("summary")).toBeFocused();
     });
 
-    test("organizer submits a review note when rejecting a refund", async ({ organizerGroupPage }) => {
+    test("organizer submits an attendee-visible reason when rejecting a refund", async ({
+      organizerGroupPage,
+    }) => {
       // Return a successful rejection without changing seeded payment state.
       await organizerGroupPage.route("**/refunds/*/reject", (route) => route.fulfill({ status: 204 }));
 
@@ -1197,9 +1201,14 @@ test.describe("group dashboard attendees tab", () => {
       const rejectDialog = organizerGroupPage.getByRole("dialog", {
         name: "Reject refund request",
       });
-      await rejectDialog.getByLabel("Review note (optional)").fill("Outside the refund policy window");
+      const rejectionReason = rejectDialog.getByLabel("Reason shown to attendee");
+      await expect(rejectionReason).toHaveAttribute("required", "");
+      await expect(rejectDialog).toContainText(
+        "This reason appears in the attendee's email, My Events, and the event page.",
+      );
+      await rejectionReason.fill("Outside the refund policy window");
 
-      // Submit the review note and verify the request contract.
+      // Submit the reason and verify the request contract.
       const [rejectResponse] = await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
@@ -1259,6 +1268,9 @@ test.describe("group dashboard attendees tab", () => {
       const rejectDialog = organizerGroupPage.getByRole("dialog", {
         name: "Reject refund request",
       });
+      await rejectDialog
+        .getByLabel("Reason shown to attendee")
+        .fill("Outside the refund policy window");
       await rejectDialog.getByRole("button", { name: "Reject refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund request rejected.");
     });
@@ -1302,7 +1314,7 @@ test.describe("group dashboard attendees tab", () => {
       const rejectDialog = organizerGroupPage.getByRole("dialog", {
         name: "Reject refund request",
       });
-      const reviewNote = rejectDialog.getByLabel("Review note (optional)");
+      const reviewNote = rejectDialog.getByLabel("Reason shown to attendee");
       await reviewNote.fill("Outside the refund policy window");
       await rejectDialog.getByRole("button", { name: "Reject refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(

@@ -106,6 +106,7 @@ pub(crate) fn build_event_refund_approved_template_data(
 pub(crate) fn build_event_refund_rejected_notification(
     event: &EventSummary,
     recipient_user_id: Uuid,
+    rejection_reason: &str,
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
@@ -113,6 +114,7 @@ pub(crate) fn build_event_refund_rejected_notification(
     let template_data = EventRefundRejected {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
+        rejection_reason: rejection_reason.to_string(),
         theme: site_settings.theme.clone(),
     };
 
@@ -389,6 +391,7 @@ mod tests {
         let rejected = build_event_refund_rejected_notification(
             &event,
             recipient_user_id,
+            "Outside the refund policy window",
             &server_cfg,
             &site_settings,
         )
@@ -409,6 +412,10 @@ mod tests {
             serde_json::from_value(rejected.template_data.expect("template data to exist"))
                 .expect("template data to deserialize");
         assert_eq!(rejected_template.event.event_id, event_id);
+        assert_eq!(
+            rejected_template.rejection_reason,
+            "Outside the refund policy window"
+        );
     }
 
     #[test]

@@ -9,8 +9,14 @@ returns jsonb as $$
 declare
     v_community_id uuid;
     v_event_id uuid;
+    v_review_note text := nullif(btrim(p_review_note), '');
     v_user_id uuid;
 begin
+    -- Require an attendee-visible reason before locking mutable state
+    if v_review_note is null then
+        raise exception 'refund rejection reason is required';
+    end if;
+
     -- Lock the pending refund request before rejecting it
     select
         g.community_id,
@@ -44,7 +50,7 @@ begin
     -- Persist the rejection details on the refund request
     update event_refund_request
     set
-        review_note = nullif(btrim(p_review_note), ''),
+        review_note = v_review_note,
         reviewed_at = current_timestamp,
         reviewed_by_user_id = p_actor_user_id,
         status = 'rejected',

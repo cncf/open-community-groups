@@ -632,7 +632,7 @@ test.describe("event attendance", () => {
       await expect(getLeaveButton(member2Page)).toBeHidden();
     });
 
-    test("paid attendee sees refund unavailable when a request was rejected", async ({
+    test("paid attendee sees the reason when a refund request was rejected", async ({
       pending1Page,
     }) => {
       // Load the refund-ready event with a rejected refund.
@@ -645,11 +645,17 @@ test.describe("event attendance", () => {
 
       // Set up refund button.
       const refundButton = getRefundButton(pending1Page);
+      const rejectionReason = pending1Page.locator(
+        '[data-attendance-role="refund-rejection-reason"]',
+      );
 
-      // Assert the refund button.
+      // Assert the rejected state and its persisted organizer reason.
       await expect(refundButton).toBeVisible();
-      await expect(refundButton).toContainText("Refund unavailable");
+      await expect(refundButton).toContainText("Refund rejected");
       await expect(refundButton).toBeDisabled();
+      await expect(rejectionReason).toHaveText(
+        "Reason: The request falls outside the refund policy window.",
+      );
       await expect(getLeaveButton(pending1Page)).toBeHidden();
     });
 

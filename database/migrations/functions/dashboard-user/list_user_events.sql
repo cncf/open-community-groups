@@ -18,6 +18,22 @@ returns json as $$
             and g.active = true
             and g.deleted = false
         ),
+        -- Select the latest refund review attached to each user event purchase.
+        latest_refund_request as (
+            select distinct on (ep.event_id)
+                ep.event_id,
+                case
+                    when err.status = 'rejected' then nullif(btrim(err.review_note), '')
+                end as refund_rejection_reason,
+                err.status as refund_request_status
+            from event_purchase ep
+            join event_refund_request err using (event_purchase_id)
+            where ep.user_id = p_user_id
+            order by
+                ep.event_id,
+                err.created_at desc,
+                err.event_refund_request_id desc
+        ),
         -- Collect user participation roles.
         role_rows as (
             -- Attendee
@@ -287,11 +303,14 @@ returns json as $$
                 er.manually_invited,
                 er.offer_expires_at,
                 er.registration_answers,
+                lrr.refund_rejection_reason,
+                lrr.refund_request_status,
                 er.resume_checkout_url,
                 er.roles,
                 er.starts_at,
                 er.ticket_title
             from event_rows er
+            left join latest_refund_request lrr using (event_id)
             order by er.starts_at asc, er.event_id asc
             offset (p_filters->>'offset')::int
             limit (p_filters->>'limit')::int
@@ -345,6 +364,10 @@ returns json as $$
                             erp.event_ticket_type_id,
                             'offer_expires_at',
                             extract(epoch from erp.offer_expires_at)::bigint,
+                            'refund_rejection_reason',
+                            erp.refund_rejection_reason,
+                            'refund_request_status',
+                            erp.refund_request_status,
                             'ticket_title',
                             erp.ticket_title
                         ))
