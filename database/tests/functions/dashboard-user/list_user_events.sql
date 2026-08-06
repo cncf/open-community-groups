@@ -1,16 +1,20 @@
--- Tests listing upcoming user event participation and active offers.
+-- Tests listing upcoming user event participation, active checkouts, and active offers.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set checkoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000040'
+\set checkoutExpiredUserID '4a0c0000-0000-0000-0000-000000000041'
+\set checkoutPurchaseID '4a0c0000-0000-0000-0000-000000000042'
+\set checkoutUserID '4a0c0000-0000-0000-0000-000000000043'
 \set communityID '4a0c0000-0000-0000-0000-000000000001'
 \set eventAID '4a0c0000-0000-0000-0000-000000000002'
 \set eventBID '4a0c0000-0000-0000-0000-000000000003'
@@ -82,7 +86,7 @@ values (:'groupCategoryID', :'communityID', 'Technology');
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'Meetup');
 
--- Users
+-- Users participating in or holding checkout state for listed events
 insert into "user" (
     user_id,
     auth_hash,
@@ -91,6 +95,20 @@ insert into "user" (
     username,
     name
 ) values (
+    :'checkoutExpiredUserID',
+    'checkout-expired-auth-hash',
+    'checkout-expired@test.com',
+    true,
+    'checkout-expired',
+    'Checkout Expired'
+), (
+    :'checkoutUserID',
+    'checkout-auth-hash',
+    'checkout@test.com',
+    true,
+    'checkout',
+    'Checkout User'
+), (
     :'userID',
     'auth-hash',
     'alice@example.com',
@@ -429,7 +447,7 @@ insert into event_ticket_type (
     :'eventPaidTicketTypeID',
     :'eventPaidID',
     1,
-    1,
+    3,
     'Paid admission'
 ), (
     :'eventQuestionsTicketTypeID',
@@ -620,6 +638,28 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
+    :'checkoutPurchaseID',
+    1500,
+    'USD',
+    :'eventPaidID',
+    :'eventPaidTicketTypeID',
+    current_timestamp + interval '10 minutes',
+    'https://example.test/checkout/direct-resume',
+    'pending',
+    'Paid admission',
+    :'checkoutUserID'
+), (
+    :'checkoutExpiredPurchaseID',
+    1500,
+    'USD',
+    :'eventPaidID',
+    :'eventPaidTicketTypeID',
+    current_timestamp - interval '10 minutes',
+    'https://example.test/checkout/direct-expired',
+    'pending',
+    'Paid admission',
+    :'checkoutExpiredUserID'
+), (
     :'questionsCheckoutPurchaseID',
     1500,
     'USD',
@@ -890,6 +930,38 @@ select is(
     'Should include active organizer ticket offers without labeling recipients as attendees'
 );
 
+-- Should include active direct checkout without labeling the user as an attendee
+select is(
+    (
+        list_user_events(:'checkoutUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+    ) - 'event',
+    jsonb_build_object(
+        'amount_minor',
+        1500,
+        'currency_code',
+        'USD',
+        'enrollment_status',
+        'pending-payment',
+        'event_ticket_type_id',
+        :'eventPaidTicketTypeID',
+        'has_paid_purchase',
+        false,
+        'registration_answers',
+        null,
+        'registration_questions',
+        get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
+        'resume_checkout_url',
+        'https://example.test/checkout/direct-resume',
+        'roles',
+        '[]'::jsonb,
+        'ticket_title',
+        'Paid admission'
+    ),
+    'Should include active direct checkout without labeling the user as an attendee'
+);
+
 -- Should return registration questions for pending users
 select is(
     jsonb_array_length(
@@ -957,38 +1029,41 @@ select is(
         'resume_checkout_url',
         'https://example.test/checkout/resume',
         'roles',
-        jsonb_build_array('attendee'),
+        '[]'::jsonb,
         'ticket_title',
         'Questions admission'
     ),
     'Should report active pending checkout before pending registration questions'
 );
 
--- Should ignore expired pending checkout before pending registration questions
+-- Should omit expired checkout-backed pending registration
 select is(
-    (
-        list_user_events(:'questionsCheckoutExpiredUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
-        -> 'events'
-        -> 0
-    ) - 'event',
+    list_user_events(
+        :'questionsCheckoutExpiredUserID'::uuid,
+        '{"limit": 10, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
-        'enrollment_status',
-        'registration-questions-pending',
-        'has_paid_purchase',
-        false,
-        'registration_answers',
-        format(
-            '{"answers": [{"question_id": "%s", "value": "Expired answer"}]}',
-            :'registrationQuestionID'
-        )::jsonb,
-        'registration_questions',
-        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
-        'resume_checkout_url',
-        null,
-        'roles',
-        jsonb_build_array('attendee')
+        'events',
+        '[]'::jsonb,
+        'total',
+        0
     ),
-    'Should ignore expired pending checkout before pending registration questions'
+    'Should omit expired checkout-backed pending registration'
+);
+
+-- Should omit expired direct checkout without another participation role
+select is(
+    list_user_events(
+        :'checkoutExpiredUserID'::uuid,
+        '{"limit": 10, "offset": 0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'events',
+        '[]'::jsonb,
+        'total',
+        0
+    ),
+    'Should omit expired direct checkout without another participation role'
 );
 
 -- Should hide an active offer from My Events while its refund is processing

@@ -2332,6 +2332,9 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     // Load the user's events through the Rust contract
     let output = db.list_user_events(attendee_id(), &filters).await?;
     let offered_output = db.list_user_events(pre_registered_id(), &filters).await?;
+    let pending_checkout_output = db
+        .list_user_events(status_pending_payment_user_id(), &filters)
+        .await?;
 
     // Check attendance and registration question state
     assert_eq!(output.total, 1);
@@ -2353,6 +2356,39 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     assert!(!output.events[0].registration_questions_pending());
     assert_eq!(output.events[0].resume_checkout_url, None);
     assert_eq!(output.events[0].ticket_title, None);
+
+    // Check active direct checkout remains actionable without an attendee role
+    assert_eq!(pending_checkout_output.total, 1);
+    assert_eq!(pending_checkout_output.events.len(), 1);
+    let pending_checkout = &pending_checkout_output.events[0];
+    assert_eq!(pending_checkout.event.event_id, status_event_id());
+    assert!(!pending_checkout.has_paid_purchase);
+    assert!(!pending_checkout.manually_invited);
+    assert!(pending_checkout.registration_questions.is_empty());
+    assert!(pending_checkout.roles.is_empty());
+    assert_eq!(pending_checkout.admission_offer_id, None);
+    assert_eq!(pending_checkout.admission_offer_source, None);
+    assert_eq!(pending_checkout.admission_offer_status, None);
+    assert_eq!(pending_checkout.amount_minor, Some(2500));
+    assert_eq!(pending_checkout.currency_code.as_deref(), Some("USD"));
+    assert_eq!(
+        pending_checkout.enrollment_status,
+        Some(EventEnrollmentStatus::PendingPayment)
+    );
+    assert_eq!(
+        pending_checkout.event_ticket_type_id,
+        Some(status_ticket_type_id())
+    );
+    assert_eq!(pending_checkout.offer_expires_at, None);
+    assert!(pending_checkout.registration_answers.is_none());
+    assert_eq!(
+        pending_checkout.resume_checkout_url.as_deref(),
+        Some("https://example.test/checkout/status-pending")
+    );
+    assert_eq!(
+        pending_checkout.ticket_title.as_deref(),
+        Some("Status Admission")
+    );
 
     // Check active offers use their own role instead of attendee presentation
     assert_eq!(offered_output.total, 1);
@@ -3264,6 +3300,8 @@ const STATUS_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c109";
 const STATUS_EXPIRED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10d";
 /// User fixture with a resumable pending payment.
 const STATUS_PENDING_PAYMENT_USER_ID: &str = "00000000-0000-0000-0000-00000000c10c";
+/// Ticket fixture used by the pending payment.
+const STATUS_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c10a";
 const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
 const SUMMARY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f1";
 const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
@@ -3742,6 +3780,11 @@ fn status_expired_user_id() -> Uuid {
 /// Returns the pending-purchase user used by the status contract.
 fn status_pending_payment_user_id() -> Uuid {
     parse_uuid(STATUS_PENDING_PAYMENT_USER_ID)
+}
+
+/// Returns the ticket used by the pending payment contract.
+fn status_ticket_type_id() -> Uuid {
+    parse_uuid(STATUS_TICKET_TYPE_ID)
 }
 
 /// Returns the subgroup identifier used by the contract fixture.

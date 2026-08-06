@@ -263,6 +263,9 @@ test.describe("user dashboard my events view", () => {
       hasText: TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed.name,
     });
     await expect(pendingPaymentRow).toContainText("Payment pending");
+    await expect(
+      pendingPaymentRow.getByText("Attendee", { exact: true }),
+    ).toHaveCount(0);
     await openEventActions(pendingPaymentRow);
     await expect(
       pendingPaymentRow.getByRole("menuitem", {
@@ -275,6 +278,11 @@ test.describe("user dashboard my events view", () => {
     await expect(
       pendingPaymentRow.getByRole("menuitem", {
         name: "Complete registration",
+      }),
+    ).toBeEnabled();
+    await expect(
+      pendingPaymentRow.getByRole("menuitem", {
+        name: "Cancel checkout",
       }),
     ).toBeEnabled();
   });

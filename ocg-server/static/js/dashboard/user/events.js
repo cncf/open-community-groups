@@ -6,7 +6,7 @@ import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 
-const DATA_KEY = "userEventQuestionsReady";
+const DATA_KEY = "userEventsReady";
 
 /**
  * Finds the question modal targeted by an open trigger.
@@ -59,7 +59,16 @@ const handleSubmit = (event) => {
 };
 
 const handleAfterRequest = (event) => {
-  const form = event.target;
+  const target = event.target;
+  if (closestElement(target, "[data-user-event-checkout-cancel]")) {
+    // Shared confirmation handling owns feedback for this action.
+    if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+      window.htmx?.trigger?.("#dashboard-content", "refresh-user-dashboard-content");
+    }
+    return;
+  }
+
+  const form = target;
   if (!(form instanceof HTMLFormElement) || !form.matches("[data-user-event-questions-form]")) {
     return;
   }
@@ -84,7 +93,7 @@ const handleKeydown = (event) => {
   });
 };
 
-const initializeUserEventQuestions = () => {
+const initializeUserEvents = () => {
   if (!markDatasetReady(document.documentElement, DATA_KEY)) {
     return;
   }
@@ -95,4 +104,4 @@ const initializeUserEventQuestions = () => {
   document.addEventListener("keydown", handleKeydown);
 };
 
-initializeUserEventQuestions();
+initializeUserEvents();

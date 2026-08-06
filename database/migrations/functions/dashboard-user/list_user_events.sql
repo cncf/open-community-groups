@@ -1,4 +1,4 @@
--- Returns paginated upcoming events where the user participates.
+-- Returns paginated upcoming events where the user participates or has actionable admission state.
 create or replace function list_user_events(p_user_id uuid, p_filters jsonb)
 returns json as $$
     with
@@ -44,6 +44,8 @@ returns json as $$
                 end as resume_checkout_url,
                 case
                     when pending_purchase.admission_offer_id is not null then 'offer'
+                    when ea.status = 'registration-questions-pending'
+                        and pending_purchase.event_purchase_id is not null then null
                     else 'attendee'
                 end as role,
                 pending_purchase.ticket_title
@@ -71,6 +73,43 @@ returns json as $$
             ) pending_purchase on true
             where ea.user_id = p_user_id
             and ea.status in ('confirmed', 'registration-questions-pending')
+            and not (
+                ea.status = 'registration-questions-pending'
+                and ea.manually_invited = false
+                and pending_purchase.event_purchase_id is null
+                and exists (
+                    select 1
+                    from event_purchase expired_purchase
+                    where expired_purchase.event_id = ea.event_id
+                    and expired_purchase.user_id = ea.user_id
+                    and expired_purchase.status = 'pending'
+                    and expired_purchase.hold_expires_at <= current_timestamp
+                )
+            )
+
+            union all
+
+            -- Active direct checkout
+            select
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                ep.amount_minor,
+                ep.currency_code,
+                'pending-payment'::text as enrollment_status,
+                ep.event_id,
+                ep.event_ticket_type_id,
+                false as manually_invited,
+                null::timestamptz as offer_expires_at,
+                null::jsonb as registration_answers,
+                ep.provider_checkout_url as resume_checkout_url,
+                null::text as role,
+                ep.ticket_title
+            from event_purchase ep
+            where ep.user_id = p_user_id
+            and ep.admission_offer_id is null
+            and ep.status = 'pending'
+            and ep.hold_expires_at > current_timestamp
 
             union all
 
@@ -220,7 +259,12 @@ returns json as $$
                 (max(rr.registration_answers::text) filter (where rr.registration_answers is not null))::jsonb
                     as registration_answers,
                 max(rr.resume_checkout_url) as resume_checkout_url,
-                array_agg(distinct rr.role order by rr.role asc) as roles,
+                coalesce(
+                    array_agg(distinct rr.role order by rr.role asc) filter (
+                        where rr.role is not null
+                    ),
+                    '{}'::text[]
+                ) as roles,
                 ve.starts_at,
                 max(rr.ticket_title) as ticket_title
             from visible_events ve

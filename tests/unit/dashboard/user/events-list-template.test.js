@@ -58,6 +58,34 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(
       '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}',
     );
+    expect(template).to.include(">Status / role</th>");
+  });
+
+  it("renders active checkout recovery and cancellation actions", async () => {
+    // Load the user events template before checking checkout actions.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Active direct checkout rows can resume through a provider or the public event page.
+    expect(template).to.include("{% else if item.can_cancel_checkout() -%}");
+    expect(template).to.include(
+      'href="/{{ item.event.community_name }}/group/{{ item.event.public_group_slug() }}/event/{{ item.event.slug }}"',
+    );
+    expect(template).to.include("<span>Continue to checkout</span>");
+
+    // Cancellation uses the existing event checkout endpoint and refresh marker.
+    expect(template).to.include('id="cancel-checkout-{{ item.event.event_id }}"');
+    expect(template).to.include(
+      'hx-delete="/{{ item.event.community_name }}/event/{{ item.event.event_id }}/checkout"',
+    );
+    expect(template).to.include('hx-swap="none"');
+    expect(template).to.include("data-user-event-checkout-cancel");
+    expect(template).to.include(
+      'data-confirm-message="Are you sure you want to cancel this checkout? Your ticket hold will be released."',
+    );
+    expect(template).to.include(
+      'data-success-message="Your checkout has been canceled and the ticket hold released."',
+    );
+    expect(template).to.include("<span>Cancel checkout</span>");
   });
 
   it("routes active event offers to the invitations dashboard", async () => {

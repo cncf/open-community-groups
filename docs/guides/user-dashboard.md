@@ -62,7 +62,8 @@ Rows are ordered by group name.
 
 ## My Events: Upcoming Participation
 
-`My Events` is your personal queue of upcoming events where you already have an active role.
+`My Events` is your personal queue of upcoming events where you have an active role, an active
+direct checkout hold, or an event offer.
 
 Each row includes:
 
@@ -75,8 +76,10 @@ Each row includes:
   `Registration pending`.
 
 When a row is marked `Payment pending`, use the row actions menu to complete checkout while the
-ticket hold is still active, even if public registration closes after checkout started. When a row
-is marked `Registration pending`, use the row actions menu to complete the event's registration
+ticket hold is still active, even if public registration closes after checkout started. You can
+also cancel checkout from the same menu to release the hold. A pending payment does not describe
+you as an attendee unless you already have a separate confirmed attendance role. When a row is
+marked `Registration pending`, use the row actions menu to complete the event's registration
 questions. You can update submitted answers from the same menu before the event starts while
 registration is open, while an active checkout hold exists, or when an organizer invited you
 manually.
@@ -92,6 +95,8 @@ exceptions for completing required registration questions from `My Events`.
 
 The list includes only upcoming published events; canceled events and events from inactive or
 deleted groups are excluded. Rows are ordered by date ascending, so the next event appears first.
+Expired checkout holds disappear from the list unless you have another active role in the event;
+hold expiration is reflected when the dashboard content next loads or refreshes.
 
 ![User profile area](../screenshots/dashboard-user-my-events.png)
 

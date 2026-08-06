@@ -78,10 +78,6 @@ const getRefundButton = (page) =>
 const getSignInButton = (page) =>
   page.locator('[data-attendance-role="signin-btn"]');
 
-// Return the pending checkout cancel action from the actions menu.
-const getCheckoutCancelButton = (page) =>
-  page.locator('[data-attendance-role="checkout-cancel-btn"]');
-
 test.describe("event attendance", () => {
   test("member can attend and cancel from the public event page", async ({
     member2Page,
@@ -542,44 +538,40 @@ test.describe("event attendance", () => {
         expect(resumeCheckoutUrl).not.toEqual("");
       }
 
-      // Verify My Events reflects the same resume checkout availability.
+      // Verify My Events exposes the active hold without confirming attendance.
       await navigateToPath(pending2Page, "/dashboard/user?tab=events");
       const dashboardContent = pending2Page.locator("#dashboard-content");
       const paymentEventRow = dashboardContent.locator("tr", {
         hasText: TEST_PAYMENT_EVENT_NAMES.draft,
       });
-      if ((await paymentEventRow.count()) > 0) {
-        await expect(paymentEventRow).toContainText("Attendee");
-        await paymentEventRow.getByLabel("Open event actions").click();
-        const completePaymentMenuItem = paymentEventRow.getByRole("menuitem", {
-          name: "Continue to checkout",
-        });
-        if (resumeCheckoutUrl !== null) {
-          await expect(completePaymentMenuItem).toHaveAttribute(
-            "href",
-            resumeCheckoutUrl,
-          );
-        } else {
-          await expect(completePaymentMenuItem).toHaveCount(0);
-        }
+      await expect(paymentEventRow).toHaveCount(1);
+      await expect(paymentEventRow).toContainText("Payment pending");
+      await expect(
+        paymentEventRow.getByText("Attendee", { exact: true }),
+      ).toHaveCount(0);
+      await paymentEventRow.getByLabel("Open event actions").click();
+      const completePaymentMenuItem = paymentEventRow.getByRole("menuitem", {
+        name: "Continue to checkout",
+      });
+      if (resumeCheckoutUrl !== null) {
+        await expect(completePaymentMenuItem).toHaveAttribute(
+          "href",
+          resumeCheckoutUrl,
+        );
+      } else {
+        await expect(completePaymentMenuItem).toHaveAttribute(
+          "href",
+          new RegExp(TEST_PAYMENT_EVENT_SLUGS.draft),
+        );
       }
-
-      // Return to the event page and cancel the pending checkout.
-      await navigateToEvent(
-        pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
-        TEST_PAYMENT_EVENT_SLUGS.draft,
-      );
-      await pending2Page
-        .locator('[data-attendance-role="actions-menu"] summary')
+      await paymentEventRow
+        .getByRole("menuitem", { name: "Cancel checkout" })
         .click();
-      await getCheckoutCancelButton(pending2Page).click();
       await expect(pending2Page.locator(".swal2-popup")).toContainText(
         "Are you sure you want to cancel this checkout?",
       );
 
-      // Confirm checkout cancellation and verify the ticket CTA returns.
+      // Confirm checkout cancellation and verify the active-hold row disappears.
       await Promise.all([
         pending2Page.waitForResponse(
           (response) =>
@@ -591,7 +583,11 @@ test.describe("event attendance", () => {
         ),
         pending2Page.getByRole("button", { name: "Yes" }).click(),
       ]);
-      await expect(getAttendButton(pending2Page)).toContainText("Get ticket");
+      await expect(
+        dashboardContent.locator("tr", {
+          hasText: TEST_PAYMENT_EVENT_NAMES.draft,
+        }),
+      ).toHaveCount(0);
     });
 
     test("paid attendee sees a pending refund request on the event page", async ({

@@ -95,11 +95,16 @@ impl UserEvent {
             && !self.has_paid_purchase
     }
 
+    /// Returns true when an active checkout can be canceled from the user dashboard.
+    pub(crate) fn can_cancel_checkout(&self) -> bool {
+        self.payment_pending()
+    }
+
     /// Returns true when registration answers can be completed or updated.
     pub(crate) fn can_complete_registration_questions(&self) -> bool {
         self.has_registration_questions_action()
             && (self.manually_invited
-                || self.has_active_checkout_hold()
+                || self.payment_pending()
                 || self.event.registration_window_is_open())
     }
 
@@ -156,11 +161,6 @@ impl UserEvent {
             self.enrollment_status.as_ref(),
             Some(EventEnrollmentStatus::RegistrationQuestionsPending)
         )
-    }
-
-    /// Returns true when the user has an active checkout hold.
-    fn has_active_checkout_hold(&self) -> bool {
-        self.resume_checkout_url.is_some()
     }
 
     /// Returns true when payment is still pending.
@@ -220,7 +220,7 @@ crate::impl_pagination_and_raw_query!(UserEventsFilters, limit, offset);
 /// Paginated events response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserEventsOutput {
-    /// Events where the user participates.
+    /// Events where the user participates or has actionable admission state.
     pub events: Vec<UserEvent>,
     /// Total number of events before pagination.
     pub total: usize,
@@ -257,12 +257,27 @@ mod tests {
     }
 
     #[test]
+    fn can_cancel_checkout_allows_pending_payment() {
+        let mut user_event = sample_user_event();
+        user_event.enrollment_status = Some(EventEnrollmentStatus::PendingPayment);
+        user_event.roles = vec![];
+
+        assert!(user_event.can_cancel_checkout());
+    }
+
+    #[test]
+    fn can_cancel_checkout_rejects_attendee() {
+        let user_event = sample_user_event();
+
+        assert!(!user_event.can_cancel_checkout());
+    }
+
+    #[test]
     fn can_complete_registration_questions_allows_active_checkout_hold_after_closed_window() {
         let mut user_event = sample_user_event();
         user_event.enrollment_status = Some(EventEnrollmentStatus::PendingPayment);
         user_event.registration_questions = vec![sample_question()];
         user_event.event.registration_ends_at = Some(Utc::now() - Duration::hours(1));
-        user_event.resume_checkout_url = Some("https://example.test/checkout/resume".to_string());
 
         assert!(user_event.can_complete_registration_questions());
         assert!(user_event.registration_questions_disabled_title().is_none());

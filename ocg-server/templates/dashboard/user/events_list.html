@@ -6,7 +6,7 @@
 {# Dashboard User Events List -#}
 {# Header -#}
 {{ dashboard::page_title(title = "My Events", docs_href = "/docs#/guides/user-dashboard?id=my-events-upcoming-participation",
-  description = "Upcoming events you attend, speak at, host, or have active offers for.") -}}
+  description = "Upcoming participation, active checkouts, and event offers.") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
@@ -24,7 +24,7 @@
         <th scope="col" class="px-3 xl:px-5 py-3">Title</th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Date</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-64">Role</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-64">Status / role</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
@@ -143,6 +143,15 @@
                           <span>Continue to checkout</span>
                         </a>
                       </li>
+                    {% else if item.can_cancel_checkout() -%}
+                      <li>
+                        <a href="/{{ item.event.community_name }}/group/{{ item.event.public_group_slug() }}/event/{{ item.event.slug }}"
+                           role="menuitem"
+                           class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                          <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-500"></div>
+                          <span>Continue to checkout</span>
+                        </a>
+                      </li>
                     {% endif -%}
                     {% if item.has_active_offer() -%}
                       {% if let Some(admission_offer_id) = item.admission_offer_id -%}
@@ -179,20 +188,43 @@
                         {% endif -%}
                       </li>
                     {% endif -%}
-                    <li>
-                      <button id="cancel-attendance-{{ item.event.event_id }}"
-                              {% if item.can_cancel_attendance() -%}
-                                hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
-                              {% else -%}
-                                disabled title="This attendance cannot be canceled from My Events."
-                              {% endif -%}
-                              role="menuitem"
-                              class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
-                              type="button">
-                        <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
-                        <span>Cancel attendance</span>
-                      </button>
-                    </li>
+                    {% if item.can_cancel_checkout() -%}
+                      <li>
+                        <button id="cancel-checkout-{{ item.event.event_id }}"
+                                type="button"
+                                hx-delete="/{{ item.event.community_name }}/event/{{ item.event.event_id }}/checkout"
+                                hx-indicator="#dashboard-spinner"
+                                hx-trigger="confirmed"
+                                hx-swap="none"
+                                hx-disabled-elt="this"
+                                data-confirm-action
+                                data-user-event-checkout-cancel
+                                data-confirm-message="Are you sure you want to cancel this checkout? Your ticket hold will be released."
+                                data-confirm-text="Yes"
+                                data-success-message="Your checkout has been canceled and the ticket hold released."
+                                data-error-message="Something went wrong canceling checkout. Please try again later."
+                                role="menuitem"
+                                class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                          <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                          <span>Cancel checkout</span>
+                        </button>
+                      </li>
+                    {% else -%}
+                      <li>
+                        <button id="cancel-attendance-{{ item.event.event_id }}"
+                                {% if item.can_cancel_attendance() -%}
+                                  hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
+                                {% else -%}
+                                  disabled title="This attendance cannot be canceled from My Events."
+                                {% endif -%}
+                                role="menuitem"
+                                class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
+                                type="button">
+                          <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                          <span>Cancel attendance</span>
+                        </button>
+                      </li>
+                    {% endif -%}
                   </ul>
                 </div>
               </details>
