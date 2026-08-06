@@ -1,4 +1,5 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { localizeCurrencyLabel } from "/static/js/common/currency.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 import {
@@ -40,7 +41,7 @@ class AttendanceTicketCard extends LitWrapper {
   }
 
   get _priceLabel() {
-    return toTrimmedString(this.ticket?.current_price_label);
+    return localizeCurrencyLabel(toTrimmedString(this.ticket?.current_price_label));
   }
 
   get _title() {

@@ -104,19 +104,70 @@ describe("dashboard group attendees list template", () => {
   it("shows refund progress and exposes retryable work", async () => {
     // Load the attendees list template before checking refund status markup.
     const template = normalizeWhitespace(await loadTemplate());
+    const attendeeStatus = sliceTemplateSection(
+      template,
+      "{# Attendee status badge and active offer deadline. #}",
+      "{# End attendee status. #}",
+    );
+    const ticketType = sliceTemplateSection(template, "{# Ticket type -#}", "{# End ticket type -#}");
 
-    // Verify refund status labels and retry actions are available to attendees.
-    expect(template).to.include('label = "Waiting for checkout"');
-    expect(template).to.include('label = "Refund queued"');
-    expect(template).to.include('label = "Refund processing"');
-    expect(template).to.include('label = "Refund needs retry"');
-    expect(template).to.include('label = "Recovery required"');
-    expect(template).to.include('label = "Refunded"');
+    // Verify refund status labels use the shared status badge outside Ticket type.
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Waiting for checkout")');
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund queued")');
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund processing")');
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund needs retry", canceled = true)');
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Recovery required", canceled = true)');
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Refunded", published = true)');
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund rejected", canceled = true)');
+    expect(ticketType).to.not.include("Refund rejected");
+
+    // Verify retryable refund work remains available from attendee actions.
     expect(template).to.include('id="retry-refund-{{ attendee.user.user_id }}"');
     expect(template).to.include(
       'hx-put="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/retry"',
     );
     expect(template).to.include("data-actions-menu");
+  });
+
+  it("labels completed paid offers as claimed tickets", async () => {
+    // Load the attendee status badges before checking completed offer copy.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Completed offers and claimed paid invitations take precedence over invitation copy.
+    expect(template).to.include("EventAdmissionOfferStatus::Completed");
+    expect(template).to.include(
+      "AttendeeEnrollmentStatus::Confirmed && attendee.manually_invited && self::is_paid_attendee(attendee.amount_minor)",
+    );
+    expect(template).to.include('badges::status_badge(label = "Ticket claimed", published = true)');
+  });
+
+  it("shows confirmed attendees as active when no other status applies", async () => {
+    // Load the attendee status macro before checking its confirmed fallback.
+    const template = normalizeWhitespace(await loadTemplate());
+    const attendeeStatus = sliceTemplateSection(
+      template,
+      "{# Attendee status badge and active offer deadline. #}",
+      "{# End attendee status. #}",
+    );
+
+    // Verify confirmed attendees receive the final green status fallback.
+    expect(attendeeStatus).to.include("AttendeeEnrollmentStatus::Confirmed -%}");
+    expect(attendeeStatus).to.include('badges::status_badge(label = "Active", published = true)');
+    expect(attendeeStatus.indexOf("Registration pending")).to.be.lessThan(
+      attendeeStatus.indexOf('label = "Active"'),
+    );
+  });
+
+  it("displays ticket names above their prices", async () => {
+    // Load the ticket type cell before checking its two-line layout.
+    const template = normalizeWhitespace(await loadTemplate());
+    const ticketType = sliceTemplateSection(template, "{# Ticket type -#}", "{# End ticket type -#}");
+
+    // Verify ticket names truncate above prices styled like attendee usernames.
+    expect(ticketType).to.include('class="max-w-full truncate font-medium text-stone-900"');
+    expect(ticketType).to.include('class="text-xs text-stone-600 truncate"');
+    expect(ticketType).to.include("<span data-localized-currency>{{ amount_label }}</span>");
+    expect(ticketType).to.not.include("(<span data-localized-currency>");
   });
 
   it("explains when invitations have no assignable ticket type", async () => {
@@ -126,9 +177,6 @@ describe("dashboard group attendees list template", () => {
     // Verify organizers receive a recovery path when the select has no options.
     expect(template).to.include("data-attendee-invitation-ticket-empty");
     expect(template).to.include("ticket_type.active && !ticket_type.sold_out");
-    expect(template).to.include(
-      "!ticket_types[0].active || ticket_types[0].sold_out || ticket_types[0].current_price.is_none()",
-    );
     expect(template).to.include(
       "No ticket types can be assigned. Add seats or activate a ticket type with a current price before sending an invitation.",
     );
@@ -238,23 +286,36 @@ describe("dashboard group attendees list template", () => {
   it("renders organizer invitation tiers, deadlines, and state-specific actions", async () => {
     // Load the attendees list template before checking organizer invitation states.
     const template = normalizeWhitespace(await loadTemplate());
+    const attendeeCell = sliceTemplateSection(template, "{# Attendee -#}", "{# End attendee -#}");
 
-    // Verify invitations select any active organizer-visible tier.
-    expect(template).to.include("{% if ticket_types.len() == 1 -%}");
-    expect(template).to.include("{{ ticket_types[0].title }}");
+    // Verify invitations always use the ticket type select contract.
+    expect(template).not.to.include("{% if ticket_types.len() == 1 -%}");
     expect(template).to.include('id="attendee-invitation-ticket-type"');
     expect(template).to.include('name="event_ticket_type_id"');
+    expect(template).to.include("{% if ticket_types.len() == 1 %}selected{% endif %}");
     expect(template).to.include(
       "ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly",
     );
     expect(template).to.include("(Invitation only)");
     expect(template).to.include("(Public)");
 
-    // Verify pending and checkout offers show exact enrollment states, tier, and deadline.
-    expect(template).to.include('label = "Invitation pending"');
-    expect(template).to.include('label = "Checkout pending"');
-    expect(template).to.include("Awaiting claim");
-    expect(template).to.include("Checkout in progress");
+    // Verify offer states use consistent badges in the dedicated status column.
+    expect(template).to.include('badges::status_badge(label = "Offer pending")');
+    expect(template).to.include('badges::status_badge(label = "Checkout pending")');
+    expect(template).to.include("{{ attendee_status(attendee, event) -}}");
+    expect(template).to.not.include("Awaiting claim");
+    expect(template).to.not.include("Checkout in progress");
+    expect(template).to.not.include("badges::invitation_badge");
+
+    // Verify offer deadlines are available from an info tooltip on hover and focus.
+    expect(template).to.include('role="tooltip"');
+    expect(template).to.include("icon-info");
+    expect(template).to.include('aria-label="{% if attendee.admission_offer_status');
+    expect(template).to.include("group-hover/deadline-tooltip:visible");
+    expect(template).to.include("group-focus-within/deadline-tooltip:visible");
+    expect(attendeeCell.indexOf("{% endcall -%}")).to.be.lessThan(
+      attendeeCell.indexOf("{{ attendee_status(attendee, event) -}}"),
+    );
     expect(template).to.include(
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
     );
@@ -266,7 +327,7 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify only expired organizer invitations expose reissue.
-    expect(template).to.include('label = "Invitation expired"');
+    expect(template).to.include('badges::status_badge(label = "Offer expired", canceled = true)');
     expect(template).to.include("Reissue invitation");
     expect(template).to.include('name="email" value="{{ attendee.email }}"');
     expect(template).to.include(
@@ -337,6 +398,8 @@ describe("dashboard group attendees list template", () => {
   it("renders attendee sort select and table filter controls", async () => {
     // Load the attendees list template before checking table controls.
     const template = normalizeWhitespace(await loadTemplate());
+    const tableHeader = sliceTemplateSection(template, "{# Table header -#}", "{# End table header -#}");
+    const attendeeRow = sliceTemplateSection(template, "{# Attendee row -#}", "{# End attendee row -#}");
 
     // Verify attendee filters preserve current table state.
     expect(template).to.include('name="checked_in" value="{{ checked_in }}"');
@@ -365,6 +428,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-44"');
     expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
@@ -406,6 +470,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.not.include('dashboard::active_table_filter_badge("Sort"');
     expect(template).to.not.include('id = "attendees-name-filter"');
     expect(template).to.include("Ticket type");
+    expect(tableHeader.indexOf("Status")).to.be.lessThan(tableHeader.indexOf("Ticket type"));
+    expect(tableHeader.indexOf("Ticket type")).to.be.lessThan(tableHeader.indexOf("Enrollment Date"));
+    expect(attendeeRow.indexOf("{# Status -#}")).to.be.lessThan(attendeeRow.indexOf("{# Ticket type -#}"));
+    expect(attendeeRow.indexOf("{# Ticket type -#}")).to.be.lessThan(
+      attendeeRow.indexOf("{# Enrollment Date -#}"),
+    );
   });
 
   it("integrates selected attendee email sends with the attendees table", async () => {

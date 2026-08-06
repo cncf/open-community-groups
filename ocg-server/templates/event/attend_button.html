@@ -215,6 +215,7 @@
                             {% else if let Some(currency_code) = &event.payment_currency_code -%}
                               {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) -%}
                                 <div data-attendance-role="ticket-type-price-badge"
+                                     data-localized-currency
                                      class="{{ ticket_price_badge_classes }}">{{ price_label }}</div>
                               {% endif -%}
                             {% endif -%}
@@ -247,7 +248,7 @@
                 </div>
               </div>
 
-              {% if !event.attendee_approval_required && event.is_paid_capable() -%}
+              {% if event.is_paid_capable() -%}
                 <div class="grid gap-4 md:grid-cols-2">
                   <div class="min-w-0">
                     <label for="discount-code-{{ attendance_instance }}" class="form-label">Discount code</label>
@@ -259,7 +260,7 @@
                              maxlength="{{ crate::validation::MAX_LEN_S }}"
                              class="input-primary"
                              placeholder="Discount code"
-                             {% if event.sellable_ticket_types().is_empty() || !event.registration_window_is_open() %}disabled{% endif %}>
+                             {% if event.attendee_approval_required || event.sellable_ticket_types().is_empty() || !event.registration_window_is_open() %}disabled{% endif %}>
                     </div>
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import "/static/js/common/actions-menu.js";
 import { handleHtmxResponse, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 import { hasHtmxTrigger } from "/static/js/common/htmx-triggers.js";

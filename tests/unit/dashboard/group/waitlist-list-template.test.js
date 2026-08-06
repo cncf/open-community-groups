@@ -42,9 +42,15 @@ describe("dashboard group waitlist list template", () => {
       'pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry", plural_label = "waitlist entries")',
     );
     expect(template).to.include("dashboard/placeholders/group_waitlist_no_results.html");
-    expect(template).to.include("{% else if let Some(waitlist_position) = entry.waitlist_position -%}");
-    expect(template).to.include("Queue #{{ waitlist_position }}");
+    expect(template).to.include('<th scope="col" class="px-3 xl:px-5 py-1.5 w-20">Queue</th>');
+    expect(template).to.include("{% if let Some(waitlist_position) = entry.waitlist_position -%}");
+    expect(template).to.include("#{{ waitlist_position }}");
+    expect(template).not.to.include("queue_label");
     expect(template).not.to.include("{{ refresh_offset + loop.index }}");
+    expect(template.indexOf(">Queue</th>")).to.be.lessThan(template.indexOf(">Enrollment</th>"));
+    expect(template.indexOf("#{{ waitlist_position }}")).to.be.lessThan(
+      template.indexOf("{{ entry.ticket_title }}"),
+    );
   });
 
   it("renders waitlist sort select and title filter controls", async () => {
@@ -105,11 +111,11 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify the table columns and placeholders keep matching responsive spans.
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"');
-    expect(template).to.include('<td class="xl:hidden px-8 py-12 text-center" colspan="3">');
+    expect(template).to.include('<td class="xl:hidden px-8 py-12 text-center" colspan="4">');
     expect(template).to.include(
-      '<td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4">',
+      '<td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="5">',
     );
-    expect(template).to.include('<td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">');
+    expect(template).to.include('<td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">');
   });
 
   it("preserves current filters for waitlist refreshes", async () => {
@@ -144,7 +150,7 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify ticket tiers, queue positions, offer states, and deadlines remain visible.
     expect(template).to.include("{{ entry.ticket_title }}");
-    expect(template).to.include("Queue #{{ waitlist_position }}");
+    expect(template).to.include("#{{ waitlist_position }}");
     expect(template).to.include('label = "Offer pending"');
     expect(template).to.include('label = "Checkout pending"');
     expect(template).to.include('label = "Ticket claimed"');

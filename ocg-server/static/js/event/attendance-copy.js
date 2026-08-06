@@ -6,7 +6,6 @@ export const GET_FREE_TICKET_LABEL = "Get free ticket";
 export const GET_TICKET_LABEL = "Get ticket";
 export const JOIN_WAITLIST_LABEL = "Join waiting list";
 export const LEAVE_WAITLIST_LABEL = "Leave waiting list";
-export const ON_WAITLIST_LABEL = "On waiting list";
 export const REQUEST_INVITATION_LABEL = "Request invitation";
 export const REQUEST_PENDING_LABEL = "Request pending";
 export const REQUEST_TICKET_LABEL = "Request ticket";

@@ -14,7 +14,6 @@ import {
   CANCEL_ATTENDANCE_LABEL,
   CANCEL_INVITATION_REQUEST_LABEL,
   LEAVE_WAITLIST_LABEL,
-  ON_WAITLIST_LABEL,
   REQUEST_PENDING_LABEL,
 } from "/static/js/event/attendance-copy.js";
 import {
@@ -124,7 +123,7 @@ export const handleAttendanceClick = (event) => {
     // Destructive actions keep the real button id as the SweetAlert target.
     const label = getAttendanceControlLabel(leaveButton) || CANCEL_ATTENDANCE_LABEL;
     let message = "Are you sure you want to cancel your attendance?";
-    if (label === ON_WAITLIST_LABEL || label === LEAVE_WAITLIST_LABEL) {
+    if (label === LEAVE_WAITLIST_LABEL) {
       message = "Are you sure you want to leave the waiting list?";
     } else if (label === REQUEST_PENDING_LABEL || label === CANCEL_INVITATION_REQUEST_LABEL) {
       message = "Are you sure you want to cancel your invitation request?";

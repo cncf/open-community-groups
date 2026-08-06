@@ -601,15 +601,17 @@ const clearSeededWaitlistOffer = async (memberPage) => {
   const offerRow = memberPage.locator("#dashboard-content tr", {
     hasText: "Full Event With Waitlist",
   });
-  const declineButton = offerRow.getByRole("button", {
-    name: "Decline offer for Full Event With Waitlist",
-    exact: true,
-  });
+  const actionsButton = offerRow.getByLabel(/Open offer actions/);
 
-  if (!(await declineButton.isVisible())) {
+  if (!(await actionsButton.isVisible())) {
     return;
   }
 
+  await actionsButton.click();
+  const declineButton = offerRow.getByRole("menuitem", {
+    name: "Decline offer",
+    exact: true,
+  });
   await declineButton.click();
   await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
   await Promise.all([

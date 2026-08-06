@@ -11,6 +11,23 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard user invitations list template", () => {
+  it("orders event group and community invitations", async () => {
+    // Load the invitations template before checking section order.
+    const template = normalizeWhitespace(await loadTemplate());
+    const eventInvitations = template.indexOf("{# Event Invitations -#}");
+    const groupInvitations = template.indexOf("{# Groups Invitations -#}");
+    const communityInvitations = template.indexOf("{# Community Invitations -#}");
+
+    // Verify the requested order and consistent secondary section spacing.
+    expect(template).to.include('dashboard::page_title(title = "Event Invitations"');
+    expect(eventInvitations).to.be.greaterThan(-1);
+    expect(groupInvitations).to.be.greaterThan(eventInvitations);
+    expect(communityInvitations).to.be.greaterThan(groupInvitations);
+    expect(template).to.include('{# Groups Invitations -#} <div class="pt-12">');
+    expect(template).to.include('{# Community Invitations -#} <div class="pt-12">');
+    expect(template).to.not.include("border-t border-stone-900/10");
+  });
+
   it("marks initially hidden offer dialogs as hidden for assistive technology", async () => {
     // Load the claim dialog before its delegated JavaScript initializes.
     const template = normalizeWhitespace(await loadTemplate());
@@ -30,6 +47,7 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include("{{ invitation.source_label() }}");
     expect(template).to.include("{% if !invitation.is_simple_rsvp -%}");
     expect(template).to.include("{% if let Some(price_label) = invitation.price_label() -%}");
+    expect(template).to.include("data-localized-currency");
     expect(template).to.include(
       '{{ invitation.expires_at.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}',
     );
@@ -45,14 +63,16 @@ describe("dashboard user invitations list template", () => {
 
     // Owned offers expose every supported lifecycle action.
     expect(template).to.include("data-user-event-offer-open");
-    expect(template).to.include('aria-label="Claim offer for {{ invitation.event_name }}"');
-    expect(template).to.include('title="Claim offer"');
-    expect(template).to.include('title="Continue to checkout"');
+    expect(template).to.include("data-actions-menu");
+    expect(template).to.include('aria-label="Open offer actions for {{ invitation.event_name }}"');
+    expect(template).to.include("icon-vertical-dots");
+    expect(template).to.include("<span>Claim offer</span>");
+    expect(template).to.include("<span>Continue to checkout</span>");
     expect(template).to.include("data-user-event-offer-checkout-cancel");
     expect(template).to.include(
       'hx-put="/dashboard/user/invitations/event-offers/{{ invitation.admission_offer_id }}/decline"',
     );
-    expect(template).to.include('aria-label="Decline offer for {{ invitation.event_name }}"');
+    expect(template).to.include("<span>Decline offer</span>");
     expect(template).to.not.include('data-success-message="The offer has been declined."');
     expect(template).to.include('name="admission_offer_id"');
     expect(template).to.include('name="event_ticket_type_id"');

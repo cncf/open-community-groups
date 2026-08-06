@@ -807,8 +807,7 @@ describe("event attendance", () => {
     expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=%2Fevents%2Ftest-event");
 
     // Keep a reference to the attendance label element.
-    leaveButton.querySelector("[data-attendance-label]").textContent = "On waiting list";
-    leaveButton.setAttribute("aria-label", "On waiting list – leave waiting list");
+    leaveButton.querySelector("[data-attendance-label]").textContent = "Leave waiting list";
     env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
     await waitForMicrotask();
@@ -864,8 +863,8 @@ describe("event attendance", () => {
     });
 
     // Verify uses cancel icons for waitlist and pending invitation cancellation.
-    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("On waiting list");
-    expect(leaveButton.getAttribute("aria-label")).to.equal("On waiting list – leave waiting list");
+    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Leave waiting list");
+    expect(leaveButton.hasAttribute("aria-label")).to.equal(false);
     expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
       true,
     );
@@ -1636,7 +1635,7 @@ describe("event attendance", () => {
     });
 
     // Keep a reference to the attendance label element.
-    leaveButton.querySelector("[data-attendance-label]").textContent = "On waiting list";
+    leaveButton.querySelector("[data-attendance-label]").textContent = "Leave waiting list";
     dispatchHtmxBeforeRequest(leaveButton);
 
     // Dispatch the HTMX after-request event.

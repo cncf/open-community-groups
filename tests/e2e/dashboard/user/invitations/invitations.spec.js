@@ -18,6 +18,11 @@ import {
   resetGroupInvitation,
 } from "../helpers.js";
 
+// Open the actions menu for an event offer row.
+const openEventOfferActions = async (offerRow) => {
+  await offerRow.getByLabel(/Open offer actions/).click();
+};
+
 test.describe("user dashboard invitations view", () => {
   test("invitations page shows pending community and group roles", async ({
     adminCommunityPage,
@@ -330,15 +335,19 @@ test.describe("user dashboard invitations view", () => {
     const eventInvitationRow = dashboardContent.locator("tr", {
       hasText: "Upcoming Virtual Event",
     });
-    const claimEventInvitationButton =
-      eventInvitationRow.getByTitle("Claim offer");
-
     try {
       // Verify the invitation is exposed as a checkout-owned RSVP offer.
       await expect(
         dashboardContent.getByText("Event Invitations", { exact: true }),
       ).toBeVisible();
       await expect(eventInvitationRow).toContainText("Platform Ops Meetup");
+      await openEventOfferActions(eventInvitationRow);
+      const claimEventInvitationButton = eventInvitationRow.getByRole(
+        "menuitem",
+        {
+          name: "Claim offer",
+        },
+      );
       await expect(claimEventInvitationButton).toBeVisible();
 
       // Open the offer claim modal.
@@ -411,7 +420,8 @@ test.describe("user dashboard invitations view", () => {
       await expect(offerRow).toContainText("Waiting list offer");
 
       // Claim the promoted seat through the unified checkout endpoint.
-      await offerRow.getByTitle("Claim offer").click();
+      await openEventOfferActions(offerRow);
+      await offerRow.getByRole("menuitem", { name: "Claim offer" }).click();
       const claimModal = member2Page.getByRole("dialog", {
         name: "Claim offer",
       });
@@ -471,17 +481,20 @@ test.describe("user dashboard invitations view", () => {
     const eventInvitationRow = dashboardContent.locator("tr", {
       hasText: "Upcoming Virtual Event",
     });
-    const rejectEventInvitationButton = eventInvitationRow.getByRole("button", {
-      exact: true,
-      name: "Decline offer for Upcoming Virtual Event",
-    });
-
     try {
       // Verify rejecting an event invitation removes it from the dashboard.
       await expect(
         dashboardContent.getByText("Event Invitations", { exact: true }),
       ).toBeVisible();
       await expect(eventInvitationRow).toContainText("Platform Ops Meetup");
+      await openEventOfferActions(eventInvitationRow);
+      const rejectEventInvitationButton = eventInvitationRow.getByRole(
+        "menuitem",
+        {
+          exact: true,
+          name: "Decline offer",
+        },
+      );
       await expect(rejectEventInvitationButton).toBeVisible();
 
       // Click the reject event invitation button.

@@ -44,6 +44,10 @@ describe("dashboard group invitation requests list template", () => {
   it("renders request sort select, title, and status filter controls", async () => {
     // Load the invitation requests template before checking table filters.
     const template = normalizeWhitespace(await loadTemplate());
+    const tableHeader = template.slice(
+      template.indexOf("{# Table header -#}"),
+      template.indexOf("{# End table header -#}"),
+    );
 
     // Verify request filters preserve current search, sort, and status state.
     expect(template).to.include('name="sort" value="{{ sort }}"');
@@ -68,6 +72,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.not.include("dashboard::table_sort_option_button");
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('<span class="whitespace-nowrap">Requester</span>');
+    expect(template).to.include('<span class="whitespace-nowrap">Ticket type</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Requested</span>');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
@@ -79,8 +84,11 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
     expect(template).to.include('<span class="sr-only">Actions</span>');
     expect(template).to.include('class="xl:hidden px-8 py-12 text-center" colspan="3"');
-    expect(template).to.include('class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6"');
+    expect(template).to.include('class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="5"');
+    expect(template).to.include('class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="7"');
+    expect(tableHeader.indexOf("Status")).to.be.lessThan(tableHeader.indexOf("Ticket type"));
+    expect(tableHeader.indexOf("Ticket type")).to.be.lessThan(tableHeader.indexOf("Requested"));
+    expect(tableHeader.indexOf("Requested")).to.be.lessThan(tableHeader.indexOf("Reviewed"));
     expect(template).to.include('dashboard::table_filter_menu(id = "invitation-requests-position-filter"');
     expect(template).to.include('dashboard::table_filter_menu(id = "invitation-requests-status-filter"');
     expect(template).to.include(
@@ -127,14 +135,22 @@ describe("dashboard group invitation requests list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify requester-selected tiers and offer metadata remain visible.
-    expect(template).to.include("Requested:");
-    expect(template).to.include("{% if let Some(requested_ticket_title) = &request.requested_ticket_title -%}");
-    expect(template).to.include("{{ requested_ticket_title }}");
+    expect(template).to.include("request.requested_ticket_title.as_deref()");
     expect(template).to.include("Private admission");
-    expect(template).to.include("{{ offered_ticket_title }}");
-    expect(template).to.include("Offer pending");
+    expect(template).to.include("request.offered_ticket_title.as_deref()");
+    expect(template).to.include("Ticket offer");
+    expect(template).to.include('data-actions-menu class="group relative shrink-0"');
+    expect(template).to.include("icon-info");
+    expect(template).to.include("View ticket offer details for");
+    expect(template).to.include("Offer status");
     expect(template).to.include("Checkout in progress");
-    expect(template).to.include("Offer expired");
+    expect(template).to.include("Expired");
+    expect(template).to.include("> Pending </span>");
+    expect(template).to.include("> Rejected </span>");
+    expect(template).to.include("> Accepted </span>");
+    expect(template).to.not.include("Request pending");
+    expect(template).to.not.include("Request rejected");
+    expect(template).to.not.include("Request accepted");
     expect(template).to.include(
       'offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z")',
     );
@@ -145,9 +161,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("data-invitation-request-ticket-type");
     expect(template).to.include("data-invitation-request-ticket-submit");
     expect(template).to.include("request.requested_event_ticket_type_id");
-    expect(template).to.include(
-      'name="event_ticket_type_id" value="{{ requested_event_ticket_type_id }}"',
-    );
+    expect(template).to.include('name="event_ticket_type_id" value="{{ requested_event_ticket_type_id }}"');
     expect(template).to.include("Invitation-only ticket");
     expect(template).to.include(
       "ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly",

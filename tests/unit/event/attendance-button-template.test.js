@@ -15,9 +15,7 @@ describe("event attendance button template", () => {
     // Load the hidden checker that refreshes the current user's event state.
     const template = normalizeWhitespace(await loadTemplate());
 
-    expect(template).to.include(
-      'hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"',
-    );
+    expect(template).to.include('hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"');
   });
 
   it("includes registration answers only when the event has questions", async () => {
@@ -65,6 +63,18 @@ describe("event attendance button template", () => {
     // The frontend payload cannot reproduce a price-window end timestamp.
     expect(template).to.include("Available now");
     expect(template).to.not.include("Available until");
+  });
+
+  it("keeps the discount field visible and disabled for approval flows", async () => {
+    // Load the ticket modal discount field before JavaScript synchronizes its state.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Paid events retain the field while approval mode disables submission.
+    expect(template).to.include("{% if event.is_paid_capable() -%}");
+    expect(template).to.include('data-attendance-role="discount-code-input"');
+    expect(template).to.include(
+      "{% if event.attendee_approval_required || event.sellable_ticket_types().is_empty() || !event.registration_window_is_open() %}disabled{% endif %}",
+    );
   });
 
   it("shares initial control content and floating badge typography", async () => {

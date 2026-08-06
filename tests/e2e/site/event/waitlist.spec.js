@@ -52,7 +52,7 @@ test.describe("event waitlist", () => {
     ]);
 
     // Verify the member is now waitlisted.
-    await expect(getLeaveButton(member2Page)).toHaveAttribute("aria-label", /leave waiting list/i);
+    await expect(getLeaveButton(member2Page)).toContainText("Leave waiting list");
 
     // Request waitlist removal and verify the confirmation appears.
     await getLeaveButton(member2Page).click();
@@ -100,7 +100,7 @@ test.describe("event waitlist", () => {
     ]);
 
     // Verify the member is waiting before the attendee leaves.
-    await expect(getLeaveButton(member2Page)).toHaveAttribute("aria-label", /leave waiting list/i);
+    await expect(getLeaveButton(member2Page)).toContainText("Leave waiting list");
 
     // Load the attendee account that can free the event capacity.
     await navigateToEvent(
@@ -138,7 +138,8 @@ test.describe("event waitlist", () => {
     await expect(offerRow).toContainText("Waiting list offer");
 
     // Claim the promoted seat through the unified checkout endpoint.
-    await offerRow.getByTitle("Claim offer").click();
+    await offerRow.getByLabel(/Open offer actions/).click();
+    await offerRow.getByRole("menuitem", { name: "Claim offer" }).click();
     const claimModal = member2Page.getByRole("dialog", {
       name: "Claim offer",
     });

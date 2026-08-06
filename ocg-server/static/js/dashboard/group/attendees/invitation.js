@@ -80,7 +80,13 @@ const clearInvitationState = (root) => {
 
   if (userInput) userInput.value = "";
   if (emailInput) emailInput.value = "";
-  if (ticketTypeInput) ticketTypeInput.value = "";
+  if (ticketTypeInput) {
+    const assignableTicketTypeOptions = Array.from(ticketTypeInput.options).filter(
+      (option) => option.value !== "" && !option.disabled,
+    );
+    ticketTypeInput.value =
+      assignableTicketTypeOptions.length === 1 ? assignableTicketTypeOptions[0].value : "";
+  }
   setInvitationSubmissionField(root, "");
   selectedUser?.replaceChildren();
   if (typeof searchField?.clearSearch === "function") {

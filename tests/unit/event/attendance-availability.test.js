@@ -112,7 +112,7 @@ describe("attendance availability", () => {
       "Available now",
     );
     expect(document.querySelector('[data-attendance-role="ticket-type-price-badge"]')?.textContent).to.equal(
-      "EUR 20.00",
+      new Intl.NumberFormat(undefined, { currency: "EUR", style: "currency" }).format(20),
     );
     expect(document.querySelector('[data-attendance-role="ticket-type-title"]')?.textContent).to.equal(
       "General admission",

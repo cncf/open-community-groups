@@ -784,10 +784,13 @@ test.describe("group dashboard attendees tab", () => {
       const modal = organizerGroupPage.locator("#attendee-invitation-modal");
       const searchField = modal.locator("user-search-field[data-attendee-invitation-search]");
       const searchInput = searchField.locator("#attendee-invitation-search-input");
+      const ticketTypeSelect = modal.getByLabel("Ticket type");
 
       // Assert the expected content is visible.
       await expect(modal).toBeVisible();
       await expect(modal.getByRole("heading", { name: "Invite attendee" })).toBeVisible();
+      await expect(ticketTypeSelect).toBeVisible();
+      await expect(ticketTypeSelect).toHaveValue(/.+/);
       await expect(modal.locator("#submit-attendee-invitation")).toBeDisabled();
 
       // Keep invalid free-form input from enabling the invitation form.
@@ -1101,7 +1104,8 @@ test.describe("group dashboard attendees tab", () => {
       await navigateToPath(pending1Page, "/dashboard/user?tab=invitations");
       const approvedOfferRow = pending1Page.locator("#dashboard-content tr").filter({ hasText: eventName });
       await expect(approvedOfferRow).toContainText("RSVP request approved");
-      await approvedOfferRow.getByTitle("Claim offer").click();
+      await approvedOfferRow.getByLabel(/Open offer actions/).click();
+      await approvedOfferRow.getByRole("menuitem", { name: "Claim offer" }).click();
       const claimModal = pending1Page.getByRole("dialog", {
         name: "Claim offer",
       });
@@ -1144,13 +1148,17 @@ test.describe("group dashboard attendees tab", () => {
 
       // Verify pending refunds expose approve and reject actions.
       await rowActionsMenu.locator("summary").click();
-      const approveRefundAction = rowActionsMenu.getByRole("menuitem", { name: "Approve refund" });
+      const approveRefundAction = rowActionsMenu.getByRole("menuitem", {
+        name: "Approve refund",
+      });
       await expect(approveRefundAction).toHaveAttribute(
         "data-refund-approve-url",
         /\/refunds\/[^/]+\/approve$/,
       );
       await expect(approveRefundAction).toHaveAttribute("data-attendee-refund-approve-open", "");
-      const rejectRefundAction = rowActionsMenu.getByRole("menuitem", { name: "Reject refund" });
+      const rejectRefundAction = rowActionsMenu.getByRole("menuitem", {
+        name: "Reject refund",
+      });
       await expect(rejectRefundAction).toHaveAttribute("data-refund-reject-url", /\/refunds\/[^/]+\/reject$/);
       await expect(rejectRefundAction).toHaveAttribute("data-attendee-refund-reject-open", "");
 

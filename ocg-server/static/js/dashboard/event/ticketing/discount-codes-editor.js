@@ -420,7 +420,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
     }
 
     return row.available_override_active && Number.isFinite(available)
-      ? `${available} / ${totalAvailable} left`
+      ? `${available} / ${totalAvailable}`
       : `${totalAvailable} max`;
   }
 

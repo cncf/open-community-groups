@@ -152,7 +152,7 @@
             <td class="px-3 xl:px-5 py-4 max-w-72">
               <div class="mb-2 truncate font-medium text-stone-900 xl:hidden"
                    title="{{ refund.event_name }}">{{ refund.event_name }}</div>
-              <div class="font-medium text-stone-900">{{ refund.formatted_amount() }}</div>
+              <div class="font-medium text-stone-900" data-localized-currency>{{ refund.formatted_amount() }}</div>
               <div class="mt-1 truncate text-xs text-stone-600">{{ refund.ticket_title }} · {{ refund.kind_label() }}</div>
               <div class="mt-1 text-xs text-stone-500">Started {{ refund.created_at.format("%b %d, %Y") }}</div>
               <div class="mt-2 xl:hidden">

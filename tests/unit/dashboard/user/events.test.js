@@ -1,8 +1,10 @@
 import { expect } from "@open-wc/testing";
 
-import "/static/js/dashboard/user/events.js";
+import { initializeUserEventRefundActions } from "/static/js/dashboard/user/events.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("dashboard user events", () => {
   const env = useDashboardTestEnv({
@@ -53,7 +55,6 @@ describe("dashboard user events", () => {
     // Assert that the flag is disabled.
     expect(dropdown.open).to.equal(false);
   });
-
   it("refreshes My Events after checkout cancellation", () => {
     // Render an active checkout cancellation action.
     document.body.innerHTML = `
@@ -84,5 +85,32 @@ describe("dashboard user events", () => {
 
     // The current row remains available for retry.
     expect(env.current.htmx.triggerCalls).to.deep.equal([]);
+  });
+
+  it("shows refund actions only when the enrollment endpoint confirms eligibility", async () => {
+    // Render the hidden paid-row action before loading exact eligibility.
+    document.body.innerHTML = `
+      <li class="hidden" data-user-event-refund-action data-enrollment-url="/community/event/1/enrollment">
+        <a href="/event#refund-btn-main">Request refund</a>
+      </li>
+    `;
+    const fetchMock = mockFetch({
+      response: new Response(JSON.stringify({ can_request_refund: true }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      }),
+    });
+
+    try {
+      initializeUserEventRefundActions(document);
+      await waitForMicrotask();
+      await waitForMicrotask();
+
+      const refundAction = document.querySelector("[data-user-event-refund-action]");
+      expect(fetchMock.calls[0]?.[0]).to.equal("/community/event/1/enrollment");
+      expect(refundAction.classList.contains("hidden")).to.equal(false);
+    } finally {
+      fetchMock.restore();
+    }
   });
 });

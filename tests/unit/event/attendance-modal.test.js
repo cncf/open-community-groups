@@ -33,8 +33,7 @@ const renderPaidAttendanceDom = ({
     registrationWindowOpen === "true" &&
     (attendeeApprovalRequired === "true" || ticketPurchaseAvailable === "true");
   const soldOutTicketSelectable =
-    registrationWindowOpen === "true" &&
-    (attendeeApprovalRequired === "true" || waitlistEnabled === "true");
+    registrationWindowOpen === "true" && (attendeeApprovalRequired === "true" || waitlistEnabled === "true");
 
   document.body.innerHTML = `
     <div
@@ -298,6 +297,7 @@ const renderPaidAttendanceDom = ({
     refundSubmitButton: document.querySelector('[data-attendance-role="refund-modal-submit"]'),
     refundSubmitButtonLabel: document.querySelector('[data-attendance-role="refund-modal-submit-label"]'),
     refundSubmitButtonSpinner: document.querySelector('[data-attendance-role="refund-modal-submit-spinner"]'),
+    discountCodeInput: document.querySelector('[data-attendance-role="discount-code-input"]'),
     ticketModal: document.querySelector('[data-attendance-role="ticket-modal"]'),
     checkoutForm: document.querySelector('[data-attendance-role="checkout-form"]'),
     checkoutRegistrationAnswersInput: document.querySelector(
@@ -375,9 +375,7 @@ describe("event attendance paid modal", () => {
     // Invitation-only ticketing remains informational rather than prompting sign-in.
     expect(signinButton.classList.contains("hidden")).to.equal(true);
     expect(attendButton.disabled).to.equal(true);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Tickets are available by invitation only",
-    );
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Invitation only");
     expect(attendButton.title).to.equal("Tickets for this event are available by invitation only.");
     attendButton.click();
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
@@ -410,7 +408,7 @@ describe("event attendance paid modal", () => {
 
   it("opens the paid ticket modal for guests and enables checkout after a ticket is selected", async () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutButton } =
+    const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutButton, discountCodeInput } =
       renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
@@ -432,6 +430,7 @@ describe("event attendance paid modal", () => {
     // Verify opens the paid ticket modal for guests and enables checkout.
     expect(ticketModal.classList.contains("hidden")).to.equal(false);
     expect(checkoutButton.disabled).to.equal(true);
+    expect(discountCodeInput.disabled).to.equal(true);
     expect(checkoutButton.title).to.equal("Choose a ticket to continue.");
 
     // Update the checkbox state before asserting the new state.
@@ -441,9 +440,15 @@ describe("event attendance paid modal", () => {
     // Verify opens the paid ticket modal for guests and enables checkout.
     expect(checkoutButton.disabled).to.equal(false);
     expect(checkoutButton.hasAttribute("title")).to.equal(false);
+    expect(discountCodeInput.disabled).to.equal(true);
     expect(checkoutButton.querySelector("[data-attendance-role='checkout-btn-label']")?.textContent).to.equal(
       "Get free ticket",
     );
+
+    // Paid selections make discount codes available.
+    ticketTypeOptions[1].checked = true;
+    ticketTypeOptions[1].dispatchEvent(new Event("change", { bubbles: true }));
+    expect(discountCodeInput.disabled).to.equal(false);
   });
 
   it("keeps Tab navigation within the open ticket modal", async () => {
@@ -488,11 +493,18 @@ describe("event attendance paid modal", () => {
 
   it("routes approval ticket selections through a ticket request", async () => {
     // Render an approval-based ticket event with no directly sellable tiers.
-    const { attendButton, checker, checkoutButton, checkoutForm, ticketModal, ticketTypeOptions } =
-      renderPaidAttendanceDom({
-        attendeeApprovalRequired: "true",
-        ticketPurchaseAvailable: "false",
-      });
+    const {
+      attendButton,
+      checker,
+      checkoutButton,
+      checkoutForm,
+      discountCodeInput,
+      ticketModal,
+      ticketTypeOptions,
+    } = renderPaidAttendanceDom({
+      attendeeApprovalRequired: "true",
+      ticketPurchaseAvailable: "false",
+    });
     await initializeAttendanceDom();
 
     // Apply the authenticated guest state and open ticket selection.
@@ -502,6 +514,7 @@ describe("event attendance paid modal", () => {
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request ticket");
     attendButton.click();
     expect(ticketModal.classList.contains("hidden")).to.equal(false);
+    expect(discountCodeInput.disabled).to.equal(true);
 
     // Approval requests may select a sold-out public tier.
     ticketTypeOptions[2].checked = true;
@@ -1055,7 +1068,9 @@ describe("event attendance paid modal", () => {
       expect(newTicketOption.disabled).to.equal(false);
       expect(newTicketOption.dataset.ticketPurchasable).to.equal("true");
       expect(newTicketCard?.textContent).to.include("Late release");
-      expect(newTicketCard?.textContent).to.include("EUR 75.00");
+      expect(newTicketCard?.textContent).to.include(
+        new Intl.NumberFormat(undefined, { currency: "EUR", style: "currency" }).format(75),
+      );
 
       // Update the checkbox state before asserting the new state.
       newTicketOption.checked = true;
@@ -1107,9 +1122,7 @@ describe("event attendance paid modal", () => {
       // Verify the stale cached option and its containing card are no longer visible.
       expect(ticketTypeOptions[1].isConnected).to.equal(false);
       expect(
-        document.querySelector(
-          '[data-attendance-role="ticket-type-option"][value="ticket-1"]',
-        ),
+        document.querySelector('[data-attendance-role="ticket-type-option"][value="ticket-1"]'),
       ).to.equal(null);
     } finally {
       fetchMock.restore();
@@ -1371,9 +1384,7 @@ describe("event attendance paid modal", () => {
     expect(actionsMenu.classList.contains("hidden")).to.equal(false);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
-    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(
-      true,
-    );
+    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(true);
   });
 
   it("keeps pending-payment available after the registration window closes", async () => {

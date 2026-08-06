@@ -111,26 +111,18 @@ describe("dashboard group attendees", () => {
         <input type="hidden" name="user_id" id="attendee-invitation-user-id" disabled />
         <input type="hidden" name="email" id="attendee-invitation-email" disabled />
         <div id="attendee-invitation-selected-user"></div>
-        ${
-          multipleTiers
-            ? `
-              <label for="attendee-invitation-ticket-type">Ticket type</label>
-              <select id="attendee-invitation-ticket-type" name="event_ticket_type_id" required>
-                <option value="">Select ticket type</option>
-                ${
-                  hasTicketOption
-                    ? `<option value="ticket-1" ${ticketOptionDisabled ? "disabled" : ""}>General admission</option>`
-                    : ""
-                }
-              </select>
-              <p data-attendee-invitation-ticket-empty class="hidden">
-                No ticket types can be assigned.
-              </p>
-            `
-            : singleTierUnavailable
-              ? `<p data-attendee-invitation-ticket-empty>No ticket types can be assigned.</p>`
+        <label for="attendee-invitation-ticket-type">Ticket type</label>
+        <select id="attendee-invitation-ticket-type" name="event_ticket_type_id" required>
+          <option value="">Select ticket type</option>
+          ${
+            hasTicketOption && !singleTierUnavailable
+              ? `<option value="ticket-1" ${ticketOptionDisabled ? "disabled" : ""} ${!multipleTiers && !ticketOptionDisabled ? "selected" : ""}>General admission</option>`
               : ""
-        }
+          }
+        </select>
+        <p data-attendee-invitation-ticket-empty class="hidden">
+          No ticket types can be assigned.
+        </p>
         <button id="submit-attendee-invitation" type="submit" disabled>Send invitation</button>
       </form>
     </div>
@@ -1062,6 +1054,7 @@ describe("dashboard group attendees", () => {
 
     // Set up initial submit.
     const initialSubmit = document.getElementById("submit-attendee-invitation");
+    const initialTicketTypeInput = document.getElementById("attendee-invitation-ticket-type");
     const initialSearchField = document.querySelector("[data-attendee-invitation-search]");
     const initialEmailInput = document.getElementById("attendee-invitation-email");
     initialSearchField.dispatchEvent(
@@ -1073,6 +1066,7 @@ describe("dashboard group attendees", () => {
 
     // Verify handles invitation modal controls after attendee content refreshes.
     expect(initialSubmit.disabled).to.equal(true);
+    expect(initialTicketTypeInput.value).to.equal("ticket-1");
 
     // Dispatch the form event.
     initialSearchField.dispatchEvent(
@@ -1179,7 +1173,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("explains when the sole invitation ticket type is unavailable", () => {
-    // Render the single-tier shortcut with an unavailable admission tier.
+    // Render the single-tier select with an unavailable admission tier.
     document.body.innerHTML = `
       <div id="attendees-content">
         ${attendeeInvitationMarkup({ singleTierUnavailable: true })}
@@ -1197,6 +1191,7 @@ describe("dashboard group attendees", () => {
     );
 
     expect(document.getElementById("submit-attendee-invitation").disabled).to.equal(true);
+    expect(document.getElementById("attendee-invitation-ticket-type").disabled).to.equal(true);
     expect(
       document.querySelector("[data-attendee-invitation-ticket-empty]").classList.contains("hidden"),
     ).to.equal(false);

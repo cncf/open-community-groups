@@ -513,6 +513,49 @@ class TicketTypesEditor extends TicketingEditorBase {
   }
 
   /**
+   * Formats a ticket price using the active event currency.
+   * @param {number} amount Ticket price in major currency units
+   * @returns {string}
+   */
+  _formatTicketPrice(amount) {
+    if (amount === 0) {
+      return "Free";
+    }
+
+    try {
+      return new Intl.NumberFormat(undefined, {
+        currency: this._currencyCode(),
+        style: "currency",
+      }).format(amount);
+    } catch (_) {
+      return `${this._currencyCode()} ${amount}`;
+    }
+  }
+
+  /**
+   * Returns the compact price range for a ticket row.
+   * @param {object} row Ticket row
+   * @returns {string}
+   */
+  _ticketPriceSummary(row) {
+    const prices = row.price_windows
+      .map((windowRow) => Number.parseFloat(windowRow.amount))
+      .filter((amount) => Number.isFinite(amount))
+      .sort((leftAmount, rightAmount) => leftAmount - rightAmount);
+    const uniquePrices = [...new Set(prices)];
+
+    if (uniquePrices.length === 0) {
+      return "—";
+    }
+
+    if (uniquePrices.length === 1) {
+      return this._formatTicketPrice(uniquePrices[0]);
+    }
+
+    return `${this._formatTicketPrice(uniquePrices[0])} – ${this._formatTicketPrice(uniquePrices.at(-1))}`;
+  }
+
+  /**
    * Returns the display title for a ticket row.
    * @param {object} row Ticket row
    * @returns {string}
@@ -551,6 +594,9 @@ class TicketTypesEditor extends TicketingEditorBase {
             <div class="mt-1 text-xs text-stone-500">
               ${row.availability === "invitation_only" ? "Invitation only" : "Public"}
             </div>
+          </td>
+          <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+            ${this._ticketPriceSummary(row)}
           </td>
           <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${row.seats_total || "—"}</td>
           <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
@@ -747,6 +793,7 @@ class TicketTypesEditor extends TicketingEditorBase {
           <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
             <tr>
               <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Price</th>
               <th scope="col" class="px-3 xl:px-5 py-3">Seats</th>
               <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
               <th scope="col" class="px-3 xl:px-5 py-3 text-right">Actions</th>
@@ -754,7 +801,7 @@ class TicketTypesEditor extends TicketingEditorBase {
           </thead>
           <tbody data-ticketing-role="empty-state" class=${this._rows.length > 0 ? "hidden" : ""}>
             <tr class="bg-white border-b border-stone-200">
-              <td class="px-8 py-12 text-center text-stone-500" colspan="4">
+              <td class="px-8 py-12 text-center text-stone-500" colspan="5">
                 No ticket tiers yet. Configured ticket tiers will appear here.
               </td>
             </tr>

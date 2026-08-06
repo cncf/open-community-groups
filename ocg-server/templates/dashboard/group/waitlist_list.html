@@ -157,6 +157,7 @@
           </div>
           {% endcall -%}
         </th>
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-20">Queue</th>
         <th scope="col" class="px-3 xl:px-5 py-1.5">Enrollment</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
           <span class="whitespace-nowrap">Created</span>
@@ -171,7 +172,7 @@
       {% if waitlist.is_empty() -%}
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
-          <td class="xl:hidden px-8 py-12 text-center" colspan="3">
+          <td class="xl:hidden px-8 py-12 text-center" colspan="4">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
             {% else if event.waitlist_enabled -%}
@@ -181,7 +182,7 @@
             {% endif -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
-              colspan="4">
+              colspan="5">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
             {% else if event.waitlist_enabled -%}
@@ -190,7 +191,7 @@
               {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">
+          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
             {% else if event.waitlist_enabled -%}
@@ -223,12 +224,21 @@
             </td>
             {# End position -#}
             {# Queue -#}
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap w-20 text-stone-900">
+              {% if let Some(waitlist_position) = entry.waitlist_position -%}
+                #{{ waitlist_position }}
+              {% else -%}
+                —
+              {% endif -%}
+            </td>
+            {# End queue -#}
+            {# Enrollment -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex min-w-0 flex-col gap-1.5">
                 <div class="max-w-[260px] truncate font-medium text-stone-900"
                      title="{{ entry.ticket_title }}">{{ entry.ticket_title }}</div>
-                <div>
-                  {% if let Some(offer_status) = entry.admission_offer_status -%}
+                {% if let Some(offer_status) = entry.admission_offer_status -%}
+                  <div>
                     {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
                       {{ badges::invitation_badge(label = "Offer pending") -}}
                     {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
@@ -242,12 +252,8 @@
                     {% else -%}
                       {{ badges::invitation_badge(label = "Offer declined", tone = "danger") -}}
                     {% endif -%}
-                  {% else if let Some(waitlist_position) = entry.waitlist_position -%}
-                    <span class="font-medium text-stone-900">Queue #{{ waitlist_position }}</span>
-                  {% else -%}
-                    <span class="text-stone-500">Queue</span>
-                  {% endif -%}
-                </div>
+                  </div>
+                {% endif -%}
                 {% if let Some(offer_expires_at) = &entry.offer_expires_at -%}
                   <div class="text-xs text-stone-500">
                     {% if entry.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
@@ -260,7 +266,7 @@
                 {% endif -%}
               </div>
             </td>
-            {# End queue -#}
+            {# End enrollment -#}
             {# Created date -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {{ entry.created_at.format("%b %d, %Y") }}

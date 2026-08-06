@@ -459,8 +459,8 @@
           </div>
           {% endcall -%}
         </th>
-        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">
-          <span class="whitespace-nowrap">Enrollment Date</span>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-44">
+          <span class="whitespace-nowrap">Status</span>
         </th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48">
           {% if let Some(ticket_types) = &event.ticket_types -%}
@@ -494,6 +494,9 @@
           {% else -%}
             <span class="whitespace-nowrap">Ticket type</span>
           {% endif -%}
+        </th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">
+          <span class="whitespace-nowrap">Enrollment Date</span>
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5 w-30">
           {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right", dropdown_classes = "end-0") -%}
@@ -534,14 +537,14 @@
             {% endif -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
-              colspan="4">
+              colspan="5">
             {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
               {% include "dashboard/placeholders/group_attendees_empty.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
+          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="7">
             {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
@@ -586,40 +589,12 @@
                     {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}
                   {% endif -%}
                 </div>
-                {% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending -%}
-                  {{ badges::invitation_badge(label = "Checkout pending") -}}
-                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed && attendee.manually_invited -%}
-                  {{ badges::invitation_badge(label = "Invited", tone = "success") -}}
-                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled -%}
-                  {{ badges::invitation_badge(label = "Attendance canceled", tone = "danger") -}}
-                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled -%}
-                  {{ badges::invitation_badge(label = "Invitation canceled", tone = "danger") -}}
-                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined -%}
-                  {{ badges::invitation_badge(label = "Invitation declined", tone = "danger") -}}
-                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired -%}
-                  {{ badges::invitation_badge(label = "Invitation expired", tone = "danger") -}}
-                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending -%}
-                  {{ badges::invitation_badge(label = "Invitation pending") -}}
-                {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending -%}
-                  {{ badges::invitation_badge(label = "Registration pending") -}}
-                {% endif -%}
               </div>
-              {% if attendee.admission_offer_id.is_some() -%}
-                <div class="mt-1 text-xs text-stone-600 xl:hidden">
-                  <div class="truncate">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
-                  {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
-                    <div class="mt-1">
-                      {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
-                        Expired
-                      {% else -%}
-                        Deadline
-                      {% endif -%}
-                      {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-                    </div>
-                  {% endif -%}
-                </div>
-              {% endif -%}
               {% endcall -%}
+              <div class="mt-2 xl:hidden">{{ attendee_status(attendee, event) -}}</div>
+              {% if attendee.ticket_title.is_some() -%}
+                <div class="mt-1 truncate text-xs text-stone-600 xl:hidden">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
+              {% endif -%}
             </td>
             {# End attendee -#}
 
@@ -634,78 +609,37 @@
             </td>
             {# End position -#}
 
-            {# Enrollment Date -#}
-            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
-              <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
+            {# Status -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle w-44">
+              {{ attendee_status(attendee, event) -}}
             </td>
-            {# End enrollment date -#}
+            {# End status -#}
 
-            {# Payment -#}
+            {# Ticket type -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle">
-              {% if let Some(offer_status) = attendee.admission_offer_status -%}
+              {% if attendee.admission_offer_status.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-1">
-                  <div class="max-w-full truncate font-semibold text-stone-900"
+                  <div class="max-w-full truncate font-medium text-stone-900"
                        title="{{ attendee.ticket_title|assigned_or("RSVP invitation") }}">
                     {{ attendee.ticket_title|assigned_or("RSVP invitation") }}
                   </div>
-                  <div class="text-xs text-stone-600">
-                    {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
-                      Awaiting claim
-                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
-                      Checkout in progress
-                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
-                      Offer expired
-                    {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
-                      Offer canceled
-                    {% else -%}
-                      Offer declined
-                    {% endif -%}
-                  </div>
-                  {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
-                    <div class="text-xs text-stone-500">
-                      {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
-                        Expired
-                      {% else -%}
-                        Deadline
-                      {% endif -%}
-                      {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                  {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
+                    <div class="text-xs text-stone-600 truncate">
+                      <span data-localized-currency>{{ amount_label }}</span>
                     </div>
                   {% endif -%}
                 </div>
-              {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending -%}
-                {{ badges::invitation_badge(label = "Registration pending", with_border = true) -}}
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
-                <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-2">
-                  <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <div class="max-w-full truncate font-semibold text-stone-900"
-                         title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}">
-                      {{ attendee.ticket_title|assigned_or("Paid RSVP") }}
-                    </div>
-                    {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
-                      <div class="text-sm font-medium text-stone-600">({{ amount_label }})</div>
-                    {% endif -%}
-                    {% if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::AwaitingCheckout) -%}
-                      {{ badges::invitation_badge(label = "Waiting for checkout", with_border = true) -}}
-                    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::Queued) -%}
-                      {{ badges::invitation_badge(label = "Refund queued", with_border = true) -}}
-                    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::Processing) -%}
-                      {{ badges::invitation_badge(label = "Refund processing", with_border = true) -}}
-                    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::RetryableFailure) -%}
-                      {{ badges::invitation_badge(label = "Refund needs retry", tone = "danger", with_border = true) -}}
-                    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::RecoveryRequired) -%}
-                      {{ badges::invitation_badge(label = "Recovery required", tone = "danger", with_border = true) -}}
-                    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::Refunded) -%}
-                      {{ badges::invitation_badge(label = "Refunded", tone = "success", with_border = true) -}}
-                    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
-                      {{ badges::invitation_badge(label = "Refund requested", with_border = true) -}}
-                    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-                      {{ badges::invitation_badge(label = "Refund processing", with_border = true) -}}
-                    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected) -%}
-                      {{ badges::invitation_badge(label = "Refund rejected", tone = "danger", with_border = true) -}}
-                    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approved) -%}
-                      {{ badges::invitation_badge(label = "Refund approved", tone = "success", with_border = true) -}}
-                    {% endif -%}
+                <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-1">
+                  <div class="max-w-full truncate font-medium text-stone-900"
+                       title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}">
+                    {{ attendee.ticket_title|assigned_or("Paid RSVP") }}
                   </div>
+                  {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
+                    <div class="text-xs text-stone-600 truncate">
+                      <span data-localized-currency>{{ amount_label }}</span>
+                    </div>
+                  {% endif -%}
                 </div>
               {% else if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                 <div class="text-stone-500">-</div>
@@ -713,7 +647,13 @@
                 <div class="text-stone-500">Free RSVP</div>
               {% endif -%}
             </td>
-            {# End Payment -#}
+            {# End ticket type -#}
+
+            {# Enrollment Date -#}
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+              <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
+            </td>
+            {# End enrollment date -#}
 
             {# Checked In Toggle -#}
             <td class="px-3 xl:px-5 py-4 w-30">
@@ -1067,46 +1007,35 @@
 
           <div>
             {% if let Some(ticket_types) = &event.ticket_types -%}
-              {% if ticket_types.len() == 1 -%}
-                <div class="form-label">Admission tier</div>
-                <p class="mt-2 text-sm text-stone-700">{{ ticket_types[0].title }}</p>
-                {% if !ticket_types[0].active || ticket_types[0].sold_out || ticket_types[0].current_price.is_none() -%}
-                  <p data-attendee-invitation-ticket-empty
-                     class="form-legend text-amber-800">
-                    No ticket types can be assigned. Add seats or activate a ticket type with a current
-                    price before sending an invitation.
-                  </p>
-                {% endif -%}
-              {% else -%}
-                <label for="attendee-invitation-ticket-type" class="form-label">
-                  Ticket type <span class="asterisk">*</span>
-                </label>
-                <div class="mt-2">
-                  <select id="attendee-invitation-ticket-type"
-                          name="event_ticket_type_id"
-                          class="select-primary"
-                          required>
-                    <option value="">Select ticket type</option>
-                    {% for ticket_type in ticket_types -%}
-                      {% if ticket_type.active && !ticket_type.sold_out && ticket_type.current_price.is_some() -%}
-                        <option value="{{ ticket_type.event_ticket_type_id }}">
-                          {{ ticket_type.title }}
-                          {% if ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly -%}
-                            (Invitation only)
-                          {% else -%}
-                            (Public)
-                          {% endif -%}
-                        </option>
-                      {% endif -%}
-                    {% endfor -%}
-                  </select>
-                </div>
-                <p data-attendee-invitation-ticket-empty
-                   class="form-legend hidden text-amber-800">
-                  No ticket types can be assigned. Add seats or activate a ticket type with a current
-                  price before sending an invitation.
-                </p>
-              {% endif -%}
+              <label for="attendee-invitation-ticket-type" class="form-label">
+                Ticket type <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2">
+                <select id="attendee-invitation-ticket-type"
+                        name="event_ticket_type_id"
+                        class="select-primary"
+                        required>
+                  <option value="">Select ticket type</option>
+                  {% for ticket_type in ticket_types -%}
+                    {% if ticket_type.active && !ticket_type.sold_out && ticket_type.current_price.is_some() -%}
+                      <option value="{{ ticket_type.event_ticket_type_id }}"
+                              {% if ticket_types.len() == 1 %}selected{% endif %}>
+                        {{ ticket_type.title }}
+                        {% if ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly -%}
+                          (Invitation only)
+                        {% else -%}
+                          (Public)
+                        {% endif -%}
+                      </option>
+                    {% endif -%}
+                  {% endfor -%}
+                </select>
+              </div>
+              <p data-attendee-invitation-ticket-empty
+                 class="form-legend hidden text-amber-800">
+                No ticket types can be assigned. Add seats or activate a ticket type with a current
+                price before sending an invitation.
+              </p>
             {% endif -%}
             <p class="form-legend">The admission tier is reserved when the invitation is sent.</p>
           </div>
@@ -1294,6 +1223,88 @@
   </div>
 </div>
 {# End QR code modal -#}
+
+{# Attendee status badge and active offer deadline. #}
+{% macro attendee_status(attendee, event) -%}
+  <div class="flex min-w-0 items-center gap-1.5">
+    {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending) -%}
+      {{ badges::status_badge(label = "Offer pending") -}}
+    {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
+      {{ badges::status_badge(label = "Checkout pending") -}}
+    {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+      {{ badges::status_badge(label = "Offer expired", canceled = true) -}}
+    {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Canceled) -%}
+      {{ badges::status_badge(label = "Offer canceled", canceled = true) -}}
+    {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Declined) -%}
+      {{ badges::status_badge(label = "Offer declined", canceled = true) -}}
+    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::AwaitingCheckout) -%}
+      {{ badges::status_badge(label = "Waiting for checkout") -}}
+    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::Queued) -%}
+      {{ badges::status_badge(label = "Refund queued") -}}
+    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::Processing) -%}
+      {{ badges::status_badge(label = "Refund processing") -}}
+    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::RetryableFailure) -%}
+      {{ badges::status_badge(label = "Refund needs retry", canceled = true) -}}
+    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::RecoveryRequired) -%}
+      {{ badges::status_badge(label = "Recovery required", canceled = true) -}}
+    {% else if attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::Refunded) -%}
+      {{ badges::status_badge(label = "Refunded", published = true) -}}
+    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
+      {{ badges::status_badge(label = "Refund requested") -}}
+    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+      {{ badges::status_badge(label = "Refund processing") -}}
+    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected) -%}
+      {{ badges::status_badge(label = "Refund rejected", canceled = true) -}}
+    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approved) -%}
+      {{ badges::status_badge(label = "Refund approved", published = true) -}}
+    {% else if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Completed) -%}
+      {{ badges::status_badge(label = "Ticket claimed", published = true) -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending -%}
+      {{ badges::status_badge(label = "Invitation pending") -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed && attendee.manually_invited && self::is_paid_attendee(attendee.amount_minor) -%}
+      {{ badges::status_badge(label = "Ticket claimed", published = true) -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed && attendee.manually_invited -%}
+      {{ badges::status_badge(label = "Invited", published = true) -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled -%}
+      {{ badges::status_badge(label = "Attendance canceled", canceled = true) -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending -%}
+      {{ badges::status_badge(label = "Checkout pending") -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled -%}
+      {{ badges::status_badge(label = "Invitation canceled", canceled = true) -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined -%}
+      {{ badges::status_badge(label = "Invitation declined", canceled = true) -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired -%}
+      {{ badges::status_badge(label = "Invitation expired", canceled = true) -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending -%}
+      {{ badges::status_badge(label = "Registration pending") -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
+      {{ badges::status_badge(label = "Active", published = true) -}}
+    {% endif -%}
+    {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+      || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
+      || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+      {% if let Some(offer_expires_at) = &attendee.offer_expires_at -%}
+        <span class="group/deadline-tooltip relative inline-flex shrink-0">
+          <button type="button"
+                  class="inline-flex size-5 items-center justify-center rounded-full border border-stone-200 bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                  aria-label="{% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}Expired{% else -%}Deadline{% endif -%} {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}">
+            <span class="svg-icon size-2.5 icon-info bg-stone-500"></span>
+          </button>
+          <span role="tooltip"
+                class="pointer-events-none invisible absolute bottom-full start-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-md bg-stone-900 px-3 py-2 text-center text-xs font-normal leading-4 text-white opacity-0 shadow-lg transition-opacity group-hover/deadline-tooltip:visible group-hover/deadline-tooltip:opacity-100 group-focus-within/deadline-tooltip:visible group-focus-within/deadline-tooltip:opacity-100">
+            {% if attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+              Expired
+            {% else -%}
+              Deadline
+            {% endif -%}
+            {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+          </span>
+        </span>
+      {% endif -%}
+    {% endif -%}
+  </div>
+{% endmacro attendee_status -%}
+{# End attendee status. #}
 
 {# Attendee table state fields for filter, sort, and search forms. #}
 {% macro attendee_table_state_inputs(

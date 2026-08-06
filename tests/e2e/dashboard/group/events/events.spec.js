@@ -1580,10 +1580,10 @@ test.describe("group dashboard events view", () => {
     const limitedDiscountRow = organizerGroupPage
       .locator('#discount-codes-ui [data-ticketing-role="table-body"] tr')
       .filter({ hasText: "Limited campaign" });
-    await expect(limitedDiscountRow.getByText("0 / 1 left", { exact: true }).first()).toBeVisible();
+    await expect(limitedDiscountRow.getByText("0 / 1", { exact: true }).first()).toBeVisible();
   });
 
-  test("organizer sees seats and status columns in the ticket types table", async ({
+  test("organizer sees price, seats, and status columns in the ticket types table", async ({
     organizerGroupPage,
   }) => {
     // Skip ticket table coverage when the environment disables payments.
@@ -1604,13 +1604,17 @@ test.describe("group dashboard events view", () => {
       hasText: "General admission",
     });
 
-    // Verify the ticket table keeps seat and status columns visible.
+    // Verify the ticket table keeps price, seat, and status columns visible.
     await expect(ticketTypesTable.locator("thead th").nth(1)).toBeVisible();
-    await expect(ticketTypesTable.locator("thead th").nth(1)).toContainText("Seats");
+    await expect(ticketTypesTable.locator("thead th").nth(1)).toContainText("Price");
     await expect(ticketTypesTable.locator("thead th").nth(2)).toBeVisible();
-    await expect(ticketTypesTable.locator("thead th").nth(2)).toContainText("Status");
+    await expect(ticketTypesTable.locator("thead th").nth(2)).toContainText("Seats");
+    await expect(ticketTypesTable.locator("thead th").nth(3)).toBeVisible();
+    await expect(ticketTypesTable.locator("thead th").nth(3)).toContainText("Status");
     await expect(generalAdmissionRow.locator("td").nth(1)).toBeVisible();
+    await expect(generalAdmissionRow.locator("td").nth(1)).toContainText("$");
     await expect(generalAdmissionRow.locator("td").nth(2)).toBeVisible();
+    await expect(generalAdmissionRow.locator("td").nth(3)).toBeVisible();
   });
 
   test("organizer can create, update, and delete an event with images and rich fields", async ({

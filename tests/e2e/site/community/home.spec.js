@@ -162,8 +162,8 @@ test.describe("community home page", () => {
         .first();
 
       // Verify paid event cards show their starting prices.
-      await expect(inPersonCard).toContainText("From USD 20.00");
-      await expect(virtualCard).toContainText("From USD 15.00");
+      await expect(inPersonCard).toContainText(/From (?:US)?\$20\.00/);
+      await expect(virtualCard).toContainText(/From (?:US)?\$15\.00/);
     });
 
     test("latest groups section renders heading and explore link", async ({

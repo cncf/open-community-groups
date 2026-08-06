@@ -48,7 +48,7 @@ describe("dashboard user events list template", () => {
     // Load the user events template before checking pending badges.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify pending attendance status uses the status badge and roles use regular badges.
+    // Verify pending attendance and active offer states are visually distinct.
     expect(template).to.include(
       "{% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}",
     );
@@ -57,6 +57,10 @@ describe("dashboard user events list template", () => {
     );
     expect(template).to.include(
       '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}',
+    );
+    expect(template).to.include('{% if role.label() == "Event offer" -%}');
+    expect(template).to.include(
+      '{{ badges::common_badge(content = role.label() , extra_styles = Some("border-yellow-800 bg-yellow-100 px-2.5 py-0.5 font-semibold text-yellow-800")) -}}',
     );
     expect(template).to.include(">Status / role</th>");
   });
@@ -105,6 +109,20 @@ describe("dashboard user events list template", () => {
       'data-success-message="Your checkout has been canceled and the ticket hold released."',
     );
     expect(template).to.include("<span>Cancel checkout</span>");
+  });
+
+  it("links eligible paid attendees to the event refund control", async () => {
+    // Load the user events menu before checking paid-attendee actions.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Upcoming paid rows expose a direct path to the public refund control.
+    expect(template).to.include("{% if item.has_paid_purchase && !item.event.is_past() -%}");
+    expect(template).to.include("data-user-event-refund-action");
+    expect(template).to.include(
+      'data-enrollment-url="/{{ item.event.community_name }}/event/{{ item.event.event_id }}/enrollment"',
+    );
+    expect(template).to.include("#refund-btn-main");
+    expect(template).to.include("<span>Request refund</span>");
   });
 
   it("routes active event offers to the invitations dashboard", async () => {

@@ -15,7 +15,6 @@ import {
   GET_TICKET_LABEL,
   JOIN_WAITLIST_LABEL,
   LEAVE_WAITLIST_LABEL,
-  ON_WAITLIST_LABEL,
   REQUEST_INVITATION_LABEL,
   REQUEST_PENDING_LABEL,
   REQUEST_TICKET_LABEL,
@@ -42,10 +41,9 @@ const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 const REQUEST_REFUND_LABEL = "Request refund";
 const REQUEST_REJECTED_LABEL = "Request rejected";
 const TICKET_OFFER_EXPIRED_LABEL = "Ticket offer expired";
-const TICKETS_BY_INVITATION_LABEL = "Tickets are available by invitation only";
+const TICKETS_BY_INVITATION_LABEL = "Invitation only";
 const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
 
-const ON_WAITLIST_CANCEL_ARIA_LABEL = `${ON_WAITLIST_LABEL} – leave waiting list`;
 const REQUEST_PENDING_CANCEL_ARIA_LABEL = `${REQUEST_PENDING_LABEL} – cancel request`;
 
 const ATTEND_EVENT_ICON = "icon-user-plus";
@@ -536,9 +534,8 @@ export const showWaitlistedAttendanceState = (container, meta) => {
     meta,
     "leaveButton",
     withEventActionState(meta, {
-      ariaLabel: ON_WAITLIST_CANCEL_ARIA_LABEL,
       icon: CANCEL_ACTION_ICON,
-      label: ON_WAITLIST_LABEL,
+      label: LEAVE_WAITLIST_LABEL,
     }),
   );
 };

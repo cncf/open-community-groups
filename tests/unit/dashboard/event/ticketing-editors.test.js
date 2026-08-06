@@ -108,6 +108,7 @@ describe("ticketing editors", () => {
     // Verify renders ticket type summary rows and preserves hidden field.
     expect(uiRoot.textContent).to.contain("General admission");
     expect(uiRoot.textContent).to.contain("Invitation only");
+    expect(uiRoot.textContent).to.contain("€30.00");
     expect(uiRoot.textContent).to.contain("25");
     expect(uiRoot.querySelector('input[name="ticket_types_present"]')?.value).to.equal("true");
     expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal("General admission");
@@ -148,11 +149,13 @@ describe("ticketing editors", () => {
     const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
 
     // Verify keeps seats and status in dedicated table cells on small layouts.
-    expect(rowCells).to.have.length(4);
-    expect(rowCells[1].className).to.not.contain("hidden");
-    expect(rowCells[1].textContent).to.contain("25");
+    expect(rowCells).to.have.length(5);
+    expect(rowCells[1].className).to.contain("hidden");
+    expect(rowCells[1].className).to.contain("xl:table-cell");
     expect(rowCells[2].className).to.not.contain("hidden");
-    expect(rowCells[2].textContent).to.contain("Active");
+    expect(rowCells[2].textContent).to.contain("25");
+    expect(rowCells[3].className).to.not.contain("hidden");
+    expect(rowCells[3].textContent).to.contain("Active");
     expect(rowCells[0].textContent).to.not.contain("25 seats");
   });
 
@@ -385,6 +388,7 @@ describe("ticketing editors", () => {
 
     // Verify keeps free ticket prices as amount_minor 0 in hidden fields.
     expect(uiRoot.textContent).to.contain("Free entry");
+    expect(uiRoot.textContent).to.contain("Free");
     expect(
       uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
     ).to.equal("0");
@@ -467,6 +471,7 @@ describe("ticketing editors", () => {
 
     // Verify renders scheduled ticket windows with compact dates.
     expect(uiRoot.textContent).to.contain("Early bird");
+    expect(uiRoot.textContent).to.contain("€15.00 – €25.00");
     expect(uiRoot.textContent).to.not.contain("until Apr 10");
     expect(uiRoot.textContent).to.not.contain("from Apr 11");
   });
@@ -1061,8 +1066,8 @@ describe("ticketing editors", () => {
 
     // Verify remaining and total uses share one compact value.
     const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
-    expect(rowCells[0].textContent).to.contain("12 / 50 left");
-    expect(rowCells[1].textContent.trim()).to.equal("12 / 50 left");
+    expect(rowCells[0].textContent).to.contain("12 / 50");
+    expect(rowCells[1].textContent.trim()).to.equal("12 / 50");
 
     // Verify secondary columns stay hidden until the widest layout.
     const secondaryHeaders = uiRoot.querySelectorAll("thead th.hidden");
@@ -1084,7 +1089,7 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Verify the compact usage survives dependent rerenders.
-    expect(uiRoot.textContent).to.contain("12 / 50 left");
+    expect(uiRoot.textContent).to.contain("12 / 50");
   });
 
   it("self-bootstraps ticketing editors from page controls after reconnecting", async () => {

@@ -180,9 +180,6 @@
             </div>
             {% endcall -%}
           </th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
-            <span class="whitespace-nowrap">Requested</span>
-          </th>
           <th scope="col" class="px-3 xl:px-5 py-1.5 w-48">
             {% call dashboard::table_filter_menu(id = "invitation-requests-status-filter", label = "Status", is_active = status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All) -%}
             <div class="py-2">
@@ -198,6 +195,12 @@
               </form>
             </div>
             {% endcall -%}
+          </th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48">
+            <span class="whitespace-nowrap">Ticket type</span>
+          </th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
+            <span class="whitespace-nowrap">Requested</span>
           </th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">Reviewed</th>
           <th scope="col" class="px-3 xl:px-5 py-1.5 w-24 text-right">
@@ -218,14 +221,14 @@
               {% endif -%}
             </td>
             <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
-                colspan="4">
+                colspan="5">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
                 <span class="text-stone-500">No invitation requests found.</span>
               {% endif -%}
             </td>
-            <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
+            <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="7">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
@@ -242,6 +245,9 @@
               <td class="px-3 xl:px-5 py-4 max-w-0">
                 {% call dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str())) -%}
                 <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ request.user.name.as_deref() |assigned_or(request.user.username) }}</div>
+                <div class="truncate text-xs text-stone-600 xl:hidden">
+                  {{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}
+                </div>
                 {% endcall -%}
               </td>
               {# End requester -#}
@@ -257,79 +263,94 @@
               </td>
               {# End position -#}
 
+              {# Status -#}
+              <td class="px-3 xl:px-5 py-4 align-middle">
+                <div class="flex min-w-0 items-center gap-2">
+                  {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                    <span class="inline-flex w-fit rounded-full border border-amber-800 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                      Pending
+                    </span>
+                  {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
+                    <span class="inline-flex w-fit rounded-full border border-red-800 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
+                      Rejected
+                    </span>
+                  {% else -%}
+                    <span class="inline-flex w-fit rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                      Accepted
+                    </span>
+                  {% endif -%}
+                  {% if let Some(offer_status) = request.admission_offer_status -%}
+                    <details data-actions-menu class="group relative shrink-0">
+                      <summary class="inline-flex size-7 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white transition-colors hover:border-stone-300 hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:border-stone-300 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                               aria-label="View ticket offer details for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
+                               title="View ticket offer details">
+                        <div class="svg-icon size-2.5 icon-info bg-stone-500"></div>
+                      </summary>
+                      <div class="dropdown absolute start-0 top-8 z-20 w-64 rounded-lg border border-stone-200 bg-white text-left shadow-lg">
+                        <div class="border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-900">
+                          Ticket offer
+                        </div>
+                        <dl class="space-y-2 px-3 py-3 text-xs">
+                          <div>
+                            <dt class="font-semibold text-stone-500">Ticket type</dt>
+                            <dd class="mt-0.5 text-stone-900">
+                              {{ request.offered_ticket_title.as_deref() |assigned_or("RSVP invitation") }}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt class="font-semibold text-stone-500">Offer status</dt>
+                            <dd class="mt-0.5 text-stone-900">
+                              {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
+                                Pending
+                              {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
+                                Checkout in progress
+                              {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
+                                Claimed
+                              {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                                Expired
+                              {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
+                                Canceled
+                              {% else -%}
+                                Declined
+                              {% endif -%}
+                            </dd>
+                          </div>
+                          {% if let Some(offer_expires_at) = &request.offer_expires_at -%}
+                            <div>
+                              <dt class="font-semibold text-stone-500">
+                                {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+                                  Expired
+                                {% else -%}
+                                  Deadline
+                                {% endif -%}
+                              </dt>
+                              <dd class="mt-0.5 whitespace-nowrap text-stone-900">
+                                {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                              </dd>
+                            </div>
+                          {% endif -%}
+                        </dl>
+                      </div>
+                    </details>
+                  {% endif -%}
+                </div>
+              </td>
+              {# End status -#}
+
+              {# Ticket type -#}
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48">
+                <div class="truncate font-medium text-stone-900"
+                     title="{{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}">
+                  {{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}
+                </div>
+              </td>
+              {# End ticket type -#}
+
               {# Requested -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
                 {{ request.created_at.format("%b %d, %Y") }}
               </td>
               {# End requested -#}
-
-              {# Status -#}
-              <td class="px-3 xl:px-5 py-4 align-middle">
-                <div class="flex min-w-0 flex-col gap-2">
-                  <div>
-                    {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
-                      <span class="inline-flex w-fit rounded-full border border-amber-800 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                        Request pending
-                      </span>
-                    {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
-                      <span class="inline-flex w-fit rounded-full border border-red-800 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
-                        Request rejected
-                      </span>
-                    {% else -%}
-                      <span class="inline-flex w-fit rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                        Request accepted
-                      </span>
-                    {% endif -%}
-                  </div>
-
-                  <div class="min-w-0 text-xs text-stone-600">
-                    {% if let Some(requested_ticket_title) = &request.requested_ticket_title -%}
-                      <div class="truncate" title="{{ requested_ticket_title }}">
-                        Requested: <span class="font-medium text-stone-900">{{ requested_ticket_title }}</span>
-                      </div>
-                    {% else -%}
-                      <div>Requested: <span class="font-medium text-stone-900">Private admission</span></div>
-                    {% endif -%}
-                  </div>
-
-                  {% if let Some(offer_status) = request.admission_offer_status -%}
-                    <div class="min-w-0 rounded-md border border-stone-200 bg-white px-2.5 py-2 text-xs text-stone-600">
-                      {% if let Some(offered_ticket_title) = &request.offered_ticket_title -%}
-                        <div class="truncate font-medium text-stone-900"
-                             title="{{ offered_ticket_title }}">{{ offered_ticket_title }}</div>
-                      {% else -%}
-                        <div class="font-medium text-stone-900">RSVP invitation</div>
-                      {% endif -%}
-                      <div class="mt-1">
-                        {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
-                          Offer pending
-                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
-                          Checkout in progress
-                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
-                          Offer claimed
-                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
-                          Offer expired
-                        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
-                          Offer canceled
-                        {% else -%}
-                          Offer declined
-                        {% endif -%}
-                      </div>
-                      {% if let Some(offer_expires_at) = &request.offer_expires_at -%}
-                        <div class="mt-1">
-                          {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
-                            Expired
-                          {% else -%}
-                            Deadline
-                          {% endif -%}
-                          {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-                        </div>
-                      {% endif -%}
-                    </div>
-                  {% endif -%}
-                </div>
-              </td>
-              {# End status -#}
 
               {# Reviewed -#}
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">

@@ -1,3 +1,4 @@
+import { localizeCurrencyLabel } from "/static/js/common/currency.js";
 import { setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { getAttendanceControl, getAttendanceMeta } from "/static/js/event/attendance-dom.js";
@@ -221,7 +222,7 @@ const updateAvailabilityMeta = (container, availability) => {
  * @returns {boolean} True when the card displays a current price badge.
  */
 const renderTicketPriceBadge = (card, ticket) => {
-  const priceLabel = getAvailabilityStringValue(ticket.current_price_label);
+  const priceLabel = localizeCurrencyLabel(getAvailabilityStringValue(ticket.current_price_label));
   const priceBadge = card?.querySelector('[data-attendance-role="ticket-type-price-badge"]');
   const summary = card?.querySelector('[data-attendance-role="ticket-type-summary"]');
 
