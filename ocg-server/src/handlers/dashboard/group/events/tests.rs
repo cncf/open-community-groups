@@ -150,7 +150,7 @@ async fn test_add_page_success() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains(">Tickets</"));
     assert!(body.contains("free-only"));
-    assert!(body.contains("Payments are not configured for this group"));
+    assert!(body.contains("Ticket prices are fixed at 0 until payments are configured"));
 }
 
 #[tokio::test]
