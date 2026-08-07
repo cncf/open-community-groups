@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  TEST_COMMUNITY_BANNER_MOBILE_URL,
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_NAME_2,
   TEST_COMMUNITY_TITLE,
@@ -15,8 +16,21 @@ import {
   navigateToSiteHome,
 } from "../../utils.js";
 
+const COMMUNITY_CARD_MAX_WIDTH = 385;
 // Site home explore links are currently hardcoded to cncf in shared templates.
 const SITE_HOME_EXPLORE_COMMUNITY_NAME = "cncf";
+
+const getCommunitiesGrid = (page) =>
+  page
+    .getByText("Communities", { exact: true })
+    .locator("..")
+    .locator("div.grid");
+
+const getCommunityCard = (page, displayName) =>
+  page
+    .getByRole("link")
+    .filter({ has: getCommunityBanner(page, displayName) })
+    .first();
 
 test.describe("site home page", () => {
   test.describe("default viewport", () => {
@@ -223,35 +237,88 @@ test.describe("site home page", () => {
     });
 
     test("community banners use display name in alt text", async ({ page }) => {
-      // Verify desktop community banners use display names in alt text.
+      // Verify community banners use display names in alt text.
       await expect(
-        getCommunityBanner(page, TEST_COMMUNITY_TITLE, "desktop"),
+        getCommunityBanner(page, TEST_COMMUNITY_TITLE),
       ).toBeVisible();
 
       // Verify the second community banner also uses its display name.
       await expect(
-        getCommunityBanner(page, TEST_COMMUNITY_TITLE_2, "desktop"),
+        getCommunityBanner(page, TEST_COMMUNITY_TITLE_2),
       ).toBeVisible();
     });
 
-    test("desktop banner renders on large viewports", async ({ page }) => {
-      // Target desktop and mobile banner variants for one community.
-      const desktopBanner = getCommunityBanner(
-        page,
-        TEST_COMMUNITY_TITLE,
-        "desktop",
+    test("community cards show a darker inset shadow without resizing", async ({
+      page,
+    }) => {
+      // Target the first community card and record its resting dimensions.
+      const communityCard = page
+        .getByRole("link")
+        .filter({ has: getCommunityBanner(page, TEST_COMMUNITY_TITLE) })
+        .first();
+      const communityBanner = getCommunityBanner(page, TEST_COMMUNITY_TITLE);
+
+      // Keep the card in view so hovering does not scroll and shift bounding boxes.
+      await communityCard.scrollIntoViewIfNeeded();
+      const restingBannerBox = await communityBanner.boundingBox();
+      const restingCardBox = await communityCard.boundingBox();
+      expect(restingBannerBox).not.toBeNull();
+      expect(restingCardBox).not.toBeNull();
+      await expect(communityCard).toHaveCSS("border-top-width", "1px");
+      await expect(communityCard).toHaveCSS("box-shadow", "none");
+
+      // Verify the overlay inset renders without changing element bounds.
+      await communityCard.hover();
+      await expect(communityCard).toHaveCSS("border-top-width", "1px");
+      await expect(communityCard).toHaveCSS("box-shadow", "none");
+      await expect
+        .poll(() =>
+          communityCard.evaluate(
+            (element) => window.getComputedStyle(element, "::after").boxShadow,
+          ),
+        )
+        .not.toBe("none");
+      const hoveredBannerBox = await communityBanner.boundingBox();
+      const hoveredCardBox = await communityCard.boundingBox();
+      expect(hoveredBannerBox).toEqual(restingBannerBox);
+      expect(hoveredCardBox).toEqual(restingCardBox);
+    });
+
+    test("community cards preserve their desktop size and gap", async ({
+      page,
+    }) => {
+      // Target both community cards in the desktop grid, ordered by display name.
+      const platformBanner = getCommunityBanner(page, TEST_COMMUNITY_TITLE);
+      const firstCard = getCommunityCard(page, TEST_COMMUNITY_TITLE_2);
+      const secondCard = getCommunityCard(page, TEST_COMMUNITY_TITLE);
+      const communitiesGrid = getCommunitiesGrid(page);
+
+      // Verify the mobile banner asset is used at the desktop viewport.
+      await expect(platformBanner).toHaveAttribute(
+        "src",
+        TEST_COMMUNITY_BANNER_MOBILE_URL,
       );
 
-      // Verify only the desktop banner variant is visible.
-      await expect(desktopBanner).toBeVisible();
-
-      // Target the matching mobile banner variant.
-      const mobileBanner = getCommunityBanner(
-        page,
-        TEST_COMMUNITY_TITLE,
-        "mobile",
+      // Verify the desktop grid reserves three columns for community cards.
+      const gridColumnCount = await communitiesGrid.evaluate(
+        (element) =>
+          window.getComputedStyle(element).gridTemplateColumns.split(" ")
+            .length,
       );
-      await expect(mobileBanner).toBeHidden();
+      expect(gridColumnCount).toBe(3);
+
+      // Verify both cards preserve their maximum width and desktop gap.
+      const firstCardBox = await firstCard.boundingBox();
+      const secondCardBox = await secondCard.boundingBox();
+      const communitiesGridBox = await communitiesGrid.boundingBox();
+      expect(firstCardBox).not.toBeNull();
+      expect(secondCardBox).not.toBeNull();
+      expect(communitiesGridBox).not.toBeNull();
+      expect(firstCardBox.width).toBeLessThanOrEqual(COMMUNITY_CARD_MAX_WIDTH);
+      expect(secondCardBox.width).toBeLessThanOrEqual(COMMUNITY_CARD_MAX_WIDTH);
+      expect(firstCardBox.x).toBe(communitiesGridBox.x);
+      expect(secondCardBox.y).toBe(firstCardBox.y);
+      expect(secondCardBox.x - (firstCardBox.x + firstCardBox.width)).toBe(32);
     });
 
     test("explore all events link visible on desktop with correct href", async ({
@@ -305,6 +372,35 @@ test.describe("site home page", () => {
     });
   });
 
+  test.describe("tablet viewport", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 1024 });
+      await navigateToSiteHome(page);
+    });
+
+    test("community cards preserve their tablet size and gap", async ({
+      page,
+    }) => {
+      // Target both community cards in the tablet grid, ordered by display name.
+      const firstCard = getCommunityCard(page, TEST_COMMUNITY_TITLE_2);
+      const secondCard = getCommunityCard(page, TEST_COMMUNITY_TITLE);
+      const communitiesGrid = getCommunitiesGrid(page);
+
+      // Verify both cards preserve their maximum width and tablet gap.
+      const firstCardBox = await firstCard.boundingBox();
+      const secondCardBox = await secondCard.boundingBox();
+      const communitiesGridBox = await communitiesGrid.boundingBox();
+      expect(firstCardBox).not.toBeNull();
+      expect(secondCardBox).not.toBeNull();
+      expect(communitiesGridBox).not.toBeNull();
+      expect(firstCardBox.width).toBeLessThanOrEqual(COMMUNITY_CARD_MAX_WIDTH);
+      expect(secondCardBox.width).toBeLessThanOrEqual(COMMUNITY_CARD_MAX_WIDTH);
+      expect(firstCardBox.x).toBe(communitiesGridBox.x);
+      expect(secondCardBox.y).toBe(firstCardBox.y);
+      expect(secondCardBox.x - (firstCardBox.x + firstCardBox.width)).toBe(32);
+    });
+  });
+
   test.describe("mobile viewport @mobile", () => {
     test.beforeEach(async ({ page }) => {
       // Load the public home page before each mobile assertion.
@@ -323,11 +419,7 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Target the mobile banner for the first community card.
-      const mobileBanner = getCommunityBanner(
-        page,
-        TEST_COMMUNITY_TITLE,
-        "mobile",
-      );
+      const mobileBanner = getCommunityBanner(page, TEST_COMMUNITY_TITLE);
 
       // Verify the mobile community card links to its public page.
       await expect(mobileBanner).toBeVisible();
@@ -343,24 +435,26 @@ test.describe("site home page", () => {
       );
     });
 
-    test("mobile banner renders on small viewports", async ({ page }) => {
-      // Target mobile and desktop banner variants for one community.
-      const mobileBanner = getCommunityBanner(
-        page,
-        TEST_COMMUNITY_TITLE,
-        "mobile",
-      );
+    test("community cards preserve their mobile size and gap", async ({
+      page,
+    }) => {
+      // Target both community cards in the mobile grid, ordered by display name.
+      const firstCard = getCommunityCard(page, TEST_COMMUNITY_TITLE_2);
+      const secondCard = getCommunityCard(page, TEST_COMMUNITY_TITLE);
+      const communitiesGrid = getCommunitiesGrid(page);
 
-      // Verify only the mobile banner variant is visible.
-      await expect(mobileBanner).toBeVisible();
-
-      // Target the matching desktop banner variant.
-      const desktopBanner = getCommunityBanner(
-        page,
-        TEST_COMMUNITY_TITLE,
-        "desktop",
-      );
-      await expect(desktopBanner).toBeHidden();
+      // Verify both cards preserve their maximum width and mobile gap.
+      const firstCardBox = await firstCard.boundingBox();
+      const secondCardBox = await secondCard.boundingBox();
+      const communitiesGridBox = await communitiesGrid.boundingBox();
+      expect(firstCardBox).not.toBeNull();
+      expect(secondCardBox).not.toBeNull();
+      expect(communitiesGridBox).not.toBeNull();
+      expect(firstCardBox.width).toBeLessThanOrEqual(COMMUNITY_CARD_MAX_WIDTH);
+      expect(secondCardBox.width).toBeLessThanOrEqual(COMMUNITY_CARD_MAX_WIDTH);
+      expect(firstCardBox.x).toBe(communitiesGridBox.x);
+      expect(secondCardBox.x).toBe(firstCardBox.x);
+      expect(secondCardBox.y - (firstCardBox.y + firstCardBox.height)).toBe(24);
     });
 
     test("explore all events link visible on mobile with correct href", async ({

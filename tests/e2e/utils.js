@@ -501,16 +501,10 @@ export const getSectionLink = (page, heading, linkName, viewport) => {
 };
 
 /**
- * Selects a community banner variant on the site home page.
+ * Selects a community banner on the site home page.
  */
-export const getCommunityBanner = (page, displayName, viewport) => {
-  const selector = viewport === "desktop" ? "div.hidden.sm\\:block" : "div.aspect-\\[61\\/12\\].sm\\:hidden";
-
-  return page
-    .locator(selector)
-    .filter({ has: page.getByAltText(`${displayName} banner`) })
-    .first();
-};
+export const getCommunityBanner = (page, displayName) =>
+  page.getByAltText(`${displayName} banner`).first();
 
 /**
  * Selects the public attendance controls container.

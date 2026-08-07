@@ -46,29 +46,17 @@
           Communities
         </div>
         {% if communities.len() > 0 -%}
-          <div class="flex flex-col gap-8">
+          <div class="grid grid-cols-[minmax(0,385px)] justify-start gap-6 sm:grid-cols-[repeat(2,minmax(0,385px))] sm:gap-8 lg:grid-cols-[repeat(3,minmax(0,385px))]">
             {% for community in communities -%}
               <a href="/{{ community.name }}"
-                 class="block overflow-hidden rounded-lg border border-stone-200 bg-white transition-all hover:border-primary-300 hover:shadow-sm">
-                {# Mobile banner -#}
-                <div class="aspect-[61/12] sm:hidden">
+                 class="relative block overflow-hidden rounded-lg border border-stone-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 after:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:transition-shadow after:duration-200 hover:after:shadow-[inset_0_0_0_1px_var(--color-stone-300)] motion-reduce:after:transition-none">
+                <div class="aspect-[61/12]">
                   <img class="w-full h-full object-cover"
                        height="auto"
                        width="auto"
                        src="{{ community.banner_mobile_url }}"
                        alt="{{ community.display_name }} banner" />
                 </div>
-                {# End mobile banner -#}
-
-                {# Desktop banner -#}
-                <div class="aspect-[607/48] hidden sm:block">
-                  <img class="w-full h-full object-cover"
-                       height="auto"
-                       width="auto"
-                       src="{{ community.banner_url }}"
-                       alt="{{ community.display_name }} banner" />
-                </div>
-                {# End desktop banner -#}
               </a>
             {% endfor -%}
           </div>
