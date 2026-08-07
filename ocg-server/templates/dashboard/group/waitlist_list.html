@@ -139,7 +139,7 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
-        <th scope="col" class="px-3 xl:px-5 py-1.5">
+        <th scope="col" class="px-3 xl:px-5 py-1.5 xl:w-[30%]">
           <span class="whitespace-nowrap">Entry</span>
         </th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
@@ -192,7 +192,7 @@
               {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center"
+          <td class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center"
               colspan="5">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
@@ -219,7 +219,7 @@
           {# Waitlist row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Entry -#}
-            <td class="px-3 xl:px-5 py-4 max-w-0">
+            <td class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%]">
               {% call dashboard::user_profile_modal_trigger(entry.user, self::user_initials(entry.user.name.as_deref() , entry.user.username.as_str())) -%}
               <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}</div>
               {% endcall -%}
@@ -239,7 +239,7 @@
             <td class="px-3 xl:px-5 py-4 whitespace-nowrap w-44 text-stone-900">
               <div class="flex flex-col items-start gap-1.5">
                 {% if let Some(waitlist_position) = entry.waitlist_position -%}
-                  <span>#{{ waitlist_position }}</span>
+                  <span>{{ waitlist_position }}</span>
                 {% endif -%}
                 {% if let Some(offer_status) = entry.admission_offer_status -%}
                   {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}

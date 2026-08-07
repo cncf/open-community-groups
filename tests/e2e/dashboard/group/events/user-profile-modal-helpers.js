@@ -1,5 +1,21 @@
 import { expect } from "../../../fixtures.js";
 
+/**
+ * Verifies a dashboard table reserves enough width for its user column.
+ * @param {import("@playwright/test").Locator} table Table locator.
+ * @param {string} headerName Accessible column header name.
+ */
+export const expectUserColumnHasRoom = async (table, headerName) => {
+  const [tableWidth, userColumnWidth] = await Promise.all([
+    table.evaluate((element) => element.getBoundingClientRect().width),
+    table
+      .getByRole("columnheader", { name: headerName, exact: true })
+      .evaluate((element) => element.getBoundingClientRect().width),
+  ]);
+
+  expect(userColumnWidth / tableWidth).toBeGreaterThanOrEqual(0.29);
+};
+
 export const expectUserProfileModalFromRow = async (
   page,
   row,

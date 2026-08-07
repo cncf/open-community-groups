@@ -1,7 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
 import { TEST_EVENT_IDS, TEST_INVITATION_CANCELLATION, navigateToPath } from "../../../utils.js";
-import { expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
+import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 const DASHBOARD_WAITLIST_EVENT_NAME = "Dashboard Waitlist Table Lab";
 const PAST_WAITLIST_EVENT_NAME = "Past Event For Filtering";
@@ -92,6 +92,8 @@ test.describe("group dashboard waitlist tab", () => {
   });
 
   test("organizer can enable waitlist for an event and then restore it", async ({ organizerGroupPage }) => {
+    await organizerGroupPage.setViewportSize({ width: 1920, height: 1080 });
+
     // Open the seeded alpha event editor from the events list.
     const openAlphaEventEditor = async () => {
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -173,11 +175,11 @@ test.describe("group dashboard waitlist tab", () => {
 
     // Find the waitlist content.
     const waitlistContent = organizerGroupPage.locator("#waitlist-content");
-    await expect(
-      waitlistContent.locator("p.text-sm.lg\\:text-md.text-stone-700:visible").filter({
-        hasText: "Waitlist entries for this event will appear here.",
-      }),
-    ).toBeVisible();
+    const emptyWaitlistMessage = waitlistContent
+      .locator("p.text-sm.lg\\:text-md.text-stone-700:visible")
+      .filter({ hasText: "Waitlist entries for this event will appear here." });
+    await expect(emptyWaitlistMessage).toHaveCount(1);
+    await expect(emptyWaitlistMessage).toBeVisible();
 
     // Disable the waitlist setting.
     await submitWaitlistValue("false");
@@ -236,10 +238,12 @@ test.describe("group dashboard waitlist tab", () => {
     });
 
     // Assert that Waitlist entries is visible.
-    await expect(waitlistContent.getByRole("table", { name: "Waitlist entries" })).toBeVisible();
+    const waitlistTable = waitlistContent.getByRole("table", { name: "Waitlist entries" });
+    await expect(waitlistTable).toBeVisible();
+    await expectUserColumnHasRoom(waitlistTable, "Entry");
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(2)).toHaveText("#1");
+    await expect(waitlistRow.locator("td").nth(2)).toHaveText("1");
     const unavailableWaitlistAction = waitlistRow.getByRole("button", {
       name: "Waitlist actions unavailable for E2E Member Two",
     });
@@ -302,7 +306,7 @@ test.describe("group dashboard waitlist tab", () => {
     // Verify the matching result is shown with a queue position.
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(2)).toHaveText("#1");
+    await expect(waitlistRow.locator("td").nth(2)).toHaveText("1");
     await expect(searchInput).toHaveValue("Two");
 
     // Enter a query expected to return no waitlist entries.

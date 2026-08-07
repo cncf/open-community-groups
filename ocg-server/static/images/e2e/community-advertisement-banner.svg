@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="300" viewBox="0 0 2400 300" role="img" aria-label="Community advertisement banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7c2d12"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+  </defs>
+  <rect width="2400" height="300" fill="url(#bg)"/>
+  <circle cx="2160" cy="72" r="48" fill="#fff7ed" fill-opacity="0.18"/>
+  <path d="M0 220 C260 160 500 280 760 214 S1280 152 1540 218 S2040 276 2400 194 L2400 300 L0 300 Z" fill="#ffffff" fill-opacity="0.1"/>
+  <text x="140" y="138" fill="#fff7ed" font-family="Arial, sans-serif" font-size="48" font-weight="700" letter-spacing="1.5">COMMUNITY ADVERTISEMENT</text>
+  <text x="140" y="188" fill="#fecdd3" font-family="Arial, sans-serif" font-size="24">Deterministic artwork for advertisement banner cropping coverage.</text>
+</svg>

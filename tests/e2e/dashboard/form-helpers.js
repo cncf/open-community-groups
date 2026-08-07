@@ -5,6 +5,10 @@ import { expect } from "@playwright/test";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const TEST_UPLOAD_ASSET_PATHS = {
+  advertisementBanner: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/community-advertisement-banner.svg",
+  ),
   alternateBanner: path.resolve(
     __dirname,
     "../../../ocg-server/static/images/e2e/community-secondary-banner.svg",
@@ -17,42 +21,25 @@ export const TEST_UPLOAD_ASSET_PATHS = {
     __dirname,
     "../../../ocg-server/static/images/e2e/community-secondary-logo.svg",
   ),
-  banner: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/community-primary-banner.svg",
-  ),
+  banner: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-primary-banner.svg"),
   bannerMobile: path.resolve(
     __dirname,
     "../../../ocg-server/static/images/e2e/community-primary-banner-mobile.svg",
   ),
-  galleryOne: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/event-photo-1.svg",
-  ),
-  galleryTwo: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/event-photo-2.svg",
-  ),
-  logo: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/community-primary-logo.svg",
-  ),
-  sponsorLogo: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/sponsor-logo.svg",
-  ),
+  galleryOne: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/event-photo-1.svg"),
+  galleryTwo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/event-photo-2.svg"),
+  logo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-primary-logo.svg"),
+  sponsorLogo: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/sponsor-logo.svg"),
 };
 
 export const fillMarkdownEditor = async (page, editorId, value) => {
-  await page
-    .locator(`markdown-editor#${editorId} .CodeMirror`)
-    .evaluate((element, nextValue) => {
-      const codeMirror = element.CodeMirror;
+  await page.locator(`markdown-editor#${editorId} .CodeMirror`).evaluate((element, nextValue) => {
+    const codeMirror = element.CodeMirror;
 
-      codeMirror?.focus();
-      codeMirror?.setValue(nextValue);
-      codeMirror?.save();
-    }, value);
+    codeMirror?.focus();
+    codeMirror?.setValue(nextValue);
+    codeMirror?.save();
+  }, value);
 };
 
 export const uploadImageField = async (page, fieldName, filePath) => {
@@ -87,9 +74,7 @@ export const uploadImageField = async (page, fieldName, filePath) => {
     ]);
   }
 
-  await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(
-    /\/images\//,
-  );
+  await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(/\/images\//);
 };
 
 export const setImageFieldValue = async (page, fieldName, value) => {
@@ -121,17 +106,13 @@ export const setImageFieldValue = async (page, fieldName, value) => {
     );
   }, value);
 
-  await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(
-    value,
-  );
+  await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(value);
 };
 
 export const uploadGalleryImages = async (page, fieldName, filePaths) => {
   const galleryField = page.locator(`gallery-field[field-name="${fieldName}"]`);
   const fileInput = galleryField.locator('input[type="file"]');
-  const initialImageCount = await galleryField
-    .locator(`input[name="${fieldName}[]"]`)
-    .count();
+  const initialImageCount = await galleryField.locator(`input[name="${fieldName}[]"]`).count();
 
   for (const filePath of filePaths) {
     await Promise.all([
@@ -145,9 +126,9 @@ export const uploadGalleryImages = async (page, fieldName, filePaths) => {
     ]);
   }
 
-  await expect(
-    galleryField.locator(`input[name="${fieldName}[]"]`),
-  ).toHaveCount(initialImageCount + filePaths.length);
+  await expect(galleryField.locator(`input[name="${fieldName}[]"]`)).toHaveCount(
+    initialImageCount + filePaths.length,
+  );
 };
 
 export const fillMultipleInputs = async (component, values, label = "Tag") => {
@@ -180,19 +161,15 @@ export const fillKeyValueInputs = async (component, items) => {
 export const fillGroupLocation = async (page, values) => {
   await page.locator("#group-location-search-city").fill(values.city);
   await page.locator("#group-location-search-state").fill(values.state);
-  await page
-    .locator("#group-location-search-country_name")
-    .fill(values.countryName);
+  await page.locator("#group-location-search-country_name").fill(values.countryName);
   await page.locator("#group-location-search-latitude").fill(values.latitude);
   await page.locator("#group-location-search-longitude").fill(values.longitude);
-  await page
-    .locator("#group-location-search-country_code")
-    .evaluate((element, value) => {
-      const input = element;
-      input.value = value;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    }, values.countryCode);
+  await page.locator("#group-location-search-country_code").evaluate((element, value) => {
+    const input = element;
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, values.countryCode);
 };
 
 export const fillEventVenue = async (page, values) => {

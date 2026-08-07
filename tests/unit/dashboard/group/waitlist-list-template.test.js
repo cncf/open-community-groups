@@ -44,11 +44,11 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include("dashboard/placeholders/group_waitlist_no_results.html");
     expect(template).to.include('<th scope="col" class="px-3 xl:px-5 py-1.5 w-44">Queue</th>');
     expect(template).to.include("{% if let Some(waitlist_position) = entry.waitlist_position -%}");
-    expect(template).to.include("#{{ waitlist_position }}");
+    expect(template).to.include("<span>{{ waitlist_position }}</span>");
     expect(template).not.to.include("queue_label");
     expect(template).not.to.include("{{ refresh_offset + loop.index }}");
     expect(template.indexOf(">Queue</th>")).to.be.lessThan(template.indexOf(">Enrollment</th>"));
-    expect(template.indexOf("#{{ waitlist_position }}")).to.be.lessThan(
+    expect(template.indexOf("<span>{{ waitlist_position }}</span>")).to.be.lessThan(
       template.indexOf("{{ entry.ticket_title }}"),
     );
   });
@@ -78,7 +78,7 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.not.include("dashboard::table_sort_menu");
     expect(template).to.not.include("dashboard::table_sort_option_button");
     expect(template).to.not.include("dashboard::table_sort_control");
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
@@ -121,7 +121,7 @@ describe("dashboard group waitlist list template", () => {
       '<td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4">',
     );
     expect(template).to.include(
-      '<td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center" colspan="5">',
+      '<td class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center" colspan="5">',
     );
     expect(template).to.include(
       '<td class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="6">',
@@ -160,7 +160,7 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify ticket tiers, queue positions, offer states, and deadlines remain visible.
     expect(template).to.include("{{ entry.ticket_title }}");
-    expect(template).to.include("#{{ waitlist_position }}");
+    expect(template).to.include("<span>{{ waitlist_position }}</span>");
     expect(template).not.to.include("—");
     expect(template).to.include('waitlist_offer_status_badge(entry, event, "Offer pending", false, false)');
     expect(template).to.include(
@@ -175,7 +175,7 @@ describe("dashboard group waitlist list template", () => {
     expect(template).not.to.include('waitlist_offer_status_badge(entry, event, "Offer declined"');
     expect(template).to.include("badges::status_badge");
     expect(template).not.to.include("badges::invitation_badge");
-    expect(template.indexOf("#{{ waitlist_position }}")).to.be.lessThan(
+    expect(template.indexOf("<span>{{ waitlist_position }}</span>")).to.be.lessThan(
       template.indexOf('waitlist_offer_status_badge(entry, event, "Offer pending"'),
     );
     expect(template.indexOf('waitlist_offer_status_badge(entry, event, "Offer pending"')).to.be.lessThan(

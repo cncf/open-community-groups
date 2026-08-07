@@ -4,8 +4,10 @@ import { TEST_UPLOAD_ASSET_PATHS, fillMarkdownEditor, setImageFieldValue } from 
 import { navigateToPath } from "../../../utils.js";
 
 test.describe("community dashboard settings view", () => {
-  test("admin can cancel and apply advertisement banner cropping", async ({ adminCommunityPage }) => {
-    // Load the croppable advertisement banner field.
+  test("admin can reject undersized and upload exact advertisement banners", async ({
+    adminCommunityPage,
+  }) => {
+    // Load the advertisement banner field.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=settings");
 
     const advertisementBannerField = adminCommunityPage.locator('image-field[name="ad_banner_url"]');
@@ -23,33 +25,19 @@ test.describe("community dashboard settings view", () => {
       }
     });
 
-    // Open the crop editor and verify its required size and controls.
+    // Reject an undersized image without uploading or changing the saved value.
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateBanner);
-    await expect(adminCommunityPage.getByText("Please choose a larger image.")).toBeVisible();
-    await adminCommunityPage.getByRole("button", { name: "Continue" }).click();
     const dialog = cropper.getByRole("dialog", { name: "Crop Banner Image" });
-    const cropArea = cropper.getByRole("application", {
-      name: "Image crop area",
-    });
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("2400 × 300 px");
-    await expect(cropArea).toHaveAttribute("aria-busy", "false");
-    await expect(cropArea).toBeFocused();
-    await expect(cropper.getByRole("button", { name: "Zoom out" })).toBeDisabled();
-    await cropper.getByRole("button", { name: "Zoom in" }).click();
-    await expect(cropper.getByText("110%", { exact: true })).toBeVisible();
-    await cropper.getByRole("button", { name: "Reset position" }).click();
-    await expect(cropper.getByText("Fit", { exact: true })).toBeVisible();
-
-    // Cancel without uploading or changing the saved form value.
-    await cropper.getByRole("button", { name: "Cancel" }).click();
+    const sizeAlert = adminCommunityPage.locator(".swal2-popup");
+    await expect(sizeAlert).toContainText("Please choose a larger image.");
+    await sizeAlert.getByRole("button", { name: "OK" }).click();
     await expect(dialog).toBeHidden();
     await expect(fileInput).toHaveValue("");
     await expect(valueInput).toHaveValue(initialValue);
     await expect(uploadButton).toBeFocused();
     expect(uploadRequests).toHaveLength(0);
 
-    // Reopen the editor and upload the mandatory crop.
+    // Upload an exact-size image without opening the crop editor.
     await adminCommunityPage.evaluate(() => {
       const nativeFetch = window.fetch;
       window.fetch = (input, init) => {
@@ -66,22 +54,19 @@ test.describe("community dashboard settings view", () => {
         return nativeFetch(input, init);
       };
     });
-    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateBanner);
-    await adminCommunityPage.getByRole("button", { name: "Continue" }).click();
-    await expect(cropper.getByRole("button", { name: "Apply crop" })).toBeEnabled();
     const uploadResponsePromise = adminCommunityPage.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
         new URL(response.url()).pathname === "/images" &&
         response.status() === 201,
     );
-    await cropper.getByRole("button", { name: "Apply crop" }).click();
+    await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.advertisementBanner);
     await uploadResponsePromise;
 
     // Verify the generated file and the uploaded preview dimensions.
     const uploadMetadata = await adminCommunityPage.evaluate(() => window.imageUploadMetadata);
     expect(uploadMetadata).toEqual({
-      name: "community-secondary-banner-cropped.webp",
+      name: "community-advertisement-banner-cropped.webp",
       type: "image/webp",
     });
     await expect(dialog).toBeHidden();

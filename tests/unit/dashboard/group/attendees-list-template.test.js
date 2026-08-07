@@ -449,7 +449,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.not.include("dashboard::table_sort_menu");
     expect(template).to.not.include("dashboard::table_sort_option_button");
     expect(template).to.not.include("dashboard::table_sort_control");
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
