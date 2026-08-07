@@ -22,4 +22,11 @@ ignore = [
     # advisories remain until the AWS dependency chain moves to a newer rustls.
     "RUSTSEC-2026-0098",
     "RUSTSEC-2026-0099",
+
+    # `parcel_sourcemap` (via `minify-html`/`lightningcss`) pins `rkyv 0.7.x`,
+    # and RustSec lists no fixed 0.7 release (fix requires 0.8.17). The
+    # vulnerable Rc/Arc code path is behind the `rc` feature, which this
+    # workspace does not enable, and the archives are build-time source maps,
+    # not untrusted input. Revisit when upstream moves to rkyv 0.8.
+    "RUSTSEC-2026-0235",
 ]
