@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const TEST_UPLOAD_ASSET_PATHS = {
   advertisementBanner: path.resolve(
     __dirname,
-    "../../../ocg-server/static/images/e2e/community-advertisement-banner.svg",
+    "../../../ocg-server/static/images/e2e/community-secondary-ad-banner.svg",
   ),
   alternateBanner: path.resolve(
     __dirname,
