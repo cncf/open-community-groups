@@ -74,7 +74,9 @@ offer releases its reserved capacity.
 ## How Do Refunds Work For Paid Events?
 
 Paid attendees use `Request refund` from the public event page, and organizers review the
-request from [Group Dashboard -> Event -> Attendees](/dashboard/group?tab=events ':ignore').
+request from [Group Dashboard -> Event -> Attendees](/dashboard/group?tab=events ':ignore'). An
+organizer can also choose `Cancel attendance and refund` for a confirmed paid attendee to queue a
+full refund directly.
 
 A few rules apply:
 
@@ -82,6 +84,8 @@ A few rules apply:
 - Refund requests are available only before the event starts.
 - Organizers can still approve or reject a request later if it was submitted before the start
   time.
+- Organizer-initiated paid cancellation keeps attendance active until the refund is confirmed or
+  manual recovery is recorded.
 - Free ticket attendees can still leave the event normally.
 
 Before payment is complete, attendees can use `Cancel checkout` from the public event page to

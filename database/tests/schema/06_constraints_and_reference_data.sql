@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(110);
+select plan(111);
 
 -- ============================================================================
 -- VARIABLES
@@ -332,6 +332,7 @@ select results_eq(
         where conname = 'event_purchase_refund_kind_check'
     $$,
     $$ values
+        ('attendance-cancellation'),
         ('automatic-unfulfillable-checkout'),
         ('event-cancellation'),
         ('refund-request-approval')
@@ -389,6 +390,17 @@ select ok(
 select has_check(
     'event_purchase_refund',
     'event_purchase_refund_kind_request_chk'
+);
+
+-- Test: attendance cancellation refunds should require a linked request
+select ok(
+    (
+        select pg_get_constraintdef(oid)
+            like '%attendance-cancellation%event_refund_request_id IS NOT NULL%'
+        from pg_constraint
+        where conname = 'event_purchase_refund_kind_request_chk'
+    ),
+    'Attendance cancellation refunds should require a linked request'
 );
 select has_check(
     'event_purchase_refund',

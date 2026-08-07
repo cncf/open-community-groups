@@ -342,7 +342,10 @@ Use the views to focus the list:
 
 You can search by attendee, event, or ticket and limit the list to one event.
 Organizers with events write access can approve or reject pending requests and
-retry exhausted non-terminal provider failures from the refund row. Read-only
+retry exhausted non-terminal provider failures from the refund row. They can also queue a full
+refund for a confirmed paid attendee by selecting `Cancel attendance and refund` in the event's
+`Attendees` tab. Attendance remains active until provider confirmation or recorded manual
+recovery, then OCG cancels it and reconciles the released capacity. Read-only
 roles can inspect every state but cannot use those actions.
 
 Rejecting a request requires a reason. The modal identifies it as attendee-visible because the

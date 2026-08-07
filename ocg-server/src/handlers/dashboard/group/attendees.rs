@@ -22,7 +22,10 @@ use crate::{
     config::{HttpServerConfig, PaymentsConfig},
     db::{
         DBExt, DynDB,
-        dashboard::group::{EventAdmissionAllocationResult, EventAttendeeInvitationInput},
+        dashboard::group::{
+            EventAdmissionAllocationResult, EventAttendeeCancellationStatus,
+            EventAttendeeInvitationInput,
+        },
         notifications::CustomNotificationTracking,
     },
     handlers::{
@@ -221,7 +224,7 @@ pub(crate) async fn cancel_event_admission_offer(
         .into_response())
 }
 
-/// Cancels a confirmed attendee's event attendance.
+/// Cancels free attendance or queues a paid attendance refund.
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn cancel_event_attendee_attendance(
@@ -233,40 +236,49 @@ pub(crate) async fn cancel_event_attendee_attendance(
     State(server_cfg): State<HttpServerConfig>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Cancel the attendee and enqueue required notifications
+    // Apply the cancellation workflow and any immediate notification atomically
     let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
     let required_notification_server_cfg = server_cfg.clone();
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
-                // Cancel attendance and reconcile released inventory
-                tx.cancel_event_attendee_attendance(
-                    user.user_id,
-                    group_id,
-                    event_id,
-                    user_id,
-                    payment_provider,
-                )
-                .await?;
+                // Cancel free attendance or queue a paid refund
+                let outcome = tx
+                    .cancel_event_attendee_attendance(
+                        user.user_id,
+                        group_id,
+                        event_id,
+                        user_id,
+                        payment_provider,
+                    )
+                    .await?;
 
-                // Enqueue the required attendee notification before committing
-                enqueue_event_attendance_cancellation_notifications(
-                    tx,
-                    &required_notification_server_cfg,
-                    community_id,
-                    event_id,
-                    user_id,
-                )
-                .await?;
+                // Notify only after attendance is removed immediately
+                if outcome.cancellation_status
+                    == EventAttendeeCancellationStatus::AttendanceCanceled
+                {
+                    enqueue_event_attendance_cancellation_notifications(
+                        tx,
+                        &required_notification_server_cfg,
+                        community_id,
+                        event_id,
+                        user_id,
+                    )
+                    .await?;
+                }
 
                 Ok(())
             })
         })
         .await?;
 
+    // Refresh attendee and refund views after the transaction commits
     Ok((
         StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-event-attendees")],
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-group-refunds",
+        )],
     )
         .into_response())
 }

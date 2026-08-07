@@ -262,6 +262,13 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'data-error-message="Something went wrong canceling this attendance. Please try again later."',
     );
+    expect(template).to.include('data-confirm-text="Queue refund"');
+    expect(template).to.include(
+      'data-confirm-message="Queue a full refund for this attendee? Their attendance will remain active until the refund is confirmed."',
+    );
+    expect(template).to.include(
+      'data-success-message="Refund queued. Attendance will be canceled after confirmation."',
+    );
   });
 
   it("keeps cancel attendance disabled for unsupported attendee states", async () => {
@@ -269,10 +276,14 @@ describe("dashboard group attendees list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify keeps cancel attendance disabled for unsupported attendee states.
-    expect(template).to.include("!self::is_paid_attendee(attendee.amount_minor)");
     expect(template).to.include("!event.canceled");
     expect(template).to.include("!event.is_past()");
-    expect(template).to.include('title="Paid attendee attendance cannot be canceled from attendee actions."');
+    expect(template).to.include("attendee.refund_progress.is_none()");
+    expect(template).to.include(
+      "attendee.refund_request_status != Some(crate::types::payments::EventRefundRequestStatus::Approved)",
+    );
+    expect(template).to.include('title="A refund is already in progress for this attendee."');
+    expect(template).to.include('title="This attendee\'s refund has already been approved."');
     expect(template).to.include('title="Canceled event attendance cannot be canceled."');
     expect(template).to.include('title="Past event attendance cannot be canceled."');
   });

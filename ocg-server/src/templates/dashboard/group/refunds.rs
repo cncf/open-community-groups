@@ -139,6 +139,7 @@ impl GroupRefund {
     /// Returns the user-facing refund workflow label.
     pub(crate) fn kind_label(&self) -> &'static str {
         match self.kind.as_deref() {
+            Some("attendance-cancellation") => "Attendance cancellation",
             Some("automatic-unfulfillable-checkout") => "Checkout refund",
             Some("event-cancellation") => "Event cancellation",
             Some("refund-request-approval") => "Attendee request",

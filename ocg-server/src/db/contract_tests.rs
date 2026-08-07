@@ -22,7 +22,7 @@ use crate::{
             community::DBDashboardCommunity,
             group::{
                 DBDashboardGroup, EventAdmissionAllocationOutcome, EventAdmissionAllocationResult,
-                EventAttendeeInvitationInput,
+                EventAttendeeCancellationStatus, EventAttendeeInvitationInput,
             },
             user::DBDashboardUser,
         },
@@ -417,8 +417,42 @@ async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<
         )
         .await?;
 
-    // Check the prior status and waitlist outcome
-    assert_eq!(outcome.left_status, EventEnrollmentStatus::Attendee);
+    // Check the cancellation lifecycle result
+    assert_eq!(
+        outcome.cancellation_status,
+        EventAttendeeCancellationStatus::AttendanceCanceled
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_cancel_event_attendee_attendance_queues_paid_refund_deserializes()
+-> Result<()> {
+    // Setup the contract database and paid attendance fixture
+    let db = contract_tests_db()?;
+
+    // Queue cancellation through the real paid-attendance database contract
+    let outcome = db
+        .cancel_event_attendee_attendance(
+            organizer_id(),
+            group_id(),
+            paid_event_id(),
+            paid_cancellation_user_id(),
+            Some(PaymentProvider::Stripe),
+        )
+        .await?;
+
+    // Check both cancellation and durable refund enums deserialize completely
+    assert_eq!(
+        outcome.cancellation_status,
+        EventAttendeeCancellationStatus::RefundQueued
+    );
+    let refund = db.get_event_purchase_refund(paid_cancellation_purchase_id()).await?;
+    assert_eq!(refund.event_purchase_id, paid_cancellation_purchase_id());
+    assert_eq!(refund.kind, EventPurchaseRefundKind::AttendanceCancellation);
+    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
 
     Ok(())
 }
@@ -3304,6 +3338,8 @@ const OFFER_DECLINE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0dc";
 const OFFER_DECLINE_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c0dd";
 const OFFER_DECLINER_ID: &str = "00000000-0000-0000-0000-00000000c0f0";
 const ORGANIZER_ID: &str = "00000000-0000-0000-0000-00000000c041";
+const PAID_CANCELLATION_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c118";
+const PAID_CANCELLATION_USER_ID: &str = "00000000-0000-0000-0000-00000000c117";
 const PAID_TICKET_PRICE_WINDOW_ID: &str = "00000000-0000-0000-0000-00000000c0d2";
 const PAID_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c0d1";
 const PAST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c032";
@@ -3687,6 +3723,16 @@ fn offer_decliner_id() -> Uuid {
 /// Returns the organizer identifier used by the contract fixture.
 fn organizer_id() -> Uuid {
     parse_uuid(ORGANIZER_ID)
+}
+
+/// Returns the purchase used by paid attendance cancellation contracts.
+fn paid_cancellation_purchase_id() -> Uuid {
+    parse_uuid(PAID_CANCELLATION_PURCHASE_ID)
+}
+
+/// Returns the attendee used by paid attendance cancellation contracts.
+fn paid_cancellation_user_id() -> Uuid {
+    parse_uuid(PAID_CANCELLATION_USER_ID)
 }
 
 /// Returns the paid ticket price window identifier used by the contract fixture.

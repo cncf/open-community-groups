@@ -19,6 +19,7 @@ use crate::{
         dashboard::group::{
             EventAdmissionAllocation, EventAdmissionAllocationConflict,
             EventAdmissionAllocationOutcome, EventAdmissionAllocationResult,
+            EventAttendeeCancellationOutcome, EventAttendeeCancellationStatus,
         },
         mock::MockDB,
     },
@@ -45,7 +46,7 @@ use crate::{
         notifications::{EventAttendanceCanceled, EventCustom},
     },
     types::{
-        event::{EventEnrollmentReconciliationOutcome, EventEnrollmentStatus, EventLeaveOutcome},
+        event::EventEnrollmentReconciliationOutcome,
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -435,8 +436,8 @@ async fn test_cancel_event_attendee_attendance_enqueues_notification() {
                 && payment_provider.is_none()
         })
         .returning(move |_, _, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Attendee,
+            Ok(EventAttendeeCancellationOutcome {
+                cancellation_status: EventAttendeeCancellationStatus::AttendanceCanceled,
             })
         });
     tx.expect_get_site_settings()
@@ -489,7 +490,89 @@ async fn test_cancel_event_attendee_attendance_enqueues_notification() {
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees",
+        "refresh-event-attendees, refresh-group-refunds",
+    );
+}
+
+#[tokio::test]
+async fn test_cancel_event_attendee_attendance_queues_paid_refund_without_notification() {
+    // Setup identifiers and session data
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let target_user_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup the paid cancellation transaction without notification expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    let mut tx = MockDB::new();
+    tx.expect_cancel_event_attendee_attendance()
+        .times(1)
+        .withf(move |actor_id, gid, eid, uid, payment_provider| {
+            *actor_id == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && *uid == target_user_id
+                && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _, _| {
+            Ok(EventAttendeeCancellationOutcome {
+                cancellation_status: EventAttendeeCancellationStatus::RefundQueued,
+            })
+        });
+    tx.expect_enqueue_notification().never();
+    tx.expect_get_event_summary_by_id().never();
+    tx.expect_get_site_settings().never();
+    expect_successful_transaction(&mut db, tx);
+
+    // Send the organizer cancellation request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/attendance"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check both affected dashboard sections refresh
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees, refresh-group-refunds",
     );
 }
 
@@ -543,8 +626,8 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
                 && payment_provider.is_none()
         })
         .returning(|_, _, _, _, _| {
-            Ok(EventLeaveOutcome {
-                left_status: EventEnrollmentStatus::Attendee,
+            Ok(EventAttendeeCancellationOutcome {
+                cancellation_status: EventAttendeeCancellationStatus::AttendanceCanceled,
             })
         });
     tx.expect_get_site_settings()

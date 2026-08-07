@@ -18,6 +18,7 @@ declare
     v_event_ticket_type_id uuid;
     v_finalized_at timestamptz;
     v_group_id uuid;
+    v_initiated_by_user_id uuid;
     v_kind text;
     v_provider_refund_id text;
     v_purchase_id uuid;
@@ -87,6 +88,7 @@ begin
         e.group_id,
         epr.event_refund_request_id,
         epr.finalized_at,
+        epr.initiated_by_user_id,
         epr.kind,
         epr.provider_refund_id,
         ep.event_purchase_id,
@@ -105,6 +107,7 @@ begin
         v_group_id,
         v_event_refund_request_id,
         v_finalized_at,
+        v_initiated_by_user_id,
         v_kind,
         v_provider_refund_id,
         v_purchase_id,
@@ -165,7 +168,10 @@ begin
             if v_purchase_status <> 'refund-pending' then
                 raise exception 'recoverable event purchase refund not found';
             end if;
-        elsif v_kind = 'refund-request-approval' then
+        elsif v_kind in (
+            'attendance-cancellation',
+            'refund-request-approval'
+        ) then
             if v_purchase_status <> 'refund-requested'
                and not (
                    v_purchase_status = 'refund-pending'
@@ -200,21 +206,40 @@ begin
 
     -- Apply local finalization that did not happen before the terminal failure
     if v_finalized_at is null then
-        if v_kind = 'refund-request-approval' then
+        if v_kind in (
+            'attendance-cancellation',
+            'refund-request-approval'
+        ) then
             update event_attendee
             set
                 attendance_canceled_at = current_timestamp,
-                attendance_canceled_by_user_id = p_actor_user_id,
+                attendance_canceled_by_user_id = case
+                    when v_kind = 'attendance-cancellation'
+                        then coalesce(v_initiated_by_user_id, p_actor_user_id)
+                    else p_actor_user_id
+                end,
                 checked_in = false,
                 checked_in_at = null,
                 status = 'attendance-canceled'
             where event_id = v_event_id
             and user_id = v_user_id
-            and status in ('confirmed', 'registration-questions-pending');
+            and status in ('confirmed', 'registration-questions-pending')
+            and not exists (
+                select 1
+                from event_purchase replacement
+                where replacement.event_id = v_event_id
+                and replacement.event_purchase_id <> v_purchase_id
+                and replacement.status in ('completed', 'refund-requested')
+                and replacement.user_id = v_user_id
+            );
 
         end if;
 
-        if v_kind in ('event-cancellation', 'refund-request-approval')
+        if v_kind in (
+            'attendance-cancellation',
+            'event-cancellation',
+            'refund-request-approval'
+        )
            and v_event_discount_code_id is not null then
             perform release_event_discount_code_availability(v_event_discount_code_id);
         end if;

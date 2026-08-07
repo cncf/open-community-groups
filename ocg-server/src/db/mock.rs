@@ -454,7 +454,7 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
-        ) -> Result<crate::types::event::EventLeaveOutcome>;
+        ) -> Result<crate::db::dashboard::group::EventAttendeeCancellationOutcome>;
         async fn cancel_event_series_events(
             &self,
             actor_user_id: Uuid,

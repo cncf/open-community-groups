@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(31);
+select plan(35);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,11 +19,18 @@ select plan(31);
 \set activeRecoveryRefundID '79530000-0000-0000-0000-000000000039'
 \set activeRecoveryTicketTypeID '79530000-0000-0000-0000-000000000040'
 \set activeRecoveryUserID '79530000-0000-0000-0000-000000000041'
+\set attendanceCancellationDiscountCodeID '79530000-0000-0000-0000-000000000047'
+\set attendanceCancellationInitiatorID '79530000-0000-0000-0000-000000000046'
+\set attendanceCancellationPurchaseID '79530000-0000-0000-0000-000000000042'
+\set attendanceCancellationRefundID '79530000-0000-0000-0000-000000000043'
+\set attendanceCancellationRefundRequestID '79530000-0000-0000-0000-000000000044'
+\set attendanceCancellationUserID '79530000-0000-0000-0000-000000000045'
 \set automaticPurchaseID '79530000-0000-0000-0000-000000000013'
 \set automaticRefundID '79530000-0000-0000-0000-000000000014'
 \set automaticUserID '79530000-0000-0000-0000-000000000015'
 \set communityID '79530000-0000-0000-0000-000000000002'
 \set discountCodeID '79530000-0000-0000-0000-000000000026'
+\set eventCancellationDiscountCodeID '79530000-0000-0000-0000-000000000048'
 \set eventCancellationPurchaseID '79530000-0000-0000-0000-000000000027'
 \set eventCancellationRefundID '79530000-0000-0000-0000-000000000028'
 \set eventCancellationRefundRequestID '79530000-0000-0000-0000-000000000033'
@@ -47,6 +54,14 @@ select plan(31);
 \set priceWindowID '79530000-0000-0000-0000-000000000009'
 \set purchaseID '79530000-0000-0000-0000-000000000010'
 \set refundID '79530000-0000-0000-0000-000000000011'
+\set replacementRecoveryEventID '79530000-0000-0000-0000-000000000049'
+\set replacementRecoveryOriginalPurchaseID '79530000-0000-0000-0000-000000000050'
+\set replacementRecoveryPriceWindowID '79530000-0000-0000-0000-000000000056'
+\set replacementRecoveryRefundID '79530000-0000-0000-0000-000000000051'
+\set replacementRecoveryRefundRequestID '79530000-0000-0000-0000-000000000052'
+\set replacementRecoveryReplacementPurchaseID '79530000-0000-0000-0000-000000000053'
+\set replacementRecoveryTicketTypeID '79530000-0000-0000-0000-000000000054'
+\set replacementRecoveryUserID '79530000-0000-0000-0000-000000000055'
 \set siteID '79530000-0000-0000-0000-000000000034'
 \set unpinnedPurchaseID '79530000-0000-0000-0000-000000000023'
 \set unpinnedRefundID '79530000-0000-0000-0000-000000000024'
@@ -118,6 +133,20 @@ values
         'active-recovery-buyer'
     ),
     (
+        :'attendanceCancellationInitiatorID',
+        'hash-attendance-cancellation-initiator',
+        'attendance-cancellation-initiator@example.com',
+        true,
+        'attendance-cancellation-initiator'
+    ),
+    (
+        :'attendanceCancellationUserID',
+        'hash-attendance-cancellation',
+        'attendance-cancellation-recovery@example.com',
+        true,
+        'attendance-cancellation-recovery'
+    ),
+    (
         :'automaticUserID',
         'hash-3',
         'automatic-recovery-buyer@example.com',
@@ -151,6 +180,13 @@ values
         'organizer-recovery-buyer@example.com',
         true,
         'organizer-recovery-buyer'
+    ),
+    (
+        :'replacementRecoveryUserID',
+        'hash-replacement-recovery',
+        'replacement-recovery@example.com',
+        true,
+        'replacement-recovery'
     ),
     (
         :'unpinnedUserID',
@@ -247,6 +283,37 @@ insert into event (
     'UTC'
 );
 
+-- Canceled event used to preserve attendance backed by a replacement purchase
+insert into event (
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    true,
+    'Replacement purchase recovery test event',
+    :'eventCategoryID',
+    :'replacementRecoveryEventID',
+    'in-person',
+    :'groupID',
+    'Replacement Purchase Recovery Event',
+    'USD',
+    true,
+    current_timestamp,
+    'replacement-purchase-recovery-event',
+    current_timestamp + interval '1 day',
+    'UTC'
+);
+
 -- Ticket type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -277,6 +344,21 @@ insert into event_ticket_type (
     'Recovery admission'
 );
 
+-- Ticket type shared by the original and replacement purchases
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'replacementRecoveryEventID',
+    :'replacementRecoveryTicketTypeID',
+    1,
+    10,
+    'Replacement recovery admission'
+);
+
 -- Price window
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -297,6 +379,17 @@ insert into event_ticket_price_window (
     2500,
     :'activeRecoveryPriceWindowID',
     :'activeRecoveryTicketTypeID'
+);
+
+-- Current paid price for replacement-purchase recovery
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    :'replacementRecoveryPriceWindowID',
+    :'replacementRecoveryTicketTypeID'
 );
 
 -- App-composed notification payload handed to atomic recovery completion
@@ -334,6 +427,48 @@ insert into event_discount_code (
     'Save 5'
 );
 
+-- Discount reservation released when attendance cancellation recovery completes
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    available,
+    available_override_active,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'attendanceCancellationDiscountCodeID',
+    500,
+    0,
+    true,
+    'ATTEND5',
+    :'eventID',
+    'fixed_amount',
+    'Attendance cancellation discount'
+);
+
+-- Discount reservation released when event cancellation recovery completes
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    available,
+    available_override_active,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'eventCancellationDiscountCodeID',
+    500,
+    0,
+    true,
+    'EVENT5',
+    :'eventID',
+    'fixed_amount',
+    'Event cancellation discount'
+);
+
 -- Purchase awaiting recovery
 insert into event_purchase (
     event_purchase_id,
@@ -364,12 +499,26 @@ insert into event_purchase (
 
     current_timestamp
 ), (
+    :'attendanceCancellationPurchaseID',
+    2000,
+    'USD',
+    500,
+    'ATTEND5',
+    :'attendanceCancellationDiscountCodeID',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-requested',
+    'General admission',
+    :'attendanceCancellationUserID',
+
+    null
+), (
     :'eventCancellationPurchaseID',
     2000,
     'USD',
     500,
-    'SAVE5',
-    :'discountCodeID',
+    'EVENT5',
+    :'eventCancellationDiscountCodeID',
     :'eventID',
     :'eventTicketTypeID',
     'refund-pending',
@@ -434,6 +583,34 @@ insert into event_purchase (
 
     null
 ), (
+    :'replacementRecoveryOriginalPurchaseID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'replacementRecoveryEventID',
+    :'replacementRecoveryTicketTypeID',
+    'refund-pending',
+    'Replacement recovery admission',
+    :'replacementRecoveryUserID',
+
+    null
+), (
+    :'replacementRecoveryReplacementPurchaseID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'replacementRecoveryEventID',
+    :'replacementRecoveryTicketTypeID',
+    'completed',
+    'Replacement recovery admission',
+    :'replacementRecoveryUserID',
+
+    null
+), (
     :'unpinnedPurchaseID',
     2500,
     'USD',
@@ -492,14 +669,24 @@ insert into event_refund_request (
     requested_by_user_id,
     status
 ) values (
-    :'organizerRefundRequestID',
-    :'organizerPurchaseID',
-    :'organizerUserID',
+    :'attendanceCancellationRefundRequestID',
+    :'attendanceCancellationPurchaseID',
+    :'actorUserID',
     'approving'
 ), (
     :'eventCancellationRefundRequestID',
     :'eventCancellationPurchaseID',
     :'eventCancellationUserID',
+    'approving'
+), (
+    :'organizerRefundRequestID',
+    :'organizerPurchaseID',
+    :'organizerUserID',
+    'approving'
+), (
+    :'replacementRecoveryRefundRequestID',
+    :'replacementRecoveryOriginalPurchaseID',
+    :'actorUserID',
     'approving'
 );
 
@@ -507,7 +694,21 @@ insert into event_refund_request (
 insert into event_attendee (event_id, user_id)
 values
     (:'eventID', :'automaticUserID'),
-    (:'eventID', :'organizerUserID');
+    (:'eventID', :'organizerUserID'),
+    (:'replacementRecoveryEventID', :'replacementRecoveryUserID');
+
+-- Checked-in attendance retained until attendance cancellation recovery completes
+insert into event_attendee (
+    checked_in,
+    checked_in_at,
+    event_id,
+    user_id
+) values (
+    true,
+    current_timestamp,
+    :'eventID',
+    :'attendanceCancellationUserID'
+);
 
 -- Attendance already canceled when event-cancellation recovery begins
 insert into event_attendee (
@@ -646,6 +847,56 @@ insert into event_purchase_refund (
     null,
     null
 );
+
+-- Terminal attendance cancellation refunds awaiting operator recovery
+insert into event_purchase_refund (
+    event_purchase_refund_id,
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status,
+    terminal_failure,
+
+    event_refund_request_id,
+    failure_message,
+    initiated_by_user_id,
+    provider_refund_id
+) values
+    (
+        :'attendanceCancellationRefundID',
+        2000,
+        'USD',
+        :'attendanceCancellationPurchaseID',
+        'event-purchase-refund-attendance-cancellation-recovery',
+        'attendance-cancellation',
+        'stripe',
+        'provider-failed',
+        true,
+
+        :'attendanceCancellationRefundRequestID',
+        'provider refund failed: re_attendance_cancellation_failed',
+        :'attendanceCancellationInitiatorID',
+        're_attendance_cancellation_failed'
+    ),
+    (
+        :'replacementRecoveryRefundID',
+        2500,
+        'USD',
+        :'replacementRecoveryOriginalPurchaseID',
+        'event-purchase-refund-replacement-recovery',
+        'attendance-cancellation',
+        'stripe',
+        'provider-failed',
+        true,
+
+        :'replacementRecoveryRefundRequestID',
+        'provider refund failed: re_replacement_recovery_failed',
+        :'actorUserID',
+        're_replacement_recovery_failed'
+    );
 
 -- Terminal provider failure awaiting operator recovery on the active event
 insert into event_purchase_refund (
@@ -1116,6 +1367,154 @@ select results_eq(
     'Should finalize the automatic refund while preserving its provider failure and attendee'
 );
 
+-- Should complete attendance-cancellation recovery
+select results_eq(
+    format($$select complete_event_purchase_refund_recovery(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        'bank-transfer-attendance-cancellation',
+        'Verified attendance cancellation refund',
+        (select notification_template_data from refund_recovery_test_data)
+    )$$, :'actorUserID', :'groupID', :'attendanceCancellationRefundID'),
+    format($$ values (jsonb_build_object(
+        'event_id', %L::uuid,
+        'recovered_now', true,
+        'user_id', %L::uuid
+    )) $$, :'eventID', :'attendanceCancellationUserID'),
+    'Should complete attendance-cancellation recovery'
+);
+
+-- Should finalize attendance, purchase, request, recovery, and notification state
+select results_eq(
+    format($$
+        select
+            ea.attendance_canceled_at is not null,
+            ea.attendance_canceled_by_user_id,
+            ea.checked_in,
+            ea.checked_in_at,
+            ea.status,
+            ep.refunded_at is not null,
+            ep.status,
+            epr.finalized_at is not null,
+            epr.recovery_completed_at is not null,
+            epr.recovery_completed_by_user_id,
+            epr.status,
+            err.review_note,
+            err.reviewed_by_user_id,
+            err.status,
+            (
+                select available
+                from event_discount_code
+                where event_discount_code_id = %L::uuid
+            ),
+            (
+                select count(*)
+                from notification n
+                where n.kind = 'event-refund-approved'
+                and n.user_id = %L::uuid
+            )
+        from event_purchase_refund epr
+        join event_purchase ep using (event_purchase_id)
+        join event_attendee ea
+            on ea.event_id = ep.event_id
+            and ea.user_id = ep.user_id
+        join event_refund_request err using (event_purchase_id)
+        where epr.event_purchase_refund_id = %L::uuid
+    $$,
+        :'attendanceCancellationDiscountCodeID',
+        :'attendanceCancellationUserID',
+        :'attendanceCancellationRefundID'
+    ),
+    format($$ values (
+        true,
+        %L::uuid,
+        false,
+        null::timestamptz,
+        'attendance-canceled'::text,
+        true,
+        'refunded'::text,
+        true,
+        true,
+        %L::uuid,
+        'provider-failed'::text,
+        null::text,
+        %L::uuid,
+        'approved'::text,
+        1,
+        1::bigint
+    ) $$,
+        :'attendanceCancellationInitiatorID',
+        :'actorUserID',
+        :'actorUserID'
+    ),
+    'Should finalize attendance, purchase, request, recovery, and notification state'
+);
+
+-- Should complete recovery without canceling replacement-backed attendance
+select results_eq(
+    format($$select complete_event_purchase_refund_recovery(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        'bank-transfer-replacement-recovery',
+        'Verified refund with replacement purchase',
+        (select notification_template_data from refund_recovery_test_data)
+    )$$, :'actorUserID', :'groupID', :'replacementRecoveryRefundID'),
+    format($$ values (jsonb_build_object(
+        'event_id', %L::uuid,
+        'recovered_now', true,
+        'user_id', %L::uuid
+    )) $$, :'replacementRecoveryEventID', :'replacementRecoveryUserID'),
+    'Should complete recovery without canceling replacement-backed attendance'
+);
+
+-- Should preserve attendance and the active replacement purchase
+select results_eq(
+    format($$
+        select
+            ea.attendance_canceled_at is null,
+            ea.attendance_canceled_by_user_id,
+            ea.status,
+            original.refunded_at is not null,
+            original.status,
+            replacement.status,
+            epr.finalized_at is not null,
+            epr.recovery_completed_at is not null,
+            err.status
+        from event_attendee ea
+        join event_purchase original
+            on original.event_id = ea.event_id
+            and original.user_id = ea.user_id
+        join event_purchase_refund epr
+            on epr.event_purchase_id = original.event_purchase_id
+        join event_refund_request err
+            on err.event_purchase_id = original.event_purchase_id
+        join event_purchase replacement
+            on replacement.event_purchase_id = %L::uuid
+        where ea.event_id = %L::uuid
+        and ea.user_id = %L::uuid
+        and original.event_purchase_id = %L::uuid
+    $$,
+        :'replacementRecoveryReplacementPurchaseID',
+        :'replacementRecoveryEventID',
+        :'replacementRecoveryUserID',
+        :'replacementRecoveryOriginalPurchaseID'
+    ),
+    $$ values (
+        true,
+        null::uuid,
+        'confirmed'::text,
+        true,
+        'refunded'::text,
+        'completed'::text,
+        true,
+        true,
+        'approved'::text
+    ) $$,
+    'Should preserve attendance and the active replacement purchase'
+);
+
 -- Should complete a terminal organizer refund converted by event cancellation
 select results_eq(
     format($$select complete_event_purchase_refund_recovery(
@@ -1224,7 +1623,7 @@ select results_eq(
         join event_refund_request err
             on err.event_refund_request_id = epr.event_refund_request_id
         where epr.event_purchase_refund_id = %L::uuid
-    $$, :'discountCodeID', :'eventCancellationRefundID'),
+    $$, :'eventCancellationDiscountCodeID', :'eventCancellationRefundID'),
     format($$ values (
         %L::uuid,
         'attendance-canceled'::text,
@@ -1237,7 +1636,7 @@ select results_eq(
         true,
         %L::uuid,
         'approved'::text,
-        2
+        1
     ) $$, :'actorUserID', :'actorUserID', :'actorUserID'),
     'Should finalize event cancellation request, purchase, discount, and recovery state'
 );

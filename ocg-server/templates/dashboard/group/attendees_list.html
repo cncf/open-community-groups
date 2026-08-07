@@ -838,20 +838,35 @@
                         {% if can_manage_events && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                           <li>
                             <button id="cancel-attendance-{{ attendee.user.user_id }}"
-                                    {% if !self::is_paid_attendee(attendee.amount_minor) && !event.canceled && !event.is_past() -%}
-                                      hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel this attendance?" data-confirm-text="Yes" data-success-message="Attendance canceled." data-error-message="Something went wrong canceling this attendance. Please try again later."
-                                    {% else if self::is_paid_attendee(attendee.amount_minor) -%}
-                                      disabled title="Paid attendee attendance cannot be canceled from attendee actions."
+                                    {% if !event.canceled && !event.is_past() && attendee.refund_progress.is_none() && attendee.refund_request_status != Some(crate::types::payments::EventRefundRequestStatus::Approved) -%}
+                                      hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action
+                                      {% if self::is_paid_attendee(attendee.amount_minor) -%}
+                                        data-confirm-message="Queue a full refund for this attendee? Their attendance will remain active until the refund is confirmed." data-confirm-text="Queue refund" data-success-message="Refund queued. Attendance will be canceled after confirmation." data-error-message="Something went wrong queueing this refund. Please try again later."
+                                      {% else -%}
+                                        data-confirm-message="Are you sure you want to cancel this attendance?" data-confirm-text="Yes" data-success-message="Attendance canceled." data-error-message="Something went wrong canceling this attendance. Please try again later."
+                                      {% endif -%}
                                     {% else if event.canceled -%}
-                                      disabled title="Canceled event attendance cannot be canceled."
+                                    disabled
+                                    title="Canceled event attendance cannot be canceled."
+                                    {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approved) -%}
+                                    disabled
+                                    title="This attendee's refund has already been approved."
+                                    {% else if !attendee.refund_progress.is_none() -%}
+                                    disabled
+                                    title="A refund is already in progress for this attendee."
                                     {% else -%}
-                                      disabled title="Past event attendance cannot be canceled."
+                                    disabled
+                                    title="Past event attendance cannot be canceled."
                                     {% endif -%}
                                     role="menuitem"
                                     class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
                                     type="button">
                               <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
-                              <span>Cancel attendance</span>
+                              {% if self::is_paid_attendee(attendee.amount_minor) -%}
+                                <span>Cancel attendance and refund</span>
+                              {% else -%}
+                                <span>Cancel attendance</span>
+                              {% endif -%}
                             </button>
                           </li>
                         {% endif -%}

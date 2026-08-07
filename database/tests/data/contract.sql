@@ -276,6 +276,14 @@ insert into "user" (
         'contract-buyer-refund-recovery'
     ),
     (
+        'contract_hash_paid_cancellation',
+        'paid-cancellation.contract@example.com',
+        true,
+        'Contract Paid Cancellation',
+        '00000000-0000-0000-0000-00000000c117',
+        'contract-paid-cancellation'
+    ),
+    (
         'contract_hash_cancellation_lock_attendee',
         'cancellation-lock-attendee.contract@example.com',
         true,
@@ -1177,7 +1185,8 @@ insert into event_attendee (
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e6'),
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e7'),
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c114'),
-    ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0ea');
+    ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0ea'),
+    ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c117');
 
 insert into event_purchase (
     amount_minor,
@@ -1306,6 +1315,22 @@ insert into event_purchase (
         'stripe',
         'cs_contract_refund_rejected',
         'pi_contract_refund_rejected'
+    ),
+    (
+        2500,
+        'USD',
+        '00000000-0000-0000-0000-00000000c0d0',
+        '00000000-0000-0000-0000-00000000c118',
+        '00000000-0000-0000-0000-00000000c0d1',
+        0,
+        'completed',
+        'Contract Paid Ticket',
+        '00000000-0000-0000-0000-00000000c117',
+        '2024-02-01 10:00:00+00',
+        null,
+        'stripe',
+        'cs_contract_paid_cancellation',
+        'pi_contract_paid_cancellation'
     ),
     (
         2500,
