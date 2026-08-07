@@ -7,7 +7,8 @@ create or replace function prepare_event_checkout_purchase(
     p_discount_code text,
     p_configured_provider text,
     p_registration_answers jsonb default null,
-    p_admission_offer_id uuid default null
+    p_admission_offer_id uuid default null,
+    p_platform_fee_bps int default 0
 )
 returns jsonb as $$
 declare
@@ -35,11 +36,17 @@ declare
     v_group_slug_pretty text;
     v_hold_expires_at timestamptz := current_timestamp + interval '15 minutes';
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
+    v_platform_fee_amount_minor bigint;
     v_purchase_id uuid;
     v_recipient jsonb;
     v_registration_questions jsonb;
     v_ticket_title text;
 begin
+    -- Reject platform fee configuration outside the valid basis-point range
+    if p_platform_fee_bps is null or p_platform_fee_bps < 0 or p_platform_fee_bps > 10000 then
+        raise exception 'platform fee basis points must be between 0 and 10000';
+    end if;
+
     -- Lock the event first to keep a consistent event -> purchase -> attendee
     -- lock order with attend_event, then validate its current state
     v_currency_code := prepare_event_checkout_validate_event(
@@ -327,6 +334,9 @@ begin
         perform prepare_event_checkout_reserve_discount_code_availability(v_event_discount_code_id);
     end if;
 
+    -- Snapshot the platform fee deducted from the group's proceeds, rounding down
+    v_platform_fee_amount_minor := (v_final_amount_minor * p_platform_fee_bps) / 10000;
+
     -- Insert the new pending purchase and return the attendee-facing summary
     insert into event_purchase (
         admission_offer_id,
@@ -338,6 +348,7 @@ begin
         event_id,
         event_ticket_type_id,
         hold_expires_at,
+        platform_fee_amount_minor,
         status,
         ticket_title,
         user_id
@@ -351,6 +362,7 @@ begin
         p_event_id,
         p_event_ticket_type_id,
         v_hold_expires_at,
+        v_platform_fee_amount_minor,
         'pending',
         v_ticket_title,
         p_user_id

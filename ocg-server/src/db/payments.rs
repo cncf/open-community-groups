@@ -399,7 +399,8 @@ where
                     $5::text,
                     $6::text,
                     $7::jsonb,
-                    $8::uuid
+                    $8::uuid,
+                    $9::int
                 )
                 ",
                 &[
@@ -411,6 +412,7 @@ where
                     &input.payment_provider.map(|provider| provider.to_string()),
                     &input.registration_answers.as_ref().map(Json),
                     &input.admission_offer_id,
+                    &input.platform_fee_bps,
                 ],
             )
             .await?;
@@ -687,6 +689,8 @@ pub(crate) struct ClaimedEventPurchaseRefund {
     pub community_id: Uuid,
     /// Event identifier.
     pub event_id: Uuid,
+    /// Platform fee snapshotted on the purchase, in minor units.
+    pub platform_fee_amount_minor: i64,
     /// Durable provider refund state.
     #[serde(flatten)]
     pub refund: EventPurchaseRefund,
@@ -847,6 +851,8 @@ pub(crate) struct PrepareEventCheckoutPurchaseInput {
     pub event_id: Uuid,
     /// Ticket type identifier.
     pub event_ticket_type_id: Uuid,
+    /// Platform fee in basis points snapshotted on new purchases.
+    pub platform_fee_bps: i32,
     /// User identifier.
     pub user_id: Uuid,
 

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(107);
+select plan(110);
 
 -- ============================================================================
 -- VARIABLES
@@ -309,6 +309,19 @@ select results_eq(
         ('refunded')
     $$,
     'Event purchase statuses should match expected values'
+);
+
+-- Test: event purchase platform fee should stay within the purchase amount
+select col_not_null('event_purchase', 'platform_fee_amount_minor');
+select col_default_is('event_purchase', 'platform_fee_amount_minor', '0');
+select ok(
+    (
+        select pg_get_constraintdef(oid) like '%platform_fee_amount_minor >= 0%'
+            and pg_get_constraintdef(oid) like '%platform_fee_amount_minor <= amount_minor%'
+        from pg_constraint
+        where conname = 'event_purchase_platform_fee_amount_minor_chk'
+    ),
+    'Event purchase platform fee should stay within the purchase amount'
 );
 
 -- Test: event purchase refund kinds should match expected values

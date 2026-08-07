@@ -957,6 +957,9 @@ async fn create_checkout_hold(
         &PrepareEventCheckoutPurchaseInput {
             event_id,
             event_ticket_type_id,
+            platform_fee_bps: payments_cfg
+                .map(PaymentsConfig::platform_fee_bps)
+                .map_or(0, i32::from),
             user_id,
 
             admission_offer_id: input.admission_offer_id,

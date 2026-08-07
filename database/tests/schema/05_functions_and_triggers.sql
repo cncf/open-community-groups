@@ -318,7 +318,7 @@ select has_function(
 select has_function('prepare_event_checkout_get_purchase_summary', array['uuid']::name[]);
 select has_function(
     'prepare_event_checkout_purchase',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'text', 'text', 'jsonb', 'uuid']::name[]
+    array['uuid', 'uuid', 'uuid', 'uuid', 'text', 'text', 'jsonb', 'uuid', 'integer']::name[]
 );
 select has_function('prepare_event_checkout_reserve_discount_code_availability', array['uuid']::name[]);
 select has_function(
