@@ -3195,15 +3195,19 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
     let payload = event.to_db_payload()?;
 
     // Update the event through the Rust contract
-    db.update_event(
-        organizer_id(),
-        group_id(),
-        mutation_event_id(),
-        &payload,
-        &HashMap::new(),
-        Some(PaymentProvider::Stripe),
-    )
-    .await?;
+    let became_paid = db
+        .update_event(
+            organizer_id(),
+            group_id(),
+            mutation_event_id(),
+            &payload,
+            &HashMap::new(),
+            Some(PaymentProvider::Stripe),
+        )
+        .await?;
+
+    // Check the free event remained free
+    assert!(!became_paid);
 
     Ok(())
 }

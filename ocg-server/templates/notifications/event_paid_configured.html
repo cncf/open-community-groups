@@ -1,0 +1,43 @@
+{% extends "notifications/base.html" -%}
+
+{# Paid Event Configured Notification -#}
+{% block subject -%}
+  {% if event_count == 1 -%}
+    Paid event configured for {{ group_name }}
+  {% else -%}
+    Paid events configured for {{ group_name }}
+  {% endif -%}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {% if event_count == 1 -%}
+    {{ event_count }} paid event has been configured for {{ group_name }}.
+  {% else -%}
+    {{ event_count }} paid events have been configured for {{ group_name }}.
+  {% endif -%}
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    {% if event_count == 1 -%}
+      A paid event has been configured for <strong>{{ group_name }}</strong>.
+    {% else -%}
+      Paid events have been configured for <strong>{{ group_name }}</strong>.
+    {% endif -%}
+  </p>
+
+  {% for event in events -%}
+    <p class="default mb-15" style="margin-bottom: 15px">
+      <strong>{{ event.name }}</strong>
+      {% if let Some(starts_at) = &event.starts_at -%}
+        <br />
+        {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %Y · %I:%M %p %Z") }}
+      {% endif -%}
+    </p>
+  {% endfor -%}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you're an admin of the {{ community_display_name }} community.
+{% endblock footer -%}
+{# End paid event configured notification -#}

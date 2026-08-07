@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(362);
+select plan(364);
 
 -- ============================================================================
 -- VARIABLES
@@ -251,6 +251,7 @@ select has_function('list_badge_artwork', array['uuid']::name[]);
 select has_function('list_badges', array['uuid', 'jsonb']::name[]);
 select has_function('list_cfs_submission_statuses_for_review', '{}'::name[]);
 select has_function('list_communities', '{}'::name[]);
+select has_function('list_community_admin_ids', array['uuid']::name[]);
 select has_function('list_community_audit_logs', array['uuid', 'jsonb']::name[]);
 select has_function('list_community_roles', '{}'::name[]);
 select has_function('list_community_team_members', array['uuid', 'jsonb']::name[]);
@@ -419,6 +420,11 @@ select has_function('update_community_views', array['jsonb']::name[]);
 select has_function(
     'update_event',
     array['uuid', 'uuid', 'uuid', 'jsonb', 'jsonb', 'text']::name[]
+);
+select function_returns(
+    'update_event',
+    array['uuid', 'uuid', 'uuid', 'jsonb', 'jsonb', 'text']::name[],
+    'boolean'
 );
 select has_function('update_event_category', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_event_views', array['jsonb']::name[]);

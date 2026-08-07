@@ -267,6 +267,9 @@ pub(crate) trait DBDashboardGroup {
     /// Lists reviewer-available CFS submission statuses.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
 
+    /// Lists accepted, email-verified community admin user ids.
+    async fn list_community_admin_ids(&self, community_id: Uuid) -> Result<Vec<Uuid>>;
+
     /// Lists approved CFS submissions for an event.
     async fn list_event_approved_cfs_submissions(
         &self,
@@ -499,7 +502,7 @@ pub(crate) trait DBDashboardGroup {
         submission: &CfsSubmissionUpdate,
     ) -> Result<bool>;
 
-    /// Updates an existing event.
+    /// Updates an existing event and returns whether it became paid-capable.
     async fn update_event(
         &self,
         actor_user_id: Uuid,
@@ -508,7 +511,7 @@ pub(crate) trait DBDashboardGroup {
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
         payment_provider: Option<PaymentProvider>,
-    ) -> Result<()>;
+    ) -> Result<bool>;
 
     /// Updates an existing sponsor.
     async fn update_group_sponsor(
@@ -1062,6 +1065,16 @@ where
             .await
     }
 
+    /// [`DBDashboardGroup::list_community_admin_ids`].
+    #[instrument(skip(self), err)]
+    async fn list_community_admin_ids(&self, community_id: Uuid) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select list_community_admin_ids($1::uuid)",
+            &[&community_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::list_event_approved_cfs_submissions`]
     #[instrument(skip(self), err)]
     async fn list_event_approved_cfs_submissions(
@@ -1601,9 +1614,9 @@ where
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
         payment_provider: Option<PaymentProvider>,
-    ) -> Result<()> {
-        self.execute(
-            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::jsonb, $6::text)",
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::jsonb, $6::text)::boolean",
             &[
                 &actor_user_id,
                 &group_id,

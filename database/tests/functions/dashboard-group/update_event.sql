@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(29);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,15 @@ select plan(23);
 \set event11ID '3a390000-0000-0000-0000-000000000007'
 \set event12ID '3a390000-0000-0000-0000-000000000008'
 \set event18ID '3a390000-0000-0000-0000-000000000009'
+\set eventFreeToPaidID '3a390000-0000-0000-0000-000000000023'
+\set eventFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000026'
+\set eventFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000027'
+\set eventPaidToFreeID '3a390000-0000-0000-0000-000000000024'
+\set eventPaidToFreePriceWindowID '3a390000-0000-0000-0000-000000000028'
+\set eventPaidToFreeTicketTypeID '3a390000-0000-0000-0000-000000000029'
+\set eventPaidToPaidID '3a390000-0000-0000-0000-000000000025'
+\set eventPaidToPaidPriceWindowID '3a390000-0000-0000-0000-000000000030'
+\set eventPaidToPaidTicketTypeID '3a390000-0000-0000-0000-000000000031'
 \set eventWaitlistWindowID '3a390000-0000-0000-0000-000000000021'
 \set group1ID '3a390000-0000-0000-0000-000000000010'
 \set label1ID '3a390000-0000-0000-0000-000000000011'
@@ -79,14 +88,55 @@ insert into "group" (
     name,
     slug,
     description,
-    group_category_id
+    group_category_id,
+    payment_recipient
 ) values (
     :'group1ID',
     :'community1ID',
     'Test Group',
     'abc1234',
     'A test group',
-    '3a390000-0000-0000-0000-000000000006'
+    '3a390000-0000-0000-0000-000000000006',
+    '{"provider": "stripe", "recipient_id": "acct_update_event"}'::jsonb
+);
+
+-- Events used for paid-capability transition results
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone
+) values (
+    :'eventFreeToPaidID',
+    'Free event used for paid transition checks',
+    :'category1ID',
+    'virtual',
+    :'group1ID',
+    'Free To Paid',
+    'free-to-paid',
+    'UTC'
+), (
+    :'eventPaidToFreeID',
+    'Paid event used for free transition checks',
+    :'category1ID',
+    'virtual',
+    :'group1ID',
+    'Paid To Free',
+    'paid-to-free',
+    'UTC'
+), (
+    :'eventPaidToPaidID',
+    'Paid event used for paid edit checks',
+    :'category1ID',
+    'virtual',
+    :'group1ID',
+    'Paid To Paid',
+    'paid-to-paid',
+    'UTC'
 );
 
 -- Group Sponsors
@@ -330,16 +380,38 @@ values (:'eventWaitlistWindowID', :'user2ID');
 
 -- Every update fixture uses the unified ticket inventory
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-select gen_random_uuid(), e.event_id, 1, coalesce(e.capacity, 100), 'General Admission'
+select
+    case e.event_id
+        when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidTicketTypeID'::uuid
+        when :'eventPaidToFreeID'::uuid then :'eventPaidToFreeTicketTypeID'::uuid
+        when :'eventPaidToPaidID'::uuid then :'eventPaidToPaidTicketTypeID'::uuid
+        else gen_random_uuid()
+    end,
+    e.event_id,
+    1,
+    coalesce(e.capacity, 100),
+    'General Admission'
 from event e
 where e.group_id = :'group1ID';
 
+-- Price windows defining free and paid update scenarios
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
     event_ticket_type_id
 )
-select gen_random_uuid(), 0, ett.event_ticket_type_id
+select
+    case e.event_id
+        when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidPriceWindowID'::uuid
+        when :'eventPaidToFreeID'::uuid then :'eventPaidToFreePriceWindowID'::uuid
+        when :'eventPaidToPaidID'::uuid then :'eventPaidToPaidPriceWindowID'::uuid
+        else gen_random_uuid()
+    end,
+    case
+        when e.event_id in (:'eventPaidToFreeID'::uuid, :'eventPaidToPaidID'::uuid) then 1200
+        else 0
+    end,
+    ett.event_ticket_type_id
 from event_ticket_type ett
 join event e using (event_id)
 where e.group_id = :'group1ID';
@@ -362,9 +434,9 @@ select
 -- TESTS
 -- ============================================================================
 
--- Should update basic fields and clear hosts/sponsors/sessions when not provided
-select lives_ok(
-    $$select update_event(
+-- Should report no paid transition for a free-to-free update
+select is(
+    (select update_event(
         null::uuid,
         '3a390000-0000-0000-0000-000000000010'::uuid,
         '3a390000-0000-0000-0000-000000000004'::uuid,
@@ -380,9 +452,12 @@ select lives_ok(
             "meeting_provider_id": "zoom",
             "meeting_requested": true
         }'::jsonb
-    )$$,
-    'Should execute basic update and clear omitted hosts, sponsors, and sessions'
+    )),
+    false,
+    'Should report no paid transition for a free-to-free update'
 );
+
+-- Should persist basic update and clear omitted hosts, sponsors, and sessions
 select is(
     (select (
         get_event_full(
@@ -457,6 +532,137 @@ select results_eq(
         )
     $$,
     'Should create the expected audit row'
+);
+
+-- Should report a free-to-paid transition for an invitation-only tier
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventFreeToPaidID'::uuid,
+        '{
+            "name": "Free To Paid",
+            "description": "Free event used for paid transition checks",
+            "timezone": "UTC",
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "payment_currency_code": "USD",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "availability": "invitation_only",
+                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000027",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 1500,
+                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000026"
+                        }
+                    ],
+                    "seats_total": 100,
+                    "title": "Private Admission"
+                }
+            ]
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    ),
+    true,
+    'Should report a free-to-paid transition for an invitation-only tier'
+);
+
+-- Should persist paid capability after a free-to-paid update
+select is(
+    is_event_paid_capable(:'eventFreeToPaidID'::uuid),
+    true,
+    'Should persist paid capability after a free-to-paid update'
+);
+
+-- Should report no paid transition for a paid-to-free update
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventPaidToFreeID'::uuid,
+        '{
+            "name": "Paid To Free",
+            "description": "Paid event used for free transition checks",
+            "timezone": "UTC",
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "availability": "public",
+                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000029",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 0,
+                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000028"
+                        }
+                    ],
+                    "seats_total": 100,
+                    "title": "General Admission"
+                }
+            ]
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    ),
+    false,
+    'Should report no paid transition for a paid-to-free update'
+);
+
+-- Should persist free capability after a paid-to-free update
+select is(
+    is_event_paid_capable(:'eventPaidToFreeID'::uuid),
+    false,
+    'Should persist free capability after a paid-to-free update'
+);
+
+-- Should report no paid transition for a paid-to-paid update
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventPaidToPaidID'::uuid,
+        '{
+            "name": "Paid To Paid",
+            "description": "Paid event used for paid edit checks",
+            "timezone": "UTC",
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "payment_currency_code": "USD",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "availability": "public",
+                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000031",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 1800,
+                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000030"
+                        }
+                    ],
+                    "seats_total": 100,
+                    "title": "General Admission"
+                }
+            ]
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    ),
+    false,
+    'Should report no paid transition for a paid-to-paid update'
+);
+
+-- Should persist paid capability after a paid-to-paid update
+select is(
+    is_event_paid_capable(:'eventPaidToPaidID'::uuid),
+    true,
+    'Should persist paid capability after a paid-to-paid update'
 );
 
 -- Should initialize meeting flags for requested event without sessions

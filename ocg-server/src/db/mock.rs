@@ -546,6 +546,10 @@ mock! {
         async fn list_cfs_submission_statuses_for_review(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
+        async fn list_community_admin_ids(
+            &self,
+            community_id: Uuid,
+        ) -> Result<Vec<Uuid>>;
         async fn list_event_attendees_ids(
             &self,
             group_id: Uuid,
@@ -728,7 +732,7 @@ mock! {
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
-        ) -> Result<()>;
+        ) -> Result<bool>;
         async fn update_group_sponsor(
             &self,
             actor_user_id: Uuid,
