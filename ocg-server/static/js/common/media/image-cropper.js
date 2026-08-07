@@ -1,5 +1,5 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
-import { confirmAction } from "/static/js/common/alerts.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
@@ -165,23 +165,15 @@ export class ImageCropper extends LitWrapper {
       const requiresUpscaling =
         sourceSize.width < requiredSize.width || sourceSize.height < requiredSize.height;
       if (requiresUpscaling) {
-        const shouldContinue = await confirmAction({
-          message:
-            `This image is ${sourceSize.width} × ${sourceSize.height} px, smaller than the ` +
-            `required ${requiredSize.width} × ${requiredSize.height} px. Enlarging it may reduce ` +
-            "image quality. Do you want to continue?",
-          confirmText: "Continue",
-          cancelText: "Cancel",
-        });
-        if (!this.isConnected || editToken !== this._editToken) {
-          return null;
+        if (focusOrigin instanceof HTMLElement && document.contains(focusOrigin)) {
+          focusOrigin.focus();
         }
-        if (!shouldContinue) {
-          if (focusOrigin instanceof HTMLElement && document.contains(focusOrigin)) {
-            focusOrigin.focus();
-          }
-          return null;
-        }
+        showErrorAlert(
+          `The selected image (${sourceSize.width} × ${sourceSize.height} px) is smaller ` +
+            `than the required size (${requiredSize.width} × ${requiredSize.height} px). ` +
+            "Please choose a larger image.",
+        );
+        return null;
       }
 
       const hasRequiredDimensions =
@@ -510,6 +502,22 @@ export class ImageCropper extends LitWrapper {
   /** Initialize the vendored cropper once the source image has been decoded. */
   async _handleImageLoad(event) {
     if (!this._isActiveSourceImage(event.currentTarget)) {
+      return;
+    }
+
+    const sourceImage = event.currentTarget;
+    const requiredSize = this._requiredSize;
+    if (
+      requiredSize &&
+      (sourceImage.naturalWidth < requiredSize.width || sourceImage.naturalHeight < requiredSize.height)
+    ) {
+      const errorMessage =
+        `The selected image (${sourceImage.naturalWidth} × ${sourceImage.naturalHeight} px) is smaller ` +
+        `than the required size (${requiredSize.width} × ${requiredSize.height} px). ` +
+        "Please choose a larger image.";
+      this._close(null);
+      await this.updateComplete;
+      showErrorAlert(errorMessage);
       return;
     }
 

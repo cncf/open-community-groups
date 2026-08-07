@@ -25,7 +25,7 @@ test.describe("community dashboard settings view", () => {
 
     // Open the crop editor and verify its required size and controls.
     await fileInput.setInputFiles(TEST_UPLOAD_ASSET_PATHS.alternateBanner);
-    await expect(adminCommunityPage.getByText("Enlarging it may reduce image quality.")).toBeVisible();
+    await expect(adminCommunityPage.getByText("Please choose a larger image.")).toBeVisible();
     await adminCommunityPage.getByRole("button", { name: "Continue" }).click();
     const dialog = cropper.getByRole("dialog", { name: "Crop Banner Image" });
     const cropArea = cropper.getByRole("application", {

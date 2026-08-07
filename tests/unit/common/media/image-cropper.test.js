@@ -160,6 +160,32 @@ describe("image-cropper", () => {
     expect(await resultPromise).to.equal(null);
   });
 
+  it("rejects source images smaller than the required dimensions", async () => {
+    // Open an undersized source image for a target with mandatory dimensions.
+    const element = await mountLitComponent("image-cropper", {
+      label: "Logo",
+      target: "logo",
+    });
+    const source = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="359" height="360">
+        <rect width="359" height="360" fill="#0094ff" />
+      </svg>
+    `;
+    const resultPromise = element.edit(new File([source], "undersized-logo.svg", { type: "image/svg+xml" }));
+    await waitUntil(() => env.current.swal.calls.length === 1, "the size alert should open");
+
+    // The edit stops and the alert offers dismissal without a continue action.
+    expect(await resultPromise).to.equal(null);
+    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+    expect(env.current.swal.calls[0]).to.include({
+      icon: "error",
+      showConfirmButton: true,
+      text: "The selected image (359 × 360 px) is smaller than the required size (360 × 360 px). Please choose a larger image.",
+    });
+    expect(env.current.swal.calls[0]).to.not.have.property("confirmButtonText");
+    expect(env.current.swal.calls[0]).to.not.have.property("showCancelButton");
+  });
+
   it("ignores stale image errors after the editor is closed", async () => {
     // Open the editor and keep a handle to the rendered image element.
     const element = await mountLitComponent("image-cropper", {
@@ -350,29 +376,7 @@ describe("image-cropper", () => {
     expect(await firstResultPromise).to.equal(null);
   });
 
-  it("warns before automatically upscaling a small image", async () => {
-    const element = await mountLitComponent("image-cropper", {
-      target: "logo",
-    });
-    const source = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">
-        <rect width="180" height="180" fill="#0094ff" />
-      </svg>
-    `;
-
-    const result = await element.edit(new File([source], "small-logo.svg", { type: "image/svg+xml" }));
-    const warning = env.current.swal.calls.at(-1);
-
-    expect(warning.icon).to.equal("warning");
-    expect(warning.text).to.include("180 × 180 px");
-    expect(warning.text).to.include("required 360 × 360 px");
-    expect(warning.confirmButtonText).to.equal("Continue");
-    expect(warning.cancelButtonText).to.equal("Cancel");
-    expect(result).to.be.instanceOf(File);
-    expect(element.querySelector('[role="dialog"]')).to.equal(null);
-  });
-
-  it("cancels preparation when small-image upscaling is declined", async () => {
+  it("restores focus when a small image is rejected", async () => {
     const focusOrigin = document.createElement("button");
     const displacedFocus = document.createElement("button");
     document.body.append(focusOrigin, displacedFocus);
@@ -385,7 +389,6 @@ describe("image-cropper", () => {
         <rect width="180" height="180" fill="#0094ff" />
       </svg>
     `;
-    env.current.swal.setNextResult({ isConfirmed: false });
 
     const result = await element.edit(new File([source], "small-logo.svg", { type: "image/svg+xml" }), {
       focusOrigin,
@@ -394,6 +397,7 @@ describe("image-cropper", () => {
     expect(result).to.equal(null);
     expect(element.querySelector('[role="dialog"]')).to.equal(null);
     expect(document.activeElement).to.equal(focusOrigin);
+    expect(env.current.swal.calls.at(-1).icon).to.equal("error");
     focusOrigin.remove();
     displacedFocus.remove();
   });
