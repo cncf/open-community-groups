@@ -163,7 +163,7 @@
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
              role="rowgroup">
         <tr>
-          <th scope="col" class="px-3 xl:px-5 py-1.5">
+          <th scope="col" class="px-3 xl:px-5 py-1.5 xl:w-[30%]">
             <span class="whitespace-nowrap">Requester</span>
           </th>
           <th scope="col"
@@ -246,7 +246,7 @@
             {# Invitation request row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Requester -#}
-              <td class="px-3 xl:px-5 py-4 max-w-0">
+              <td class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%]">
                 {% call dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str())) -%}
                 <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ request.user.name.as_deref() |assigned_or(request.user.username) }}</div>
                 <div class="truncate text-xs text-stone-600 2xl:hidden">

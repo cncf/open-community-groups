@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3000" height="600" viewBox="0 0 3000 600" role="img" aria-label="Developer Experience Community advertisement banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7c2d12"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+  </defs>
+  <rect width="3000" height="600" fill="url(#bg)"/>
+  <circle cx="2600" cy="160" r="260" fill="#fff7ed" fill-opacity="0.12"/>
+  <path d="M0 420 C380 260 760 560 1140 400 S1900 250 2280 410 S2700 470 3000 330 L3000 600 L0 600 Z" fill="#ffffff" fill-opacity="0.1"/>
+  <text x="300" y="280" fill="#fff7ed" font-family="Arial, sans-serif" font-size="92" font-weight="700" letter-spacing="3">DEVELOPER EXPERIENCE COMMUNITY</text>
+  <text x="300" y="380" fill="#fecdd3" font-family="Arial, sans-serif" font-size="48">Advertisement banner crop fixture</text>
+</svg>

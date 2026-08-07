@@ -74,7 +74,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('<span class="whitespace-nowrap">Requester</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Ticket type</span>');
     expect(template).to.include('<span class="whitespace-nowrap">Requested</span>');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
     );

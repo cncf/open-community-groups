@@ -441,7 +441,7 @@
             data-attendee-email-selection-column>
           <span class="sr-only">Select for email</span>
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-1.5">
+        <th scope="col" class="px-3 xl:px-5 py-1.5 xl:w-[30%]">
           <span class="whitespace-nowrap">Attendee</span>
         </th>
         <th scope="col"
@@ -588,7 +588,7 @@
             {# End email selection -#}
 
             {# Attendee -#}
-            <td class="px-3 xl:px-5 py-4 max-w-0">
+            <td class="px-3 xl:px-5 py-4 max-w-0 xl:w-[30%]">
               {% call dashboard::user_profile_modal_trigger(attendee.user, self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str())) -%}
               <div class="flex items-center space-x-3 mb-1 min-w-0">
                 <div class="font-medium text-stone-900 truncate min-w-0 group-hover:text-primary-600">

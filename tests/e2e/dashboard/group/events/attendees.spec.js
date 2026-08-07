@@ -23,7 +23,7 @@ import {
 import { fillMarkdownEditor } from "../../form-helpers.js";
 
 import { ATTENDEE_NOTIFICATION_BODY, ATTENDEE_NOTIFICATION_SUBJECT } from "../helpers.js";
-import { expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
+import { expectUserColumnHasRoom, expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 // Open the attendees tab for a specific event and return its content.
 const openAttendeesTab = async (page, eventName, eventId) => {
@@ -280,7 +280,9 @@ test.describe("group dashboard attendees tab", () => {
     });
 
     // Assert that Attendees list is visible.
-    await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
+    const attendeesTable = attendeesContent.getByRole("table", { name: "Attendees list" });
+    await expect(attendeesTable).toBeVisible();
+    await expectUserColumnHasRoom(attendeesTable, "Attendee");
     await expect(attendeeRow).toBeVisible();
     await expect(attendeesContent.getByRole("button", { name: "Send email" })).toBeDisabled();
     await expect(attendeesContent.getByRole("button", { name: "Send email" })).toHaveAttribute(
@@ -966,7 +968,9 @@ test.describe("group dashboard attendees tab", () => {
       ]);
 
       const requestsContent = organizerGroupPage.locator("#invitation-requests-content");
-      await expect(requestsContent.getByRole("table", { name: "Invitation requests" })).toBeVisible();
+      const requestsTable = requestsContent.getByRole("table", { name: "Invitation requests" });
+      await expect(requestsTable).toBeVisible();
+      await expectUserColumnHasRoom(requestsTable, "Requester");
 
       // Target the search controls used to submit request filters.
       const searchInput = requestsContent.getByRole("textbox", {
