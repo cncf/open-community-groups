@@ -4,6 +4,7 @@ import {
   closestElementWithinRoot,
   getElementById,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 import "/static/js/common/media/logo-image.js";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
@@ -48,6 +49,8 @@ const getInvitationSearchField = (root) =>
 const getInvitationControls = (root) => ({
   form: getElementById(root, "attendee-invitation-form"),
   submit: getElementById(root, "submit-attendee-invitation"),
+  ticketTypeEmptyState: root.querySelector?.("[data-attendee-invitation-ticket-empty]") || null,
+  ticketTypeInput: getElementById(root, "attendee-invitation-ticket-type"),
   userInput: getElementById(root, "attendee-invitation-user-id"),
   emailInput: getElementById(root, "attendee-invitation-email"),
   selectedUser: getElementById(root, "attendee-invitation-selected-user"),
@@ -72,35 +75,24 @@ const setInvitationSubmissionField = (root, field) => {
  * @returns {void}
  */
 const clearInvitationState = (root) => {
-  const { userInput, emailInput, selectedUser } = getInvitationControls(root);
+  const { emailInput, selectedUser, ticketTypeInput, userInput } = getInvitationControls(root);
   const searchField = getInvitationSearchField(root);
 
   if (userInput) userInput.value = "";
   if (emailInput) emailInput.value = "";
+  if (ticketTypeInput) {
+    const assignableTicketTypeOptions = Array.from(ticketTypeInput.options).filter(
+      (option) => option.value !== "" && !option.disabled,
+    );
+    ticketTypeInput.value =
+      assignableTicketTypeOptions.length === 1 ? assignableTicketTypeOptions[0].value : "";
+  }
   setInvitationSubmissionField(root, "");
   selectedUser?.replaceChildren();
   if (typeof searchField?.clearSearch === "function") {
     searchField.clearSearch({ refocus: false });
   }
   updateInvitationSubmitState(root);
-};
-
-/**
- * Clear the selected invitation user display.
- * @param {Document|Element} root Query root.
- * @returns {void}
- */
-const clearInvitationSelectedUser = (root) => {
-  clearInvitationState(root);
-};
-
-/**
- * Reset the attendee invitation form to its empty state.
- * @param {Document|Element} root Query root.
- * @returns {void}
- */
-const resetInvitationForm = (root) => {
-  clearInvitationState(root);
 };
 
 /**
@@ -186,12 +178,22 @@ const renderInvitationSelectedEmail = (root, email) => {
  * @returns {void}
  */
 const updateInvitationSubmitState = (root) => {
-  const { form, submit, userInput, emailInput } = getInvitationControls(root);
+  const { emailInput, form, submit, ticketTypeEmptyState, ticketTypeInput, userInput } =
+    getInvitationControls(root);
   if (!form || !submit) return;
 
   const userId = userInput?.value || "";
   const email = emailInput?.value.trim() || "";
-  submit.disabled = userId === "" && !isValidInvitationEmail(email);
+  const hasRecipient = userId !== "" || isValidInvitationEmail(email);
+  const hasAssignableTicketType = ticketTypeInput
+    ? Array.from(ticketTypeInput.options).some((option) => option.value !== "" && !option.disabled)
+    : !ticketTypeEmptyState;
+  const hasTicketType = hasAssignableTicketType && (!ticketTypeInput || ticketTypeInput.value !== "");
+  if (ticketTypeInput) {
+    ticketTypeInput.disabled = !hasAssignableTicketType;
+  }
+  setElementHidden(ticketTypeEmptyState, hasAssignableTicketType);
+  submit.disabled = !hasRecipient || !hasTicketType;
 };
 
 /**
@@ -244,11 +246,13 @@ export const initializeInvitationModal = (root = document) => {
     return;
   }
 
+  updateInvitationSubmitState(root);
+
   root.addEventListener("click", (event) => {
     if (closestElementWithinRoot(event.target, "#open-attendee-invitation-modal", root)) {
       // Opening the modal always starts from a clean search and selection state.
       event.stopPropagation();
-      resetInvitationForm(root);
+      clearInvitationState(root);
       setScopedModalVisibility(root, invitationModalId, true);
       getInvitationSearchField(root)?.focusInput?.();
       return;
@@ -261,7 +265,7 @@ export const initializeInvitationModal = (root = document) => {
     );
     if (clearUserButton instanceof HTMLElement) {
       event.preventDefault();
-      clearInvitationSelectedUser(root);
+      clearInvitationState(root);
       return;
     }
 
@@ -312,6 +316,12 @@ export const initializeInvitationModal = (root = document) => {
     }
   });
 
+  root.addEventListener("change", (event) => {
+    if (event.target === getInvitationControls(root).ticketTypeInput) {
+      updateInvitationSubmitState(root);
+    }
+  });
+
   root.addEventListener("htmx:afterRequest", (event) => {
     const requestTarget = event.target;
     if (!(requestTarget instanceof HTMLFormElement) || requestTarget.id !== "attendee-invitation-form") {
@@ -326,7 +336,7 @@ export const initializeInvitationModal = (root = document) => {
     if (ok) {
       // The attendee list refreshes through HTMX; reset local modal state now.
       closeInvitationModal(root);
-      resetInvitationForm(root);
+      clearInvitationState(root);
     }
   });
 

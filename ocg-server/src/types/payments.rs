@@ -5,7 +5,13 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-/// Discount type supported by ticketed events.
+/// ISO currency codes displayed without fractional units.
+const ZERO_DECIMAL_CURRENCY_CODES: [&str; 16] = [
+    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV",
+    "XAF", "XOF", "XPF",
+];
+
+/// Discount type supported by event admission tiers.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventDiscountType {
@@ -125,7 +131,7 @@ pub enum PaymentProvider {
     Stripe,
 }
 
-/// Discount code configuration for a ticketed event.
+/// Discount code configuration for event admission.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct EventDiscountCode {
@@ -165,8 +171,6 @@ pub struct EventDiscountCode {
 pub struct EventPurchaseSummary {
     /// Recorded purchase amount after discounts.
     pub amount_minor: i64,
-    /// Currency used for the purchase.
-    pub currency_code: String,
     /// Discount amount applied to the purchase.
     pub discount_amount_minor: i64,
     /// Purchase identifier.
@@ -181,6 +185,8 @@ pub struct EventPurchaseSummary {
     /// Time when the purchase was completed.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub completed_at: Option<DateTime<Utc>>,
+    /// Currency used for the purchase.
+    pub currency_code: Option<String>,
     /// Discount code used for the purchase.
     pub discount_code: Option<String>,
     /// Time when the payment hold expires.
@@ -256,6 +262,8 @@ impl EventTicketPriceWindow {
 pub struct EventTicketType {
     /// Whether the ticket type can currently be selected.
     pub active: bool,
+    /// Whether the ticket type is publicly discoverable or invitation-only.
+    pub availability: EventTicketTypeAvailability,
     /// Unique identifier for the ticket type.
     pub event_ticket_type_id: Uuid,
     /// Display order in event pages and forms.
@@ -310,6 +318,17 @@ impl EventTicketType {
     }
 }
 
+/// Availability of a configured event ticket type.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EventTicketTypeAvailability {
+    /// Ticket type is assigned only through organizer or workflow offers.
+    InvitationOnly,
+    /// Ticket type is visible through public enrollment.
+    #[default]
+    Public,
+}
+
 /// Group-level payout recipient details.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -335,11 +354,11 @@ pub struct PreparedEventCheckout {
     /// Prepared purchase summary for the attendee.
     #[serde(flatten)]
     pub purchase: EventPurchaseSummary,
-    /// Recipient account configured for the event's group.
-    pub recipient: GroupPaymentRecipient,
 
     /// Admin-managed group slug used in attendee-facing routes.
     pub group_slug_pretty: Option<String>,
+    /// Recipient account configured for the event's group.
+    pub recipient: Option<GroupPaymentRecipient>,
 }
 
 // Helpers.
@@ -360,21 +379,15 @@ pub(crate) fn format_amount_minor(amount_minor: i64, currency_code: &str) -> Str
     format!("{normalized_currency_code} {whole}.{fraction:02}")
 }
 
-// Normalize user and database currency inputs before display formatting
+/// Normalizes user and database currency inputs before display formatting.
 fn normalized_currency_code(currency_code: &str) -> String {
     currency_code.trim().to_ascii_uppercase()
 }
 
-// Detect currencies whose displayed amount does not include fractional units
+/// Returns whether a currency is displayed without fractional units.
 fn uses_zero_decimal_minor_units(currency_code: &str) -> bool {
     ZERO_DECIMAL_CURRENCY_CODES.contains(&currency_code)
 }
-
-// ISO currency codes that are displayed without a fractional component
-const ZERO_DECIMAL_CURRENCY_CODES: [&str; 16] = [
-    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV",
-    "XAF", "XOF", "XPF",
-];
 
 #[cfg(test)]
 mod tests {

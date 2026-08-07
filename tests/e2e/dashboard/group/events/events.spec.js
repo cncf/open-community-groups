@@ -11,9 +11,15 @@ import {
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_WINDOW_EVENTS,
+  TEST_TICKETING_EVENTS,
   TEST_USER_IDS,
+  buildE2eUrl,
+  getAttendButton,
+  getLeaveButton,
+  navigateToEvent,
   navigateToPath,
   selectTimezone,
+  waitForAttendanceState,
 } from "../../../utils.js";
 import {
   TEST_UPLOAD_ASSET_PATHS,
@@ -39,13 +45,9 @@ const openPaymentsSection = async (page) => {
     await paymentsSectionButton.click({ force: true });
 
     try {
-      await expect(paymentsSectionButton).toHaveAttribute(
-        "data-active",
-        "true",
-        {
-          timeout: 1000,
-        },
-      );
+      await expect(paymentsSectionButton).toHaveAttribute("data-active", "true", {
+        timeout: 1000,
+      });
       return;
     } catch (error) {
       if (attempt === 2) {
@@ -55,11 +57,18 @@ const openPaymentsSection = async (page) => {
   }
 };
 
+// Open the event details section and wait until it is active.
+const openDetailsSection = async (page) => {
+  const detailsSectionButton = page.locator('button[data-section="details"]');
+
+  await detailsSectionButton.scrollIntoViewIfNeeded();
+  await detailsSectionButton.click({ force: true });
+  await expect(detailsSectionButton).toHaveAttribute("data-active", "true");
+};
+
 // Open the event update form by row action and wait for HTMX content.
 const openEventUpdateFormByName = async (page, eventName, eventId) => {
-  const editButton = page.locator(
-    `td button[aria-label="Edit event: ${eventName}"]:visible`,
-  );
+  const editButton = page.locator(`td button[aria-label="Edit event: ${eventName}"]:visible`);
   await expect(editButton).toBeVisible();
 
   await Promise.all([
@@ -73,6 +82,10 @@ const openEventUpdateFormByName = async (page, eventName, eventId) => {
     ),
     editButton.click(),
   ]);
+  await expect(page.locator('[data-event-page="update"]')).toHaveAttribute(
+    "data-event-page-ready",
+    "true",
+  );
 };
 
 // Verify manual meeting URL fields are visible in the event form.
@@ -84,9 +97,7 @@ const expectManualMeetingFields = async (page) => {
 // Verify automatic meeting controls are visible in the online details form.
 const expectAutomaticMeetingControls = async (page) => {
   const onlineEventDetails = page.locator("online-event-details");
-  const automaticModeCard = onlineEventDetails.locator(
-    'input[type="radio"][value="automatic"] + div',
-  );
+  const automaticModeCard = onlineEventDetails.locator('input[type="radio"][value="automatic"] + div');
 
   await expect(onlineEventDetails).toBeVisible();
   await expect(automaticModeCard).toBeVisible();
@@ -100,20 +111,16 @@ const expectAutomaticMeetingControls = async (page) => {
 // Select automatic meeting creation and assert the hidden request value.
 const enableAutomaticMeetingCreation = async (page) => {
   const onlineEventDetails = page.locator("online-event-details");
-  const automaticModeInput = onlineEventDetails.locator(
-    'input[type="radio"][value="automatic"]',
-  );
+  const automaticModeInput = onlineEventDetails.locator('input[type="radio"][value="automatic"]');
 
   await expectAutomaticMeetingControls(page);
   await expect(automaticModeInput).toBeEnabled();
 
   await automaticModeInput.check({ force: true });
 
-  await expect(
-    onlineEventDetails.locator(
-      'input[type="hidden"][name="meeting_requested"]',
-    ),
-  ).toHaveValue("true");
+  await expect(onlineEventDetails.locator('input[type="hidden"][name="meeting_requested"]')).toHaveValue(
+    "true",
+  );
 };
 
 // Add a ticket type through the ticketing modal and save it.
@@ -138,28 +145,47 @@ const addTicketType = async (page, values) => {
       await modal.locator('[data-ticketing-action="add-price-window"]').click();
     }
 
-    const amountField = modal
-      .locator('[data-ticket-window-field="amount"]')
-      .nth(index);
+    const amountField = modal.locator('[data-ticket-window-field="amount"]').nth(index);
     await amountField.fill(priceWindow.amount);
 
     if (priceWindow.startsAt) {
-      await modal
-        .locator('[data-ticket-window-field="starts_at"]')
-        .nth(index)
-        .fill(priceWindow.startsAt);
+      await modal.locator('[data-ticket-window-field="starts_at"]').nth(index).fill(priceWindow.startsAt);
     }
 
     if (priceWindow.endsAt) {
-      await modal
-        .locator('[data-ticket-window-field="ends_at"]')
-        .nth(index)
-        .fill(priceWindow.endsAt);
+      await modal.locator('[data-ticket-window-field="ends_at"]').nth(index).fill(priceWindow.endsAt);
     }
   }
 
   await modal.locator('[data-ticketing-action="save-ticket"]').click();
   await expect(modal).toBeHidden();
+};
+
+// Edit an existing ticket type through the ticketing modal and save it.
+const editTicketType = async (page, currentTitle, values) => {
+  const ticketRow = page
+    .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
+    .filter({ hasText: currentTitle });
+  await ticketRow.locator('[data-ticketing-action="edit-ticket"]').click();
+
+  const modal = page.locator('[data-ticketing-role="ticket-modal"]');
+  await expect(modal).toBeVisible();
+  await modal.locator("#ticket-title-draft").fill(values.title);
+  await modal.locator("#ticket-seats-draft").fill(values.seatsTotal);
+  await modal.locator("#ticket-description-draft").fill(values.description);
+  await modal.locator('[data-ticketing-action="save-ticket"]').click();
+  await expect(modal).toBeHidden();
+};
+
+// Keep automatic meeting coverage within the configured provider capacity.
+const setAutomaticMeetingCapacity = async (page) => {
+  await openPaymentsSection(page);
+  await editTicketType(page, "General Admission", {
+    description: "Default free admission tier.",
+    seatsTotal: "50",
+    title: "General Admission",
+  });
+  await openDetailsSection(page);
 };
 
 // Add a discount code through the ticketing modal and save it.
@@ -168,6 +194,20 @@ const addDiscountCode = async (page, values) => {
 
   const modal = page.locator('[data-ticketing-role="discount-modal"]');
   await expect(modal).toBeVisible();
+  await expect(
+    modal.getByText("Leave blank to allow unlimited redemptions.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    modal.getByText("Optional manual override. Leave blank to let OCG track remaining uses automatically.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(modal.locator("#discount-available-draft")).toHaveAttribute(
+    "placeholder",
+    "Automatically tracked",
+  );
   await modal.locator("#discount-title-draft").fill(values.title);
   await modal.locator("#discount-code-draft").fill(values.code);
 
@@ -206,6 +246,33 @@ const addDiscountCode = async (page, values) => {
   await expect(modal).toBeHidden();
 };
 
+// Remove a discount code from the ticketing summary.
+const removeDiscountCode = async (page, code) => {
+  const discountRow = page
+    .locator('#discount-codes-ui [data-ticketing-role="table-body"] tr')
+    .filter({ hasText: code });
+  await discountRow.getByTitle("Delete").click();
+  await expect(discountRow).toHaveCount(0);
+};
+
+/**
+ * Sets whether a persisted discount code can be redeemed.
+ */
+const setDiscountCodeActive = async (page, code, active) => {
+  const discountRow = page
+    .locator('#discount-codes-ui [data-ticketing-role="table-body"] tr')
+    .filter({ hasText: code });
+  await discountRow.locator('[data-ticketing-action="edit-discount"]').click();
+
+  const modal = page.locator('[data-ticketing-role="discount-modal"]');
+  await expect(modal).toBeVisible();
+  await modal.locator('[data-discount-field="active"]').setChecked(active, {
+    force: true,
+  });
+  await modal.locator('[data-ticketing-action="save-discount"]').click();
+  await expect(modal).toBeHidden();
+};
+
 // Set CFS label names through the editor component API and assert inputs.
 const setCfsLabels = async (page, labels) => {
   const editor = page.locator("cfs-labels-editor");
@@ -223,9 +290,7 @@ const setCfsLabels = async (page, labels) => {
   }, labels);
 
   // Verify the editor rendered one submitted input for each label.
-  await expect(
-    editor.locator('input[name^="cfs_labels"][name$="[name]"]'),
-  ).toHaveCount(labels.length);
+  await expect(editor.locator('input[name^="cfs_labels"][name$="[name]"]')).toHaveCount(labels.length);
 };
 
 // Set registration questions through the editor API and assert submitted inputs.
@@ -239,21 +304,19 @@ const setRegistrationQuestions = async (page, questions) => {
     await questionsEditor.updateComplete;
   }, questions);
 
-  await expect(
-    editor.locator('input[name^="registration_questions"][name$="[prompt]"]'),
-  ).toHaveCount(questions.length);
+  await expect(editor.locator('input[name^="registration_questions"][name$="[prompt]"]')).toHaveCount(
+    questions.length,
+  );
 };
 
 // Set event hosts and speakers through selector APIs and assert submitted inputs.
 const setEventPeople = async (page, values) => {
-  await page
-    .locator('user-search-selector[field-name="hosts"]')
-    .evaluate(async (element, hosts) => {
-      const hostSelector = element;
+  await page.locator('user-search-selector[field-name="hosts"]').evaluate(async (element, hosts) => {
+    const hostSelector = element;
 
-      hostSelector.selectedUsers = hosts;
-      await hostSelector.updateComplete;
-    }, values.hosts);
+    hostSelector.selectedUsers = hosts;
+    await hostSelector.updateComplete;
+  }, values.hosts);
   await page
     .locator('speakers-selector[field-name-prefix="speakers"]')
     .evaluate(async (element, speakers) => {
@@ -263,11 +326,9 @@ const setEventPeople = async (page, values) => {
       await speakersSelector.updateComplete;
     }, values.speakers);
 
-  await expect(
-    page.locator(
-      'user-search-selector[field-name="hosts"] input[name="hosts[]"]',
-    ),
-  ).toHaveCount(values.hosts.length);
+  await expect(page.locator('user-search-selector[field-name="hosts"] input[name="hosts[]"]')).toHaveCount(
+    values.hosts.length,
+  );
   await expect(
     page.locator(
       'speakers-selector[field-name-prefix="speakers"] input[name^="speakers"][name$="[user_id]"]',
@@ -276,9 +337,7 @@ const setEventPeople = async (page, values) => {
 };
 
 test.describe("group dashboard events view", () => {
-  test("organizer can switch between upcoming and past events tabs", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can switch between upcoming and past events tabs", async ({ organizerGroupPage }) => {
     // Load the events list before switching tab state.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
@@ -294,9 +353,7 @@ test.describe("group dashboard events view", () => {
     await expect(pastTab).toHaveAttribute("data-active", "false");
     await expect(upcomingContent).toBeVisible();
     await expect(pastContent).toBeHidden();
-    await expect(
-      upcomingContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] }),
-    ).toBeVisible();
+    await expect(upcomingContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] })).toBeVisible();
 
     // Switch to past events and verify historical rows render.
     await pastTab.click();
@@ -306,9 +363,7 @@ test.describe("group dashboard events view", () => {
     await expect(upcomingTab).toHaveAttribute("data-active", "false");
     await expect(pastContent).toBeVisible();
     await expect(upcomingContent).toBeHidden();
-    await expect(
-      pastContent.locator("tr", { hasText: "Past Event For Filtering" }),
-    ).toBeVisible();
+    await expect(pastContent.locator("tr", { hasText: "Past Event For Filtering" })).toBeVisible();
 
     // Return to upcoming events and verify the original tab state.
     await upcomingTab.click();
@@ -318,14 +373,10 @@ test.describe("group dashboard events view", () => {
     await expect(pastTab).toHaveAttribute("data-active", "false");
     await expect(upcomingContent).toBeVisible();
     await expect(pastContent).toBeHidden();
-    await expect(
-      upcomingContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] }),
-    ).toBeVisible();
+    await expect(upcomingContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] })).toBeVisible();
   });
 
-  test("organizer sees attendee count and capacity for capped events", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer sees attendee count and capacity for capped events", async ({ organizerGroupPage }) => {
     // Load the events list at the width where the attendees column is visible.
     await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -339,48 +390,60 @@ test.describe("group dashboard events view", () => {
     });
 
     // Verify the attendee count is displayed alongside the event capacity.
-    await expect(
-      cappedEventRow.getByRole("cell", { name: "2 / 100", exact: true }),
-    ).toBeVisible();
+    await expect(cappedEventRow.getByRole("cell", { name: "2 / 100", exact: true })).toBeVisible();
   });
 
-  test("organizer sees attendee count without capacity for uncapped events", async ({
+  test("organizer sees the 500-seat fallback for a migrated unlimited event", async ({
     organizerGroupPage,
   }) => {
     // Load the events list at the width where the attendees column is visible.
     await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
-    // Find the seeded event without a capacity limit.
+    // Find the fixture shaped like an unlimited event after migration.
     const upcomingEventsTable = organizerGroupPage.getByRole("table", {
       name: "Upcoming events list",
     });
-    const uncappedEventRow = upcomingEventsTable.getByRole("row", {
-      name: new RegExp(TEST_EVENT_NAMES.alpha[1], "u"),
+    const defaultCapacityEventRow = upcomingEventsTable.getByRole("row", {
+      name: new RegExp(TEST_TICKETING_EVENTS.migratedCapacity.name, "u"),
     });
 
-    // Verify the attendee count is displayed without a capacity suffix.
+    // Verify the migration fallback is represented by the generated 500-seat tier.
     await expect(
-      uncappedEventRow.getByRole("cell", { name: "0", exact: true }),
+      defaultCapacityEventRow.getByRole("cell", {
+        name: "0 / 500",
+        exact: true,
+      }),
     ).toBeVisible();
   });
 
-  test("organizer sees the expected add and edit event form tabs", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer sees the expected add and edit event form tabs", async ({ organizerGroupPage }) => {
     // Load the events dashboard before opening the add form.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    const additionalInformationToggles = organizerGroupPage.locator(
+      "label:has(#toggle_waitlist_enabled), label:has(#toggle_attendee_approval_required), label:has(#toggle_test_event)",
+    );
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
     await expect(organizerGroupPage.locator("#name")).toBeVisible();
+    await expect(additionalInformationToggles).toHaveText([
+      "Enable Waitlist",
+      "Require Invitation Approval",
+      "Test Event",
+    ]);
 
     // The add form exposes authoring tabs and omits review-only tabs.
-    const addSectionSelect = organizerGroupPage.locator(
-      'select[aria-label="Event form section"]',
-    );
+    const addSectionSelect = organizerGroupPage.locator('select[aria-label="Event form section"]');
     await expect(addSectionSelect.locator('option[value="details"]')).toHaveText("Details");
     await expect(addSectionSelect.locator('option[value="date-venue"]')).toHaveText("Date & Venue");
+    await expect(addSectionSelect.locator('option[value="payments"], option[value="sessions"]')).toHaveText([
+      "Tickets",
+      "Sessions",
+    ]);
+    await expect(
+      organizerGroupPage.locator('button[data-section="payments"], button[data-section="sessions"]'),
+    ).toHaveText(["Tickets", "Sessions"]);
     await expect(addSectionSelect.locator('option[value="attendees"]')).toHaveCount(0);
     await expect(addSectionSelect.locator('option[value="waitlist"]')).toHaveCount(0);
 
@@ -397,10 +460,20 @@ test.describe("group dashboard events view", () => {
       "Full Event With Waitlist",
       TEST_EVENT_IDS.alpha.waitlistLab,
     );
+    await expect(additionalInformationToggles).toHaveText([
+      "Enable Waitlist",
+      "Require Invitation Approval",
+      "Test Event",
+    ]);
 
-    const editSectionSelect = organizerGroupPage.locator(
-      'select[aria-label="Event form section"]',
-    );
+    const editSectionSelect = organizerGroupPage.locator('select[aria-label="Event form section"]');
+    await expect(editSectionSelect.locator('option[value="payments"], option[value="sessions"]')).toHaveText([
+      "Tickets",
+      "Sessions",
+    ]);
+    await expect(
+      organizerGroupPage.locator('button[data-section="payments"], button[data-section="sessions"]'),
+    ).toHaveText(["Tickets", "Sessions"]);
     await expect(editSectionSelect.locator('option[value="attendees"]')).toHaveText("Attendees");
     await expect(editSectionSelect.locator('option[value="waitlist"]')).toHaveText("Waitlist");
     await expect(organizerGroupPage.locator("#waitlist-loading")).toHaveCount(1);
@@ -423,9 +496,7 @@ test.describe("group dashboard events view", () => {
     await expect(organizerGroupPage.locator("#waitlist-content").getByRole("table")).toBeVisible();
   });
 
-  test("organizer can create and delete an event", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can create and delete an event", async ({ organizerGroupPage }) => {
     // Create a unique event name for the temporary event flow.
     const eventName = `E2E Group Event ${Date.now()}`;
 
@@ -434,9 +505,7 @@ test.describe("group dashboard events view", () => {
 
     // Target dashboard content after the events tab loads.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Events", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
 
     // Open the event form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
@@ -445,9 +514,7 @@ test.describe("group dashboard events view", () => {
     // Fill the core event details required for creation.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage
-      .locator("#category_id")
-      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
     await organizerGroupPage
       .locator("#description_short")
       .fill("A dashboard-created event from the e2e suite.");
@@ -457,16 +524,17 @@ test.describe("group dashboard events view", () => {
       "A dashboard event created and removed by the e2e suite.",
     );
 
-    // Fill capacity only when automatic meeting fixtures require it.
+    // Configure a meeting-safe capacity before automatic meeting selection.
     if (E2E_MEETINGS_ENABLED) {
-      await organizerGroupPage.locator("#capacity").fill("50");
+      await setAutomaticMeetingCapacity(organizerGroupPage);
     }
 
     // Fill schedule and online meeting details.
     await organizerGroupPage.locator("button[data-section-next]").click();
-    await expect(
-      organizerGroupPage.locator('button[data-section="date-venue"]'),
-    ).toHaveAttribute("data-active", "true");
+    await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
+      "data-active",
+      "true",
+    );
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-10T10:00");
@@ -483,9 +551,7 @@ test.describe("group dashboard events view", () => {
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
-    await expect(
-      organizerGroupPage.locator("#pending-changes-alert"),
-    ).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
     await expect(visibleAddEventButton).toBeVisible();
 
     // Create the event and wait for the POST response.
@@ -505,17 +571,13 @@ test.describe("group dashboard events view", () => {
 
     // Reopen the event and verify online details persisted.
     await openEventUpdateFormByName(organizerGroupPage, eventName);
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
 
     // Verify the correct online meeting state persisted.
     if (E2E_MEETINGS_ENABLED) {
       await expectAutomaticMeetingControls(organizerGroupPage);
       await expect(
-        organizerGroupPage.locator(
-          'online-event-details input[name="meeting_requested"]',
-        ),
+        organizerGroupPage.locator('online-event-details input[name="meeting_requested"]'),
       ).toHaveValue("true");
     } else {
       await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
@@ -548,14 +610,10 @@ test.describe("group dashboard events view", () => {
     ]);
 
     // Verify the deleted event is removed from the list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: eventName }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
   });
 
-  test("organizer sees why active events cannot be deleted", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer sees why active events cannot be deleted", async ({ organizerGroupPage }) => {
     // Load the event list and inspect an active published event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     const activeEventRow = organizerGroupPage.locator("tr", {
@@ -565,19 +623,13 @@ test.describe("group dashboard events view", () => {
     await activeEventRow.locator(".btn-actions").click();
 
     // Verify published events must be canceled before deletion.
-    const cancelFirstDeleteButton = activeEventRow.locator(
-      `#delete-event-${TEST_EVENT_IDS.alpha.two}`,
-    );
+    const cancelFirstDeleteButton = activeEventRow.locator(`#delete-event-${TEST_EVENT_IDS.alpha.two}`);
     await expect(cancelFirstDeleteButton).toBeDisabled();
-    await expect(cancelFirstDeleteButton).toHaveAttribute(
-      "title",
-      "Cancel this event before deleting it.",
-    );
+    await expect(cancelFirstDeleteButton).toHaveAttribute("title", "Cancel this event before deleting it.");
 
     // Inspect an event with an active payment hold.
     await activeEventRow.locator(".btn-actions").click();
-    const pendingCheckoutEvent =
-      TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed;
+    const pendingCheckoutEvent = TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed;
     const pendingCheckoutRow = organizerGroupPage.locator("tr", {
       hasText: pendingCheckoutEvent.name,
     });
@@ -585,9 +637,7 @@ test.describe("group dashboard events view", () => {
     await pendingCheckoutRow.locator(".btn-actions").click();
 
     // Verify pending checkouts and refunds explain why deletion is blocked.
-    const refundsPendingDeleteButton = pendingCheckoutRow.locator(
-      `#delete-event-${pendingCheckoutEvent.id}`,
-    );
+    const refundsPendingDeleteButton = pendingCheckoutRow.locator(`#delete-event-${pendingCheckoutEvent.id}`);
     await expect(refundsPendingDeleteButton).toBeDisabled();
     await expect(refundsPendingDeleteButton).toHaveAttribute(
       "title",
@@ -595,9 +645,7 @@ test.describe("group dashboard events view", () => {
     );
   });
 
-  test("organizer can cancel an event from the list", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can cancel an event from the list", async ({ organizerGroupPage }) => {
     // Create a unique event name for the temporary cancellation flow.
     const eventName = `E2E Canceled Group Event ${Date.now()}`;
 
@@ -606,9 +654,7 @@ test.describe("group dashboard events view", () => {
 
     // Target dashboard content after the events tab loads.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Events", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
 
     // Open the event form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
@@ -617,9 +663,7 @@ test.describe("group dashboard events view", () => {
     // Fill the core event details required for creation.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage
-      .locator("#category_id")
-      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
     await organizerGroupPage
       .locator("#description_short")
       .fill("A dashboard-created event for cancellation coverage.");
@@ -629,16 +673,17 @@ test.describe("group dashboard events view", () => {
       "A dashboard event created and canceled by the e2e suite.",
     );
 
-    // Fill capacity only when automatic meeting fixtures require it.
+    // Configure a meeting-safe capacity before automatic meeting selection.
     if (E2E_MEETINGS_ENABLED) {
-      await organizerGroupPage.locator("#capacity").fill("50");
+      await setAutomaticMeetingCapacity(organizerGroupPage);
     }
 
     // Fill schedule and online meeting details.
     await organizerGroupPage.locator("button[data-section-next]").click();
-    await expect(
-      organizerGroupPage.locator('button[data-section="date-venue"]'),
-    ).toHaveAttribute("data-active", "true");
+    await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
+      "data-active",
+      "true",
+    );
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-12T10:00");
@@ -655,9 +700,7 @@ test.describe("group dashboard events view", () => {
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
-    await expect(
-      organizerGroupPage.locator("#pending-changes-alert"),
-    ).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
     await expect(visibleAddEventButton).toBeVisible();
 
     // Create the event and wait for the POST response.
@@ -710,13 +753,9 @@ test.describe("group dashboard events view", () => {
     // Verify the row reflects canceled state and no longer offers cancellation.
     await expect(eventRow).toBeVisible();
     await expect(eventRow).toContainText("Canceled");
-    await expect(eventRow.locator('button[id^="cancel-event-"]')).toHaveCount(
-      0,
-    );
+    await expect(eventRow.locator('button[id^="cancel-event-"]')).toHaveCount(0);
     const eventActionsButton = eventRow.locator(".btn-actions");
-    const eventActionsDropdown = eventRow.locator(
-      "[data-event-actions-dropdown]",
-    );
+    const eventActionsDropdown = eventRow.locator("[data-event-actions-dropdown]");
     await eventActionsButton.click();
     await expect(eventActionsDropdown).toBeVisible();
 
@@ -741,14 +780,10 @@ test.describe("group dashboard events view", () => {
     ]);
 
     // Verify the deleted event is removed from the list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: eventName }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
   });
 
-  test("organizer can create and delete a recurring event series", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can create and delete a recurring event series", async ({ organizerGroupPage }) => {
     // Create a unique event name for the recurring series flow.
     const eventName = `E2E Recurring Group Event ${Date.now()}`;
 
@@ -757,9 +792,7 @@ test.describe("group dashboard events view", () => {
 
     // Target dashboard content after the events tab loads.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Events", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
 
     // Open the event form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
@@ -768,9 +801,7 @@ test.describe("group dashboard events view", () => {
     // Fill the core event details for the recurring series.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage
-      .locator("#category_id")
-      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
     await organizerGroupPage
       .locator("#description_short")
       .fill("A recurring dashboard-created event from the e2e suite.");
@@ -781,9 +812,7 @@ test.describe("group dashboard events view", () => {
     );
 
     // Fill the recurring schedule and occurrence count.
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-15T10:00");
@@ -791,25 +820,15 @@ test.describe("group dashboard events view", () => {
     await organizerGroupPage
       .locator("#meeting_join_url")
       .fill("https://meet.example.com/e2e-recurring-event");
-    await organizerGroupPage
-      .locator("#recurrence_pattern")
-      .selectOption("weekly");
-    await expect(
-      organizerGroupPage.locator(
-        "#recurrence-additional-occurrences-container",
-      ),
-    ).toBeVisible();
-    await organizerGroupPage
-      .locator("#recurrence_additional_occurrences")
-      .fill("2");
+    await organizerGroupPage.locator("#recurrence_pattern").selectOption("weekly");
+    await expect(organizerGroupPage.locator("#recurrence-additional-occurrences-container")).toBeVisible();
+    await organizerGroupPage.locator("#recurrence_additional_occurrences").fill("2");
 
     // Target the visible submit button after pending changes appear.
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
-    await expect(
-      organizerGroupPage.locator("#pending-changes-alert"),
-    ).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
     await expect(visibleAddEventButton).toBeVisible();
 
     // Create the recurring series and wait for the POST response.
@@ -852,15 +871,11 @@ test.describe("group dashboard events view", () => {
           response.url().includes("scope=series") &&
           response.ok(),
       ),
-      seriesConfirmationDialog
-        .getByRole("button", { name: "All in series" })
-        .click(),
+      seriesConfirmationDialog.getByRole("button", { name: "All in series" }).click(),
     ]);
 
     // Verify every recurring series row is removed from the list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: eventName }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
   });
 
   test("organizer can scope recurring publish, unpublish, and cancel actions", async ({
@@ -874,9 +889,7 @@ test.describe("group dashboard events view", () => {
 
     // Target dashboard content after the events tab loads.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Events", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
 
     // Open the event form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
@@ -885,9 +898,7 @@ test.describe("group dashboard events view", () => {
     // Fill the core event details for the recurring series.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage
-      .locator("#category_id")
-      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
     await organizerGroupPage
       .locator("#description_short")
       .fill("A recurring dashboard event for scoped action coverage.");
@@ -898,9 +909,7 @@ test.describe("group dashboard events view", () => {
     );
 
     // Fill the recurring schedule and occurrence count.
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-22T10:00");
@@ -908,25 +917,15 @@ test.describe("group dashboard events view", () => {
     await organizerGroupPage
       .locator("#meeting_join_url")
       .fill("https://meet.example.com/e2e-recurring-scoped-event");
-    await organizerGroupPage
-      .locator("#recurrence_pattern")
-      .selectOption("weekly");
-    await expect(
-      organizerGroupPage.locator(
-        "#recurrence-additional-occurrences-container",
-      ),
-    ).toBeVisible();
-    await organizerGroupPage
-      .locator("#recurrence_additional_occurrences")
-      .fill("2");
+    await organizerGroupPage.locator("#recurrence_pattern").selectOption("weekly");
+    await expect(organizerGroupPage.locator("#recurrence-additional-occurrences-container")).toBeVisible();
+    await organizerGroupPage.locator("#recurrence_additional_occurrences").fill("2");
 
     // Target the visible submit button after pending changes appear.
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
-    await expect(
-      organizerGroupPage.locator("#pending-changes-alert"),
-    ).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
     await expect(visibleAddEventButton).toBeVisible();
 
     // Create the recurring series and wait for the POST response.
@@ -951,15 +950,12 @@ test.describe("group dashboard events view", () => {
       await expect(actionButton).toBeVisible();
       await actionButton.click();
 
-      const seriesConfirmationDialog =
-        organizerGroupPage.locator(".swal2-popup");
+      const seriesConfirmationDialog = organizerGroupPage.locator(".swal2-popup");
       const expectedConfirmationMessage =
         action === "cancel"
           ? "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?"
           : `This event is part of a recurring series. What would you like to ${action}?`;
-      await expect(seriesConfirmationDialog).toContainText(
-        expectedConfirmationMessage,
-      );
+      await expect(seriesConfirmationDialog).toContainText(expectedConfirmationMessage);
 
       await Promise.all([
         organizerGroupPage.waitForResponse(
@@ -972,20 +968,13 @@ test.describe("group dashboard events view", () => {
               : !response.url().includes("scope=series")) &&
             response.ok(),
         ),
-        seriesConfirmationDialog
-          .getByRole("button", { name: scopeButtonName })
-          .click(),
+        seriesConfirmationDialog.getByRole("button", { name: scopeButtonName }).click(),
       ]);
     };
 
     // Publish the series first when the default created state is draft.
     await eventRows.first().locator(".btn-actions").click();
-    if (
-      (await eventRows
-        .first()
-        .locator('button[id^="publish-event-"]')
-        .count()) > 0
-    ) {
+    if ((await eventRows.first().locator('button[id^="publish-event-"]').count()) > 0) {
       await eventRows.first().locator(".btn-actions").click();
       await selectScopedAction(eventRows.first(), "publish", "All in series");
       await expect(eventRows.first()).toContainText("Published");
@@ -1008,20 +997,14 @@ test.describe("group dashboard events view", () => {
     await expect(eventRows.nth(2)).toContainText("Draft");
 
     // Cancel the full series.
-    await selectScopedAction(
-      eventRows.first(),
-      "cancel",
-      "Non-completed events in series",
-    );
+    await selectScopedAction(eventRows.first(), "cancel", "Non-completed events in series");
     await expect(eventRows.first()).toContainText("Canceled");
     await expect(eventRows.nth(1)).toContainText("Canceled");
     await expect(eventRows.nth(2)).toContainText("Canceled");
 
     // Delete the full series to keep the seeded list reusable.
     await eventRows.first().locator(".btn-actions").click();
-    const deleteButton = eventRows
-      .first()
-      .locator('button[id^="delete-event-"]');
+    const deleteButton = eventRows.first().locator('button[id^="delete-event-"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
@@ -1039,20 +1022,14 @@ test.describe("group dashboard events view", () => {
           response.url().includes("scope=series") &&
           response.ok(),
       ),
-      seriesConfirmationDialog
-        .getByRole("button", { name: "All in series" })
-        .click(),
+      seriesConfirmationDialog.getByRole("button", { name: "All in series" }).click(),
     ]);
 
     // Verify every recurring series row is removed from the list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: eventName }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
   });
 
-  test("organizer can preview pending event details before saving", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can preview pending event details before saving", async ({ organizerGroupPage }) => {
     // Create unique draft values for the preview modal.
     const eventName = `E2E Preview Event ${Date.now()}`;
     const lumaUrl = "https://luma.com/e2e-preview-event";
@@ -1066,9 +1043,7 @@ test.describe("group dashboard events view", () => {
     // Fill enough pending details for the preview request.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage
-      .locator("#category_id")
-      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
     await organizerGroupPage
       .locator("#description_short")
       .fill("Preview coverage for pending event details.");
@@ -1078,15 +1053,11 @@ test.describe("group dashboard events view", () => {
       "Preview coverage for pending event details before saving.",
     );
     await organizerGroupPage.locator("#luma_url").fill(lumaUrl);
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator("#starts_at").fill("2030-07-10T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-07-10T12:00");
-    await organizerGroupPage
-      .locator("#meeting_join_url")
-      .fill("https://meet.example.com/e2e-preview-event");
+    await organizerGroupPage.locator("#meeting_join_url").fill("https://meet.example.com/e2e-preview-event");
 
     // Open the preview modal and verify pending values are rendered.
     await Promise.all([
@@ -1111,24 +1082,25 @@ test.describe("group dashboard events view", () => {
     await expect(previewModal).toHaveCount(0);
   });
 
-  test("organizer can copy details from an existing event", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can copy event details and payment configuration", async ({ organizerGroupPage }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     // Load the events list before opening the create form.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
     await expect(organizerGroupPage.locator("#name")).toBeVisible();
 
-    // Open the copy selector and choose the first available existing event.
+    // Open the copy selector and target the seeded paid event.
     await organizerGroupPage.locator("#copy-event-selector").click();
+    await organizerGroupPage
+      .locator("#dropdown-events #event-search-input")
+      .fill(TEST_PAYMENT_EVENT_NAMES.draft);
     const eventOption = organizerGroupPage
       .locator('#dropdown-events button[id^="select-event-"]')
-      .first();
+      .filter({ hasText: TEST_PAYMENT_EVENT_NAMES.draft });
     await expect(eventOption).toBeVisible();
-    const copiedEventName = (
-      await eventOption.locator("div").nth(1).innerText()
-    ).trim();
+    const copiedEventName = (await eventOption.locator("div").nth(1).innerText()).trim();
 
     // Copy the event details into the create form.
     await Promise.all([
@@ -1143,28 +1115,35 @@ test.describe("group dashboard events view", () => {
     ]);
 
     // Verify copied details are applied and the schedule is left blank.
-    await expect(organizerGroupPage.locator("#name")).toHaveValue(
-      `${copiedEventName} (copy)`,
-    );
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(`${copiedEventName} (copy)`);
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await expect(organizerGroupPage.locator("#starts_at")).toHaveValue("");
     await expect(organizerGroupPage.locator("#ends_at")).toHaveValue("");
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Event details copied.",
-    );
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Event details copied.");
     await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+
+    // Copied payment configuration keeps currency, tiers, and discount codes.
+    await openPaymentsSection(organizerGroupPage);
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("General admission");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("Community ticket");
+    await expect(
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("SAVE10");
+    await expect(
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("EARLY20");
   });
 
   test("organizer can override recording urls for automatic event and session meetings", async ({
     organizerGroupPage,
   }) => {
     // Skip automatic meeting coverage when the environment disables it.
-    test.skip(
-      !E2E_MEETINGS_ENABLED,
-      "Automatic meetings are disabled in this environment.",
-    );
+    test.skip(!E2E_MEETINGS_ENABLED, "Automatic meetings are disabled in this environment.");
 
     // Create unique event, session, and recording values for this flow.
     const eventName = `E2E Automatic Recording Override ${Date.now()}`;
@@ -1177,9 +1156,7 @@ test.describe("group dashboard events view", () => {
 
     // Target dashboard content after the events tab loads.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Events", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
 
     // Open the event form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
@@ -1188,50 +1165,39 @@ test.describe("group dashboard events view", () => {
     // Fill the core event details for the automatic meeting flow.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage
-      .locator("#category_id")
-      .selectOption("33333333-3333-3333-3333-333333333331");
-    await organizerGroupPage
-      .locator("#description_short")
-      .fill("Automatic recording override coverage.");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#description_short").fill("Automatic recording override coverage.");
     await fillMarkdownEditor(
       organizerGroupPage,
       "description",
       "Coverage for automatic event and session recording overrides.",
     );
-    await organizerGroupPage.locator("#capacity").fill("25");
+    // Configure a meeting-safe capacity before selecting automatic recording.
+    await setAutomaticMeetingCapacity(organizerGroupPage);
 
     // Fill the event schedule before configuring online recording.
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator("#starts_at").fill("2030-06-10T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-06-10T12:00");
 
     // Configure automatic meeting recording for the event.
-    const eventOnlineDetails = organizerGroupPage.locator(
-      "#online-event-details",
-    );
-    await eventOnlineDetails
-      .locator('input[type="radio"][value="automatic"]')
-      .check({
-        force: true,
-      });
+    const eventOnlineDetails = organizerGroupPage.locator("#online-event-details");
+    await eventOnlineDetails.locator('input[type="radio"][value="automatic"]').check({
+      force: true,
+    });
     const recordMeetingLabel = eventOnlineDetails.getByText("Record meeting", {
       exact: true,
     });
-    const publishRecordingLabel = eventOnlineDetails.getByText(
-      "Publish recording publicly",
-      {
-        exact: true,
-      },
-    );
+    const publishRecordingLabel = eventOnlineDetails.getByText("Publish recording publicly", {
+      exact: true,
+    });
     await expect(recordMeetingLabel).toBeVisible();
     await expect(publishRecordingLabel).toBeVisible();
-    const [recordMeetingLabelBox, publishRecordingLabelBox] = await Promise.all(
-      [recordMeetingLabel.boundingBox(), publishRecordingLabel.boundingBox()],
-    );
+    const [recordMeetingLabelBox, publishRecordingLabelBox] = await Promise.all([
+      recordMeetingLabel.boundingBox(),
+      publishRecordingLabel.boundingBox(),
+    ]);
     if (!recordMeetingLabelBox || !publishRecordingLabelBox) {
       throw new Error("Recording visibility controls should be visible.");
     }
@@ -1244,9 +1210,7 @@ test.describe("group dashboard events view", () => {
     const eventRecordingPublishedControl = eventOnlineDetails.locator("label", {
       hasText: "Publish recording publicly",
     });
-    const eventRecordingPublishedToggle = eventOnlineDetails.getByLabel(
-      "Publish recording publicly",
-    );
+    const eventRecordingPublishedToggle = eventOnlineDetails.getByLabel("Publish recording publicly");
     await expect(eventRecordingPublishedInput).toHaveValue("false");
     await expect(eventRecordingPublishedToggle).not.toBeChecked();
     await eventRecordingPublishedControl.click();
@@ -1255,9 +1219,7 @@ test.describe("group dashboard events view", () => {
 
     // Fill the event recording override URL.
     await eventOnlineDetails
-      .locator(
-        'input[type="url"][placeholder="https://youtube.com/watch?v=..."]',
-      )
+      .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]')
       .fill(eventRecordingUrl);
 
     // Add a session with its own automatic recording override.
@@ -1274,41 +1236,24 @@ test.describe("group dashboard events view", () => {
     const sessionDialog = sessionModal.locator('[role="dialog"]');
     await expect(sessionDialog).toBeVisible();
     await sessionModal.locator('input[data-name="name"]').fill(sessionName);
-    await sessionModal
-      .locator('select[data-name="kind"]')
-      .selectOption("virtual");
+    await sessionModal.locator('select[data-name="kind"]').selectOption("virtual");
     await sessionModal.locator('input[type="time"]').nth(0).fill("10:30");
     await sessionModal.locator('input[type="time"]').nth(1).fill("11:30");
 
     // Configure automatic meeting recording for the session.
     const sessionOnlineDetails = sessionModal.locator("online-event-details");
     await expect(sessionOnlineDetails).toHaveAttribute("kind", "virtual");
-    await expect(sessionOnlineDetails).toHaveAttribute(
-      "starts-at",
-      "2030-06-10T10:30",
-    );
-    await expect(sessionOnlineDetails).toHaveAttribute(
-      "ends-at",
-      "2030-06-10T11:30",
-    );
-    await sessionOnlineDetails
-      .getByText("Create meeting automatically", { exact: true })
-      .click();
-    await expect(
-      sessionOnlineDetails.getByText("Meeting provider", { exact: true }),
-    ).toBeVisible();
+    await expect(sessionOnlineDetails).toHaveAttribute("starts-at", "2030-06-10T10:30");
+    await expect(sessionOnlineDetails).toHaveAttribute("ends-at", "2030-06-10T11:30");
+    await sessionOnlineDetails.getByText("Create meeting automatically", { exact: true }).click();
+    await expect(sessionOnlineDetails.getByText("Meeting provider", { exact: true })).toBeVisible();
     const sessionRecordingPublishedInput = sessionOnlineDetails.locator(
       'input[type="hidden"][name="sessions[0][meeting_recording_published]"]',
     );
-    const sessionRecordingPublishedControl = sessionOnlineDetails.locator(
-      "label",
-      {
-        hasText: "Publish recording publicly",
-      },
-    );
-    const sessionRecordingPublishedToggle = sessionOnlineDetails.getByLabel(
-      "Publish recording publicly",
-    );
+    const sessionRecordingPublishedControl = sessionOnlineDetails.locator("label", {
+      hasText: "Publish recording publicly",
+    });
+    const sessionRecordingPublishedToggle = sessionOnlineDetails.getByLabel("Publish recording publicly");
     await expect(sessionRecordingPublishedInput).toHaveValue("false");
     await expect(sessionRecordingPublishedToggle).not.toBeChecked();
     await sessionRecordingPublishedControl.click();
@@ -1317,16 +1262,12 @@ test.describe("group dashboard events view", () => {
 
     // Fill the session recording override and save the session.
     await sessionOnlineDetails
-      .locator(
-        'input[type="url"][placeholder="https://youtube.com/watch?v=..."]',
-      )
+      .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]')
       .fill(sessionRecordingUrl);
     await sessionModal.getByRole("button", { name: "Add session" }).click();
     await expect(sessionDialog).toBeHidden();
     await expect(
-      sessionsSection.locator(
-        'input[name="sessions[0][meeting_recording_published]"]',
-      ),
+      sessionsSection.locator('input[name="sessions[0][meeting_recording_published]"]'),
     ).toHaveValue("true");
 
     // Target the visible submit button after pending changes appear.
@@ -1350,17 +1291,11 @@ test.describe("group dashboard events view", () => {
     await openEventUpdateFormByName(organizerGroupPage, eventName);
 
     // Open date and venue details before checking event recording fields.
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await expect(
-      eventOnlineDetails.locator(
-        'input[type="url"][placeholder="https://youtube.com/watch?v=..."]',
-      ),
+      eventOnlineDetails.locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]'),
     ).toHaveValue(eventRecordingUrl);
-    await expect(
-      eventOnlineDetails.getByLabel("Publish recording publicly"),
-    ).toBeChecked();
+    await expect(eventOnlineDetails.getByLabel("Publish recording publicly")).toBeChecked();
     await expect(eventRecordingPublishedInput).toHaveValue("true");
 
     // Reopen the session and verify session recording values persisted.
@@ -1373,17 +1308,13 @@ test.describe("group dashboard events view", () => {
 
     // Verify the reopened session keeps recording override values.
     await expect(sessionDialog).toBeVisible();
-    const reopenedSessionOnlineDetails = sessionModal.locator(
-      "online-event-details",
-    );
+    const reopenedSessionOnlineDetails = sessionModal.locator("online-event-details");
     await expect(
       reopenedSessionOnlineDetails.locator(
         'input[type="url"][placeholder="https://youtube.com/watch?v=..."]',
       ),
     ).toHaveValue(sessionRecordingUrl);
-    await expect(
-      reopenedSessionOnlineDetails.getByLabel("Publish recording publicly"),
-    ).toBeChecked();
+    await expect(reopenedSessionOnlineDetails.getByLabel("Publish recording publicly")).toBeChecked();
     await expect(
       reopenedSessionOnlineDetails.locator(
         'input[type="hidden"][name="sessions[0][meeting_recording_published]"]',
@@ -1393,35 +1324,33 @@ test.describe("group dashboard events view", () => {
     await expect(sessionDialog).toBeHidden();
   });
 
-  test("organizer does not see the payments tab when group payments are unavailable", async ({
+  test("organizer sees free-only tickets when group payments are unavailable", async ({
     organizerGroupWithoutPaymentsPage,
   }) => {
     // Open the create form for a group without payment settings.
-    await navigateToPath(
-      organizerGroupWithoutPaymentsPage,
-      "/dashboard/group?tab=events",
-    );
+    await navigateToPath(organizerGroupWithoutPaymentsPage, "/dashboard/group?tab=events");
 
     // Open the create form from the dashboard content.
-    const dashboardContent =
-      organizerGroupWithoutPaymentsPage.locator("#dashboard-content");
+    const dashboardContent = organizerGroupWithoutPaymentsPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
 
-    // Verify the create form hides unavailable payment controls.
-    await expect(
-      organizerGroupWithoutPaymentsPage.locator(
-        'button[data-section="payments"]',
-      ),
-    ).toHaveCount(0);
-    await expect(
-      organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]'),
-    ).toHaveCount(0);
+    // Verify the create form exposes free-only ticket controls.
+    await expect(organizerGroupWithoutPaymentsPage.locator('button[data-section="payments"]')).toBeVisible();
+    await openPaymentsSection(organizerGroupWithoutPaymentsPage);
+    const createPaymentsSection = organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]');
+    await expect(createPaymentsSection.getByText("Tickets", { exact: true })).toHaveCount(0);
+    await expect(createPaymentsSection.getByText("Ticket Types", { exact: true })).toBeVisible();
+    await expect(createPaymentsSection.getByText(/Payments are not configured for this group/u)).toHaveCount(0);
+    await expect(organizerGroupWithoutPaymentsPage.locator("#payment_currency_code")).toHaveCount(0);
+    await expect(organizerGroupWithoutPaymentsPage.locator("#add-ticket-type-button")).toBeEnabled();
+    await expect(organizerGroupWithoutPaymentsPage.locator("#ticket-types-ui")).toHaveAttribute(
+      "free-only",
+      "",
+    );
+    await expect(organizerGroupWithoutPaymentsPage.locator("#add-discount-code-button")).toHaveCount(0);
 
     // Return to the events list before checking an existing event.
-    await navigateToPath(
-      organizerGroupWithoutPaymentsPage,
-      "/dashboard/group?tab=events",
-    );
+    await navigateToPath(organizerGroupWithoutPaymentsPage, "/dashboard/group?tab=events");
 
     // Open an existing event for a group without payment settings.
     const eventRow = dashboardContent.locator("tr", {
@@ -1441,25 +1370,25 @@ test.describe("group dashboard events view", () => {
       eventRow.locator('td button[aria-label^="Edit event:"]').click(),
     ]);
 
-    // Verify the update form hides unavailable payment controls.
-    await expect(
-      organizerGroupWithoutPaymentsPage.locator(
-        'button[data-section="payments"]',
-      ),
-    ).toHaveCount(0);
-    await expect(
-      organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]'),
-    ).toHaveCount(0);
+    // Verify the update form exposes free-only ticket controls.
+    await expect(organizerGroupWithoutPaymentsPage.locator('button[data-section="payments"]')).toBeVisible();
+    await openPaymentsSection(organizerGroupWithoutPaymentsPage);
+    const updatePaymentsSection = organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]');
+    await expect(updatePaymentsSection.getByText("Tickets", { exact: true })).toHaveCount(0);
+    await expect(updatePaymentsSection.getByText("Ticket Types", { exact: true })).toBeVisible();
+    await expect(updatePaymentsSection.getByText(/Payments are not configured for this group/u)).toHaveCount(0);
+    await expect(organizerGroupWithoutPaymentsPage.locator("#payment_currency_code")).toHaveCount(0);
+    await expect(organizerGroupWithoutPaymentsPage.locator("#ticket-types-ui")).toHaveAttribute(
+      "free-only",
+      "",
+    );
+    await expect(organizerGroupWithoutPaymentsPage.locator("#add-ticket-type-button")).toBeEnabled();
+    await expect(organizerGroupWithoutPaymentsPage.locator("#add-discount-code-button")).toHaveCount(0);
   });
 
-  test("organizer sees the payments tab when group payments are ready", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer sees the payments tab when group payments are ready", async ({ organizerGroupPage }) => {
     // Skip payment tab coverage when the environment disables payments.
-    test.skip(
-      !E2E_PAYMENTS_ENABLED,
-      "Payments are disabled in this environment.",
-    );
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
 
     // Open the create form for a payment-ready group.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -1469,19 +1398,11 @@ test.describe("group dashboard events view", () => {
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
 
     // Verify the create form exposes ticketing controls.
-    await expect(
-      organizerGroupPage.locator('button[data-section="payments"]'),
-    ).toBeVisible();
+    await expect(organizerGroupPage.locator('button[data-section="payments"]')).toBeVisible();
     await openPaymentsSection(organizerGroupPage);
-    await expect(
-      organizerGroupPage.locator("#payment_currency_code"),
-    ).toBeVisible();
-    await expect(
-      organizerGroupPage.locator("#add-ticket-type-button"),
-    ).toBeVisible();
-    await expect(
-      organizerGroupPage.locator("#add-discount-code-button"),
-    ).toBeVisible();
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toBeVisible();
+    await expect(organizerGroupPage.locator("#add-ticket-type-button")).toBeVisible();
+    await expect(organizerGroupPage.locator("#add-discount-code-button")).toBeVisible();
 
     // Open an existing payment-ready event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -1492,26 +1413,138 @@ test.describe("group dashboard events view", () => {
     );
 
     // Verify the update form keeps seeded payment values.
-    await expect(
-      organizerGroupPage.locator('button[data-section="payments"]'),
-    ).toBeVisible();
+    await expect(organizerGroupPage.locator('button[data-section="payments"]')).toBeVisible();
     await openPaymentsSection(organizerGroupPage);
-    await expect(
-      organizerGroupPage.locator("#payment_currency_code"),
-    ).toHaveValue("USD");
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
   });
 
-  test("organizer can create a ticketed event with ticket tiers and discount codes", async ({
+  test("organizer creates a full discount that completes paid question checkout for free", async ({
+    member2Page,
     organizerGroupPage,
   }) => {
-    // Skip ticketing coverage when the environment disables payments.
-    test.skip(
-      !E2E_PAYMENTS_ENABLED,
-      "Payments are disabled in this environment.",
-    );
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
 
-    // Create a unique event name for the ticketing flow.
-    const eventName = `E2E Ticketed Event ${Date.now()}`;
+    const discountCode = "FULLCOMP";
+    const event = TEST_TICKETING_EVENTS.paidQuestions;
+    const saveEvent = async () => {
+      const [response] = await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (candidateResponse) =>
+            candidateResponse.request().method() === "PUT" &&
+            candidateResponse.url().includes(`/dashboard/group/events/${event.id}/update`),
+        ),
+        organizerGroupPage.locator("#update-event-button").click(),
+      ]);
+
+      expect(response.ok()).toBeTruthy();
+      await expect(organizerGroupPage.locator("#dashboard-content")).not.toHaveClass(
+        /htmx-(?:request|settling)/,
+      );
+    };
+    let attendanceCreated = false;
+    let discountConfigured = false;
+
+    try {
+      // Prepare a 100-percent code on the dedicated paid questions event.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+      await openEventUpdateFormByName(organizerGroupPage, event.name, event.id);
+      await openPaymentsSection(organizerGroupPage);
+      const existingDiscountRow = organizerGroupPage
+        .locator('#discount-codes-ui [data-ticketing-role="table-body"] tr')
+        .filter({ hasText: discountCode });
+      if ((await existingDiscountRow.count()) > 0) {
+        if ((await existingDiscountRow.getByText("Active", { exact: true }).count()) === 0) {
+          await setDiscountCodeActive(organizerGroupPage, discountCode, true);
+          await saveEvent();
+        }
+      } else {
+        await addDiscountCode(organizerGroupPage, {
+          code: discountCode,
+          kind: "percentage",
+          percentage: "100",
+          title: "Complimentary registration",
+        });
+        await saveEvent();
+      }
+      discountConfigured = true;
+
+      // Select the paid ticket and redeem the configured code.
+      await navigateToEvent(
+        member2Page,
+        TEST_COMMUNITY_NAME,
+        TEST_GROUP_SLUGS.community1.alpha,
+        event.slug,
+      );
+      await waitForAttendanceState(member2Page);
+      await getAttendButton(member2Page).click();
+      const ticketModal = member2Page.locator('[data-attendance-role="ticket-modal"]');
+      await ticketModal.locator("label", { hasText: "Questions conference pass" }).click();
+      await ticketModal.locator('[data-attendance-role="discount-code-input"]').fill(discountCode);
+      await ticketModal.locator('[data-attendance-role="checkout-btn"]').click();
+
+      // Answer the required question before the checkout request resumes.
+      const registrationModal = member2Page.locator('[data-attendance-role="registration-modal"]');
+      await expect(registrationModal).toBeVisible();
+      await registrationModal
+        .getByRole("textbox")
+        .fill("Please prepare accessible workshop materials.");
+      const checkoutRequest = member2Page.waitForRequest(
+        (request) =>
+          request.method() === "POST" && request.url().includes(`/event/${event.id}/checkout`),
+      );
+      await Promise.all([
+        member2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            response.url().includes(`/event/${event.id}/checkout`) &&
+            response.ok(),
+        ),
+        registrationModal
+          .locator('[data-attendance-role="registration-modal-submit"]')
+          .click(),
+      ]);
+      attendanceCreated = true;
+      const requestData = new URLSearchParams((await checkoutRequest).postData() ?? "");
+      const answers = JSON.parse(requestData.get("registration_answers") ?? "{}");
+
+      // The full discount completes without handing control to a provider.
+      expect(requestData.get("discount_code")).toBe(discountCode);
+      expect(answers.answers?.[0]?.value).toBe(
+        "Please prepare accessible workshop materials.",
+      );
+      await expect(getLeaveButton(member2Page)).toContainText("Cancel attendance");
+      await expect(member2Page.locator(".swal2-popup")).toContainText(
+        "You have successfully registered for this event.",
+      );
+    } finally {
+      // Restore the reusable attendee and event configuration.
+      if (attendanceCreated) {
+        const cleanupResponse = await member2Page.request.delete(
+          buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${event.id}/leave`),
+        );
+        expect(cleanupResponse.ok()).toBeTruthy();
+      }
+
+      if (discountConfigured) {
+        await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+        await openEventUpdateFormByName(organizerGroupPage, event.name, event.id);
+        await openPaymentsSection(organizerGroupPage);
+        await setDiscountCodeActive(organizerGroupPage, discountCode, false);
+        await saveEvent();
+      }
+    }
+  });
+
+  test("organizer can create a paid event with multiple tiers and discount codes", async ({
+    organizerGroupPage,
+  }) => {
+    test.setTimeout(60_000);
+
+    // Skip paid-tier coverage when the environment disables payments.
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
+    // Create a unique event name for the tiered payment flow.
+    const eventName = `E2E Paid Tier Event ${Date.now()}`;
 
     // Open the event form for a payment-ready group.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -1520,29 +1553,25 @@ test.describe("group dashboard events view", () => {
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
 
-    // Fill the core ticketed event details.
+    // Fill the core event details.
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage
-      .locator("#category_id")
-      .selectOption("33333333-3333-3333-3333-333333333331");
-    await organizerGroupPage
-      .locator("#description_short")
-      .fill("Ticketed dashboard event for payment coverage.");
+    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#description_short").fill("Paid dashboard event for payment coverage.");
     await fillMarkdownEditor(
       organizerGroupPage,
       "description",
-      "Ticketed dashboard event used to cover ticket tiers and discount codes.",
+      "Paid dashboard event used to cover admission tiers and discount codes.",
     );
-    await organizerGroupPage.locator("#capacity").fill("25");
-    await organizerGroupPage
-      .locator("#toggle_waitlist_enabled")
-      .check({ force: true });
+    await organizerGroupPage.locator("#toggle_waitlist_enabled").check({ force: true });
+
+    // Configure a meeting-safe capacity before automatic meeting selection.
+    if (E2E_MEETINGS_ENABLED) {
+      await setAutomaticMeetingCapacity(organizerGroupPage);
+    }
 
     // Fill schedule and online meeting details.
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator("#starts_at").fill("2030-11-12T18:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-11-12T20:00");
@@ -1551,44 +1580,24 @@ test.describe("group dashboard events view", () => {
     } else {
       await organizerGroupPage
         .locator("#meeting_join_url")
-        .fill("https://meet.example.com/e2e-ticketed-event");
+        .fill("https://meet.example.com/e2e-paid-tier-event");
     }
 
-    // Open payments before adding ticketing details.
+    // Open payments before editing the default admission tier.
     await openPaymentsSection(organizerGroupPage);
 
-    // Configure ticketing values and related capacity side effects.
-    await addTicketType(organizerGroupPage, {
+    // Reuse the default tier for the free admission option.
+    await editTicketType(organizerGroupPage, "General Admission", {
       title: "Free community pass",
       description: "Free tier used for zero-price coverage.",
       seatsTotal: "12",
-      priceWindows: [{ amount: "0" }],
     });
 
-    // Verify currency validation after adding the first ticket type.
-    const paymentCurrencyInput = organizerGroupPage.locator(
-      "#payment_currency_code",
-    );
-    await expect(paymentCurrencyInput).toHaveJSProperty("required", true);
-    const validationMessage = await paymentCurrencyInput.evaluate(
-      (element) => element.validationMessage,
-    );
-    expect(validationMessage).toBe(
-      "Ticketed events require an event currency.",
-    );
-
-    // Verify ticketing disables capacity and waitlist fields.
-    await expect(
-      organizerGroupPage.locator("#toggle_waitlist_enabled"),
-    ).toBeDisabled();
-    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
-      "false",
-    );
-    await expect(organizerGroupPage.locator("#capacity")).toBeDisabled();
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("12");
-
-    // Select currency before adding paid ticketing details.
-    await paymentCurrencyInput.selectOption("USD");
+    // Verify free-only tiers need no currency and retain the waitlist setting.
+    const paymentCurrencyInput = organizerGroupPage.locator("#payment_currency_code");
+    await expect(paymentCurrencyInput).toHaveJSProperty("required", false);
+    await expect(organizerGroupPage.locator("#toggle_waitlist_enabled")).toBeEnabled();
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("true");
 
     // Add a paid ticket type with scheduled price windows.
     await addTicketType(organizerGroupPage, {
@@ -1601,8 +1610,11 @@ test.describe("group dashboard events view", () => {
       ],
     });
 
-    // Verify ticket capacity contributes to event capacity.
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("42");
+    // Verify positive prices require a currency before submission.
+    await expect(paymentCurrencyInput).toHaveJSProperty("required", true);
+    const validationMessage = await paymentCurrencyInput.evaluate((element) => element.validationMessage);
+    expect(validationMessage).toBe("Paid ticket prices require an event currency.");
+    await paymentCurrencyInput.selectOption("USD");
 
     // Add discount codes for fixed amount and percentage coverage.
     await addDiscountCode(organizerGroupPage, {
@@ -1619,13 +1631,33 @@ test.describe("group dashboard events view", () => {
       totalAvailable: "50",
     });
 
-    // Create the ticketed event and wait for the POST response.
+    // Verify compact redemption summaries at the default desktop width.
+    const discountCodesTable = organizerGroupPage.locator("#discount-codes-ui table");
+    const redemptionsHeader = discountCodesTable.locator("thead th").nth(1);
+    const unlimitedDiscountRow = discountCodesTable.locator("tbody tr", {
+      hasText: "Launch savings",
+    });
+    const limitedDiscountRow = discountCodesTable.locator("tbody tr", {
+      hasText: "Early supporter",
+    });
+    await expect(redemptionsHeader).toBeHidden();
+    await expect(redemptionsHeader).toContainText("Redemptions");
+    await expect(unlimitedDiscountRow.getByText("Unlimited", { exact: true }).first()).toBeVisible();
+    await expect(limitedDiscountRow.getByText("50 max", { exact: true }).first()).toBeVisible();
+
+    // Verify the dedicated redemption column at the widest layout.
+    await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
+    await expect(redemptionsHeader).toBeVisible();
+    await expect(unlimitedDiscountRow.locator("td").nth(1)).toHaveText("Unlimited");
+    await expect(limitedDiscountRow.locator("td").nth(1)).toHaveText("50 max");
+
+    // Create the tiered event and wait for the POST response.
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
     await expect(visibleAddEventButton).toBeVisible();
 
-    // Submit the ticketed event and wait for creation.
+    // Submit the tiered event and wait for creation.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -1636,30 +1668,26 @@ test.describe("group dashboard events view", () => {
       visibleAddEventButton.click(),
     ]);
 
-    // Verify the ticketed event appears and dismiss the success dialog.
+    // Verify the tiered event appears and dismiss the success dialog.
     const eventRow = dashboardContent.locator("tr", { hasText: eventName });
     const successDialog = organizerGroupPage.locator(".swal2-popup");
     await expect(eventRow).toBeVisible();
     await successDialog.getByRole("button", { name: "OK" }).click();
     await expect(successDialog).toBeHidden();
 
-    // Reopen the event and verify ticketing values persisted.
+    // Reopen the event and verify tier values persisted.
     await openEventUpdateFormByName(organizerGroupPage, eventName);
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
 
     // Verify the reopened event keeps online meeting details.
     if (E2E_MEETINGS_ENABLED) {
       await expectAutomaticMeetingControls(organizerGroupPage);
       await expect(
-        organizerGroupPage.locator(
-          'online-event-details input[name="meeting_requested"]',
-        ),
+        organizerGroupPage.locator('online-event-details input[name="meeting_requested"]'),
       ).toHaveValue("true");
     } else {
       await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
-        "https://meet.example.com/e2e-ticketed-event",
+        "https://meet.example.com/e2e-paid-tier-event",
       );
     }
 
@@ -1667,29 +1695,75 @@ test.describe("group dashboard events view", () => {
     await openPaymentsSection(organizerGroupPage);
 
     // Verify ticket types and discounts persisted in payment tables.
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
     await expect(
-      organizerGroupPage.locator("#payment_currency_code"),
-    ).toHaveValue("USD");
-    await expect(
-      organizerGroupPage.locator(
-        '#ticket-types-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
     ).toContainText("Free community pass");
     await expect(
-      organizerGroupPage.locator(
-        '#ticket-types-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
     ).toContainText("General admission");
     await expect(
-      organizerGroupPage.locator(
-        '#discount-codes-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
     ).toContainText("SAVE10");
     await expect(
-      organizerGroupPage.locator(
-        '#discount-codes-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
     ).toContainText("EARLY20");
+    const persistedDiscountRows = organizerGroupPage.locator(
+      '#discount-codes-ui [data-ticketing-role="table-body"] tr',
+    );
+    await expect(persistedDiscountRows.filter({ hasText: "Launch savings" }).locator("td").nth(1)).toHaveText(
+      "Unlimited",
+    );
+    await expect(
+      persistedDiscountRows.filter({ hasText: "Early supporter" }).locator("td").nth(1),
+    ).toHaveText("50 max");
+
+    // Remove an unused tier and persist the reduced ticket configuration.
+    const persistedTicketRows = organizerGroupPage.locator(
+      '#ticket-types-ui [data-ticketing-role="table-body"] tr',
+    );
+    await persistedTicketRows.filter({ hasText: "General admission" }).getByTitle("Delete").click();
+    await expect(persistedTicketRows).toHaveCount(1);
+
+    // Remove discounts that are no longer valid after the last paid tier is removed.
+    const persistedDiscountCodeRows = organizerGroupPage.locator(
+      '#discount-codes-ui [data-ticketing-role="table-body"] tr',
+    );
+    await persistedDiscountCodeRows
+      .filter({ hasText: "Launch savings" })
+      .getByTitle("Delete")
+      .click();
+    await persistedDiscountCodeRows
+      .filter({ hasText: "Early supporter" })
+      .getByTitle("Delete")
+      .click();
+    await expect(persistedDiscountCodeRows).toHaveCount(0);
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/update") &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator("#update-event-button").click(),
+    ]);
+
+    // Reopen the event and verify the removed tier was deleted durably.
+    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    await openPaymentsSection(organizerGroupPage);
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).not.toContainText("General admission");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("Free community pass");
+    await expect(
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
+    ).not.toContainText("SAVE10");
+    await expect(
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
+    ).not.toContainText("EARLY20");
 
     // Delete the temporary event to keep the seeded list reusable.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -1716,21 +1790,14 @@ test.describe("group dashboard events view", () => {
     ]);
 
     // Verify the deleted event is removed from the list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: eventName }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
   });
 
-  test("organizer sees seeded ticketing values on a payment-ready event", async ({
-    organizerGroupPage,
-  }) => {
-    // Skip seeded ticketing coverage when the environment disables payments.
-    test.skip(
-      !E2E_PAYMENTS_ENABLED,
-      "Payments are disabled in this environment.",
-    );
+  test("organizer sees seeded admission tiers on a payment-ready event", async ({ organizerGroupPage }) => {
+    // Skip seeded paid-tier coverage when the environment disables payments.
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
 
-    // Open the seeded payment-ready event before checking ticketing.
+    // Open the seeded payment-ready event before checking its tiers.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
@@ -1739,53 +1806,36 @@ test.describe("group dashboard events view", () => {
     );
     await openPaymentsSection(organizerGroupPage);
 
-    // Verify seeded ticketing values and capacity side effects.
+    // Verify seeded tier and enrollment values.
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
+    await expect(organizerGroupPage.locator("#toggle_waitlist_enabled")).toBeEnabled();
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
     await expect(
-      organizerGroupPage.locator("#payment_currency_code"),
-    ).toHaveValue("USD");
-    await expect(organizerGroupPage.locator("#capacity")).toBeDisabled();
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("42");
-    await expect(
-      organizerGroupPage.locator("#toggle_waitlist_enabled"),
-    ).toBeDisabled();
-    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
-      "false",
-    );
-    await expect(
-      organizerGroupPage.locator(
-        '#ticket-types-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
     ).toContainText("General admission");
     await expect(
-      organizerGroupPage.locator(
-        '#ticket-types-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
     ).toContainText("Community ticket");
     await expect(
-      organizerGroupPage.locator(
-        '#ticket-types-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
     ).toContainText("Backstage pass");
     await expect(
-      organizerGroupPage.locator(
-        '#discount-codes-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
     ).toContainText("SAVE10");
     await expect(
-      organizerGroupPage.locator(
-        '#discount-codes-ui [data-ticketing-role="table-body"]',
-      ),
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
     ).toContainText("EARLY20");
+    const limitedDiscountRow = organizerGroupPage
+      .locator('#discount-codes-ui [data-ticketing-role="table-body"] tr')
+      .filter({ hasText: "Limited campaign" });
+    await expect(limitedDiscountRow.getByText("0 / 1", { exact: true }).first()).toBeVisible();
   });
 
-  test("organizer sees seats and status columns in the ticket types table", async ({
+  test("organizer sees price, seats, and status columns in the ticket types table", async ({
     organizerGroupPage,
   }) => {
     // Skip ticket table coverage when the environment disables payments.
-    test.skip(
-      !E2E_PAYMENTS_ENABLED,
-      "Payments are disabled in this environment.",
-    );
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
 
     // Open the seeded payment-ready event before checking table columns.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -1797,24 +1847,69 @@ test.describe("group dashboard events view", () => {
     await openPaymentsSection(organizerGroupPage);
 
     // Target the seeded ticket table and general admission row.
-    const ticketTypesTable = organizerGroupPage.locator(
-      "#ticket-types-ui table",
-    );
+    const ticketTypesTable = organizerGroupPage.locator("#ticket-types-ui table");
     const generalAdmissionRow = ticketTypesTable.locator("tbody tr", {
       hasText: "General admission",
     });
 
-    // Verify the ticket table keeps seat and status columns visible.
+    // Verify the ticket table keeps price, seat, and status columns visible.
     await expect(ticketTypesTable.locator("thead th").nth(1)).toBeVisible();
-    await expect(ticketTypesTable.locator("thead th").nth(1)).toContainText(
-      "Seats",
-    );
+    await expect(ticketTypesTable.locator("thead th").nth(1)).toContainText("Price");
     await expect(ticketTypesTable.locator("thead th").nth(2)).toBeVisible();
-    await expect(ticketTypesTable.locator("thead th").nth(2)).toContainText(
-      "Status",
-    );
+    await expect(ticketTypesTable.locator("thead th").nth(2)).toContainText("Seats");
+    await expect(ticketTypesTable.locator("thead th").nth(3)).toBeVisible();
+    await expect(ticketTypesTable.locator("thead th").nth(3)).toContainText("Status");
     await expect(generalAdmissionRow.locator("td").nth(1)).toBeVisible();
+    await expect(generalAdmissionRow.locator("td").nth(1)).toContainText("$");
     await expect(generalAdmissionRow.locator("td").nth(2)).toBeVisible();
+    await expect(generalAdmissionRow.locator("td").nth(3)).toBeVisible();
+  });
+
+  test("ticket removal blocks the last tier and rejects tiers with purchases", async ({
+    organizerGroupPage,
+  }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
+    // A one-tier event keeps its final ticket type in place.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_TICKETING_EVENTS.migratedCapacity.name,
+      TEST_TICKETING_EVENTS.migratedCapacity.id,
+    );
+    await openPaymentsSection(organizerGroupPage);
+    const lastTierDeleteButton = organizerGroupPage
+      .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
+      .filter({ hasText: "General Admission" })
+      .locator('[data-ticketing-action="delete-ticket"]');
+    await expect(lastTierDeleteButton).toBeDisabled();
+    await expect(lastTierDeleteButton).toHaveAttribute("title", "Every event needs at least one ticket type");
+
+    // Removing a tier linked to a seeded checkout is rejected by the server.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_PAYMENT_EVENT_NAMES.draft,
+      TEST_PAYMENT_EVENT_IDS.draft,
+    );
+    await openPaymentsSection(organizerGroupPage);
+    const purchasedTierRow = organizerGroupPage
+      .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
+      .filter({ hasText: "General admission" });
+    await purchasedTierRow.getByTitle("Delete").click();
+    const rejectionResponse = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" &&
+        response.url().includes(`/dashboard/group/events/${TEST_PAYMENT_EVENT_IDS.draft}/update`) &&
+        response.status() === 422,
+    );
+    await organizerGroupPage.locator("#update-event-button").click();
+    const response = await rejectionResponse;
+    expect(response.status()).toBe(422);
+    expect(await response.text()).toContain("ticket types with purchases cannot be removed");
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Something went wrong updating the event.",
+    );
   });
 
   test("organizer can create, update, and delete an event with images and rich fields", async ({
@@ -1824,14 +1919,13 @@ test.describe("group dashboard events view", () => {
     const initialValues = {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
-      capacity: "120",
+      seatsTotal: "120",
       categoryId: "33333333-3333-3333-3333-333333333331",
       cfsDescription: "Initial speaker program details for a temporary event.",
       cfsEndsAt: "2030-09-20T17:00",
       cfsLabels: ["track / platform"],
       cfsStartsAt: "2030-09-01T09:00",
-      description:
-        "Initial full description for a temporary event with rich form coverage.",
+      description: "Initial full description for a temporary event with rich form coverage.",
       descriptionShort: "Initial temporary event for rich update coverage.",
       endsAt: "2030-10-05T13:30",
       eventReminderEnabled: true,
@@ -1883,14 +1977,13 @@ test.describe("group dashboard events view", () => {
     const updatedValues = {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
-      capacity: "180",
+      seatsTotal: "180",
       categoryId: "33333333-3333-3333-3333-333333333331",
       cfsDescription: "Updated speaker program details for a temporary event.",
       cfsEndsAt: "2030-09-24T18:00",
       cfsLabels: ["track / devex", "track / cloud"],
       cfsStartsAt: "2030-09-03T10:30",
-      description:
-        "Updated full description for a temporary event with rich form coverage.",
+      description: "Updated full description for a temporary event with rich form coverage.",
       descriptionShort: "Updated temporary event for rich update coverage.",
       endsAt: "2030-10-08T18:00",
       eventReminderEnabled: false,
@@ -1953,100 +2046,58 @@ test.describe("group dashboard events view", () => {
     const fillEventForm = async (values) => {
       await organizerGroupPage.locator("#name").fill(values.name);
       await organizerGroupPage.locator("#kind_id").selectOption(values.kindId);
-      await organizerGroupPage
-        .locator("#category_id")
-        .selectOption(values.categoryId);
+      await organizerGroupPage.locator("#category_id").selectOption(values.categoryId);
       await uploadImageField(organizerGroupPage, "logo_url", values.logoPath);
-      await uploadImageField(
-        organizerGroupPage,
-        "banner_url",
-        values.bannerPath,
-      );
-      await uploadImageField(
-        organizerGroupPage,
-        "banner_mobile_url",
-        values.bannerMobilePath,
-      );
-      await organizerGroupPage
-        .locator("#description_short")
-        .fill(values.descriptionShort);
-      await fillMarkdownEditor(
-        organizerGroupPage,
-        "description",
-        values.description,
-      );
-      await organizerGroupPage.locator("#capacity").fill(values.capacity);
+      await uploadImageField(organizerGroupPage, "banner_url", values.bannerPath);
+      await uploadImageField(organizerGroupPage, "banner_mobile_url", values.bannerMobilePath);
+      await organizerGroupPage.locator("#description_short").fill(values.descriptionShort);
+      await fillMarkdownEditor(organizerGroupPage, "description", values.description);
+      await openPaymentsSection(organizerGroupPage);
+      await editTicketType(organizerGroupPage, "General Admission", {
+        description: "Default free admission tier.",
+        seatsTotal: values.seatsTotal,
+        title: "General Admission",
+      });
+      await openDetailsSection(organizerGroupPage);
       if (values.testEvent) {
-        await organizerGroupPage
-          .locator("#toggle_test_event")
-          .check({ force: true });
+        await organizerGroupPage.locator("#toggle_test_event").check({ force: true });
       } else {
-        await organizerGroupPage
-          .locator("#toggle_test_event")
-          .uncheck({ force: true });
+        await organizerGroupPage.locator("#toggle_test_event").uncheck({ force: true });
       }
       if (values.waitlistEnabled) {
-        await organizerGroupPage
-          .locator("#toggle_waitlist_enabled")
-          .check({ force: true });
+        await organizerGroupPage.locator("#toggle_waitlist_enabled").check({ force: true });
       } else {
-        await organizerGroupPage
-          .locator("#toggle_waitlist_enabled")
-          .uncheck({ force: true });
+        await organizerGroupPage.locator("#toggle_waitlist_enabled").uncheck({ force: true });
       }
       if (values.attendeeApprovalRequired) {
-        await organizerGroupPage
-          .locator("#toggle_attendee_approval_required")
-          .check({ force: true });
+        await organizerGroupPage.locator("#toggle_attendee_approval_required").check({ force: true });
       } else {
-        await organizerGroupPage
-          .locator("#toggle_attendee_approval_required")
-          .uncheck({ force: true });
+        await organizerGroupPage.locator("#toggle_attendee_approval_required").uncheck({ force: true });
       }
       await organizerGroupPage.locator("#meetup_url").fill(values.meetupUrl);
       await organizerGroupPage.locator("#luma_url").fill(values.lumaUrl);
-      await fillMultipleInputs(
-        organizerGroupPage.locator('multiple-inputs[field-name="tags"]'),
-        values.tags,
-      );
-      await uploadGalleryImages(
-        organizerGroupPage,
-        "photos_urls",
-        values.galleryPaths,
-      );
+      await fillMultipleInputs(organizerGroupPage.locator('multiple-inputs[field-name="tags"]'), values.tags);
+      await uploadGalleryImages(organizerGroupPage, "photos_urls", values.galleryPaths);
 
       // Fill registration questions for this values set.
-      await organizerGroupPage
-        .locator('button[data-section="questions"]')
-        .click({ force: true });
-      await setRegistrationQuestions(
-        organizerGroupPage,
-        values.registrationQuestions,
-      );
+      await organizerGroupPage.locator('button[data-section="questions"]').click({ force: true });
+      await setRegistrationQuestions(organizerGroupPage, values.registrationQuestions);
 
       // Fill hosts and speakers for this values set.
-      await organizerGroupPage
-        .locator('button[data-section="hosts-sponsors"]')
-        .click({ force: true });
+      await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click({ force: true });
       await setEventPeople(organizerGroupPage, values);
 
       // Fill date, venue, and meeting details for this values set.
-      await organizerGroupPage
-        .locator('button[data-section="date-venue"]')
-        .click({
-          force: true,
-        });
+      await organizerGroupPage.locator('button[data-section="date-venue"]').click({
+        force: true,
+      });
       await selectTimezone(organizerGroupPage, values.timezone);
       await organizerGroupPage.locator("#starts_at").fill(values.startsAt);
       await organizerGroupPage.locator("#ends_at").fill(values.endsAt);
       if (values.eventReminderEnabled) {
-        await organizerGroupPage
-          .locator("#toggle_event_reminder_enabled")
-          .check({ force: true });
+        await organizerGroupPage.locator("#toggle_event_reminder_enabled").check({ force: true });
       } else {
-        await organizerGroupPage
-          .locator("#toggle_event_reminder_enabled")
-          .uncheck({ force: true });
+        await organizerGroupPage.locator("#toggle_event_reminder_enabled").uncheck({ force: true });
       }
       await fillEventVenue(organizerGroupPage, {
         address: values.venueAddress,
@@ -2056,35 +2107,21 @@ test.describe("group dashboard events view", () => {
         name: values.venueName,
         zipCode: values.venueZipCode,
       });
-      await organizerGroupPage
-        .locator("#meeting_join_url")
-        .fill(values.meetingJoinUrl);
-      await organizerGroupPage
-        .locator("#meeting_recording_url")
-        .fill(values.meetingRecordingUrl);
+      await organizerGroupPage.locator("#meeting_join_url").fill(values.meetingJoinUrl);
+      await organizerGroupPage.locator("#meeting_recording_url").fill(values.meetingRecordingUrl);
 
       // Fill CFS fields for this values set.
-      const cfsSectionButton = organizerGroupPage.locator(
-        'button[data-section="cfs"]',
-      );
+      const cfsSectionButton = organizerGroupPage.locator('button[data-section="cfs"]');
       await cfsSectionButton.scrollIntoViewIfNeeded();
       await cfsSectionButton.click({ force: true });
-      await organizerGroupPage
-        .locator("#toggle_cfs_enabled")
-        .check({ force: true });
-      await organizerGroupPage
-        .locator("#cfs_starts_at")
-        .fill(values.cfsStartsAt, {
-          force: true,
-        });
+      await organizerGroupPage.locator("#toggle_cfs_enabled").check({ force: true });
+      await organizerGroupPage.locator("#cfs_starts_at").fill(values.cfsStartsAt, {
+        force: true,
+      });
       await organizerGroupPage.locator("#cfs_ends_at").fill(values.cfsEndsAt, {
         force: true,
       });
-      await fillMarkdownEditor(
-        organizerGroupPage,
-        "cfs_description",
-        values.cfsDescription,
-      );
+      await fillMarkdownEditor(organizerGroupPage, "cfs_description", values.cfsDescription);
       await setCfsLabels(organizerGroupPage, values.cfsLabels);
     };
 
@@ -2107,9 +2144,7 @@ test.describe("group dashboard events view", () => {
 
     // Target dashboard content after the events tab loads.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    await expect(
-      dashboardContent.getByText("Events", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
 
     // Open the event form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
@@ -2163,80 +2198,50 @@ test.describe("group dashboard events view", () => {
 
     // Reopen the form and verify the rich values persisted.
     await openEventUpdateForm(eventRow);
-    await expect(organizerGroupPage.locator("#name")).toHaveValue(
-      updatedValues.name,
-    );
-    await expect(organizerGroupPage.locator("#kind_id")).toHaveValue(
-      updatedValues.kindId,
-    );
-    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(
-      updatedValues.categoryId,
-    );
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
+    await expect(organizerGroupPage.locator("#kind_id")).toHaveValue(updatedValues.kindId);
+    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
     await expect
-      .poll(async () =>
-        (
-          await organizerGroupPage.locator("#description_short").inputValue()
-        ).trim(),
-      )
+      .poll(async () => (await organizerGroupPage.locator("#description_short").inputValue()).trim())
       .toBe(updatedValues.descriptionShort);
-    await expect(organizerGroupPage.locator("#capacity")).toHaveValue(
-      updatedValues.capacity,
+    await openPaymentsSection(organizerGroupPage);
+    const generalAdmissionRow = organizerGroupPage
+      .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
+      .filter({ hasText: "General Admission" });
+    await expect(generalAdmissionRow).toContainText(updatedValues.seatsTotal);
+    await expect(organizerGroupPage.locator("#test_event")).toHaveValue(String(updatedValues.testEvent));
+    await expect(organizerGroupPage.locator("#attendee_approval_required")).toHaveValue(
+      String(updatedValues.attendeeApprovalRequired),
     );
-    await expect(organizerGroupPage.locator("#test_event")).toHaveValue(
-      String(updatedValues.testEvent),
-    );
-    await expect(
-      organizerGroupPage.locator("#attendee_approval_required"),
-    ).toHaveValue(String(updatedValues.attendeeApprovalRequired));
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
       String(updatedValues.waitlistEnabled),
     );
-    await expect(organizerGroupPage.locator("#meetup_url")).toHaveValue(
-      updatedValues.meetupUrl,
-    );
-    await expect(organizerGroupPage.locator("#luma_url")).toHaveValue(
-      updatedValues.lumaUrl,
-    );
+    await expect(organizerGroupPage.locator("#meetup_url")).toHaveValue(updatedValues.meetupUrl);
+    await expect(organizerGroupPage.locator("#luma_url")).toHaveValue(updatedValues.lumaUrl);
     await expect(
-      organizerGroupPage.locator(
-        'image-field[name="logo_url"] input[name="logo_url"]',
-      ),
+      organizerGroupPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
     ).toHaveValue(/\/images\//);
     await expect(
-      organizerGroupPage.locator(
-        'image-field[name="banner_url"] input[name="banner_url"]',
-      ),
+      organizerGroupPage.locator('image-field[name="banner_url"] input[name="banner_url"]'),
     ).toHaveValue(/\/images\//);
     await expect(
-      organizerGroupPage.locator(
-        'image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]',
-      ),
+      organizerGroupPage.locator('image-field[name="banner_mobile_url"] input[name="banner_mobile_url"]'),
     ).toHaveValue(/\/images\//);
     await expect(
-      organizerGroupPage.locator(
-        'multiple-inputs[field-name="tags"] input[name="tags[]"]',
-      ),
+      organizerGroupPage.locator('multiple-inputs[field-name="tags"] input[name="tags[]"]'),
     ).toHaveCount(updatedValues.tags.length);
-    await organizerGroupPage
-      .locator('button[data-section="questions"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="questions"]').click();
     await expect(
-      organizerGroupPage.locator(
-        'questions-editor input[name="registration_questions[0][prompt]"]',
-      ),
+      organizerGroupPage.locator('questions-editor input[name="registration_questions[0][prompt]"]'),
     ).toHaveValue(updatedValues.registrationQuestions[0].prompt);
     await expect(
       organizerGroupPage.locator(
         'questions-editor input[name="registration_questions[0][options][0][label]"]',
       ),
     ).toHaveValue(updatedValues.registrationQuestions[0].options[0].label);
-    await organizerGroupPage
-      .locator('button[data-section="hosts-sponsors"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="hosts-sponsors"]').click();
     await expect(
-      organizerGroupPage.locator(
-        'user-search-selector[field-name="hosts"] input[name="hosts[]"]',
-      ),
+      organizerGroupPage.locator('user-search-selector[field-name="hosts"] input[name="hosts[]"]'),
     ).toHaveValue(updatedValues.hosts[0].user_id);
     await expect(
       organizerGroupPage.locator(
@@ -2248,56 +2253,36 @@ test.describe("group dashboard events view", () => {
         'speakers-selector[field-name-prefix="speakers"] input[name="speakers[0][featured]"]',
       ),
     ).toHaveValue(String(updatedValues.speakers[0].featured));
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
-    await expect(
-      organizerGroupPage.locator('input[name="timezone"]'),
-    ).toHaveValue(updatedValues.timezone);
-    await expect(organizerGroupPage.locator("#starts_at")).toHaveValue(
-      updatedValues.startsAt,
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await expect(organizerGroupPage.locator('input[name="timezone"]')).toHaveValue(updatedValues.timezone);
+    await expect(organizerGroupPage.locator("#starts_at")).toHaveValue(updatedValues.startsAt);
+    await expect(organizerGroupPage.locator("#ends_at")).toHaveValue(updatedValues.endsAt);
+    await expect(organizerGroupPage.locator("#event_reminder_enabled")).toHaveValue(
+      String(updatedValues.eventReminderEnabled),
     );
-    await expect(organizerGroupPage.locator("#ends_at")).toHaveValue(
-      updatedValues.endsAt,
+    await expect(organizerGroupPage.locator("#location-search-venue_name")).toHaveValue(
+      updatedValues.venueName,
     );
-    await expect(
-      organizerGroupPage.locator("#event_reminder_enabled"),
-    ).toHaveValue(String(updatedValues.eventReminderEnabled));
-    await expect(
-      organizerGroupPage.locator("#location-search-venue_name"),
-    ).toHaveValue(updatedValues.venueName);
-    await expect(
-      organizerGroupPage.locator("#location-search-venue_address"),
-    ).toHaveValue(updatedValues.venueAddress);
-    await expect(
-      organizerGroupPage.locator("#location-search-venue_city"),
-    ).toHaveValue(updatedValues.venueCity);
-    await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
-      updatedValues.meetingJoinUrl,
+    await expect(organizerGroupPage.locator("#location-search-venue_address")).toHaveValue(
+      updatedValues.venueAddress,
     );
-    await expect(
-      organizerGroupPage.locator("#meeting_recording_url"),
-    ).toHaveValue(updatedValues.meetingRecordingUrl);
+    await expect(organizerGroupPage.locator("#location-search-venue_city")).toHaveValue(
+      updatedValues.venueCity,
+    );
+    await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(updatedValues.meetingJoinUrl);
+    await expect(organizerGroupPage.locator("#meeting_recording_url")).toHaveValue(
+      updatedValues.meetingRecordingUrl,
+    );
     await organizerGroupPage.locator('button[data-section="cfs"]').click();
-    await expect(organizerGroupPage.locator("#cfs_enabled")).toHaveValue(
-      "true",
-    );
-    await expect(organizerGroupPage.locator("#cfs_starts_at")).toHaveValue(
-      updatedValues.cfsStartsAt,
-    );
-    await expect(organizerGroupPage.locator("#cfs_ends_at")).toHaveValue(
-      updatedValues.cfsEndsAt,
+    await expect(organizerGroupPage.locator("#cfs_enabled")).toHaveValue("true");
+    await expect(organizerGroupPage.locator("#cfs_starts_at")).toHaveValue(updatedValues.cfsStartsAt);
+    await expect(organizerGroupPage.locator("#cfs_ends_at")).toHaveValue(updatedValues.cfsEndsAt);
+    await expect(organizerGroupPage.locator('cfs-labels-editor input[name$="[name]"]')).toHaveCount(
+      updatedValues.cfsLabels.length,
     );
     await expect(
-      organizerGroupPage.locator('cfs-labels-editor input[name$="[name]"]'),
-    ).toHaveCount(updatedValues.cfsLabels.length);
-    await expect(
-      organizerGroupPage.locator(
-        'gallery-field[field-name="photos_urls"] input[name="photos_urls[]"]',
-      ),
-    ).toHaveCount(
-      initialValues.galleryPaths.length + updatedValues.galleryPaths.length,
-    );
+      organizerGroupPage.locator('gallery-field[field-name="photos_urls"] input[name="photos_urls[]"]'),
+    ).toHaveCount(initialValues.galleryPaths.length + updatedValues.galleryPaths.length);
 
     // Delete the temporary event to keep the seeded list reusable.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -2325,14 +2310,10 @@ test.describe("group dashboard events view", () => {
     ]);
 
     // Verify the deleted event is removed from the list.
-    await expect(
-      dashboardContent.locator("tr", { hasText: updatedValues.name }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: updatedValues.name })).toHaveCount(0);
   });
 
-  test("organizer can unpublish and publish an event from the list", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can unpublish and publish an event from the list", async ({ organizerGroupPage }) => {
     // Load the events list before changing publish status.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
@@ -2345,15 +2326,11 @@ test.describe("group dashboard events view", () => {
     await expect(eventRow).toContainText("Published");
 
     // Unpublish the seeded event from the actions menu.
-    const actionsButton = eventRow.locator(
-      `.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`,
-    );
+    const actionsButton = eventRow.locator(`.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`);
     await actionsButton.click();
 
     // Target the unpublish action after opening the menu.
-    const unpublishButton = organizerGroupPage.locator(
-      `#unpublish-event-${TEST_EVENT_IDS.alpha.one}`,
-    );
+    const unpublishButton = organizerGroupPage.locator(`#unpublish-event-${TEST_EVENT_IDS.alpha.one}`);
     await expect(unpublishButton).toBeVisible();
 
     // Confirm unpublish and wait for the server response.
@@ -2361,11 +2338,7 @@ test.describe("group dashboard events view", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/unpublish`,
-            ) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/unpublish`) &&
           response.ok(),
       ),
       unpublishButton.click(),
@@ -2376,14 +2349,10 @@ test.describe("group dashboard events view", () => {
     await expect(eventRow).toContainText("Draft");
 
     // Publish the seeded event again to restore the original state.
-    await eventRow
-      .locator(`.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`)
-      .click();
+    await eventRow.locator(`.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`).click();
 
     // Target the publish action after opening the menu.
-    const publishButton = organizerGroupPage.locator(
-      `#publish-event-${TEST_EVENT_IDS.alpha.one}`,
-    );
+    const publishButton = organizerGroupPage.locator(`#publish-event-${TEST_EVENT_IDS.alpha.one}`);
     await expect(publishButton).toBeVisible();
 
     // Confirm publish and wait for the server response.
@@ -2391,11 +2360,7 @@ test.describe("group dashboard events view", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/publish`,
-            ) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/publish`) &&
           response.ok(),
       ),
       publishButton.click(),
@@ -2436,17 +2401,11 @@ test.describe("group dashboard events view", () => {
         organizerGroupPage.waitForResponse(
           (response) =>
             response.request().method() === "GET" &&
-            response
-              .url()
-              .includes(
-                `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`,
-              ) &&
+            response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`) &&
             response.ok(),
         ),
         eventRow
-          .locator(
-            `td button[hx-get="/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update"]`,
-          )
+          .locator(`td button[hx-get="/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update"]`)
           .click(),
       ]);
     };
@@ -2457,12 +2416,8 @@ test.describe("group dashboard events view", () => {
 
       // Return the editable values needed for update and restore.
       return {
-        cfsEndsAt: await organizerGroupPage
-          .locator("#cfs_ends_at")
-          .inputValue(),
-        cfsStartsAt: await organizerGroupPage
-          .locator("#cfs_starts_at")
-          .inputValue(),
+        cfsEndsAt: await organizerGroupPage.locator("#cfs_ends_at").inputValue(),
+        cfsStartsAt: await organizerGroupPage.locator("#cfs_starts_at").inputValue(),
         endsAt: await organizerGroupPage.locator("#ends_at").inputValue(),
         meetupUrl: await organizerGroupPage.locator("#meetup_url").inputValue(),
         name: await organizerGroupPage.locator("#name").inputValue(),
@@ -2480,9 +2435,10 @@ test.describe("group dashboard events view", () => {
 
       // Fill date values in the date and venue tab.
       await organizerGroupPage.locator("button[data-section-next]").click();
-      await expect(
-        organizerGroupPage.locator('button[data-section="date-venue"]'),
-      ).toHaveAttribute("data-active", "true");
+      await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
+        "data-active",
+        "true",
+      );
       await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
       await organizerGroupPage.locator("#starts_at").fill(values.startsAt);
       await organizerGroupPage.locator("#ends_at").fill(values.endsAt);
@@ -2490,24 +2446,16 @@ test.describe("group dashboard events view", () => {
       // Fill CFS values in the CFS tab.
       await organizerGroupPage.locator('button[data-section="cfs"]').click();
       await expect(organizerGroupPage.locator("#cfs_starts_at")).toBeVisible();
-      await organizerGroupPage
-        .locator("#cfs_starts_at")
-        .fill(values.cfsStartsAt);
+      await organizerGroupPage.locator("#cfs_starts_at").fill(values.cfsStartsAt);
       await organizerGroupPage.locator("#cfs_ends_at").fill(values.cfsEndsAt);
-      await expect(
-        organizerGroupPage.locator("#pending-changes-alert"),
-      ).not.toHaveClass(/hidden/);
+      await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
 
       // Submit the seeded event update and wait for the server response.
       await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
             response.request().method() === "PUT" &&
-            response
-              .url()
-              .includes(
-                `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`,
-              ) &&
+            response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`) &&
             response.ok(),
         ),
         organizerGroupPage.locator("#update-event-button").click(),
@@ -2532,28 +2480,14 @@ test.describe("group dashboard events view", () => {
 
     // Reopen the event and verify updated values persisted.
     await openCfsSummitEditor();
-    await expect(organizerGroupPage.locator("#name")).toHaveValue(
-      updatedValues.name,
-    );
-    await expect(organizerGroupPage.locator("#meetup_url")).toHaveValue(
-      updatedValues.meetupUrl,
-    );
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
-    await expect(organizerGroupPage.locator("#starts_at")).toHaveValue(
-      updatedValues.startsAt,
-    );
-    await expect(organizerGroupPage.locator("#ends_at")).toHaveValue(
-      updatedValues.endsAt,
-    );
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
+    await expect(organizerGroupPage.locator("#meetup_url")).toHaveValue(updatedValues.meetupUrl);
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await expect(organizerGroupPage.locator("#starts_at")).toHaveValue(updatedValues.startsAt);
+    await expect(organizerGroupPage.locator("#ends_at")).toHaveValue(updatedValues.endsAt);
     await organizerGroupPage.locator('button[data-section="cfs"]').click();
-    await expect(organizerGroupPage.locator("#cfs_starts_at")).toHaveValue(
-      updatedValues.cfsStartsAt,
-    );
-    await expect(organizerGroupPage.locator("#cfs_ends_at")).toHaveValue(
-      updatedValues.cfsEndsAt,
-    );
+    await expect(organizerGroupPage.locator("#cfs_starts_at")).toHaveValue(updatedValues.cfsStartsAt);
+    await expect(organizerGroupPage.locator("#cfs_ends_at")).toHaveValue(updatedValues.cfsEndsAt);
 
     // Restore the seeded event to its original values.
     await saveUpdatedValues(originalValues);
@@ -2579,32 +2513,22 @@ test.describe("group dashboard events view", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`,
-            ) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
           response.ok(),
       ),
       eventRow
-        .locator(
-          `td button[hx-get="/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update"]`,
-        )
+        .locator(`td button[hx-get="/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update"]`)
         .click(),
     ]);
 
     // Remove dates from the event to trigger the sessions warning.
-    await organizerGroupPage
-      .locator('button[data-section="date-venue"]')
-      .click();
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("");
     await organizerGroupPage.locator("#ends_at").fill("");
 
     // Verify pending changes are visible before submitting.
-    await expect(
-      organizerGroupPage.locator("#pending-changes-alert"),
-    ).not.toHaveClass(/hidden/);
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
 
     // Submit the update to trigger the sessions warning.
     await organizerGroupPage.locator("#update-event-button").click();

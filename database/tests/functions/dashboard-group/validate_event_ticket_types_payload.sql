@@ -1,18 +1,21 @@
+-- Tests validating event ticket type payloads.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should accept an omitted ticket types payload
-select lives_ok(
+-- Should reject an omitted ticket types payload
+select throws_ok(
     $$select validate_event_ticket_types_payload(null)$$,
-    'Should accept an omitted ticket types payload'
+    'events require at least one ticket type',
+    'Should reject an omitted ticket types payload'
 );
 
 -- Should accept valid ticket types
@@ -40,6 +43,29 @@ select lives_ok(
         ]'::jsonb
     )$$,
     'Should accept valid ticket types'
+);
+
+-- Should reject unsupported ticket type availability
+select throws_ok(
+    $$select validate_event_ticket_types_payload(
+        '[
+            {
+                "availability": "secret",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'ticket type availability must be public or invitation_only',
+    'Should reject unsupported ticket type availability'
 );
 
 -- Should reject overlapping ticket price windows

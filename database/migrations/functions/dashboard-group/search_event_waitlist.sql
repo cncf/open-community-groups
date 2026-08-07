@@ -1,4 +1,4 @@
--- Returns paginated waitlist entries for a group's event using provided filters.
+-- Returns paginated waitlist entries and waitlist offer history for an event.
 create or replace function search_event_waitlist(p_group_id uuid, p_event_id uuid, p_filters jsonb)
 returns json as $$
     with
@@ -39,14 +39,51 @@ returns json as $$
             from filters
             where ts_query_value is not null
         ),
-        -- Select waitlist entries with internal search data
+        -- Combine queued users with offer history promoted from those queues
+        enrollment_entries as (
+            select
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_status,
+                ew.created_at,
+                ew.event_id,
+                ew.event_ticket_type_id,
+                null::bigint as offer_expires_at,
+                ew.user_id,
+                row_number() over (
+                    partition by ew.event_ticket_type_id
+                    order by ew.created_at asc, ew.user_id asc
+                )::int as waitlist_position
+            from event_waitlist ew
+            where ew.event_id = p_event_id
+
+            union all
+
+            select
+                ao.admission_offer_id,
+                ao.status,
+                ao.created_at,
+                ao.event_id,
+                ao.event_ticket_type_id,
+                extract(epoch from ao.expires_at)::bigint,
+                ao.user_id,
+                null::int
+            from admission_offer ao
+            where ao.event_id = p_event_id
+            and ao.source = 'waitlist'
+        ),
+        -- Select waitlist entries with ticket and internal search data
         base_waitlist as (
             select
-                extract(epoch from ew.created_at)::bigint as created_at,
-                ew.created_at as created_at_sort,
+                ee.admission_offer_id,
+                ee.admission_offer_status,
+                extract(epoch from ee.created_at)::bigint as created_at,
+                ee.created_at as created_at_sort,
+                ee.event_ticket_type_id,
+                ee.offer_expires_at,
+                ett.title as ticket_title,
                 u.user_id,
                 u.username,
-                row_number() over (order by ew.created_at asc, ew.user_id asc)::int as waitlist_position,
+                ee.waitlist_position,
 
                 u.bio,
                 u.bluesky_url,
@@ -61,11 +98,12 @@ returns json as $$
                 u.tsdoc,
                 u.title,
                 u.website_url
-            from event_waitlist ew
-            join event e on e.event_id = ew.event_id
-            join "user" u on u.user_id = ew.user_id
+            from enrollment_entries ee
+            join event e on e.event_id = ee.event_id
+            join "user" u on u.user_id = ee.user_id
+            join event_ticket_type ett
+                on ett.event_ticket_type_id = ee.event_ticket_type_id
             where e.group_id = p_group_id
-            and ew.event_id = p_event_id
         ),
         -- Apply table filters while retaining internal search data
         filtered_waitlist as (
@@ -85,10 +123,15 @@ returns json as $$
                 or ((select title_value from filters) = 'missing' and title is null)
             )
         ),
-        -- Apply pagination and project public waitlist fields
+        -- Apply pagination and project organizer waitlist fields
         waitlist as (
             select
+                admission_offer_id,
+                admission_offer_status,
                 created_at,
+                event_ticket_type_id,
+                offer_expires_at,
+                ticket_title,
                 json_strip_nulls(json_build_object(
                     'user_id', user_id,
                     'username', username,
@@ -133,7 +176,23 @@ returns json as $$
         ),
         -- Render waitlist entries as JSON
         waitlist_json as (
-            select coalesce(json_agg(row_to_json(waitlist)), '[]'::json) as waitlist
+            select coalesce(
+                json_agg(
+                    json_build_object(
+                        'created_at', created_at,
+                        'event_ticket_type_id', event_ticket_type_id,
+                        'ticket_title', ticket_title,
+                        'user', "user",
+                        'waitlist_position', waitlist_position
+                    )::jsonb
+                    || jsonb_strip_nulls(jsonb_build_object(
+                        'admission_offer_id', admission_offer_id,
+                        'admission_offer_status', admission_offer_status,
+                        'offer_expires_at', offer_expires_at
+                    ))
+                ),
+                '[]'::json
+            ) as waitlist
             from waitlist
         )
     -- Build final payload

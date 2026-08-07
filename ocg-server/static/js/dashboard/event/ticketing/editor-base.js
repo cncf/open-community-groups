@@ -1,7 +1,14 @@
 import { resolveEventTimezone } from "/static/js/common/datetime.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { bindModalDismissListeners, closeModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  focusModal,
+  openModalBodyScroll,
+  restoreModalFocus,
+  trapModalFocus,
+} from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import {
   resolveCurrencyInputPlaceholder,
@@ -73,6 +80,8 @@ export class TicketingEditorBase extends LitWrapper {
    * Removes shared listeners and restores body scrolling when detached.
    */
   disconnectedCallback() {
+    const modal = this._resolveEditorModal();
+    const wasModalOpen = this._isModalOpen;
     this._removeDismissListeners?.();
     this._removeDismissListeners = null;
     this._setAddButton(null);
@@ -80,6 +89,9 @@ export class TicketingEditorBase extends LitWrapper {
     this._setTimezoneInput(null);
 
     this._isModalOpen = closeModalBodyScroll(this._isModalOpen);
+    if (wasModalOpen) {
+      restoreModalFocus(modal);
+    }
 
     super.disconnectedCallback?.();
   }
@@ -226,9 +238,64 @@ export class TicketingEditorBase extends LitWrapper {
    * @returns {void}
    */
   _handleKeydown(event) {
-    if (isEscapeEvent(event) && this._isModalOpen) {
+    if (!this._isModalOpen) {
+      return;
+    }
+
+    if (event.key === "Tab") {
+      trapModalFocus(event, this._resolveEditorModal());
+      return;
+    }
+
+    if (isEscapeEvent(event)) {
       this._closeEditorModal();
     }
+  }
+
+  /**
+   * Closes the editor modal and restores focus after Lit updates its state.
+   * @returns {void}
+   */
+  _closeModalState() {
+    if (!this._isModalOpen) {
+      return;
+    }
+
+    const modal = this._resolveEditorModal();
+    this._isModalOpen = closeModalBodyScroll(this._isModalOpen);
+    this.updateComplete.then(() => {
+      if (!this._isModalOpen) {
+        restoreModalFocus(modal);
+      }
+    });
+  }
+
+  /**
+   * Opens the editor modal and moves focus inside after Lit updates its state.
+   * @returns {void}
+   */
+  _openModalState() {
+    if (this._isModalOpen) {
+      return;
+    }
+
+    const activeElement = this._resolveDocument().activeElement;
+    this._isModalOpen = openModalBodyScroll(this._isModalOpen);
+    this.updateComplete.then(() => {
+      if (!this._isModalOpen || !this.isConnected) {
+        return;
+      }
+
+      focusModal(this._resolveEditorModal(), activeElement instanceof HTMLElement ? activeElement : null);
+    });
+  }
+
+  /**
+   * Resolves the modal rendered by the current ticketing editor.
+   * @returns {Element|null}
+   */
+  _resolveEditorModal() {
+    return this.querySelector('[role="dialog"][data-ticketing-role]');
   }
 
   /**

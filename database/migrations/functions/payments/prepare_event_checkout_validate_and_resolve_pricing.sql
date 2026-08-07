@@ -3,7 +3,8 @@ create or replace function prepare_event_checkout_validate_and_resolve_pricing(
     p_event_id uuid,
     p_event_ticket_type_id uuid,
     p_user_id uuid,
-    p_discount_code text
+    p_discount_code text,
+    p_admission_offer_id uuid default null
 )
 returns table (
     discount_amount_minor bigint,
@@ -12,35 +13,53 @@ returns table (
     ticket_title text
 ) as $$
 declare
-    v_active_purchase_count int;
+    v_allocated_seat_count int;
     v_amount_minor bigint;
     v_discount_active boolean;
     v_discount_available int;
     v_discount_available_override_active boolean;
     v_discount_ends_at timestamptz;
-    v_event_discount_code_id uuid;
     v_discount_kind text;
     v_discount_percentage int;
     v_discount_starts_at timestamptz;
     v_discount_total_available int;
+    v_event_discount_code_id uuid;
     v_price_window_amount_minor bigint;
     v_redemptions int;
     v_seats_total int;
     v_ticket_active boolean;
+    v_ticket_availability text;
 begin
     discount_amount_minor := 0;
 
     -- Reject attendee states that checkout completion cannot confirm
     perform prepare_event_checkout_validate_attendee_state(p_event_id, p_user_id);
 
+    -- Restrict offer pricing bypasses to the exact active owned reservation
+    if p_admission_offer_id is not null
+       and not exists (
+            select 1
+            from admission_offer ao
+            where ao.admission_offer_id = p_admission_offer_id
+            and ao.event_id = p_event_id
+            and ao.event_ticket_type_id = p_event_ticket_type_id
+            and ao.status in ('checkout_pending', 'pending')
+            and ao.user_id = p_user_id
+            and ao.expires_at > current_timestamp
+       ) then
+        raise exception 'admission offer is no longer available';
+    end if;
+
     -- Resolve the selected ticket type and the currently active price window
     select
         ett.active,
+        ett.availability,
         cp.amount_minor,
         ett.seats_total,
         ett.title
     into
         v_ticket_active,
+        v_ticket_availability,
         v_price_window_amount_minor,
         v_seats_total,
         ticket_title
@@ -68,30 +87,48 @@ begin
         raise exception 'ticket type is not active';
     end if;
 
+    if p_admission_offer_id is null and v_ticket_availability <> 'public' then
+        raise exception 'ticket type is not available for direct checkout';
+    end if;
+
     if v_price_window_amount_minor is null then
         raise exception 'ticket type does not have an active price window';
     end if;
 
-    -- Count active reservations before deciding whether the ticket is sold out
-    select count(*)::int
-    into v_active_purchase_count
-    from event_purchase
-    where event_id = p_event_id
-    and event_ticket_type_id = p_event_ticket_type_id
-    and (
-        status in ('completed', 'refund-requested')
-        or (status = 'pending' and hold_expires_at > current_timestamp)
-    );
+    -- Preserve FIFO priority when reconciliation leaves a blocked queue head
+    if p_admission_offer_id is null
+       and exists (
+            select 1
+            from event_waitlist ew
+            where ew.event_id = p_event_id
+            and ew.event_ticket_type_id = p_event_ticket_type_id
+       ) then
+        raise exception 'ticket type has queued users';
+    end if;
 
-    -- Reject sold-out ticket types after counting active reservations
-    if v_seats_total is not null and v_active_purchase_count >= v_seats_total then
+    -- Count allocated inventory before deciding whether the ticket is sold out
+    select get_event_ticket_type_allocated_seat_count(
+        p_event_id,
+        p_event_ticket_type_id
+    )
+    into v_allocated_seat_count;
+
+    -- Reject sold-out ticket types after counting allocated inventory
+    if p_admission_offer_id is null
+       and v_seats_total is not null
+       and v_allocated_seat_count >= v_seats_total then
         raise exception 'ticket type is sold out';
     end if;
 
     -- Validate the selected discount code before creating a new hold
     if p_discount_code is not null then
+        if v_price_window_amount_minor = 0 then
+            raise exception 'discount codes cannot be applied to free tickets';
+        end if;
+
         select
             edc.active,
+            edc.amount_minor,
             edc.available,
             edc.available_override_active,
             edc.ends_at,
@@ -99,10 +136,10 @@ begin
             edc.kind,
             edc.percentage,
             edc.starts_at,
-            edc.total_available,
-            edc.amount_minor
+            edc.total_available
         into
             v_discount_active,
+            v_amount_minor,
             v_discount_available,
             v_discount_available_override_active,
             v_discount_ends_at,
@@ -110,8 +147,7 @@ begin
             v_discount_kind,
             v_discount_percentage,
             v_discount_starts_at,
-            v_discount_total_available,
-            v_amount_minor
+            v_discount_total_available
         from event_discount_code edc
         where edc.event_id = p_event_id
         and upper(edc.code) = p_discount_code;
@@ -156,6 +192,11 @@ begin
             discount_amount_minor := v_price_window_amount_minor * v_discount_percentage / 100;
         else
             raise exception 'unsupported discount code kind';
+        end if;
+
+        -- Reject discounts that cannot reduce the price by one minor unit
+        if discount_amount_minor = 0 then
+            raise exception 'discount code does not reduce ticket price';
         end if;
     end if;
 

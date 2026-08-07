@@ -4,6 +4,7 @@ create or replace function complete_free_event_purchase(
 )
 returns jsonb as $$
 declare
+    v_admission_offer_id uuid;
     v_amount_minor bigint;
     v_community_id uuid;
     v_event_canceled boolean;
@@ -12,53 +13,83 @@ declare
     v_event_id uuid;
     v_event_published boolean;
     v_event_starts_at timestamptz;
+    v_event_ticket_type_id uuid;
     v_group_active boolean;
+    v_group_id uuid;
     v_hold_expires_at timestamptz;
+    v_manually_invited boolean;
+    v_purchase_hold_expired boolean;
     v_recovery_pending boolean;
     v_status text;
     v_user_id uuid;
 begin
-    -- Resolve the purchase event without locking so the event row can be
-    -- locked before the purchase row (event_id is immutable on purchases)
-    select ep.event_id into v_event_id
+    -- Resolve immutable parent identifiers before taking locks
+    select
+        ep.event_id,
+        ep.event_ticket_type_id,
+        e.group_id,
+        ep.status in ('expired', 'pending')
+            and ep.hold_expires_at is not null
+            and ep.hold_expires_at <= current_timestamp
+    into
+        v_event_id,
+        v_event_ticket_type_id,
+        v_group_id,
+        v_purchase_hold_expired
     from event_purchase ep
+    join event e on e.event_id = ep.event_id
     where ep.event_purchase_id = p_event_purchase_id;
 
     if not found then
         raise exception 'purchase not found';
     end if;
 
-    -- Lock the event and group first to keep a consistent event -> purchase
-    -- lock order with prepare_event_checkout_purchase
-    select
-        e.canceled,
-        e.deleted,
-        e.ends_at,
-        g.community_id,
-        e.published,
-        e.starts_at,
-        g.active
-    into
-        v_event_canceled,
-        v_event_deleted,
-        v_event_ends_at,
-        v_community_id,
-        v_event_published,
-        v_event_starts_at,
-        v_group_active
-    from event e
-    join "group" g on g.group_id = e.group_id
-    where e.event_id = v_event_id
-    for update of e, g;
+    if v_purchase_hold_expired then
+        raise exception 'purchase hold has expired';
+    end if;
+
+    -- Lock the group before the event to match dashboard event mutations
+    select g.active, g.community_id
+    into v_group_active, v_community_id
+    from "group" g
+    where g.group_id = v_group_id
+    for update of g;
 
     if not found then
         raise exception 'purchase not found';
     end if;
 
+    -- Lock the event before the purchase to match checkout and attendance flows
+    select
+        e.canceled,
+        e.deleted,
+        e.ends_at,
+        e.published,
+        e.starts_at
+    into
+        v_event_canceled,
+        v_event_deleted,
+        v_event_ends_at,
+        v_event_published,
+        v_event_starts_at
+    from event e
+    where e.event_id = v_event_id
+    and e.group_id = v_group_id
+    for update of e;
+
+    if not found then
+        raise exception 'purchase not found';
+    end if;
+
+    -- Reconcile under the global event, tier, user, and purchase lock order
+    perform reconcile_event_enrollment(v_event_id, v_event_ticket_type_id);
+
     -- Lock the purchase before validating and completing it
     select
+        ep.admission_offer_id,
         ep.amount_minor,
         ep.hold_expires_at,
+        coalesce(ao.source = 'organizer_invitation', false),
         exists (
             select 1
             from event_purchase recovery_ep
@@ -70,12 +101,16 @@ begin
         ep.status,
         ep.user_id
     into
+        v_admission_offer_id,
         v_amount_minor,
         v_hold_expires_at,
+        v_manually_invited,
         v_recovery_pending,
         v_status,
         v_user_id
     from event_purchase ep
+    left join admission_offer ao
+        on ao.admission_offer_id = ep.admission_offer_id
     where ep.event_purchase_id = p_event_purchase_id
     for update of ep;
 
@@ -112,13 +147,28 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
+    -- Complete the linked reservation before creating active attendance
+    if v_admission_offer_id is not null then
+        update admission_offer
+        set
+            status = 'completed',
+            updated_at = current_timestamp
+        where admission_offer_id = v_admission_offer_id
+        and status = 'checkout_pending';
+
+        if not found then
+            raise exception 'admission offer is no longer available';
+        end if;
+    end if;
+
     -- Add the attendee and persist the completed free purchase
-    insert into event_attendee (event_id, user_id)
-    values (v_event_id, v_user_id)
+    insert into event_attendee (event_id, user_id, manually_invited)
+    values (v_event_id, v_user_id, v_manually_invited)
     on conflict (event_id, user_id) do update
     set
         attendance_canceled_at = null,
         attendance_canceled_by_user_id = null,
+        manually_invited = excluded.manually_invited,
         status = 'confirmed'
     where event_attendee.status in (
         'attendance-canceled',

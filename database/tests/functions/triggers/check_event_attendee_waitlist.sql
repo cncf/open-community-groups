@@ -1,9 +1,11 @@
+-- Tests attendee waitlist and active offer trigger protections.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +19,10 @@ select plan(3);
 \set groupID 'ab010000-0000-0000-0000-000000000006'
 \set user1ID 'ab010000-0000-0000-0000-000000000007'
 \set user2ID 'ab010000-0000-0000-0000-000000000008'
+\set user3ID 'ab010000-0000-0000-0000-000000000009'
+\set user4ID 'ab010000-0000-0000-0000-00000000000a'
+\set ticketType1ID 'ab010000-0000-0000-0000-00000000000b'
+\set ticketType2ID 'ab010000-0000-0000-0000-00000000000c'
 
 -- ============================================================================
 -- SEED DATA
@@ -57,7 +63,9 @@ values (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
     (:'user1ID', 'user-one-hash', 'user-one@example.com', true, 'user-one'),
-    (:'user2ID', 'user-two-hash', 'user-two@example.com', true, 'user-two');
+    (:'user2ID', 'user-two-hash', 'user-two@example.com', true, 'user-two'),
+    (:'user3ID', 'user-three-hash', 'user-three@example.com', true, 'user-three'),
+    (:'user4ID', 'user-four-hash', 'user-four@example.com', true, 'user-four');
 
 -- Events
 insert into event (
@@ -101,15 +109,68 @@ values
         true
     );
 
--- Existing waitlist entries
-insert into event_waitlist (event_id, user_id)
+-- Ticket tiers for the trigger-conflict fixtures
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values
-    (:'event1ID', :'user1ID'),
-    (:'event2ID', :'user1ID');
+    (:'ticketType1ID', :'event1ID', 1, 1, 'General admission'),
+    (:'ticketType2ID', :'event2ID', 1, 1, 'General admission');
+
+-- Existing waitlist entries
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values
+    (:'event1ID', :'ticketType1ID', :'user1ID'),
+    (:'event2ID', :'ticketType2ID', :'user1ID');
 
 -- Existing attendee
 insert into event_attendee (event_id, user_id)
 values (:'event2ID', :'user2ID');
+
+-- Existing active offers
+insert into admission_offer (
+    amount_minor,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+)
+values
+    (
+        null,
+        null,
+        :'event1ID',
+        :'ticketType1ID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        null,
+        :'user3ID'
+    ),
+    (
+        null,
+        null,
+        :'event2ID',
+        :'ticketType2ID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        null,
+        :'user3ID'
+    ),
+    (
+        0,
+        0,
+        :'event1ID',
+        :'ticketType1ID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'checkout_pending',
+        'General admission',
+        :'user4ID'
+    );
 
 -- ============================================================================
 -- TESTS
@@ -146,6 +207,40 @@ select throws_ok(
     ),
     'user is already on the waiting list for this event',
     'Should reject attendee updates that target a waitlisted pair'
+);
+
+-- Should allow registration-question attendees with checkout-pending offers
+select lives_ok(
+    format(
+        'insert into event_attendee (event_id, status, user_id) values (%L, %L, %L)',
+        :'event1ID',
+        'registration-questions-pending',
+        :'user4ID'
+    ),
+    'Should allow registration-question attendees with checkout-pending offers'
+);
+
+-- Should reject attendee inserts for active offer recipients
+select throws_ok(
+    format(
+        'insert into event_attendee (event_id, user_id) values (%L, %L)',
+        :'event1ID',
+        :'user3ID'
+    ),
+    'user already has an active admission offer for this event',
+    'Should reject attendee inserts for active offer recipients'
+);
+
+-- Should reject attendee updates targeting active offer recipients
+select throws_ok(
+    format(
+        'update event_attendee set user_id = %L where event_id = %L and user_id = %L',
+        :'user3ID',
+        :'event2ID',
+        :'user2ID'
+    ),
+    'user already has an active admission offer for this event',
+    'Should reject attendee updates targeting active offer recipients'
 );
 
 -- ============================================================================

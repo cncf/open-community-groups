@@ -3,8 +3,10 @@
 
 {# Site Explore Events Calendar Event Card -#}
 {% block footer_top -%}
-  {% if event.formatted_ticket_price_badge().is_some() -%}
-    <div class="mb-2.5">{{ cards::ticket_price_badge(event, true) -}}</div>
+  {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+    {% if ticket_price_badge != "Free" -%}
+      <div class="mb-2.5">{{ cards::ticket_price_badge(event, true) -}}</div>
+    {% endif -%}
   {% endif -%}
 {% endblock footer_top %}
 

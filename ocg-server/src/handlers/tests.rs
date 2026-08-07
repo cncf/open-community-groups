@@ -308,9 +308,9 @@ pub(crate) fn sample_attendee() -> Attendee {
         checked_in: true,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         email: "attendee@example.test".to_string(),
+        enrollment_status:
+            crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed,
         manually_invited: false,
-        registration_answers: None,
-        status: "confirmed".to_string(),
         user: sample_dashboard_user_profile(
             user_id,
             "attendee",
@@ -320,13 +320,19 @@ pub(crate) fn sample_attendee() -> Attendee {
             Some("Example"),
         ),
 
+        admission_offer_id: None,
+        admission_offer_source: None,
+        admission_offer_status: None,
         amount_minor: None,
         checked_in_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 13, 0, 0).unwrap()),
         currency_code: None,
         discount_code: None,
         event_purchase_id: None,
+        event_ticket_type_id: None,
+        offer_expires_at: None,
         refund_progress: None,
         refund_request_status: None,
+        registration_answers: None,
         ticket_title: None,
     }
 }
@@ -692,14 +698,26 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
 /// Sample event invitation used in dashboard user invitation tests.
 pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
     EventInvitation {
+        admission_offer_id: Uuid::new_v4(),
+        admission_offer_source: crate::types::event::EventAdmissionOfferSource::OrganizerInvitation,
+        admission_offer_status: crate::types::event::EventAdmissionOfferStatus::Pending,
         community_display_name: "Test Community".to_string(),
         community_name: "test-community".to_string(),
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         event_id,
         event_name: "Test Event".to_string(),
+        event_ticket_type_id: Uuid::new_v4(),
+        expires_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
         group_name: "Test Group".to_string(),
+        is_simple_rsvp: false,
+        ticket_title: "General admission".to_string(),
         timezone: UTC,
 
-        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        amount_minor: None,
+        currency_code: None,
+        registration_answers: None,
+        registration_questions: vec![],
+        resume_checkout_url: None,
         starts_at: Some(Utc.with_ymd_and_hms(2024, 2, 1, 12, 0, 0).unwrap()),
     }
 }
@@ -1066,6 +1084,8 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
     InvitationRequest {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         invitation_request_status: crate::types::event::EventInvitationRequestStatus::Pending,
+        requested_event_ticket_type_id: Some(Uuid::new_v4()),
+        requested_ticket_title: Some("General admission".to_string()),
         user: sample_dashboard_user_profile(
             user_id,
             "requesting-user",
@@ -1075,6 +1095,11 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
             Some("Example"),
         ),
 
+        admission_offer_id: None,
+        admission_offer_status: None,
+        offer_expires_at: None,
+        offered_event_ticket_type_id: None,
+        offered_ticket_title: None,
         reviewed_at: None,
     }
 }
@@ -1120,7 +1145,7 @@ pub(crate) fn sample_pending_co_speaker_invitation(
 pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurchaseSummary {
     EventPurchaseSummary {
         amount_minor: 2_500,
-        currency_code: "USD".to_string(),
+        currency_code: Some("USD".to_string()),
         discount_amount_minor: 0,
         event_purchase_id: Uuid::new_v4(),
         event_ticket_type_id: Uuid::new_v4(),
@@ -1316,8 +1341,8 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
     }
 }
 
-/// Sample ticketed event payload for dashboard group event form tests.
-pub(crate) fn sample_ticketed_event_body() -> String {
+/// Sample paid event payload for dashboard group event form tests.
+pub(crate) fn sample_paid_event_body() -> String {
     let event_form = sample_event_form();
 
     format!(
@@ -1437,6 +1462,8 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
 
     WaitlistEntry {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        event_ticket_type_id: Uuid::new_v4(),
+        ticket_title: "General admission".to_string(),
         user: sample_dashboard_user_profile(
             user_id,
             "waitlisted-user",
@@ -1445,7 +1472,10 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
             Some("Engineer"),
             Some("Example"),
         ),
-        waitlist_position: 1,
+        admission_offer_id: None,
+        admission_offer_status: None,
+        offer_expires_at: None,
+        waitlist_position: Some(1),
     }
 }
 

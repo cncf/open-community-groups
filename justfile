@@ -9,6 +9,7 @@
 #     OCG_DB_NAME_TESTS           - Test database name (default: ocg_tests)
 #     OCG_DB_NAME_TESTS_CONTRACT  - Contract test database name (default: ocg_tests_contract)
 #     OCG_DB_NAME_TESTS_E2E       - E2E test database name (default: ocg_tests_e2e)
+#     OCG_DB_NAME_TESTS_MIGRATION - Migration test database name (default: ocg_tests_migration)
 #     OCG_DB_PORT                 - Database port (default: 5432)
 #     OCG_DB_USER                 - Database user (default: postgres)
 #     OCG_PG_BIN                  - Path to PostgreSQL binaries (default: /opt/homebrew/opt/postgresql@17/bin)
@@ -26,6 +27,7 @@ db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
 db_name_tests_contract := env("OCG_DB_NAME_TESTS_CONTRACT", "ocg_tests_contract")
 db_name_tests_e2e := env("OCG_DB_NAME_TESTS_E2E", "ocg_tests_e2e")
+db_name_tests_migration := env("OCG_DB_NAME_TESTS_MIGRATION", "ocg_tests_migration")
 db_port := env("OCG_DB_PORT", "5432")
 db_user := env("OCG_DB_USER", "postgres")
 db_password := env("OCG_DB_PASSWORD", "")
@@ -71,6 +73,10 @@ db-client-tests-contract:
 db-client-tests-e2e:
     just pg psql {{ pg_conn }} {{ db_name_tests_e2e }}
 
+# Connect to migration test database.
+db-client-tests-migration:
+    just pg psql {{ pg_conn }} {{ db_name_tests_migration }}
+
 # Run Rust database contract tests against the contract test database.
 db-contract-tests: db-recreate-tests-contract
     OCG_DB_NAME_TESTS_CONTRACT="{{ db_name_tests_contract }}" cargo test -p ocg-server db_contracts -- --ignored --test-threads=1
@@ -92,6 +98,11 @@ db-create-tests-contract:
 db-create-tests-e2e:
     just pg createdb {{ pg_conn }} {{ db_name_tests_e2e }}
 
+# Create migration test database with pgTAP extension.
+db-create-tests-migration:
+    just pg createdb {{ pg_conn }} {{ db_name_tests_migration }}
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests_migration }} -c "CREATE EXTENSION IF NOT EXISTS pgtap"
+
 # Drop main database.
 db-drop:
     just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name }}
@@ -107,6 +118,10 @@ db-drop-tests-contract:
 # Drop e2e test database.
 db-drop-tests-e2e:
     just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests_e2e }}
+
+# Drop migration test database.
+db-drop-tests-migration:
+    just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests_migration }}
 
 # Initialize PostgreSQL data directory.
 db-init data_dir:
@@ -161,6 +176,15 @@ db-tests: db-recreate-tests
 # Run database tests on a specific file.
 db-tests-file file: db-migrate-tests
     @pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f {{ file }}
+
+# Test upgrading representative schema-68 enrollment data to the latest schema.
+db-migration-tests: db-drop-tests-migration db-create-tests-migration
+    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/schema" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_schema --destination 68
+    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/functions" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_functions
+    just pg psql {{ pg_conn }} {{ db_name_tests_migration }} -f "{{ source_dir }}/database/tests/migrations/0069_require_event_ticket_types_seed.sql"
+    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/schema" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_schema
+    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/functions" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_functions --destination -+1
+    @PGPASSWORD="{{ db_password }}" pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests_migration }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f "{{ source_dir }}/database/tests/migrations/0069_require_event_ticket_types.sql"
 
 # Redirector
 

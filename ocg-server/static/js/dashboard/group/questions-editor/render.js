@@ -208,7 +208,7 @@ const renderOptionPreview = (options) => html`
     ${options.map(
       (option) => html`
         <span
-          class="inline-block max-w-full truncate rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-sm font-medium text-stone-700"
+          class="custom-badge inline-block max-w-full truncate bg-stone-50 px-2.5 py-0.5 text-stone-700"
           title=${option.label || "Untitled option"}
         >
           ${option.label || "Untitled option"}

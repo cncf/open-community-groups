@@ -67,6 +67,17 @@ export const getPrimaryControls = (container) => ({
 });
 
 /**
+ * Updates the disabled styling for an attendance control.
+ * @param {HTMLElement|null} control Control to update.
+ * @param {boolean} disabled Whether the control is disabled.
+ * @returns {void}
+ */
+export const setAttendanceControlDisabledStyles = (control, disabled) => {
+  control?.classList.toggle("cursor-not-allowed", disabled);
+  control?.classList.toggle("opacity-50", disabled);
+};
+
+/**
  * Sets the visible label for an attendance control.
  * @param {HTMLElement|null} button - Attendance control button
  * @param {string} label - Label to display
@@ -174,13 +185,24 @@ export const getAttendanceMeta = (container) => {
   const attendeeMeetingAccessOpen = container?.dataset?.attendeeMeetingAccessOpen === "true";
   const canceled = container?.dataset?.canceled === "true";
   const hydratedIsPast = parseHydratedIsPast(container);
-  const isTicketed = container?.dataset?.isTicketed === "true";
+  const isSimpleRsvp = container?.dataset?.isSimpleRsvp === "true";
+  const paidCapable = container?.dataset?.paidCapable === "true";
   const registrationWindowOpen = container?.dataset?.registrationWindowOpen !== "false";
   const registrationWindowMessage = container?.dataset?.registrationWindowMessage || "";
   const registrationWindowUnavailableTitle =
     container?.dataset?.registrationWindowUnavailableTitle || "Registration is not currently open.";
   const ticketPurchaseAvailable = container?.dataset?.ticketPurchaseAvailable === "true";
+  const ticketIsFreeOnly = container?.dataset?.ticketIsFreeOnly === "true";
   const waitlistEnabled = container?.dataset?.waitlistEnabled === "true";
+  const ticketTypeOptions = container?.querySelectorAll?.('[data-attendance-role="ticket-type-option"]');
+  const hasSoldOutTicketTypes =
+    container?.dataset?.hasSoldOutTicketTypes !== undefined
+      ? container.dataset.hasSoldOutTicketTypes === "true"
+      : Array.from(ticketTypeOptions || []).some((option) => option.dataset.ticketSoldOut === "true");
+  const hasVisibleTicketTypes =
+    container?.dataset?.hasVisibleTicketTypes !== undefined
+      ? container.dataset.hasVisibleTicketTypes === "true"
+      : ticketPurchaseAvailable || (ticketTypeOptions?.length || 0) > 0;
   const isPastEvent = (() => {
     if (hydratedIsPast !== null) {
       return hydratedIsPast;
@@ -203,24 +225,29 @@ export const getAttendanceMeta = (container) => {
     attendeeMeetingAccessOpen,
     canceled,
     hasNoCapacity,
+    hasSoldOutTicketTypes,
+    hasVisibleTicketTypes,
     isSoldOut,
     isPastEvent,
+    paidCapable,
     registrationWindowMessage,
     registrationWindowOpen,
     registrationWindowUnavailableTitle,
     ticketPurchaseAvailable,
+    ticketIsFreeOnly,
+    ticketModalRequired: !isSimpleRsvp && hasVisibleTicketTypes,
     waitlistEnabled,
-    isTicketed,
+    isSimpleRsvp,
   };
 };
 
 /**
- * Returns the selected ticket type value from the ticket modal.
+ * Returns the selected ticket option from the ticket modal.
  * @param {HTMLElement} container - Attendance container element
- * @returns {string} Selected ticket type id, or an empty string
+ * @returns {HTMLInputElement|null} Selected ticket option
  */
-export const getSelectedTicketTypeValue = (container) => {
+export const getSelectedTicketTypeOption = (container) => {
   const selectedTicketType = container.querySelector('[data-attendance-role="ticket-type-option"]:checked');
 
-  return selectedTicketType instanceof HTMLInputElement ? selectedTicketType.value : "";
+  return selectedTicketType instanceof HTMLInputElement ? selectedTicketType : null;
 };

@@ -87,19 +87,24 @@ Check event editor completeness:
 4. Meeting constraints are satisfied when automatic meeting is requested.
 5. CFS rules are valid if CFS is enabled.
 
-For ticketed events also verify:
+For every event also verify:
 
-1. The event has at least one ticket type configured.
-2. The event currency is filled in when ticketing is enabled.
+1. The event has at least one ticket type configured. The last tier cannot be
+   removed.
+2. Every ticket type has a `Public` or `Invitation only` availability value.
 3. Each ticket type has at least one complete price window.
-4. Any configured discount codes are complete. Discount codes are optional.
+4. Free-only ticketing has no event currency or discount codes.
+5. Paid-capable ticketing has an event currency, server payment provider, and
+   group payment recipient.
+6. Any configured discount codes are complete. Discount codes are optional.
 
-## Paid Ticket Purchase Is Unavailable or Fails
+## Ticket Claim Is Unavailable or Fails
 
-If the public event page shows ticket purchase controls but buying a ticket is unavailable or does
-not complete, check:
+If getting, requesting, or claiming a ticket is unavailable or does not
+complete, check:
 
-1. The selected ticket type is active and not sold out.
+1. The selected ticket type is active, currently priced, and public for direct
+   enrollment.
 2. The ticket type has a price window that is currently in effect.
 3. The event registration window is currently open for starting checkout, if one is configured.
    Existing active ticket holds can still complete until the hold expires.
@@ -107,12 +112,20 @@ not complete, check:
    limit. Remaining uses are reserved by active holds and active purchases, then released again if
    the hold expires or the ticket is refunded.
 5. The event has not been canceled.
+6. A positive final price has current server payment configuration and a group
+   payment recipient.
+7. An offer claim uses the exact tier assigned to that offer and occurs before
+   its deadline.
+
+For invitation-only events, use the assigned offer in
+[User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
+Private tier names and prices do not appear on the public event page.
 
 ## Check-In Is Unavailable
 
 Check that:
 
-1. You RSVP'd with this account.
+1. You completed a ticket with this account.
 2. Event is published and not canceled.
 3. Check-in window is open:
    - Opens 2 hours before start.

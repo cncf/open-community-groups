@@ -1,9 +1,11 @@
+-- Tests validating attendee state before checkout.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +22,8 @@ select plan(6);
 \set newUserID '79290000-0000-0000-0000-000000000006'
 \set pendingAnswersUserID '79290000-0000-0000-0000-000000000009'
 \set rejectedUserID '79290000-0000-0000-0000-000000000011'
+\set waitlistedUserID '79290000-0000-0000-0000-000000000012'
+\set ticketTypeID '79290000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
@@ -96,6 +100,13 @@ values
         'rejected@example.com',
         true,
         'rejected-user'
+    ),
+    (
+        :'waitlistedUserID',
+        'hash-7',
+        'waitlisted@example.com',
+        true,
+        'waitlisted-user'
     );
 
 -- Group
@@ -135,6 +146,9 @@ insert into event (
     now()
 );
 
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+
 -- Attendees covering every lifecycle state
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values
@@ -143,6 +157,10 @@ values
     (:'eventID', :'pendingAnswersUserID', false, 'registration-questions-pending'),
     (:'eventID', :'invitedUserID', true, 'invitation-pending'),
     (:'eventID', :'rejectedUserID', true, 'invitation-rejected');
+
+-- Existing waitlist row that must not bypass promotion
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'eventID', :'ticketTypeID', :'waitlistedUserID');
 
 -- ============================================================================
 -- TESTS
@@ -181,7 +199,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid
     )$$, :'eventID', :'confirmedUserID'),
-    'user is already attending this ticketed event',
+    'user is already attending this event',
     'Should reject confirmed attendees'
 );
 
@@ -203,6 +221,16 @@ select throws_ok(
     )$$, :'eventID', :'rejectedUserID'),
     'user has a pending or rejected invitation for this event',
     'Should reject users with a rejected invitation'
+);
+
+-- Should reject waitlisted users
+select throws_ok(
+    format($$select prepare_event_checkout_validate_attendee_state(
+        %L::uuid,
+        %L::uuid
+    )$$, :'eventID', :'waitlistedUserID'),
+    'user is already on the waiting list for this event',
+    'Should reject waitlisted users'
 );
 
 -- ============================================================================

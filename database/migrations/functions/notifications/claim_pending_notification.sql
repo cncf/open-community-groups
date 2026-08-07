@@ -1,4 +1,4 @@
--- claim_pending_notification claims the next notification pending delivery.
+-- Claims the next deliverable notification within the configured rate limit.
 create or replace function claim_pending_notification(
     p_delivery_rate_limit integer default 15000,
     p_delivery_rate_limit_window_seconds integer default 60
@@ -49,7 +49,14 @@ begin
         and (
             (u.registration_status = 'registered' and u.email_verified = true)
             or n.kind = 'email-verification'
-            or (n.kind = 'event-invitation' and u.registration_status = 'pre-registered')
+            or (
+                n.kind in (
+                    'event-admission-offer-canceled',
+                    'event-admission-offer-created',
+                    'event-invitation'
+                )
+                and u.registration_status = 'pre-registered'
+            )
         )
         order by n.created_at asc
         limit 1

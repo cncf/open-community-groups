@@ -1,9 +1,11 @@
+-- Tests unpublishing events and closing their enrollment state.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,12 +15,17 @@ select plan(11);
 \set eventCategoryID '3a360000-0000-0000-0000-000000000002'
 \set eventID '3a360000-0000-0000-0000-000000000003'
 \set eventNoMeetingID '3a360000-0000-0000-0000-000000000004'
+\set eventNoMeetingTicketTypeID '3a360000-0000-0000-0000-000000000015'
+\set eventTicketTypeID '3a360000-0000-0000-0000-000000000014'
 \set groupCategoryID '3a360000-0000-0000-0000-000000000005'
 \set groupID '3a360000-0000-0000-0000-000000000006'
 \set missingGroupID '3a360000-0000-0000-0000-000000000007'
+\set offerID '3a360000-0000-0000-0000-000000000011'
+\set offerUserID '3a360000-0000-0000-0000-000000000012'
 \set sessionMeetingID '3a360000-0000-0000-0000-000000000008'
 \set sessionNoMeetingID '3a360000-0000-0000-0000-000000000009'
 \set userID '3a360000-0000-0000-0000-000000000010'
+\set waitlistUserID '3a360000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
@@ -68,9 +75,17 @@ insert into "group" (
     'A test group'
 );
 
--- User (as previously published_by)
+-- Users covering publication and enrollment state
 insert into "user" (user_id, auth_hash, email, username)
-values (:'userID', 'user-hash', 'user@test.local', 'user');
+values
+    (:'offerUserID', 'offer-hash', 'offer@test.local', 'offer-user'),
+    (:'userID', 'user-hash', 'user@test.local', 'user'),
+    (
+        :'waitlistUserID',
+        'waitlist-hash',
+        'waitlist@test.local',
+        'waitlist-user'
+    );
 
 -- Event (published, with meeting_in_sync=true to verify it gets set to false)
 insert into event (
@@ -91,7 +106,8 @@ insert into event (
     meeting_requested,
     published,
     published_at,
-    published_by
+    published_by,
+    waitlist_enabled
 ) values (
     :'eventID',
     :'groupID',
@@ -110,7 +126,8 @@ insert into event (
     true,
     true,
     now(),
-    :'userID'
+    :'userID',
+    true
 );
 
 -- Event without meeting_requested (to verify meeting_in_sync is not changed)
@@ -192,6 +209,49 @@ insert into session (
     false
 );
 
+-- Ticket types satisfying the event enrollment invariant
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values
+    (:'eventID', :'eventTicketTypeID', 1, 100, 'General Admission'),
+    (:'eventNoMeetingID', :'eventNoMeetingTicketTypeID', 1, 100, 'General Admission');
+
+-- Active organizer offer canceled when the event is unpublished
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'offerID',
+    :'eventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
+    current_timestamp + interval '1 hour',
+    :'userID',
+    'organizer_invitation',
+    'pending',
+    :'offerUserID'
+);
+
+-- Event-level FIFO queue cleared when the event is unpublished
+insert into event_waitlist (
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    :'eventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventID' limit 1),
+    :'waitlistUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -240,6 +300,7 @@ select results_eq(
             resource_type,
             resource_id
         from audit_log
+        where action = 'event_unpublished'
     $$,
     format(
         $$
@@ -260,6 +321,51 @@ select results_eq(
         :'eventID'
     ),
     'Should create the expected audit row'
+);
+
+-- Should allow replaying an already unpublished event
+select lives_ok(
+    format(
+        'select unpublish_event(null::uuid, %L::uuid, %L::uuid)',
+        :'groupID',
+        :'eventID'
+    ),
+    'Should allow replaying an already unpublished event'
+);
+
+-- Should not duplicate the unpublish audit row on replay
+select is(
+    (
+        select count(*)::int
+        from audit_log
+        where action = 'event_unpublished'
+        and event_id = :'eventID'::uuid
+    ),
+    1,
+    'Should not duplicate the unpublish audit row on replay'
+);
+
+-- Should cancel active offers and clear queues when unpublishing
+select results_eq(
+    format(
+        $$
+            select
+                (
+                    select status
+                    from admission_offer
+                    where admission_offer_id = %L::uuid
+                ),
+                (
+                    select count(*)
+                    from event_waitlist
+                    where event_id = %L::uuid
+                )
+        $$,
+        :'offerID',
+        :'eventID'
+    ),
+    $$ values ('canceled'::text, 0::bigint) $$,
+    'Should cancel active offers and clear queues when unpublishing'
 );
 
 -- Should set event meeting_in_sync to false

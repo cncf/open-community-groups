@@ -1,9 +1,11 @@
+-- Tests expiring purchases by checkout session.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +18,7 @@ select plan(5);
 \set eventCategoryID '79440000-0000-0000-0000-000000000005'
 \set eventID '79440000-0000-0000-0000-000000000006'
 \set eventTicketTypeID '79440000-0000-0000-0000-000000000007'
+\set offerID '79440000-0000-0000-0000-000000000013'
 \set groupCategoryID '79440000-0000-0000-0000-000000000008'
 \set groupID '79440000-0000-0000-0000-000000000009'
 \set pendingPurchaseID '79440000-0000-0000-0000-000000000010'
@@ -165,8 +168,42 @@ insert into event_discount_code (
     'Save 5'
 );
 
+-- Checkout-pending offer linked to the expiring purchase
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id,
+
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    ticket_title
+) values (
+    :'offerID',
+    :'eventID',
+    :'eventTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'approval',
+    'checkout_pending',
+    :'userID',
+
+    2000,
+    'USD',
+    500,
+    'SAVE5',
+    :'discountCodeID',
+    'General admission'
+);
+
 -- Purchases
 insert into event_purchase (
+    admission_offer_id,
     event_purchase_id,
     amount_minor,
     currency_code,
@@ -182,6 +219,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
+    :'offerID',
     :'pendingPurchaseID',
     2000,
     'USD',
@@ -197,6 +235,7 @@ insert into event_purchase (
     'General admission',
     :'userID'
 ), (
+    null,
     :'completedPurchaseID',
     2500,
     'USD',
@@ -245,10 +284,15 @@ select results_eq(
                 from event_attendee
                 where event_id = %L::uuid
                 and user_id = %L::uuid
+            ),
+            (
+                select status
+                from admission_offer
+                where admission_offer_id = %L::uuid
             )
-    $$, :'pendingPurchaseID', :'eventID', :'userID'),
-    $$ values ('expired'::text, 0::int) $$,
-    'Should mark the pending purchase as expired and release its registration hold'
+    $$, :'pendingPurchaseID', :'eventID', :'userID', :'offerID'),
+    $$ values ('expired'::text, 0::int, 'pending'::text) $$,
+    'Should expire the purchase, release its registration hold, and preserve its offer'
 );
 
 -- Should restore discount availability when expiring the purchase
@@ -269,6 +313,12 @@ select lives_ok(
 );
 
 -- Should leave completed purchases unchanged
+select lives_ok(
+    $$select expire_event_purchase_for_checkout_session('stripe', 'cs_completed')$$,
+    'Should leave completed purchases unchanged'
+);
+
+-- Should preserve completed purchase state
 select is(
     (
         select status
@@ -276,7 +326,7 @@ select is(
         where event_purchase_id = :'completedPurchaseID'::uuid
     ),
     'completed',
-    'Should leave completed purchases unchanged'
+    'Should preserve completed purchase state'
 );
 
 -- ============================================================================

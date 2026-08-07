@@ -1,9 +1,11 @@
+-- Tests finding reusable event checkout purchases.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +16,9 @@ select plan(6);
 \set eventID '79230000-0000-0000-0000-000000000003'
 \set groupCategoryID '79230000-0000-0000-0000-000000000006'
 \set groupID '79230000-0000-0000-0000-000000000007'
+\set offerID '79230000-0000-0000-0000-00000000001a'
+\set offerPurchaseID '79230000-0000-0000-0000-00000000001b'
+\set offerUserID '79230000-0000-0000-0000-00000000001c'
 \set pendingPurchaseID '79230000-0000-0000-0000-000000000010'
 \set priceWindowAID '79230000-0000-0000-0000-000000000008'
 \set priceWindowBID '79230000-0000-0000-0000-000000000009'
@@ -24,6 +29,9 @@ select plan(6);
 \set recoveryPurchaseID '79230000-0000-0000-0000-000000000014'
 \set recoveryReplacementPurchaseID '79230000-0000-0000-0000-000000000018'
 \set recoveryUserID '79230000-0000-0000-0000-000000000015'
+\set refundPendingOfferID '79230000-0000-0000-0000-00000000001d'
+\set refundPendingPurchaseID '79230000-0000-0000-0000-00000000001e'
+\set refundPendingUserID '79230000-0000-0000-0000-00000000001f'
 \set refundPurchaseID '79230000-0000-0000-0000-000000000011'
 \set secondaryUserID '79230000-0000-0000-0000-000000000013'
 \set ticketTypeAID '79230000-0000-0000-0000-000000000004'
@@ -85,11 +93,25 @@ values
         'recovery-user'
     ),
     (
+        :'offerUserID',
+        'hash-5',
+        'offer@example.com',
+        true,
+        'offer-user'
+    ),
+    (
         :'recoveryOnlyUserID',
         'hash-4',
         'recovery-only@example.com',
         true,
         'recovery-only-user'
+    ),
+    (
+        :'refundPendingUserID',
+        'hash-6',
+        'refund-pending@example.com',
+        true,
+        'refund-pending-user'
     );
 
 -- Group
@@ -266,6 +288,114 @@ insert into event_purchase (
     :'recoveryUserID'
 );
 
+-- Offer-linked pending purchase isolated from direct checkout lookups
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'offerID',
+    2500,
+    'USD',
+    0,
+    :'eventID',
+    :'ticketTypeAID',
+    current_timestamp + interval '1 hour',
+    'approval',
+    'checkout_pending',
+    'General admission',
+    :'offerUserID'
+);
+
+-- Offer retained while its late purchase payment is refunded automatically
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'refundPendingOfferID',
+    2500,
+    'USD',
+    0,
+    :'eventID',
+    :'ticketTypeAID',
+    current_timestamp + interval '1 hour',
+    'approval',
+    'checkout_pending',
+    'General admission',
+    :'refundPendingUserID'
+);
+
+-- Active pending purchase linked to the selected admission offer
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'offerID',
+    2500,
+    'USD',
+    0,
+    :'eventID',
+    :'offerPurchaseID',
+    :'ticketTypeAID',
+    current_timestamp + interval '15 minutes',
+    'pending',
+    'General admission',
+    :'offerUserID'
+);
+
+-- Refund-pending purchase linked to its selected admission offer
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'refundPendingOfferID',
+    2500,
+    'USD',
+    0,
+    :'eventID',
+    :'refundPendingPurchaseID',
+    :'ticketTypeAID',
+    null,
+    'refund-pending',
+    'General admission',
+    :'refundPendingUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -367,6 +497,75 @@ select results_eq(
         :'refundPurchaseID'
     ),
     'Should return refund-requested purchases when no active pending purchase exists'
+);
+
+-- Should exclude offer-linked purchases from direct checkout reuse
+select is_empty(
+    format(
+        $$
+        select event_purchase_id
+        from prepare_event_checkout_find_existing_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null
+        )
+        $$,
+        :'eventID',
+        :'ticketTypeAID',
+        :'offerUserID'
+    ),
+    'Should exclude offer-linked purchases from direct checkout reuse'
+);
+
+-- Should reuse only the purchase linked to the selected offer
+select results_eq(
+    format(
+        $$
+        select event_purchase_id, status
+        from prepare_event_checkout_find_existing_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            %L::uuid
+        )
+        $$,
+        :'eventID',
+        :'ticketTypeAID',
+        :'offerUserID',
+        :'offerID'
+    ),
+    format(
+        $$ values (%L::uuid, 'pending'::text) $$,
+        :'offerPurchaseID'
+    ),
+    'Should reuse only the purchase linked to the selected offer'
+);
+
+-- Should retain an offer purchase while its automatic refund is pending
+select results_eq(
+    format(
+        $$
+        select event_purchase_id, status
+        from prepare_event_checkout_find_existing_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            %L::uuid
+        )
+        $$,
+        :'eventID',
+        :'ticketTypeAID',
+        :'refundPendingUserID',
+        :'refundPendingOfferID'
+    ),
+    format(
+        $$ values (%L::uuid, 'refund-pending'::text) $$,
+        :'refundPendingPurchaseID'
+    ),
+    'Should retain an offer purchase while its automatic refund is pending'
 );
 
 -- ============================================================================

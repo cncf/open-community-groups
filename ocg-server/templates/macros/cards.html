@@ -96,15 +96,16 @@
 {% macro ticket_price_badge(event, panel = false) -%}
   {% if !event.is_past() -%}
     {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-      {% if panel -%}
-        <div class="flex items-center justify-between gap-3 rounded-xl border border-green-800 bg-green-100/40 px-3.5 py-1.5 text-[13px]/5 text-green-800">
-          <span class="font-medium">Ticket price</span>
-          <span class="font-semibold">{{ ticket_price_badge }}</span>
-        </div>
-      {% else -%}
-        <span class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800">
-          {{ ticket_price_badge }}
-        </span>
+      {% if ticket_price_badge != "Free" -%}
+        {% if panel -%}
+          <div class="flex items-center justify-between gap-3 rounded-xl border border-green-800 bg-green-100/40 px-3.5 py-1.5 text-[13px]/5 text-green-800">
+            <span class="font-medium">Ticket price</span>
+            <span class="font-semibold" data-localized-currency>{{ ticket_price_badge }}</span>
+          </div>
+        {% else -%}
+          <span class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800"
+                data-localized-currency>{{ ticket_price_badge }}</span>
+        {% endif -%}
       {% endif -%}
     {% endif -%}
   {% endif -%}

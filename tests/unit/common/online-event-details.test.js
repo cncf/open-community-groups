@@ -43,14 +43,11 @@ describe("online-event-details", () => {
 
   it("honors a server-rendered false recording request attribute", async () => {
     // Render the component fixture.
-    const element = await mountLitComponentWithAttributes(
-      "online-event-details",
-      {
-        attributes: {
-          "meeting-recording-requested": "false",
-        },
+    const element = await mountLitComponentWithAttributes("online-event-details", {
+      attributes: {
+        "meeting-recording-requested": "false",
       },
-    );
+    });
 
     // The false attribute value is preserved in submitted data.
     expect(element.getMeetingData()).to.include({
@@ -71,9 +68,7 @@ describe("online-event-details", () => {
       meetingMaxParticipants: { zoom: 100 },
       startsAt: "2030-05-10T10:00",
     });
-    const automaticModeInput = element.renderRoot.querySelector(
-      'input[type="radio"][value="automatic"]',
-    );
+    const automaticModeInput = element.renderRoot.querySelector('input[type="radio"][value="automatic"]');
     const automaticModeCard = automaticModeInput.nextElementSibling;
 
     // The unselected selectable card uses the shared border and shadow rollover.
@@ -84,10 +79,7 @@ describe("online-event-details", () => {
 
   it("submits recording visibility and explains the public target", async () => {
     // Save browser globals before mocking clipboard and window open.
-    const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(
-      navigator,
-      "clipboard",
-    );
+    const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
     const originalOpen = window.open;
     const clipboardCalls = [];
     const openCalls = [];
@@ -107,18 +99,15 @@ describe("online-event-details", () => {
     };
 
     // Render the component fixture.
-    const element = await mountLitComponentWithAttributes(
-      "online-event-details",
-      {
-        attributes: {
-          "meeting-recording-published": "false",
-          "meeting-recording-raw-urls": JSON.stringify([
-            "https://zoom.us/rec/share/raw-main",
-            "https://zoom.us/rec/share/raw-late",
-          ]),
-        },
+    const element = await mountLitComponentWithAttributes("online-event-details", {
+      attributes: {
+        "meeting-recording-published": "false",
+        "meeting-recording-raw-urls": JSON.stringify([
+          "https://zoom.us/rec/share/raw-main",
+          "https://zoom.us/rec/share/raw-late",
+        ]),
       },
-    );
+    });
 
     // Execute the async scenario and restore mocked globals afterward.
     try {
@@ -127,13 +116,8 @@ describe("online-event-details", () => {
         meeting_recording_published: false,
       });
       expect(
-        [
-          ...element.renderRoot.querySelectorAll('input[readonly][type="url"]'),
-        ].map((input) => input.value),
-      ).to.deep.equal([
-        "https://zoom.us/rec/share/raw-main",
-        "https://zoom.us/rec/share/raw-late",
-      ]);
+        [...element.renderRoot.querySelectorAll('input[readonly][type="url"]')].map((input) => input.value),
+      ).to.deep.equal(["https://zoom.us/rec/share/raw-main", "https://zoom.us/rec/share/raw-late"]);
       expect(
         [...element.renderRoot.querySelectorAll("label.form-label")]
           .map((label) => label.textContent.trim())
@@ -147,12 +131,8 @@ describe("online-event-details", () => {
       );
 
       // List the fixture values.
-      const copyButtons = [
-        ...element.renderRoot.querySelectorAll("[data-raw-recording-copy]"),
-      ];
-      const openButtons = [
-        ...element.renderRoot.querySelectorAll("[data-raw-recording-open]"),
-      ];
+      const copyButtons = [...element.renderRoot.querySelectorAll("[data-raw-recording-copy]")];
+      const openButtons = [...element.renderRoot.querySelectorAll("[data-raw-recording-open]")];
 
       // Copy and open controls are rendered for each raw recording URL.
       expect(copyButtons).to.have.length(2);
@@ -164,9 +144,7 @@ describe("online-event-details", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Copying and opening use the selected raw recording URLs.
-      expect(clipboardCalls).to.deep.equal([
-        "https://zoom.us/rec/share/raw-main",
-      ]);
+      expect(clipboardCalls).to.deep.equal(["https://zoom.us/rec/share/raw-main"]);
       expect(openCalls).to.deep.equal([
         ["https://zoom.us/rec/share/raw-late", "_blank", "noopener,noreferrer"],
       ]);
@@ -192,23 +170,19 @@ describe("online-event-details", () => {
 
       // Handle the conditional test branch.
       if (originalClipboardDescriptor) {
-        Object.defineProperty(
-          navigator,
-          "clipboard",
-          originalClipboardDescriptor,
-        );
+        Object.defineProperty(navigator, "clipboard", originalClipboardDescriptor);
       } else {
         delete navigator.clipboard;
       }
     }
   });
 
-  it("shows a capacity warning when automatic meeting capacity is exceeded", async () => {
-    // Create the input fixture.
-    const capacity = document.createElement("input");
-    capacity.id = "capacity";
-    capacity.value = "150";
-    document.body.append(capacity);
+  it("shows a ticket seat warning when automatic meeting capacity is exceeded", async () => {
+    // Create the ticket capacity fixture.
+    const ticketTypesEditor = document.createElement("div");
+    ticketTypesEditor.id = "ticket-types-ui";
+    ticketTypesEditor.getConfiguredSeatTotal = () => 150;
+    document.body.append(ticketTypesEditor);
 
     // Render the online-event-details fixture.
     const element = await mountLitComponent("online-event-details", {
@@ -222,7 +196,69 @@ describe("online-event-details", () => {
     element._checkMeetingCapacity();
 
     // The provider capacity warning is shown for the oversized event.
-    expect(element._capacityWarning).to.include("Capacity (150) exceeds");
+    expect(element._capacityWarning).to.include("Total ticket seats (150) exceed");
+  });
+
+  it("uses aggregate ticket capacity for automatic meeting availability", async () => {
+    // Provide the ticket editor capacity used by the event form.
+    let configuredSeatTotal = 75;
+    const ticketTypesEditor = document.createElement("div");
+    ticketTypesEditor.id = "ticket-types-ui";
+    ticketTypesEditor.getConfiguredSeatTotal = () => configuredSeatTotal;
+    document.body.append(ticketTypesEditor);
+
+    // Render a valid automatic meeting without the removed capacity input.
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2030-05-10T12:00",
+      kind: "virtual",
+      meetingMaxParticipants: { zoom: 100 },
+      startsAt: "2030-05-10T10:00",
+    });
+    const automaticModeInput = element.renderRoot.querySelector('input[type="radio"][value="automatic"]');
+    expect(automaticModeInput.disabled).to.equal(false);
+    expect(element.textContent).not.to.include(
+      "Automatic meeting capacity is based on total seats across all ticket types.",
+    );
+
+    // Recalculate the warning whenever ticket capacity changes.
+    element._mode = "automatic";
+    element._createMeeting = true;
+    element._providerId = "zoom";
+    configuredSeatTotal = 150;
+    ticketTypesEditor.dispatchEvent(
+      new CustomEvent("ticket-types-changed", { bubbles: true, composed: true }),
+    );
+    await element.updateComplete;
+
+    expect(element._capacityWarning).to.include("Total ticket seats (150) exceed");
+    expect(element.textContent).to.include("Total ticket seats (150) exceed the meeting limit (100).");
+    expect(element.textContent).to.include(
+      "Automatic meeting capacity is based on total seats across all ticket types.",
+    );
+  });
+
+  it("explains that automatic meetings require ticket seats", async () => {
+    // Provide an event ticket editor without available seats.
+    const ticketTypesEditor = document.createElement("div");
+    ticketTypesEditor.id = "ticket-types-ui";
+    ticketTypesEditor.getConfiguredSeatTotal = () => 0;
+    document.body.append(ticketTypesEditor);
+
+    // Render otherwise valid automatic meeting settings.
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2030-05-10T12:00",
+      kind: "virtual",
+      meetingMaxParticipants: { zoom: 100 },
+      startsAt: "2030-05-10T10:00",
+    });
+    const automaticModeInput = element.renderRoot.querySelector('input[type="radio"][value="automatic"]');
+
+    // The disabled option identifies ticket seats as the capacity source.
+    expect(automaticModeInput.disabled).to.equal(true);
+    expect(element.textContent).to.include(
+      "Automatic meeting capacity is based on total seats across all ticket types.",
+    );
+    expect(element.textContent).to.include("Add seats to at least one ticket type in Tickets.");
   });
 
   it("disables automatic meeting creation for past events", async () => {
@@ -244,17 +280,13 @@ describe("online-event-details", () => {
       });
 
       // The automatic option is disabled and explains the past-event rule.
-      const automaticModeInput = element.renderRoot.querySelector(
-        'input[type="radio"][value="automatic"]',
-      );
+      const automaticModeInput = element.renderRoot.querySelector('input[type="radio"][value="automatic"]');
       const automaticModeCard = automaticModeInput.nextElementSibling;
       expect(automaticModeInput.disabled).to.equal(true);
       expect(automaticModeCard.classList.contains("border-dashed")).to.equal(true);
       expect(automaticModeCard.classList.contains("bg-stone-50")).to.equal(true);
       expect(automaticModeCard.classList.contains("hover:shadow-sm")).to.equal(false);
-      expect(element.textContent).to.include(
-        "Automatic meetings are not available for past events.",
-      );
+      expect(element.textContent).to.include("Automatic meetings are not available for past events.");
 
       // Attempting to switch into automatic mode keeps the component manual.
       await element._handleModeChange({
@@ -296,17 +328,13 @@ describe("online-event-details", () => {
     });
 
     // The synced automatic meeting stays selected but avoids enablement copy.
-    const automaticModeInput = element.renderRoot.querySelector(
-      'input[type="radio"][value="automatic"]',
-    );
+    const automaticModeInput = element.renderRoot.querySelector('input[type="radio"][value="automatic"]');
     expect(automaticModeInput.checked).to.equal(true);
     expect(automaticModeInput.disabled).to.equal(true);
     expect(element.textContent).to.include(
       "This existing automatic meeting is preserved. New automatic meetings cannot be enabled for past events.",
     );
-    expect(element.textContent).to.not.include(
-      "Complete these requirements to enable this option:",
-    );
+    expect(element.textContent).to.not.include("Complete these requirements to enable this option:");
     expect(element.textContent).to.include("Meeting synced");
     expect(element.textContent).to.include("https://zoom.us/j/synced-past");
     expect(element.getMeetingData()).to.include({
@@ -341,9 +369,7 @@ describe("online-event-details", () => {
 
       // The stored capacity input handler is removed on disconnect.
       expect(
-        removedListeners.some(
-          ({ type, listener }) => type === "input" && listener === capacityInputHandler,
-        ),
+        removedListeners.some(({ type, listener }) => type === "input" && listener === capacityInputHandler),
       ).to.equal(true);
     } finally {
       // Restore the native listener removal method.
@@ -416,9 +442,7 @@ describe("online-event-details", () => {
     // Restored synced automatic recording when switching back without saving.
     expect(element._mode).to.equal("automatic");
     expect(element._joinUrl).to.equal("");
-    expect(element._rawRecordingUrls).to.deep.equal([
-      "https://zoom.us/rec/share/synced",
-    ]);
+    expect(element._rawRecordingUrls).to.deep.equal(["https://zoom.us/rec/share/synced"]);
     expect(element._recordingUrl).to.equal("");
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
@@ -455,9 +479,7 @@ describe("online-event-details", () => {
 
     // The manual mode keeps the edited recording URL without saving first.
     expect(element._mode).to.equal("manual");
-    expect(element._recordingUrl).to.equal(
-      " https://youtube.com/watch?v=processed ",
-    );
+    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
@@ -494,9 +516,7 @@ describe("online-event-details", () => {
     // Automatic mode preserves the processed recording URL.
     expect(element._mode).to.equal("automatic");
     expect(element._joinUrl).to.equal("");
-    expect(element._recordingUrl).to.equal(
-      " https://youtube.com/watch?v=processed ",
-    );
+    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",

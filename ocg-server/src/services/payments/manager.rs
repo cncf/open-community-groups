@@ -11,7 +11,9 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig, db::DynDB, services::notifications::DynNotificationsManager,
+    config::HttpServerConfig,
+    db::{DynDB, payments::CompleteEventPurchaseRefundRecoveryInput},
+    services::notifications::DynNotificationsManager,
     types::payments::PreparedEventCheckout,
 };
 
@@ -31,9 +33,6 @@ pub(crate) trait PaymentsManager {
     /// Approves a pending refund request and queues the provider refund.
     async fn approve_refund_request(&self, input: &ApproveRefundRequestInput) -> Result<()>;
 
-    /// Completes an externally resolved terminal provider refund.
-    async fn complete_refund_recovery(&self, input: &CompleteRefundRecoveryInput) -> Result<()>;
-
     /// Completes a free checkout and enqueues the attendee welcome notification.
     async fn complete_free_checkout(
         &self,
@@ -42,6 +41,9 @@ pub(crate) trait PaymentsManager {
         event_purchase_id: Uuid,
         user_id: Uuid,
     ) -> Result<()>;
+
+    /// Completes an externally resolved terminal provider refund.
+    async fn complete_refund_recovery(&self, input: &CompleteRefundRecoveryInput) -> Result<()>;
 
     /// Creates or reuses the provider checkout URL for a pending event purchase.
     async fn get_or_create_checkout_redirect_url(
@@ -119,6 +121,23 @@ impl PgPaymentsManager {
             .await
     }
 
+    /// Completes a free checkout and enqueues the attendee welcome notification.
+    pub(crate) async fn complete_free_checkout(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        event_purchase_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        // Finalize the free purchase before notifying the attendee
+        self.db.complete_free_event_purchase(event_purchase_id).await?;
+        self.notification_composer
+            .enqueue_event_welcome_notification(community_id, event_id, user_id)
+            .await;
+
+        Ok(())
+    }
+
     /// Completes an externally resolved terminal provider refund.
     pub(crate) async fn complete_refund_recovery(
         &self,
@@ -143,32 +162,19 @@ impl PgPaymentsManager {
 
         // Complete local state and enqueue any notification atomically
         self.db
-            .complete_event_purchase_refund_recovery(
-                input.actor_user_id,
-                input.group_id,
-                context.event_purchase_refund_id,
-                input.recovery_reference.clone(),
-                input.recovery_note.clone(),
+            .complete_event_purchase_refund_recovery(&CompleteEventPurchaseRefundRecoveryInput {
+                actor_user_id: input.actor_user_id,
+                event_purchase_refund_id: context.event_purchase_refund_id,
+                group_id: input.group_id,
+                recovery_note: input.recovery_note.clone(),
+                recovery_reference: input.recovery_reference.clone(),
                 notification_template_data,
-            )
+                payment_provider: self
+                    .payments_provider
+                    .as_ref()
+                    .map(|provider| provider.provider()),
+            })
             .await
-    }
-
-    /// Completes a free checkout and enqueues the attendee welcome notification.
-    pub(crate) async fn complete_free_checkout(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-        event_purchase_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()> {
-        // Finalize the free purchase before notifying the attendee
-        self.db.complete_free_event_purchase(event_purchase_id).await?;
-        self.notification_composer
-            .enqueue_event_welcome_notification(community_id, event_id, user_id)
-            .await;
-
-        Ok(())
     }
 
     /// Creates or reuses the provider checkout URL for a pending event purchase.
@@ -185,8 +191,17 @@ impl PgPaymentsManager {
 
         // Load the payment provider required to open a fresh checkout session
         let payments_provider = self.payments_provider()?;
+        let currency_code = prepared_checkout
+            .purchase
+            .currency_code
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing currency_code"))?;
+        let recipient = prepared_checkout
+            .recipient
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing a payment recipient"))?;
 
-        if prepared_checkout.recipient.provider != payments_provider.provider() {
+        if recipient.provider != payments_provider.provider() {
             bail!("group payments recipient is not configured for this provider");
         }
 
@@ -196,12 +211,12 @@ impl PgPaymentsManager {
                 amount_minor: prepared_checkout.purchase.amount_minor,
                 base_url: self.server_cfg.base_url.clone(),
                 community_name: prepared_checkout.community_name.clone(),
-                currency_code: prepared_checkout.purchase.currency_code.clone(),
+                currency_code: currency_code.clone(),
                 event_id: prepared_checkout.event_id,
                 event_slug: prepared_checkout.event_slug.clone(),
                 group_slug: prepared_checkout.group_slug.clone(),
                 purchase_id: prepared_checkout.purchase.event_purchase_id,
-                recipient: prepared_checkout.recipient.clone(),
+                recipient: recipient.clone(),
                 ticket_title: prepared_checkout.purchase.ticket_title.clone(),
                 user_id,
 
@@ -263,6 +278,9 @@ impl PgPaymentsManager {
         &self,
         input: &RejectRefundRequestInput,
     ) -> Result<()> {
+        // Normalize the attendee-visible reason once for persistence and delivery
+        let rejection_reason = input.review_note.trim().to_string();
+
         // Persist the refund rejection in the database
         let purchase = self
             .db
@@ -270,7 +288,7 @@ impl PgPaymentsManager {
                 input.actor_user_id,
                 input.group_id,
                 input.event_purchase_id,
-                input.review_note.clone(),
+                rejection_reason.clone(),
             )
             .await?;
 
@@ -280,6 +298,7 @@ impl PgPaymentsManager {
                 purchase.community_id,
                 purchase.event_id,
                 purchase.user_id,
+                &rejection_reason,
             )
             .await;
 
@@ -450,6 +469,6 @@ pub(crate) struct RejectRefundRequestInput {
     /// Group containing the event.
     pub group_id: Uuid,
 
-    /// Optional review note stored with the rejection.
-    pub review_note: Option<String>,
+    /// Attendee-visible reason stored with the rejection.
+    pub review_note: String,
 }

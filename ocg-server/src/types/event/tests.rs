@@ -2,25 +2,30 @@ use std::collections::BTreeMap;
 
 use chrono::{Duration, TimeZone, Utc};
 
-use crate::types::payments::{EventTicketCurrentPrice, EventTicketType};
+use crate::types::payments::{
+    EventTicketCurrentPrice, EventTicketPriceWindow, EventTicketType, EventTicketTypeAvailability,
+};
 
 use super::*;
 
 #[test]
-fn event_attendance_info_can_request_refund_allows_tbd_events() {
-    let attendance = EventAttendanceInfo {
+fn event_enrollment_state_can_request_refund_allows_tbd_events() {
+    let enrollment = EventEnrollmentState {
         is_checked_in: false,
-        manually_invited: false,
-        status: EventAttendanceStatus::Attendee,
+        status: EventEnrollmentStatus::Attendee,
 
+        admission_offer_id: None,
+        event_ticket_type_id: None,
+        manually_invited: false,
         purchase_amount_minor: Some(2_500),
+        refund_rejection_reason: None,
         refund_request_status: None,
         resume_checkout_url: None,
     };
 
-    assert!(attendance.can_request_refund(Some(Utc::now() + Duration::hours(1))));
-    assert!(attendance.can_request_refund(None));
-    assert!(!attendance.can_request_refund(Some(Utc::now() - Duration::hours(1))));
+    assert!(enrollment.can_request_refund(Some(Utc::now() + Duration::hours(1))));
+    assert!(enrollment.can_request_refund(None));
+    assert!(!enrollment.can_request_refund(Some(Utc::now() - Duration::hours(1))));
 }
 
 #[test]
@@ -188,6 +193,27 @@ fn event_full_cfs_is_upcoming_returns_true_when_start_in_future() {
 }
 
 #[test]
+fn event_full_has_only_free_visible_ticket_types_requires_all_visible_prices_to_be_free() {
+    let free_event = EventFull {
+        ticket_types: Some(vec![
+            sample_ticket_type(true, Some(0), false, "Free"),
+            sample_ticket_type(false, Some(2500), false, "Inactive paid"),
+        ]),
+        ..Default::default()
+    };
+    let mixed_event = EventFull {
+        ticket_types: Some(vec![
+            sample_ticket_type(true, Some(0), false, "Free"),
+            sample_ticket_type(true, Some(2500), false, "Paid"),
+        ]),
+        ..Default::default()
+    };
+
+    assert!(free_event.has_only_free_visible_ticket_types());
+    assert!(!mixed_event.has_only_free_visible_ticket_types());
+}
+
+#[test]
 fn event_full_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasable() {
     let event = EventFull {
         ticket_types: Some(vec![
@@ -199,7 +225,60 @@ fn event_full_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasabl
     };
 
     assert!(!event.has_sellable_ticket_types());
-    assert!(event.is_ticketed());
+}
+
+#[test]
+fn event_full_has_single_free_public_ticket_type_ignores_private_tiers() {
+    let mut private_paid = sample_ticket_type(true, Some(2500), false, "Private paid");
+    private_paid.availability = EventTicketTypeAvailability::InvitationOnly;
+    let event = EventFull {
+        ticket_types: Some(vec![
+            sample_ticket_type(true, Some(0), false, "Free"),
+            private_paid,
+        ]),
+        ..Default::default()
+    };
+
+    assert!(event.has_single_free_public_ticket_type());
+    assert_eq!(
+        event
+            .single_free_public_ticket_type()
+            .map(|ticket_type| ticket_type.title.as_str()),
+        Some("Free")
+    );
+}
+
+#[test]
+fn event_full_has_sold_out_visible_ticket_types_detects_public_inventory() {
+    let event = EventFull {
+        ticket_types: Some(vec![
+            sample_ticket_type(true, Some(0), false, "Available"),
+            sample_ticket_type(true, Some(2500), true, "Sold out"),
+        ]),
+        ..Default::default()
+    };
+
+    assert!(event.has_sold_out_visible_ticket_types());
+}
+
+#[test]
+fn event_full_has_visible_ticket_types_requires_an_active_current_price() {
+    let mut private = sample_ticket_type(true, Some(0), false, "Private");
+    private.availability = EventTicketTypeAvailability::InvitationOnly;
+    let hidden_event = EventFull {
+        ticket_types: Some(vec![
+            sample_ticket_type(false, Some(0), false, "Inactive"),
+            sample_ticket_type(true, None, false, "No current price"),
+        ]),
+        ..Default::default()
+    };
+    let private_event = EventFull {
+        ticket_types: Some(vec![private]),
+        ..Default::default()
+    };
+
+    assert!(!hidden_event.has_visible_ticket_types());
+    assert!(private_event.has_visible_ticket_types());
 }
 
 #[test]
@@ -310,6 +389,24 @@ fn event_full_is_past_returns_true_when_starts_at_is_in_past_and_no_ends_at() {
         ..Default::default()
     };
     assert!(event.is_past());
+}
+
+#[test]
+fn event_full_paid_capability_includes_future_and_inactive_prices() {
+    let event = EventFull {
+        ticket_types: Some(vec![EventTicketType {
+            active: false,
+            price_windows: vec![EventTicketPriceWindow {
+                amount_minor: 2500,
+                starts_at: Some(Utc::now() + Duration::days(10)),
+                ..Default::default()
+            }],
+            ..sample_ticket_type(false, None, false, "Future paid")
+        }]),
+        ..Default::default()
+    };
+
+    assert!(event.is_paid_capable());
 }
 
 #[test]
@@ -538,6 +635,23 @@ fn event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
     );
 }
 
+#[test]
+fn event_summary_single_public_ticket_type_requires_exactly_one_visible_tier() {
+    let single = sample_event_summary(vec![sample_ticket_type(true, Some(0), false, "General")]);
+    let multiple = sample_event_summary(vec![
+        sample_ticket_type(true, Some(0), false, "Free"),
+        sample_ticket_type(true, Some(2500), false, "Paid"),
+    ]);
+
+    assert_eq!(
+        single
+            .single_public_ticket_type()
+            .map(|ticket_type| ticket_type.title.as_str()),
+        Some("General")
+    );
+    assert!(multiple.single_public_ticket_type().is_none());
+}
+
 // Helpers.
 
 /// Build a sample ticket type with specified properties for testing.
@@ -549,6 +663,7 @@ fn sample_ticket_type(
 ) -> EventTicketType {
     EventTicketType {
         active,
+        availability: EventTicketTypeAvailability::Public,
         event_ticket_type_id: Uuid::nil(),
         order: 1,
         title: title.to_string(),

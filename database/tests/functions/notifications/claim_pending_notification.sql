@@ -1,9 +1,11 @@
+-- Tests claiming pending notifications for delivery.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +20,8 @@ select plan(18);
 \set notificationEventPublishedID '8a010000-0000-0000-0000-000000000007'
 \set notificationFutureRetryID '8a010000-0000-0000-0000-000000000023'
 \set notificationGroupWelcomeID '8a010000-0000-0000-0000-000000000008'
+\set notificationPreRegisteredAdmissionOfferCanceledID '8a010000-0000-0000-0000-000000000025'
+\set notificationPreRegisteredAdmissionOfferID '8a010000-0000-0000-0000-000000000024'
 \set notificationPreRegisteredEventInvitationID '8a010000-0000-0000-0000-000000000009'
 \set notificationPreRegisteredGroupWelcomeID '8a010000-0000-0000-0000-000000000010'
 \set notificationPreRegisteredVerifiedGroupWelcomeID '8a010000-0000-0000-0000-000000000011'
@@ -216,6 +220,26 @@ insert into notification (
         :'userPreRegisteredID'
     ),
     (
+        '2025-01-01 00:00:11.5',
+        0,
+        'pending',
+        'event-admission-offer-created',
+        null,
+        :'notificationPreRegisteredAdmissionOfferID',
+        :'templateEventPublishedID',
+        :'userPreRegisteredID'
+    ),
+    (
+        '2025-01-01 00:00:11.6',
+        0,
+        'pending',
+        'event-admission-offer-canceled',
+        null,
+        :'notificationPreRegisteredAdmissionOfferCanceledID',
+        :'templateEventPublishedID',
+        :'userPreRegisteredID'
+    ),
+    (
         '2025-01-01 00:00:12',
         0,
         'pending',
@@ -258,7 +282,7 @@ select throws_ok(
 select is(
     (select notification_id from claim_pending_notification(1, 60)),
     null::uuid,
-    'Returns NULL when delivery rate limit is exhausted'
+    'Should return NULL when the delivery rate limit has been exhausted'
 );
 
 -- Should not claim a pending notification while rate limited
@@ -269,18 +293,13 @@ select is(
         where notification_id = :'notificationEmailVerificationID'
     ),
     'pending',
-    'Leaves pending notification unclaimed when delivery rate limit is exhausted'
+    'Should not claim a pending notification while rate limited'
 );
-
--- Mark a claimed notification as stale for the next claim-selection scenario
-update notification
-set delivery_claimed_at = '2025-01-01 00:00:00+00'
-where notification_id = :'notificationAlreadyClaimedID';
 
 -- Skipped before the first claim: processing, processed, unverified-user, and pre-registered rows
 -- Should skip non-deliverable rows and claim the first eligible notification
 select is(
-    (select row_to_json(r)::jsonb from claim_pending_notification(1, 60) r),
+    (select row_to_json(r)::jsonb from claim_pending_notification(2, 60) r),
     jsonb_build_object(
         'attachment_ids', null,
         'delivery_claimed_at', current_timestamp,
@@ -289,7 +308,7 @@ select is(
         'notification_id', :'notificationEmailVerificationID',
         'template_data', '{"link": "https://example.com/verify"}'::jsonb
     ),
-    'Skips non-deliverable rows and returns all expected fields'
+    'Should skip non-deliverable rows and claim the first eligible notification'
 );
 
 -- Should store claim state on the claimed notification
@@ -306,7 +325,7 @@ select results_eq(
         :'notificationEmailVerificationID'
     ),
     $$ values (1, true, 'processing'::text) $$,
-    'Stores claim state on claimed notification'
+    'Should store claim state on the claimed notification'
 );
 
 -- The email-verification row is now processing; the next claim should move forward
@@ -321,7 +340,7 @@ select is(
         'notification_id', :'notificationGroupWelcomeID',
         'template_data', '{"group": "test"}'::jsonb
     ),
-    'Claims group-welcome notification for verified user'
+    'Should claim group-welcome notifications for verified users'
 );
 
 -- The group-welcome row is now processing; the next verified row is event-published
@@ -336,7 +355,7 @@ select is(
         'notification_id', :'notificationEventPublishedID',
         'template_data', '{"event": "test"}'::jsonb
     ),
-    'Claims event-published notification for verified user'
+    'Should claim event-published notifications for verified users'
 );
 
 -- The next claim is the attachment notification, so assert its id and attachments
@@ -351,7 +370,7 @@ select is(
         'notification_id', :'notificationAttachmentID',
         'template_data', null
     ),
-    'Claims attachment notification and returns sorted attachment ids'
+    'Should return sorted attachment ids'
 );
 
 -- The attachment row is now processing; the next row has one previous attempt
@@ -359,7 +378,7 @@ select is(
 select is(
     (select notification_id from claim_pending_notification()),
     :'notificationRetryID'::uuid,
-    'Claims a previously attempted pending notification'
+    'Should claim a previously attempted pending notification'
 );
 
 -- Should skip scheduled retries that are not due
@@ -370,21 +389,21 @@ select is(
         where notification_id = :'notificationFutureRetryID'
     ),
     'pending',
-    'Leaves future scheduled retry pending'
+    'Should skip scheduled retries that are not due'
 );
 
 -- Should increment attempts on claim
 select is(
     (select delivery_attempts from notification where notification_id = :'notificationRetryID'),
     2,
-    'Increments delivery attempts on claim'
+    'Should increment attempts on claim'
 );
 
 -- Should return email verification notifications for unverified users
 select is(
     (select notification_id from claim_pending_notification()),
     :'notificationUnverifiedEmailVerificationID'::uuid,
-    'Claims email verification notification for unverified user'
+    'Should return email verification notifications for unverified users'
 );
 
 -- Should return event invitation notifications for pre-registered users
@@ -398,7 +417,35 @@ select is(
         'notification_id', :'notificationPreRegisteredEventInvitationID',
         'template_data', '{"event": "test"}'::jsonb
     ),
-    'Claims event invitation notification for pre-registered user'
+    'Should return event invitation notifications for pre-registered users'
+);
+
+-- Should return admission offer notifications for pre-registered users
+select is(
+    (select row_to_json(r)::jsonb from claim_pending_notification() r),
+    jsonb_build_object(
+        'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
+        'email', 'invited@example.com',
+        'kind', 'event-admission-offer-created',
+        'notification_id', :'notificationPreRegisteredAdmissionOfferID',
+        'template_data', '{"event": "test"}'::jsonb
+    ),
+    'Should return admission offer notifications for pre-registered users'
+);
+
+-- Should return admission offer cancellation notifications for pre-registered users
+select is(
+    (select row_to_json(r)::jsonb from claim_pending_notification() r),
+    jsonb_build_object(
+        'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
+        'email', 'invited@example.com',
+        'kind', 'event-admission-offer-canceled',
+        'notification_id', :'notificationPreRegisteredAdmissionOfferCanceledID',
+        'template_data', '{"event": "test"}'::jsonb
+    ),
+    'Should return admission offer cancellation notifications for pre-registered users'
 );
 
 -- Should leave other notification kinds for unverified users pending
@@ -422,7 +469,7 @@ select results_eq(
         :'notificationUnverifiedEventPublishedID',
         :'notificationUnverifiedGroupWelcomeID'
     ),
-    'Leaves other notification kinds for unverified users pending'
+    'Should leave other notification kinds for unverified users pending'
 );
 
 -- Should leave other notification kinds for pre-registered users pending
@@ -441,7 +488,7 @@ select results_eq(
         $$ values (%L::uuid) $$,
         :'notificationPreRegisteredGroupWelcomeID'
     ),
-    'Leaves other notification kinds for pre-registered users pending'
+    'Should leave other notification kinds for pre-registered users pending'
 );
 
 -- Should require regular registration before verified users receive regular notifications
@@ -452,14 +499,14 @@ select is(
         where notification_id = :'notificationPreRegisteredVerifiedGroupWelcomeID'
     ),
     'pending',
-    'Leaves regular notifications pending for pre-registered users even when email is verified'
+    'Should require regular registration before verified users receive regular notifications'
 );
 
 -- Should return NULL when no deliverable pending notifications exist
 select is(
     (select notification_id from claim_pending_notification()),
     null::uuid,
-    'Returns NULL when no deliverable pending notifications exist'
+    'Should return NULL when no deliverable pending notifications exist'
 );
 
 -- ============================================================================

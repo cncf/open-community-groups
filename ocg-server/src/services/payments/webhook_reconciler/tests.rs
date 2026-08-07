@@ -594,7 +594,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
 fn sample_purchase() -> EventPurchaseSummary {
     EventPurchaseSummary {
         amount_minor: 2_500,
-        currency_code: "USD".to_string(),
+        currency_code: Some("USD".to_string()),
         event_purchase_id: Uuid::from_u128(1),
         event_ticket_type_id: Uuid::from_u128(3),
         status: EventPurchaseStatus::RefundPending,

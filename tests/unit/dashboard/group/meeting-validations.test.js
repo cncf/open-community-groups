@@ -336,6 +336,50 @@ describe("meeting validations", () => {
     expect(sections.at(-1)).to.equal("details");
   });
 
+  it("identifies ticket seats in automatic meeting capacity errors", () => {
+    // Capture ticket-derived meeting capacity errors.
+    const errors = [];
+    const sections = [];
+
+    // Validate an event whose ticket types provide no seats.
+    let result = validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "2025-03-25T10:00",
+      endsAtValue: "2025-03-25T11:00",
+      capacityValue: 0,
+      capacityFromTicketTypes: true,
+      displaySection: (section) => sections.push(section),
+      showError: (message) => errors.push(message),
+    });
+
+    // The missing-capacity error tells organizers what to edit.
+    expect(result).to.equal(false);
+    expect(errors[0]).to.equal(
+      "Add seats to at least one ticket type before enabling automatic meeting creation.",
+    );
+    expect(sections[0]).to.equal("payments");
+
+    // Validate ticket seats above the provider limit.
+    result = validateMeetingRequest({
+      requested: true,
+      kindValue: "virtual",
+      startsAtValue: "2025-03-25T10:00",
+      endsAtValue: "2025-03-25T11:00",
+      capacityValue: 150,
+      capacityLimit: 100,
+      capacityFromTicketTypes: true,
+      displaySection: (section) => sections.push(section),
+      showError: (message) => errors.push(message),
+    });
+
+    // The provider-limit error uses the same ticket-seat language.
+    expect(result).to.equal(false);
+    expect(errors[1]).to.include("Total ticket seats (150)");
+    expect(errors[1]).to.include("Reduce ticket seats");
+    expect(sections[1]).to.equal("payments");
+  });
+
   it("detects and clears venue data, including custom location fields", () => {
     // Render the DOM fixture for detecting and clears venue data, including custom.
     document.body.innerHTML = `

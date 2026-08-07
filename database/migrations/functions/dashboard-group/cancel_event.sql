@@ -25,6 +25,9 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
+    -- Cancel active offers, expire checkouts, and clear enrollment queues
+    perform close_event_enrollment(p_actor_user_id, p_event_id);
+
     -- Lock refundable purchases after the event so attendee requests cannot race cancellation
     perform 1
     from event_purchase

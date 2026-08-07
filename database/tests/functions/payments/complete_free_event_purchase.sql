@@ -1,3 +1,5 @@
+-- Tests completing free event purchases.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -29,6 +31,7 @@ select plan(13);
 \set priceWindowID '79430000-0000-0000-0000-000000000015'
 \set recoveryPurchaseID '79430000-0000-0000-0000-000000000026'
 \set recoveryReplacementPurchaseID '79430000-0000-0000-0000-000000000027'
+\set reactivationOfferID '79430000-0000-0000-0000-00000000002b'
 \set reactivationPurchaseID '79430000-0000-0000-0000-000000000029'
 \set registrationQuestionID '79430000-0000-0000-0000-000000000016'
 \set user1ID '79430000-0000-0000-0000-000000000017'
@@ -184,8 +187,8 @@ insert into event (
     'UTC',
     null,
     now() + interval '1 day',
-    true,
-    now(),
+    false,
+    null,
     '[]'::jsonb,
     null
 ), (
@@ -247,6 +250,54 @@ insert into event_ticket_price_window (
     :'eventTicketTypeID'
 );
 
+-- Canceled attendee row reactivated by completing an offer-linked free purchase
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'user8ID',
+    :'eventID',
+    'attendance-canceled',
+    :'user8ID'
+);
+
+-- Checkout-pending intrinsic-free offer completed with reactivated attendance
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id,
+
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    ticket_title
+) values (
+    :'reactivationOfferID',
+    :'eventID',
+    :'eventTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'checkout_pending',
+    :'user8ID',
+
+    0,
+    null,
+    0,
+    null,
+    null,
+    'General admission'
+);
+
 -- Purchases
 insert into event_purchase (
     event_purchase_id,
@@ -257,7 +308,9 @@ insert into event_purchase (
     hold_expires_at,
     status,
     ticket_title,
-    user_id
+    user_id,
+
+    admission_offer_id
 ) values (
     :'freePurchaseID',
     0,
@@ -267,7 +320,8 @@ insert into event_purchase (
     now() + interval '10 minutes',
     'pending',
     'General admission',
-    :'user1ID'
+    :'user1ID',
+    null
 ), (
     :'expiredPurchaseID',
     0,
@@ -277,7 +331,8 @@ insert into event_purchase (
     now() - interval '10 minutes',
     'pending',
     'General admission',
-    :'user2ID'
+    :'user2ID',
+    null
 ), (
     :'inactivePurchaseID',
     0,
@@ -287,7 +342,8 @@ insert into event_purchase (
     now() + interval '10 minutes',
     'pending',
     'General admission',
-    :'user2ID'
+    :'user2ID',
+    null
 ), (
     :'paidPurchaseID',
     2500,
@@ -297,7 +353,8 @@ insert into event_purchase (
     now() + interval '10 minutes',
     'pending',
     'General admission',
-    :'user3ID'
+    :'user3ID',
+    null
 ), (
     :'completedPurchaseID',
     0,
@@ -307,7 +364,8 @@ insert into event_purchase (
     null,
     'completed',
     'General admission',
-    :'user4ID'
+    :'user4ID',
+    null
 ), (
     :'invitedPurchaseID',
     0,
@@ -317,7 +375,8 @@ insert into event_purchase (
     now() + interval '10 minutes',
     'pending',
     'General admission',
-    :'user5ID'
+    :'user5ID',
+    null
 ), (
     :'openUntilStartPurchaseID',
     0,
@@ -327,17 +386,19 @@ insert into event_purchase (
     now() + interval '10 minutes',
     'pending',
     'General admission',
-    :'user6ID'
+    :'user6ID',
+    null
 ), (
     :'reactivationPurchaseID',
     0,
-    'USD',
+    null,
     :'eventID',
     :'eventTicketTypeID',
     now() + interval '10 minutes',
     'pending',
     'General admission',
-    :'user8ID'
+    :'user8ID',
+    :'reactivationOfferID'
 );
 
 -- Refunded paid purchase whose terminal provider failure requires recovery
@@ -408,21 +469,6 @@ values (
     'invitation-pending'
 );
 
--- Canceled attendee row reactivated by completing a replacement free purchase
-insert into event_attendee (
-    attendance_canceled_at,
-    attendance_canceled_by_user_id,
-    event_id,
-    status,
-    user_id
-) values (
-    current_timestamp,
-    :'user8ID',
-    :'eventID',
-    'attendance-canceled',
-    :'user8ID'
-);
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -444,13 +490,19 @@ select results_eq(
         select
             attendance_canceled_at,
             attendance_canceled_by_user_id,
-            status
+            manually_invited,
+            status,
+            (
+                select status
+                from admission_offer
+                where admission_offer_id = %L::uuid
+            )
         from event_attendee
         where event_id = %L::uuid
         and user_id = %L::uuid
-    $$, :'eventID', :'user8ID'),
-    $$ values (null::timestamptz, null::uuid, 'confirmed'::text) $$,
-    'Should clear canceled attendance metadata after completing the purchase'
+    $$, :'reactivationOfferID', :'eventID', :'user8ID'),
+    $$ values (null::timestamptz, null::uuid, true, 'confirmed'::text, 'completed'::text) $$,
+    'Should preserve invitation provenance while reactivating attendance'
 );
 
 -- Should complete a pending free purchase
@@ -536,15 +588,11 @@ select throws_ok(
     'Should reject expired purchase holds'
 );
 
--- Should reject free purchases when the event becomes inactive
-update event
-set published = false
-where event_id = :'eventInactiveID'::uuid;
-
+-- Should reject free purchases when the event is inactive
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'inactivePurchaseID'),
     'event not found or inactive',
-    'Should reject free purchases when the event becomes inactive'
+    'Should reject free purchases when the event is inactive'
 );
 
 -- Should reject a free replacement while refund recovery is unresolved

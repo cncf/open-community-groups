@@ -1,6 +1,6 @@
 //! Background processing for all provider-mediated event refunds.
 
-use std::{future::Future, time::Duration};
+use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow};
 use tokio::time::sleep;
@@ -10,7 +10,7 @@ use tracing::{error, instrument, warn};
 use crate::{
     config::HttpServerConfig,
     db::{DynDB, payments::ClaimedEventPurchaseRefund},
-    services::notifications::DynNotificationsManager,
+    services::{notifications::DynNotificationsManager, workers::run_until_cancelled},
 };
 
 use super::{
@@ -67,18 +67,6 @@ pub(crate) fn start_refund_workers(
         task_tracker.spawn(async move {
             worker.run().await;
         });
-    }
-}
-
-/// Waits for work to finish while giving graceful cancellation priority.
-async fn run_until_cancelled<T>(
-    cancellation_token: &CancellationToken,
-    future: impl Future<Output = T>,
-) -> Option<T> {
-    tokio::select! {
-        biased;
-        () = cancellation_token.cancelled() => None,
-        result = future => Some(result),
     }
 }
 
@@ -156,6 +144,7 @@ impl RefundWorker {
                 refund.event_purchase_refund_id,
                 claim_id,
                 notification_template_data,
+                Some(refund.payment_provider),
             )
             .await?;
 

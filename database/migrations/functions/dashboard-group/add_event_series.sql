@@ -4,7 +4,8 @@ create or replace function add_event_series(
     p_group_id uuid,
     p_events jsonb,
     p_recurrence jsonb,
-    p_cfg_max_participants jsonb default null
+    p_cfg_max_participants jsonb default null,
+    p_configured_provider text default null
 )
 returns uuid[] as $$
 declare
@@ -50,7 +51,7 @@ begin
         raise exception 'recurring events require starts_at';
     end if;
 
-    -- Create the series row shared by every generated event.
+    -- Create the series row shared by every generated event
     insert into event_series (
         group_id,
         recurrence_additional_occurrences,
@@ -70,14 +71,15 @@ begin
     )
     returning event_series_id into v_event_series_id;
 
-    -- Create each event using the existing single-event behavior and then link it.
+    -- Create each event using the existing single-event behavior and then link it
     for v_event in select jsonb_array_elements(p_events)
     loop
         v_event_id := add_event(
             p_actor_user_id,
             p_group_id,
             v_event,
-            p_cfg_max_participants
+            p_cfg_max_participants,
+            p_configured_provider
         );
 
         update event

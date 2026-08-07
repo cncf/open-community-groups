@@ -1,3 +1,5 @@
+-- Tests returning event summary information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -24,7 +26,10 @@ select plan(12);
 \set groupCategoryID '0c090000-0000-0000-0000-00000000000d'
 \set groupID '0c090000-0000-0000-0000-00000000000e'
 \set groupNoLogoID '0c090000-0000-0000-0000-00000000000f'
+\set mainTicketTypeID '0c090000-0000-0000-0000-00000000001c'
 \set pendingInviteID '0c090000-0000-0000-0000-000000000010'
+\set privateTicketPriceWindowID '0c090000-0000-0000-0000-00000000001a'
+\set privateTicketTypeID '0c090000-0000-0000-0000-00000000001b'
 \set questionID '0c090000-0000-0000-0000-000000000011'
 \set questionsSeatedUserID '0c090000-0000-0000-0000-000000000012'
 \set questionsWaitlistUserID '0c090000-0000-0000-0000-000000000013'
@@ -150,7 +155,8 @@ insert into "group" (
     slug,
 
     active,
-    logo_url
+    logo_url,
+    slug_pretty
 ) values (
     :'groupID',
     :'communityID',
@@ -159,7 +165,8 @@ insert into "group" (
     'abc1234',
 
     true,
-    'https://example.com/group-logo.png'
+    'https://example.com/group-logo.png',
+    'seattle-kubernetes'
 );
 
 -- Group without logo
@@ -385,10 +392,13 @@ insert into event (
     true,
     '2030-01-02 10:00:00+00',
     '2030-01-01 10:00:00+00',
-    format(
-        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
-        :'questionID'
-    )::jsonb
+    jsonb_build_array(jsonb_build_object(
+        'id', :'questionID',
+        'kind', 'free-text',
+        'options', jsonb_build_array(),
+        'prompt', 'Note',
+        'required', true
+    ))
 );
 
 -- Event ticket type
@@ -406,6 +416,51 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Invitation-only tier used by the main event's queue fixture
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'mainTicketTypeID',
+    true,
+    'invitation_only',
+    :'eventID',
+    1,
+    5,
+    'General admission'
+);
+
+-- Current free price for the main event's invitation-only tier
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (gen_random_uuid(), 0, :'mainTicketTypeID');
+
+-- Invitation-only ticket type excluded from public summaries
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'privateTicketTypeID',
+    true,
+    'invitation_only',
+    :'eventPaidID',
+    2,
+    5,
+    'Sponsor admission'
+);
+
 -- Event ticket price window
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -415,6 +470,17 @@ insert into event_ticket_price_window (
     :'ticketPriceWindowID',
     3000,
     :'ticketTypeID'
+);
+
+-- Current invitation-only ticket price excluded from public summaries
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'privateTicketPriceWindowID',
+    1000,
+    :'privateTicketTypeID'
 );
 
 -- Link meeting to event
@@ -469,8 +535,8 @@ insert into event_purchase (
 );
 
 -- Event Waitlist
-insert into event_waitlist (event_id, user_id)
-values (:'eventID', :'waitlistUserID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'eventID', :'mainTicketTypeID', :'waitlistUserID');
 
 -- ============================================================================
 -- TESTS
@@ -520,7 +586,8 @@ select is(
         "venue_state": "NY",
         "waitlist_count": 1,
         "waitlist_enabled": true,
-        "zip_code": "10001"
+        "zip_code": "10001",
+        "group_slug_pretty": "seattle-kubernetes"
     }', :'eventID', :'eventSeriesID')::jsonb,
     'Should return correct event summary data as JSON'
 );
@@ -587,6 +654,7 @@ select is(
             "ticket_types": [
                 {
                     "active": true,
+                    "availability": "public",
                     "current_price": {
                         "amount_minor": 3000
                     },
@@ -611,7 +679,6 @@ select is(
 );
 
 -- Should include pretty group slug when available
-update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
 select is(
     (
         get_event_summary(
@@ -676,17 +743,17 @@ select ok(
     'Should return null when community does not match event'
 );
 
--- Should count pending registration rows in event capacity summaries
+-- Should exclude pending registration rows without an active checkout hold
 select is(
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid)::jsonb->>'remaining_capacity',
-    '0',
-    'Should count pending registration rows in event capacity summaries'
+    '1',
+    'Should exclude pending registration rows without an active checkout hold'
 );
 
 -- Should exclude expired checkout holds from event capacity summaries
 select is(
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb->>'remaining_capacity',
-    '19',
+    '24',
     'Should exclude expired checkout holds from event capacity summaries'
 );
 

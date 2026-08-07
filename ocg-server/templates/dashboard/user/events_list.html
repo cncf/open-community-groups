@@ -3,10 +3,47 @@
 {% import "macros/pagination.html" as pagination -%}
 {% import "macros/question_answers.html" as question_answers -%}
 
+{# Refund status badge and rejection reason tooltip. #}
+{% macro refund_status_badge(item, status_instance) -%}
+  {% if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
+    {{ badges::invitation_badge(label = "Refund requested", with_border = true) -}}
+  {% else if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+    {{ badges::invitation_badge(label = "Refund processing", with_border = true) -}}
+  {% else if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approved) -%}
+    {{ badges::invitation_badge(label = "Refund approved", tone = "success", with_border = true) -}}
+  {% else if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected) -%}
+    {% if let Some(refund_rejection_reason) = &item.refund_rejection_reason -%}
+      {% let refund_rejection_tooltip_id -%}refund-rejection-reason-{{ item.event.event_id }}-{{ status_instance }}{%- endlet %}
+    <span class="group/refund-reason relative inline-flex shrink-0">
+      <button type="button"
+              class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+              aria-describedby="{{ refund_rejection_tooltip_id }}">
+        {{ badges::invitation_badge(label = "Refund rejected", tone = "danger", with_border = true) -}}
+        <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800"
+              aria-hidden="true"></span>
+      </button>
+      {% call dashboard::tooltip_panel(
+        id = refund_rejection_tooltip_id,
+        title = "Refund request",
+        visibility_classes = "group-hover/refund-reason:visible group-hover/refund-reason:opacity-100 group-focus-within/refund-reason:visible group-focus-within/refund-reason:opacity-100"
+      ) -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">Reason</span>
+        <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ refund_rejection_reason }}</span>
+      </span>
+      {% endcall -%}
+    </span>
+  {% else -%}
+    {{ badges::invitation_badge(label = "Refund rejected", tone = "danger", with_border = true) -}}
+  {% endif -%}
+{% endif -%}
+{% endmacro refund_status_badge -%}
+{# End refund status badge. #}
+
 {# Dashboard User Events List -#}
 {# Header -#}
 {{ dashboard::page_title(title = "My Events", docs_href = "/docs#/guides/user-dashboard?id=my-events-upcoming-participation",
-  description = "Upcoming events where you'll participate.") -}}
+  description = "Upcoming participation, active checkouts, and event offers.") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
@@ -24,7 +61,11 @@
         <th scope="col" class="px-3 xl:px-5 py-3">Title</th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Date</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-64">Role</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-48">
+          <span class="xl:hidden">Status / role</span>
+          <span class="hidden xl:inline">Role</span>
+        </th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-56">Status</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
@@ -39,8 +80,8 @@
             {% include "dashboard/placeholders/user_events_table.html" -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
-              colspan="4">{% include "dashboard/placeholders/user_events_table.html" -%}</td>
-          <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
+              colspan="5">{% include "dashboard/placeholders/user_events_table.html" -%}</td>
+          <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="6">
             {% include "dashboard/placeholders/user_events_table.html" -%}
           </td>
         </tr>
@@ -110,17 +151,35 @@
             {# End date -#}
 
             {# Role -#}
-            <td class="px-3 xl:px-5 py-4 w-64">
+            <td class="px-3 xl:px-5 py-4 w-48">
               <div class="flex flex-wrap gap-1.5">
-                {% if let Some(attendance_status_label) = item.attendance_status_label() -%}
-                  {{ badges::status_badge(label = attendance_status_label, extra_styles = Some("uppercase")) -}}
-                {% endif -%}
                 {% for role in item.roles -%}
-                  {{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}
+                  {% if role.label() == "Event offer" -%}
+                    {{ badges::common_badge(content = role.label() , extra_styles = Some("border-yellow-800 bg-yellow-100 px-2.5 py-0.5 text-yellow-800")) -}}
+                  {% else -%}
+                    {{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5")) -}}
+                  {% endif -%}
                 {% endfor -%}
+              </div>
+              <div class="mt-1.5 flex flex-wrap items-center gap-1.5 xl:hidden">
+                {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
+                  {{ badges::status_badge(label = enrollment_status_label) -}}
+                {% endif -%}
+                {{ refund_status_badge(item, "mobile") -}}
               </div>
             </td>
             {# End role -#}
+
+            {# Status -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 w-56">
+              <div class="flex flex-wrap items-center gap-1.5">
+                {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
+                  {{ badges::status_badge(label = enrollment_status_label) -}}
+                {% endif -%}
+                {{ refund_status_badge(item, "desktop") -}}
+              </div>
+            </td>
+            {# End status -#}
 
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
@@ -132,15 +191,50 @@
                          title="Open event actions">
                   <div class="svg-icon size-4 icon-vertical-dots"></div>
                 </summary>
-                <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                  <ul class="py-2 text-sm text-stone-700" role="menu">
+                <div class="dropdown absolute end-0 top-8 z-10 w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                  <ul class="text-sm text-stone-700" role="menu">
                     {% if let Some(resume_checkout_url) = &item.resume_checkout_url -%}
                       <li>
                         <a href="{{ resume_checkout_url }}"
                            role="menuitem"
-                           class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                          <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-500"></div>
-                          <span>Complete payment</span>
+                           class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+                          <span>Continue to checkout</span>
+                        </a>
+                      </li>
+                    {% else if item.can_cancel_checkout() -%}
+                      <li>
+                        <a href="/{{ item.event.community_name }}/group/{{ item.event.public_group_slug() }}/event/{{ item.event.slug }}"
+                           role="menuitem"
+                           class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+                          <span>Continue to checkout</span>
+                        </a>
+                      </li>
+                    {% endif -%}
+                    {% if item.has_active_offer() -%}
+                      {% if let Some(admission_offer_id) = item.admission_offer_id -%}
+                        <li>
+                          <a href="/dashboard/user?tab=invitations#event-offer-{{ admission_offer_id }}"
+                             role="menuitem"
+                             class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                            <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+                            <span>View event offer</span>
+                          </a>
+                        </li>
+                      {% endif -%}
+                    {% endif -%}
+                    {% if item.has_paid_purchase && !item.event.is_past() -%}
+                      <li class="hidden"
+                          data-user-event-refund-action
+                          data-enrollment-url="/{{ item.event.community_name }}/event/{{ item.event.event_id }}/enrollment">
+                        <a href="/{{ item.event.community_name }}/group/{{ item.event.public_group_slug() }}/event/{{ item.event.slug }}#refund-btn-main"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           role="menuitem"
+                           class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <div class="svg-icon size-4 icon-refund shrink-0 bg-stone-600"></div>
+                          <span>Request refund</span>
                         </a>
                       </li>
                     {% endif -%}
@@ -151,8 +245,8 @@
                                   data-user-event-questions-open
                                   data-user-event-questions-modal="user-event-questions-modal-{{ item.event.event_id }}"
                                   role="menuitem"
-                                  class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                            <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+                                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                            <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-600"></div>
                             <span>{{ item.registration_questions_label() }}</span>
                           </button>
                         {% else -%}
@@ -160,27 +254,50 @@
                                   role="menuitem"
                                   disabled
                                   {% if let Some(title) = item.registration_questions_disabled_title() %}title="{{ title }}"{% endif %}
-                                  class="flex items-center w-full px-4 py-2 gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700">
-                            <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+                                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700">
+                            <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-600"></div>
                             <span>{{ item.registration_questions_label() }}</span>
                           </button>
                         {% endif -%}
                       </li>
                     {% endif -%}
-                    <li>
-                      <button id="cancel-attendance-{{ item.event.event_id }}"
-                              {% if item.can_cancel_attendance() -%}
-                                hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
-                              {% else -%}
-                                disabled title="This attendance cannot be canceled from My Events."
-                              {% endif -%}
-                              role="menuitem"
-                              class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
-                              type="button">
-                        <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
-                        <span>Cancel attendance</span>
-                      </button>
-                    </li>
+                    {% if item.can_cancel_checkout() -%}
+                      <li>
+                        <button id="cancel-checkout-{{ item.event.event_id }}"
+                                type="button"
+                                hx-delete="/{{ item.event.community_name }}/event/{{ item.event.event_id }}/checkout"
+                                hx-indicator="#dashboard-spinner"
+                                hx-trigger="confirmed"
+                                hx-swap="none"
+                                hx-disabled-elt="this"
+                                data-confirm-action
+                                data-user-event-checkout-cancel
+                                data-confirm-message="Are you sure you want to cancel this checkout? Your ticket hold will be released."
+                                data-confirm-text="Yes"
+                                data-success-message="Your checkout has been canceled and the ticket hold released."
+                                data-error-message="Something went wrong canceling checkout. Please try again later."
+                                role="menuitem"
+                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                          <span>Cancel checkout</span>
+                        </button>
+                      </li>
+                    {% else -%}
+                      <li>
+                        <button id="cancel-attendance-{{ item.event.event_id }}"
+                                {% if item.can_cancel_attendance() -%}
+                                  hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
+                                {% else -%}
+                                  disabled title="This attendance cannot be canceled from My Events."
+                                {% endif -%}
+                                role="menuitem"
+                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
+                                type="button">
+                          <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                          <span>Cancel attendance</span>
+                        </button>
+                      </li>
+                    {% endif -%}
                   </ul>
                 </div>
               </details>

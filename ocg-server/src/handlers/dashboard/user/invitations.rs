@@ -12,14 +12,13 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig,
-    db::{DBExt, DynDB},
+    config::PaymentsConfig,
+    db::DynDB,
     handlers::{
         auth::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
         error::HandlerError,
         extractors::CurrentUser,
     },
-    services::notifications::enqueue::enqueue_event_welcome_notification,
     templates::dashboard::user::invitations,
 };
 
@@ -64,43 +63,6 @@ pub(crate) async fn accept_community_team_invitation(
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
-/// Accepts a pending event invitation.
-#[instrument(skip_all, err)]
-pub(crate) async fn accept_event_attendee_invitation(
-    CurrentUser(user): CurrentUser,
-    messages: Messages,
-    State(db): State<DynDB>,
-    State(server_cfg): State<HttpServerConfig>,
-    Path(event_id): Path<Uuid>,
-) -> Result<impl IntoResponse, HandlerError> {
-    db.as_ref()
-        .transaction(|tx| {
-            Box::pin(async move {
-                // Accept the invitation
-                let community_id =
-                    tx.accept_event_attendee_invitation(user.user_id, event_id).await?;
-
-                // Enqueue the welcome notification
-                enqueue_event_welcome_notification(
-                    tx,
-                    &server_cfg,
-                    community_id,
-                    event_id,
-                    user.user_id,
-                    true,
-                )
-                .await?;
-
-                Ok(())
-            })
-        })
-        .await?;
-
-    messages.success("Event invitation accepted.");
-
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
-}
-
 /// Accepts a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_group_team_invitation(
@@ -122,6 +84,27 @@ pub(crate) async fn accept_group_team_invitation(
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
+/// Declines an active admission offer owned by the current user.
+#[instrument(skip_all, err)]
+pub(crate) async fn decline_event_admission_offer(
+    CurrentUser(user): CurrentUser,
+    messages: Messages,
+    State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
+    Path(admission_offer_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Decline the admission offer and reconcile released inventory
+    db.decline_event_admission_offer(
+        user.user_id,
+        admission_offer_id,
+        payments_cfg.as_ref().map(PaymentsConfig::provider),
+    )
+    .await?;
+    messages.success("Event offer declined.");
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+}
+
 /// Rejects a pending community team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_community_team_invitation(
@@ -134,21 +117,6 @@ pub(crate) async fn reject_community_team_invitation(
     db.reject_community_team_invitation(user.user_id, community_id)
         .await?;
     messages.success("Team invitation rejected.");
-
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
-}
-
-/// Rejects a pending event invitation.
-#[instrument(skip_all, err)]
-pub(crate) async fn reject_event_attendee_invitation(
-    CurrentUser(user): CurrentUser,
-    messages: Messages,
-    State(db): State<DynDB>,
-    Path(event_id): Path<Uuid>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Reject the pending invitation
-    db.reject_event_attendee_invitation(user.user_id, event_id).await?;
-    messages.success("Event invitation rejected.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }

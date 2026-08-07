@@ -28,9 +28,14 @@
 {{ template "common/get_community_full.sql" }}
 {{ template "common/get_community_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_occupied_seat_count.sql" }} -- Dependency for event capacity counts
+{{ template "common/get_event_ticket_type_allocated_seat_count.sql" }} -- Dependency for ticket inventory checks
+{{ template "common/is_event_paid_capable.sql" }}
+{{ template "common/is_event_simple_rsvp.sql" }}
+{{ template "common/is_event_ticketing_payload_paid_capable.sql" }}
 {{ template "common/is_registration_window_open.sql" }} -- Dependency for attendee registration flows
 {{ template "common/list_event_discount_codes.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
+{{ template "common/list_public_event_ticket_types.sql" }} -- Dependency for public event contracts
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_public_user_provider.sql" }} -- Dependency for public user profile payloads
 {{ template "common/questionnaire_answers_exist_for_event.sql" }} -- Do not sort alphabetically, dependency for get_event_full and update_event
@@ -43,6 +48,7 @@
 {{ template "common/validate_questionnaire_questions_payload.sql" }} -- Do not sort alphabetically, dependency for add/update_event and validate_questionnaire_answers_payload
 {{ template "common/validate_questionnaire_answers_payload.sql" }} -- Do not sort alphabetically, dependency for attend_event, submit_event_registration_answers and prepare_event_checkout_purchase
 {{ template "common/get_event_full.sql" }}
+{{ template "common/get_public_event_full.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_event_registration_questions.sql" }} -- Do not sort alphabetically, dependency for dashboard-user/list_user_events
 {{ template "common/get_group_full.sql" }}
@@ -105,9 +111,9 @@
 {{ template "dashboard-group/validate_event_enrollment_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_series_action_event_ids.sql" }} -- Dependency for series actions
 {{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
+{{ template "dashboard-group/validate_event_ticketing_payment_readiness.sql" }}
 {{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_add_event_dates.sql" }} -- Dependency for add_event
-{{ template "event/promote_event_waitlist.sql" }} -- Dependency for update_event and leave_event
 {{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/is_event_meeting_in_sync.sql" }} -- Dependency for update_event
@@ -124,8 +130,8 @@
 {{ template "dashboard-group/add_group_team_member.sql" }}
 {{ template "dashboard-group/award_badge.sql" }}
 {{ template "dashboard-group/cancel_event.sql" }}
+{{ template "dashboard-group/cancel_event_admission_offer.sql" }}
 {{ template "dashboard-group/cancel_event_attendee_attendance.sql" }}
-{{ template "dashboard-group/cancel_event_attendee_invitation.sql" }}
 {{ template "dashboard-group/cancel_event_series_events.sql" }}
 {{ template "dashboard-group/claim_badge_award_job.sql" }}
 {{ template "dashboard-group/cleanup_badge_award_jobs.sql" }}
@@ -190,10 +196,10 @@
 {{ template "dashboard-group/update_group_team_member_role.sql" }}
 
 {{ template "dashboard-user/accept_community_team_invitation.sql" }}
-{{ template "dashboard-user/accept_event_attendee_invitation.sql" }}
 {{ template "dashboard-user/accept_group_team_invitation.sql" }}
 {{ template "dashboard-user/accept_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/add_session_proposal.sql" }}
+{{ template "dashboard-user/decline_event_admission_offer.sql" }}
 {{ template "dashboard-user/delete_session_proposal.sql" }}
 {{ template "dashboard-user/get_user_badge.sql" }}
 {{ template "dashboard-user/list_session_proposal_levels.sql" }}
@@ -209,7 +215,6 @@
 {{ template "dashboard-user/list_user_session_proposals.sql" }}
 {{ template "dashboard-user/refresh_user_badge_identity.sql" }}
 {{ template "dashboard-user/reject_community_team_invitation.sql" }}
-{{ template "dashboard-user/reject_event_attendee_invitation.sql" }}
 {{ template "dashboard-user/reject_group_team_invitation.sql" }}
 {{ template "dashboard-user/reject_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/resubmit_cfs_submission.sql" }}
@@ -223,8 +228,9 @@
 {{ template "event/add_cfs_submission.sql" }}
 {{ template "event/attend_event.sql" }}
 {{ template "event/check_in_event.sql" }}
+{{ template "event/close_event_enrollment.sql" }}
 {{ template "event/ensure_event_is_active.sql" }}
-{{ template "event/get_event_attendance.sql" }}
+{{ template "event/get_event_enrollment.sql" }}
 {{ template "event/get_event_full_by_slug.sql" }}
 {{ template "event/get_event_summary_by_id.sql" }}
 {{ template "event/is_event_check_in_window_open.sql" }}
@@ -262,6 +268,8 @@
 {{ template "notifications/claim_pending_notification.sql" }}
 {{ template "notifications/enqueue_due_event_reminders.sql" }}
 {{ template "notifications/enqueue_notification.sql" }}
+{{ template "event/reconcile_event_enrollment.sql" }} -- Depends on notification and enrollment helpers
+{{ template "event/reconcile_next_event_enrollment.sql" }} -- Depends on event reconciliation
 {{ template "notifications/manual_requeue_notifications.sql" }}
 {{ template "notifications/mark_notification_delivery_unknown.sql" }}
 {{ template "notifications/mark_stale_processing_notifications_unknown.sql" }}

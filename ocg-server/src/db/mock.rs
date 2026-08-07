@@ -385,7 +385,9 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
-        ) -> Result<()>;
+            event_ticket_type_id: Option<Uuid>,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
+        ) -> Result<crate::db::dashboard::group::EventAdmissionAllocationResult>;
         async fn add_badge(
             &self,
             actor_user_id: Uuid,
@@ -406,6 +408,7 @@ mock! {
             group_id: Uuid,
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Uuid>;
         async fn add_event_series(
             &self,
@@ -414,6 +417,7 @@ mock! {
             events: &[serde_json::Value],
             recurrence: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Vec<Uuid>>;
         async fn add_group_sponsor(
             &self,
@@ -436,20 +440,21 @@ mock! {
             input: &crate::types::badges::BadgeAwardInput,
         ) -> Result<crate::types::badges::AwardBadgeOutcome>;
         async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn cancel_event_admission_offer(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            admission_offer_id: Uuid,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
+        ) -> Result<crate::types::event::EventEnrollmentReconciliationOutcome>;
         async fn cancel_event_attendee_attendance(
             &self,
             actor_user_id: Uuid,
             group_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<crate::types::event::EventLeaveOutcome>;
-        async fn cancel_event_attendee_invitation(
-            &self,
-            actor_user_id: Uuid,
-            group_id: Uuid,
-            event_id: Uuid,
-            user_id: Uuid,
-        ) -> Result<()>;
         async fn cancel_event_series_events(
             &self,
             actor_user_id: Uuid,
@@ -494,6 +499,12 @@ mock! {
             event_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData>;
+        async fn get_event_summary_dashboard(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<crate::types::event::EventSummary>;
         async fn get_group_payment_recipient(
             &self,
             community_id: Uuid,
@@ -515,9 +526,9 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event_id: Uuid,
-            user_id: Option<Uuid>,
-            email: Option<String>,
-        ) -> Result<Uuid>;
+            invitation: &crate::db::dashboard::group::EventAttendeeInvitationInput,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
+        ) -> Result<crate::db::dashboard::group::EventAdmissionAllocationResult>;
         async fn list_awarded_badges(
             &self,
             group_id: Uuid,
@@ -535,11 +546,6 @@ mock! {
         async fn list_cfs_submission_statuses_for_review(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
-        async fn list_group_audit_logs(
-            &self,
-            group_id: Uuid,
-            filters: &crate::templates::dashboard::audit::AuditLogFilters,
-        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_event_attendees_ids(
             &self,
             group_id: Uuid,
@@ -581,6 +587,11 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_group_audit_logs(
+            &self,
+            group_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_group_events(
             &self,
             group_id: Uuid,
@@ -639,16 +650,16 @@ mock! {
         async fn publish_event(
             &self,
             actor_user_id: Uuid,
-            configured_provider: Option<crate::types::payments::PaymentProvider>,
             group_id: Uuid,
             event_id: Uuid,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<()>;
         async fn publish_event_series_events(
             &self,
             actor_user_id: Uuid,
-            configured_provider: Option<crate::types::payments::PaymentProvider>,
             group_id: Uuid,
             event_ids: &[Uuid],
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<()>;
         async fn reject_event_invitation_request(
             &self,
@@ -716,7 +727,8 @@ mock! {
             event_id: Uuid,
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
-        ) -> Result<Vec<Uuid>>;
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
+        ) -> Result<()>;
         async fn update_group_sponsor(
             &self,
             actor_user_id: Uuid,
@@ -747,11 +759,6 @@ mock! {
             actor_user_id: Uuid,
             community_id: Uuid,
         ) -> Result<()>;
-        async fn accept_event_attendee_invitation(
-            &self,
-            actor_user_id: Uuid,
-            event_id: Uuid,
-        ) -> Result<Uuid>;
         async fn accept_group_team_invitation(
             &self,
             actor_user_id: Uuid,
@@ -767,25 +774,16 @@ mock! {
             actor_user_id: Uuid,
             session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<Uuid>;
+        async fn decline_event_admission_offer(
+            &self,
+            actor_user_id: Uuid,
+            admission_offer_id: Uuid,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
+        ) -> Result<crate::types::event::EventEnrollmentReconciliationOutcome>;
         async fn delete_session_proposal(
             &self,
             actor_user_id: Uuid,
             session_proposal_id: Uuid,
-        ) -> Result<()>;
-        async fn reject_community_team_invitation(
-            &self,
-            actor_user_id: Uuid,
-            community_id: Uuid,
-        ) -> Result<()>;
-        async fn reject_event_attendee_invitation(
-            &self,
-            actor_user_id: Uuid,
-            event_id: Uuid,
-        ) -> Result<()>;
-        async fn reject_group_team_invitation(
-            &self,
-            actor_user_id: Uuid,
-            group_id: Uuid,
         ) -> Result<()>;
         async fn get_session_proposal_co_speaker_user_id(
             &self,
@@ -858,6 +856,16 @@ mock! {
             user_id: Uuid,
             user_badge_id: Uuid,
         ) -> Result<crate::types::badges::UserBadgeIdentity>;
+        async fn reject_community_team_invitation(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+        ) -> Result<()>;
+        async fn reject_group_team_invitation(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<()>;
         async fn reject_session_proposal_co_speaker_invitation(
             &self,
             actor_user_id: Uuid,
@@ -879,7 +887,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             registration_answers: &crate::types::questionnaire::QuestionnaireAnswers,
-        ) -> Result<bool>;
+        ) -> Result<()>;
         async fn update_session_proposal(
             &self,
             actor_user_id: Uuid,
@@ -920,7 +928,8 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
             registration_answers: Option<crate::types::questionnaire::QuestionnaireAnswers>,
-        ) -> Result<crate::types::event::EventAttendanceStatus>;
+            event_ticket_type_id: Option<Uuid>,
+        ) -> Result<crate::db::event::AttendEventResult>;
         async fn check_in_event(
             &self,
             community_id: Uuid,
@@ -933,6 +942,12 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
         ) -> Result<()>;
+        async fn get_event_enrollment(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<crate::types::event::EventEnrollmentState>;
         async fn get_event_full_by_slug(
             &self,
             community_id: Uuid,
@@ -949,12 +964,6 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
-        async fn get_event_attendance(
-            &self,
-            community_id: Uuid,
-            event_id: Uuid,
-            user_id: Uuid,
-        ) -> Result<crate::types::event::EventAttendanceInfo>;
         async fn is_event_check_in_window_open(
             &self,
             community_id: Uuid,
@@ -965,6 +974,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<crate::types::event::EventLeaveOutcome>;
         async fn list_user_session_proposals_for_cfs_event(
             &self,
@@ -1157,7 +1167,7 @@ mock! {
         async fn attach_checkout_session_to_event_purchase(
             &self,
             event_purchase_id: Uuid,
-            provider: crate::types::payments::PaymentProvider,
+            payment_provider: crate::types::payments::PaymentProvider,
             checkout_session: &crate::services::payments::CheckoutSession,
         ) -> Result<()>;
         async fn cancel_event_checkout(
@@ -1165,19 +1175,15 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<()>;
         async fn claim_event_purchase_refund(
             &self,
-            provider: crate::types::payments::PaymentProvider,
+            payment_provider: crate::types::payments::PaymentProvider,
         ) -> Result<Option<crate::db::payments::ClaimedEventPurchaseRefund>>;
         async fn complete_event_purchase_refund_recovery(
             &self,
-            actor_user_id: Uuid,
-            group_id: Uuid,
-            event_purchase_refund_id: Uuid,
-            recovery_reference: String,
-            recovery_note: String,
-            notification_template_data: Option<serde_json::Value>,
+            input: &crate::db::payments::CompleteEventPurchaseRefundRecoveryInput,
         ) -> Result<()>;
         async fn complete_free_event_purchase(
             &self,
@@ -1185,7 +1191,7 @@ mock! {
         ) -> Result<crate::db::payments::CompletedEventPurchase>;
         async fn expire_event_purchase_for_checkout_session(
             &self,
-            provider: crate::types::payments::PaymentProvider,
+            payment_provider: crate::types::payments::PaymentProvider,
             provider_session_id: &str,
         ) -> Result<()>;
         async fn finalize_event_purchase_refund(
@@ -1193,6 +1199,7 @@ mock! {
             event_purchase_refund_id: Uuid,
             claim_id: Uuid,
             notification_template_data: serde_json::Value,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<()>;
         async fn get_event_purchase_refund(
             &self,
@@ -1211,7 +1218,7 @@ mock! {
             &self,
             community_id: Uuid,
             input: &crate::db::payments::PrepareEventCheckoutPurchaseInput,
-        ) -> Result<crate::types::payments::PreparedEventCheckout>;
+        ) -> Result<crate::db::payments::PrepareEventCheckoutPurchaseResult>;
         async fn queue_event_refund_request_approval(
             &self,
             actor_user_id: Uuid,
@@ -1221,10 +1228,14 @@ mock! {
         ) -> Result<()>;
         async fn reconcile_event_purchase_for_checkout_session(
             &self,
-            provider: crate::types::payments::PaymentProvider,
+            payment_provider: crate::types::payments::PaymentProvider,
             provider_session_id: &str,
             provider_payment_reference: Option<String>,
         ) -> Result<crate::db::payments::ReconcileEventPurchaseResult>;
+        async fn reconcile_next_event_enrollment(
+            &self,
+            payment_provider: Option<crate::types::payments::PaymentProvider>,
+        ) -> Result<Option<crate::types::event::EventEnrollmentReconciliationOutcome>>;
         async fn record_event_purchase_refund_pending(
             &self,
             event_purchase_refund_id: Uuid,
@@ -1258,7 +1269,7 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event_purchase_id: Uuid,
-            review_note: Option<String>,
+            review_note: String,
         ) -> Result<crate::db::payments::CompletedEventPurchase>;
         async fn request_event_refund(
             &self,

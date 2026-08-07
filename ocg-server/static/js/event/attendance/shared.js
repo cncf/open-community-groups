@@ -1,13 +1,14 @@
 import { parseJsonText } from "/static/js/common/utils.js";
-import { getAttendanceControlLabel } from "/static/js/event/attendance-dom.js";
 import {
   ATTEND_EVENT_LABEL,
-  BUY_TICKET_LABEL,
+  GET_FREE_TICKET_LABEL,
+  GET_TICKET_LABEL,
   JOIN_WAITLIST_LABEL,
-  renderMeetingDetails,
   REQUEST_INVITATION_LABEL,
-  showSignedOutAttendanceState,
-} from "/static/js/event/attendance-view.js";
+  REQUEST_TICKET_LABEL,
+} from "/static/js/event/attendance-copy.js";
+import { getAttendanceControlLabel } from "/static/js/event/attendance-dom.js";
+import { renderMeetingDetails, showSignedOutAttendanceState } from "/static/js/event/attendance-view.js";
 
 export const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn"]);
 export const QUESTIONS_CONTINUE_ACTION_ATTEND = "attend";
@@ -51,8 +52,12 @@ export const getSigninActionText = (label) => {
     return "request an invitation";
   }
 
-  if (label === BUY_TICKET_LABEL) {
-    return "buy a ticket for this event";
+  if (label === GET_TICKET_LABEL || label === GET_FREE_TICKET_LABEL) {
+    return "get a ticket for this event";
+  }
+
+  if (label === REQUEST_TICKET_LABEL) {
+    return "request a ticket for this event";
   }
 
   return "attend this event";

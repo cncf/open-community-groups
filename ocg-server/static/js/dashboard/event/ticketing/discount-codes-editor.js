@@ -1,6 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { toDateTimeLocalInTimezone, toUtcIsoInTimezone } from "/static/js/common/datetime.js";
-import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
 import { parseJsonAttribute, toBoolean, toTrimmedString } from "/static/js/common/utils.js";
 import {
   formatMinorUnitsForInput,
@@ -248,7 +247,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
     this._isNewRow = !existingRow;
     this._editingRowId = existingRow?._row_id ?? null;
     this._draftRow = existingRow ? this._cloneDiscountCode(existingRow) : this._createEmptyDiscountCode();
-    this._isModalOpen = openModalBodyScroll(this._isModalOpen);
+    this._openModalState();
   }
 
   /**
@@ -262,9 +261,8 @@ class DiscountCodesEditor extends TicketingEditorBase {
 
     this._draftRow = null;
     this._editingRowId = null;
-    const wasOpen = this._isModalOpen;
     this._isNewRow = false;
-    this._isModalOpen = closeModalBodyScroll(wasOpen);
+    this._closeModalState();
   }
 
   /**
@@ -409,23 +407,21 @@ class DiscountCodesEditor extends TicketingEditorBase {
   }
 
   /**
-   * Returns the display redemption limit summary for a discount row.
+   * Returns the display redemption summary for a discount row.
    * @param {object} row Discount row
    * @returns {string}
    */
-  _discountSeatsSummary(row) {
+  _discountRedemptionsSummary(row) {
     const totalAvailable = Number.parseInt(row.total_available, 10);
-    return Number.isFinite(totalAvailable) ? String(totalAvailable) : "Unlimited";
-  }
-
-  /**
-   * Returns the optional remaining-uses label for a discount row.
-   * @param {object} row Discount row
-   * @returns {string}
-   */
-  _discountSeatsDetail(row) {
     const available = Number.parseInt(row.available, 10);
-    return row.available_override_active && Number.isFinite(available) ? `${available} remaining` : "";
+
+    if (!Number.isFinite(totalAvailable)) {
+      return "Unlimited";
+    }
+
+    return row.available_override_active && Number.isFinite(available)
+      ? `${available} / ${totalAvailable}`
+      : `${totalAvailable} max`;
   }
 
   /**
@@ -511,18 +507,14 @@ class DiscountCodesEditor extends TicketingEditorBase {
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
             <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
               <div class="font-medium text-stone-900">${this._discountTitle(row)}</div>
-              <div class="mt-2 text-xs font-medium text-stone-600 xl:hidden">
+              <div class="mt-2 text-xs font-medium text-stone-600 2xl:hidden">
                 ${row.code?.trim() || "CODE"}
               </div>
-              <div class="mt-3 flex flex-wrap items-center gap-2 xl:hidden">
-                <span
-                  class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
-                >
-                  ${this._discountSeatsSummary(row)} seats
+              <div class="mt-3 flex flex-wrap items-center gap-2 2xl:hidden">
+                <span class="custom-badge inline-flex items-center bg-stone-100 px-2.5 py-0.5 text-stone-700">
+                  ${this._discountRedemptionsSummary(row)}
                 </span>
-                <span
-                  class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
-                >
+                <span class="custom-badge inline-flex items-center bg-stone-100 px-2.5 py-0.5 text-stone-700">
                   ${this._discountValueSummary(row)}
                 </span>
                 ${
@@ -540,15 +532,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
                 }
               </div>
             </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
-              ${this._discountSeatsSummary(row)}
-              ${
-                this._discountSeatsDetail(row)
-                  ? html`<div class="mt-1 text-xs text-stone-500">${this._discountSeatsDetail(row)}</div>`
-                  : null
-              }
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+              ${this._discountRedemptionsSummary(row)}
             </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
               ${
                 row.active
                   ? html`<span
@@ -566,10 +553,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
             <td class="px-3 xl:px-5 py-4">
               <div class="text-sm text-stone-700">${this._discountAvailabilitySummary(row)}</div>
             </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
               ${valueSummary}
             </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">
               ${row.code?.trim() || "CODE"}
             </td>
             <td class="px-3 xl:px-5 py-4">
@@ -692,16 +679,16 @@ class DiscountCodesEditor extends TicketingEditorBase {
     return html`
       ${this._renderHiddenFields()}
 
-      <div data-ticketing-role="table-wrapper" class="relative overflow-x-auto xl:overflow-visible">
+      <div data-ticketing-role="table-wrapper" class="relative overflow-x-auto 2xl:overflow-visible">
         <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
           <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
             <tr>
               <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
-              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Seats</th>
-              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
+              <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Redemptions</th>
+              <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Status</th>
               <th scope="col" class="px-3 xl:px-5 py-3">Availability</th>
-              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Value</th>
-              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Code</th>
+              <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Value</th>
+              <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Code</th>
               <th scope="col" class="px-3 xl:px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -725,6 +712,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
         } items-center justify-center overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-modal="true"
+        aria-hidden=${String(!this._isModalOpen)}
         aria-labelledby="discount-code-modal-title"
         data-pending-changes-ignore
       >
@@ -855,6 +843,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
                         this._updateDraftDiscountCode("total_available", event.target.value)}
                     />
                   </div>
+                  <p class="form-legend">Leave blank to allow unlimited redemptions.</p>
                 </div>
 
                 <div>
@@ -866,12 +855,15 @@ class DiscountCodesEditor extends TicketingEditorBase {
                       type="number"
                       min="0"
                       class="input-primary"
-                      placeholder="Leave blank unless you need a manual override"
+                      placeholder="Automatically tracked"
                       .value=${this._draftRow?.available || ""}
                       ?disabled=${!this._isModalOpen}
                       @input=${(event) => this._updateDraftDiscountCode("available", event.target.value)}
                     />
                   </div>
+                  <p class="form-legend">
+                    Optional manual override. Leave blank to let OCG track remaining uses automatically.
+                  </p>
                 </div>
 
                 <div>

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env, time::Duration};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use deadpool_postgres::{Config as DeadpoolDbConfig, Pool, Runtime};
 use tokio_postgres::{
@@ -18,7 +18,12 @@ use crate::{
         common::DBCommon,
         community::DBCommunity,
         dashboard::{
-            common::DBDashboardCommon, community::DBDashboardCommunity, group::DBDashboardGroup,
+            common::DBDashboardCommon,
+            community::DBDashboardCommunity,
+            group::{
+                DBDashboardGroup, EventAdmissionAllocationOutcome, EventAdmissionAllocationResult,
+                EventAttendeeInvitationInput,
+            },
             user::DBDashboardUser,
         },
         event::DBEvent,
@@ -27,7 +32,8 @@ use crate::{
         notifications::DBNotifications,
         payments::{
             DBPayments, EventPurchaseRefundKind, EventPurchaseRefundStatus,
-            PrepareEventCheckoutPurchaseInput, ReconcileEventPurchaseResult,
+            PrepareEventCheckoutPurchaseInput, PrepareEventCheckoutPurchaseResult,
+            ReconcileEventPurchaseResult,
         },
         site::DBSite,
     },
@@ -37,7 +43,9 @@ use crate::{
             audit::AuditLogFilters,
             community::team::CommunityTeamFilters,
             group::{
-                attendees::AttendeesFilters,
+                attendees::{
+                    AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
+                },
                 events::{Event as EventUpdate, EventsListFilters},
                 invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
                 members::GroupMembersFilters,
@@ -48,7 +56,8 @@ use crate::{
                 waitlist::WaitlistFilters,
             },
             user::{
-                events::UserEventsFilters, groups::UserGroupsFilters,
+                events::{UserEventRole, UserEventsFilters},
+                groups::UserGroupsFilters,
                 session_proposals::SessionProposalsFilters,
                 submissions::CfsSubmissionsFilters as UserCfsSubmissionsFilters,
             },
@@ -63,15 +72,53 @@ use crate::{
             PublicUserBadge, UserBadge,
         },
         community::CommunityRole,
-        event::{EventAttendanceStatus, EventInvitationRequestStatus, EventKind},
+        event::{
+            EventAdmissionOfferSource, EventAdmissionOfferStatus, EventDeleteEligibility,
+            EventEnrollmentStatus, EventInvitationRequestStatus, EventKind,
+        },
         group::GroupRole,
-        payments::{EventPurchaseStatus, PaymentProvider},
+        payments::{
+            EventPurchaseStatus, EventRefundRequestStatus, EventTicketType,
+            EventTicketTypeAvailability, PaymentProvider,
+        },
         questionnaire::QuestionnaireAnswerValue,
         search::{SearchEventsFilters, SearchGroupsFilters},
         user::UserProvider,
     },
     util::compute_hash,
 };
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_accept_event_invitation_request_deserializes() -> Result<()> {
+    // Setup the contract database and pending RSVP request fixture
+    let db = contract_tests_db()?;
+
+    // Accept the pending request through the Rust JSON contract
+    let result = db
+        .accept_event_invitation_request(
+            organizer_id(),
+            subgroup_id(),
+            request_event_id(),
+            requester_id(),
+            None,
+            None,
+        )
+        .await?;
+
+    // Require the successful allocation variant
+    let EventAdmissionAllocationResult::Success(allocation) = result else {
+        panic!("request acceptance should succeed");
+    };
+
+    // Check the RSVP allocation fields deserialize completely
+    assert_eq!(
+        allocation.outcome,
+        EventAdmissionAllocationOutcome::OfferCreated
+    );
+
+    Ok(())
+}
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -336,6 +383,25 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_cancel_event_admission_offer_deserializes() -> Result<()> {
+    // Setup the contract database and dedicated RSVP offer fixture
+    let db = contract_tests_db()?;
+
+    // Cancel the offer through the Rust JSON contract
+    let outcome = db
+        .cancel_event_admission_offer(organizer_id(), group_id(), mutation_offer_id(), None)
+        .await?;
+
+    // Check the reconciliation context deserializes completely
+    assert_eq!(outcome.community_id, community_id());
+    assert_eq!(outcome.event_id, mutation_event_id());
+    assert_eq!(outcome.group_id, group_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<()> {
     // Setup the contract database and attendance fixture
     let db = contract_tests_db()?;
@@ -347,12 +413,12 @@ async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<
             group_id(),
             mutation_event_id(),
             cancelee_id(),
+            None,
         )
         .await?;
 
     // Check the prior status and waitlist outcome
-    assert_eq!(outcome.left_status, EventAttendanceStatus::Attendee);
-    assert!(outcome.promoted_user_ids.is_empty());
+    assert_eq!(outcome.left_status, EventEnrollmentStatus::Attendee);
 
     Ok(())
 }
@@ -371,7 +437,7 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
 
     // Check the claimed JSON contract and persisted provider outcome
     assert_eq!(refund.community_id, community_id());
-    assert_eq!(refund.event_id, ticketed_event_id());
+    assert_eq!(refund.event_id, paid_event_id());
     assert_eq!(refund.event_purchase_id, refund_approve_purchase_id());
     assert_eq!(refund.status, EventPurchaseRefundStatus::Processing);
     assert!(refund.provider_refunded_at.is_some());
@@ -381,6 +447,7 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
         refund.event_purchase_refund_id,
         refund.claim_id.context("refund claim id should be present")?,
         serde_json::json!({"scenario": "contract"}),
+        Some(PaymentProvider::Stripe),
     )
     .await?;
 
@@ -449,8 +516,9 @@ async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
 
     // Check the complete delivery contract and claim identity were decoded
     assert!(notification.attachments.is_empty());
-    assert!(notification.delivery_claimed_at >= claim_started_at);
-    assert!(notification.delivery_claimed_at <= claim_finished_at);
+    let clock_tolerance = chrono::Duration::seconds(1);
+    assert!(notification.delivery_claimed_at >= claim_started_at - clock_tolerance);
+    assert!(notification.delivery_claimed_at <= claim_finished_at + clock_tolerance);
     assert_eq!(notification.email, "organizer.contract@example.com");
     assert_eq!(notification.kind.to_string(), "event-welcome");
     assert_eq!(notification.notification_id, notification_id());
@@ -468,13 +536,36 @@ async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> 
     // Setup the contract database and free purchase fixture
     let db = contract_tests_db()?;
 
+    // Load the provider-free purchase snapshot before completing it
+    let summary = db.get_event_purchase_summary(free_purchase_id()).await?;
+    assert_eq!(summary.currency_code, None);
+
     // Complete the free purchase through the Rust contract
     let purchase = db.complete_free_event_purchase(free_purchase_id()).await?;
 
     // Check the completed purchase ownership fields
     assert_eq!(purchase.community_id, community_id());
-    assert_eq!(purchase.event_id, ticketed_event_id());
+    assert_eq!(purchase.event_id, paid_event_id());
     assert_eq!(purchase.user_id, free_buyer_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_decline_event_admission_offer_deserializes() -> Result<()> {
+    // Setup the contract database and dedicated RSVP offer fixture
+    let db = contract_tests_db()?;
+
+    // Decline the owned offer through the Rust JSON contract
+    let outcome = db
+        .decline_event_admission_offer(offer_decliner_id(), offer_decline_offer_id(), None)
+        .await?;
+
+    // Check the reconciliation context deserializes completely
+    assert_eq!(outcome.community_id, community_id());
+    assert_eq!(outcome.event_id, offer_decline_event_id());
+    assert_eq!(outcome.group_id, subgroup_id());
 
     Ok(())
 }
@@ -704,18 +795,96 @@ async fn db_contracts_get_community_upcoming_events_deserializes() -> Result<()>
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_get_event_attendance_deserializes() -> Result<()> {
-    // Setup the contract database and attendance identifiers
+async fn db_contracts_get_event_enrollment_deserializes() -> Result<()> {
+    // Setup the contract database and enrollment identifiers
     let db = contract_tests_db()?;
 
-    // Load attendee state through the Rust contract
-    let attendance = db
-        .get_event_attendance(community_id(), event_id(), attendee_id())
+    // Load attendee enrollment through the Rust contract
+    let enrollment = db
+        .get_event_enrollment(community_id(), event_id(), attendee_id())
+        .await?;
+    let offer_enrollment = db
+        .get_event_enrollment(community_id(), event_id(), pre_registered_id())
+        .await?;
+    let refund_offer_enrollment = db
+        .get_event_enrollment(community_id(), refund_event_id(), refund_offer_user_id())
+        .await?;
+    let rejected_refund_enrollment = db
+        .get_event_enrollment(
+            community_id(),
+            refund_event_id(),
+            refund_rejected_buyer_id(),
+        )
+        .await?;
+    let rejected_request_enrollment = db
+        .get_event_enrollment(
+            community_id(),
+            refund_event_id(),
+            rejected_request_user_id(),
+        )
+        .await?;
+    let expired_offer_enrollment = db
+        .get_event_enrollment(community_id(), status_event_id(), status_expired_user_id())
+        .await?;
+    let pending_payment_enrollment = db
+        .get_event_enrollment(
+            community_id(),
+            status_event_id(),
+            status_pending_payment_user_id(),
+        )
         .await?;
 
-    // Check attendance and check-in state
-    assert_eq!(attendance.status, EventAttendanceStatus::Attendee);
-    assert!(attendance.is_checked_in);
+    // Check attendee enrollment and check-in state
+    assert_eq!(enrollment.status, EventEnrollmentStatus::Attendee);
+    assert!(enrollment.is_checked_in);
+    assert!(enrollment.manually_invited);
+
+    // Check owned ticket offers expose their exact offer and tier identifiers
+    assert_eq!(
+        offer_enrollment.status,
+        EventEnrollmentStatus::InvitationApproved
+    );
+    assert_eq!(
+        offer_enrollment.admission_offer_id,
+        Some(invitation_offer_id())
+    );
+    assert_eq!(
+        offer_enrollment.event_ticket_type_id,
+        Some(invitation_ticket_type_id())
+    );
+
+    // Refund processing and disabled approval suppress stale offer/request actions
+    assert_eq!(refund_offer_enrollment.status, EventEnrollmentStatus::None);
+    assert_eq!(
+        rejected_refund_enrollment.status,
+        EventEnrollmentStatus::Attendee
+    );
+    assert_eq!(
+        rejected_refund_enrollment.refund_rejection_reason.as_deref(),
+        Some("Outside the refund policy window")
+    );
+    assert_eq!(
+        rejected_refund_enrollment.refund_request_status,
+        Some(EventRefundRequestStatus::Rejected)
+    );
+    assert_eq!(
+        rejected_request_enrollment.status,
+        EventEnrollmentStatus::None
+    );
+
+    // Check attendee-facing pending purchase and expired offer encodings
+    assert_eq!(
+        expired_offer_enrollment.status,
+        EventEnrollmentStatus::OfferExpired
+    );
+    assert_eq!(
+        pending_payment_enrollment.status,
+        EventEnrollmentStatus::PendingPayment
+    );
+    assert_eq!(
+        pending_payment_enrollment.resume_checkout_url.as_deref(),
+        Some("https://example.test/checkout/status-pending")
+    );
 
     Ok(())
 }
@@ -730,7 +899,7 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
 
     // Check community and event details
-    assert_eq!(event.attendee_count, 1);
+    assert_eq!(event.attendee_count, 2);
     assert_eq!(
         event.community.ad_banner_link_url.as_deref(),
         Some("https://example.com/community-ad")
@@ -750,6 +919,9 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     assert!(event.registration_questions_locked);
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
+    assert_contract_ticket_type(
+        &event.ticket_types.as_ref().expect("event should have tickets")[0],
+    );
 
     // Check host and organizer provider profiles
     assert_eq!(
@@ -778,11 +950,15 @@ async fn db_contracts_get_event_full_by_slug_deserializes() -> Result<()> {
         .expect("contract event should exist");
 
     // Check the event and nested collection fields
-    assert_eq!(event.attendee_count, 1);
+    assert_eq!(event.attendee_count, 2);
     assert_eq!(event.event_id, event_id());
     assert_eq!(event.name, "Future Contract Event");
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
+
+    // Check public capacity follows the visible ticket inventory
+    assert_eq!(event.capacity, Some(100));
+    assert_eq!(event.remaining_capacity, Some(98));
 
     Ok(())
 }
@@ -874,7 +1050,7 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
 
     // Check pricing, hold, status, and ticket fields
     assert_eq!(summary.amount_minor, 2500);
-    assert_eq!(summary.currency_code, "USD");
+    assert_eq!(summary.currency_code.as_deref(), Some("USD"));
     assert_eq!(summary.discount_amount_minor, 0);
     assert_eq!(summary.event_purchase_id, summary_purchase_id());
     assert_eq!(summary.event_ticket_type_id, paid_ticket_type_id());
@@ -917,6 +1093,15 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     // Check required and computed event fields
     assert_eq!(event.event_id, event_id());
     assert!(event.has_registration_questions);
+    assert!(
+        event
+            .ticket_types
+            .as_ref()
+            .is_some_and(|ticket_types| !ticket_types.is_empty())
+    );
+    assert_contract_ticket_type(
+        &event.ticket_types.as_ref().expect("event should have tickets")[0],
+    );
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.waitlist_count, 1);
 
@@ -934,8 +1119,59 @@ async fn db_contracts_get_event_summary_by_id_deserializes() -> Result<()> {
 
     // Check identity, kind, and name fields
     assert_eq!(event.event_id, event_id());
+    assert!(
+        event
+            .ticket_types
+            .as_ref()
+            .is_some_and(|ticket_types| !ticket_types.is_empty())
+    );
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.name, "Future Contract Event");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_summary_dashboard_deserializes() -> Result<()> {
+    // Setup the contract database and event fixture
+    let db = contract_tests_db()?;
+
+    // Load the dashboard event summary through the Rust contract
+    let event = db
+        .get_event_summary_dashboard(community_id(), group_id(), event_id())
+        .await?;
+
+    // Check shared summary fields
+    assert_eq!(event.event_id, event_id());
+    assert!(event.has_registration_questions);
+    assert!(
+        event
+            .ticket_types
+            .as_ref()
+            .is_some_and(|ticket_types| !ticket_types.is_empty())
+    );
+    assert_eq!(event.kind, EventKind::Hybrid);
+
+    // Check dashboard-only fields
+    assert_eq!(event.attendee_count, Some(2));
+    assert_eq!(
+        event.created_by_display_name.as_deref(),
+        Some("Contract Organizer")
+    );
+    assert_eq!(
+        event.created_by_username.as_deref(),
+        Some("contract-organizer")
+    );
+    assert_eq!(
+        event.delete_eligibility,
+        Some(EventDeleteEligibility::CancelFirst)
+    );
+
+    // Check the full ticket type inventory is included
+    let ticket_types = event.ticket_types.as_deref().unwrap_or_default();
+    assert_eq!(ticket_types.len(), 1);
+    assert_eq!(ticket_types[0].title, "General Admission");
 
     Ok(())
 }
@@ -1349,18 +1585,90 @@ async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_invite_event_attendee_deserializes() -> Result<()> {
+    // Setup the contract database and dedicated invitee fixture
+    let db = contract_tests_db()?;
+
+    // Invite the registered user through the Rust JSON contract
+    let result = db
+        .invite_event_attendee(
+            organizer_id(),
+            subgroup_id(),
+            invite_event_id(),
+            &EventAttendeeInvitationInput {
+                email: None,
+                event_ticket_type_id: None,
+                user_id: Some(invitee_id()),
+            },
+            None,
+        )
+        .await?;
+
+    // Require the successful allocation variant
+    let EventAdmissionAllocationResult::Success(allocation) = result else {
+        panic!("invitation should succeed");
+    };
+
+    // Check the invitation allocation fields deserialize completely
+    assert_eq!(
+        allocation.outcome,
+        EventAdmissionAllocationOutcome::OfferCreated
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_invite_event_attendee_queue_offer_deserializes() -> Result<()> {
+    // Setup the contract database and queued invitee fixture
+    let db = contract_tests_db()?;
+
+    // Invite the queue head so reconciliation allocates the released seat
+    let result = db
+        .invite_event_attendee(
+            organizer_id(),
+            subgroup_id(),
+            queue_invite_event_id(),
+            &EventAttendeeInvitationInput {
+                email: None,
+                event_ticket_type_id: None,
+                user_id: Some(queue_invitee_id()),
+            },
+            None,
+        )
+        .await?;
+
+    // Require the queue-specific allocation variant
+    let EventAdmissionAllocationResult::Success(allocation) = result else {
+        panic!("queued invitation should succeed");
+    };
+    assert_eq!(
+        allocation.outcome,
+        EventAdmissionAllocationOutcome::QueueOffer
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_leave_event_deserializes() -> Result<()> {
     // Setup the contract database and attendee fixture
     let db = contract_tests_db()?;
 
     // Leave the event through the Rust contract
     let outcome = db
-        .leave_event(community_id(), mutation_event_id(), leaver_id())
+        .leave_event(
+            community_id(),
+            mutation_event_id(),
+            leaver_id(),
+            Some(PaymentProvider::Stripe),
+        )
         .await?;
 
     // Check the prior status and waitlist outcome
-    assert_eq!(outcome.left_status, EventAttendanceStatus::Attendee);
-    assert!(outcome.promoted_user_ids.is_empty());
+    assert_eq!(outcome.left_status, EventEnrollmentStatus::Attendee);
 
     Ok(())
 }
@@ -1561,6 +1869,29 @@ async fn db_contracts_list_event_kinds_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_event_ticket_types_deserializes() -> Result<()> {
+    // Query the normalized ticket inventory through its SQL boundary
+    let pool = contract_tests_pool()?;
+    let client = pool.get().await?;
+    let row = client
+        .query_one("select list_event_ticket_types($1)", &[&paid_event_id()])
+        .await?;
+
+    // Deserialize the exact JSON result into the production DTO
+    let payload: serde_json::Value = row.try_get(0)?;
+    let ticket_types: Vec<EventTicketType> = serde_json::from_value(payload)?;
+    assert_eq!(ticket_types.len(), 2);
+    let paid_ticket_type = ticket_types
+        .iter()
+        .find(|ticket_type| ticket_type.event_ticket_type_id == paid_ticket_type_id())
+        .expect("paid ticket type to be returned");
+    assert_contract_paid_ticket_type(paid_ticket_type);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_audit_logs_deserializes() -> Result<()> {
     // Setup the contract database and scoped audit filters
     let db = contract_tests_db()?;
@@ -1625,14 +1956,14 @@ async fn db_contracts_list_group_events_deserializes() -> Result<()> {
     assert_eq!(events.past.total, 1);
     assert_eq!(events.upcoming.total, 3);
 
-    // Check event capacity and occupied seats deserialize together
+    // Check event capacity and occupied reservations deserialize together
     let event = events
         .upcoming
         .events
         .iter()
         .find(|event| event.event_id == event_id())
         .expect("future contract event to be listed");
-    assert_eq!(event.attendee_count, Some(1));
+    assert_eq!(event.attendee_count, Some(2));
     assert_eq!(event.capacity, Some(100));
 
     Ok(())
@@ -1666,7 +1997,7 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = RefundsFilters {
         view: RefundsView::All,
-        event_id: Some(ticketed_event_id()),
+        event_id: Some(paid_event_id()),
         limit: Some(10),
         offset: Some(0),
         ts_query: Some("buyer-refund-reject.contract@example.com".to_string()),
@@ -1676,9 +2007,12 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     let output = db.list_group_refunds(group_id(), &filters).await?;
 
     // Check event options and refund pagination
-    assert_eq!(output.events.len(), 1);
-    assert_eq!(output.events[0].event_id, ticketed_event_id());
-    assert_eq!(output.events[0].name, "Contract Ticketed Event");
+    assert_eq!(output.events.len(), 2);
+    assert!(
+        output.events.iter().any(|event| {
+            event.event_id == paid_event_id() && event.name == "Contract Paid Event"
+        })
+    );
     assert_eq!(output.refunds.len(), 1);
     assert_eq!(output.total, 1);
 
@@ -1688,8 +2022,8 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     assert!(refund.created_at <= refund.updated_at);
     assert_eq!(refund.currency_code, "USD");
     assert_eq!(refund.email, "buyer-refund-reject.contract@example.com");
-    assert_eq!(refund.event_id, ticketed_event_id());
-    assert_eq!(refund.event_name, "Contract Ticketed Event");
+    assert_eq!(refund.event_id, paid_event_id());
+    assert_eq!(refund.event_name, "Contract Paid Event");
     assert_eq!(refund.event_purchase_id, refund_reject_purchase_id());
     assert_eq!(refund.status, GroupRefundStatus::NeedsReview);
     assert_eq!(refund.ticket_title, "Contract Paid Ticket");
@@ -1799,6 +2133,32 @@ async fn db_contracts_list_group_team_members_deserializes() -> Result<()> {
     assert_eq!(output.total_admins_accepted, 1);
     assert_eq!(output.members[0].role, Some(GroupRole::Admin));
     assert_eq!(output.members[0].user_id, organizer_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_public_event_ticket_types_deserializes() -> Result<()> {
+    // Query the attendee-facing ticket inventory through its SQL boundary
+    let pool = contract_tests_pool()?;
+    let client = pool.get().await?;
+    let row = client
+        .query_one(
+            "select list_public_event_ticket_types($1)",
+            &[&paid_event_id()],
+        )
+        .await?;
+
+    // Deserialize the exact JSON result into the production DTO
+    let payload: serde_json::Value = row.try_get(0)?;
+    let ticket_types: Vec<EventTicketType> = serde_json::from_value(payload)?;
+    assert_eq!(ticket_types.len(), 2);
+    let paid_ticket_type = ticket_types
+        .iter()
+        .find(|ticket_type| ticket_type.event_ticket_type_id == paid_ticket_type_id())
+        .expect("public paid ticket type to be returned");
+    assert_contract_paid_ticket_type(paid_ticket_type);
 
     Ok(())
 }
@@ -1946,8 +2306,39 @@ async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
 
     // Check event invitation identity fields
     assert_eq!(invitations.len(), 1);
+    assert_eq!(invitations[0].admission_offer_id, invitation_offer_id());
+    assert_eq!(
+        invitations[0].admission_offer_source,
+        EventAdmissionOfferSource::OrganizerInvitation
+    );
+    assert_eq!(
+        invitations[0].admission_offer_status,
+        EventAdmissionOfferStatus::Pending
+    );
+    assert_eq!(invitations[0].amount_minor, Some(2500));
+    assert_eq!(invitations[0].currency_code.as_deref(), Some("USD"));
     assert_eq!(invitations[0].event_id, event_id());
     assert_eq!(invitations[0].event_name, "Future Contract Event");
+    assert_eq!(
+        invitations[0].event_ticket_type_id,
+        invitation_ticket_type_id()
+    );
+    assert_eq!(
+        invitations[0].expires_at,
+        DateTime::parse_from_rfc3339("2099-05-20T18:30:00Z")?.with_timezone(&Utc)
+    );
+    assert!(invitations[0].registration_answers.is_none());
+    assert_eq!(invitations[0].registration_questions.len(), 1);
+    assert_eq!(
+        invitations[0].registration_questions[0].prompt,
+        "Meal preference"
+    );
+    assert!(invitations[0].resume_checkout_url.is_none());
+    assert_eq!(
+        invitations[0].starts_at,
+        Some(DateTime::parse_from_rfc3339("2099-05-20T17:00:00Z")?.with_timezone(&Utc),)
+    );
+    assert_eq!(invitations[0].ticket_title, "General Admission");
 
     Ok(())
 }
@@ -1964,18 +2355,86 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
 
     // Load the user's events through the Rust contract
     let output = db.list_user_events(attendee_id(), &filters).await?;
+    let offered_output = db.list_user_events(pre_registered_id(), &filters).await?;
+    let pending_checkout_output = db
+        .list_user_events(status_pending_payment_user_id(), &filters)
+        .await?;
+    let rejected_refund_output = db.list_user_events(refund_rejected_buyer_id(), &filters).await?;
 
     // Check attendance and registration question state
     assert_eq!(output.total, 1);
     assert_eq!(output.events.len(), 1);
     assert_eq!(
-        output.events[0].attendance_status,
-        Some(EventAttendanceStatus::Attendee)
+        output.events[0].enrollment_status,
+        Some(EventEnrollmentStatus::Attendee)
     );
+    assert_eq!(output.events[0].admission_offer_id, None);
+    assert_eq!(output.events[0].admission_offer_source, None);
+    assert_eq!(output.events[0].admission_offer_status, None);
+    assert_eq!(output.events[0].amount_minor, None);
     assert!(output.events[0].can_complete_registration_questions());
+    assert_eq!(output.events[0].currency_code, None);
     assert!(output.events[0].event.has_registration_questions);
+    assert_eq!(output.events[0].event_ticket_type_id, None);
+    assert_eq!(output.events[0].offer_expires_at, None);
     assert_eq!(output.events[0].registration_questions.len(), 1);
     assert!(!output.events[0].registration_questions_pending());
+    assert_eq!(output.events[0].resume_checkout_url, None);
+    assert_eq!(output.events[0].ticket_title, None);
+
+    // Check active direct checkout remains actionable without an attendee role
+    assert_eq!(pending_checkout_output.total, 1);
+    assert_eq!(pending_checkout_output.events.len(), 1);
+    let pending_checkout = &pending_checkout_output.events[0];
+    assert_eq!(pending_checkout.event.event_id, status_event_id());
+    assert!(!pending_checkout.has_paid_purchase);
+    assert!(!pending_checkout.manually_invited);
+    assert!(pending_checkout.registration_questions.is_empty());
+    assert!(pending_checkout.roles.is_empty());
+    assert_eq!(pending_checkout.admission_offer_id, None);
+    assert_eq!(pending_checkout.admission_offer_source, None);
+    assert_eq!(pending_checkout.admission_offer_status, None);
+    assert_eq!(pending_checkout.amount_minor, Some(2500));
+    assert_eq!(pending_checkout.currency_code.as_deref(), Some("USD"));
+    assert_eq!(
+        pending_checkout.enrollment_status,
+        Some(EventEnrollmentStatus::PendingPayment)
+    );
+    assert_eq!(
+        pending_checkout.event_ticket_type_id,
+        Some(status_ticket_type_id())
+    );
+    assert_eq!(pending_checkout.offer_expires_at, None);
+    assert!(pending_checkout.registration_answers.is_none());
+    assert_eq!(
+        pending_checkout.resume_checkout_url.as_deref(),
+        Some("https://example.test/checkout/status-pending")
+    );
+    assert_eq!(
+        pending_checkout.ticket_title.as_deref(),
+        Some("Status Admission")
+    );
+
+    // Check active offers use their own role instead of attendee presentation
+    assert_eq!(offered_output.total, 1);
+    assert_eq!(offered_output.events.len(), 1);
+    assert_eq!(
+        offered_output.events[0].admission_offer_id,
+        Some(invitation_offer_id())
+    );
+    assert_eq!(offered_output.events[0].roles, vec![UserEventRole::Offer]);
+
+    // Check rejected refund feedback remains visible in My Events
+    assert_eq!(rejected_refund_output.total, 1);
+    assert_eq!(rejected_refund_output.events.len(), 1);
+    assert_eq!(
+        rejected_refund_output.events[0].refund_rejection_reason.as_deref(),
+        Some("Outside the refund policy window")
+    );
+    assert_eq!(
+        rejected_refund_output.events[0].refund_request_status,
+        Some(EventRefundRequestStatus::Rejected)
+    );
 
     // Load the persisted registration answers
     let answers = output.events[0]
@@ -2214,29 +2673,48 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
     // Setup the contract database and checkout input
     let db = contract_tests_db()?;
     let input = PrepareEventCheckoutPurchaseInput {
-        event_id: ticketed_event_id(),
+        event_id: paid_event_id(),
         event_ticket_type_id: paid_ticket_type_id(),
         user_id: checkout_buyer_id(),
 
-        configured_provider: Some(PaymentProvider::Stripe),
+        admission_offer_id: None,
         discount_code: None,
+        payment_provider: Some(PaymentProvider::Stripe),
         registration_answers: None,
     };
 
     // Prepare the checkout purchase through the Rust contract
-    let checkout = db.prepare_event_checkout_purchase(community_id(), &input).await?;
+    let checkout = match db.prepare_event_checkout_purchase(community_id(), &input).await? {
+        PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
+            return Err(anyhow!("unexpected checkout conflict: {conflict:?}"));
+        }
+        PrepareEventCheckoutPurchaseResult::Prepared(checkout) => *checkout,
+    };
 
     // Check event, purchase, and recipient fields
     assert_eq!(checkout.community_name, "contract-community");
-    assert_eq!(checkout.event_id, ticketed_event_id());
-    assert_eq!(checkout.event_slug, "contract-ticketed-event");
+    assert_eq!(checkout.event_id, paid_event_id());
+    assert_eq!(checkout.event_slug, "contract-paid-event");
     assert_eq!(checkout.group_slug, "contract-group");
     assert_eq!(checkout.purchase.amount_minor, 2500);
+    assert_eq!(
+        checkout.purchase.event_ticket_type_id,
+        paid_ticket_type_id()
+    );
     assert!(checkout.purchase.hold_expires_at.is_some());
     assert_eq!(checkout.purchase.status, EventPurchaseStatus::Pending);
     assert_eq!(checkout.purchase.ticket_title, "Contract Paid Ticket");
-    assert_eq!(checkout.recipient.provider, PaymentProvider::Stripe);
-    assert_eq!(checkout.recipient.recipient_id, "acct_contract_group");
+    assert_eq!(
+        checkout.recipient.as_ref().map(|recipient| recipient.provider),
+        Some(PaymentProvider::Stripe)
+    );
+    assert_eq!(
+        checkout
+            .recipient
+            .as_ref()
+            .map(|recipient| recipient.recipient_id.as_str()),
+        Some("acct_contract_group")
+    );
 
     Ok(())
 }
@@ -2292,8 +2770,28 @@ async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes
 
     // Check completed purchase ownership fields
     assert_eq!(purchase.community_id, community_id());
-    assert_eq!(purchase.event_id, ticketed_event_id());
+    assert_eq!(purchase.event_id, paid_event_id());
     assert_eq!(purchase.user_id, reconcile_buyer_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_reconcile_next_event_enrollment_deserializes() -> Result<()> {
+    // Setup the contract database and dedicated due event fixture
+    let db = contract_tests_db()?;
+
+    // Claim and reconcile the due event through the Rust JSON contract
+    let outcome = db
+        .reconcile_next_event_enrollment(None)
+        .await?
+        .context("due contract event should be claimable")?;
+
+    // Check the reconciliation context deserializes completely
+    assert_eq!(outcome.community_id, community_id());
+    assert_eq!(outcome.event_id, reconcile_due_event_id());
+    assert_eq!(outcome.group_id, subgroup_id());
 
     Ok(())
 }
@@ -2348,13 +2846,13 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
             organizer_id(),
             group_id(),
             refund_reject_purchase_id(),
-            Some("Rejected by contract test".to_string()),
+            "Rejected by contract test".to_string(),
         )
         .await?;
 
     // Check the returned purchase ownership fields
     assert_eq!(purchase.community_id, community_id());
-    assert_eq!(purchase.event_id, ticketed_event_id());
+    assert_eq!(purchase.event_id, paid_event_id());
     assert_eq!(purchase.user_id, refund_reject_buyer_id());
 
     Ok(())
@@ -2366,12 +2864,12 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     // Setup the contract database and attendee filters
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
-        attendance: None,
         checked_in: None,
         event_ticket_type_ids: None,
         limit: Some(10),
         offset: Some(0),
         sort: None,
+        status: None,
         title: None,
         ts_query: None,
     };
@@ -2406,14 +2904,95 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     assert!(output.attendees[0].checked_in);
     assert!(output.attendees[0].registration_answers.is_some());
 
-    // Check the pending pre-registered attendee fields
+    // Check the pending pre-registered attendee offer fields
+    assert_eq!(
+        output.attendees[1].admission_offer_id,
+        Some(invitation_offer_id())
+    );
+    assert_eq!(
+        output.attendees[1].admission_offer_source,
+        Some(EventAdmissionOfferSource::OrganizerInvitation)
+    );
+    assert_eq!(
+        output.attendees[1].admission_offer_status,
+        Some(EventAdmissionOfferStatus::Pending)
+    );
+    assert_eq!(output.attendees[1].amount_minor, None);
+    assert_eq!(output.attendees[1].currency_code, None);
     assert_eq!(
         output.attendees[1].email,
         "pre-registered.contract@example.com"
     );
+    assert_eq!(
+        output.attendees[1].event_ticket_type_id,
+        Some(invitation_ticket_type_id())
+    );
     assert!(output.attendees[1].manually_invited);
-    assert_eq!(output.attendees[1].status, "invitation-pending");
+    assert_eq!(
+        output.attendees[1].offer_expires_at,
+        Some(DateTime::parse_from_rfc3339("2099-05-20T18:30:00Z")?.with_timezone(&Utc),)
+    );
+    assert_eq!(
+        output.attendees[1].enrollment_status,
+        AttendeeEnrollmentStatus::InvitationPending
+    );
+    assert_eq!(
+        output.attendees[1].ticket_title.as_deref(),
+        Some("General Admission")
+    );
     assert_eq!(output.attendees[1].user.user_id, pre_registered_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_search_event_attendees_terminal_offer_statuses_deserialize() -> Result<()> {
+    // Setup the contract database and unfiltered status event search
+    let db = contract_tests_db()?;
+    let filters = AttendeesFilters {
+        checked_in: None,
+        event_ticket_type_ids: None,
+        limit: Some(10),
+        offset: Some(0),
+        sort: None,
+        status: Some(AttendeeEnrollmentStatusFilter::All),
+        title: None,
+        ts_query: None,
+    };
+
+    // Search terminal organizer offers through the Rust contract
+    let output = db
+        .search_event_attendees(subgroup_id(), status_event_id(), &filters)
+        .await?;
+
+    // Check canceled, declined, and expired offer encodings
+    assert_eq!(output.total, 3);
+    for (user_id, enrollment_status, offer_status) in [
+        (
+            status_canceled_user_id(),
+            AttendeeEnrollmentStatus::InvitationCanceled,
+            EventAdmissionOfferStatus::Canceled,
+        ),
+        (
+            status_declined_user_id(),
+            AttendeeEnrollmentStatus::InvitationDeclined,
+            EventAdmissionOfferStatus::Declined,
+        ),
+        (
+            status_expired_user_id(),
+            AttendeeEnrollmentStatus::InvitationExpired,
+            EventAdmissionOfferStatus::Expired,
+        ),
+    ] {
+        let attendee = output
+            .attendees
+            .iter()
+            .find(|attendee| attendee.user.user_id == user_id)
+            .expect("terminal offer attendee to be returned");
+        assert_eq!(attendee.enrollment_status, enrollment_status);
+        assert_eq!(attendee.admission_offer_status, Some(offer_status));
+    }
 
     Ok(())
 }
@@ -2453,6 +3032,23 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
         output.invitation_requests[0].user.bio.as_deref(),
         Some("Waits for contract test events")
     );
+    assert_eq!(output.invitation_requests[0].admission_offer_id, None);
+    assert_eq!(output.invitation_requests[0].admission_offer_status, None);
+    assert_eq!(output.invitation_requests[0].offer_expires_at, None);
+    assert_eq!(
+        output.invitation_requests[0].offered_event_ticket_type_id,
+        None
+    );
+    assert_eq!(output.invitation_requests[0].offered_ticket_title, None);
+    assert_eq!(
+        output.invitation_requests[0].requested_event_ticket_type_id,
+        Some(invitation_ticket_type_id())
+    );
+    assert_eq!(
+        output.invitation_requests[0].requested_ticket_title.as_deref(),
+        Some("General Admission")
+    );
+    assert_eq!(output.invitation_requests[0].reviewed_at, None);
 
     Ok(())
 }
@@ -2482,7 +3078,15 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
         output.waitlist[0].user.website_url.as_deref(),
         Some("https://example.com/waitlist")
     );
-    assert_eq!(output.waitlist[0].waitlist_position, 1);
+    assert_eq!(output.waitlist[0].admission_offer_id, None);
+    assert_eq!(output.waitlist[0].admission_offer_status, None);
+    assert_eq!(
+        output.waitlist[0].event_ticket_type_id,
+        invitation_ticket_type_id()
+    );
+    assert_eq!(output.waitlist[0].offer_expires_at, None);
+    assert_eq!(output.waitlist[0].ticket_title, "General Admission");
+    assert_eq!(output.waitlist[0].waitlist_position, Some(1));
 
     Ok(())
 }
@@ -2591,18 +3195,15 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
     let payload = event.to_db_payload()?;
 
     // Update the event through the Rust contract
-    let promoted_user_ids = db
-        .update_event(
-            organizer_id(),
-            group_id(),
-            mutation_event_id(),
-            &payload,
-            &HashMap::new(),
-        )
-        .await?;
-
-    // Check no waitlisted users were promoted
-    assert!(promoted_user_ids.is_empty());
+    db.update_event(
+        organizer_id(),
+        group_id(),
+        mutation_event_id(),
+        &payload,
+        &HashMap::new(),
+        Some(PaymentProvider::Stripe),
+    )
+    .await?;
 
     Ok(())
 }
@@ -2684,19 +3285,34 @@ const FREE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e4";
 const FREE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f3";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
 const GROUP_SPONSOR_ID: &str = "00000000-0000-0000-0000-00000000c061";
+const INVITATION_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c083";
+const INVITATION_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c081";
+const INVITE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d8";
+const INVITEE_ID: &str = "00000000-0000-0000-0000-00000000c0ed";
 const LEAVER_ID: &str = "00000000-0000-0000-0000-00000000c0e8";
 const MUTATION_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d5";
+const MUTATION_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c0d7";
+const OFFER_DECLINE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0dc";
+const OFFER_DECLINE_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c0dd";
+const OFFER_DECLINER_ID: &str = "00000000-0000-0000-0000-00000000c0f0";
 const ORGANIZER_ID: &str = "00000000-0000-0000-0000-00000000c041";
+const PAID_TICKET_PRICE_WINDOW_ID: &str = "00000000-0000-0000-0000-00000000c0d2";
 const PAID_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c0d1";
 const PAST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c032";
 const PRE_REGISTERED_ID: &str = "00000000-0000-0000-0000-00000000c044";
+/// Event fixture whose full capacity sends organizer invitations to the queue.
+const QUEUE_INVITE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c105";
+/// User fixture queued by the organizer invitation contract.
+const QUEUE_INVITEE_ID: &str = "00000000-0000-0000-0000-00000000c103";
 const REBIND_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0b9";
 const RECONCILE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e3";
+const RECONCILE_DUE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0de";
+const REFUND_OFFER_USER_ID: &str = "00000000-0000-0000-0000-00000000c101";
 /// Purchase fixture whose provider refund is ready for local finalization.
 const REFUND_APPROVE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f6";
 const REFUND_BEGIN_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f4";
 const REFUND_LIFECYCLE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fb";
-/// Ticketed event containing the refund contract fixtures.
+/// Paid event containing the refund contract fixtures.
 const REFUND_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
 /// Purchase fixture whose locally finalized refund requires recovery.
 const REFUND_RECOVERY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fd";
@@ -2705,47 +3321,140 @@ const REFUND_RECOVERY_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c0fe";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
 /// Purchase fixture whose refund request is ready for rejection.
 const REFUND_REJECT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f8";
+/// Buyer fixture with a rejected refund reason for attendee-facing contracts.
+const REFUND_REJECTED_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c114";
+const REJECTED_REQUEST_USER_ID: &str = "00000000-0000-0000-0000-00000000c102";
+const REQUEST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d9";
+const REQUESTER_ID: &str = "00000000-0000-0000-0000-00000000c0ee";
 const REVOKED_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0be";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
+/// User fixture with a canceled organizer invitation.
+const STATUS_CANCELED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10e";
+/// User fixture with a declined organizer invitation.
+const STATUS_DECLINED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10f";
+/// Event fixture dedicated to enrollment status contracts.
+const STATUS_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c109";
+/// User fixture with an expired organizer invitation.
+const STATUS_EXPIRED_USER_ID: &str = "00000000-0000-0000-0000-00000000c10d";
+/// User fixture with a resumable pending payment.
+const STATUS_PENDING_PAYMENT_USER_ID: &str = "00000000-0000-0000-0000-00000000c10c";
+/// Ticket fixture used by the pending payment.
+const STATUS_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c10a";
 const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
 const SUMMARY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f1";
 const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
 const TICKETED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
 const WAITLIST_ID: &str = "00000000-0000-0000-0000-00000000c043";
 
+/// Returns the activation identifier used by the contract fixture.
 fn activation_id() -> Uuid {
     parse_uuid(ACTIVATION_ID)
 }
 
+/// Returns the active user badge identifier used by the contract fixture.
 fn active_user_badge_id() -> Uuid {
     parse_uuid(ACTIVE_USER_BADGE_ID)
 }
 
+/// Checks the complete paid ticket type JSON contract.
+fn assert_contract_paid_ticket_type(ticket_type: &EventTicketType) {
+    assert!(ticket_type.active);
+    assert_eq!(
+        ticket_type.availability,
+        EventTicketTypeAvailability::Public
+    );
+    assert_eq!(ticket_type.event_ticket_type_id, paid_ticket_type_id());
+    assert_eq!(ticket_type.order, 1);
+    assert_eq!(ticket_type.title, "Contract Paid Ticket");
+
+    let current_price = ticket_type
+        .current_price
+        .as_ref()
+        .expect("paid contract ticket to have a current price");
+    assert_eq!(current_price.amount_minor, 2_500);
+    assert_eq!(current_price.ends_at, None);
+    assert_eq!(current_price.starts_at, None);
+    assert_eq!(ticket_type.description, None);
+    assert_eq!(ticket_type.price_windows.len(), 1);
+    assert_eq!(ticket_type.price_windows[0].amount_minor, 2_500);
+    assert_eq!(
+        ticket_type.price_windows[0].event_ticket_price_window_id,
+        paid_ticket_price_window_id()
+    );
+    assert_eq!(ticket_type.price_windows[0].ends_at, None);
+    assert_eq!(ticket_type.price_windows[0].starts_at, None);
+    assert!(ticket_type.remaining_seats.is_some());
+    assert_eq!(ticket_type.seats_total, Some(50));
+    assert!(!ticket_type.sold_out);
+}
+
+/// Checks the complete ticket type JSON contract shared by event projections.
+fn assert_contract_ticket_type(ticket_type: &EventTicketType) {
+    assert!(ticket_type.active);
+    assert_eq!(
+        ticket_type.availability,
+        EventTicketTypeAvailability::Public
+    );
+    assert_eq!(
+        ticket_type.event_ticket_type_id,
+        invitation_ticket_type_id()
+    );
+    assert_eq!(ticket_type.order, 1);
+    assert_eq!(ticket_type.title, "General Admission");
+
+    let current_price = ticket_type
+        .current_price
+        .as_ref()
+        .expect("contract ticket to have a current price");
+    assert_eq!(current_price.amount_minor, 2_500);
+    assert_eq!(current_price.ends_at, None);
+    assert_eq!(current_price.starts_at, None);
+    assert_eq!(ticket_type.description, None);
+    assert_eq!(ticket_type.price_windows.len(), 1);
+    assert_eq!(ticket_type.price_windows[0].amount_minor, 2_500);
+    assert_eq!(
+        ticket_type.price_windows[0].event_ticket_price_window_id,
+        parse_uuid("00000000-0000-0000-0000-00000000c082")
+    );
+    assert_eq!(ticket_type.price_windows[0].ends_at, None);
+    assert_eq!(ticket_type.price_windows[0].starts_at, None);
+    assert_eq!(ticket_type.remaining_seats, Some(98));
+    assert_eq!(ticket_type.seats_total, Some(100));
+    assert!(!ticket_type.sold_out);
+}
+
+/// Returns the attendee identifier used by the contract fixture.
 fn attendee_id() -> Uuid {
     parse_uuid(ATTENDEE_ID)
 }
 
+/// Returns the automatically ended meeting identifier used by the contract fixture.
 fn auto_end_meeting_id() -> Uuid {
     parse_uuid(AUTO_END_MEETING_ID)
 }
 
+/// Returns the badge artwork identifier used by the contract fixture.
 fn badge_artwork_id() -> Uuid {
     parse_uuid(BADGE_ARTWORK_ID)
 }
 
+/// Returns the badge award job identifier used by the contract fixture.
 fn badge_award_job_id() -> Uuid {
     parse_uuid(BADGE_AWARD_JOB_ID)
 }
 
+/// Returns the badge identifier used by the contract fixture.
 fn badge_id() -> Uuid {
     parse_uuid(BADGE_ID)
 }
 
+/// Returns the badge status list identifier used by the contract fixture.
 fn badge_status_list_id() -> Uuid {
     parse_uuid(BADGE_STATUS_LIST_ID)
 }
 
+/// Builds an active user badge from the supplied contract snapshot and identity fields.
 fn contract_active_user_badge(
     snapshot: BadgeSnapshot,
     event_name: Option<String>,
@@ -2777,6 +3486,7 @@ fn contract_active_user_badge(
     }
 }
 
+/// Builds the badge snapshot used by contract fixtures.
 fn contract_badge_snapshot() -> BadgeSnapshot {
     BadgeSnapshot {
         criteria: "Attend the contract event".to_string(),
@@ -2792,6 +3502,7 @@ fn contract_badge_snapshot() -> BadgeSnapshot {
     }
 }
 
+/// Returns the event cancellation target identifier used by the contract fixture.
 fn cancelee_id() -> Uuid {
     parse_uuid(CANCELEE_ID)
 }
@@ -2806,22 +3517,27 @@ fn cancellation_lock_event_id() -> Uuid {
     parse_uuid(CANCELLATION_LOCK_EVENT_ID)
 }
 
+/// Returns the call-for-speakers submission identifier used by the contract fixture.
 fn cfs_submission_id() -> Uuid {
     parse_uuid(CFS_SUBMISSION_ID)
 }
 
+/// Returns the checkout buyer identifier used by the contract fixture.
 fn checkout_buyer_id() -> Uuid {
     parse_uuid(CHECKOUT_BUYER_ID)
 }
 
+/// Returns the claim group identifier used by the contract fixture.
 fn claim_group_id() -> Uuid {
     parse_uuid(CLAIM_GROUP_ID)
 }
 
+/// Returns the co-speaker proposal identifier used by the contract fixture.
 fn co_speaker_proposal_id() -> Uuid {
     parse_uuid(CO_SPEAKER_PROPOSAL_ID)
 }
 
+/// Returns the community identifier used by the contract fixture.
 fn community_id() -> Uuid {
     parse_uuid(COMMUNITY_ID)
 }
@@ -2860,48 +3576,84 @@ fn contract_tests_pool() -> Result<Pool> {
     Ok(contract_tests_config()?.create_pool(Some(Runtime::Tokio1), NoTls)?)
 }
 
+/// Returns an environment value or its contract-test default.
 fn env_or_default(name: &str, default: &str) -> String {
     env::var(name).unwrap_or_else(|_| default.to_string())
 }
 
+/// Returns the event category identifier used by the contract fixture.
 fn event_category_id() -> Uuid {
     parse_uuid(EVENT_CATEGORY_ID)
 }
 
+/// Returns the event identifier used by the contract fixture.
 fn event_id() -> Uuid {
     parse_uuid(EVENT_ID)
 }
 
+/// Returns the external identity lookup identifier used by the contract fixture.
 fn external_lookup_id() -> Uuid {
     parse_uuid(EXTERNAL_LOOKUP_ID)
 }
 
+/// Returns the external identity update identifier used by the contract fixture.
 fn external_update_id() -> Uuid {
     parse_uuid(EXTERNAL_UPDATE_ID)
 }
 
+/// Returns the free checkout buyer identifier used by the contract fixture.
 fn free_buyer_id() -> Uuid {
     parse_uuid(FREE_BUYER_ID)
 }
 
+/// Returns the free purchase identifier used by the contract fixture.
 fn free_purchase_id() -> Uuid {
     parse_uuid(FREE_PURCHASE_ID)
 }
 
+/// Returns the group identifier used by the contract fixture.
 fn group_id() -> Uuid {
     parse_uuid(GROUP_ID)
 }
 
+/// Returns the group sponsor identifier used by the contract fixture.
 fn group_sponsor_id() -> Uuid {
     parse_uuid(GROUP_SPONSOR_ID)
 }
 
+/// Returns the invitation offer identifier used by the contract fixture.
+fn invitation_offer_id() -> Uuid {
+    parse_uuid(INVITATION_OFFER_ID)
+}
+
+/// Returns the invitation ticket type identifier used by the contract fixture.
+fn invitation_ticket_type_id() -> Uuid {
+    parse_uuid(INVITATION_TICKET_TYPE_ID)
+}
+
+/// Returns the invited event identifier used by the contract fixture.
+fn invite_event_id() -> Uuid {
+    parse_uuid(INVITE_EVENT_ID)
+}
+
+/// Returns the invitee identifier used by the contract fixture.
+fn invitee_id() -> Uuid {
+    parse_uuid(INVITEE_ID)
+}
+
+/// Returns the departing attendee identifier used by the contract fixture.
 fn leaver_id() -> Uuid {
     parse_uuid(LEAVER_ID)
 }
 
+/// Returns the mutation event identifier used by the contract fixture.
 fn mutation_event_id() -> Uuid {
     parse_uuid(MUTATION_EVENT_ID)
+}
+
+/// Returns the mutation offer identifier used by the contract fixture.
+fn mutation_offer_id() -> Uuid {
+    parse_uuid(MUTATION_OFFER_ID)
 }
 
 /// Returns the notification identifier used by the contract fixture.
@@ -2909,22 +3661,47 @@ fn notification_id() -> Uuid {
     parse_uuid("00000000-0000-0000-0000-00000000c0f1")
 }
 
+/// Returns the declined offer event identifier used by the contract fixture.
+fn offer_decline_event_id() -> Uuid {
+    parse_uuid(OFFER_DECLINE_EVENT_ID)
+}
+
+/// Returns the declined offer identifier used by the contract fixture.
+fn offer_decline_offer_id() -> Uuid {
+    parse_uuid(OFFER_DECLINE_OFFER_ID)
+}
+
+/// Returns the offer decliner identifier used by the contract fixture.
+fn offer_decliner_id() -> Uuid {
+    parse_uuid(OFFER_DECLINER_ID)
+}
+
+/// Returns the organizer identifier used by the contract fixture.
 fn organizer_id() -> Uuid {
     parse_uuid(ORGANIZER_ID)
 }
 
+/// Returns the paid ticket price window identifier used by the contract fixture.
+fn paid_ticket_price_window_id() -> Uuid {
+    parse_uuid(PAID_TICKET_PRICE_WINDOW_ID)
+}
+
+/// Returns the paid ticket type identifier used by the contract fixture.
 fn paid_ticket_type_id() -> Uuid {
     parse_uuid(PAID_TICKET_TYPE_ID)
 }
 
+/// Parses a UUID stored by the contract fixture.
 fn parse_uuid(value: &str) -> Uuid {
     Uuid::parse_str(value).expect("contract fixture UUID should be valid")
 }
 
+/// Returns the past event identifier used by the contract fixture.
 fn past_event_id() -> Uuid {
     parse_uuid(PAST_EVENT_ID)
 }
 
+/// Returns the pre-registered attendee identifier used by the contract fixture.
 fn pre_registered_id() -> Uuid {
     parse_uuid(PRE_REGISTERED_ID)
 }
@@ -2934,8 +3711,19 @@ fn rebind_user_badge_id() -> Uuid {
     parse_uuid(REBIND_USER_BADGE_ID)
 }
 
+/// Returns the reconciliation buyer identifier used by the contract fixture.
 fn reconcile_buyer_id() -> Uuid {
     parse_uuid(RECONCILE_BUYER_ID)
+}
+
+/// Returns the due reconciliation event identifier used by the contract fixture.
+fn reconcile_due_event_id() -> Uuid {
+    parse_uuid(RECONCILE_DUE_EVENT_ID)
+}
+
+/// Returns the user whose linked offer is hidden during refund processing.
+fn refund_offer_user_id() -> Uuid {
+    parse_uuid(REFUND_OFFER_USER_ID)
 }
 
 /// Returns the purchase fixture ready for local refund finalization.
@@ -2943,14 +3731,17 @@ fn refund_approve_purchase_id() -> Uuid {
     parse_uuid(REFUND_APPROVE_PURCHASE_ID)
 }
 
+/// Returns the purchase fixture ready to begin refund processing.
 fn refund_begin_purchase_id() -> Uuid {
     parse_uuid(REFUND_BEGIN_PURCHASE_ID)
 }
 
+/// Returns the paid event identifier containing the refund fixtures.
 fn refund_event_id() -> Uuid {
     parse_uuid(REFUND_EVENT_ID)
 }
 
+/// Returns the purchase identifier used by the refund lifecycle fixture.
 fn refund_lifecycle_purchase_id() -> Uuid {
     parse_uuid(REFUND_LIFECYCLE_PURCHASE_ID)
 }
@@ -2965,6 +3756,7 @@ fn refund_recovery_refund_id() -> Uuid {
     parse_uuid(REFUND_RECOVERY_REFUND_ID)
 }
 
+/// Returns the refund rejection buyer identifier used by the contract fixture.
 fn refund_reject_buyer_id() -> Uuid {
     parse_uuid(REFUND_REJECT_BUYER_ID)
 }
@@ -2974,34 +3766,102 @@ fn refund_reject_purchase_id() -> Uuid {
     parse_uuid(REFUND_REJECT_PURCHASE_ID)
 }
 
+/// Returns the buyer whose rejected refund is visible on attendee surfaces.
+fn refund_rejected_buyer_id() -> Uuid {
+    parse_uuid(REFUND_REJECTED_BUYER_ID)
+}
+
+/// Returns the rejected requester ignored after approval is disabled.
+fn rejected_request_user_id() -> Uuid {
+    parse_uuid(REJECTED_REQUEST_USER_ID)
+}
+
+/// Returns the invitation request event identifier used by the contract fixture.
+fn request_event_id() -> Uuid {
+    parse_uuid(REQUEST_EVENT_ID)
+}
+
+/// Returns the requester identifier used by the contract fixture.
+fn requester_id() -> Uuid {
+    parse_uuid(REQUESTER_ID)
+}
+
+/// Returns the revoked user badge identifier used by the contract fixture.
 fn revoked_user_badge_id() -> Uuid {
     parse_uuid(REVOKED_USER_BADGE_ID)
 }
 
+/// Returns the session proposal identifier used by the contract fixture.
 fn session_proposal_id() -> Uuid {
     parse_uuid(SESSION_PROPOSAL_ID)
 }
 
+/// Returns the site identifier used by the contract fixture.
 fn site_id() -> Uuid {
     parse_uuid(SITE_ID)
 }
 
+/// Returns the canceled-offer user used by the status contract.
+fn status_canceled_user_id() -> Uuid {
+    parse_uuid(STATUS_CANCELED_USER_ID)
+}
+
+/// Returns the declined-offer user used by the status contract.
+fn status_declined_user_id() -> Uuid {
+    parse_uuid(STATUS_DECLINED_USER_ID)
+}
+
+/// Returns the event dedicated to enrollment status contracts.
+fn status_event_id() -> Uuid {
+    parse_uuid(STATUS_EVENT_ID)
+}
+
+/// Returns the expired-offer user used by the status contract.
+fn status_expired_user_id() -> Uuid {
+    parse_uuid(STATUS_EXPIRED_USER_ID)
+}
+
+/// Returns the pending-purchase user used by the status contract.
+fn status_pending_payment_user_id() -> Uuid {
+    parse_uuid(STATUS_PENDING_PAYMENT_USER_ID)
+}
+
+/// Returns the ticket used by the pending payment contract.
+fn status_ticket_type_id() -> Uuid {
+    parse_uuid(STATUS_TICKET_TYPE_ID)
+}
+
+/// Returns the subgroup identifier used by the contract fixture.
 fn subgroup_id() -> Uuid {
     parse_uuid(SUBGROUP_ID)
 }
 
+/// Returns the purchase summary identifier used by the contract fixture.
 fn summary_purchase_id() -> Uuid {
     parse_uuid(SUMMARY_PURCHASE_ID)
 }
 
+/// Returns the synchronized event identifier used by the contract fixture.
 fn sync_event_id() -> Uuid {
     parse_uuid(SYNC_EVENT_ID)
 }
 
-fn ticketed_event_id() -> Uuid {
+/// Returns the paid event identifier used by the contract fixture.
+fn paid_event_id() -> Uuid {
     parse_uuid(TICKETED_EVENT_ID)
 }
 
+/// Returns the event dedicated to queue-offer invitation allocation.
+fn queue_invite_event_id() -> Uuid {
+    parse_uuid(QUEUE_INVITE_EVENT_ID)
+}
+
+/// Returns the queued invitation target used by the allocation contract.
+fn queue_invitee_id() -> Uuid {
+    parse_uuid(QUEUE_INVITEE_ID)
+}
+
+/// Returns the waitlist identifier used by the contract fixture.
 fn waitlist_id() -> Uuid {
     parse_uuid(WAITLIST_ID)
 }

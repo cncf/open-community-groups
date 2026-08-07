@@ -1,25 +1,55 @@
+-- Tests validating event ticketing payloads.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should accept an omitted ticketing payload
-select lives_ok(
-    $$select validate_event_ticketing_payload(null, null, null, false)$$,
-    'Should accept an omitted ticketing payload'
+-- Should reject an omitted ticket inventory
+select throws_ok(
+    $$select validate_event_ticketing_payload(null, null, null, null, null)$$,
+    'events require at least one ticket type',
+    'Should reject an omitted ticket inventory'
 );
 
--- Should reject waitlists for ticketed events
-select throws_ok(
+-- Should accept all-zero ticketing without payment configuration
+select lives_ok(
     $$select validate_event_ticketing_payload(
         null,
+        null,
+        null,
+        null,
+        '[
+            {
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 0,
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb
+    )$$,
+    'Should accept all-zero ticketing without payment configuration'
+);
+
+-- Should accept waitlists for ticketed events
+select lives_ok(
+    $$select validate_event_ticketing_payload(
+        'stripe',
+        null,
         'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -33,18 +63,18 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb,
-        true
+        ]'::jsonb
     )$$,
-    'waitlist cannot be enabled for ticketed events',
-    'Should reject waitlists for ticketed events'
+    'Should accept waitlists for ticketed events'
 );
 
 -- Should require a payment currency for ticketed events
 select throws_ok(
     $$select validate_event_ticketing_payload(
+        'stripe',
         null,
         null,
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -58,18 +88,19 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb,
-        false
+        ]'::jsonb
     )$$,
-    'ticketed events require payment_currency_code',
-    'Should require a payment currency for ticketed events'
+    'paid-capable events require payment_currency_code',
+    'Should require a payment currency for paid-capable events'
 );
 
 -- Should reject unsupported payment currencies for ticketed events
 select throws_ok(
     $$select validate_event_ticketing_payload(
+        'stripe',
         null,
         'USDD',
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -83,8 +114,7 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb,
-        false
+        ]'::jsonb
     )$$,
     'payment_currency_code must be a supported currency code',
     'Should reject unsupported payment currencies for ticketed events'
@@ -93,6 +123,7 @@ select throws_ok(
 -- Should delegate discount code validation
 select throws_ok(
     $$select validate_event_ticketing_payload(
+        'stripe',
         '[
             {
                 "event_discount_code_id": "3a470000-0000-0000-0000-000000000001",
@@ -110,6 +141,7 @@ select throws_ok(
             }
         ]'::jsonb,
         'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -123,16 +155,16 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb,
-        false
+        ]'::jsonb
     )$$,
     'discount codes must be unique per event',
     'Should delegate discount code validation'
 );
 
--- Should require ticket types when discount codes are present
+-- Should require positive ticket pricing when discount codes are present
 select throws_ok(
     $$select validate_event_ticketing_payload(
+        null,
         '[
             {
                 "event_discount_code_id": "3a470000-0000-0000-0000-000000000001",
@@ -144,29 +176,50 @@ select throws_ok(
         ]'::jsonb,
         null,
         null,
-        false
+        '[{
+            "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+            "order": 1,
+            "price_windows": [{
+                "amount_minor": 0,
+                "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+            }],
+            "seats_total": 50,
+            "title": "General admission"
+        }]'::jsonb
     )$$,
-    'discount_codes require ticket_types',
-    'Should require ticket types when discount codes are present'
+    'discount_codes require positive ticket pricing',
+    'Should require positive ticket pricing when discount codes are present'
 );
 
--- Should require ticket types when a payment currency is present
+-- Should require positive ticket pricing when a payment currency is present
 select throws_ok(
     $$select validate_event_ticketing_payload(
         null,
+        null,
         'USD',
         null,
-        false
+        '[{
+            "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+            "order": 1,
+            "price_windows": [{
+                "amount_minor": 0,
+                "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+            }],
+            "seats_total": 50,
+            "title": "General admission"
+        }]'::jsonb
     )$$,
-    'payment_currency_code requires ticket_types',
-    'Should require ticket types when a payment currency is present'
+    'payment_currency_code requires positive ticket pricing',
+    'Should require positive ticket pricing when a payment currency is present'
 );
 
 -- Should delegate ticket type validation
 select throws_ok(
     $$select validate_event_ticketing_payload(
+        'stripe',
         null,
         'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -188,8 +241,7 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb,
-        false
+        ]'::jsonb
     )$$,
     'ticket price windows cannot overlap',
     'Should delegate ticket type validation'
@@ -198,8 +250,10 @@ select throws_ok(
 -- Should reject non-zero ticket prices below minimums
 select throws_ok(
     $$select validate_event_ticketing_payload(
+        'stripe',
         null,
         'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -213,8 +267,7 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb,
-        false
+        ]'::jsonb
     )$$,
     'payment amount must be zero or at least Stripe minimum charge amount',
     'Should reject non-zero ticket prices below Stripe minimums'
@@ -223,8 +276,10 @@ select throws_ok(
 -- Should reject ticket prices above maximums
 select throws_ok(
     $$select validate_event_ticketing_payload(
+        'stripe',
         null,
         'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -238,8 +293,7 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb,
-        false
+        ]'::jsonb
     )$$,
     'payment amount exceeds Stripe maximum charge amount',
     'Should reject ticket prices above Stripe maximums'

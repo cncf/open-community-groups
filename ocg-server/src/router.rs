@@ -199,8 +199,8 @@ pub(crate) async fn setup(
             delete(event::cancel_checkout).post(event::start_checkout),
         )
         .route(
-            "/{community}/event/{event_id}/attendance",
-            get(event::attendance_status),
+            "/{community}/event/{event_id}/enrollment",
+            get(event::enrollment_state),
         )
         .route(
             "/{community}/event/{event_id}/leave",

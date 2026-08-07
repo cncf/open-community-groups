@@ -5,9 +5,12 @@ create or replace function unpublish_event(
     p_event_id uuid
 )
 returns void as $$
+declare
+    v_published boolean;
 begin
-    -- Lock event row to serialize state transitions
-    perform 1
+    -- Lock and load the current publication state
+    select published
+    into v_published
     from event
     where event_id = p_event_id
     and group_id = p_group_id
@@ -17,6 +20,14 @@ begin
     if not found then
         raise exception 'event not found or inactive';
     end if;
+
+    -- Keep repeated unpublish requests idempotent
+    if not v_published then
+        return;
+    end if;
+
+    -- Cancel active offers, expire checkouts, and clear enrollment queues
+    perform close_event_enrollment(p_actor_user_id, p_event_id);
 
     -- Update event to mark as unpublished
     -- Also set meeting_in_sync to false to trigger meeting deletion when applicable

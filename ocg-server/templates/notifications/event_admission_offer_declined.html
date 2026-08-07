@@ -1,0 +1,30 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event Admission Offer Declined Notification -#}
+{% block subject -%}
+  Event offer declined: {{ event_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ recipient_name }} declined an offer for {{ event_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    <strong>{{ recipient_name }}</strong> declined the admission offer for
+    <strong>{{ event_name }}</strong>.
+    {% if let Some(ticket_title) = &ticket_title -%}
+      The assigned ticket was <strong>{{ ticket_title }}</strong>.
+    {% endif -%}
+    The reserved capacity has been released.
+  </p>
+
+  {{ email::button(link = dashboard_url, text = "Review attendees", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you created an admission offer for
+  {{ event_name }} with {{ group_name }}.
+{% endblock footer -%}
+{# End event admission offer declined notification -#}

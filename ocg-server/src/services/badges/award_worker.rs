@@ -1,13 +1,16 @@
 //! Background processing for durable badge award jobs.
 
-use std::{future::Future, time::Duration};
+use std::time::Duration;
 
 use anyhow::Result;
 use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, info, instrument, warn};
 
-use crate::db::{DynDB, badges::ClaimedBadgeAwardJob};
+use crate::{
+    db::{DynDB, badges::ClaimedBadgeAwardJob},
+    services::workers::run_until_cancelled,
+};
 
 #[cfg(test)]
 mod tests;
@@ -68,18 +71,6 @@ pub(crate) fn start_badge_award_workers(
         task_tracker.spawn(async move {
             worker.run().await;
         });
-    }
-}
-
-/// Waits for work to finish while giving graceful cancellation priority.
-async fn run_until_cancelled<T>(
-    cancellation_token: &CancellationToken,
-    future: impl Future<Output = T>,
-) -> Option<T> {
-    tokio::select! {
-        biased;
-        () = cancellation_token.cancelled() => None,
-        result = future => Some(result),
     }
 }
 

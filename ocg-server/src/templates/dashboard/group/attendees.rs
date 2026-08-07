@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
-        event::EventSummary,
+        event::{EventAdmissionOfferSource, EventAdmissionOfferStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
         payments::{EventRefundProgress, EventRefundRequestStatus, format_amount_minor},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
@@ -27,8 +27,6 @@ use crate::{
 pub(crate) struct ListPage {
     /// Number of attendees eligible for the all-attendees custom email scope.
     pub all_attendees_email_recipient_total: usize,
-    /// Attendance lifecycle filter.
-    pub attendance: AttendanceFilter,
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
     /// Whether the current user can manage events.
@@ -39,6 +37,8 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the attendee list with the current filters.
     pub refresh_url: String,
+    /// Enrollment status filter.
+    pub status: AttendeeEnrollmentStatusFilter,
     /// Total number of attendees for the selected event.
     pub total: usize,
 
@@ -63,20 +63,6 @@ pub(crate) struct ListPage {
 
 // Types.
 
-/// Attendance lifecycle rows shown in the attendee table.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub(crate) enum AttendanceFilter {
-    /// Show active attendee and invitation rows.
-    #[default]
-    Active,
-    /// Show all active and canceled history rows.
-    All,
-    /// Show only canceled attendance history.
-    Canceled,
-}
-
 /// Event attendee summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attendee {
@@ -84,18 +70,24 @@ pub struct Attendee {
     pub can_receive_attendee_email: bool,
     /// Whether the attendee has checked in.
     pub checked_in: bool,
-    /// RSVP creation time.
+    /// Enrollment record creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Email address for invitation placeholders and registered users.
     pub email: String,
+    /// Organizer-facing enrollment status.
+    pub enrollment_status: AttendeeEnrollmentStatus,
     /// Whether the attendee was manually invited by an organizer.
     pub manually_invited: bool,
-    /// Event attendee status.
-    pub status: String,
     /// Public profile payload for the attendee.
     pub user: User,
 
+    /// Latest organizer admission offer identifier.
+    pub admission_offer_id: Option<Uuid>,
+    /// Workflow that created the latest organizer admission offer.
+    pub admission_offer_source: Option<EventAdmissionOfferSource>,
+    /// Lifecycle status of the latest organizer admission offer.
+    pub admission_offer_status: Option<EventAdmissionOfferStatus>,
     /// Purchase amount in minor units.
     pub amount_minor: Option<i64>,
     /// Timestamp when the attendee checked in.
@@ -107,6 +99,11 @@ pub struct Attendee {
     pub discount_code: Option<String>,
     /// Purchase identifier.
     pub event_purchase_id: Option<Uuid>,
+    /// Ticket type assigned by an offer or purchase.
+    pub event_ticket_type_id: Option<Uuid>,
+    /// Latest organizer offer expiration time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub offer_expires_at: Option<DateTime<Utc>>,
     /// Durable refund progress for this attendee's purchase.
     pub refund_progress: Option<EventRefundProgress>,
     /// Refund request status for the attendee purchase.
@@ -117,6 +114,59 @@ pub struct Attendee {
     pub ticket_title: Option<String>,
 }
 
+/// Exact enrollment status shown for an attendee table row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum AttendeeEnrollmentStatus {
+    /// Confirmed attendance was canceled.
+    AttendanceCanceled,
+    /// Ticket checkout is still pending.
+    CheckoutPending,
+    /// Attendance is confirmed.
+    Confirmed,
+    /// An organizer invitation was canceled.
+    InvitationCanceled,
+    /// An organizer invitation was declined.
+    InvitationDeclined,
+    /// An organizer invitation expired.
+    InvitationExpired,
+    /// An organizer invitation is waiting for the recipient.
+    InvitationPending,
+    /// Registration questions still need to be completed.
+    RegistrationPending,
+}
+
+/// Enrollment status views supported by the attendee table.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum AttendeeEnrollmentStatusFilter {
+    /// Show every current and historical enrollment row.
+    All,
+    /// Show only canceled attendance rows.
+    AttendanceCanceled,
+    /// Show only pending checkout rows.
+    CheckoutPending,
+    /// Show only confirmed attendee rows.
+    Confirmed,
+    /// Show current confirmed and pending enrollment rows.
+    #[default]
+    Current,
+    /// Show canceled attendance and terminal invitation rows.
+    History,
+    /// Show only canceled invitation rows.
+    InvitationCanceled,
+    /// Show only declined invitation rows.
+    InvitationDeclined,
+    /// Show only expired invitation rows.
+    InvitationExpired,
+    /// Show only pending invitation rows.
+    InvitationPending,
+    /// Show only pending registration rows.
+    RegistrationPending,
+}
+
 /// Supported attendee sort options.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
@@ -124,9 +174,9 @@ pub struct Attendee {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum AttendeesSort {
-    /// Sort by RSVP creation time ascending.
+    /// Sort by enrollment creation time ascending.
     CreatedAtAsc,
-    /// Sort by RSVP creation time descending.
+    /// Sort by enrollment creation time descending.
     CreatedAtDesc,
     /// Sort by attendee display name ascending.
     NameAsc,
@@ -138,9 +188,6 @@ pub(crate) enum AttendeesSort {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct AttendeesFilters {
-    /// Attendance lifecycle filter.
-    #[garde(skip)]
-    pub attendance: Option<AttendanceFilter>,
     /// Checked-in status filter.
     #[garde(skip)]
     pub checked_in: Option<bool>,
@@ -158,6 +205,9 @@ pub(crate) struct AttendeesFilters {
     /// Sort option used to order attendees.
     #[garde(skip)]
     pub sort: Option<AttendeesSort>,
+    /// Enrollment status filter.
+    #[garde(skip)]
+    pub status: Option<AttendeeEnrollmentStatusFilter>,
     /// User title presence filter.
     #[garde(skip)]
     pub title: Option<PresenceFilter>,
@@ -189,12 +239,12 @@ pub(crate) fn format_payment_amount(
     currency_code: Option<&str>,
 ) -> Option<String> {
     let amount_minor = (*amount_minor)?;
-    let currency_code = currency_code?;
 
     if amount_minor == 0 {
         return Some("Free".to_string());
     }
 
+    let currency_code = currency_code?;
     Some(format_amount_minor(amount_minor, currency_code))
 }
 
@@ -202,4 +252,22 @@ pub(crate) fn format_payment_amount(
 #[allow(clippy::ref_option)]
 pub(crate) fn is_paid_attendee(amount_minor: &Option<i64>) -> bool {
     matches!(*amount_minor, Some(amount_minor) if amount_minor > 0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_payment_amount;
+
+    #[test]
+    fn test_format_payment_amount_formats_free_without_currency() {
+        assert_eq!(
+            format_payment_amount(&Some(0), None),
+            Some("Free".to_string())
+        );
+    }
+
+    #[test]
+    fn test_format_payment_amount_requires_currency_for_paid_amounts() {
+        assert_eq!(format_payment_amount(&Some(2500), None), None);
+    }
 }

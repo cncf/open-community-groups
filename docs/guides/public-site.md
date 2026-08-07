@@ -14,7 +14,7 @@ If you prefer a faster task-oriented run-through first, use
 - [Understand the Core Pages](#understand-the-core-pages)
 - [Discover Quickly in Explore](#discover-quickly-in-explore)
 - [Join Groups](#join-groups)
-- [RSVP and Attend Events](#rsvp-and-attend-events)
+- [Get Tickets, RSVP, and Attend Events](#get-tickets-rsvp-and-attend-events)
 - [Check In on Event Day](#check-in-on-event-day)
 - [Submit to Call for Speakers (CFS)](#submit-to-call-for-speakers-cfs)
 - [Use Stats for Platform Context](#use-stats-for-platform-context)
@@ -82,62 +82,92 @@ do not aggregate subgroup data.
 
 ![Group page and membership controls](../screenshots/group-page.png)
 
-## RSVP and Attend Events
+## Get Tickets, RSVP, and Attend Events
 
-The event page is the best place to check event details: RSVP, logistics,
-links, and speaker-program status all live there.
+The event page is the best place to check event details, enrollment options,
+logistics, links, and speaker-program status.
 
-Click `Attend event` to RSVP. If the event is virtual/hybrid and meeting access
-is configured, attendees can see `Join meeting` when the event is live.
+Every event uses admission tiers. When an event has one free public tier, OCG
+keeps the experience simple and shows `Attend event`. Other configurations use
+one of these states:
 
-A few details shape how RSVP behaves:
+- `Get free ticket` completes an intrinsically free ticket inside OCG.
+- `Get ticket` opens public ticket selection and starts hosted checkout only
+  when the final price is positive.
+- `Request ticket` submits an approval request for a selectable public tier.
+- `Tickets are available by invitation only` means public enrollment is not
+  available.
+- `Paid tickets temporarily unavailable` means the event has paid tickets but
+  none can be selected right now, for example because no ticket price window
+  is currently open, ticket tiers are disabled, or tickets are sold out
+  without a waiting list.
 
-- The RSVP button may take a moment to update after the page loads.
-- RSVP actions are available only before the event start time.
+On the public event page, `Capacity` and `Remaining` describe seats in active public ticket tiers
+with a current price. Invitation-only seats are excluded. `Remaining` accounts for confirmed
+purchases and unexpired admission offers and checkout holds; pending approval requests do not
+reserve seats.
+
+Registration questions appear at the stage where the answers are needed:
+before a direct checkout, with an approval request, or when an organizer or
+waitlist offer is claimed. Joining a ticket waiting list does not collect
+answers.
+
+A few details shape event enrollment:
+
+- The action may take a moment to update after the page loads.
+- Public enrollment is available only before the event start time.
 - If organizers configured a registration window, the event page shows when registration opens or
-  closes. RSVP, starting ticket checkout, invitation requests, waitlist joining, and
+  closes. Attending, starting ticket checkout, ticket requests, waitlist joining, and
   registration-question answers are disabled outside that window. If you already have an active
-  ticket hold, you can complete payment and required registration questions until the hold expires.
+  ticket hold, you can continue checkout and required registration questions until the hold expires.
 - Canceling RSVP is immediate through `Cancel attendance`.
-- After RSVP, OCG sends a confirmation message with a calendar file attached.
-- If organizers configured registration questions, clicking `Attend event` or `Buy ticket` opens
-  a question form first. Required answers must be completed before registration can continue.
-- Some events use invitation review. In that case, `Attend event` becomes
-  `Request invitation`, and meeting access/check-in are available only after an
-  organizer accepts the request.
+- Free ticket attendees can also cancel attendance immediately.
+- Paid attendees request a refund instead of leaving directly.
+- When an organizer rejects a refund request, the event page shows `Refund rejected` and the
+  organizer's reason. If an older malformed rejection has no reason, the generic rejected state is
+  still shown.
+- After attendance is confirmed, OCG sends a confirmation message with a
+  calendar file attached.
+- If the event is virtual or hybrid and meeting access is configured,
+  attendees can see `Join meeting` when the event is live.
 
 ![Event page and attendance actions](../screenshots/event-page.png)
 
 When an event has a capacity limit, the button behavior depends on organizer settings:
 
-- If the event is full and waitlist is disabled, it is sold out.
-- If the event is full and waitlist is enabled, `Attend event` becomes `Join waiting list`.
+- A full RSVP event can expose one event-level waiting list.
+- Each sold-out public ticket tier can expose its own `Join waiting list`
+  action.
+- One user can join only one ticket-tier waiting list for the event.
 - When the waitlist is enabled and already has people queued, the event page can show a public
   `(Waitlist: N)` count next to capacity.
 - Logged-out visitors are asked to sign in before they can RSVP or join the waitlist.
 - If you later leave the waitlist, that change is immediate.
-- If a seat opens because someone leaves, capacity increases, or organizers remove the capacity
-  limit, OCG can promote you automatically while registration is open and send a promotion
-  notification.
-- If organizers remove the capacity limit entirely, everyone still on the waitlist is promoted
-  while registration is open.
-- If a waitlist promotion or organizer invitation requires registration questions, finish them from
-  `My Events` before your registration is complete.
+- RSVP waitlist promotion confirms attendance or requests registration
+  answers. Ticket waitlist promotion creates a time-limited offer that must be
+  claimed from the user dashboard.
+- Ticket offers show the assigned tier, displayed price, and exact deadline.
+  The price is fixed on first claim, and later checkout retries keep that
+  snapshot.
+- Declining a ticket waitlist offer or letting it expire releases the seat and
+  removes that queue position. You are not automatically rejoined.
 - Organizer invitations can still be completed outside the public registration window.
 
-For invitation-review events, keep these points in mind:
+For approval events, keep these points in mind:
 
 - Pending requests do not reserve seats.
-- Organizers accept requests while capacity remains available.
-- `Invitation requested` means the request is waiting for review.
+- Public ticket requests keep the selected tier; organizers cannot substitute
+  another tier.
+- Fully private generic requests require the organizer to assign an active
+  invitation-only tier.
+- `Request pending` means the request is waiting for review.
 - `Request rejected` means organizers declined the request; resubmitting is not available.
-- Accepted requests become regular attendance and send the usual event confirmation email with
-  calendar attachment.
+- Accepted ticket requests create an offer rather than charging or registering
+  the requester automatically.
 
 ![Event page and waitlist actions](../screenshots/event-page-waitlist.png)
 
-!> RSVP is only available before event start time.
-You must RSVP first to be eligible for event-day check-in.
+!> Attendance must be confirmed before event-day check-in is available.
 
 ## Check In on Event Day
 

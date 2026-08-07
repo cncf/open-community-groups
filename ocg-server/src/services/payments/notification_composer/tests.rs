@@ -201,6 +201,7 @@ async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
     let expected_template_data = to_value(&EventRefundRejected {
         event: sample_event_summary(event_id),
         link: "/community/group/group/event/event".to_string(),
+        rejection_reason: "Outside the refund policy window".to_string(),
         theme: SiteSettings::default().theme,
     })
     .unwrap();
@@ -231,7 +232,12 @@ async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
     // Enqueue the refund rejection notification
     let composer = sample_notification_composer(db, notifications_manager);
     composer
-        .enqueue_refund_rejection_notification(community_id, event_id, user_id)
+        .enqueue_refund_rejection_notification(
+            community_id,
+            event_id,
+            user_id,
+            "Outside the refund policy window",
+        )
         .await;
 }
 

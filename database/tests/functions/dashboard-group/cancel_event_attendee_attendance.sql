@@ -1,9 +1,11 @@
+-- Tests canceling confirmed attendee attendance from the group dashboard.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,7 +20,13 @@ select plan(12);
 \set eventLimitedID '3a070000-0000-0000-0000-000000000007'
 \set eventPaidID '3a070000-0000-0000-0000-000000000008'
 \set eventTicketTypeID '3a070000-0000-0000-0000-000000000009'
+\set eventTicketedFreeID '3a070000-0000-0000-0000-000000000018'
 \set eventUnpublishedID '3a070000-0000-0000-0000-000000000010'
+\set freeTicketAttendeeID '3a070000-0000-0000-0000-000000000019'
+\set freeTicketPriceWindowID '3a070000-0000-0000-0000-00000000001a'
+\set freeTicketPromotedUserID '3a070000-0000-0000-0000-00000000001b'
+\set freeTicketPurchaseID '3a070000-0000-0000-0000-00000000001c'
+\set freeTicketTypeID '3a070000-0000-0000-0000-00000000001d'
 \set groupCategoryID '3a070000-0000-0000-0000-000000000011'
 \set groupID '3a070000-0000-0000-0000-000000000012'
 \set limitedAttendeeID '3a070000-0000-0000-0000-000000000013'
@@ -67,6 +75,22 @@ insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
     ('hash-attendee', 'attendee@example.com', true, 'Attendee', :'attendeeID', 'attendee'),
+    (
+        'hash-free-attendee',
+        'free-attendee@example.com',
+        true,
+        'Free Attendee',
+        :'freeTicketAttendeeID',
+        'free-attendee'
+    ),
+    (
+        'hash-free-promoted',
+        'free-promoted@example.com',
+        true,
+        'Free Promoted',
+        :'freeTicketPromotedUserID',
+        'free-promoted'
+    ),
     ('hash-limited', 'limited@example.com', true, 'Limited', :'limitedAttendeeID', 'limited'),
     ('hash-paid', 'paid@example.com', true, 'Paid', :'paidAttendeeID', 'paid'),
     ('hash-promoted', 'promoted@example.com', true, 'Promoted', :'promotedUserID', 'promoted');
@@ -150,6 +174,21 @@ values
         false,
         now() + interval '7 days'
     ), (
+        :'eventTicketedFreeID',
+        'Ticketed Free Event',
+        'ticketed-free-event',
+        'Test ticketed free event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        null,
+        true,
+        now() + interval '7 days'
+    ), (
         :'eventUnpublishedID',
         'Unpublished Event',
         'unpublished-event',
@@ -166,11 +205,59 @@ values
         now() + interval '7 days'
     );
 
--- Ticket type and paid purchase
+-- Ticket types
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventPaidID', 1, 10, 'Paid admission');
+values
+    (:'eventTicketTypeID', :'eventPaidID', 1, 10, 'Paid admission'),
+    (:'freeTicketTypeID', :'eventTicketedFreeID', 1, 1, 'Free admission');
 
--- Completed paid purchase linked to the paid attendee
+-- Current intrinsic-free price used when the released ticket seat is offered
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'freeTicketPriceWindowID',
+    0,
+    :'freeTicketTypeID'
+);
+
+-- Events without a specialized ticket fixture use a default free tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    gen_random_uuid(),
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for the default ticket tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
+-- Completed purchases linked to the paid and free-ticket attendees
 insert into event_purchase (
     amount_minor,
     currency_code,
@@ -181,27 +268,51 @@ insert into event_purchase (
     ticket_title,
     user_id
 )
-values (
-    2500,
-    'USD',
-    :'eventPaidID',
-    :'purchaseID',
-    :'eventTicketTypeID',
-    'completed',
-    'Paid admission',
-    :'paidAttendeeID'
-);
+values
+    (
+        2500,
+        'USD',
+        :'eventPaidID',
+        :'purchaseID',
+        :'eventTicketTypeID',
+        'completed',
+        'Paid admission',
+        :'paidAttendeeID'
+    ),
+    (
+        0,
+        null,
+        :'eventTicketedFreeID',
+        :'freeTicketPurchaseID',
+        :'freeTicketTypeID',
+        'completed',
+        'Free admission',
+        :'freeTicketAttendeeID'
+    );
 
 -- Attendees including a checked-in row whose active state must be cleared
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id)
 values
     (true, current_timestamp, :'eventID', 'confirmed', :'attendeeID'),
+    (false, null, :'eventTicketedFreeID', 'confirmed', :'freeTicketAttendeeID'),
     (false, null, :'eventLimitedID', 'confirmed', :'limitedAttendeeID'),
     (false, null, :'eventPaidID', 'confirmed', :'paidAttendeeID');
 
 -- Waitlist entries
-insert into event_waitlist (event_id, user_id, created_at)
-values (:'eventLimitedID', :'promotedUserID', now());
+insert into event_waitlist (event_id, user_id, created_at, event_ticket_type_id)
+values
+    (
+        :'eventLimitedID',
+        :'promotedUserID',
+        now(),
+        (select event_ticket_type_id from event_ticket_type where event_id = :'eventLimitedID' limit 1)
+    ),
+    (
+        :'eventTicketedFreeID',
+        :'freeTicketPromotedUserID',
+        now(),
+        :'freeTicketTypeID'
+    );
 
 -- ============================================================================
 -- TESTS
@@ -213,7 +324,7 @@ select results_eq(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
         :'actorID', :'groupID', :'eventID', :'attendeeID'
     ),
-    $$ values ('{"left_status": "attendee", "promoted_user_ids": []}'::jsonb) $$,
+    $$ values ('{"left_status": "attendee"}'::jsonb) $$,
     'Should cancel a confirmed attendance'
 );
 
@@ -307,38 +418,97 @@ select is(
     'Should keep paid purchases unchanged'
 );
 
--- Should promote a waitlisted user when canceling from a full event.
+-- Should reconcile a free ticket cancellation into the same tier queue
+select results_eq(
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L, null)::jsonb $$,
+        :'actorID',
+        :'groupID',
+        :'eventTicketedFreeID',
+        :'freeTicketAttendeeID'
+    ),
+    $$ values ('{"left_status": "attendee"}'::jsonb) $$,
+    'Should cancel free ticket attendance without returning ticket offer recipients'
+);
+
+select results_eq(
+    format(
+        $$
+            select
+                ea.status,
+                ep.status,
+                ao.event_ticket_type_id,
+                ao.source,
+                ao.status,
+                not exists (
+                    select 1
+                    from event_waitlist ew
+                    where ew.event_id = %L::uuid
+                    and ew.event_ticket_type_id = %L::uuid
+                    and ew.user_id = %L::uuid
+                )
+            from event_attendee ea
+            join event_purchase ep
+                on ep.event_id = ea.event_id
+                and ep.user_id = ea.user_id
+            join admission_offer ao
+                on ao.event_id = ea.event_id
+                and ao.user_id = %L::uuid
+            where ea.event_id = %L::uuid
+            and ea.user_id = %L::uuid
+        $$,
+        :'eventTicketedFreeID',
+        :'freeTicketTypeID',
+        :'freeTicketPromotedUserID',
+        :'freeTicketPromotedUserID',
+        :'eventTicketedFreeID',
+        :'freeTicketAttendeeID'
+    ),
+    format(
+        $$
+            values (
+                'attendance-canceled'::text,
+                'refunded'::text,
+                %L::uuid,
+                'waitlist'::text,
+                'pending'::text,
+                true
+            )
+        $$,
+        :'freeTicketTypeID'
+    ),
+    'Should refund the free purchase and offer the released tier seat'
+);
+
+-- Should offer the released seat to a waitlisted user
 select results_eq(
     format(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
         :'actorID', :'groupID', :'eventLimitedID', :'limitedAttendeeID'
     ),
-    format(
-        $$ values ('{"left_status": "attendee", "promoted_user_ids": ["%s"]}'::jsonb) $$,
-        :'promotedUserID'
-    ),
-    'Should return promoted waitlisted user ids'
+    $$ values ('{"left_status": "attendee"}'::jsonb) $$,
+    'Should cancel attendance after offering the released seat'
 );
 
 select results_eq(
     format(
         $$
         select
-            ea.status,
+            ao.status,
             not exists (
                 select 1
                 from event_waitlist ew
                 where ew.event_id = %L::uuid
                 and ew.user_id = %L::uuid
             )
-        from event_attendee ea
-        where ea.event_id = %L::uuid
-        and ea.user_id = %L::uuid
+        from admission_offer ao
+        where ao.event_id = %L::uuid
+        and ao.user_id = %L::uuid
         $$,
         :'eventLimitedID', :'promotedUserID', :'eventLimitedID', :'promotedUserID'
     ),
-    $$ values ('confirmed'::text, true) $$,
-    'Should promote the waitlisted user into attendees'
+    $$ values ('pending'::text, true) $$,
+    'Should replace the waitlist entry with an admission offer'
 );
 
 -- Should reject unpublished events.

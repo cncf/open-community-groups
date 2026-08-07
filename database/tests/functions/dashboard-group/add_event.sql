@@ -1,9 +1,11 @@
+-- Tests adding events.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(38);
+select plan(40);
 
 -- ============================================================================
 -- VARIABLES
@@ -64,14 +66,16 @@ insert into "group" (
     name,
     slug,
     description,
-    group_category_id
+    group_category_id,
+    payment_recipient
 ) values (
     :'groupID',
     :'communityID',
     'Kubernetes Study Group',
     'abc1234',
     'A study group focused on Kubernetes best practices and implementation',
-    :'groupCategoryID'
+    :'groupCategoryID',
+    '{"provider": "stripe", "recipient_id": "acct_add_event"}'::jsonb
 );
 
 -- Group Sponsors
@@ -109,11 +113,12 @@ select ok(
                 :'groupID'::uuid,
                 '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels' - 'ticket_types'
     )) = '{
         "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",
+        "capacity": 500,
         "description": "Learn the basics of Kubernetes deployment and management",
         "event_reminder_enabled": true,
         "has_registration_questions": false,
@@ -125,6 +130,7 @@ select ok(
         "logo_url": "https://example.com/logo.png",
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
+        "remaining_capacity": 500,
         "sponsors": [],
         "sessions": {},
         "test_event": false,
@@ -138,6 +144,33 @@ select ok(
         "waitlist_enabled": false
     }'::jsonb,
     'Should create event with minimal required fields and return expected structure'
+);
+
+-- Should create the default General Admission ticket type
+select is(
+    (
+        select jsonb_build_object(
+            'active', ett.active,
+            'amount_minor', etpw.amount_minor,
+            'availability', ett.availability,
+            'order', ett."order",
+            'seats_total', ett.seats_total,
+            'title', ett.title
+        )
+        from event e
+        join event_ticket_type ett using (event_id)
+        join event_ticket_price_window etpw using (event_ticket_type_id)
+        where e.name = 'Kubernetes Fundamentals Workshop'
+    ),
+    '{
+        "active": true,
+        "amount_minor": 0,
+        "availability": "public",
+        "order": 1,
+        "seats_total": 500,
+        "title": "General Admission"
+    }'::jsonb,
+    'Should create the default General Admission ticket type'
 );
 
 -- Should create the expected audit row
@@ -282,7 +315,7 @@ select ok(
         :'communityID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
-    )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels') = '{
+    )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels' - 'ticket_types') = '{
         "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",
@@ -302,8 +335,8 @@ select ok(
         "test_event": true,
         "attendee_approval_required": false,
         "banner_url": "https://example.com/banner.jpg",
-        "capacity": 100,
-        "remaining_capacity": 100,
+        "capacity": 500,
+        "remaining_capacity": 500,
         "description_short": "Short description",
         "event_reminder_enabled": true,
         "has_registration_questions": false,
@@ -611,7 +644,7 @@ select is(
     'Should persist registration window dates when creating an event'
 );
 
--- Should throw error when capacity exceeds max_participants with meeting_requested
+-- Should reject the default tier above max participants
 select throws_ok(
     $$select add_event(
         null::uuid,
@@ -619,19 +652,19 @@ select throws_ok(
         '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
-    'event capacity (200) exceeds maximum participants allowed (100)',
-    'Should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
+    'event capacity (500) exceeds maximum participants allowed (100)',
+    'Should reject the default tier above max participants'
 );
 
--- Should succeed when capacity is within max_participants
+-- Should succeed when default tier capacity equals max participants
 select ok(
     (select add_event(
         null::uuid,
         '3a020000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
+        '{"zoom": 500}'::jsonb
     ) is not null),
-    'Should succeed when capacity is within cfg_max_participants'
+    'Should succeed when default tier capacity equals max participants'
 );
 
 -- Should succeed with high capacity when meeting_requested is false
@@ -689,10 +722,42 @@ select throws_ok(
                 }
             ]
         }'::jsonb,
-        '{"zoom": 100}'::jsonb
+        '{"zoom": 100}'::jsonb,
+        'stripe'
     )$$,
     'event capacity (150) exceeds maximum participants allowed (100)',
     'Should reject ticket-derived capacity above the meeting provider limit'
+);
+
+-- Should create an all-zero ticketed event without payment configuration
+select lives_ok(
+    $$select add_event(
+        null::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Free Ticket Event",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "event_ticket_type_id": "3a020000-0000-0000-0000-000000000095",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 0,
+                            "event_ticket_price_window_id": "3a020000-0000-0000-0000-000000000096"
+                        }
+                    ],
+                    "seats_total": 25,
+                    "title": "Free admission"
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should create an all-zero ticketed event without payment configuration'
 );
 
 -- Should reject approval-required events when waitlist is enabled
@@ -738,7 +803,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
-    'discount_codes require ticket_types',
+    'discount_codes require positive ticket pricing',
     'Should throw error when discount codes are provided without ticket types'
 );
 
@@ -756,7 +821,7 @@ select throws_ok(
             "payment_currency_code": "USD"
         }'::jsonb
     )$$,
-    'payment_currency_code requires ticket_types',
+    'payment_currency_code requires positive ticket pricing',
     'Should throw error when payment currency is provided without ticket types'
 );
 

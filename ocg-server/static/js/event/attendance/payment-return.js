@@ -130,12 +130,12 @@ export const reconcilePaymentReturn = async () => {
     }
 
     showInfoAlert(
-      "Your payment is still being confirmed. If the page still shows Complete payment, wait a few seconds and refresh.",
+      "Your payment is still being confirmed. If the page still shows Continue to checkout, wait a few seconds and refresh.",
     );
   } catch (_) {
     if (paymentOutcome === "success") {
       showInfoAlert(
-        "Your payment was submitted. If the page still shows Complete payment, wait a few seconds and refresh.",
+        "Your payment was submitted. If the page still shows Continue to checkout, wait a few seconds and refresh.",
       );
     }
   } finally {

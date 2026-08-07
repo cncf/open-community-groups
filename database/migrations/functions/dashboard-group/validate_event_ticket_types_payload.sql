@@ -4,8 +4,9 @@ returns void as $$
 declare
     v_ticket_type jsonb;
 begin
-    if p_ticket_types is null then
-        return;
+    if jsonb_typeof(p_ticket_types) is distinct from 'array'
+       or jsonb_array_length(p_ticket_types) = 0 then
+        raise exception 'events require at least one ticket type';
     end if;
 
     -- Validate each supplied ticket type and its price windows
@@ -15,8 +16,17 @@ begin
             raise exception 'ticket types require event_ticket_type_id';
         end if;
 
+        if coalesce(v_ticket_type->>'availability', 'public')
+           not in ('invitation_only', 'public') then
+            raise exception 'ticket type availability must be public or invitation_only';
+        end if;
+
         if nullif(v_ticket_type->>'title', '') is null then
             raise exception 'ticket types require title';
+        end if;
+
+        if coalesce((v_ticket_type->>'order')::int, 0) < 1 then
+            raise exception 'ticket type order must be greater than or equal to 1';
         end if;
 
         if (v_ticket_type->>'seats_total') is null then

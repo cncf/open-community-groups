@@ -3,7 +3,7 @@
 {# Active table filter badge #}
 {# Used by dashboard tables to summarize active waitlist and attendee filters. #}
 {% macro active_table_filter_badge(title, label) -%}
-  <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700">
+  <span class="custom-badge inline-flex items-center gap-1.5 bg-stone-50 px-2.5 py-0.5 text-stone-700">
     <span class="font-semibold text-stone-900">{{ title }}:</span>
     <span>{{ label }}</span>
     {{ caller() }}
@@ -235,7 +235,7 @@
 
 {# Refund review modal -#}
 {# Used by refund approval and rejection actions across group dashboard lists. -#}
-{% macro refund_review_modal(id_prefix, title_id, close_id, title, description, attendee_field_suffix, review_note_id, submit_label, success_message, error_message, show_reason = false) -%}
+{% macro refund_review_modal(id_prefix, title_id, close_id, title, description, attendee_field_suffix, review_note_id, submit_label, success_message, error_message, review_note_required = false, show_reason = false) -%}
   {% let refund_review_subtitle -%}
   <p id="{{ id_prefix }}-modal-description"
      class="mt-1 text-sm text-stone-600">{{ description }}</p>
@@ -286,12 +286,24 @@
             {% endif -%}
           </dl>
           <div class="mt-5">
-            <label for="{{ review_note_id }}" class="form-label">Review note (optional)</label>
+            <label for="{{ review_note_id }}" class="form-label">
+              {% if review_note_required -%}
+                Reason shown to attendee
+              {% else -%}
+                Review note (optional)
+              {% endif -%}
+            </label>
             <textarea id="{{ review_note_id }}"
                       class="input-primary mt-2 min-h-28"
                       name="review_note"
+                      {% if review_note_required %}aria-describedby="{{ review_note_id }}-help" required{% endif %}
                       autofocus
                       maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
+            {% if review_note_required -%}
+              <p id="{{ review_note_id }}-help" class="mt-2 text-sm text-stone-600">
+                This reason appears in the attendee's email, My Events, and the event page.
+              </p>
+            {% endif -%}
           </div>
         </div>
         <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
@@ -373,6 +385,27 @@
   </button>
 {% endmacro table_filter_option_button -%}
 {# End table filter option button #}
+
+{# Tooltip panel #}
+{# Used by dashboard status and detail tooltips. #}
+{% macro tooltip_panel(
+  id,
+  title,
+  visibility_classes,
+  width_classes = "w-64",
+  alignment_classes = "start-1/2 -translate-x-1/2"
+) -%}
+  <span id="{{ id }}"
+        role="tooltip"
+        data-tooltip-panel
+        class="pointer-events-auto invisible absolute bottom-full z-20 mb-1 {{ width_classes }} max-w-[calc(100vw-2rem)] {{ alignment_classes }} break-words whitespace-normal rounded-lg border border-stone-200 bg-white text-left text-xs font-normal leading-5 text-stone-700 opacity-0 shadow-lg transition-opacity {{ visibility_classes }}">
+    <span class="block border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-900">
+      {{ title }}
+    </span>
+    <span class="block space-y-2 px-3 py-3">{{ caller() }}</span>
+  </span>
+{% endmacro tooltip_panel -%}
+{# End tooltip panel #}
 
 {# User profile modal trigger #}
 {# Used by dashboard attendee, waitlist, and invitation request rows. #}

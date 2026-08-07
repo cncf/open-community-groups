@@ -29,6 +29,7 @@ const renderAttendanceDom = ({
   includeRegistrationQuestions = false,
   registrationWindowOpen = "true",
   registrationWindowUnavailableTitle = "",
+  isSimpleRsvp = "true",
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -47,6 +48,7 @@ const renderAttendanceDom = ({
       }
       data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
       data-attendee-approval-required="${attendeeApprovalRequired}"
+      data-is-simple-rsvp="${isSimpleRsvp}"
     >
       <button data-attendance-role="attendance-checker"></button>
       <button
@@ -90,6 +92,7 @@ const renderAttendanceDom = ({
         <div class="svg-icon icon-refund" data-attendance-icon></div>
         <span data-attendance-label>Request refund</span>
       </button>
+      <p data-attendance-role="refund-rejection-reason" class="hidden"></p>
       ${
         includeRegistrationQuestions
           ? `
@@ -151,6 +154,7 @@ const renderAttendanceDom = ({
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
     leaveButton: document.querySelector('[data-attendance-role="leave-btn"]'),
     refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
+    refundRejectionReason: document.querySelector('[data-attendance-role="refund-rejection-reason"]'),
     questionsModal: document.querySelector('[data-attendance-role="registration-modal"]'),
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
@@ -319,6 +323,27 @@ describe("event attendance", () => {
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
   });
 
+  it("joins the simple RSVP waitlist when only private capacity remains", () => {
+    // Render aggregate capacity with a sold-out sole public RSVP tier
+    const { checker, container, attendButton } = renderAttendanceDom({
+      capacity: "2",
+      remainingCapacity: "1",
+      waitlistEnabled: "true",
+    });
+    container.dataset.hasSoldOutTicketTypes = "true";
+    container.dataset.ticketPurchaseAvailable = "false";
+
+    // Apply the authenticated guest state
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    // Check the public tier controls the simple RSVP action
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(false);
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Join waiting list");
+  });
+
   it("uses the request invitation icon for approval-required sign-in state", () => {
     // Render the attendance fixture.
     const { checker, signinButton } = renderAttendanceDom({
@@ -400,9 +425,10 @@ describe("event attendance", () => {
     });
 
     // Dispatch the HTMX before-request event.
-    dispatchHtmxBeforeRequest(attendButton);
+    const beforeRequestEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
 
     // Verify shows loading state before attending and emits a waitlist success.
+    expect(beforeRequestEvent.defaultPrevented).to.equal(false);
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
     expect(loadingButton.getAttribute("role")).to.equal("status");
@@ -426,14 +452,10 @@ describe("event attendance", () => {
     const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
       includeRegistrationQuestions: true,
     });
-    const event = new CustomEvent("htmx:beforeRequest", {
-      bubbles: true,
-      cancelable: true,
-    });
 
     // Expose the attend button before dispatching the event.
     attendButton.classList.remove("hidden");
-    attendButton.dispatchEvent(event);
+    const event = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
 
     // Verify blocks the attend request until registration questions are answered.
     expect(event.defaultPrevented).to.equal(true);
@@ -441,6 +463,31 @@ describe("event attendance", () => {
     expect(questionsModal.classList.contains("hidden")).to.equal(false);
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(loadingButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("allows answered registration question requests to continue", () => {
+    // Render attendance controls with registration questions.
+    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
+      includeRegistrationQuestions: true,
+    });
+    const registrationAnswer = questionsModal.querySelector("[data-question-answer]");
+    const registrationForm = questionsModal.querySelector('[data-attendance-role="registration-form"]');
+
+    // First request opens the questions modal instead of submitting.
+    attendButton.classList.remove("hidden");
+    const blockedEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    expect(blockedEvent.defaultPrevented).to.equal(true);
+
+    // Submit valid answers through the same modal flow used by the page.
+    registrationAnswer.value = "Vegetarian lunch";
+    registrationForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    // The resumed attend request is no longer blocked by question gating.
+    const resumedEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    expect(resumedEvent.defaultPrevented).to.equal(false);
+    expect(container.dataset.questionsContinueAction).to.equal(undefined);
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
+    expect(loadingButton.classList.contains("hidden")).to.equal(false);
   });
 
   it("combines attendance success with the profile completion prompt", () => {
@@ -464,7 +511,7 @@ describe("event attendance", () => {
 
   it("allows waitlist joins before registration questions are answered", () => {
     // Render full-event attendance controls with waitlist enabled.
-    const { attendButton, loadingButton, questionsModal } = renderAttendanceDom({
+    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
       capacity: "10",
       includeRegistrationQuestions: true,
       remainingCapacity: "0",
@@ -474,6 +521,7 @@ describe("event attendance", () => {
       bubbles: true,
       cancelable: true,
     });
+    container.dataset.hasSoldOutTicketTypes = "true";
 
     // Expose the attend button before dispatching the event.
     attendButton.classList.remove("hidden");
@@ -491,6 +539,159 @@ describe("event attendance", () => {
     expect(questionsModal.classList.contains("hidden")).to.equal(true);
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
+  });
+
+  it("reopens questions when a simple waitlist ticket becomes available", () => {
+    // Render a simple sold-out flow that initially defers registration questions.
+    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
+      includeRegistrationQuestions: true,
+      remainingCapacity: "0",
+      waitlistEnabled: "true",
+    });
+    container.dataset.hasSoldOutTicketTypes = "true";
+    container.dataset.ticketPurchaseAvailable = "false";
+    attendButton.classList.remove("hidden");
+
+    // Submit the waitlist action and receive authoritative seat availability.
+    dispatchHtmxBeforeRequest(attendButton);
+    dispatchHtmxAfterRequest(attendButton, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "registration-answers-required" }),
+    });
+
+    // Restore the action and collect answers before retrying it.
+    expect(container.dataset.questionsContinueAction).to.equal("attend");
+    expect(questionsModal.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
+    expect(env.current.swal.calls).to.have.length(0);
+  });
+
+  it("shows invitation guidance when attendance requires a pending offer", () => {
+    // Render simple attendance controls before submitting the attend action.
+    const { attendButton, loadingButton } = renderAttendanceDom();
+
+    // Submit the attend action and return the admission offer conflict.
+    dispatchHtmxBeforeRequest(attendButton);
+    dispatchHtmxAfterRequest(attendButton, {
+      status: 409,
+      responseText: JSON.stringify({ conflict: "admission-offer-required" }),
+    });
+
+    // Restore the action and point the attendee to their pending invitation.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
+    expect(env.current.swal.calls.at(-1)).to.include({
+      icon: "error",
+      text: "You have a pending invitation for this event. Please claim it from the Event Invitations section in your dashboard to register.",
+    });
+  });
+
+  it("defers mixed-tier waitlist questions until an offer is claimed", () => {
+    // Render ticketed controls where one tier remains purchasable.
+    const { attendButton, container, questionsModal } = renderAttendanceDom({
+      includeRegistrationQuestions: true,
+      waitlistEnabled: "true",
+    });
+    container.dataset.hasSoldOutTicketTypes = "true";
+    container.dataset.hasVisibleTicketTypes = "true";
+    container.dataset.isSimpleRsvp = "false";
+    container.dataset.ticketPurchaseAvailable = "true";
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+        <div id="ticket-modal" data-attendance-role="ticket-modal" class="hidden">
+          <form
+            data-attendance-role="checkout-form"
+            data-attend-url="/attend"
+            data-checkout-url="/checkout"
+          >
+            <input
+              data-attendance-role="ticket-type-option"
+              data-ticket-sold-out="true"
+              name="event_ticket_type_id"
+              type="radio"
+              value="sold-out-tier"
+              checked
+            >
+            <input
+              data-attendance-role="checkout-registration-answers-input"
+              name="registration_answers"
+              value='{"answers":[{"question_id":"question-1","value":"early"}]}'
+            >
+          </form>
+        </div>
+      `,
+    );
+    const ticketModal = container.querySelector('[data-attendance-role="ticket-modal"]');
+    const checkoutForm = container.querySelector('[data-attendance-role="checkout-form"]');
+
+    // Choosing a tier comes before collecting registration answers.
+    attendButton.classList.remove("hidden");
+    attendButton.click();
+    expect(ticketModal.classList.contains("hidden")).to.equal(false);
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+
+    // Joining the sold-out tier does not open questions or submit stale answers.
+    const parameters = {
+      event_ticket_type_id: "sold-out-tier",
+      registration_answers: '{"answers":[{"question_id":"question-1","value":"early"}]}',
+    };
+    const event = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      detail: {
+        parameters,
+        path: "/checkout",
+        unfilteredParameters: { ...parameters },
+      },
+    });
+    checkoutForm.dispatchEvent(event);
+    expect(event.detail.path).to.equal("/attend");
+    expect(parameters).to.not.have.property("registration_answers");
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("omits a disabled discount when claiming an intrinsically free tier", () => {
+    // Prepare a free-tier checkout with a stale discount from a prior selection.
+    const { container } = renderAttendanceDom();
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+        <form
+          data-attendance-role="checkout-form"
+          data-attend-url="/attend"
+          data-checkout-url="/checkout"
+        >
+          <input
+            data-attendance-role="ticket-type-option"
+            data-ticket-sold-out="false"
+            name="event_ticket_type_id"
+            type="radio"
+            value="free-tier"
+            checked
+          >
+          <input data-attendance-role="discount-code-input" value="SAVE" disabled>
+        </form>
+      `,
+    );
+    const checkoutForm = container.querySelector('[data-attendance-role="checkout-form"]');
+    const parameters = {
+      discount_code: "SAVE",
+      event_ticket_type_id: "free-tier",
+    };
+
+    // Disabled discount fields are omitted from both HTMX parameter collections.
+    const event = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      detail: {
+        parameters,
+        path: "/checkout",
+        unfilteredParameters: { ...parameters },
+      },
+    });
+    checkoutForm.dispatchEvent(event);
+    expect(parameters).to.not.have.property("discount_code");
+    expect(event.detail.unfilteredParameters).to.not.have.property("discount_code");
   });
 
   it("opens registration questions for promoted waitlist attendees", () => {
@@ -553,6 +754,45 @@ describe("event attendance", () => {
     expect(questionsModal.classList.contains("hidden")).to.equal(false);
   });
 
+  it("completes ticketed pending questions without reopening ticket selection", () => {
+    // Render a ticketed promoted-attendee state with required questions.
+    const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
+      includeRegistrationQuestions: true,
+    });
+    container.dataset.hasVisibleTicketTypes = "true";
+    container.dataset.isSimpleRsvp = "false";
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+        <div id="ticket-modal" data-attendance-role="ticket-modal" class="hidden">
+          <input data-attendance-role="ticket-type-option" type="radio" value="ticket-1" />
+        </div>
+      `,
+    );
+    const ticketModal = container.querySelector('[data-attendance-role="ticket-modal"]');
+    const registrationAnswer = questionsModal.querySelector("[data-question-answer]");
+    const registrationForm = questionsModal.querySelector('[data-attendance-role="registration-form"]');
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        status: "registration-questions-pending",
+      }),
+    });
+    const unansweredEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    expect(unansweredEvent.defaultPrevented).to.equal(true);
+    attendButton.click();
+    registrationAnswer.value = "Vegetarian lunch";
+    registrationForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    // Valid answers resume the attendance request without looping through ticket choice.
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+    expect(ticketModal.classList.contains("hidden")).to.equal(true);
+    const resumedEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    expect(resumedEvent.defaultPrevented).to.equal(false);
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
+    expect(loadingButton.classList.contains("hidden")).to.equal(false);
+  });
+
   it("shows sign-in info for waitlists and confirms leaving the waitlist", async () => {
     // Render the attendance fixture.
     const { signinButton, leaveButton } = renderAttendanceDom();
@@ -599,7 +839,8 @@ describe("event attendance", () => {
     const { leaveButton } = renderAttendanceDom();
 
     // Keep a reference to the attendance label element.
-    leaveButton.querySelector("[data-attendance-label]").textContent = "Cancel request";
+    leaveButton.querySelector("[data-attendance-label]").textContent = "Request pending";
+    leaveButton.setAttribute("aria-label", "Request pending – cancel request");
     env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
     await waitForMicrotask();
@@ -623,6 +864,7 @@ describe("event attendance", () => {
 
     // Verify uses cancel icons for waitlist and pending invitation cancellation.
     expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Leave waiting list");
+    expect(leaveButton.hasAttribute("aria-label")).to.equal(false);
     expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
       true,
     );
@@ -633,7 +875,8 @@ describe("event attendance", () => {
     });
 
     // Verify uses cancel icons for waitlist and pending invitation cancellation.
-    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Cancel request");
+    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request pending");
+    expect(leaveButton.getAttribute("aria-label")).to.equal("Request pending – cancel request");
     expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
       true,
     );
@@ -704,6 +947,90 @@ describe("event attendance", () => {
     ).to.equal(true);
   });
 
+  it("routes owned ticket offers to the dashboard claim surface", () => {
+    // Render a ticketed attendance control for an owned pending offer.
+    const { attendButton, checker } = renderAttendanceDom({
+      isSimpleRsvp: "false",
+    });
+
+    // Apply the owned ticket offer returned by the attendance endpoint.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        admission_offer_id: "offer-1",
+        event_ticket_type_id: "ticket-1",
+        status: "invitation-approved",
+      }),
+    });
+
+    // The event page identifies the claim action without describing the user as an attendee.
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Claim ticket");
+    expect(attendButton.dataset.resumeUrl).to.equal("/dashboard/user?tab=invitations#event-offer-offer-1");
+    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(true);
+  });
+
+  it("clears a cached offer action when the offer is no longer claimable", () => {
+    // Render an owned offer before the server hides it during refund processing.
+    const { attendButton, checker } = renderAttendanceDom();
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        admission_offer_id: "offer-1",
+        event_ticket_type_id: "ticket-1",
+        status: "invitation-approved",
+      }),
+    });
+    expect(attendButton.dataset.resumeUrl).to.equal("/dashboard/user?tab=invitations#event-offer-offer-1");
+
+    // A non-claimable response restores the normal event action without a stale link.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "none" }),
+    });
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(attendButton.hasAttribute("data-resume-url")).to.equal(false);
+    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(
+      false,
+    );
+  });
+
+  it("routes owned simple RSVP offers with questions to the dashboard claim surface", () => {
+    // Render simple RSVP controls with registration questions.
+    const { attendButton, checker, questionsModal } = renderAttendanceDom({
+      includeRegistrationQuestions: true,
+    });
+
+    // Apply an organizer offer that still needs claim-time answers.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        admission_offer_id: "offer-2",
+        event_ticket_type_id: "ticket-1",
+        status: "registration-questions-pending",
+      }),
+    });
+
+    // The dashboard owns offer acceptance and its registration question flow.
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Confirm RSVP");
+    expect(attendButton.dataset.resumeUrl).to.equal("/dashboard/user?tab=invitations#event-offer-offer-2");
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(true);
+  });
+
+  it("shows an expired ticket offer as a disabled terminal state", () => {
+    // Render the public event action before applying the terminal offer status.
+    const { attendButton, checker } = renderAttendanceDom();
+
+    // Apply the latest expired offer state from the attendance check.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        status: "offer-expired",
+      }),
+    });
+
+    // The user sees the exact terminal state and cannot retry the expired offer.
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
+      "Ticket offer expired",
+    );
+    expect(attendButton.disabled).to.equal(true);
+  });
+
   it("shows canceled state for approved invitations when a no-capacity event is canceled", () => {
     // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
@@ -764,7 +1091,27 @@ describe("event attendance", () => {
     expect(attendButton.title).to.equal("This event has no attendee capacity.");
   });
 
-  it("disables approval-required attendance when event capacity is zero", () => {
+  it("allows zero-capacity events to use an enabled waitlist", () => {
+    // Render a deliberately closed simple RSVP tier with a waitlist.
+    const { checker, attendButton } = renderAttendanceDom({
+      capacity: "0",
+      remainingCapacity: "0",
+      waitlistEnabled: "true",
+    });
+
+    // Apply the authenticated guest state.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    // Verify the backend-supported waitlist action remains available.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(false);
+    expect(attendButton.title).to.equal("");
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Join waiting list");
+  });
+
+  it("allows approval requests when event capacity is zero", () => {
     // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
       attendeeApprovalRequired: "true",
@@ -777,11 +1124,11 @@ describe("event attendance", () => {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    // Verify disables approval-required attendance when event capacity is zero.
+    // Verify approval remains available before capacity allocation.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.disabled).to.equal(true);
-    expect(attendButton.title).to.equal("This event has no attendee capacity.");
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(attendButton.disabled).to.equal(false);
+    expect(attendButton.title).to.equal("");
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
   });
 
   it("clears the availability spinner when refreshed capacity is zero", async () => {
@@ -800,7 +1147,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: false,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: 0,
           ticket_types: [],
           waitlist_count: 0,
@@ -837,7 +1184,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: false,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: 1,
           ticket_types: [],
           waitlist_count: 1,
@@ -901,7 +1248,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: false,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: 1,
           ticket_types: [],
           waitlist_count: 0,
@@ -978,7 +1325,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: true,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: 1,
           ticket_types: [],
           waitlist_count: 0,
@@ -1015,7 +1362,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: false,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: 0,
           ticket_types: [],
           waitlist_count: 3,
@@ -1058,7 +1405,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: false,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: null,
           ticket_types: [],
           waitlist_count: 0,
@@ -1101,7 +1448,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: false,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: null,
           ticket_types: [],
           waitlist_count: 0,
@@ -1139,7 +1486,7 @@ describe("event attendance", () => {
           has_sellable_ticket_types: false,
           is_live: false,
           is_past: false,
-          is_ticketed: false,
+          is_simple_rsvp: true,
           remaining_capacity: 0,
           ticket_types: [],
           waitlist_count: 0,
@@ -1199,6 +1546,54 @@ describe("event attendance", () => {
     expect(refundButton.disabled).to.equal(false);
     expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request refund");
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows escaped refund rejection reasons and clears stale reason state", () => {
+    // Render the attendee refund controls with their reason container.
+    const { checker, refundButton, refundRejectionReason } = renderAttendanceDom();
+
+    // Render a rejected request with organizer-provided markup-like text.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        purchase_amount_minor: 2500,
+        refund_rejection_reason: "Outside policy\n<strong>Contact support</strong>",
+        refund_request_status: "rejected",
+        status: "attendee",
+      }),
+    });
+
+    // Verify the rejected state preserves lines and treats the reason as text.
+    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Refund rejected");
+    expect(refundButton.disabled).to.equal(true);
+    expect(refundRejectionReason.classList.contains("hidden")).to.equal(false);
+    expect(refundRejectionReason.textContent).to.equal(
+      "Reason: Outside policy\n<strong>Contact support</strong>",
+    );
+    expect(refundRejectionReason.innerHTML).to.include("&lt;strong&gt;");
+    expect(refundRejectionReason.querySelector("strong")).to.equal(null);
+
+    // Move to a different refund state and clear the previous reason.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        purchase_amount_minor: 2500,
+        refund_request_status: "pending",
+        status: "attendee",
+      }),
+    });
+    expect(refundRejectionReason.classList.contains("hidden")).to.equal(true);
+    expect(refundRejectionReason.textContent).to.equal("");
+
+    // Keep a usable generic rejected state when the reason is malformed or absent.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        purchase_amount_minor: 2500,
+        refund_request_status: "rejected",
+        status: "attendee",
+      }),
+    });
+    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Refund rejected");
+    expect(refundRejectionReason.classList.contains("hidden")).to.equal(true);
+    expect(refundRejectionReason.textContent).to.equal("");
   });
 
   it("leaves standalone ticket price badge text untouched", async () => {

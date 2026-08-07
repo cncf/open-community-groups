@@ -1,14 +1,20 @@
+-- Tests listing upcoming user event participation, active checkouts, and active offers.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set checkoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000040'
+\set checkoutExpiredUserID '4a0c0000-0000-0000-0000-000000000041'
+\set checkoutPurchaseID '4a0c0000-0000-0000-0000-000000000042'
+\set checkoutUserID '4a0c0000-0000-0000-0000-000000000043'
 \set communityID '4a0c0000-0000-0000-0000-000000000001'
 \set eventAID '4a0c0000-0000-0000-0000-000000000002'
 \set eventBID '4a0c0000-0000-0000-0000-000000000003'
@@ -22,6 +28,7 @@ select plan(10);
 \set eventPaidID '4a0c0000-0000-0000-0000-000000000011'
 \set eventPaidPriceWindowID '4a0c0000-0000-0000-0000-000000000012'
 \set eventPaidPurchaseID '4a0c0000-0000-0000-0000-000000000013'
+\set eventPaidRefundRequestID '4a0c0000-0000-0000-0000-000000000044'
 \set eventPaidTicketTypeID '4a0c0000-0000-0000-0000-000000000014'
 \set eventPastID '4a0c0000-0000-0000-0000-000000000015'
 \set eventPendingInvitationID '4a0c0000-0000-0000-0000-000000000016'
@@ -32,12 +39,16 @@ select plan(10);
 \set groupDeletedID '4a0c0000-0000-0000-0000-000000000021'
 \set groupID '4a0c0000-0000-0000-0000-000000000022'
 \set groupInactiveID '4a0c0000-0000-0000-0000-000000000023'
+\set pendingInvitationOfferID '4a0c0000-0000-0000-0000-000000000036'
 \set questionsAttendeeUserID '4a0c0000-0000-0000-0000-000000000024'
 \set questionsCheckoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000025'
 \set questionsCheckoutExpiredUserID '4a0c0000-0000-0000-0000-000000000026'
 \set questionsCheckoutPurchaseID '4a0c0000-0000-0000-0000-000000000027'
 \set questionsCheckoutUserID '4a0c0000-0000-0000-0000-000000000028'
+\set questionsInvitationOfferID '4a0c0000-0000-0000-0000-000000000037'
 \set questionsInvitedUserID '4a0c0000-0000-0000-0000-000000000029'
+\set questionsRefundPendingOfferID '4a0c0000-0000-0000-0000-000000000038'
+\set questionsRefundPendingUserID '4a0c0000-0000-0000-0000-000000000039'
 \set registrationQuestionID '4a0c0000-0000-0000-0000-000000000030'
 \set sessionAID '4a0c0000-0000-0000-0000-000000000031'
 \set sessionCID '4a0c0000-0000-0000-0000-000000000032'
@@ -76,7 +87,7 @@ values (:'groupCategoryID', :'communityID', 'Technology');
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'Meetup');
 
--- Users
+-- Users participating in or holding checkout state for listed events
 insert into "user" (
     user_id,
     auth_hash,
@@ -85,6 +96,20 @@ insert into "user" (
     username,
     name
 ) values (
+    :'checkoutExpiredUserID',
+    'checkout-expired-auth-hash',
+    'checkout-expired@test.com',
+    true,
+    'checkout-expired',
+    'Checkout Expired'
+), (
+    :'checkoutUserID',
+    'checkout-auth-hash',
+    'checkout@test.com',
+    true,
+    'checkout',
+    'Checkout User'
+), (
     :'userID',
     'auth-hash',
     'alice@example.com',
@@ -126,6 +151,13 @@ insert into "user" (
     true,
     'rq-invited',
     'RQ Invited'
+), (
+    :'questionsRefundPendingUserID',
+    'refund-pending-auth-hash',
+    'rq-refund-pending@test.com',
+    true,
+    'rq-refund-pending',
+    'RQ Refund Pending'
 );
 
 -- Groups
@@ -416,7 +448,7 @@ insert into event_ticket_type (
     :'eventPaidTicketTypeID',
     :'eventPaidID',
     1,
-    1,
+    3,
     'Paid admission'
 ), (
     :'eventQuestionsTicketTypeID',
@@ -437,6 +469,36 @@ insert into event_ticket_price_window (
     :'eventPaidTicketTypeID'
 );
 
+-- Events without an explicit ticket fixture use default admission tiers
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
+-- Current free prices for the default admission tiers
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, gen_random_uuid(), ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
+);
+
 -- User participation
 insert into event_attendee (event_id, user_id, status) values
     (:'eventAID', :'userID', 'confirmed'),
@@ -448,13 +510,57 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventNoStartsAtID', :'userID', 'confirmed'),
     (:'eventPastID', :'userID', 'confirmed'),
     (:'eventPaidID', :'userPaidID', 'confirmed'),
-    (:'eventPendingInvitationID', :'userID', 'invitation-pending'),
     (:'eventUnpublishedID', :'userID', 'confirmed');
+
+-- Organizer invitation offers included in the user's event list
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'pendingInvitationOfferID',
+    :'eventPendingInvitationID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'eventPendingInvitationID' limit 1),
+    '2099-01-13 11:00:00+00',
+    'organizer_invitation',
+    'pending',
+    :'userID'
+), (
+    :'questionsInvitationOfferID',
+    :'eventQuestionsID',
+    :'eventQuestionsTicketTypeID',
+    '2099-01-13 11:00:00+00',
+    'organizer_invitation',
+    'pending',
+    :'questionsInvitedUserID'
+);
+
+-- Organizer invitation offer hidden while its refund is processing
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'questionsRefundPendingOfferID',
+    :'eventQuestionsID',
+    :'eventQuestionsTicketTypeID',
+    '2099-01-13 11:00:00+00',
+    'organizer_invitation',
+    'pending',
+    :'questionsRefundPendingUserID'
+);
 
 -- User event rows for registration-question states
 insert into event_attendee (event_id, user_id, manually_invited, status, registration_answers)
 values
-    (:'eventQuestionsID', :'questionsInvitedUserID', true, 'registration-questions-pending', null),
     (
         :'eventQuestionsID',
         :'questionsCheckoutUserID',
@@ -520,6 +626,29 @@ insert into event_purchase (
     :'userPaidID'
 );
 
+-- Rejected refund request shown with the paid event in My Events
+insert into event_refund_request (
+    event_purchase_id,
+    event_refund_request_id,
+    requested_by_user_id,
+    status,
+
+    requested_reason,
+    review_note,
+    reviewed_at,
+    reviewed_by_user_id
+) values (
+    :'eventPaidPurchaseID',
+    :'eventPaidRefundRequestID',
+    :'userPaidID',
+    'rejected',
+
+    'Plans changed',
+    'Outside the refund policy window',
+    '2026-01-04 11:00:00+00',
+    :'userID'
+);
+
 -- Pending checkout purchases used to distinguish active and expired holds
 insert into event_purchase (
     event_purchase_id,
@@ -533,6 +662,28 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
+    :'checkoutPurchaseID',
+    1500,
+    'USD',
+    :'eventPaidID',
+    :'eventPaidTicketTypeID',
+    current_timestamp + interval '10 minutes',
+    'https://example.test/checkout/direct-resume',
+    'pending',
+    'Paid admission',
+    :'checkoutUserID'
+), (
+    :'checkoutExpiredPurchaseID',
+    1500,
+    'USD',
+    :'eventPaidID',
+    :'eventPaidTicketTypeID',
+    current_timestamp - interval '10 minutes',
+    'https://example.test/checkout/direct-expired',
+    'pending',
+    'Paid admission',
+    :'checkoutExpiredUserID'
+), (
     :'questionsCheckoutPurchaseID',
     1500,
     'USD',
@@ -556,6 +707,27 @@ insert into event_purchase (
     :'questionsCheckoutExpiredUserID'
 );
 
+-- Refund-pending purchase that suppresses its linked invitation offer
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'questionsRefundPendingOfferID',
+    1500,
+    'USD',
+    :'eventQuestionsID',
+    :'eventQuestionsTicketTypeID',
+    'refund-pending',
+    'Questions admission',
+    :'questionsRefundPendingUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -567,10 +739,10 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -583,10 +755,10 @@ select is(
                 jsonb_build_array('attendee', 'host', 'speaker')
             ),
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -599,10 +771,10 @@ select is(
                 jsonb_build_array('attendee')
             ),
             jsonb_build_object(
-                'attendance_status',
-                null,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
+                'enrollment_status',
+                null,
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -613,12 +785,51 @@ select is(
                 null,
                 'roles',
                 jsonb_build_array('speaker')
+            ),
+            jsonb_build_object(
+                'admission_offer_id',
+                :'pendingInvitationOfferID',
+                'admission_offer_source',
+                'organizer_invitation',
+                'admission_offer_status',
+                'pending',
+                'amount_minor',
+                0,
+                'event',
+                get_event_summary(
+                    :'communityID'::uuid,
+                    :'groupID'::uuid,
+                    :'eventPendingInvitationID'::uuid
+                )::jsonb,
+                'enrollment_status',
+                'invitation-approved',
+                'event_ticket_type_id',
+                (select event_ticket_type_id from event_ticket_type where event_id = :'eventPendingInvitationID' limit 1),
+                'has_paid_purchase',
+                false,
+                'manually_invited',
+                true,
+                'offer_expires_at',
+                4071985200,
+                'registration_answers',
+                null,
+                'registration_questions',
+                get_event_registration_questions(
+                    :'communityID'::uuid,
+                    :'eventPendingInvitationID'::uuid
+                )::jsonb,
+                'resume_checkout_url',
+                null,
+                'roles',
+                jsonb_build_array('offer'),
+                'ticket_title',
+                'General Admission'
             )
         ),
         'total',
-        3
+        4
     ),
-    'Should list only valid upcoming events sorted by date asc'
+    'Should list valid upcoming participation and offers sorted by date asc'
 );
 
 -- Should deduplicate roles per event
@@ -640,10 +851,10 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 false,
                 'registration_answers',
@@ -657,7 +868,7 @@ select is(
             )
         ),
         'total',
-        3
+        4
     ),
     'Should paginate events and keep total count'
 );
@@ -669,16 +880,20 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'attendance_status',
-                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'enrollment_status',
+                'attendee',
                 'has_paid_purchase',
                 true,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'refund_rejection_reason',
+                'Outside the refund policy window',
+                'refund_request_status',
+                'rejected',
                 'resume_checkout_url',
                 null,
                 'roles',
@@ -711,12 +926,24 @@ select is(
         -> 0
     ) - 'event',
     jsonb_build_object(
-        'attendance_status',
-        'registration-questions-pending',
+        'admission_offer_id',
+        :'questionsInvitationOfferID',
+        'admission_offer_source',
+        'organizer_invitation',
+        'admission_offer_status',
+        'pending',
+        'amount_minor',
+        0,
+        'enrollment_status',
+        'invitation-approved',
+        'event_ticket_type_id',
+        :'eventQuestionsTicketTypeID',
         'has_paid_purchase',
         false,
         'manually_invited',
         true,
+        'offer_expires_at',
+        4071985200,
         'registration_answers',
         null,
         'registration_questions',
@@ -724,9 +951,43 @@ select is(
         'resume_checkout_url',
         null,
         'roles',
-        jsonb_build_array('attendee')
+        jsonb_build_array('offer'),
+        'ticket_title',
+        'Questions admission'
     ),
-    'Should include manually invited pending registration events in the user dashboard'
+    'Should include active organizer ticket offers without labeling recipients as attendees'
+);
+
+-- Should include active direct checkout without labeling the user as an attendee
+select is(
+    (
+        list_user_events(:'checkoutUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+    ) - 'event',
+    jsonb_build_object(
+        'amount_minor',
+        1500,
+        'currency_code',
+        'USD',
+        'enrollment_status',
+        'pending-payment',
+        'event_ticket_type_id',
+        :'eventPaidTicketTypeID',
+        'has_paid_purchase',
+        false,
+        'registration_answers',
+        null,
+        'registration_questions',
+        get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
+        'resume_checkout_url',
+        'https://example.test/checkout/direct-resume',
+        'roles',
+        '[]'::jsonb,
+        'ticket_title',
+        'Paid admission'
+    ),
+    'Should include active direct checkout without labeling the user as an attendee'
 );
 
 -- Should return registration questions for pending users
@@ -749,7 +1010,7 @@ select is(
         -> 0
     ) - 'event',
     jsonb_build_object(
-        'attendance_status',
+        'enrollment_status',
         'attendee',
         'has_paid_purchase',
         false,
@@ -776,8 +1037,14 @@ select is(
         -> 0
     ) - 'event',
     jsonb_build_object(
-        'attendance_status',
+        'amount_minor',
+        1500,
+        'currency_code',
+        'USD',
+        'enrollment_status',
         'pending-payment',
+        'event_ticket_type_id',
+        :'eventQuestionsTicketTypeID',
         'has_paid_purchase',
         false,
         'registration_answers',
@@ -790,36 +1057,56 @@ select is(
         'resume_checkout_url',
         'https://example.test/checkout/resume',
         'roles',
-        jsonb_build_array('attendee')
+        '[]'::jsonb,
+        'ticket_title',
+        'Questions admission'
     ),
     'Should report active pending checkout before pending registration questions'
 );
 
--- Should ignore expired pending checkout before pending registration questions
+-- Should omit expired checkout-backed pending registration
 select is(
-    (
-        list_user_events(:'questionsCheckoutExpiredUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
-        -> 'events'
-        -> 0
-    ) - 'event',
+    list_user_events(
+        :'questionsCheckoutExpiredUserID'::uuid,
+        '{"limit": 10, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
-        'attendance_status',
-        'registration-questions-pending',
-        'has_paid_purchase',
-        false,
-        'registration_answers',
-        format(
-            '{"answers": [{"question_id": "%s", "value": "Expired answer"}]}',
-            :'registrationQuestionID'
-        )::jsonb,
-        'registration_questions',
-        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
-        'resume_checkout_url',
-        null,
-        'roles',
-        jsonb_build_array('attendee')
+        'events',
+        '[]'::jsonb,
+        'total',
+        0
     ),
-    'Should ignore expired pending checkout before pending registration questions'
+    'Should omit expired checkout-backed pending registration'
+);
+
+-- Should omit expired direct checkout without another participation role
+select is(
+    list_user_events(
+        :'checkoutExpiredUserID'::uuid,
+        '{"limit": 10, "offset": 0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'events',
+        '[]'::jsonb,
+        'total',
+        0
+    ),
+    'Should omit expired direct checkout without another participation role'
+);
+
+-- Should hide an active offer from My Events while its refund is processing
+select is(
+    list_user_events(
+        :'questionsRefundPendingUserID'::uuid,
+        '{"limit": 10, "offset": 0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'events',
+        '[]'::jsonb,
+        'total',
+        0
+    ),
+    'Should hide an active offer from My Events while its refund is processing'
 );
 
 -- ============================================================================

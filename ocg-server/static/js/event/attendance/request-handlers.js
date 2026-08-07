@@ -1,20 +1,46 @@
-import { handleHtmxResponse, showInfoAlert } from "/static/js/common/alerts.js";
-import { getAttendanceContainer, getAttendanceControl } from "/static/js/event/attendance-dom.js";
+import { handleHtmxResponse, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import {
-  closeRefundModal,
+  getAttendanceContainer,
+  getAttendanceControl,
+  getAttendanceMeta,
+} from "/static/js/event/attendance-dom.js";
+import {
   closeTicketModal,
   restoreCheckoutModalControls,
+  showCheckoutLoadingState,
+} from "/static/js/event/attendance-ticket-view.js";
+import {
+  closeRefundModal,
   restorePrimaryRequestControl,
   restoreRefundModalControls,
-  showCheckoutLoadingState,
   showPrimaryRequestLoading,
   showRefundLoadingState,
 } from "/static/js/event/attendance-view.js";
 import { refreshAvailabilityAndRenderAttendance } from "/static/js/event/attendance/availability-refresh.js";
 import { showProfileAwareInfoAlert } from "/static/js/event/attendance/feedback.js";
-import { blockAttendRequestForQuestions } from "/static/js/event/attendance/questions.js";
+import {
+  blockAttendanceRequestForQuestions,
+  isCompletingRegistrationQuestions,
+  requestQuestionAnswers,
+  shouldCollectQuestionAnswers,
+} from "/static/js/event/attendance/questions.js";
 import { renderAttendanceCheckResponse } from "/static/js/event/attendance/status-renderer.js";
-import { parseJsonResponse, PRIMARY_REQUEST_ROLES } from "/static/js/event/attendance/shared.js";
+import {
+  parseJsonResponse,
+  PRIMARY_REQUEST_ROLES,
+  QUESTIONS_CONTINUE_ACTION_ATTEND,
+  QUESTIONS_CONTINUE_ACTION_TICKET,
+} from "/static/js/event/attendance/shared.js";
+
+// Actionable guidance shown when registration must go through a pending invitation.
+const ADMISSION_OFFER_REQUIRED_MESSAGE =
+  "You have a pending invitation for this event. Please claim it from the Event Invitations section in your dashboard to register.";
+
+const CHECKOUT_ACTION_ERROR_MESSAGES = {
+  checkout: "Something went wrong starting checkout. Please try again later.",
+  request: "Something went wrong requesting this ticket. Please try again later.",
+  waitlist: "Something went wrong joining the ticket waiting list. Please try again later.",
+};
 
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
@@ -60,6 +86,36 @@ const PRIMARY_ACTION_CONFIG = {
 };
 
 /**
+ * Reopens registration questions after authoritative inventory becomes available.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {XMLHttpRequest|undefined} xhr - HTMX request object
+ * @param {"attend"|"ticket"} continueAction - Action to retry after answers
+ * @returns {boolean} Whether the conflict was handled
+ */
+const recoverRegistrationAnswers = (container, xhr, continueAction) => {
+  if (xhr?.status !== 409 || parseJsonResponse(xhr)?.conflict !== "registration-answers-required") {
+    return false;
+  }
+
+  requestQuestionAnswers(container, continueAction);
+  return true;
+};
+
+/**
+ * Shows invitation-claim guidance when registration requires a pending offer.
+ * @param {XMLHttpRequest|undefined} xhr - HTMX request object
+ * @returns {boolean} Whether the conflict was handled
+ */
+const notifyAdmissionOfferRequired = (xhr) => {
+  if (xhr?.status !== 409 || parseJsonResponse(xhr)?.conflict !== "admission-offer-required") {
+    return false;
+  }
+
+  showErrorAlert(ADMISSION_OFFER_REQUIRED_MESSAGE);
+  return true;
+};
+
+/**
  * Normalizes optional checkout parameters before HTMX submits the request.
  * @param {Event} event - htmx:configRequest event
  * @returns {void}
@@ -76,8 +132,27 @@ const handleCheckoutConfigRequest = (event) => {
     return;
   }
 
+  const selectedTicketType = container.querySelector('[data-attendance-role="ticket-type-option"]:checked');
+  const isRequest = getAttendanceMeta(container).attendeeApprovalRequired;
+  const isWaitlist =
+    selectedTicketType instanceof HTMLInputElement && selectedTicketType.dataset.ticketSoldOut === "true";
+  if (isRequest || isWaitlist) {
+    event.detail.path = target.dataset.attendUrl || event.detail.path;
+    deleteRequestParameter(event, "discount_code");
+
+    if (isWaitlist && !isRequest) {
+      deleteRequestParameter(event, "registration_answers");
+    }
+    return;
+  }
+
+  event.detail.path = target.dataset.checkoutUrl || event.detail.path;
   const discountCodeInput = getAttendanceControl(container, "discount-code-input");
   if (!(discountCodeInput instanceof HTMLInputElement)) {
+    return;
+  }
+  if (discountCodeInput.disabled) {
+    deleteRequestParameter(event, "discount_code");
     return;
   }
 
@@ -92,9 +167,24 @@ const handleCheckoutConfigRequest = (event) => {
     return;
   }
 
-  delete params.discount_code;
-  if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
-    delete event.detail.unfilteredParameters.discount_code;
+  deleteRequestParameter(event, "discount_code");
+};
+
+/**
+ * Removes a request parameter from HTMX's filtered and unfiltered payloads.
+ * @param {Event} event HTMX configuration event.
+ * @param {string} parameterName Request parameter name.
+ * @returns {void}
+ */
+const deleteRequestParameter = (event, parameterName) => {
+  const parameters = event.detail?.parameters;
+  if (parameters && typeof parameters === "object") {
+    delete parameters[parameterName];
+  }
+
+  const unfilteredParameters = event.detail?.unfilteredParameters;
+  if (unfilteredParameters && typeof unfilteredParameters === "object") {
+    delete unfilteredParameters[parameterName];
   }
 };
 
@@ -162,6 +252,14 @@ const handlePrimaryActionAfterRequest = (event) => {
   }
 
   const xhr = event.detail?.xhr;
+  if (role === "attend-btn" && recoverRegistrationAnswers(container, xhr, QUESTIONS_CONTINUE_ACTION_ATTEND)) {
+    restorePrimaryRequestControl(container, role);
+    return;
+  }
+  if (role === "attend-btn" && notifyAdmissionOfferRequired(xhr)) {
+    restorePrimaryRequestControl(container, role);
+    return;
+  }
   const ok = handleHtmxResponse({
     xhr,
     successMessage: "",
@@ -198,6 +296,30 @@ const handleCheckoutBeforeRequest = (target) => {
 };
 
 /**
+ * Blocks attend-button HTMX requests when click handling owns the action.
+ * @param {Event} event - htmx:beforeRequest event
+ * @param {HTMLElement} target - Event target
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} True when the request was blocked
+ */
+const blockInterceptedAttendRequest = (event, target, container) => {
+  if (!(target instanceof HTMLButtonElement) || target.dataset.attendanceRole !== "attend-btn") {
+    return false;
+  }
+
+  const meta = getAttendanceMeta(container);
+  if (isCompletingRegistrationQuestions(target) && !shouldCollectQuestionAnswers(container)) {
+    return false;
+  }
+  if (!meta.ticketModalRequired && !target.dataset.resumeUrl) {
+    return false;
+  }
+
+  event.preventDefault();
+  return true;
+};
+
+/**
  * Handles checkout form afterRequest state.
  * @param {Event} event - htmx:afterRequest event
  * @returns {void}
@@ -213,11 +335,27 @@ const handleCheckoutAfterRequest = (event) => {
     return;
   }
 
+  const selectedTicketType = container.querySelector('[data-attendance-role="ticket-type-option"]:checked');
+  const meta = getAttendanceMeta(container);
+  const actionMode = meta.attendeeApprovalRequired
+    ? "request"
+    : selectedTicketType?.dataset.ticketSoldOut === "true"
+      ? "waitlist"
+      : "checkout";
   const xhr = event.detail?.xhr;
+  if (recoverRegistrationAnswers(container, xhr, QUESTIONS_CONTINUE_ACTION_TICKET)) {
+    restoreCheckoutModalControls(container);
+    return;
+  }
+  if (notifyAdmissionOfferRequired(xhr)) {
+    restoreCheckoutModalControls(container);
+    closeTicketModal(container);
+    return;
+  }
   const ok = handleHtmxResponse({
     xhr,
     successMessage: "",
-    errorMessage: "Something went wrong starting checkout. Please try again later.",
+    errorMessage: CHECKOUT_ACTION_ERROR_MESSAGES[actionMode],
   });
 
   if (!ok) {
@@ -236,7 +374,11 @@ const handleCheckoutAfterRequest = (event) => {
     return;
   }
 
-  if (response?.status !== "pending-payment") {
+  if (response?.status === "waitlisted") {
+    showProfileAwareInfoAlert(target, "You have joined the waiting list for this ticket.");
+  } else if (response?.status === "pending-approval") {
+    showProfileAwareInfoAlert(target, "Your ticket request has been sent to the organizers.");
+  } else if (response?.status !== "pending-payment") {
     showProfileAwareInfoAlert(target, "You have successfully registered for this event.");
   }
 
@@ -291,7 +433,11 @@ export const handleBeforeRequest = (event) => {
     return;
   }
 
-  if (blockAttendRequestForQuestions(event, target, container)) {
+  if (blockInterceptedAttendRequest(event, target, container)) {
+    return;
+  }
+
+  if (blockAttendanceRequestForQuestions(event, target, container)) {
     return;
   }
 

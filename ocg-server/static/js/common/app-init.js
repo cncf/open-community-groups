@@ -1,8 +1,10 @@
 import { showInfoAlert } from "/static/js/common/alerts.js";
+import { localizeCurrencyElements } from "/static/js/common/currency.js";
 import {
   consumePendingDeploymentRefreshAlert,
   DEPLOYMENT_REFRESH_MESSAGE,
 } from "/static/js/common/deployment-version.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import {
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
@@ -15,6 +17,8 @@ import "/static/js/common/profile-completion-alert.js";
 registerHtmxNoEmptyValuesExtensions(window.htmx);
 // Wire document-level handlers for alerts, 404 swaps, and deployment checks.
 registerHtmxResponseHandlers(document);
+// Localize currency values on initial render and after HTMX swaps.
+initializeOnReadyAndHtmxLoad(localizeCurrencyElements);
 
 // Show the one-shot notice queued before a deployment-triggered reload.
 if (consumePendingDeploymentRefreshAlert()) {

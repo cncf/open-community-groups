@@ -1,9 +1,11 @@
+-- Tests returning public full event information by slug.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +22,8 @@ select plan(7);
 \set groupID '5e060000-0000-0000-0000-000000000009'
 \set sponsor1ID '5e060000-0000-0000-0000-00000000000a'
 \set sponsor2ID '5e060000-0000-0000-0000-00000000000b'
+\set ticketPrivatePriceWindowID '5e060000-0000-0000-0000-000000000012'
+\set ticketPrivateTypeID '5e060000-0000-0000-0000-000000000013'
 \set ticketPriceWindowID '5e060000-0000-0000-0000-00000000000c'
 \set ticketTypeID '5e060000-0000-0000-0000-00000000000d'
 \set user1ID '5e060000-0000-0000-0000-00000000000e'
@@ -135,7 +139,8 @@ insert into "group" (
     slug,
     active,
     created_at,
-    logo_url
+    logo_url,
+    slug_pretty
 ) values (
     :'groupID',
     :'communityID',
@@ -144,7 +149,8 @@ insert into "group" (
     'abc1234',
     true,
     '2025-02-11 10:00:00+00',
-    'https://example.com/group-logo.png'
+    'https://example.com/group-logo.png',
+    'test-group-pretty'
 );
 
 -- Event
@@ -339,6 +345,23 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Invitation-only ticket type excluded from the public slug contract
+insert into event_ticket_type (
+    event_ticket_type_id,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketPrivateTypeID',
+    'invitation_only',
+    :'eventPaidID',
+    2,
+    10,
+    'Sponsor admission'
+);
+
 -- Event ticket price window
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -348,6 +371,17 @@ insert into event_ticket_price_window (
     :'ticketPriceWindowID',
     2500,
     :'ticketTypeID'
+);
+
+-- Invitation-only ticket price excluded from the public slug contract
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'ticketPrivatePriceWindowID',
+    1000,
+    :'ticketPrivateTypeID'
 );
 
 -- Event Host
@@ -400,7 +434,7 @@ values
 -- Should return the same payload as get_event_full
 select is(
     get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+    get_public_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
     'Should return the same payload as get_event_full'
 );
 
@@ -417,7 +451,11 @@ select is(
         'abc1234',
         'canceled-tech-conference-2024'
     )::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventCanceledID'::uuid)::jsonb,
+    get_public_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventCanceledID'::uuid
+    )::jsonb,
     'Should return a canceled event when it remains published'
 );
 
@@ -433,22 +471,38 @@ select ok(
     'Should return null with deleted event slug'
 );
 
--- Should return the same paid-event payload as get_event_full
+-- Should return the public paid-event payload
 select is(
     get_event_full_by_slug(
         :'communityID'::uuid,
         'abc1234',
         'paid-tech-conference-2024'
     )::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
-    'Should return the same paid-event payload as get_event_full'
+    get_public_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventPaidID'::uuid
+    )::jsonb,
+    'Should return the public paid-event payload'
+);
+
+-- Should exclude invitation-only ticket types from public slug responses
+select is(
+    jsonb_array_length(
+        get_event_full_by_slug(
+            :'communityID'::uuid,
+            'abc1234',
+            'paid-tech-conference-2024'
+        )::jsonb->'ticket_types'
+    ),
+    1,
+    'Should exclude invitation-only ticket types from public slug responses'
 );
 
 -- Should resolve event by group pretty slug
-update "group" set slug_pretty = 'test-group-pretty' where group_id = :'groupID';
 select is(
     get_event_full_by_slug(:'communityID'::uuid, 'test-group-pretty', 'def5678')::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+get_public_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
     'Should resolve event by group pretty slug'
 );
 

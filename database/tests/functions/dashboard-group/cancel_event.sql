@@ -1,9 +1,11 @@
+-- Tests canceling events and closing enrollment.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -34,8 +36,11 @@ select plan(21);
 \set rejectedPaidUserID '3a060000-0000-0000-0000-000000000027'
 \set sessionMeetingID '3a060000-0000-0000-0000-000000000008'
 \set sessionNoMeetingID '3a060000-0000-0000-0000-000000000009'
+\set offerID '3a060000-0000-0000-0000-000000000028'
+\set offerUserID '3a060000-0000-0000-0000-000000000029'
 \set userID '3a060000-0000-0000-0000-000000000010'
 \set ticketTypeID '3a060000-0000-0000-0000-000000000016'
+\set waitlistUserID '3a060000-0000-0000-0000-00000000002a'
 
 -- ============================================================================
 -- SEED DATA
@@ -103,8 +108,15 @@ insert into "user" (user_id, auth_hash, email, username) values
     (:'freeUserID', 'free', 'free@test.local', 'free-user'),
     (:'invalidPaymentUserID', 'invalid', 'invalid@test.local', 'invalid-user'),
     (:'invitationUserID', 'invited', 'invited@test.local', 'invited-user'),
+    (:'offerUserID', 'offer', 'offer@test.local', 'offer-user'),
     (:'paidUserID', 'paid', 'paid@test.local', 'paid-user'),
-    (:'rejectedPaidUserID', 'rejected', 'rejected@test.local', 'rejected-user');
+    (:'rejectedPaidUserID', 'rejected', 'rejected@test.local', 'rejected-user'),
+    (
+        :'waitlistUserID',
+        'waitlist',
+        'waitlist@test.local',
+        'waitlist-user'
+    );
 
 -- Event (published, not canceled)
 insert into event (
@@ -126,7 +138,8 @@ insert into event (
     meeting_requested,
     published,
     published_at,
-    published_by
+    published_by,
+    waitlist_enabled
 ) values (
     :'eventID',
     :'groupID',
@@ -146,7 +159,8 @@ insert into event (
     true,
     true,
     now(),
-    :'userID'
+    :'userID',
+    true
 );
 
 -- Event without meeting_requested (to verify meeting_in_sync is not changed)
@@ -291,6 +305,38 @@ insert into event_refund_request (
     (:'freePurchaseID', :'freeRefundRequestID', :'freeUserID', 'pending'),
     (:'paidPurchaseID', :'paidRefundRequestID', :'paidUserID', 'pending'),
     (:'rejectedPaidPurchaseID', :'rejectedPaidRefundRequestID', :'rejectedPaidUserID', 'rejected');
+
+-- Active ticket offer canceled with the event
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'offerID',
+    :'eventID',
+    :'ticketTypeID',
+    current_timestamp + interval '1 hour',
+    :'userID',
+    'organizer_invitation',
+    'pending',
+    :'offerUserID'
+);
+
+-- Ticket-tier FIFO queue cleared with the event
+insert into event_waitlist (
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    :'eventID',
+    :'ticketTypeID',
+    :'waitlistUserID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -456,6 +502,7 @@ select results_eq(
             resource_type,
             resource_id
         from audit_log
+        where action = 'event_canceled'
     $$,
     format(
         $$
@@ -473,6 +520,29 @@ select results_eq(
         :'communityID', :'groupID', :'eventID', :'eventID'
     ),
     'Should create the expected audit row'
+);
+
+-- Should cancel active offers and clear queues with the event
+select results_eq(
+    format(
+        $$
+            select
+                (
+                    select status
+                    from admission_offer
+                    where admission_offer_id = %L::uuid
+                ),
+                (
+                    select count(*)
+                    from event_waitlist
+                    where event_id = %L::uuid
+                )
+        $$,
+        :'offerID',
+        :'eventID'
+    ),
+    $$ values ('canceled'::text, 0::bigint) $$,
+    'Should cancel active offers and clear queues with the event'
 );
 
 -- Should mark meeting_in_sync false when meeting was requested

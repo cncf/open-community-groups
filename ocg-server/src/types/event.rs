@@ -198,11 +198,6 @@ impl EventSummary {
         }
     }
 
-    /// Returns true when the event uses the ticketing flow.
-    pub fn is_ticketed(&self) -> bool {
-        has_ticket_types(self.ticket_types.as_deref())
-    }
-
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
@@ -248,6 +243,11 @@ impl EventSummary {
             self.starts_at,
             self.timezone,
         )
+    }
+
+    /// Returns the sole active public ticket type with a current price.
+    pub fn single_public_ticket_type(&self) -> Option<&EventTicketType> {
+        single_public_ticket_type(self.ticket_types.as_deref())
     }
 }
 
@@ -477,9 +477,36 @@ impl EventFull {
         )
     }
 
+    /// Returns true when every public ticket type currently has a zero price.
+    pub fn has_only_free_visible_ticket_types(&self) -> bool {
+        let ticket_types = self.visible_ticket_types();
+
+        !ticket_types.is_empty()
+            && ticket_types
+                .iter()
+                .all(|ticket_type| ticket_type.current_amount_minor() == Some(0))
+    }
+
     /// Returns true when attendees can currently select a ticket.
     pub fn has_sellable_ticket_types(&self) -> bool {
         has_sellable_ticket_types(self.ticket_types.as_deref())
+    }
+
+    /// Returns true when the event can use the plain RSVP experience.
+    pub fn has_single_free_public_ticket_type(&self) -> bool {
+        self.single_free_public_ticket_type().is_some()
+    }
+
+    /// Returns true when at least one public ticket type is sold out.
+    pub fn has_sold_out_visible_ticket_types(&self) -> bool {
+        self.visible_ticket_types()
+            .iter()
+            .any(|ticket_type| ticket_type.sold_out)
+    }
+
+    /// Returns true when the event page has at least one public ticket type.
+    pub fn has_visible_ticket_types(&self) -> bool {
+        !self.visible_ticket_types().is_empty()
     }
 
     /// Check if the event is currently live, including attendee access lead time.
@@ -495,6 +522,11 @@ impl EventFull {
         }
     }
 
+    /// Returns true when any configured ticket price can require payment.
+    pub fn is_paid_capable(&self) -> bool {
+        has_paid_capable_ticket_types(self.ticket_types.as_deref())
+    }
+
     /// Check if the event is in the past.
     pub fn is_past(&self) -> bool {
         let reference_time = self.ends_at.or(self.starts_at);
@@ -502,11 +534,6 @@ impl EventFull {
             Some(time) => time < Utc::now(),
             None => false,
         }
-    }
-
-    /// Returns true when the event uses the ticketing flow.
-    pub fn is_ticketed(&self) -> bool {
-        has_ticket_types(self.ticket_types.as_deref())
     }
 
     /// Build a display-friendly location string from available location data.
@@ -562,6 +589,11 @@ impl EventFull {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    /// Returns the sole active, public, free ticket type when the event is a simple RSVP.
+    pub fn single_free_public_ticket_type(&self) -> Option<&EventTicketType> {
+        single_free_public_ticket_type(self.ticket_types.as_deref())
     }
 
     /// Collect all unique speaker user IDs (event-level + session-level).
@@ -663,58 +695,36 @@ impl From<&EventFull> for EventSummary {
 
 // Other related types.
 
-/// Attendance details for a user's relationship to an event.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventAttendanceInfo {
-    /// Whether the user has checked in.
-    pub is_checked_in: bool,
-    /// Whether this attendance row comes from a manual organizer invitation.
-    #[serde(default)]
-    pub manually_invited: bool,
-    /// Current attendance status.
-    pub status: EventAttendanceStatus,
-
-    /// Purchase amount associated with the user and event.
-    pub purchase_amount_minor: Option<i64>,
-    /// Refund request state associated with the user purchase.
-    pub refund_request_status: Option<EventRefundRequestStatus>,
-    /// Provider URL for resuming a pending checkout.
-    pub resume_checkout_url: Option<String>,
+/// Origin of an event admission offer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum EventAdmissionOfferSource {
+    /// Offer created after an organizer approved an attendance request.
+    Approval,
+    /// Offer created directly by an organizer.
+    OrganizerInvitation,
+    /// Offer created after promotion from a ticket waiting list.
+    Waitlist,
 }
 
-impl EventAttendanceInfo {
-    /// Returns true when the attendee can submit a refund request.
-    pub fn can_request_refund(&self, starts_at: Option<DateTime<Utc>>) -> bool {
-        self.status == EventAttendanceStatus::Attendee
-            && self
-                .purchase_amount_minor
-                .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
-            && self.refund_request_status.is_none()
-            && starts_at.is_none_or(|starts_at| starts_at > Utc::now())
-    }
-}
-
-/// Attendance status for the current user on an event.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::EnumString)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum EventAttendanceStatus {
-    /// The user has no attendance relationship with the event.
-    None,
-    /// The user became a confirmed attendee.
-    Attendee,
-    /// The user's invitation request was approved and can be used to attend.
-    InvitationApproved,
-    /// The user requested an invitation and is waiting for review.
-    PendingApproval,
-    /// The user started checkout but has not completed payment yet.
-    PendingPayment,
-    /// The user's seat is reserved until registration questions are answered.
-    RegistrationQuestionsPending,
-    /// The user's invitation request was rejected.
-    Rejected,
-    /// The user joined the waiting list.
-    Waitlisted,
+/// Lifecycle status of an event admission offer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum EventAdmissionOfferStatus {
+    /// Offer was canceled by an organizer or event lifecycle transition.
+    Canceled,
+    /// Recipient started checkout against the offer.
+    CheckoutPending,
+    /// Recipient completed attendance enrollment through the offer.
+    Completed,
+    /// Recipient declined the offer.
+    Declined,
+    /// Offer deadline elapsed before completion.
+    Expired,
+    /// Offer is available for the recipient to claim.
+    Pending,
 }
 
 /// Event category information.
@@ -760,6 +770,81 @@ pub enum EventDeleteEligibility {
     RefundsPending,
 }
 
+/// Context returned after event enrollment reconciliation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EventEnrollmentReconciliationOutcome {
+    /// Community containing the reconciled event.
+    pub community_id: Uuid,
+    /// Reconciled event identifier.
+    pub event_id: Uuid,
+    /// Group containing the reconciled event.
+    pub group_id: Uuid,
+}
+
+/// Current enrollment state for a user's relationship to an event.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventEnrollmentState {
+    /// Whether the enrolled attendee has checked in.
+    pub is_checked_in: bool,
+    /// Current enrollment status.
+    pub status: EventEnrollmentStatus,
+
+    /// Active admission offer identifier.
+    #[serde(default)]
+    pub admission_offer_id: Option<Uuid>,
+    /// Ticket type assigned to the active admission offer.
+    #[serde(default)]
+    pub event_ticket_type_id: Option<Uuid>,
+    /// Whether the enrollment comes from a manual organizer invitation.
+    #[serde(default)]
+    pub manually_invited: bool,
+    /// Purchase amount associated with the user and event.
+    pub purchase_amount_minor: Option<i64>,
+    /// Attendee-visible reason for a rejected refund request.
+    pub refund_rejection_reason: Option<String>,
+    /// Refund request state associated with the user purchase.
+    pub refund_request_status: Option<EventRefundRequestStatus>,
+    /// Provider URL for resuming a pending checkout.
+    pub resume_checkout_url: Option<String>,
+}
+
+impl EventEnrollmentState {
+    /// Returns true when the attendee can submit a refund request.
+    pub fn can_request_refund(&self, starts_at: Option<DateTime<Utc>>) -> bool {
+        self.status == EventEnrollmentStatus::Attendee
+            && self
+                .purchase_amount_minor
+                .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
+            && self.refund_request_status.is_none()
+            && starts_at.is_none_or(|starts_at| starts_at > Utc::now())
+    }
+}
+
+/// Enrollment status for the current user on an event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::EnumString)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum EventEnrollmentStatus {
+    /// The user became a confirmed attendee.
+    Attendee,
+    /// The user's invitation request was approved and can be used to attend.
+    InvitationApproved,
+    /// The user has no enrollment relationship with the event.
+    None,
+    /// The user's ticket offer expired before it was claimed.
+    OfferExpired,
+    /// The user requested an invitation and is waiting for review.
+    PendingApproval,
+    /// The user started checkout but has not completed payment yet.
+    PendingPayment,
+    /// The user's seat is reserved until registration questions are answered.
+    RegistrationQuestionsPending,
+    /// The user's invitation request was rejected.
+    Rejected,
+    /// The user joined the waiting list.
+    Waitlisted,
+}
+
 /// Status of an event invitation request.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
@@ -803,9 +888,7 @@ pub struct EventKindSummary {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EventLeaveOutcome {
     /// The status the user left from.
-    pub left_status: EventAttendanceStatus,
-    /// Users promoted from the waiting list as part of the operation.
-    pub promoted_user_ids: Vec<Uuid>,
+    pub left_status: EventEnrollmentStatus,
 }
 
 /// Event sponsor information.
@@ -969,9 +1052,16 @@ fn has_sellable_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
         .is_some_and(|ticket_types| ticket_types.iter().any(EventTicketType::is_sellable_now))
 }
 
-/// Returns true when the event uses the ticketing flow.
-fn has_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
-    ticket_types.is_some_and(|ticket_types| !ticket_types.is_empty())
+/// Returns true when any configured ticket price can require payment.
+fn has_paid_capable_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
+    ticket_types.is_some_and(|ticket_types| {
+        ticket_types.iter().any(|ticket_type| {
+            ticket_type
+                .price_windows
+                .iter()
+                .any(|price_window| price_window.amount_minor > 0)
+        })
+    })
 }
 
 /// Returns true when a registration window has been configured.
@@ -1083,4 +1173,25 @@ fn registration_window_unavailable_title(
     }
 
     None
+}
+
+/// Returns the sole active public ticket type with a current price when one exists.
+fn single_public_ticket_type(ticket_types: Option<&[EventTicketType]>) -> Option<&EventTicketType> {
+    let mut public_ticket_types = ticket_types?.iter().filter(|ticket_type| {
+        ticket_type.active
+            && ticket_type.availability
+                == crate::types::payments::EventTicketTypeAvailability::Public
+            && ticket_type.current_amount_minor().is_some()
+    });
+    let ticket_type = public_ticket_types.next()?;
+
+    public_ticket_types.next().is_none().then_some(ticket_type)
+}
+
+/// Returns the sole active, public, free ticket type when one exists.
+fn single_free_public_ticket_type(
+    ticket_types: Option<&[EventTicketType]>,
+) -> Option<&EventTicketType> {
+    single_public_ticket_type(ticket_types)
+        .filter(|ticket_type| ticket_type.current_amount_minor() == Some(0))
 }

@@ -5,72 +5,12 @@ import {
   getAttendanceControl,
   getAttendanceMeta,
 } from "/static/js/event/attendance-dom.js";
-import {
-  closeQuestionsModal,
-  openQuestionsModal,
-  openTicketModal,
-} from "/static/js/event/attendance-view.js";
+import { closeTicketModal, openTicketModal } from "/static/js/event/attendance-ticket-view.js";
+import { closeQuestionsModal, openQuestionsModal } from "/static/js/event/attendance-view.js";
 import {
   QUESTIONS_CONTINUE_ACTION_ATTEND,
   QUESTIONS_CONTINUE_ACTION_TICKET,
 } from "/static/js/event/attendance/shared.js";
-
-/**
- * Returns true when the attendance container has unanswered event questions.
- * @param {HTMLElement} container - Attendance container element
- * @returns {boolean} Whether answers must be collected before continuing
- */
-export const shouldCollectQuestionAnswers = (container) =>
-  getAttendanceControl(container, "registration-modal") instanceof HTMLElement &&
-  !isDatasetReady(container, "questionAnswersReady");
-
-/**
- * Returns true when the primary attendance action will join the waitlist.
- * @param {object} meta - Attendance metadata
- * @returns {boolean} Whether the action is a waitlist join
- */
-export const isWaitlistJoinAction = (meta) =>
-  !meta.isTicketed && !meta.attendeeApprovalRequired && meta.isSoldOut && meta.waitlistEnabled;
-
-/**
- * Returns true when the attendee must complete promoted waitlist questions.
- * @param {HTMLElement|null} button - Primary attend button
- * @returns {boolean} Whether the button is completing pending questions
- */
-export const isCompletingRegistrationQuestions = (button) =>
-  button instanceof HTMLButtonElement && button.dataset.registrationQuestionsPending === "true";
-
-/**
- * Stores answer JSON in all hidden answer inputs in the attendance container.
- * @param {HTMLElement} container - Attendance container element
- * @param {object} answersPayload - Normalized answers payload
- * @returns {void}
- */
-const setQuestionAnswersPayload = (container, answersPayload) => {
-  const value = JSON.stringify(answersPayload);
-  container.querySelectorAll('[data-attendance-role$="registration-answers-input"]').forEach((input) => {
-    if (input instanceof HTMLInputElement) {
-      input.value = value;
-    }
-  });
-  markDatasetReady(container, "questionAnswersReady");
-};
-
-/**
- * Collects and validates event question answers.
- * @param {HTMLElement} container - Attendance container element
- * @returns {object|null} Answers payload, or null when invalid
- */
-const collectQuestionAnswers = (container) => {
-  const form = getAttendanceControl(container, "registration-form");
-  if (!(form instanceof HTMLFormElement)) {
-    return { answers: [] };
-  }
-
-  return collectQuestionAnswersFromForm(form, {
-    answerSelector: "[data-question-answer]",
-  });
-};
 
 /**
  * Opens questions before continuing with attendance or ticket checkout.
@@ -80,7 +20,68 @@ const collectQuestionAnswers = (container) => {
  */
 export const requestQuestionAnswers = (container, continueAction) => {
   container.dataset.questionsContinueAction = continueAction;
+  if (continueAction === QUESTIONS_CONTINUE_ACTION_TICKET) {
+    closeTicketModal(container);
+  }
   openQuestionsModal(container);
+};
+
+/**
+ * Blocks attend requests until required registration questions are answered.
+ * @param {Event} event - htmx:beforeRequest event
+ * @param {HTMLElement} target - Event target
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} True when the request was blocked
+ */
+export const blockAttendanceRequestForQuestions = (event, target, container) => {
+  const meta = getAttendanceMeta(container);
+  if (!shouldCollectQuestionAnswers(container)) {
+    return false;
+  }
+
+  if (target.dataset.attendanceRole === "attend-btn") {
+    if (
+      meta.ticketModalRequired ||
+      (isWaitlistJoinAction(meta) && !isCompletingRegistrationQuestions(target))
+    ) {
+      return false;
+    }
+
+    event.preventDefault();
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_ATTEND);
+    return true;
+  }
+
+  if (target.dataset.attendanceRole === "checkout-form") {
+    const selectedTicketType = target.querySelector('[data-attendance-role="ticket-type-option"]:checked');
+    const isRequest = meta.attendeeApprovalRequired;
+    const isWaitlist =
+      selectedTicketType instanceof HTMLInputElement && selectedTicketType.dataset.ticketSoldOut === "true";
+    if (!isRequest && isWaitlist) {
+      return false;
+    }
+
+    event.preventDefault();
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_TICKET);
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Dismisses registration questions and restores ticket selection when needed.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {void}
+ */
+export const dismissQuestionAnswers = (container) => {
+  const continueAction = container.dataset.questionsContinueAction;
+  delete container.dataset.questionsContinueAction;
+  closeQuestionsModal(container);
+
+  if (continueAction === QUESTIONS_CONTINUE_ACTION_TICKET) {
+    openTicketModal(container);
+  }
 };
 
 /**
@@ -112,7 +113,11 @@ export const handleAttendanceSubmit = (event) => {
   delete container.dataset.questionsContinueAction;
 
   if (continueAction === QUESTIONS_CONTINUE_ACTION_TICKET) {
-    openTicketModal(container);
+    const checkoutForm = getAttendanceControl(container, "checkout-form");
+    if (checkoutForm instanceof HTMLFormElement) {
+      openTicketModal(container);
+      checkoutForm.requestSubmit();
+    }
     return;
   }
 
@@ -125,26 +130,61 @@ export const handleAttendanceSubmit = (event) => {
 };
 
 /**
- * Blocks attend requests until required registration questions are answered.
- * @param {Event} event - htmx:beforeRequest event
- * @param {HTMLElement} target - Event target
- * @param {HTMLElement} container - Attendance container element
- * @returns {boolean} True when the request was blocked
+ * Returns true when the attendee must complete promoted waitlist questions.
+ * @param {HTMLElement|null} button - Primary attend button
+ * @returns {boolean} Whether the button is completing pending questions
  */
-export const blockAttendRequestForQuestions = (event, target, container) => {
-  const meta = getAttendanceMeta(container);
-  if (
-    target.dataset.attendanceRole !== "attend-btn" ||
-    (isWaitlistJoinAction(meta) && !isCompletingRegistrationQuestions(target)) ||
-    !shouldCollectQuestionAnswers(container)
-  ) {
-    return false;
+export const isCompletingRegistrationQuestions = (button) =>
+  button instanceof HTMLButtonElement && button.dataset.registrationQuestionsPending === "true";
+
+/**
+ * Returns true when the primary attendance action will join the waitlist.
+ * @param {object} meta - Attendance metadata
+ * @returns {boolean} Whether the action is a waitlist join
+ */
+export const isWaitlistJoinAction = (meta) =>
+  !meta.attendeeApprovalRequired &&
+  meta.waitlistEnabled &&
+  !meta.ticketPurchaseAvailable &&
+  meta.hasSoldOutTicketTypes;
+
+/**
+ * Returns true when the attendance container has unanswered event questions.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} Whether answers must be collected before continuing
+ */
+export const shouldCollectQuestionAnswers = (container) =>
+  getAttendanceControl(container, "registration-modal") instanceof HTMLElement &&
+  !isDatasetReady(container, "questionAnswersReady");
+
+/**
+ * Collects and validates event question answers.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {object|null} Answers payload, or null when invalid
+ */
+const collectQuestionAnswers = (container) => {
+  const form = getAttendanceControl(container, "registration-form");
+  if (!(form instanceof HTMLFormElement)) {
+    return { answers: [] };
   }
 
-  event.preventDefault();
-  const continueAction = meta.isTicketed
-    ? QUESTIONS_CONTINUE_ACTION_TICKET
-    : QUESTIONS_CONTINUE_ACTION_ATTEND;
-  requestQuestionAnswers(container, continueAction);
-  return true;
+  return collectQuestionAnswersFromForm(form, {
+    answerSelector: "[data-question-answer]",
+  });
+};
+
+/**
+ * Stores answer JSON in all hidden answer inputs in the attendance container.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {object} answersPayload - Normalized answers payload
+ * @returns {void}
+ */
+const setQuestionAnswersPayload = (container, answersPayload) => {
+  const value = JSON.stringify(answersPayload);
+  container.querySelectorAll('[data-attendance-role$="registration-answers-input"]').forEach((input) => {
+    if (input instanceof HTMLInputElement) {
+      input.value = value;
+    }
+  });
+  markDatasetReady(container, "questionAnswersReady");
 };

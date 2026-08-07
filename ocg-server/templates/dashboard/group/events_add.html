@@ -49,7 +49,7 @@
               class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
               hx-ext="no-empty-vals-keep-zero"
-              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form {% if payments_ready %}, #payments-form{% endif %}"
+              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form, #payments-form"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
@@ -66,10 +66,8 @@
         {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
         {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
+        {{ event_form::tab_option(section = "payments", label = "Tickets") -}}
         {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_option(section = "payments", label = "Payments") -}}
-        {% endif -%}
         {{ event_form::tab_option(section = "questions", label = "Questions") -}}
         {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
       </select>
@@ -77,10 +75,8 @@
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
         {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
+        {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Tickets") -}}
         {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Payments") -}}
-        {% endif -%}
         {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
         {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
       </ul>
@@ -226,52 +222,30 @@
               {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
-                {# Capacity -#}
-                <div class="col-span-full lg:col-span-4">
-                  <label for="capacity" class="form-label">
-                    Capacity
-                    {%- if meetings_enabled %}
-                      <span class="asterisk">* <sup class="text-xs font-normal">(required when requesting automatic meeting creation)</sup></span>
-                    {%- endif -%}
-                  </label>
-                  <div class="mt-2">
-                    <input type="number"
-                           name="capacity"
-                           id="capacity"
-                           min="1"
-                           class="input-primary"
-                           placeholder="100">
-                  </div>
-                  <p class="form-legend">
-                    Maximum number of attendees.
-                    <br />
-                    When ticketing is configured, total capacity is derived from ticket seat counts and
-                    this field is filled automatically and disabled.
-                    {%- if meetings_enabled %}
-                      <br />
-                      Note: Meeting providers have participant limits. If capacity exceeds your provider
-                      limit, attendees may be unable to join the meeting.
-                    {%- endif -%}
-                  </p>
-                </div>
-                {# End Capacity -#}
-
-                {# Test event -#}
+                {# Waitlist enabled -#}
                 <div class="col-span-full lg:col-span-3">
-                  <label class="inline-flex items-center cursor-pointer">
-                    <input id="toggle_test_event"
-                           name="toggle_test_event"
+                  <label data-enrollment-toggle-label="waitlist"
+                         class="inline-flex items-center cursor-pointer transition-opacity">
+                    <input id="toggle_waitlist_enabled"
+                           name="toggle_waitlist_enabled"
                            value="enabled"
                            type="checkbox"
                            class="sr-only peer">
-                    <input type="hidden" id="test_event" name="test_event" value="false">
-                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+                    <input type="hidden"
+                           id="waitlist_enabled"
+                           name="waitlist_enabled"
+                           value="false">
+                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
                     </div>
-                    <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
+                    <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
                   </label>
-                  <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
+                  <p class="form-legend">
+                    Allow full events, including paid ticket events, to add people to a waiting list
+                    instead of rejecting them. Capacity is the total of ticket seats. Invitation approval and the
+                    waitlist cannot be enabled together.
+                  </p>
                 </div>
-                {# End Test event -#}
+                {# End Waitlist enabled -#}
 
                 {# Attendee approval required -#}
                 <div class="col-span-full lg:col-span-3">
@@ -291,38 +265,29 @@
                     <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
                   </label>
                   <p class="form-legend">
-                    Let people request an invitation for organizer review. This cannot be combined with
-                    waitlist or paid tickets.
+                    Let people request organizer approval before attending or claiming a ticket. Paid
+                    ticket events can use invitation approval. Invitation approval and the waitlist
+                    cannot be enabled together.
                   </p>
                 </div>
                 {# End Attendee approval required -#}
 
-                {# Waitlist enabled -#}
+                {# Test event -#}
                 <div class="col-span-full lg:col-span-3">
-                  <label data-enrollment-toggle-label="waitlist"
-                         class="inline-flex items-center cursor-pointer transition-opacity">
-                    <input id="toggle_waitlist_enabled"
-                           name="toggle_waitlist_enabled"
+                  <label class="inline-flex items-center cursor-pointer">
+                    <input id="toggle_test_event"
+                           name="toggle_test_event"
                            value="enabled"
                            type="checkbox"
                            class="sr-only peer">
-                    <input type="hidden"
-                           id="waitlist_enabled"
-                           name="waitlist_enabled"
-                           value="false">
-                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+                    <input type="hidden" id="test_event" name="test_event" value="false">
+                    <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
                     </div>
-                    <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
+                    <span class="ms-3 text-sm font-medium text-stone-900">Test Event</span>
                   </label>
-                  <p class="form-legend">
-                    Allow full events to add people to a waiting list instead of rejecting them.
-                    Set a capacity first to enable waitlist safely.
-                    {% if payments_enabled -%}
-                      Paid events disable waitlist automatically.
-                    {% endif -%}
-                  </p>
+                  <p class="form-legend">Exclude this event from discovery, stats, and broadcast notifications.</p>
                 </div>
-                {# End Waitlist enabled -#}
+                {# End Test event -#}
 
                 <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-2">
                   {# Meetup URL -#}
@@ -727,19 +692,19 @@
     </div>
     {# End Sessions Tab -#}
 
-    {% if payments_ready -%}
-      {# Payments Tab -#}
-      <div data-content="payments" class="hidden">
-        <form id="payments-form">
-          <div class="space-y-12">
+    {# Tickets Tab -#}
+    <div data-content="payments" class="hidden">
+      <form id="payments-form">
+        <div class="space-y-12">
+          {% if payments_ready -%}
             <div>
-              {{ dashboard::form_title(title = "Payments", description = "Configure event currency, ticket tiers, and optional discount codes.") -}}
+              {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
                 <div class="col-span-full lg:col-span-3">
                   <label for="payment_currency_code" class="form-label">
                     Event Currency
-                    <span class="asterisk">* <sup class="text-xs font-normal">(required for ticketed events)</sup></span>
+                    <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
                   </label>
                   <div class="mt-2">
                     <select id="payment_currency_code"
@@ -751,31 +716,37 @@
                       {% endfor -%}
                     </select>
                   </div>
-                  <p class="form-legend">Single currency used for all ticket prices on this event.</p>
+                  <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
                 </div>
               </div>
             </div>
+          {% endif -%}
 
-            <div class="border-t border-stone-900/10 pt-12">
-              <div>
-                <div class="flex items-center justify-between gap-3">
-                  <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
-                  <button id="add-ticket-type-button"
-                          type="button"
-                          class="btn-primary-outline btn-mini whitespace-nowrap"
-                          aria-label="Add ticket type">Add ticket type</button>
-                </div>
-                <p class="mt-1 text-sm/6 text-stone-500">
-                  Use one ticket type per tier, add price windows for early-bird or late pricing, and
-                  set the ticket amount to 0 to make a specific tier free.
-                </p>
+          <div>
+            <div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+                <button id="add-ticket-type-button"
+                        type="button"
+                        class="btn-primary-outline btn-mini whitespace-nowrap"
+                        aria-label="Add ticket type">Add ticket type</button>
               </div>
-              <div class="mt-10">
-                <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="false" ticket-types="[]"></ticket-types-editor>
-              </div>
+              <p class="mt-1 text-sm/6 text-stone-500">
+                Use one ticket type per tier and add price windows for scheduled pricing.
+                {% if payments_ready -%}
+                  Set the ticket amount to 0 to make a specific tier free.
+                {% else -%}
+                  Ticket prices are fixed at 0 until payments are configured.
+                {% endif -%}
+              </p>
             </div>
+            <div class="mt-10">
+              <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="false" {% if !payments_ready %}free-only{% endif %} ticket-types='[{"active":true,"availability":"public","order":1,"price_windows":[{"amount_minor":0}],"seats_total":500,"title":"General Admission"}]'></ticket-types-editor>
+            </div>
+          </div>
 
-            <div class="border-t border-stone-900/10 pt-12 pb-12">
+          {% if payments_ready -%}
+            <div class="pb-12">
               <div>
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
@@ -793,18 +764,18 @@
                 <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="false" discount-codes="[]"></discount-codes-editor>
               </div>
             </div>
-          </div>
-        </form>
-      </div>
-      {# End Payments Tab -#}
-    {% endif -%}
+          {% endif -%}
+        </div>
+      </form>
+    </div>
+    {# End Tickets Tab -#}
 
     {# Hosts & Speakers Tab -#}
     <div data-content="hosts-sponsors" class="hidden">
       <form id="hosts-sponsors-form">
         <div class="space-y-12">
           {# Hosts Section -#}
-          <div class="border-b border-stone-900/10 pb-12">
+          <div>
             <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
             <div class="mt-5">
               <user-search-selector id="event-hosts-selector" field-name="hosts" dashboard-type="group" display-mode="table" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
@@ -813,7 +784,7 @@
           {# End Hosts Section -#}
 
           {# Speakers Section -#}
-          <div class="border-b border-stone-900/10 pb-12">
+          <div>
             <speakers-selector id="event-speakers-selector" dashboard-type="group" display-mode="table" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
             <div class="mt-8 border-t border-stone-200 pt-8">
               <h3 class="form-label m-0">Session-level speakers</h3>

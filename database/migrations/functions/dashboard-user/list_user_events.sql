@@ -1,4 +1,4 @@
--- Returns paginated upcoming events where the user participates.
+-- Returns paginated upcoming events where the user participates or has actionable admission state.
 create or replace function list_user_events(p_user_id uuid, p_filters jsonb)
 returns json as $$
     with
@@ -18,30 +18,68 @@ returns json as $$
             and g.active = true
             and g.deleted = false
         ),
+        -- Select the latest refund review attached to each user event purchase.
+        latest_refund_request as (
+            select distinct on (ep.event_id)
+                ep.event_id,
+                case
+                    when err.status = 'rejected' then nullif(btrim(err.review_note), '')
+                end as refund_rejection_reason,
+                err.status as refund_request_status
+            from event_purchase ep
+            join event_refund_request err using (event_purchase_id)
+            where ep.user_id = p_user_id
+            order by
+                ep.event_id,
+                err.created_at desc,
+                err.event_refund_request_id desc
+        ),
         -- Collect user participation roles.
         role_rows as (
             -- Attendee
             select
+                pending_purchase.admission_offer_id,
+                pending_purchase.admission_offer_source,
+                pending_purchase.admission_offer_status,
+                pending_purchase.amount_minor,
+                pending_purchase.currency_code,
                 case
                     when ea.status = 'registration-questions-pending'
                         and pending_purchase.event_purchase_id is not null then 'pending-payment'
                     when ea.status = 'registration-questions-pending' then 'registration-questions-pending'
                     else 'attendee'
-                end as attendance_status,
+                end as enrollment_status,
                 ea.event_id,
+                pending_purchase.event_ticket_type_id,
                 ea.manually_invited,
+                pending_purchase.offer_expires_at,
                 ea.registration_answers,
-                'attendee'::text as role,
                 case
                     when ea.status = 'registration-questions-pending' then pending_purchase.provider_checkout_url
                     else null
-                end as resume_checkout_url
+                end as resume_checkout_url,
+                case
+                    when pending_purchase.admission_offer_id is not null then 'offer'
+                    when ea.status = 'registration-questions-pending'
+                        and pending_purchase.event_purchase_id is not null then null
+                    else 'attendee'
+                end as role,
+                pending_purchase.ticket_title
             from event_attendee ea
             left join lateral (
                 select
+                    ao.admission_offer_id,
+                    ao.source as admission_offer_source,
+                    ao.status as admission_offer_status,
+                    ep.amount_minor,
+                    ep.currency_code,
                     ep.event_purchase_id,
-                    ep.provider_checkout_url
+                    ep.event_ticket_type_id,
+                    ao.expires_at as offer_expires_at,
+                    ep.provider_checkout_url,
+                    ep.ticket_title
                 from event_purchase ep
+                left join admission_offer ao using (admission_offer_id)
                 where ep.event_id = ea.event_id
                 and ep.user_id = ea.user_id
                 and ep.status = 'pending'
@@ -51,17 +89,124 @@ returns json as $$
             ) pending_purchase on true
             where ea.user_id = p_user_id
             and ea.status in ('confirmed', 'registration-questions-pending')
+            and not (
+                ea.status = 'registration-questions-pending'
+                and ea.manually_invited = false
+                and pending_purchase.event_purchase_id is null
+                and exists (
+                    select 1
+                    from event_purchase expired_purchase
+                    where expired_purchase.event_id = ea.event_id
+                    and expired_purchase.user_id = ea.user_id
+                    and expired_purchase.status = 'pending'
+                    and expired_purchase.hold_expires_at <= current_timestamp
+                )
+            )
+
+            union all
+
+            -- Active direct checkout
+            select
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                ep.amount_minor,
+                ep.currency_code,
+                'pending-payment'::text as enrollment_status,
+                ep.event_id,
+                ep.event_ticket_type_id,
+                false as manually_invited,
+                null::timestamptz as offer_expires_at,
+                null::jsonb as registration_answers,
+                ep.provider_checkout_url as resume_checkout_url,
+                null::text as role,
+                ep.ticket_title
+            from event_purchase ep
+            where ep.user_id = p_user_id
+            and ep.admission_offer_id is null
+            and ep.status = 'pending'
+            and ep.hold_expires_at > current_timestamp
+
+            union all
+
+            -- Active admission offer
+            select
+                ao.admission_offer_id,
+                ao.source as admission_offer_source,
+                ao.status as admission_offer_status,
+                coalesce(ao.amount_minor, current_price.amount_minor) as amount_minor,
+                case
+                    when coalesce(ao.amount_minor, current_price.amount_minor) > 0
+                         or coalesce(ao.discount_amount_minor, 0) > 0
+                        then coalesce(ao.currency_code, e.payment_currency_code)
+                end as currency_code,
+                'invitation-approved' as enrollment_status,
+                ao.event_id,
+                ao.event_ticket_type_id,
+                ao.source = 'organizer_invitation' as manually_invited,
+                ao.expires_at as offer_expires_at,
+                ea.registration_answers,
+                pending_purchase.provider_checkout_url as resume_checkout_url,
+                'offer'::text as role,
+                coalesce(ao.ticket_title, ett.title) as ticket_title
+            from admission_offer ao
+            join event e using (event_id)
+            left join event_attendee ea
+                on ea.event_id = ao.event_id
+                and ea.user_id = ao.user_id
+            join event_ticket_type ett using (event_ticket_type_id)
+            left join lateral (
+                select etpw.amount_minor
+                from event_ticket_price_window etpw
+                where etpw.event_ticket_type_id = ao.event_ticket_type_id
+                and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
+                and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
+                order by
+                    etpw.starts_at desc nulls last,
+                    etpw.event_ticket_price_window_id
+                limit 1
+            ) current_price on true
+            left join lateral (
+                select ep.provider_checkout_url
+                from event_purchase ep
+                where ep.admission_offer_id = ao.admission_offer_id
+                and ep.status = 'pending'
+                and ep.hold_expires_at > current_timestamp
+                order by ep.created_at desc, ep.event_purchase_id desc
+                limit 1
+            ) pending_purchase on true
+            where ao.user_id = p_user_id
+            and ao.status in ('checkout_pending', 'pending')
+            and ao.expires_at > current_timestamp
+            and not exists (
+                select 1
+                from event_purchase ep
+                where ep.admission_offer_id = ao.admission_offer_id
+                and ep.status in (
+                    'refund-pending',
+                    'refund-recovery-pending',
+                    'refund-requested'
+                )
+            )
 
             union all
 
             -- Host
             select
-                null::text as attendance_status,
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                null::bigint as amount_minor,
+                null::text as currency_code,
+                null::text as enrollment_status,
                 eh.event_id,
+                null::uuid as event_ticket_type_id,
                 false as manually_invited,
+                null::timestamptz as offer_expires_at,
                 null::jsonb as registration_answers,
+                null::text as resume_checkout_url,
                 'host'::text as role,
-                null::text as resume_checkout_url
+                null::text as ticket_title
             from event_host eh
             where eh.user_id = p_user_id
 
@@ -69,12 +214,20 @@ returns json as $$
 
             -- Event speaker
             select
-                null::text as attendance_status,
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                null::bigint as amount_minor,
+                null::text as currency_code,
+                null::text as enrollment_status,
                 es.event_id,
+                null::uuid as event_ticket_type_id,
                 false as manually_invited,
+                null::timestamptz as offer_expires_at,
                 null::jsonb as registration_answers,
+                null::text as resume_checkout_url,
                 'speaker'::text as role,
-                null::text as resume_checkout_url
+                null::text as ticket_title
             from event_speaker es
             where es.user_id = p_user_id
 
@@ -82,12 +235,20 @@ returns json as $$
 
             -- Session speaker
             select
-                null::text as attendance_status,
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                null::bigint as amount_minor,
+                null::text as currency_code,
+                null::text as enrollment_status,
                 s.event_id,
+                null::uuid as event_ticket_type_id,
                 false as manually_invited,
+                null::timestamptz as offer_expires_at,
                 null::jsonb as registration_answers,
+                null::text as resume_checkout_url,
                 'speaker'::text as role,
-                null::text as resume_checkout_url
+                null::text as ticket_title
             from session_speaker ss
             join session s using (session_id)
             where ss.user_id = p_user_id
@@ -95,16 +256,33 @@ returns json as $$
         -- Aggregate roles per event.
         event_rows as (
             select
-                max(rr.attendance_status) as attendance_status,
+                (array_agg(rr.admission_offer_id) filter (
+                    where rr.admission_offer_id is not null
+                ))[1] as admission_offer_id,
+                max(rr.admission_offer_source) as admission_offer_source,
+                max(rr.admission_offer_status) as admission_offer_status,
+                max(rr.amount_minor) as amount_minor,
                 ve.community_id,
+                max(rr.currency_code) as currency_code,
+                max(rr.enrollment_status) as enrollment_status,
                 ve.event_id,
+                (array_agg(rr.event_ticket_type_id) filter (
+                    where rr.event_ticket_type_id is not null
+                ))[1] as event_ticket_type_id,
                 ve.group_id,
                 bool_or(rr.manually_invited) as manually_invited,
+                max(rr.offer_expires_at) as offer_expires_at,
                 (max(rr.registration_answers::text) filter (where rr.registration_answers is not null))::jsonb
                     as registration_answers,
                 max(rr.resume_checkout_url) as resume_checkout_url,
-                array_agg(distinct rr.role order by rr.role asc) as roles,
-                ve.starts_at
+                coalesce(
+                    array_agg(distinct rr.role order by rr.role asc) filter (
+                        where rr.role is not null
+                    ),
+                    '{}'::text[]
+                ) as roles,
+                ve.starts_at,
+                max(rr.ticket_title) as ticket_title
             from visible_events ve
             join role_rows rr using (event_id)
             group by ve.community_id, ve.event_id, ve.group_id, ve.starts_at
@@ -112,16 +290,27 @@ returns json as $$
         -- Select the requested page.
         event_rows_page as (
             select
-                er.attendance_status,
+                er.admission_offer_id,
+                er.admission_offer_source,
+                er.admission_offer_status,
+                er.amount_minor,
                 er.community_id,
+                er.currency_code,
+                er.enrollment_status,
                 er.event_id,
+                er.event_ticket_type_id,
                 er.group_id,
                 er.manually_invited,
+                er.offer_expires_at,
                 er.registration_answers,
+                lrr.refund_rejection_reason,
+                lrr.refund_request_status,
                 er.resume_checkout_url,
                 er.roles,
-                er.starts_at
+                er.starts_at,
+                er.ticket_title
             from event_rows er
+            left join latest_refund_request lrr using (event_id)
             order by er.starts_at asc, er.event_id asc
             offset (p_filters->>'offset')::int
             limit (p_filters->>'limit')::int
@@ -140,6 +329,8 @@ returns json as $$
                                 erp.group_id,
                                 erp.event_id
                             ),
+                            'enrollment_status',
+                            erp.enrollment_status,
                             'has_paid_purchase',
                             exists (
                                 select 1
@@ -149,17 +340,37 @@ returns json as $$
                                 and ep.status in ('completed', 'refund-requested')
                                 and ep.amount_minor > 0
                             ),
-                            'registration_questions',
-                            rq.registration_questions,
-                            'roles',
-                            erp.roles,
-                            'attendance_status',
-                            erp.attendance_status,
                             'registration_answers',
                             erp.registration_answers,
+                            'registration_questions',
+                            rq.registration_questions,
                             'resume_checkout_url',
-                            erp.resume_checkout_url
+                            erp.resume_checkout_url,
+                            'roles',
+                            erp.roles
                         )
+                        || jsonb_strip_nulls(jsonb_build_object(
+                            'admission_offer_id',
+                            erp.admission_offer_id,
+                            'admission_offer_source',
+                            erp.admission_offer_source,
+                            'admission_offer_status',
+                            erp.admission_offer_status,
+                            'amount_minor',
+                            erp.amount_minor,
+                            'currency_code',
+                            erp.currency_code,
+                            'event_ticket_type_id',
+                            erp.event_ticket_type_id,
+                            'offer_expires_at',
+                            extract(epoch from erp.offer_expires_at)::bigint,
+                            'refund_rejection_reason',
+                            erp.refund_rejection_reason,
+                            'refund_request_status',
+                            erp.refund_request_status,
+                            'ticket_title',
+                            erp.ticket_title
+                        ))
                         || case
                             when erp.manually_invited then jsonb_build_object('manually_invited', true)
                             else '{}'::jsonb

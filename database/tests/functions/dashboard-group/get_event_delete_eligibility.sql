@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -37,6 +37,8 @@ select plan(19);
 \set invitationDraftEventID 'd3010000-0000-0000-0000-000000000015'
 \set missingEventID 'd3010000-0000-0000-0000-000000000016'
 \set otherGroupID 'd3010000-0000-0000-0000-000000000017'
+\set offerDraftEventID 'd3010000-0000-0000-0000-000000000043'
+\set offerID 'd3010000-0000-0000-0000-000000000044'
 \set pastEventID 'd3010000-0000-0000-0000-000000000018'
 \set pendingEventID 'd3010000-0000-0000-0000-000000000019'
 \set pendingPurchaseID 'd3010000-0000-0000-0000-000000000020'
@@ -119,6 +121,7 @@ insert into event (
     ('Durable refund', :'eventCategoryID', :'durableEventID', 'virtual', :'groupID', 'Durable Refund', true, 'durable-refund', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
     ('Expired checkout', :'eventCategoryID', :'expiredPendingEventID', 'virtual', :'groupID', 'Expired Checkout', true, 'expired-checkout', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
     ('Invitation draft', :'eventCategoryID', :'invitationDraftEventID', 'virtual', :'groupID', 'Invitation Draft', false, 'invitation-draft', null, 'UTC', false, null),
+    ('Offer draft', :'eventCategoryID', :'offerDraftEventID', 'virtual', :'groupID', 'Offer Draft', false, 'offer-draft', null, 'UTC', false, null),
     ('Past', :'eventCategoryID', :'pastEventID', 'virtual', :'groupID', 'Past', true, 'past', now() - interval '2 hours', 'UTC', false, now() - interval '1 hour'),
     ('Pending purchase', :'eventCategoryID', :'pendingEventID', 'virtual', :'groupID', 'Pending Purchase', true, 'pending-purchase', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
     ('Provider checkout', :'eventCategoryID', :'providerPendingEventID', 'virtual', :'groupID', 'Provider Checkout', true, 'provider-checkout', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
@@ -149,17 +152,82 @@ insert into event (
     ('Finalized refund', :'eventCategoryID', :'finalizedEventID', 'virtual', :'groupID', 'Finalized Refund', true, 'finalized-refund', now() + interval '1 day', 'UTC', true, false, null, now() + interval '1 day 1 hour', current_timestamp),
     ('Historical draft', :'eventCategoryID', :'historicalDraftEventID', 'virtual', :'groupID', 'Historical Draft', false, 'historical-draft', null, 'UTC', false, false, null, null, current_timestamp);
 
+-- Every event uses a free tier with stable identifiers for purchase fixtures
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    case e.event_id
+        when :'durableEventID'::uuid then :'durableTicketTypeID'::uuid
+        when :'expiredPendingEventID'::uuid then :'expiredPendingTicketTypeID'::uuid
+        when :'finalizedEventID'::uuid then :'finalizedTicketTypeID'::uuid
+        when :'pendingEventID'::uuid then :'pendingTicketTypeID'::uuid
+        when :'providerPendingEventID'::uuid then :'providerPendingTicketTypeID'::uuid
+        when :'purchaseDraftEventID'::uuid then :'purchaseDraftTicketTypeID'::uuid
+        when :'recoveredEventID'::uuid then :'recoveredTicketTypeID'::uuid
+        else gen_random_uuid()
+    end,
+    1,
+    100,
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
 -- Attendee that makes an unpublished draft ineligible for direct deletion
 insert into event_attendee (event_id, user_id)
 values (:'attendeeDraftEventID', :'userID');
 
 -- Invitation request that makes an unpublished draft ineligible for direct deletion
-insert into event_invitation_request (event_id, user_id)
-values (:'invitationDraftEventID', :'userID');
+insert into event_invitation_request (event_id, event_ticket_type_id, user_id)
+values (
+    :'invitationDraftEventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'invitationDraftEventID' limit 1),
+    :'userID'
+);
+
+-- Active organizer offer that makes an unpublished draft ineligible for deletion
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'offerID',
+    0,
+    0,
+    :'offerDraftEventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'offerDraftEventID' limit 1),
+    current_timestamp + interval '1 hour',
+    :'actorID',
+    'organizer_invitation',
+    'pending',
+    'General Admission',
+    :'userID'
+);
 
 -- Waitlist entry that makes an unpublished draft ineligible for direct deletion
-insert into event_waitlist (event_id, user_id)
-values (:'waitlistDraftEventID', :'userID');
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'waitlistDraftEventID',
+    (select event_ticket_type_id from event_ticket_type where event_id = :'waitlistDraftEventID' limit 1),
+    :'userID'
+);
 
 -- Publication audit history that makes an unpublished draft ineligible for direct deletion
 insert into audit_log (
@@ -179,16 +247,6 @@ insert into audit_log (
     :'auditDraftEventID',
     'event'
 );
-
--- Ticket types required by the purchase eligibility fixtures
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title) values
-    (:'durableEventID', :'durableTicketTypeID', 1, 10, 'Durable'),
-    (:'expiredPendingEventID', :'expiredPendingTicketTypeID', 1, 10, 'Expired'),
-    (:'finalizedEventID', :'finalizedTicketTypeID', 1, 10, 'Finalized'),
-    (:'pendingEventID', :'pendingTicketTypeID', 1, 10, 'Pending'),
-    (:'providerPendingEventID', :'providerPendingTicketTypeID', 1, 10, 'Provider'),
-    (:'purchaseDraftEventID', :'purchaseDraftTicketTypeID', 1, 10, 'Draft'),
-    (:'recoveredEventID', :'recoveredTicketTypeID', 1, 10, 'Recovered');
 
 -- Purchases representing pending, historical, unresolved, and recovered work
 insert into event_purchase (
@@ -351,6 +409,13 @@ select is(
     'Should require cancellation for a draft with an invitation request'
 );
 
+-- Should require cancellation for a draft with an active admission offer
+select is(
+    get_event_delete_eligibility(:'groupID', :'offerDraftEventID'),
+    'cancel-first',
+    'Should require cancellation for a draft with an active admission offer'
+);
+
 -- Should require cancellation for an unpublished event with publication history
 select is(
     get_event_delete_eligibility(:'groupID', :'historicalDraftEventID'),
@@ -400,14 +465,14 @@ select is(
     'Should report a pending purchase'
 );
 
--- Should ignore a pending checkout after its hold expires
+-- Should allow a canceled event after its pending checkout hold expires
 select is(
     get_event_delete_eligibility(:'groupID', :'expiredPendingEventID'),
     'allowed',
     'Should allow a canceled event after its pending checkout hold expires'
 );
 
--- Should keep an attached provider checkout blocking after the local hold expires
+-- Should block deletion while an attached provider checkout can still complete
 select is(
     get_event_delete_eligibility(:'groupID', :'providerPendingEventID'),
     'refunds-pending',

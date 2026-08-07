@@ -1,9 +1,4 @@
-import {
-  confirmAction,
-  confirmSeriesAction,
-  handleHtmxResponse,
-  showConfirmAlert,
-} from "/static/js/common/alerts.js";
+import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
   getElementById,
   initializeMatchingRoots,
@@ -67,12 +62,10 @@ export const initializeEventUpdatePage = (root = document) => {
   const publishEventButton = getElementById(pageRoot, "publish-event-button");
   const locationSearchField = queryOne("location-search-field");
   const inertForm = queryOne(".inert-form");
-  const capacityInput = getElementById(pageRoot, "capacity");
   const approvedSubmissionsEvent = "event-approved-submissions-updated";
   const isCanceledEvent = readBooleanDataAttribute(pageRoot, "eventCanceled");
   const isPastEvent = readBooleanDataAttribute(pageRoot, "eventPast");
   const canManageEvents = readBooleanDataAttribute(pageRoot, "canManageEvents");
-  const initialWaitlistCount = Number.parseInt(updateEventButton?.dataset.waitlistCount || "0", 10);
 
   if (onlineEventDetails) {
     onlineEventDetails.eventPast = isPastEvent;
@@ -274,31 +267,6 @@ export const initializeEventUpdatePage = (root = document) => {
   initializeSessionsRemovalWarning({
     saveButton: updateEventButton,
   });
-
-  updateEventButton.addEventListener(
-    "click",
-    (event) => {
-      // Removing capacity can release the whole waitlist, so confirm first.
-      if (!capacityInput || initialWaitlistCount <= 0) {
-        return;
-      }
-
-      if (capacityInput.value.trim() !== "") {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      const queuedPeopleLabel = initialWaitlistCount === 1 ? "person is" : "people are";
-      showConfirmAlert(
-        `${initialWaitlistCount} ${queuedPeopleLabel} currently on the waitlist. Removing capacity will make this event unlimited and add them as attendees. Do you want to continue?`,
-        "update-event-button",
-        "Continue",
-      );
-    },
-    true,
-  );
 
   // Save handlers run in capture order: validate, normalize payload, then alert.
   attachEventSaveBeforeRequestValidation({

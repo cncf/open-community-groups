@@ -1,3 +1,5 @@
+-- Tests updating event dates and sessions.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -15,6 +17,7 @@ select plan(28);
 \set event8ID '3a3a0000-0000-0000-0000-000000000005'
 \set event9ID '3a3a0000-0000-0000-0000-000000000006'
 \set event14ID '3a3a0000-0000-0000-0000-000000000007'
+\set eventLiveSessionID '3a3a0000-0000-0000-0000-000000000015'
 \set eventShrinkBoundsID '3a3a0000-0000-0000-0000-000000000008'
 \set group1ID '3a3a0000-0000-0000-0000-000000000009'
 \set session3ID '3a3a0000-0000-0000-0000-000000000010'
@@ -190,7 +193,32 @@ insert into event (
     current_timestamp + interval '2 hours'
 );
 
--- Session already completed while the live event is still ongoing
+-- Live event dedicated to the completed-session override scenario
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at
+) values (
+    :'eventLiveSessionID',
+    :'group1ID',
+    'Live Event With Session',
+    'live-event-with-session',
+    'Live event with a completed session',
+    'UTC',
+    :'category1ID',
+    'in-person',
+    current_timestamp - interval '1 hour',
+    current_timestamp + interval '2 hours'
+);
+
+-- Completed session retained for the recording override scenario
 insert into session (
     session_id,
     event_id,
@@ -202,7 +230,7 @@ insert into session (
     meeting_requested
 ) values (
     :'session3ID',
-    :'event9ID',
+    :'eventLiveSessionID',
     'Completed Live Event Session',
     current_timestamp - interval '45 minutes',
     current_timestamp - interval '15 minutes',
@@ -254,6 +282,23 @@ insert into session (
     '2030-05-01 16:00:00+00',
     'virtual'
 );
+
+-- Every update fixture uses the unified ticket inventory
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+select gen_random_uuid(), e.event_id, 1, coalesce(e.capacity, 100), 'General Admission'
+from event e
+where e.group_id = :'group1ID';
+
+-- Current free prices for the unified ticket inventory
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+)
+select gen_random_uuid(), 0, ett.event_ticket_type_id
+from event_ticket_type ett
+join event e using (event_id)
+where e.group_id = :'group1ID';
 
 -- ============================================================================
 -- TESTS
@@ -516,7 +561,7 @@ select is(
     jsonb_build_object(
         'banner_mobile_url', 'https://example.com/banner-mobile.jpg',
         'banner_url', 'https://example.com/banner.jpg',
-        'capacity', 150,
+        'capacity', 100,
         'description', 'Updated description for past event',
         'description_short', 'Updated short description',
         'ends_at', '2020-01-02 12:30:00+00'::timestamptz,
@@ -694,27 +739,6 @@ select lives_ok(
     'Should succeed updating live event when starts_at is moved later (but still in past)'
 );
 
--- Recreate a completed session after the prior live-event updates removed it
-insert into session (
-    session_id,
-    event_id,
-    name,
-    starts_at,
-    ends_at,
-    session_kind_id,
-    meeting_provider_id,
-    meeting_requested
-) values (
-    :'session3ID',
-    :'event9ID',
-    'Completed Live Event Session',
-    (select starts_at from event where event_id = :'event9ID'),
-    current_timestamp - interval '5 minutes',
-    'virtual',
-    'zoom',
-    true
-);
-
 -- Should update session recording override when the live event has a completed session
 select lives_ok(
     format(
@@ -761,10 +785,10 @@ select lives_ok(
             )
         )$$,
         :'group1ID',
-        :'event9ID',
+        :'eventLiveSessionID',
         :'category1ID',
-        :'event9ID',
-        :'event9ID',
+        :'eventLiveSessionID',
+        :'eventLiveSessionID',
         :'session3ID',
         :'session3ID',
         :'session3ID'

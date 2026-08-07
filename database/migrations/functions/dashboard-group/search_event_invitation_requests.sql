@@ -47,9 +47,16 @@ returns json as $$
         -- Select invitation requests with internal search data
         base_invitation_requests as (
             select
+                ao.admission_offer_id,
+                ao.status as admission_offer_status,
                 extract(epoch from eir.created_at)::bigint as created_at,
                 eir.created_at as created_at_sort,
                 eir.status as invitation_request_status,
+                extract(epoch from ao.expires_at)::bigint as offer_expires_at,
+                ao.event_ticket_type_id as offered_event_ticket_type_id,
+                offered_ett.title as offered_ticket_title,
+                eir.event_ticket_type_id as requested_event_ticket_type_id,
+                requested_ett.title as requested_ticket_title,
                 u.user_id,
                 u.username,
 
@@ -70,6 +77,23 @@ returns json as $$
             from event_invitation_request eir
             join event e on e.event_id = eir.event_id
             join "user" u on u.user_id = eir.user_id
+            left join event_ticket_type requested_ett
+                on requested_ett.event_ticket_type_id = eir.event_ticket_type_id
+            left join lateral (
+                select
+                    admission_offer_id,
+                    event_ticket_type_id,
+                    expires_at,
+                    status
+                from admission_offer
+                where event_id = eir.event_id
+                and source = 'approval'
+                and user_id = eir.user_id
+                order by created_at desc, admission_offer_id desc
+                limit 1
+            ) ao on true
+            left join event_ticket_type offered_ett
+                on offered_ett.event_ticket_type_id = ao.event_ticket_type_id
             where e.group_id = p_group_id
             and eir.event_id = p_event_id
         ),
@@ -98,8 +122,15 @@ returns json as $$
         -- Apply pagination and project public invitation request fields
         invitation_requests as (
             select
+                admission_offer_id,
+                admission_offer_status,
                 created_at,
                 invitation_request_status,
+                offer_expires_at,
+                offered_event_ticket_type_id,
+                offered_ticket_title,
+                requested_event_ticket_type_id,
+                requested_ticket_title,
                 json_strip_nulls(json_build_object(
                     'user_id', user_id,
                     'username', username,
@@ -146,7 +177,23 @@ returns json as $$
         -- Render invitation requests as JSON
         invitation_requests_json as (
             select coalesce(
-                json_agg(row_to_json(invitation_requests)),
+                json_agg(
+                    json_build_object(
+                        'created_at', created_at,
+                        'invitation_request_status', invitation_request_status,
+                        'requested_event_ticket_type_id', requested_event_ticket_type_id,
+                        'requested_ticket_title', requested_ticket_title,
+                        'reviewed_at', reviewed_at,
+                        'user', "user"
+                    )::jsonb
+                    || jsonb_strip_nulls(jsonb_build_object(
+                        'admission_offer_id', admission_offer_id,
+                        'admission_offer_status', admission_offer_status,
+                        'offer_expires_at', offer_expires_at,
+                        'offered_event_ticket_type_id', offered_event_ticket_type_id,
+                        'offered_ticket_title', offered_ticket_title
+                    ))
+                ),
                 '[]'::json
             ) as invitation_requests
             from invitation_requests

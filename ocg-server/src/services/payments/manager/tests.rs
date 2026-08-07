@@ -95,110 +95,6 @@ async fn approve_refund_request_propagates_queue_failure() {
 }
 
 #[tokio::test]
-async fn complete_refund_recovery_composes_template_data_before_atomic_completion() {
-    // Setup authoritative recovery and event context
-    let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let event_purchase_refund_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let mut db = MockDB::new();
-    db.expect_get_event_purchase_refund_recovery_context()
-        .times(1)
-        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
-        .returning(move |_, _| {
-            Ok(EventPurchaseRefundRecoveryContext {
-                community_id,
-                event_id,
-                event_purchase_refund_id,
-                notification_required: true,
-            })
-        });
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |community, event| *community == community_id && *event == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(SiteSettings::default()));
-    db.expect_complete_event_purchase_refund_recovery()
-        .times(1)
-        .withf(
-            move |actor, group, refund, reference, note, template_data| {
-                *actor == actor_user_id
-                    && *group == group_id
-                    && *refund == event_purchase_refund_id
-                    && reference == "bank-transfer-123"
-                    && note == "Verified bank receipt"
-                    && template_data.as_ref().is_some_and(|data| {
-                        data.get("event")
-                            .and_then(|event| event.get("event_id"))
-                            .and_then(|event_id| event_id.as_str())
-                            .is_some_and(|value| value == event_id.to_string())
-                    })
-            },
-        )
-        .returning(|_, _, _, _, _, _| Ok(()));
-
-    // Complete recovery through the same typed composer used by the refund worker
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    manager
-        .complete_refund_recovery(&CompleteRefundRecoveryInput {
-            actor_user_id,
-            event_purchase_id,
-            group_id,
-            recovery_note: "Verified bank receipt".to_string(),
-            recovery_reference: "bank-transfer-123".to_string(),
-        })
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
-async fn complete_refund_recovery_skips_composition_after_local_finalization() {
-    // Setup a recovery whose attendee notification was already finalized
-    let actor_user_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let event_purchase_refund_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    db.expect_get_event_purchase_refund_recovery_context()
-        .times(1)
-        .returning(move |_, _| {
-            Ok(EventPurchaseRefundRecoveryContext {
-                community_id: Uuid::new_v4(),
-                event_id: Uuid::new_v4(),
-                event_purchase_refund_id,
-                notification_required: false,
-            })
-        });
-    db.expect_complete_event_purchase_refund_recovery()
-        .times(1)
-        .withf(move |actor, group, refund, _, _, template_data| {
-            *actor == actor_user_id
-                && *group == group_id
-                && *refund == event_purchase_refund_id
-                && template_data.is_none()
-        })
-        .returning(|_, _, _, _, _, _| Ok(()));
-
-    // Complete recovery without loading event or theme template context
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    manager
-        .complete_refund_recovery(&CompleteRefundRecoveryInput {
-            actor_user_id,
-            event_purchase_id,
-            group_id,
-            recovery_note: "Verified bank receipt".to_string(),
-            recovery_reference: "bank-transfer-123".to_string(),
-        })
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
 async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
     // Setup checkout identifiers and notification context
     let community_id = Uuid::new_v4();
@@ -244,6 +140,117 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
 
     manager
         .complete_free_checkout(community_id, event_id, event_purchase_id, user_id)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn complete_refund_recovery_composes_template_data_before_atomic_completion() {
+    // Setup authoritative recovery and event context
+    let actor_user_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_refund_recovery_context()
+        .times(1)
+        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
+        .returning(move |_, _| {
+            Ok(EventPurchaseRefundRecoveryContext {
+                community_id,
+                event_id,
+                event_purchase_refund_id,
+                notification_required: true,
+            })
+        });
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |community, event| *community == community_id && *event == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
+    db.expect_complete_event_purchase_refund_recovery()
+        .times(1)
+        .withf(move |input| {
+            input.actor_user_id == actor_user_id
+                && input.group_id == group_id
+                && input.event_purchase_refund_id == event_purchase_refund_id
+                && input.recovery_reference == "bank-transfer-123"
+                && input.recovery_note == "Verified bank receipt"
+                && input.notification_template_data.as_ref().is_some_and(|data| {
+                    data.get("event")
+                        .and_then(|event| event.get("event_id"))
+                        .and_then(|event_id| event_id.as_str())
+                        .is_some_and(|value| value == event_id.to_string())
+                })
+                && input.payment_provider == Some(PaymentProvider::Stripe)
+        })
+        .returning(|_| Ok(()));
+
+    // Setup the configured payment provider expectation
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+
+    // Complete recovery through the same typed composer used by the refund worker
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+    manager
+        .complete_refund_recovery(&CompleteRefundRecoveryInput {
+            actor_user_id,
+            event_purchase_id,
+            group_id,
+            recovery_note: "Verified bank receipt".to_string(),
+            recovery_reference: "bank-transfer-123".to_string(),
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn complete_refund_recovery_skips_composition_after_local_finalization() {
+    // Setup a recovery whose attendee notification was already finalized
+    let actor_user_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_refund_recovery_context()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(EventPurchaseRefundRecoveryContext {
+                community_id: Uuid::new_v4(),
+                event_id: Uuid::new_v4(),
+                event_purchase_refund_id,
+                notification_required: false,
+            })
+        });
+    db.expect_complete_event_purchase_refund_recovery()
+        .times(1)
+        .withf(move |input| {
+            input.actor_user_id == actor_user_id
+                && input.group_id == group_id
+                && input.event_purchase_refund_id == event_purchase_refund_id
+                && input.notification_template_data.is_none()
+                && input.payment_provider.is_none()
+        })
+        .returning(|_| Ok(()));
+
+    // Complete recovery without loading event or theme template context
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    manager
+        .complete_refund_recovery(&CompleteRefundRecoveryInput {
+            actor_user_id,
+            event_purchase_id,
+            group_id,
+            recovery_note: "Verified bank receipt".to_string(),
+            recovery_reference: "bank-transfer-123".to_string(),
+        })
         .await
         .unwrap();
 }
@@ -497,6 +504,71 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unc
 }
 
 #[tokio::test]
+async fn get_or_create_checkout_redirect_url_requires_paid_currency() {
+    // Setup a paid checkout without a currency snapshot
+    let mut prepared_checkout = sample_prepared_event_checkout(
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        None,
+        None,
+        GroupPaymentRecipient {
+            provider: PaymentProvider::Stripe,
+            recipient_id: "acct_test_123".to_string(),
+        },
+    );
+    prepared_checkout.purchase.currency_code = None;
+
+    // Attempt provider checkout creation with the incomplete paid contract
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(MockPaymentsProvider::new()),
+    );
+    let err = manager
+        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
+        .await
+        .expect_err("missing paid currency to fail");
+
+    // Check the paid-only requirement remains explicit
+    assert_eq!(err.to_string(), "paid checkout is missing currency_code");
+}
+
+#[tokio::test]
+async fn get_or_create_checkout_redirect_url_requires_paid_recipient() {
+    // Setup a paid checkout without a group recipient
+    let mut prepared_checkout = sample_prepared_event_checkout(
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        Uuid::new_v4(),
+        None,
+        None,
+        GroupPaymentRecipient {
+            provider: PaymentProvider::Stripe,
+            recipient_id: "acct_test_123".to_string(),
+        },
+    );
+    prepared_checkout.recipient = None;
+
+    // Attempt provider checkout creation with the incomplete paid contract
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(MockPaymentsProvider::new()),
+    );
+    let err = manager
+        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
+        .await
+        .expect_err("missing paid recipient to fail");
+
+    // Check the paid-only requirement remains explicit
+    assert_eq!(
+        err.to_string(),
+        "paid checkout is missing a payment recipient"
+    );
+}
+
+#[tokio::test]
 async fn get_or_create_checkout_redirect_url_reuses_existing_url_without_provider() {
     // Setup a checkout with an existing provider URL
     let existing_url = "https://example.test/checkout".to_string();
@@ -611,7 +683,7 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
             *actor == actor_user_id
                 && *group == group_id
                 && *purchase == event_purchase_id
-                && note.as_deref() == Some("Not eligible")
+                && note == "Not eligible"
         })
         .times(1)
         .returning(move |_, _, _, _| {
@@ -634,6 +706,12 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventRefundRejected)
                 && notification.recipients == vec![target_user_id]
+                && notification
+                    .template_data
+                    .as_ref()
+                    .and_then(|data| data.get("rejection_reason"))
+                    .and_then(serde_json::Value::as_str)
+                    == Some("Not eligible")
         })
         .times(1)
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -645,7 +723,7 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
             actor_user_id,
             event_purchase_id,
             group_id,
-            review_note: Some("Not eligible".to_string()),
+            review_note: "  Not eligible  ".to_string(),
         })
         .await
         .unwrap();
@@ -800,7 +878,7 @@ fn sample_event_purchase_summary(
 ) -> EventPurchaseSummary {
     EventPurchaseSummary {
         amount_minor: 2_500,
-        currency_code: "usd".to_string(),
+        currency_code: Some("usd".to_string()),
         event_purchase_id,
         event_ticket_type_id,
         ticket_title: "General admission".to_string(),
@@ -848,8 +926,8 @@ fn sample_prepared_event_checkout(
             provider_checkout_url,
             discount_code,
         ),
-        recipient,
         group_slug_pretty: None,
+        recipient: Some(recipient),
     }
 }
 

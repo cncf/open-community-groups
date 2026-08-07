@@ -2,20 +2,6 @@
 create or replace function list_event_ticket_types(p_event_id uuid)
 returns jsonb as $$
     with
-    -- Count attendees and open purchases per ticket type
-    ticket_usage as (
-        select
-            ep.event_ticket_type_id,
-            count(*)::int as purchase_count
-        from event_purchase ep
-        where ep.event_id = p_event_id
-        and ep.status in ('completed', 'pending', 'refund-requested')
-        and (
-            ep.status <> 'pending'
-            or ep.hold_expires_at > current_timestamp
-        )
-        group by ep.event_ticket_type_id
-    ),
     -- Select the current price window for each ticket type
     current_price as (
         select distinct on (ett.event_ticket_type_id)
@@ -43,6 +29,17 @@ returns jsonb as $$
             ett.event_ticket_type_id,
             etpw.starts_at desc nulls last,
             etpw.event_ticket_price_window_id asc
+    ),
+    -- Resolve allocated inventory through the canonical capacity helper
+    ticket_allocation as (
+        select
+            ett.event_ticket_type_id,
+            get_event_ticket_type_allocated_seat_count(
+                p_event_id,
+                ett.event_ticket_type_id
+            ) as allocated_seat_count
+        from event_ticket_type ett
+        where ett.event_id = p_event_id
     )
     -- Build the final normalized ticket type payload
     select nullif(
@@ -51,6 +48,7 @@ returns jsonb as $$
                 jsonb_strip_nulls(
                     jsonb_build_object(
                         'active', ett.active,
+                        'availability', ett.availability,
                         'current_price', cp.current_price,
                         'description', ett.description,
                         'event_ticket_type_id', ett.event_ticket_type_id,
@@ -79,14 +77,14 @@ returns jsonb as $$
                         'remaining_seats', case
                             when ett.seats_total is null then null
                             else greatest(
-                                ett.seats_total - coalesce(tu.purchase_count, 0),
+                                ett.seats_total - ta.allocated_seat_count,
                                 0
                             )
                         end,
                         'seats_total', ett.seats_total,
                         'sold_out', case
                             when ett.seats_total is null then false
-                            else coalesce(tu.purchase_count, 0) >= ett.seats_total
+                            else ta.allocated_seat_count >= ett.seats_total
                         end,
                         'title', ett.title
                     )
@@ -99,6 +97,6 @@ returns jsonb as $$
     )
     from event_ticket_type ett
     left join current_price cp on cp.event_ticket_type_id = ett.event_ticket_type_id
-    left join ticket_usage tu on tu.event_ticket_type_id = ett.event_ticket_type_id
+    join ticket_allocation ta on ta.event_ticket_type_id = ett.event_ticket_type_id
     where ett.event_id = p_event_id;
 $$ language sql;

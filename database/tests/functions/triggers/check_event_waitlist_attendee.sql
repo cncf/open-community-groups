@@ -1,9 +1,11 @@
+-- Tests event waitlist attendee constraints.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,8 +17,12 @@ select plan(3);
 \set eventCategoryID 'ab040000-0000-0000-0000-000000000004'
 \set groupCategoryID 'ab040000-0000-0000-0000-000000000005'
 \set groupID 'ab040000-0000-0000-0000-000000000006'
+\set ticketType1ID 'ab040000-0000-0000-0000-00000000000a'
+\set ticketType2ID 'ab040000-0000-0000-0000-00000000000b'
 \set user1ID 'ab040000-0000-0000-0000-000000000007'
 \set user2ID 'ab040000-0000-0000-0000-000000000008'
+\set user3ID 'ab040000-0000-0000-0000-000000000009'
+\set user4ID 'ab040000-0000-0000-0000-00000000000c'
 
 -- ============================================================================
 -- SEED DATA
@@ -41,13 +47,13 @@ insert into community (
     'https://example.com/logo.png'
 );
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
 -- Event category
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'General');
+
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
@@ -57,7 +63,9 @@ values (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
     (:'user1ID', 'user-one-hash', 'user-one@example.com', true, 'user-one'),
-    (:'user2ID', 'user-two-hash', 'user-two@example.com', true, 'user-two');
+    (:'user2ID', 'user-two-hash', 'user-two@example.com', true, 'user-two'),
+    (:'user3ID', 'user-three-hash', 'user-three@example.com', true, 'user-three'),
+    (:'user4ID', 'user-four-hash', 'user-four@example.com', true, 'user-four');
 
 -- Events
 insert into event (
@@ -101,15 +109,51 @@ values
         true
     );
 
+-- Ticket tiers for the trigger-conflict fixtures
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values
+    (:'ticketType1ID', :'event1ID', 1, 1, 'General admission'),
+    (:'ticketType2ID', :'event2ID', 1, 1, 'General admission');
+
 -- Existing attendees
 insert into event_attendee (event_id, user_id)
 values
     (:'event1ID', :'user1ID'),
+    (:'event1ID', :'user4ID'),
     (:'event2ID', :'user1ID');
 
--- Existing waitlist entry
-insert into event_waitlist (event_id, user_id)
-values (:'event2ID', :'user2ID');
+-- Existing waitlist entries
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values
+    (:'event2ID', :'ticketType2ID', :'user2ID'),
+    (:'event2ID', :'ticketType2ID', :'user4ID');
+
+-- Existing active offers
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+)
+values
+    (
+        :'event1ID',
+        :'ticketType1ID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        :'user3ID'
+    ),
+    (
+        :'event2ID',
+        :'ticketType2ID',
+        current_timestamp + interval '1 hour',
+        'organizer_invitation',
+        'pending',
+        :'user3ID'
+    );
 
 -- ============================================================================
 -- TESTS
@@ -118,8 +162,9 @@ values (:'event2ID', :'user2ID');
 -- Should allow waitlist inserts when the user is not already attending
 select lives_ok(
     format(
-        'insert into event_waitlist (event_id, user_id) values (%L, %L)',
+        'insert into event_waitlist (event_id, event_ticket_type_id, user_id) values (%L, %L, %L)',
         :'event1ID',
+        :'ticketType1ID',
         :'user2ID'
     ),
     'Should allow waitlist inserts when the user is not already attending'
@@ -128,8 +173,9 @@ select lives_ok(
 -- Should reject waitlist inserts when the user is already attending
 select throws_ok(
     format(
-        'insert into event_waitlist (event_id, user_id) values (%L, %L)',
+        'insert into event_waitlist (event_id, event_ticket_type_id, user_id) values (%L, %L, %L)',
         :'event1ID',
+        :'ticketType1ID',
         :'user1ID'
     ),
     'user is already attending this event',
@@ -146,6 +192,42 @@ select throws_ok(
     ),
     'user is already attending this event',
     'Should reject waitlist updates that target an attendee pair'
+);
+
+-- Should validate the new event-user pair when a waitlist row changes events
+select throws_ok(
+    format(
+        'update event_waitlist set event_id = %L, event_ticket_type_id = %L where event_id = %L and user_id = %L',
+        :'event1ID',
+        :'ticketType1ID',
+        :'event2ID',
+        :'user4ID'
+    ),
+    'user is already attending this event',
+    'Should validate the new event-user pair when a waitlist row changes events'
+);
+
+-- Should reject waitlist writes that conflict with active offers
+select throws_ok(
+    format(
+        'insert into event_waitlist (event_id, event_ticket_type_id, user_id) values (%L, %L, %L)',
+        :'event1ID',
+        :'ticketType1ID',
+        :'user3ID'
+    ),
+    'user already has an active admission offer for this event',
+    'Should reject waitlist inserts for active offer recipients'
+);
+
+select throws_ok(
+    format(
+        'update event_waitlist set user_id = %L where event_id = %L and user_id = %L',
+        :'user3ID',
+        :'event2ID',
+        :'user2ID'
+    ),
+    'user already has an active admission offer for this event',
+    'Should reject waitlist updates targeting active offer recipients'
 );
 
 -- ============================================================================

@@ -8,8 +8,12 @@ use serde_with::skip_serializing_none;
 use crate::{
     templates::dashboard,
     types::{
-        event::{EventAttendanceStatus, EventSummary},
+        event::{
+            EventAdmissionOfferSource, EventAdmissionOfferStatus, EventEnrollmentStatus,
+            EventSummary,
+        },
         pagination::{self, Pagination, ToRawQuery},
+        payments::EventRefundRequestStatus,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
     validation::MAX_PAGINATION_LIMIT,
@@ -55,54 +59,83 @@ pub(crate) struct UserEvent {
     #[serde(default)]
     pub roles: Vec<UserEventRole>,
 
-    /// Current attendee status for the user, when the user is an attendee.
-    pub attendance_status: Option<EventAttendanceStatus>,
+    /// Active admission offer identifier.
+    pub admission_offer_id: Option<uuid::Uuid>,
+    /// Workflow that created the active admission offer.
+    pub admission_offer_source: Option<EventAdmissionOfferSource>,
+    /// Current active offer status.
+    pub admission_offer_status: Option<EventAdmissionOfferStatus>,
+    /// Current or snapshotted offer amount in minor units.
+    pub amount_minor: Option<i64>,
+    /// Currency used to display the offer amount.
+    pub currency_code: Option<String>,
+    /// Current enrollment status for the user.
+    pub enrollment_status: Option<EventEnrollmentStatus>,
+    /// Ticket type assigned to the active offer.
+    pub event_ticket_type_id: Option<uuid::Uuid>,
+    /// Active offer expiration time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub offer_expires_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Existing registration answers submitted by the user.
     pub registration_answers: Option<QuestionnaireAnswers>,
+    /// Attendee-visible reason for the latest rejected refund request.
+    pub refund_rejection_reason: Option<String>,
+    /// Latest refund review status for the user's event purchases.
+    pub refund_request_status: Option<EventRefundRequestStatus>,
     /// Checkout URL where the user can complete payment.
     pub resume_checkout_url: Option<String>,
+    /// Assigned ticket title.
+    pub ticket_title: Option<String>,
 }
 
 impl UserEvent {
-    /// Returns the attendee status badge label, when the row needs one.
-    pub(crate) fn attendance_status_label(&self) -> Option<&'static str> {
-        match self.attendance_status.as_ref()? {
-            EventAttendanceStatus::PendingPayment => Some("Payment pending"),
-            EventAttendanceStatus::RegistrationQuestionsPending => Some("Registration pending"),
-            _ => None,
-        }
-    }
-
     /// Returns true when attendance can be canceled from the user dashboard.
     pub(crate) fn can_cancel_attendance(&self) -> bool {
-        // Pending registrations on ticketed events are owned by the checkout hold flow
-        let cancelable_status = match self.attendance_status.as_ref() {
-            Some(EventAttendanceStatus::Attendee) => true,
-            Some(EventAttendanceStatus::RegistrationQuestionsPending) => !self.event.is_ticketed(),
-            _ => false,
-        };
-        cancelable_status
+        let has_cancelable_enrollment = matches!(
+            self.enrollment_status.as_ref(),
+            Some(EventEnrollmentStatus::Attendee)
+        );
+        has_cancelable_enrollment
             && self.roles.as_slice() == [UserEventRole::Attendee]
             && !self.has_paid_purchase
+    }
+
+    /// Returns true when an active checkout can be canceled from the user dashboard.
+    pub(crate) fn can_cancel_checkout(&self) -> bool {
+        self.payment_pending()
     }
 
     /// Returns true when registration answers can be completed or updated.
     pub(crate) fn can_complete_registration_questions(&self) -> bool {
         self.has_registration_questions_action()
             && (self.manually_invited
-                || self.has_active_checkout_hold()
+                || self.payment_pending()
                 || self.event.registration_window_is_open())
+    }
+
+    /// Returns the enrollment status badge label, when the row needs one.
+    pub(crate) fn enrollment_status_label(&self) -> Option<&'static str> {
+        match self.enrollment_status.as_ref()? {
+            EventEnrollmentStatus::PendingPayment => Some("Payment pending"),
+            EventEnrollmentStatus::RegistrationQuestionsPending => Some("Registration pending"),
+            _ => None,
+        }
+    }
+
+    /// Returns true when the row represents an active admission offer.
+    pub(crate) fn has_active_offer(&self) -> bool {
+        self.admission_offer_id.is_some() && self.roles.contains(&UserEventRole::Offer)
     }
 
     /// Returns true when the registration question action applies to the row.
     pub(crate) fn has_registration_questions_action(&self) -> bool {
         !self.registration_questions.is_empty()
             && matches!(
-                self.attendance_status.as_ref(),
+                self.enrollment_status.as_ref(),
                 Some(
-                    EventAttendanceStatus::Attendee
-                        | EventAttendanceStatus::PendingPayment
-                        | EventAttendanceStatus::RegistrationQuestionsPending
+                    EventEnrollmentStatus::Attendee
+                        | EventEnrollmentStatus::PendingPayment
+                        | EventEnrollmentStatus::RegistrationQuestionsPending
                 )
             )
     }
@@ -130,21 +163,16 @@ impl UserEvent {
     /// Returns true when registration questions are still required.
     pub(crate) fn registration_questions_pending(&self) -> bool {
         matches!(
-            self.attendance_status.as_ref(),
-            Some(EventAttendanceStatus::RegistrationQuestionsPending)
+            self.enrollment_status.as_ref(),
+            Some(EventEnrollmentStatus::RegistrationQuestionsPending)
         )
-    }
-
-    /// Returns true when the user has an active checkout hold.
-    fn has_active_checkout_hold(&self) -> bool {
-        self.resume_checkout_url.is_some()
     }
 
     /// Returns true when payment is still pending.
     fn payment_pending(&self) -> bool {
         matches!(
-            self.attendance_status.as_ref(),
-            Some(EventAttendanceStatus::PendingPayment)
+            self.enrollment_status.as_ref(),
+            Some(EventEnrollmentStatus::PendingPayment)
         )
     }
 }
@@ -160,6 +188,8 @@ pub(crate) enum UserEventRole {
     Attendee,
     /// User hosts the event.
     Host,
+    /// User owns an active admission offer.
+    Offer,
     /// User speaks at the event or one of its sessions.
     Speaker,
 }
@@ -170,6 +200,7 @@ impl UserEventRole {
         match self {
             Self::Attendee => "Attendee",
             Self::Host => "Host",
+            Self::Offer => "Event offer",
             Self::Speaker => "Speaker",
         }
     }
@@ -194,7 +225,7 @@ crate::impl_pagination_and_raw_query!(UserEventsFilters, limit, offset);
 /// Paginated events response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserEventsOutput {
-    /// Events where the user participates.
+    /// Events where the user participates or has actionable admission state.
     pub events: Vec<UserEvent>,
     /// Total number of events before pagination.
     pub total: usize,
@@ -208,8 +239,7 @@ mod tests {
     use crate::{
         handlers::tests::sample_event_summary,
         types::{
-            event::EventAttendanceStatus,
-            payments::EventTicketType,
+            event::EventEnrollmentStatus,
             questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
         },
     };
@@ -224,37 +254,35 @@ mod tests {
     }
 
     #[test]
-    fn can_cancel_attendance_allows_pending_registration_on_non_ticketed_event() {
-        let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::RegistrationQuestionsPending);
-
-        assert!(user_event.can_cancel_attendance());
-    }
-
-    #[test]
     fn can_cancel_attendance_rejects_other_statuses() {
         let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::Waitlisted);
+        user_event.enrollment_status = Some(EventEnrollmentStatus::Waitlisted);
 
         assert!(!user_event.can_cancel_attendance());
     }
 
     #[test]
-    fn can_cancel_attendance_rejects_pending_registration_on_ticketed_event() {
+    fn can_cancel_checkout_allows_pending_payment() {
         let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::RegistrationQuestionsPending);
-        user_event.event.ticket_types = Some(vec![EventTicketType::default()]);
+        user_event.enrollment_status = Some(EventEnrollmentStatus::PendingPayment);
+        user_event.roles = vec![];
 
-        assert!(!user_event.can_cancel_attendance());
+        assert!(user_event.can_cancel_checkout());
+    }
+
+    #[test]
+    fn can_cancel_checkout_rejects_attendee() {
+        let user_event = sample_user_event();
+
+        assert!(!user_event.can_cancel_checkout());
     }
 
     #[test]
     fn can_complete_registration_questions_allows_active_checkout_hold_after_closed_window() {
         let mut user_event = sample_user_event();
-        user_event.attendance_status = Some(EventAttendanceStatus::PendingPayment);
+        user_event.enrollment_status = Some(EventEnrollmentStatus::PendingPayment);
         user_event.registration_questions = vec![sample_question()];
         user_event.event.registration_ends_at = Some(Utc::now() - Duration::hours(1));
-        user_event.resume_checkout_url = Some("https://example.test/checkout/resume".to_string());
 
         assert!(user_event.can_complete_registration_questions());
         assert!(user_event.registration_questions_disabled_title().is_none());
@@ -285,6 +313,18 @@ mod tests {
         assert!(user_event.registration_questions_disabled_title().is_some());
     }
 
+    #[test]
+    fn has_active_offer_requires_offer_identifier_and_role() {
+        let mut user_event = sample_user_event();
+        user_event.admission_offer_id = Some(Uuid::from_u128(1));
+
+        assert!(!user_event.has_active_offer());
+
+        user_event.roles = vec![UserEventRole::Offer];
+
+        assert!(user_event.has_active_offer());
+    }
+
     // Helpers.
 
     /// Sample free-text registration question.
@@ -307,9 +347,20 @@ mod tests {
             manually_invited: false,
             registration_questions: vec![],
             roles: vec![UserEventRole::Attendee],
-            attendance_status: Some(EventAttendanceStatus::Attendee),
+
+            admission_offer_id: None,
+            admission_offer_source: None,
+            admission_offer_status: None,
+            amount_minor: None,
+            currency_code: None,
+            enrollment_status: Some(EventEnrollmentStatus::Attendee),
+            event_ticket_type_id: None,
+            offer_expires_at: None,
             registration_answers: None,
+            refund_rejection_reason: None,
+            refund_request_status: None,
             resume_checkout_url: None,
+            ticket_title: None,
         }
     }
 }

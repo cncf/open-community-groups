@@ -126,7 +126,7 @@
                             class="truncate cursor-pointer text-left bg-transparent border-0 p-0"
                             aria-label="Open group dashboard: {{ group.name }}">{{ group.name }}</button>
                     {% if !group.active -%}
-                      <span class="inline-block px-2 py-0.5 bg-amber-600 text-white text-[10px] leading-4 rounded-full uppercase whitespace-nowrap">Inactive</span>
+                      <span class="custom-badge inline-block border-amber-600 bg-amber-600 px-2.5 py-0.5 leading-4 text-white">Inactive</span>
                     {% endif -%}
                   </div>
                   {# End group name -#}

@@ -706,16 +706,16 @@ insert into event (
     ]'::jsonb
 );
 
--- Ticketed payment fixtures reserved for the Playwright suite.
+-- Paid-tier payment fixtures reserved for the Playwright suite
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, payment_currency_code, published, starts_at, ends_at,
     waitlist_enabled
 ) values (
     '55555555-5555-5555-5555-555555555522',
-    'Ticketed Draft Event',
+    'Paid Tier Draft Event',
     'alpha-payments-draft',
-    'Ticketed event used for payment editor and validation coverage.',
+    'Paid-tier event used for payment editor and validation coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -727,9 +727,9 @@ insert into event (
     false
 ), (
     '55555555-5555-5555-5555-555555555523',
-    'Ticketed Refund Review Event',
+    'Paid Tier Refund Review Event',
     'alpha-payments-refunds',
-    'Ticketed event used for organizer refund review coverage.',
+    'Paid-tier event used for organizer refund review coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -750,10 +750,10 @@ insert into event (
     registration_ends_at, registration_questions
 ) values (
     '55555555-5555-5555-5555-555555555901',
-    'Registration Window Ticketed Closed',
-    'alpha-registration-window-ticketed-closed',
-    'Ticketed event with a closed registration window.',
-    'Ticketed event with closed registration.',
+    'Registration Window Paid Closed',
+    'alpha-registration-window-paid-closed',
+    'Paid event with a closed registration window.',
+    'Paid event with closed registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -771,10 +771,10 @@ insert into event (
     '[]'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555902',
-    'Registration Window Ticketed Future',
-    'alpha-registration-window-ticketed-future',
-    'Ticketed event with registration opening later.',
-    'Ticketed event with future registration.',
+    'Registration Window Paid Future',
+    'alpha-registration-window-paid-future',
+    'Paid event with registration opening later.',
+    'Paid event with future registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -792,10 +792,10 @@ insert into event (
     '[]'::jsonb
 ), (
     '55555555-5555-5555-5555-555555555903',
-    'Registration Window Ticketed Open',
-    'alpha-registration-window-ticketed-open',
-    'Ticketed event with registration currently open.',
-    'Ticketed event with open registration.',
+    'Registration Window Paid Open',
+    'alpha-registration-window-paid-open',
+    'Paid event with registration currently open.',
+    'Paid event with open registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -962,7 +962,7 @@ insert into event (
     '55555555-5555-5555-5555-555555555911',
     'Registration Window Pending Payment Closed',
     'alpha-registration-window-pending-payment-closed',
-    'Ticketed questions event with an active pending checkout after closing.',
+    'Paid questions event with an active pending checkout after closing.',
     'Pending payment event with closed registration.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
@@ -979,6 +979,184 @@ insert into event (
     null,
     now() - interval '1 day',
     '[{"id":"57555555-5555-5555-5555-555555555911","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb
+);
+
+-- Ticketing workflow fixtures for payment returns, offers, and request coverage.
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, payment_currency_code, published,
+    test_event, starts_at, ends_at, waitlist_enabled, attendee_approval_required,
+    registration_questions
+) values (
+    '55555555-5555-5555-5555-555555555912',
+    'Payment Return States Lab',
+    'alpha-payment-return-states',
+    'Paid event with confirmed and pending checkout return states.',
+    'Payment return state coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '110 days',
+    now() + interval '110 days 2 hours',
+    false,
+    false,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555913',
+    'Ticket Request Lab',
+    'alpha-ticket-request-lab',
+    'Approval-required paid event with public and invitation-only tickets.',
+    'Public ticket request coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '111 days',
+    now() + interval '111 days 2 hours',
+    false,
+    true,
+    '[{"id":"57555555-5555-5555-5555-555555555913","kind":"free-text","prompt":"Why would you like this ticket?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555914',
+    'Invitation Request Lifecycle Lab',
+    'alpha-invitation-request-lifecycle',
+    'Approval-required event with assignable private ticket tiers.',
+    'Invitation request lifecycle coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '112 days',
+    now() + interval '112 days 2 hours',
+    false,
+    true,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555915',
+    'No Assignable Invitation Tier Lab',
+    'alpha-no-assignable-invitation-tier',
+    'Approval-required event without an assignable private ticket tier.',
+    'Unavailable private tier coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '113 days',
+    now() + interval '113 days 2 hours',
+    false,
+    true,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555916',
+    'Paid Event Offers Lab',
+    'alpha-paid-event-offers',
+    'Paid private-ticket event with pending and checkout-started offers.',
+    'Paid dashboard offer coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '114 days',
+    now() + interval '114 days 2 hours',
+    false,
+    false,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555917',
+    'Paid Registration Questions Lab',
+    'alpha-paid-registration-questions',
+    'Paid ticket event that collects registration answers before checkout.',
+    'Paid registration question coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '115 days',
+    now() + interval '115 days 2 hours',
+    false,
+    false,
+    '[{"id":"57555555-5555-5555-5555-555555555917","kind":"free-text","prompt":"What should the organizers prepare for you?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555918',
+    'Sold Out Ticket States Lab',
+    'alpha-sold-out-ticket-states',
+    'Ticketed event with a sold-out public tier and waiting list.',
+    'Sold-out ticket and waitlist coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '116 days',
+    now() + interval '116 days 2 hours',
+    true,
+    false,
+    '[{"id":"57555555-5555-5555-5555-555555555918","kind":"free-text","prompt":"What would you like to learn?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555919',
+    'Migrated Unlimited Capacity Event',
+    'alpha-migrated-unlimited-capacity',
+    'Event shaped like an unlimited-capacity event after ticket migration.',
+    'Migration-shaped ticket capacity coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '117 days',
+    now() + interval '117 days 2 hours',
+    false,
+    false,
+    '[]'::jsonb
+);
+
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, payment_currency_code, published,
+    test_event, starts_at, ends_at, capacity, waitlist_enabled,
+    attendee_approval_required, registration_questions
+) values (
+    '55555555-5555-5555-5555-555555555920',
+    'Refunded Capacity Release Lab',
+    'alpha-refunded-capacity-release',
+    'One-seat paid event whose finalized refund released its capacity.',
+    'Finalized refund capacity coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '118 days',
+    now() + interval '118 days 2 hours',
+    1,
+    false,
+    false,
+    '[]'::jsonb
 );
 
 update event
@@ -2073,6 +2251,248 @@ join group_team gt on gt.group_id = e.group_id
 where e.legacy_id is null
 and gt.accepted = true;
 
+-- Specialized admission tiers must exist before enrollment fixtures
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    event_id,
+    "order",
+    seats_total,
+    title,
+    description
+)
+values (
+    '56555555-5555-5555-5555-555555555521',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    1,
+    30,
+    'General admission',
+    'Standard paid admission used for ticket editor coverage.'
+), (
+    '56555555-5555-5555-5555-555555555522',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    2,
+    10,
+    'Community ticket',
+    'Free community allocation used for zero-price ticket coverage.'
+), (
+    '56555555-5555-5555-5555-555555555524',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    3,
+    2,
+    'Backstage pass',
+    'Future sale window used for unavailable ticket coverage.'
+), (
+    '56555555-5555-5555-5555-555555555523',
+    true,
+    '55555555-5555-5555-5555-555555555523',
+    1,
+    20,
+    'VIP pass',
+    'Paid pass used for organizer refund review coverage.'
+), (
+    '56555555-5555-5555-5555-555555555525',
+    true,
+    '55555555-5555-5555-5555-555555555505',
+    1,
+    20,
+    'Virtual access pass',
+    'Sellable tier used to show a price badge on the homepage virtual events list.'
+), (
+    '56555555-5555-5555-5555-555555555526',
+    true,
+    '55555555-5555-5555-5555-555555555507',
+    1,
+    30,
+    'Observability summit pass',
+    'Sellable tier used to show a price badge on the homepage in-person events list.'
+), (
+    '56555555-5555-5555-5555-555555555901',
+    true,
+    '55555555-5555-5555-5555-555555555901',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for closed registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555902',
+    true,
+    '55555555-5555-5555-5555-555555555902',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for future registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555903',
+    true,
+    '55555555-5555-5555-5555-555555555903',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for open registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555911',
+    true,
+    '55555555-5555-5555-5555-555555555911',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for pending payment dashboard coverage.'
+);
+
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    availability,
+    event_id,
+    "order",
+    seats_total,
+    title,
+    description
+)
+values (
+    '56555555-5555-5555-5555-555555555912',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555912',
+    1,
+    20,
+    'Payment return pass',
+    'Paid admission used for checkout return coverage.'
+), (
+    '56555555-5555-5555-5555-555555555913',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555913',
+    1,
+    20,
+    'Requested conference pass',
+    'Public tier attendees can request for organizer approval.'
+), (
+    '56555555-5555-5555-5555-655555555913',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555913',
+    2,
+    5,
+    'Private supporter pass',
+    'Private tier assigned only through organizer offers.'
+), (
+    '56555555-5555-5555-5555-555555555914',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555914',
+    1,
+    30,
+    'General Admission',
+    'Free public RSVP tier used to create unscoped requests.'
+), (
+    '56555555-5555-5555-5555-655555555914',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555914',
+    2,
+    4,
+    'Sponsor allocation',
+    'Private sponsor tier available for organizer assignment.'
+), (
+    '56555555-5555-5555-5555-755555555914',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555914',
+    3,
+    4,
+    'VIP allocation',
+    'Private VIP tier available for organizer assignment.'
+), (
+    '56555555-5555-5555-5555-555555555915',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555915',
+    1,
+    30,
+    'General Admission',
+    'Free public RSVP tier used to create unscoped requests.'
+), (
+    '56555555-5555-5555-5555-655555555915',
+    false,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555915',
+    2,
+    4,
+    'Inactive private allocation',
+    'Inactive tier used to explain why no private ticket can be assigned.'
+), (
+    '56555555-5555-5555-5555-555555555916',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555916',
+    1,
+    10,
+    'Private paid offer',
+    'Paid private tier used by dashboard offer claims.'
+), (
+    '56555555-5555-5555-5555-555555555917',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555917',
+    1,
+    20,
+    'Questions conference pass',
+    'Paid tier combined with registration questions.'
+), (
+    '56555555-5555-5555-5555-555555555918',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555918',
+    1,
+    1,
+    'Limited conference pass',
+    'Sold-out paid tier used for ticket state and waiting-list coverage.'
+), (
+    '56555555-5555-5555-5555-555555555919',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555919',
+    1,
+    500,
+    'General Admission',
+    'Migration fallback tier for a formerly unlimited-capacity event.'
+), (
+    '56555555-5555-5555-5555-555555555920',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555920',
+    1,
+    1,
+    'Refunded conference pass',
+    'Paid tier whose prior purchase has been fully refunded.'
+);
+
+-- Every other event uses one free General Admission tier
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+)
+select
+    e.event_id,
+    md5(e.event_id::text || ':ticket-type')::uuid,
+    1,
+    greatest(coalesce(e.capacity, 100), 1),
+    'General Admission'
+from event e
+where not exists (
+    select 1
+    from event_ticket_type ett
+    where ett.event_id = e.event_id
+);
+
 -- ============================================================================
 -- EVENT ATTENDEES
 -- ============================================================================
@@ -2111,11 +2531,24 @@ values (
 ), (
     '55555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777712'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777703'
 );
 
-insert into event_waitlist (event_id, user_id)
+insert into event_attendee (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555912',
+    '77777777-7777-7777-7777-777777777711'
+), (
+    '55555555-5555-5555-5555-555555555918',
+    '77777777-7777-7777-7777-777777777703'
+);
+
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values (
     '55555555-5555-5555-5555-555555555526',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555526' order by "order" limit 1),
     '77777777-7777-7777-7777-777777777706'
 );
 
@@ -2125,16 +2558,6 @@ values (
     '77777777-7777-7777-7777-777777777703',
     false,
     'confirmed'
-), (
-    '55555555-5555-5555-5555-555555555909',
-    '77777777-7777-7777-7777-777777777706',
-    false,
-    'registration-questions-pending'
-), (
-    '55555555-5555-5555-5555-555555555910',
-    '77777777-7777-7777-7777-777777777706',
-    true,
-    'registration-questions-pending'
 ), (
     '55555555-5555-5555-5555-555555555911',
     '77777777-7777-7777-7777-777777777706',
@@ -2158,20 +2581,216 @@ values (
     now() - interval '1 hour',
     false,
     'confirmed'
+);
+
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    status,
+    user_id,
+    reviewed_at,
+    reviewed_by
+)
+values (
+    '55555555-5555-5555-5555-555555555914',
+    null,
+    'pending',
+    '77777777-7777-7777-7777-777777777707',
+    null,
+    null
 ), (
-    '55555555-5555-5555-5555-555555555527',
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-555555555914',
+    'pending',
+    '77777777-7777-7777-7777-777777777708',
+    null,
+    null
+), (
+    '55555555-5555-5555-5555-555555555914',
+    null,
+    'accepted',
     '77777777-7777-7777-7777-777777777702',
-    false,
-    null,
-    true,
-    'invitation-pending'
+    now() - interval '4 days',
+    '77777777-7777-7777-7777-777777777703'
 ), (
-    '55555555-5555-5555-5555-555555555527',
-    '77777777-7777-7777-7777-777777777704',
-    false,
+    '55555555-5555-5555-5555-555555555914',
     null,
-    false,
-    'registration-questions-pending'
+    'accepted',
+    '77777777-7777-7777-7777-777777777704',
+    now() - interval '2 days',
+    '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555915',
+    null,
+    'pending',
+    '77777777-7777-7777-7777-777777777710',
+    null,
+    null
+);
+
+-- Claim offers replace the old pending-invitation and pending-question seats
+insert into admission_offer (
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+)
+values
+    (
+        '55555555-5555-5555-5555-555555555909',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555909' order by "order" limit 1),
+        '2099-12-31 00:00:00+00',
+        'waitlist',
+        'pending',
+        '77777777-7777-7777-7777-777777777706'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555910',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555910' order by "order" limit 1),
+        '2099-12-31 00:00:00+00',
+        'organizer_invitation',
+        'pending',
+        '77777777-7777-7777-7777-777777777706'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555527',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555527' order by "order" limit 1),
+        '2099-12-31 00:00:00+00',
+        'organizer_invitation',
+        'pending',
+        '77777777-7777-7777-7777-777777777702'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555527',
+        (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555527' order by "order" limit 1),
+        '2099-12-31 00:00:00+00',
+        'waitlist',
+        'pending',
+        '77777777-7777-7777-7777-777777777704'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555916',
+        '56555555-5555-5555-5555-555555555916',
+        current_timestamp + interval '7 days',
+        'organizer_invitation',
+        'pending',
+        '77777777-7777-7777-7777-777777777707'
+    ),
+    (
+        '55555555-5555-5555-5555-555555555916',
+        '56555555-5555-5555-5555-555555555916',
+        current_timestamp + interval '7 days',
+        'waitlist',
+        'pending',
+        '77777777-7777-7777-7777-777777777705'
+    );
+
+-- Terminal waitlist offers cover unavailable dashboard action reasons.
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555520',
+    current_timestamp - interval '7 days',
+    '55555555-5555-5555-5555-555555555520',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555520'
+        order by "order"
+        limit 1
+    ),
+    current_timestamp - interval '6 days',
+    'waitlist',
+    'expired',
+    '77777777-7777-7777-7777-777777777702'
+), (
+    '59555555-5555-5555-5555-555555555526',
+    current_timestamp - interval '2 days',
+    '55555555-5555-5555-5555-555555555526',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555526'
+        order by "order"
+        limit 1
+    ),
+    current_timestamp - interval '1 day',
+    'waitlist',
+    'expired',
+    '77777777-7777-7777-7777-777777777701'
+), (
+    '59555555-5555-5555-5555-555555555528',
+    current_timestamp - interval '2 days',
+    '55555555-5555-5555-5555-555555555528',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555528'
+        order by "order"
+        limit 1
+    ),
+    current_timestamp + interval '1 day',
+    'waitlist',
+    'canceled',
+    '77777777-7777-7777-7777-777777777705'
+), (
+    '59555555-5555-5555-5555-555555555914',
+    current_timestamp - interval '3 days',
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-655555555914',
+    current_timestamp - interval '2 days',
+    'approval',
+    'expired',
+    '77777777-7777-7777-7777-777777777702'
+);
+
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-655555555914',
+    4500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-755555555914',
+    current_timestamp + interval '5 days',
+    'approval',
+    'checkout_pending',
+    'VIP allocation',
+    '77777777-7777-7777-7777-777777777704'
+), (
+    '59555555-5555-5555-5555-555555555916',
+    4000,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555916',
+    '56555555-5555-5555-5555-555555555916',
+    current_timestamp + interval '5 days',
+    'organizer_invitation',
+    'checkout_pending',
+    'Private paid offer',
+    '77777777-7777-7777-7777-777777777708'
 );
 
 -- Canceled invitation retained for attendee history regression coverage.
@@ -2374,7 +2993,8 @@ values (
     30,
     'Registration window pass',
     'Sellable pass used for pending payment dashboard coverage.'
-);
+)
+on conflict (event_ticket_type_id) do nothing;
 
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -2449,6 +3069,98 @@ values (
     '56555555-5555-5555-5555-555555555911',
     null,
     null
+), (
+    '57555555-5555-5555-5555-555555555912',
+    2500,
+    '56555555-5555-5555-5555-555555555912',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555913',
+    3500,
+    '56555555-5555-5555-5555-555555555913',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-655555555913',
+    3000,
+    '56555555-5555-5555-5555-655555555913',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555914',
+    0,
+    '56555555-5555-5555-5555-555555555914',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-655555555914',
+    0,
+    '56555555-5555-5555-5555-655555555914',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-755555555914',
+    4500,
+    '56555555-5555-5555-5555-755555555914',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555915',
+    0,
+    '56555555-5555-5555-5555-555555555915',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-655555555915',
+    0,
+    '56555555-5555-5555-5555-655555555915',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555916',
+    4000,
+    '56555555-5555-5555-5555-555555555916',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555917',
+    3000,
+    '56555555-5555-5555-5555-555555555917',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555918',
+    3000,
+    '56555555-5555-5555-5555-555555555918',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555919',
+    0,
+    '56555555-5555-5555-5555-555555555919',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555920',
+    3000,
+    '56555555-5555-5555-5555-555555555920',
+    null,
+    null
+);
+
+-- Default tiers receive one open-ended free price window
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+)
+select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.event_ticket_type_id
+from event_ticket_type ett
+where not exists (
+    select 1
+    from event_ticket_price_window etpw
+    where etpw.event_ticket_type_id = ett.event_ticket_type_id
 );
 
 insert into event_discount_code (
@@ -2536,6 +3248,20 @@ values (
     1,
     0,
     true
+), (
+    '58555555-5555-5555-5555-555555555916',
+    true,
+    'OFFER25',
+    '55555555-5555-5555-5555-555555555916',
+    'percentage',
+    'Offer claimant discount',
+    null,
+    25,
+    null,
+    null,
+    null,
+    null,
+    false
 );
 
 -- ============================================================================
@@ -2776,6 +3502,248 @@ values (
     'pending',
     'Registration window pass',
     '77777777-7777-7777-7777-777777777706'
+), (
+    '59555555-5555-5555-5555-555555555912',
+    2500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555522',
+    '56555555-5555-5555-5555-555555555521',
+    now() + interval '2 days',
+    'stripe',
+    'cs_e2e_draft_pending',
+    'https://example.test/checkout/draft-pending',
+    'pending',
+    'General admission',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-755555555912',
+    2500,
+    now() - interval '1 day',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555912',
+    '56555555-5555-5555-5555-555555555912',
+    'stripe',
+    'cs_e2e_payment_return_confirmed',
+    'https://checkout.stripe.test/cs_e2e_payment_return_confirmed',
+    'pi_e2e_payment_return_confirmed',
+    'completed',
+    'Payment return pass',
+    '77777777-7777-7777-7777-777777777711'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-655555555914',
+    '59555555-5555-5555-5555-655555555914',
+    4500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555914',
+    '56555555-5555-5555-5555-755555555914',
+    current_timestamp + interval '5 days',
+    'stripe',
+    'cs_e2e_invitation_request_checkout',
+    'https://example.test/checkout/invitation-request',
+    'pending',
+    'VIP allocation',
+    '77777777-7777-7777-7777-777777777704'
+), (
+    '59555555-5555-5555-5555-555555555916',
+    '59555555-5555-5555-5555-555555555916',
+    4000,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555916',
+    '56555555-5555-5555-5555-555555555916',
+    current_timestamp + interval '5 days',
+    'stripe',
+    'cs_e2e_paid_offer_checkout',
+    'https://example.test/checkout/paid-offer',
+    'pending',
+    'Private paid offer',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-655555555912',
+    2500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555912',
+    '56555555-5555-5555-5555-555555555912',
+    current_timestamp + interval '5 days',
+    'stripe',
+    'cs_e2e_payment_return_pending',
+    'https://example.test/checkout/payment-return',
+    'pending',
+    'Payment return pass',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    refunded_at,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555920',
+    3000,
+    current_timestamp - interval '5 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555920',
+    '56555555-5555-5555-5555-555555555920',
+    'stripe',
+    'cs_e2e_refunded_capacity',
+    'https://checkout.stripe.test/cs_e2e_refunded_capacity',
+    'pi_e2e_refunded_capacity',
+    current_timestamp - interval '1 day',
+    'refunded',
+    'Refunded conference pass',
+    '77777777-7777-7777-7777-777777777702'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555531',
+    5000,
+    current_timestamp - interval '1 day',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_action_available',
+    'https://checkout.stripe.test/cs_e2e_refund_action_available',
+    'pi_e2e_refund_action_available',
+    'completed',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777703'
+);
+
+-- Confirmed attendees own capacity through completed zero-value purchases
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+)
+select
+    0,
+    null,
+    0,
+    ea.event_id,
+    ett.event_ticket_type_id,
+    'completed',
+    ett.title,
+    ea.user_id
+from event_attendee ea
+join lateral (
+    select ett.event_ticket_type_id, ett.title
+    from event_ticket_type ett
+    where ett.event_id = ea.event_id
+    order by ett."order", ett.event_ticket_type_id
+    limit 1
+) ett on true
+where ea.status = 'confirmed'
+and not exists (
+    select 1
+    from event_purchase ep
+    where ep.event_id = ea.event_id
+    and ep.user_id = ea.user_id
+    and (
+        ep.status in (
+            'completed',
+            'refund-pending',
+            'refund-recovery-pending',
+            'refund-requested'
+        )
+        or (
+            ep.status = 'pending'
+            and ep.hold_expires_at > current_timestamp
+        )
+    )
 );
 
 -- ============================================================================
@@ -2787,45 +3755,73 @@ insert into event_refund_request (
     event_refund_request_id,
     event_purchase_id,
     requested_by_user_id,
+    status,
+
     requested_reason,
-    status
+    review_note,
+    reviewed_at,
+    reviewed_by_user_id
 )
 values (
     '60555555-5555-5555-5555-555555555521',
     '59555555-5555-5555-5555-555555555521',
     '77777777-7777-7777-7777-777777777705',
+    'pending',
+
     'Need to cancel',
-    'pending'
+    null,
+    null,
+    null
 ), (
     '60555555-5555-5555-5555-555555555522',
     '59555555-5555-5555-5555-555555555522',
     '77777777-7777-7777-7777-777777777706',
+    'approving',
+
     'Schedule conflict',
-    'approving'
+    'Approved by the organizer',
+    now() - interval '2 days',
+    '77777777-7777-7777-7777-777777777701'
 ), (
     '60555555-5555-5555-5555-555555555523',
     '59555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777707',
+    'rejected',
+
     'Need a different date',
-    'rejected'
+    'The request falls outside the refund policy window.',
+    now() - interval '3 days',
+    '77777777-7777-7777-7777-777777777701'
 ), (
     '60555555-5555-5555-5555-555555555524',
     '59555555-5555-5555-5555-555555555525',
     '77777777-7777-7777-7777-777777777712',
+    'approved',
+
     'Refund completed',
-    'approved'
+    'Approved by the organizer',
+    now() - interval '4 days',
+    '77777777-7777-7777-7777-777777777701'
 ), (
     '60555555-5555-5555-5555-555555555529',
     '59555555-5555-5555-5555-555555555529',
     '77777777-7777-7777-7777-777777777709',
+    'pending',
+
     'Duplicate registration',
-    'pending'
+    null,
+    null,
+    null
 ), (
     '60555555-5555-5555-5555-555555555530',
     '59555555-5555-5555-5555-555555555530',
     '77777777-7777-7777-7777-777777777710',
+    'approving',
+
     'Provider completed the refund outside OCG',
-    'approving'
+    'Approved by the organizer',
+    now() - interval '10 days',
+    '77777777-7777-7777-7777-777777777701'
 );
 
 -- Durable refunds used by recovery and operational state coverage.

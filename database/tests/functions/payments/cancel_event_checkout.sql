@@ -1,9 +1,11 @@
+-- Tests canceling pending event checkouts.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +22,7 @@ select plan(4);
 \set pendingPurchaseID '79310000-0000-0000-0000-000000000009'
 \set priceWindowID '79310000-0000-0000-0000-000000000010'
 \set userID '79310000-0000-0000-0000-000000000011'
+\set waitlistUserID '79310000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -63,9 +66,17 @@ values (:'groupCategoryID', :'communityID', 'Tech');
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'General');
 
--- User
+-- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash-1', 'buyer@example.com', true, 'buyer');
+values
+    (:'userID', 'hash-1', 'buyer@example.com', true, 'buyer'),
+    (
+        :'waitlistUserID',
+        'hash-2',
+        'waitlist@example.com',
+        true,
+        'waitlist-user'
+    );
 
 -- Group
 insert into "group" (
@@ -98,7 +109,8 @@ insert into event (
     starts_at,
     payment_currency_code,
     published,
-    published_at
+    published_at,
+    waitlist_enabled
 ) values (
     :'eventID',
     :'eventCategoryID',
@@ -111,7 +123,8 @@ insert into event (
     now() + interval '1 day',
     'USD',
     true,
-    now()
+    now(),
+    true
 );
 
 -- Ticket type
@@ -125,7 +138,7 @@ insert into event_ticket_type (
     :'eventTicketTypeID',
     :'eventID',
     1,
-    10,
+    1,
     'General admission'
 );
 
@@ -204,6 +217,17 @@ values (
     'registration-questions-pending'
 );
 
+-- FIFO waitlist entry promoted only after the direct checkout is canceled
+insert into event_waitlist (
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    :'eventID',
+    :'eventTicketTypeID',
+    :'waitlistUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -248,7 +272,8 @@ select lives_ok(
     format($$select cancel_event_checkout(
         %L::uuid,
         %L::uuid,
-        %L::uuid
+        %L::uuid,
+        'stripe'
     )$$, :'communityID', :'eventID', :'userID'),
     'Should cancel the attendee active pending checkout'
 );
@@ -281,6 +306,30 @@ select results_eq(
     $$, :'discountCodeID', :'pendingPurchaseID', :'pendingPurchaseID', :'eventID', :'userID'),
     $$ values (1::int, true, 'expired'::text, 0::int) $$,
     'Should expire the pending checkout, release registration hold, and restore discount usage'
+);
+
+-- Should promote the FIFO queue after direct checkout capacity is released
+select results_eq(
+    format(
+        $$
+            select
+                (
+                    select user_id
+                    from admission_offer
+                    where event_id = %L::uuid
+                    and status = 'pending'
+                ),
+                (
+                    select count(*)
+                    from event_waitlist
+                    where event_id = %L::uuid
+                )
+        $$,
+        :'eventID',
+        :'eventID'
+    ),
+    format($$ values (%L::uuid, 0::bigint) $$, :'waitlistUserID'),
+    'Should promote the FIFO queue after direct checkout capacity is released'
 );
 
 -- ============================================================================

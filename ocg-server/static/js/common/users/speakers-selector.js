@@ -260,7 +260,11 @@ export class SpeakersSelector extends LitWrapper {
     return html`
       <div class="w-full">
         <div class="flex items-center justify-between gap-4 flex-wrap w-full">
-          <label class="form-label m-0">${this.label}</label>
+          ${
+            this.displayMode === "table"
+              ? html`<div class="text-xl lg:text-2xl font-medium text-stone-900">${this.label}</div>`
+              : html`<label class="form-label m-0">${this.label}</label>`
+          }
           ${
             this.showAddButton || (this.showAwardAll && this.canAwardBadges && this.eventId)
               ? html`<div class="flex items-center justify-end gap-3">

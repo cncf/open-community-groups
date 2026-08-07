@@ -5,7 +5,8 @@ create or replace function complete_event_purchase_refund_recovery(
     p_event_purchase_refund_id uuid,
     p_recovery_reference text,
     p_recovery_note text,
-    p_notification_template_data jsonb
+    p_notification_template_data jsonb,
+    p_configured_provider text default null
 )
 returns jsonb as $$
 declare
@@ -14,6 +15,7 @@ declare
     v_event_discount_code_id uuid;
     v_event_id uuid;
     v_event_refund_request_id uuid;
+    v_event_ticket_type_id uuid;
     v_finalized_at timestamptz;
     v_group_id uuid;
     v_kind text;
@@ -46,8 +48,14 @@ begin
     end if;
 
     -- Resolve and lock the event before its purchase and durable refund
-    select ep.event_id
-    into v_event_id
+    select
+        ep.event_id,
+        ep.event_ticket_type_id,
+        ep.user_id
+    into
+        v_event_id,
+        v_event_ticket_type_id,
+        v_user_id
     from event_purchase_refund epr
     join event_purchase ep on ep.event_purchase_id = epr.event_purchase_id
     join event e on e.event_id = ep.event_id
@@ -62,6 +70,15 @@ begin
     from event
     where event_id = v_event_id
     for update;
+
+    -- Reconcile and serialize enrollment before locking recovery state
+    perform reconcile_event_enrollment(
+        v_event_id,
+        v_event_ticket_type_id,
+        p_configured_provider
+    );
+
+    perform pg_advisory_xact_lock(hashtext(v_event_id::text), hashtext(v_user_id::text));
 
     select
         g.community_id,
@@ -235,6 +252,13 @@ begin
         status = 'refunded',
         updated_at = current_timestamp
     where event_purchase_id = v_purchase_id;
+
+    -- Fill capacity released only after recovery is locally terminal
+    perform reconcile_event_enrollment(
+        v_event_id,
+        v_event_ticket_type_id,
+        p_configured_provider
+    );
 
     -- Record the immutable operator action with the external evidence
     perform insert_audit_log(

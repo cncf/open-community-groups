@@ -160,6 +160,66 @@ describe("dashboard group event update template", () => {
     );
   });
 
+  it("does not expose payment recipient details", async () => {
+    // Load the event update template before checking payment recipient copy.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert payment recipient details are not shown in the ticket form.
+    expect(template).not.to.include("Paid ticket revenue is sent to Stripe recipient");
+    expect(template).not.to.include("{{ payment_recipient.recipient_id }}");
+  });
+
+  it("keeps payment guidance only for read-only paid events", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+    const ticketForm = template.slice(
+      template.indexOf('<form id="payments-form">'),
+      template.indexOf("{# End Tickets Tab -#}"),
+    );
+
+    expect(ticketForm).to.include(
+      '{% if payments_ready || event.is_paid_capable() -%} <div> {{ dashboard::form_title(title = "Tickets"',
+    );
+    expect(ticketForm).to.include("{% if paid_ticketing_read_only -%}");
+    expect(ticketForm).to.include(
+      'class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600"',
+    );
+    expect(ticketForm).to.include(
+      "Paid ticket settings are read-only until server payments and a matching group recipient are configured.",
+    );
+    expect(ticketForm).not.to.include(
+      "Payments are not configured for this group, but free ticket tiers remain editable.",
+    );
+  });
+
+  it("describes paid enrollment modes as mutually exclusive alternatives", async () => {
+    // Load the event update template before checking enrollment guidance.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert paid approval and waitlist modes are described without stale restrictions.
+    expect(template).to.include("Paid ticket events can use invitation approval.");
+    expect(template).to.include("including paid ticket events");
+    expect(template).to.include("Invitation approval and the waitlist cannot be enabled together.");
+    expect(template).to.not.include("waitlist or paid tickets");
+    expect(template).to.not.include("Paid events disable waitlist automatically.");
+  });
+
+  it("spaces ticket sections without separators", async () => {
+    // Load and isolate the ticket form before checking section spacing.
+    const template = normalizeWhitespace(await loadTemplate());
+    const ticketForm = template.slice(
+      template.indexOf('<form id="payments-form">'),
+      template.indexOf("{# End Tickets Tab -#}"),
+    );
+
+    // Keep the large section rhythm without rendering divider borders.
+    expect(ticketForm).to.include('<div class="space-y-12">');
+    expect(ticketForm.match(/class="pb-12"/gu)).to.have.length(1);
+    expect(ticketForm).not.to.include('class="pt-12"');
+    expect(ticketForm).not.to.include("pt-12 pb-12");
+    expect(ticketForm).not.to.include("border-t");
+    expect(ticketForm).not.to.include("border-stone-900/10");
+  });
+
   it("keeps the event form navigation in the shared page scroll", async () => {
     // Load the event update template before checking sidebar scroll behavior.
     const template = normalizeWhitespace(await loadTemplate());
@@ -167,7 +227,7 @@ describe("dashboard group event update template", () => {
     // Assert the form navigation scrolls with the active event content.
     expect(template).to.not.include('class="sticky top-6"');
     expect(template).to.include(
-      'class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[12rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0"',
+      'class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[11rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0"',
     );
     expect(template).to.include(
       'class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8"',
@@ -202,5 +262,20 @@ describe("dashboard group event update template", () => {
       '<session-speakers-table id="session-speakers-table" sessions="{{ event.sessions|json }}" event-id="{{ event.event_id }}"',
     );
     expect(template).to.include("can-award-badges{% endif %}");
+  });
+
+  it("spaces contributor sections without separators", async () => {
+    // Load and isolate the contributor form before checking section spacing.
+    const template = normalizeWhitespace(await loadTemplate());
+    const contributorForm = template.slice(
+      template.indexOf('<form id="hosts-sponsors-form">'),
+      template.indexOf("{# End Hosts & Speakers Tab -#}"),
+    );
+
+    // Keep the large section rhythm without rendering divider borders.
+    expect(contributorForm).to.include('<div class="space-y-12">');
+    expect(contributorForm.match(/class="pb-12"/gu)).to.have.length(1);
+    expect(contributorForm).not.to.include("border-b");
+    expect(contributorForm).not.to.include("border-stone-900/10");
   });
 });

@@ -2,17 +2,14 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { expect } from "@playwright/test";
 
-export const TEST_COMMUNITY_NAME =
-  process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
+export const TEST_COMMUNITY_NAME = process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
 export const TEST_COMMUNITY_NAME_2 = "e2e-second-community";
 export const TEST_COMMUNITY_IDS = {
   community1: "11111111-1111-1111-1111-111111111111",
   community2: "11111111-1111-1111-1111-111111111112",
 };
-export const TEST_GROUP_SLUG =
-  process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
-export const TEST_EVENT_SLUG =
-  process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
+export const TEST_GROUP_SLUG = process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
+export const TEST_EVENT_SLUG = process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
 export const TEST_GROUP_NAME = "Platform Ops Meetup";
 export const TEST_EVENT_NAME = "Upcoming In-Person Event";
 export const TEST_EVENT_PAGE_BADGE_EVENT = {
@@ -71,20 +68,20 @@ export const TEST_REGISTRATION_WINDOW_EVENTS = {
     name: "Registration Window Manual Invite Closed",
     slug: "alpha-registration-window-manual-invite-closed",
   },
-  ticketedClosed: {
+  paidClosed: {
     id: "55555555-5555-5555-5555-555555555901",
-    name: "Registration Window Ticketed Closed",
-    slug: "alpha-registration-window-ticketed-closed",
+    name: "Registration Window Paid Closed",
+    slug: "alpha-registration-window-paid-closed",
   },
-  ticketedFuture: {
+  paidFuture: {
     id: "55555555-5555-5555-5555-555555555902",
-    name: "Registration Window Ticketed Future",
-    slug: "alpha-registration-window-ticketed-future",
+    name: "Registration Window Paid Future",
+    slug: "alpha-registration-window-paid-future",
   },
-  ticketedOpen: {
+  paidOpen: {
     id: "55555555-5555-5555-5555-555555555903",
-    name: "Registration Window Ticketed Open",
-    slug: "alpha-registration-window-ticketed-open",
+    name: "Registration Window Paid Open",
+    slug: "alpha-registration-window-paid-open",
   },
   waitlistClosed: {
     id: "55555555-5555-5555-5555-555555555906",
@@ -98,16 +95,11 @@ export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";
 export const TEST_COMMUNITY_TITLE_2 = "Developer Experience Community";
 
 /** Community details for assertions. */
-export const TEST_COMMUNITY_DESCRIPTION =
-  "Platform engineering community used for end-to-end coverage.";
-export const TEST_COMMUNITY_AD_BANNER_LINK_URL_2 =
-  "https://example.com/e2e-advertisement";
-export const TEST_COMMUNITY_AD_BANNER_URL_2 =
-  "/static/images/e2e/event-banner.svg";
-export const TEST_COMMUNITY_BANNER_URL =
-  "/static/images/e2e/community-primary-banner.svg";
-export const TEST_COMMUNITY_BANNER_MOBILE_URL =
-  "/static/images/e2e/community-primary-banner-mobile.svg";
+export const TEST_COMMUNITY_DESCRIPTION = "Platform engineering community used for end-to-end coverage.";
+export const TEST_COMMUNITY_AD_BANNER_LINK_URL_2 = "https://example.com/e2e-advertisement";
+export const TEST_COMMUNITY_AD_BANNER_URL_2 = "/static/images/e2e/event-banner.svg";
+export const TEST_COMMUNITY_BANNER_URL = "/static/images/e2e/community-primary-banner.svg";
+export const TEST_COMMUNITY_BANNER_MOBILE_URL = "/static/images/e2e/community-primary-banner-mobile.svg";
 
 /** Group names organized by community. */
 export const TEST_GROUP_NAMES = {
@@ -118,21 +110,9 @@ export const TEST_GROUP_NAMES = {
 
 /** Event names organized by group. */
 export const TEST_EVENT_NAMES = {
-  alpha: [
-    "Upcoming In-Person Event",
-    "Upcoming Virtual Event",
-    "Upcoming Hybrid Event",
-  ],
-  beta: [
-    "Canceled In-Person Event",
-    "Secondary Virtual Event",
-    "Secondary Hybrid Event",
-  ],
-  gamma: [
-    "Observability In-Person Event",
-    "Observability Virtual Event",
-    "Observability Hybrid Event",
-  ],
+  alpha: ["Upcoming In-Person Event", "Upcoming Virtual Event", "Upcoming Hybrid Event"],
+  beta: ["Canceled In-Person Event", "Secondary Virtual Event", "Secondary Hybrid Event"],
+  gamma: ["Observability In-Person Event", "Observability Virtual Event", "Observability Hybrid Event"],
 };
 
 /** Group slugs organized by community. */
@@ -169,6 +149,7 @@ export const TEST_EVENT_IDS = {
     one: "55555555-5555-5555-5555-555555555501",
     two: "55555555-5555-5555-5555-555555555502",
     cfsSummit: "55555555-5555-5555-5555-555555555519",
+    pastFiltering: "55555555-5555-5555-5555-555555555520",
     waitlistLab: "55555555-5555-5555-5555-555555555521",
     dashboardWaitlist: "55555555-5555-5555-5555-555555555526",
   },
@@ -182,14 +163,63 @@ export const TEST_PAYMENT_EVENT_IDS = {
 
 /** Payment-specific event names used by the future Playwright payment suite. */
 export const TEST_PAYMENT_EVENT_NAMES = {
-  draft: "Ticketed Draft Event",
-  refunds: "Ticketed Refund Review Event",
+  draft: "Paid Tier Draft Event",
+  refunds: "Paid Tier Refund Review Event",
 };
 
 /** Payment-specific event slugs used by the future Playwright payment suite. */
 export const TEST_PAYMENT_EVENT_SLUGS = {
   draft: "alpha-payments-draft",
   refunds: "alpha-payments-refunds",
+};
+
+/** Ticketing workflow events with isolated mutable state. */
+export const TEST_TICKETING_EVENTS = {
+  invitationRequests: {
+    id: "55555555-5555-5555-5555-555555555914",
+    name: "Invitation Request Lifecycle Lab",
+    slug: "alpha-invitation-request-lifecycle",
+  },
+  migratedCapacity: {
+    id: "55555555-5555-5555-5555-555555555919",
+    name: "Migrated Unlimited Capacity Event",
+    slug: "alpha-migrated-unlimited-capacity",
+  },
+  noAssignableTier: {
+    id: "55555555-5555-5555-5555-555555555915",
+    name: "No Assignable Invitation Tier Lab",
+    slug: "alpha-no-assignable-invitation-tier",
+  },
+  paidOffers: {
+    id: "55555555-5555-5555-5555-555555555916",
+    name: "Paid Event Offers Lab",
+    slug: "alpha-paid-event-offers",
+  },
+  paidQuestions: {
+    id: "55555555-5555-5555-5555-555555555917",
+    name: "Paid Registration Questions Lab",
+    slug: "alpha-paid-registration-questions",
+  },
+  paymentReturn: {
+    id: "55555555-5555-5555-5555-555555555912",
+    name: "Payment Return States Lab",
+    slug: "alpha-payment-return-states",
+  },
+  refundedCapacity: {
+    id: "55555555-5555-5555-5555-555555555920",
+    name: "Refunded Capacity Release Lab",
+    slug: "alpha-refunded-capacity-release",
+  },
+  soldOut: {
+    id: "55555555-5555-5555-5555-555555555918",
+    name: "Sold Out Ticket States Lab",
+    slug: "alpha-sold-out-ticket-states",
+  },
+  ticketRequest: {
+    id: "55555555-5555-5555-5555-555555555913",
+    name: "Ticket Request Lab",
+    slug: "alpha-ticket-request-lab",
+  },
 };
 
 /** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
@@ -213,7 +243,9 @@ export const TEST_EVENT_SLUGS = {
 /** Pre-seeded user ids for state resets and dashboard assertions. */
 export const TEST_USER_IDS = {
   communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
+  member1: "77777777-7777-7777-7777-777777777705",
   member2: "77777777-7777-7777-7777-777777777706",
+  organizer1: "77777777-7777-7777-7777-777777777703",
   pending1: "77777777-7777-7777-7777-777777777707",
   pending2: "77777777-7777-7777-7777-777777777708",
 };
@@ -270,6 +302,7 @@ const isServerUnavailableNavigationError = (error) => {
   return (
     message.includes("Could not connect to the server") ||
     message.includes("ERR_CONNECTION_REFUSED") ||
+    message.includes("NS_ERROR_CONNECTION_REFUSED") ||
     message.includes("ECONNREFUSED")
   );
 };
@@ -288,10 +321,7 @@ const navigateToUrl = async (page, url) => {
     } catch (error) {
       lastError = error;
 
-      if (
-        attempt === NAVIGATION_RETRY_ATTEMPTS ||
-        !isServerUnavailableNavigationError(error)
-      ) {
+      if (attempt === NAVIGATION_RETRY_ATTEMPTS || !isServerUnavailableNavigationError(error)) {
         throw error;
       }
 
@@ -386,10 +416,7 @@ const getPngDimensions = (filePath) => {
 
   const imageBuffer = readFileSync(filePath);
 
-  if (
-    imageBuffer.length < 24 ||
-    imageBuffer.toString("ascii", 1, 4) !== "PNG"
-  ) {
+  if (imageBuffer.length < 24 || imageBuffer.toString("ascii", 1, 4) !== "PNG") {
     return null;
   }
 
@@ -409,24 +436,16 @@ const hasTinySnapshotDimensionDrift = (regionBox, snapshotDimensions) =>
 const getClippedScreenshotBox = async (page, regionBox, snapshotDimensions) => {
   const viewportSize = page.viewportSize();
   const documentSize = await page.evaluate(() => ({
-    height: Math.max(
-      document.body.scrollHeight,
-      document.documentElement.scrollHeight,
-    ),
-    width: Math.max(
-      document.body.scrollWidth,
-      document.documentElement.scrollWidth,
-    ),
+    height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+    width: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
   }));
   const maxX = Math.max(
     0,
-    Math.min(viewportSize?.width ?? documentSize.width, documentSize.width) -
-      snapshotDimensions.width,
+    Math.min(viewportSize?.width ?? documentSize.width, documentSize.width) - snapshotDimensions.width,
   );
   const maxY = Math.max(
     0,
-    Math.min(viewportSize?.height ?? documentSize.height, documentSize.height) -
-      snapshotDimensions.height,
+    Math.min(viewportSize?.height ?? documentSize.height, documentSize.height) - snapshotDimensions.height,
   );
 
   return {
@@ -446,8 +465,7 @@ export const buildE2eUrl = (path) => buildUrl(path);
  * Selects a site or community stats container.
  */
 export const getStatsContainer = (page, pageKind, viewport) => {
-  const selector =
-    viewport === "desktop" ? "div.hidden.lg\\:flex" : "div.grid.lg\\:hidden";
+  const selector = viewport === "desktop" ? "div.hidden.lg\\:flex" : "div.grid.lg\\:hidden";
 
   return page
     .locator(selector)
@@ -478,9 +496,7 @@ export const getSectionLink = (page, heading, linkName, viewport) => {
   const section = getSectionByHeading(page, heading);
 
   return viewport === "desktop"
-    ? section
-        .locator("div.hidden.md\\:flex")
-        .getByRole("link", { name: linkName })
+    ? section.locator("div.hidden.md\\:flex").getByRole("link", { name: linkName })
     : section.locator("div.md\\:hidden").getByRole("link", { name: linkName });
 };
 
@@ -488,10 +504,7 @@ export const getSectionLink = (page, heading, linkName, viewport) => {
  * Selects a community banner variant on the site home page.
  */
 export const getCommunityBanner = (page, displayName, viewport) => {
-  const selector =
-    viewport === "desktop"
-      ? "div.hidden.sm\\:block"
-      : "div.aspect-\\[61\\/12\\].sm\\:hidden";
+  const selector = viewport === "desktop" ? "div.hidden.sm\\:block" : "div.aspect-\\[61\\/12\\].sm\\:hidden";
 
   return page
     .locator(selector)
@@ -502,8 +515,7 @@ export const getCommunityBanner = (page, displayName, viewport) => {
 /**
  * Selects the public attendance controls container.
  */
-export const getAttendanceContainer = (page) =>
-  page.locator("[data-attendance-container]").first();
+export const getAttendanceContainer = (page) => page.locator("[data-attendance-container]").first();
 
 /**
  * Selects the public attend button.
@@ -542,8 +554,7 @@ export const getEventAboutSection = (page) =>
 /**
  * Selects the event logo in the page intro.
  */
-export const getEventLogo = (page) =>
-  getIntroSection(page).locator("img").first();
+export const getEventLogo = (page) => getIntroSection(page).locator("img").first();
 
 /**
  * Selects the stable intro section used by community, group, and event pages.
@@ -556,32 +567,25 @@ export const getIntroSection = (page) =>
 /**
  * Selects the community about block without including the following sections.
  */
-export const getCommunityAboutSection = (page) =>
-  page.locator(".community-description").locator("..");
+export const getCommunityAboutSection = (page) => page.locator(".community-description").locator("..");
 
 /**
  * Selects the stable home jumbotron content without outer container padding.
  */
 export const getHomeJumbotronContent = (page) =>
-  page
-    .getByRole("heading", { level: 1 })
-    .locator("xpath=ancestor::div[contains(@class,'text-center')][1]");
+  page.getByRole("heading", { level: 1 }).locator("xpath=ancestor::div[contains(@class,'text-center')][1]");
 
 /**
  * Selects the explore search row above the results list.
  */
 export const getExploreSearchRow = (page, searchPlaceholder) =>
-  page
-    .getByPlaceholder(searchPlaceholder)
-    .locator("xpath=ancestor::div[contains(@class,'items-center')][1]");
+  page.getByPlaceholder(searchPlaceholder).locator("xpath=ancestor::div[contains(@class,'items-center')][1]");
 
 /**
  * Selects the explore controls row above the results list.
  */
 export const getExploreControlsRow = (page) =>
-  page
-    .locator("#results")
-    .locator("xpath=ancestor::div[contains(@class,'justify-between')][1]");
+  page.locator("#results").locator("xpath=ancestor::div[contains(@class,'justify-between')][1]");
 
 /**
  * Builds unique credentials for sign-up and login flows.
@@ -629,16 +633,8 @@ export const navigateToGroup = async (page, communityName, groupSlug) => {
 /**
  * Navigates to a specific event page within a community.
  */
-export const navigateToEvent = async (
-  page,
-  communityName,
-  groupSlug,
-  eventSlug,
-) => {
-  await navigateToUrl(
-    page,
-    buildUrl(`/${communityName}/group/${groupSlug}/event/${eventSlug}`),
-  );
+export const navigateToEvent = async (page, communityName, groupSlug, eventSlug) => {
+  await navigateToUrl(page, buildUrl(`/${communityName}/group/${groupSlug}/event/${eventSlug}`));
 };
 
 /**
@@ -649,12 +645,48 @@ export const navigateToPath = async (page, path) => {
 };
 
 /**
+ * Declines a pending offer for the shared waitlist lab event.
+ */
+const clearSeededWaitlistOffer = async (memberPage) => {
+  await navigateToPath(memberPage, "/dashboard/user?tab=invitations");
+  const offerRow = memberPage.locator("#dashboard-content tr", {
+    hasText: "Full Event With Waitlist",
+  });
+  const actionsButton = offerRow.getByLabel(/Open offer actions/);
+
+  if (!(await actionsButton.isVisible())) {
+    return;
+  }
+
+  await actionsButton.click();
+  const declineButton = offerRow.getByRole("menuitem", {
+    name: "Decline offer",
+    exact: true,
+  });
+  await declineButton.click();
+  await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
+  await Promise.all([
+    memberPage.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" &&
+        response.url().includes("/dashboard/user/invitations/event-offers/") &&
+        response.url().endsWith("/decline") &&
+        response.ok(),
+    ),
+    memberPage.getByRole("button", { name: "Yes" }).click(),
+  ]);
+};
+
+/**
  * Restores the shared waitlist lab event to its seeded full-event state.
  */
 export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
   if (memberPage.isClosed() || organizerPage.isClosed()) {
     return;
   }
+
+  // Release any offer left behind by an interrupted promotion flow.
+  await clearSeededWaitlistOffer(memberPage);
 
   // Remove member2 from the shared waitlist event before depending on capacity.
   await navigateToEvent(
@@ -672,9 +704,7 @@ export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
       memberPage.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
           response.ok(),
       ),
       memberPage.getByRole("button", { name: "Yes" }).click(),
@@ -696,27 +726,19 @@ export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
       organizerPage.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
           response.ok(),
       ),
       getAttendButton(organizerPage).click(),
     ]);
-    await expect(getLeaveButton(organizerPage)).toContainText(
-      "Cancel attendance",
-    );
+    await expect(getLeaveButton(organizerPage)).toContainText("Cancel attendance");
   }
 };
 
 /**
  * Waits for a page to settle before taking a visual snapshot.
  */
-export const expectPageScreenshot = async (
-  page,
-  screenshotName,
-  screenshotOptions = {},
-) => {
+export const expectPageScreenshot = async (page, screenshotName, screenshotOptions = {}) => {
   await waitForVisualReady(page);
   await waitForVisualImages(page.locator("body"));
 
@@ -731,12 +753,7 @@ export const expectPageScreenshot = async (
 /**
  * Waits for a stable region and snapshots only that locator.
  */
-export const expectRegionScreenshot = async (
-  page,
-  region,
-  screenshotName,
-  screenshotOptions = {},
-) => {
+export const expectRegionScreenshot = async (page, region, screenshotName, screenshotOptions = {}) => {
   const {
     mask,
     maxDiffPixels,
@@ -751,8 +768,7 @@ export const expectRegionScreenshot = async (
     ...((maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio) === undefined
       ? {}
       : {
-          maxDiffPixelRatio:
-            maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio,
+          maxDiffPixelRatio: maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio,
         }),
   };
 
@@ -762,22 +778,14 @@ export const expectRegionScreenshot = async (
   await waitForVisualImages(region);
 
   if (testInfo) {
-    const snapshotDimensions = getPngDimensions(
-      testInfo.snapshotPath(screenshotName),
-    );
+    const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
     const regionBox = await region.boundingBox();
     const shouldUseClippedPageScreenshot =
       useClippedPageScreenshot ||
-      (snapshotDimensions &&
-        regionBox &&
-        hasTinySnapshotDimensionDrift(regionBox, snapshotDimensions));
+      (snapshotDimensions && regionBox && hasTinySnapshotDimensionDrift(regionBox, snapshotDimensions));
 
     if (shouldUseClippedPageScreenshot && snapshotDimensions && regionBox) {
-      const clip = await getClippedScreenshotBox(
-        page,
-        regionBox,
-        snapshotDimensions,
-      );
+      const clip = await getClippedScreenshotBox(page, regionBox, snapshotDimensions);
 
       await expect(page).toHaveScreenshot(screenshotName, {
         animations: "disabled",
@@ -818,9 +826,7 @@ export const selectTimezone = async (page, timezone) => {
   await expect(option).toBeVisible();
   await option.click();
 
-  await expect(timezoneSelector.locator('input[name="timezone"]')).toHaveValue(
-    timezone,
-  );
+  await expect(timezoneSelector.locator('input[name="timezone"]')).toHaveValue(timezone);
 };
 
 /**
@@ -831,9 +837,7 @@ export const logInWithSeededUser = async (page, credentials) => {
 
   await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
   await page.getByLabel("Username").fill(credentials.username);
-  await page
-    .getByRole("textbox", { name: "Password required" })
-    .fill(credentials.password);
+  await page.getByRole("textbox", { name: "Password required" }).fill(credentials.password);
 
   await submitSeededLogin(page);
 };
@@ -842,9 +846,7 @@ export const logInWithSeededUser = async (page, credentials) => {
  * Selects a community dashboard context for the logged-in user.
  */
 export const selectCommunityContext = async (page, communityId) => {
-  const response = await page.request.put(
-    buildUrl(`/dashboard/community/${communityId}/select`),
-  );
+  const response = await page.request.put(buildUrl(`/dashboard/community/${communityId}/select`));
 
   expect(response.ok()).toBeTruthy();
 };
@@ -858,8 +860,6 @@ export const selectGroupContext = async (page, communityId, groupId) => {
   );
   expect(communityResponse.ok()).toBeTruthy();
 
-  const groupResponse = await page.request.put(
-    buildUrl(`/dashboard/group/${groupId}/select`),
-  );
+  const groupResponse = await page.request.put(buildUrl(`/dashboard/group/${groupId}/select`));
   expect(groupResponse.ok()).toBeTruthy();
 };

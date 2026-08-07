@@ -1,25 +1,14 @@
+import { localizeCurrencyLabel } from "/static/js/common/currency.js";
 import { setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { getAttendanceControl, getAttendanceMeta } from "/static/js/event/attendance-dom.js";
-import { restoreCheckoutModalControls } from "/static/js/event/attendance-view.js";
+import {
+  applyTicketCardState,
+  deriveTicketCardState,
+  TICKET_PRICE_BADGE_CLASSES,
+} from "/static/js/event/attendance-ticket-state.js";
+import { restoreCheckoutModalControls } from "/static/js/event/attendance-ticket-view.js";
 import "/static/js/event/attendance-ticket-card.js";
-
-const TICKET_PRICE_BADGE_CLASSES = [
-  "inline-flex",
-  "w-fit",
-  "shrink-0",
-  "self-center",
-  "rounded-full",
-  "border",
-  "border-green-800",
-  "bg-green-100",
-  "px-2",
-  "py-0.5",
-  "text-[11px]",
-  "font-semibold",
-  "text-green-800",
-];
-const TICKET_STATUS_CLASSES = ["bg-green-500", "bg-red-500", "bg-stone-300"];
 
 /**
  * Returns a trimmed string value from an availability payload field.
@@ -187,10 +176,14 @@ const updateAvailabilityMeta = (container, availability) => {
   container.dataset.attendeeApprovalRequired = String(availability.attendee_approval_required === true);
   container.dataset.attendeeMeetingAccessOpen = String(availability.is_live === true);
   container.dataset.canceled = String(availability.canceled === true);
+  container.dataset.hasSoldOutTicketTypes = String(availability.has_sold_out_ticket_types === true);
+  container.dataset.hasVisibleTicketTypes = String(availability.has_visible_ticket_types === true);
   container.dataset.isPast = String(availability.is_past === true);
-  container.dataset.isTicketed = String(availability.is_ticketed === true);
+  container.dataset.isSimpleRsvp = String(availability.is_simple_rsvp === true);
+  container.dataset.paidCapable = String(availability.paid_capable === true);
   container.dataset.registrationWindowOpen = String(availability.registration_window_open !== false);
   container.dataset.ticketPurchaseAvailable = String(availability.has_sellable_ticket_types === true);
+  container.dataset.ticketIsFreeOnly = String(availability.has_only_free_ticket_types === true);
   container.dataset.waitlistEnabled = String(availability.waitlist_enabled === true);
 
   const registrationMessage = getAvailabilityStringValue(availability.registration_window_message);
@@ -229,7 +222,7 @@ const updateAvailabilityMeta = (container, availability) => {
  * @returns {boolean} True when the card displays a current price badge.
  */
 const renderTicketPriceBadge = (card, ticket) => {
-  const priceLabel = getAvailabilityStringValue(ticket.current_price_label);
+  const priceLabel = localizeCurrencyLabel(getAvailabilityStringValue(ticket.current_price_label));
   const priceBadge = card?.querySelector('[data-attendance-role="ticket-type-price-badge"]');
   const summary = card?.querySelector('[data-attendance-role="ticket-type-summary"]');
 
@@ -256,72 +249,78 @@ const renderTicketPriceBadge = (card, ticket) => {
 };
 
 /**
+ * Updates a ticket description from fresh availability.
+ * @param {HTMLElement|null|undefined} card Ticket card element.
+ * @param {Object} ticket Public ticket availability payload.
+ * @returns {void}
+ */
+const renderTicketDescription = (card, ticket) => {
+  const descriptionText = getAvailabilityStringValue(ticket.description);
+  const currentDescription = card?.querySelector('[data-attendance-role="ticket-type-description"]');
+  if (!descriptionText) {
+    currentDescription?.remove();
+    return;
+  }
+
+  if (currentDescription instanceof HTMLElement) {
+    currentDescription.textContent = descriptionText;
+    return;
+  }
+
+  const statusLabel = card?.querySelector('[data-attendance-role="ticket-type-status-label"]');
+  const statusRow = statusLabel?.closest("div");
+  if (!(statusRow instanceof HTMLElement)) {
+    return;
+  }
+
+  const nextDescription = document.createElement("p");
+  nextDescription.dataset.attendanceRole = "ticket-type-description";
+  nextDescription.className = "col-start-2 form-legend min-w-0";
+  nextDescription.textContent = descriptionText;
+  statusRow.before(nextDescription);
+};
+
+/**
  * Updates a ticket status label and marker from fresh availability.
  * @param {HTMLInputElement} option Ticket radio input.
  * @param {Object} ticket Public ticket availability payload.
- * @param {{canceled: boolean, registrationWindowOpen: boolean, ticketPurchaseAvailable: boolean}} meta Attendance metadata.
- * @returns {boolean} Whether the ticket is currently sellable.
+ * @param {object} meta Attendance metadata.
+ * @param {boolean} meta.attendeeApprovalRequired Whether approval is required.
+ * @param {boolean} meta.canceled Whether the event is canceled.
+ * @param {boolean} meta.registrationWindowOpen Whether registration is open.
+ * @param {boolean} meta.ticketPurchaseAvailable Whether tickets can be purchased.
+ * @param {boolean} meta.waitlistEnabled Whether the waitlist is enabled.
+ * @returns {boolean} Whether the ticket is currently selectable.
  */
 const renderTicketAvailability = (option, ticket, meta) => {
   const card = option.closest('[data-attendance-role="ticket-type-card"]');
-  const cardBody = card?.querySelector('[data-attendance-role="ticket-type-card-body"]');
-  const statusDot = card?.querySelector('[data-attendance-role="ticket-type-status-dot"]');
-  const statusLabel = card?.querySelector('[data-attendance-role="ticket-type-status-label"]');
-  const hasCurrentPriceBadge = renderTicketPriceBadge(card, ticket);
-  const isSellableNow = ticket.is_sellable_now === true && hasCurrentPriceBadge;
-  const isSelectable =
-    !meta.canceled && meta.registrationWindowOpen && meta.ticketPurchaseAvailable && isSellableNow;
+  const title = card?.querySelector('[data-attendance-role="ticket-type-title"]');
+  const state = deriveTicketCardState(ticket, meta);
 
-  option.dataset.ticketPurchasable = String(isSellableNow);
-  if (!isSelectable && option.checked) {
-    option.checked = false;
+  renderTicketPriceBadge(card, ticket);
+  if (title instanceof HTMLElement) {
+    title.textContent = getAvailabilityStringValue(ticket.title) || "Ticket";
   }
+  renderTicketDescription(card, ticket);
+  applyTicketCardState(option, state);
 
-  if (cardBody instanceof HTMLElement) {
-    cardBody.classList.toggle("bg-white", isSelectable);
-    cardBody.classList.toggle("cursor-pointer", isSelectable);
-    cardBody.classList.toggle("hover:border-primary-300", isSelectable);
-    cardBody.classList.toggle("hover:shadow-sm", isSelectable);
-    cardBody.classList.toggle("bg-stone-50", !isSelectable);
-    cardBody.classList.toggle("cursor-not-allowed", !isSelectable);
-    cardBody.classList.toggle("opacity-60", !isSelectable);
-  }
-
-  if (statusDot instanceof HTMLElement) {
-    statusDot.classList.remove(...TICKET_STATUS_CLASSES);
-    if (ticket.sold_out === true) {
-      statusDot.classList.add("bg-red-500");
-    } else if (isSelectable) {
-      statusDot.classList.add("bg-green-500");
-    } else {
-      statusDot.classList.add("bg-stone-300");
-    }
-  }
-
-  if (statusLabel instanceof HTMLElement) {
-    if (ticket.sold_out === true) {
-      statusLabel.textContent = "Sold out";
-    } else if (!meta.registrationWindowOpen) {
-      statusLabel.textContent = "Registration not open";
-    } else if (isSellableNow) {
-      statusLabel.textContent = "Available now";
-    } else if (!isSellableNow) {
-      statusLabel.textContent = "Not on sale";
-    }
-  }
-
-  return isSellableNow;
+  return state.selectable;
 };
 
 /**
  * Creates a ticket card for availability entries missing from cached markup.
  * @param {HTMLElement} container Attendance container element.
  * @param {Object} ticket Public ticket availability payload.
- * @param {{canceled: boolean, registrationWindowOpen: boolean, ticketPurchaseAvailable: boolean}} meta Attendance metadata.
+ * @param {object} meta Attendance metadata.
+ * @param {boolean} meta.attendeeApprovalRequired Whether approval is required.
+ * @param {boolean} meta.canceled Whether the event is canceled.
+ * @param {boolean} meta.registrationWindowOpen Whether registration is open.
+ * @param {boolean} meta.ticketPurchaseAvailable Whether tickets can be purchased.
+ * @param {boolean} meta.waitlistEnabled Whether the waitlist is enabled.
  * @returns {HTMLInputElement|null} The created ticket option, if any.
  */
 const createTicketAvailabilityCard = (container, ticket, meta) => {
-  if (ticket.active === false) {
+  if (ticket.active === false || !getAvailabilityStringValue(ticket.current_price_label)) {
     return null;
   }
 
@@ -333,9 +332,11 @@ const createTicketAvailabilityCard = (container, ticket, meta) => {
 
   const card = document.createElement("attendance-ticket-card");
   card.ticket = ticket;
+  card.attendeeApprovalRequired = meta.attendeeApprovalRequired;
   card.canceled = meta.canceled;
   card.registrationWindowOpen = meta.registrationWindowOpen;
-  card.ticketPurchaseAvailable = meta.ticketPurchaseAvailable && meta.registrationWindowOpen;
+  card.ticketPurchaseAvailable = meta.ticketPurchaseAvailable;
+  card.waitlistEnabled = meta.waitlistEnabled;
   card.addEventListener("change", () => {
     restoreCheckoutModalControls(container);
   });
@@ -374,14 +375,13 @@ const renderTicketAvailabilities = (container, ticketTypes = []) => {
       return;
     }
 
-    const ticket = ticketsById.get(option.value) || {
-      event_ticket_type_id: option.value,
-      is_sellable_now: false,
-      sold_out: false,
-    };
-    const isSellableNow = renderTicketAvailability(option, ticket, meta);
-    option.disabled =
-      meta.canceled || !meta.registrationWindowOpen || !meta.ticketPurchaseAvailable || !isSellableNow;
+    const ticket = ticketsById.get(option.value);
+    if (!ticket) {
+      option.closest('[data-attendance-role="ticket-type-card"]')?.remove();
+      return;
+    }
+
+    renderTicketAvailability(option, ticket, meta);
   });
 
   restoreCheckoutModalControls(container);

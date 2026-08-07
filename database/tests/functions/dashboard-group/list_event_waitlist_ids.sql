@@ -1,3 +1,5 @@
+-- Tests listing event waitlist identifiers.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -17,6 +19,7 @@ select plan(3);
 \set missingEventID '3a1e0000-0000-0000-0000-000000000006'
 \set missingGroupID '3a1e0000-0000-0000-0000-000000000007'
 \set otherGroupID '3a1e0000-0000-0000-0000-000000000008'
+\set ticketTypeID '3a1e0000-0000-0000-0000-000000000012'
 \set user0ID '3a1e0000-0000-0000-0000-000000000009'
 \set user1ID '3a1e0000-0000-0000-0000-000000000010'
 \set user2ID '3a1e0000-0000-0000-0000-000000000011'
@@ -116,12 +119,16 @@ insert into event (
     true
 );
 
+-- Ticket tier shared by the event waitlist
+insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+values (:'ticketTypeID', :'eventID', 1, 1, 'General admission');
+
 -- Waitlist entries
-insert into event_waitlist (event_id, user_id)
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
 values
-    (:'eventID', :'user0ID'),
-    (:'eventID', :'user1ID'),
-    (:'eventID', :'user2ID');
+    (:'eventID', :'ticketTypeID', :'user0ID'),
+    (:'eventID', :'ticketTypeID', :'user1ID'),
+    (:'eventID', :'ticketTypeID', :'user2ID');
 
 -- ============================================================================
 -- TESTS

@@ -7,31 +7,42 @@ create or replace function publish_event(
 )
 returns void as $$
 declare
-    v_has_ticket_types boolean;
+    v_community_id uuid;
+    v_paid_capable boolean;
     v_payment_currency_code text;
     v_payment_recipient jsonb;
     v_published boolean;
     v_starts_at timestamptz;
 begin
-    -- Check if the event is active, load ticketing state, and lock it for update
+    -- Lock the group payment state before the event so recipient changes and
+    -- publication cannot invalidate each other
+    select
+        g.community_id,
+        g.payment_recipient
+    into
+        v_community_id,
+        v_payment_recipient
+    from "group" g
+    where g.group_id = p_group_id
+    and g.deleted = false
+    for update;
+
+    if not found then
+        raise exception 'event not found or inactive';
+    end if;
+
+    -- Check if the event is active and lock it for publication
     select
         e.published,
         e.payment_currency_code,
-        g.payment_recipient,
         e.starts_at,
-        exists (
-            select 1
-            from event_ticket_type ett
-            where ett.event_id = e.event_id
-        )
+        is_event_paid_capable(e.event_id)
     into
         v_published,
         v_payment_currency_code,
-        v_payment_recipient,
         v_starts_at,
-        v_has_ticket_types
+        v_paid_capable
     from event e
-    join "group" g on g.group_id = e.group_id
     where event_id = p_event_id
     and e.group_id = p_group_id
     and e.deleted = false
@@ -47,26 +58,13 @@ begin
         return;
     end if;
 
-    -- Require checkout-critical ticketing configuration before publishing
-    if v_has_ticket_types then
-        if p_configured_provider is null then
-            raise exception 'payments are not configured on this server';
-        end if;
-
-        if v_payment_recipient is null then
-            raise exception 'ticketed events require a payment recipient';
-        end if;
-
-        if coalesce(v_payment_recipient->>'provider', '') <> p_configured_provider then
-            raise exception 'ticketed events require a payment recipient for the server payments provider';
-        end if;
-
-        if v_payment_currency_code is null then
-            raise exception 'ticketed events require payment_currency_code';
-        end if;
-
-        perform validate_payment_currency_code(v_payment_currency_code);
-    end if;
+    -- Require checkout-critical payment configuration only for paid-capable events
+    perform validate_event_ticketing_payment_readiness(
+        p_configured_provider,
+        v_paid_capable,
+        v_payment_currency_code,
+        v_payment_recipient
+    );
 
     -- Check that the event has a start date
     if v_starts_at is null then
@@ -108,7 +106,7 @@ begin
         p_actor_user_id,
         'event',
         p_event_id,
-        (select community_id from "group" where group_id = p_group_id),
+        v_community_id,
         p_group_id,
         p_event_id
     );

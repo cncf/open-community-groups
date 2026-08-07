@@ -5,13 +5,20 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set actorUserID '79530000-0000-0000-0000-000000000001'
+\set activeRecoveryEventID '79530000-0000-0000-0000-000000000035'
+\set activeRecoveryPriceWindowID '79530000-0000-0000-0000-000000000036'
+\set activeRecoveryPurchaseID '79530000-0000-0000-0000-000000000037'
+\set activeRecoveryQueueUserID '79530000-0000-0000-0000-000000000038'
+\set activeRecoveryRefundID '79530000-0000-0000-0000-000000000039'
+\set activeRecoveryTicketTypeID '79530000-0000-0000-0000-000000000040'
+\set activeRecoveryUserID '79530000-0000-0000-0000-000000000041'
 \set automaticPurchaseID '79530000-0000-0000-0000-000000000013'
 \set automaticRefundID '79530000-0000-0000-0000-000000000014'
 \set automaticUserID '79530000-0000-0000-0000-000000000015'
@@ -97,6 +104,20 @@ values
         'recovery-operator'
     ),
     (
+        :'activeRecoveryQueueUserID',
+        'hash-9',
+        'active-recovery-queue@example.com',
+        true,
+        'active-recovery-queue'
+    ),
+    (
+        :'activeRecoveryUserID',
+        'hash-10',
+        'active-recovery-buyer@example.com',
+        true,
+        'active-recovery-buyer'
+    ),
+    (
         :'automaticUserID',
         'hash-3',
         'automatic-recovery-buyer@example.com',
@@ -147,12 +168,20 @@ values
     );
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (
+    community_id,
+    group_category_id,
+    group_id,
+    name,
+    payment_recipient,
+    slug
+)
 values (
-    :'groupID',
     :'communityID',
     :'groupCategoryID',
+    :'groupID',
     'Complete Refund Recovery Group',
+    '{"provider":"stripe","recipient_id":"acct_recovery"}'::jsonb,
     'complete-refund-recovery-group'
 );
 
@@ -189,6 +218,35 @@ insert into event (
     now()
 );
 
+-- Active event used to verify queue promotion after recovery completion
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'Active recovery test event',
+    :'eventCategoryID',
+    :'activeRecoveryEventID',
+    'in-person',
+    :'groupID',
+    'Active Refund Recovery Event',
+    'USD',
+    true,
+    current_timestamp,
+    'active-refund-recovery-event',
+    current_timestamp + interval '1 day',
+    'UTC'
+);
+
 -- Ticket type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -204,6 +262,21 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Full active tier whose recovery completion releases the queued seat
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'activeRecoveryEventID',
+    :'activeRecoveryTicketTypeID',
+    1,
+    1,
+    'Recovery admission'
+);
+
 -- Price window
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -213,6 +286,17 @@ insert into event_ticket_price_window (
     :'priceWindowID',
     2500,
     :'eventTicketTypeID'
+);
+
+-- Current price used to snapshot the promoted recovery offer
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    :'activeRecoveryPriceWindowID',
+    :'activeRecoveryTicketTypeID'
 );
 
 -- App-composed notification payload handed to atomic recovery completion
@@ -363,6 +447,42 @@ insert into event_purchase (
     :'unpinnedUserID',
 
     null
+);
+
+-- Recoverable purchase currently occupying the active tier
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    refunded_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'USD',
+    :'activeRecoveryEventID',
+    :'activeRecoveryPurchaseID',
+    :'activeRecoveryTicketTypeID',
+    current_timestamp,
+    'refund-recovery-pending',
+    'Recovery admission',
+    :'activeRecoveryUserID'
+);
+
+-- FIFO queue waiting for active-tier recovery to release capacity
+insert into event_waitlist (
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    user_id
+) values (
+    current_timestamp,
+    :'activeRecoveryEventID',
+    :'activeRecoveryTicketTypeID',
+    :'activeRecoveryQueueUserID'
 );
 
 -- Refund requests awaiting external recovery
@@ -525,6 +645,35 @@ insert into event_purchase_refund (
     'provider request failed before returning an id',
     null,
     null
+);
+
+-- Terminal provider failure awaiting operator recovery on the active event
+insert into event_purchase_refund (
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    failure_message,
+    finalized_at,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    provider_refund_id,
+    status,
+    terminal_failure
+) values (
+    2500,
+    'USD',
+    :'activeRecoveryPurchaseID',
+    :'activeRecoveryRefundID',
+    'destination account is closed: re_active_failed',
+    current_timestamp,
+    'event-purchase-refund-active-recovery',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    're_active_failed',
+    'provider-failed',
+    true
 );
 
 -- ============================================================================
@@ -710,6 +859,51 @@ select throws_ok(
     'Should require events write access'
 );
 
+-- Should complete active-event recovery with configured provider reconciliation
+select results_eq(
+    format($$select complete_event_purchase_refund_recovery(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        'bank-transfer-active',
+        'Verified active-event refund',
+        (select notification_template_data from refund_recovery_test_data),
+        'stripe'
+    )$$, :'actorUserID', :'groupID', :'activeRecoveryRefundID'),
+    format($$ values (jsonb_build_object(
+        'event_id', %L::uuid,
+        'recovered_now', true,
+        'user_id', %L::uuid
+    )) $$, :'activeRecoveryEventID', :'activeRecoveryUserID'),
+    'Should complete active-event recovery'
+);
+
+-- Should offer the released active-tier seat to the FIFO queue head
+select is(
+    (
+        select jsonb_build_object(
+            'offer_status', (
+                select status
+                from admission_offer
+                where event_id = :'activeRecoveryEventID'::uuid
+                and user_id = :'activeRecoveryQueueUserID'::uuid
+            ),
+            'purchase_status', (
+                select status
+                from event_purchase
+                where event_purchase_id = :'activeRecoveryPurchaseID'::uuid
+            ),
+            'waitlist_count', (
+                select count(*)
+                from event_waitlist
+                where event_id = :'activeRecoveryEventID'::uuid
+            )
+        )
+    ),
+    '{"offer_status":"pending","purchase_status":"refunded","waitlist_count":0}'::jsonb,
+    'Should promote the queue after recovery releases capacity'
+);
+
 -- Should complete an externally resolved recovery
 select results_eq(
     format($$select complete_event_purchase_refund_recovery(
@@ -770,7 +964,8 @@ select results_eq(
             resource_type
         from audit_log
         where action = 'event_refund_recovery_completed'
-    $$),
+        and details->>'event_purchase_refund_id' = %L
+    $$, :'refundID'),
     format($$ values (
         'event_refund_recovery_completed'::text,
         %L::uuid,
@@ -825,6 +1020,7 @@ select is(
         select count(*)
         from audit_log
         where action = 'event_refund_recovery_completed'
+        and details->>'event_purchase_refund_id' = :'refundID'
     ),
     1::bigint,
     'Should keep a single audit entry after an idempotent retry'

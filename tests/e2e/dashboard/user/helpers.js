@@ -124,12 +124,6 @@ export const ensureGroupInvitation = async (page, groupId, userId, role) => {
 };
 
 export const clearEventAttendeeState = async (page, eventId, userId) => {
-  await page.request.put(
-    buildE2eUrl(
-      `/dashboard/group/events/${eventId}/attendees/${userId}/invitation/cancel`,
-    ),
-  );
-
   await page.request.delete(
     buildE2eUrl(
       `/dashboard/group/events/${eventId}/attendees/${userId}/attendance`,

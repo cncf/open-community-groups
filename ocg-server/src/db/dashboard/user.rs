@@ -23,6 +23,8 @@ use crate::{
     },
     types::{
         badges::{UserBadge, UserBadgeIdentity},
+        event::EventEnrollmentReconciliationOutcome,
+        payments::PaymentProvider,
         questionnaire::QuestionnaireAnswers,
     },
 };
@@ -36,13 +38,6 @@ pub(crate) trait DBDashboardUser {
         actor_user_id: Uuid,
         community_id: Uuid,
     ) -> Result<()>;
-
-    /// Accepts a pending organizer-created event invitation.
-    async fn accept_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<Uuid>;
 
     /// Accepts a pending group team invitation.
     async fn accept_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid)
@@ -61,6 +56,14 @@ pub(crate) trait DBDashboardUser {
         actor_user_id: Uuid,
         session_proposal: &SessionProposalInput,
     ) -> Result<Uuid>;
+
+    /// Declines an active admission offer owned by the user.
+    async fn decline_event_admission_offer(
+        &self,
+        actor_user_id: Uuid,
+        admission_offer_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventEnrollmentReconciliationOutcome>;
 
     /// Deletes a session proposal for the user.
     async fn delete_session_proposal(
@@ -113,7 +116,7 @@ pub(crate) trait DBDashboardUser {
         filters: &UserGroupsFilters,
     ) -> Result<UserGroupsOutput>;
 
-    /// Lists all pending organizer-created event invitations for the user.
+    /// Lists active event admission offers owned by the user.
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
 
     /// Lists upcoming events where the user participates.
@@ -156,13 +159,6 @@ pub(crate) trait DBDashboardUser {
         community_id: Uuid,
     ) -> Result<()>;
 
-    /// Rejects a pending organizer-created event invitation.
-    async fn reject_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<()>;
-
     /// Rejects a pending group team invitation.
     async fn reject_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid)
     -> Result<()>;
@@ -184,14 +180,14 @@ pub(crate) trait DBDashboardUser {
     /// Permanently revokes a badge owned by the user.
     async fn revoke_user_badge(&self, actor_user_id: Uuid, user_badge_id: Uuid) -> Result<()>;
 
-    /// Submits registration question answers for a user's event and returns whether it became confirmed.
+    /// Submits registration question answers for a user's event.
     async fn submit_event_registration_answers(
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
-    ) -> Result<bool>;
+    ) -> Result<()>;
 
     /// Updates a session proposal for the user.
     async fn update_session_proposal(
@@ -243,20 +239,6 @@ where
         .await
     }
 
-    /// [`DBDashboardUser::accept_event_attendee_invitation`]
-    #[instrument(skip(self), err)]
-    async fn accept_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<Uuid> {
-        self.fetch_scalar_one(
-            "select accept_event_attendee_invitation($1::uuid, $2::uuid)::uuid",
-            &[&actor_user_id, &event_id],
-        )
-        .await
-    }
-
     /// [`DBDashboardUser::accept_group_team_invitation`]
     #[instrument(skip(self), err)]
     async fn accept_group_team_invitation(
@@ -295,6 +277,31 @@ where
         self.fetch_scalar_one(
             "select add_session_proposal($1::uuid, $2::jsonb)::uuid",
             &[&actor_user_id, &Json(session_proposal)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::decline_event_admission_offer`].
+    #[instrument(skip(self), err)]
+    async fn decline_event_admission_offer(
+        &self,
+        actor_user_id: Uuid,
+        admission_offer_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<EventEnrollmentReconciliationOutcome> {
+        self.fetch_json_one(
+            "
+            select decline_event_admission_offer(
+                $1::uuid,
+                $2::uuid,
+                $3::text
+            )
+            ",
+            &[
+                &actor_user_id,
+                &admission_offer_id,
+                &payment_provider.map(|provider| provider.to_string()),
+            ],
         )
         .await
     }
@@ -510,20 +517,6 @@ where
         .await
     }
 
-    /// [`DBDashboardUser::reject_event_attendee_invitation`]
-    #[instrument(skip(self), err)]
-    async fn reject_event_attendee_invitation(
-        &self,
-        actor_user_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<()> {
-        self.execute(
-            "select reject_event_attendee_invitation($1::uuid, $2::uuid)",
-            &[&actor_user_id, &event_id],
-        )
-        .await
-    }
-
     /// [`DBDashboardUser::reject_group_team_invitation`]
     #[instrument(skip(self), err)]
     async fn reject_group_team_invitation(
@@ -584,8 +577,8 @@ where
         community_id: Uuid,
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
-    ) -> Result<bool> {
-        self.fetch_scalar_one(
+    ) -> Result<()> {
+        self.execute(
             "select submit_event_registration_answers($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
             &[
                 &actor_user_id,

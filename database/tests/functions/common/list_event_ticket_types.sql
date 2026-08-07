@@ -1,3 +1,5 @@
+-- Tests listing normalized event ticket types.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -21,10 +23,12 @@ select plan(2);
 \set user2ID '0c120000-0000-0000-0000-00000000000a'
 \set user3ID '0c120000-0000-0000-0000-00000000000b'
 \set user4ID '0c120000-0000-0000-0000-00000000000c'
-\set windowAlphaCurrentID '0c120000-0000-0000-0000-00000000000d'
-\set windowAlphaExpiredID '0c120000-0000-0000-0000-00000000000e'
-\set windowAlphaFutureID '0c120000-0000-0000-0000-00000000000f'
-\set windowWorkshopID '0c120000-0000-0000-0000-000000000010'
+\set user5ID '0c120000-0000-0000-0000-00000000000d'
+\set user6ID '0c120000-0000-0000-0000-00000000000e'
+\set windowAlphaCurrentID '0c120000-0000-0000-0000-00000000000f'
+\set windowAlphaExpiredID '0c120000-0000-0000-0000-000000000010'
+\set windowAlphaFutureID '0c120000-0000-0000-0000-000000000011'
+\set windowWorkshopID '0c120000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -62,7 +66,9 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'user1ID', 'test_hash', 'user1@example.test', true, 'user1'),
     (:'user2ID', 'test_hash', 'user2@example.test', true, 'user2'),
     (:'user3ID', 'test_hash', 'user3@example.test', true, 'user3'),
-    (:'user4ID', 'test_hash', 'user4@example.test', true, 'user4');
+    (:'user4ID', 'test_hash', 'user4@example.test', true, 'user4'),
+    (:'user5ID', 'test_hash', 'user5@example.test', true, 'user5'),
+    (:'user6ID', 'test_hash', 'user6@example.test', true, 'user6');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug) values
@@ -115,18 +121,27 @@ insert into event_ticket_type (
     seats_total,
     title
 ) values
-    (:'ticketTypeAlphaID', :'eventID', 1, 3, 'Alpha pass');
+    (:'ticketTypeAlphaID', :'eventID', 1, 5, 'Alpha pass');
 
 -- Second ticket type used to verify stable listing order
 insert into event_ticket_type (
     event_ticket_type_id,
+    availability,
     description,
     event_id,
     "order",
     seats_total,
     title
 ) values
-    (:'ticketTypeWorkshopID', 'Workshop access', :'eventID', 2, 5, 'Workshop pass');
+    (
+        :'ticketTypeWorkshopID',
+        'invitation_only',
+        'Workshop access',
+        :'eventID',
+        2,
+        5,
+        'Workshop pass'
+    );
 
 -- Event ticket price windows
 insert into event_ticket_price_window (
@@ -211,6 +226,24 @@ insert into event_purchase (
     'refund-requested',
     'Alpha pass',
     :'user4ID'
+), (
+    2500,
+    'USD',
+    :'eventID',
+    :'ticketTypeAlphaID',
+    null,
+    'refund-pending',
+    'Alpha pass',
+    :'user5ID'
+), (
+    2500,
+    'USD',
+    :'eventID',
+    :'ticketTypeAlphaID',
+    null,
+    'refund-recovery-pending',
+    'Alpha pass',
+    :'user6ID'
 );
 
 -- ============================================================================
@@ -223,6 +256,7 @@ select is(
     jsonb_build_array(
         jsonb_build_object(
             'active', true,
+            'availability', 'public',
             'current_price', jsonb_build_object(
                 'amount_minor', 2500,
                 'ends_at', current_timestamp + interval '1 day',
@@ -249,12 +283,13 @@ select is(
                 )
             ),
             'remaining_seats', 0,
-            'seats_total', 3,
+            'seats_total', 5,
             'sold_out', true,
             'title', 'Alpha pass'
         ),
         jsonb_build_object(
             'active', true,
+            'availability', 'invitation_only',
             'current_price', jsonb_build_object(
                 'amount_minor', 1500
             ),

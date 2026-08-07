@@ -1,9 +1,11 @@
+-- Tests adding recurring event series.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -138,6 +140,77 @@ select results_eq(
         values (1, 'weekly'::text, 'UTC'::text)
     $$,
     'Should store recurrence metadata for the series'
+);
+
+-- Should reject paid recurring events when payment readiness fails
+select throws_ok(
+    format(
+        $$
+        select add_event_series(
+            %L::uuid,
+            %L::uuid,
+            '[
+                {
+                    "name": "Paid Weekly Study Group",
+                    "description": "Base event",
+                    "timezone": "UTC",
+                    "category_id": "%s",
+                    "kind_id": "virtual",
+                    "payment_currency_code": "USD",
+                    "starts_at": "2030-01-21T10:00:00",
+                    "ends_at": "2030-01-21T11:00:00",
+                    "ticket_types": [
+                        {
+                            "active": true,
+                            "event_ticket_type_id": "3a030000-0000-0000-0000-000000000006",
+                            "order": 1,
+                            "price_windows": [
+                                {
+                                    "amount_minor": 2500,
+                                    "event_ticket_price_window_id": "3a030000-0000-0000-0000-000000000007"
+                                }
+                            ],
+                            "seats_total": 25,
+                            "title": "Paid admission"
+                        }
+                    ]
+                },
+                {
+                    "name": "Paid Weekly Study Group",
+                    "description": "Base event",
+                    "timezone": "UTC",
+                    "category_id": "%s",
+                    "kind_id": "virtual",
+                    "payment_currency_code": "USD",
+                    "starts_at": "2030-01-28T10:00:00",
+                    "ends_at": "2030-01-28T11:00:00",
+                    "ticket_types": [
+                        {
+                            "active": true,
+                            "event_ticket_type_id": "3a030000-0000-0000-0000-000000000008",
+                            "order": 1,
+                            "price_windows": [
+                                {
+                                    "amount_minor": 2500,
+                                    "event_ticket_price_window_id": "3a030000-0000-0000-0000-000000000009"
+                                }
+                            ],
+                            "seats_total": 25,
+                            "title": "Paid admission"
+                        }
+                    ]
+                }
+            ]'::jsonb,
+            '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb,
+            null,
+            'stripe'
+        )
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
+    'P0001',
+    'paid-capable events require a payment recipient',
+    'Should reject paid recurring events when payment readiness fails'
 );
 
 -- Should reject too few event payloads

@@ -2,14 +2,19 @@
  * Dispatches an HTMX before-request event from the provided target.
  * @param {EventTarget} target - Target that emits the event.
  * @param {object} detail - Event detail payload.
+ * @param {object} options - Event options.
+ * @param {boolean} options.cancelable - Whether the event can be canceled.
+ * @returns {CustomEvent} The dispatched event.
  */
-export const dispatchHtmxBeforeRequest = (target, detail = {}) => {
-  target.dispatchEvent(
-    new CustomEvent("htmx:beforeRequest", {
-      bubbles: true,
-      detail,
-    }),
-  );
+export const dispatchHtmxBeforeRequest = (target, detail = {}, { cancelable = false } = {}) => {
+  const event = new CustomEvent("htmx:beforeRequest", {
+    bubbles: true,
+    cancelable,
+    detail,
+  });
+
+  target.dispatchEvent(event);
+  return event;
 };
 
 /**

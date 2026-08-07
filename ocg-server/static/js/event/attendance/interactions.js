@@ -1,6 +1,7 @@
 import { showConfirmAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { closestElement, isElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
   getAttendanceContainer,
@@ -12,25 +13,23 @@ import {
   ATTEND_EVENT_LABEL,
   CANCEL_ATTENDANCE_LABEL,
   CANCEL_INVITATION_REQUEST_LABEL,
-  closeQuestionsModal,
-  closeRefundModal,
-  closeTicketModal,
   LEAVE_WAITLIST_LABEL,
-  openRefundModal,
+  REQUEST_PENDING_LABEL,
+} from "/static/js/event/attendance-copy.js";
+import {
+  closeTicketModal,
   openTicketModal,
   restoreCheckoutModalControls,
-} from "/static/js/event/attendance-view.js";
+} from "/static/js/event/attendance-ticket-view.js";
+import { closeRefundModal, openRefundModal } from "/static/js/event/attendance-view.js";
 import {
+  dismissQuestionAnswers,
   isCompletingRegistrationQuestions,
   isWaitlistJoinAction,
   requestQuestionAnswers,
   shouldCollectQuestionAnswers,
 } from "/static/js/event/attendance/questions.js";
-import {
-  getSigninActionText,
-  QUESTIONS_CONTINUE_ACTION_ATTEND,
-  QUESTIONS_CONTINUE_ACTION_TICKET,
-} from "/static/js/event/attendance/shared.js";
+import { getSigninActionText, QUESTIONS_CONTINUE_ACTION_ATTEND } from "/static/js/event/attendance/shared.js";
 
 /**
  * Handles click events for attendance actions.
@@ -79,23 +78,36 @@ export const handleAttendanceClick = (event) => {
   const meta = getAttendanceMeta(container);
   const completingRegistrationQuestions = isCompletingRegistrationQuestions(attendButton);
 
-  // Ticketed attendance may need questions before opening the checkout modal.
+  // Promoted attendees answer questions before completing their reserved place
   if (
     attendButton instanceof HTMLButtonElement &&
     shouldCollectQuestionAnswers(container) &&
-    (!isWaitlistJoinAction(meta) || completingRegistrationQuestions)
+    completingRegistrationQuestions
   ) {
     event.preventDefault();
-    const continueAction = meta.isTicketed
-      ? QUESTIONS_CONTINUE_ACTION_TICKET
-      : QUESTIONS_CONTINUE_ACTION_ATTEND;
-    requestQuestionAnswers(container, continueAction);
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_ATTEND);
     return;
   }
 
-  if (attendButton instanceof HTMLButtonElement && meta.isTicketed) {
+  // Ticketed actions choose a tier before deciding whether answers are required
+  if (
+    attendButton instanceof HTMLButtonElement &&
+    meta.ticketModalRequired &&
+    !completingRegistrationQuestions
+  ) {
     event.preventDefault();
     openTicketModal(container);
+    return;
+  }
+
+  // Direct RSVP and private request flows collect answers before submission
+  if (
+    attendButton instanceof HTMLButtonElement &&
+    shouldCollectQuestionAnswers(container) &&
+    !isWaitlistJoinAction(meta)
+  ) {
+    event.preventDefault();
+    requestQuestionAnswers(container, QUESTIONS_CONTINUE_ACTION_ATTEND);
     return;
   }
 
@@ -113,7 +125,7 @@ export const handleAttendanceClick = (event) => {
     let message = "Are you sure you want to cancel your attendance?";
     if (label === LEAVE_WAITLIST_LABEL) {
       message = "Are you sure you want to leave the waiting list?";
-    } else if (label === CANCEL_INVITATION_REQUEST_LABEL) {
+    } else if (label === REQUEST_PENDING_LABEL || label === CANCEL_INVITATION_REQUEST_LABEL) {
       message = "Are you sure you want to cancel your invitation request?";
     }
     showConfirmAlert(message, leaveButton.id, "Yes");
@@ -161,8 +173,7 @@ export const handleAttendanceClick = (event) => {
     '[data-attendance-role="registration-modal-close"], [data-attendance-role="registration-modal-cancel"], [data-attendance-role="registration-modal-overlay"]',
   );
   if (closeQuestionsModalTrigger) {
-    delete container.dataset.questionsContinueAction;
-    closeQuestionsModal(container);
+    dismissQuestionAnswers(container);
   }
 };
 
@@ -172,6 +183,23 @@ export const handleAttendanceClick = (event) => {
  * @returns {void}
  */
 export const handleAttendanceKeydown = (event) => {
+  if (event.key === "Tab") {
+    for (const container of document.querySelectorAll(ATTENDANCE_CONTAINER_SELECTOR)) {
+      if (!(container instanceof HTMLElement)) {
+        continue;
+      }
+
+      for (const role of ["registration-modal", "refund-modal", "ticket-modal"]) {
+        const modal = getAttendanceControl(container, role);
+        if (modal && !isElementHidden(modal)) {
+          trapModalFocus(event, modal);
+          return;
+        }
+      }
+    }
+    return;
+  }
+
   if (!isEscapeEvent(event)) {
     return;
   }
@@ -181,21 +209,22 @@ export const handleAttendanceKeydown = (event) => {
       return;
     }
 
-    const ticketModal = getAttendanceControl(container, "ticket-modal");
-    if (ticketModal && !isElementHidden(ticketModal)) {
-      restoreCheckoutModalControls(container);
-      closeTicketModal(container);
+    const questionsModal = getAttendanceControl(container, "registration-modal");
+    if (questionsModal && !isElementHidden(questionsModal)) {
+      dismissQuestionAnswers(container);
+      return;
     }
 
     const refundModal = getAttendanceControl(container, "refund-modal");
     if (refundModal && !isElementHidden(refundModal)) {
       closeRefundModal(container);
+      return;
     }
 
-    const questionsModal = getAttendanceControl(container, "registration-modal");
-    if (questionsModal && !isElementHidden(questionsModal)) {
-      delete container.dataset.questionsContinueAction;
-      closeQuestionsModal(container);
+    const ticketModal = getAttendanceControl(container, "ticket-modal");
+    if (ticketModal && !isElementHidden(ticketModal)) {
+      restoreCheckoutModalControls(container);
+      closeTicketModal(container);
     }
   });
 };

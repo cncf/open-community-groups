@@ -154,6 +154,7 @@ impl PaymentsNotificationComposer {
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        rejection_reason: &str,
     ) {
         // Skip notification delivery when the event context cannot be loaded
         let Some((event, site_settings)) = self
@@ -167,6 +168,7 @@ impl PaymentsNotificationComposer {
         let notification = match build_event_refund_rejected_notification(
             &event,
             user_id,
+            rejection_reason,
             &self.server_cfg,
             &site_settings,
         ) {

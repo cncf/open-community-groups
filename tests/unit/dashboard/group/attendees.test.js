@@ -88,7 +88,12 @@ describe("dashboard group attendees", () => {
     </div>
   `;
 
-  const attendeeInvitationMarkup = () => `
+  const attendeeInvitationMarkup = ({
+    hasTicketOption = true,
+    multipleTiers = false,
+    singleTierUnavailable = false,
+    ticketOptionDisabled = false,
+  } = {}) => `
     <button id="open-attendee-invitation-modal" type="button">Invite</button>
     <div id="attendee-invitation-modal" class="hidden">
       <button id="close-attendee-invitation-modal" type="button">Close</button>
@@ -106,6 +111,18 @@ describe("dashboard group attendees", () => {
         <input type="hidden" name="user_id" id="attendee-invitation-user-id" disabled />
         <input type="hidden" name="email" id="attendee-invitation-email" disabled />
         <div id="attendee-invitation-selected-user"></div>
+        <label for="attendee-invitation-ticket-type">Ticket type</label>
+        <select id="attendee-invitation-ticket-type" name="event_ticket_type_id" required>
+          <option value="">Select ticket type</option>
+          ${
+            hasTicketOption && !singleTierUnavailable
+              ? `<option value="ticket-1" ${ticketOptionDisabled ? "disabled" : ""} ${!multipleTiers && !ticketOptionDisabled ? "selected" : ""}>General admission</option>`
+              : ""
+          }
+        </select>
+        <p data-attendee-invitation-ticket-empty class="hidden">
+          No ticket types can be assigned.
+        </p>
         <button id="submit-attendee-invitation" type="submit" disabled>Send invitation</button>
       </form>
     </div>
@@ -1037,6 +1054,7 @@ describe("dashboard group attendees", () => {
 
     // Set up initial submit.
     const initialSubmit = document.getElementById("submit-attendee-invitation");
+    const initialTicketTypeInput = document.getElementById("attendee-invitation-ticket-type");
     const initialSearchField = document.querySelector("[data-attendee-invitation-search]");
     const initialEmailInput = document.getElementById("attendee-invitation-email");
     initialSearchField.dispatchEvent(
@@ -1048,6 +1066,7 @@ describe("dashboard group attendees", () => {
 
     // Verify handles invitation modal controls after attendee content refreshes.
     expect(initialSubmit.disabled).to.equal(true);
+    expect(initialTicketTypeInput.value).to.equal("ticket-1");
 
     // Dispatch the form event.
     initialSearchField.dispatchEvent(
@@ -1089,7 +1108,112 @@ describe("dashboard group attendees", () => {
       text: "Invitation sent.",
       icon: "success",
     });
+
     expect(refreshedModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("requires a ticket type for multi-tier attendee invitations", () => {
+    // Render multi-tier invitation controls and initialize the refreshed root.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ multipleTiers: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // Select an invitation recipient without assigning a ticket.
+    attendeesRoot.dispatchEvent(
+      new CustomEvent("user-selected", {
+        bubbles: true,
+        detail: {
+          user: {
+            user_id: "user-1",
+            username: "invitee",
+          },
+        },
+      }),
+    );
+    const submitButton = document.getElementById("submit-attendee-invitation");
+    const ticketTypeInput = document.getElementById("attendee-invitation-ticket-type");
+    expect(submitButton.disabled).to.equal(true);
+
+    // Assign a ticket and verify the complete invitation can be submitted.
+    ticketTypeInput.value = "ticket-1";
+    ticketTypeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(submitButton.disabled).to.equal(false);
+    expect(
+      new FormData(document.getElementById("attendee-invitation-form")).get("event_ticket_type_id"),
+    ).to.equal("ticket-1");
+  });
+
+  it("explains when a multi-tier invitation has no assignable ticket types", () => {
+    // Render multi-tier invitation controls without an eligible ticket option.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ hasTicketOption: false, multipleTiers: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // Select a recipient and verify the unavailable ticket state stays actionable.
+    attendeesRoot.dispatchEvent(
+      new CustomEvent("user-selected", {
+        bubbles: true,
+        detail: { user: { user_id: "user-1", username: "invitee" } },
+      }),
+    );
+
+    expect(document.getElementById("attendee-invitation-ticket-type").disabled).to.equal(true);
+    expect(document.getElementById("submit-attendee-invitation").disabled).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-invitation-ticket-empty]").classList.contains("hidden"),
+    ).to.equal(false);
+  });
+
+  it("explains when the sole invitation ticket type is unavailable", () => {
+    // Render the single-tier select with an unavailable admission tier.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ singleTierUnavailable: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // Select a recipient and verify the shortcut cannot bypass tier availability.
+    attendeesRoot.dispatchEvent(
+      new CustomEvent("user-selected", {
+        bubbles: true,
+        detail: { user: { user_id: "user-1", username: "invitee" } },
+      }),
+    );
+
+    expect(document.getElementById("submit-attendee-invitation").disabled).to.equal(true);
+    expect(document.getElementById("attendee-invitation-ticket-type").disabled).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-invitation-ticket-empty]").classList.contains("hidden"),
+    ).to.equal(false);
+  });
+
+  it("treats a disabled sold-out ticket as unavailable for invitations", () => {
+    // Render a multi-tier invitation whose only priced tier is unavailable.
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup({ multipleTiers: true, ticketOptionDisabled: true })}
+      </div>
+    `;
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    // The unavailable option cannot satisfy the invitation contract.
+    const ticketTypeInput = document.getElementById("attendee-invitation-ticket-type");
+    expect(ticketTypeInput.disabled).to.equal(true);
+    expect(document.getElementById("submit-attendee-invitation").disabled).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-invitation-ticket-empty]").classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("enables attendee invitation for a typed email when no user matches", async () => {
@@ -1294,5 +1418,4 @@ describe("dashboard group attendees", () => {
       icon: "error",
     });
   });
-
 });

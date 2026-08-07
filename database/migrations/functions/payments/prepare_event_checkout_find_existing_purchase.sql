@@ -3,7 +3,8 @@ create or replace function prepare_event_checkout_find_existing_purchase(
     p_event_id uuid,
     p_event_ticket_type_id uuid,
     p_user_id uuid,
-    p_discount_code text
+    p_discount_code text,
+    p_admission_offer_id uuid default null
 )
 returns table (
     event_purchase_id uuid,
@@ -18,15 +19,25 @@ returns table (
     from event_purchase ep
     where ep.event_id = p_event_id
     and ep.user_id = p_user_id
+    and ep.admission_offer_id is not distinct from p_admission_offer_id
     and (
         -- Block checkout during recovery without invalidating a completed replacement purchase
-        ep.status in ('completed', 'refund-recovery-pending', 'refund-requested')
+        ep.status in (
+            'completed',
+            'refund-pending',
+            'refund-recovery-pending',
+            'refund-requested'
+        )
         or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
     )
     order by
         case
             when ep.status = 'completed' then 0
-            when ep.status in ('refund-recovery-pending', 'refund-requested') then 1
+            when ep.status in (
+                'refund-pending',
+                'refund-recovery-pending',
+                'refund-requested'
+            ) then 1
             else 2
         end,
         ep.created_at desc,

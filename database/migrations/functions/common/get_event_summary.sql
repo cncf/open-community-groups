@@ -48,7 +48,7 @@ returns json as $$
         'registration_ends_at', floor(extract(epoch from e.registration_ends_at)),
         'registration_starts_at', floor(extract(epoch from e.registration_starts_at)),
         'starts_at', floor(extract(epoch from e.starts_at)),
-        'ticket_types', list_event_ticket_types(e.event_id),
+        'ticket_types', list_public_event_ticket_types(e.event_id),
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
         'venue_country_code', e.venue_country_code,

@@ -1,3 +1,5 @@
+-- Tests returning full event information.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -1447,6 +1449,7 @@ select is(
             "ticket_types": [
                 {
                     "active": true,
+                    "availability": "public",
                     "current_price": {
                         "amount_minor": 2500
                     },

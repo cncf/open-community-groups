@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(77);
+select plan(78);
 
 -- ============================================================================
 -- TESTS
@@ -19,6 +19,27 @@ select columns_are('attachment', array[
     'data',
     'file_name',
     'hash'
+]);
+
+-- Test: admission_offer columns should match expected
+select columns_are('admission_offer', array[
+    'admission_offer_id',
+    'created_at',
+    'event_id',
+    'source',
+    'status',
+    'updated_at',
+    'user_id',
+
+    'amount_minor',
+    'currency_code',
+    'discount_amount_minor',
+    'discount_code',
+    'event_discount_code_id',
+    'event_ticket_type_id',
+    'expires_at',
+    'organizer_user_id',
+    'ticket_title'
 ]);
 
 -- Test: audit_log columns should match expected
@@ -350,6 +371,7 @@ select columns_are('event_invitation_request', array[
     'created_at',
     'status',
 
+    'event_ticket_type_id',
     'registration_answers',
     'reviewed_at',
     'reviewed_by'
@@ -439,7 +461,6 @@ select columns_are('event_purchase', array[
     'event_purchase_id',
     'amount_minor',
     'created_at',
-    'currency_code',
     'discount_amount_minor',
     'event_id',
     'event_ticket_type_id',
@@ -448,15 +469,17 @@ select columns_are('event_purchase', array[
     'updated_at',
     'user_id',
 
+    'admission_offer_id',
     'completed_at',
+    'currency_code',
     'discount_code',
+    'event_discount_code_id',
     'hold_expires_at',
     'payment_provider_id',
     'provider_checkout_session_id',
     'provider_checkout_url',
     'provider_payment_reference',
-    'refunded_at',
-    'event_discount_code_id'
+    'refunded_at'
 ]);
 
 -- Test: event_purchase_refund columns should match expected
@@ -521,6 +544,7 @@ select columns_are('event_ticket_price_window', array[
 select columns_are('event_ticket_type', array[
     'event_ticket_type_id',
     'active',
+    'availability',
     'created_at',
     'event_id',
     'order',
@@ -567,7 +591,8 @@ select columns_are('event_views', array[
 select columns_are('event_waitlist', array[
     'event_id',
     'user_id',
-    'created_at'
+    'created_at',
+    'event_ticket_type_id'
 ]);
 
 -- Test: meeting columns should match expected

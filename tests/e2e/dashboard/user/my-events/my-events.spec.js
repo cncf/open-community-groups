@@ -1,9 +1,12 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
+  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
   TEST_GROUP_SLUGS,
+  TEST_PAYMENT_EVENT_IDS,
+  TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
   TEST_REGISTRATION_WINDOW_EVENTS,
   getAttendButton,
@@ -94,6 +97,77 @@ test.describe("user dashboard my events view", () => {
     await expect(
       dashboardContent.getByText(TEST_EVENT_NAMES.beta[0]),
     ).toHaveCount(0);
+  });
+
+  test("my events shows rejected refund status and reason", async ({
+    pending1Page,
+  }) => {
+    // Load My Events for the attendee with a seeded rejected refund request.
+    await navigateToPath(pending1Page, "/dashboard/user?tab=events");
+    const dashboardContent = pending1Page.locator("#dashboard-content");
+    const refundEventRow = dashboardContent.locator("tr", {
+      hasText: TEST_PAYMENT_EVENT_NAMES.refunds,
+    });
+
+    // Verify the danger state and complete organizer-provided reason.
+    await expect(refundEventRow).toBeVisible();
+    const refundStatusButton = refundEventRow.getByRole("button", {
+      name: "Refund rejected",
+    });
+    const rejectionReason = refundEventRow.getByRole("tooltip");
+    await expect(refundStatusButton).toBeVisible();
+    await refundStatusButton.focus();
+    await expect(rejectionReason).toBeVisible();
+    await expect(rejectionReason.getByText("Refund request")).toBeVisible();
+    await expect(
+      rejectionReason.getByText("Reason", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      rejectionReason.getByText(
+        "The request falls outside the refund policy window.",
+      ),
+    ).toBeVisible();
+  });
+
+  test("my events exposes the eligibility-gated request refund action", async ({
+    organizerGroupPage,
+  }) => {
+    test.skip(
+      !E2E_PAYMENTS_ENABLED,
+      "Payments are disabled in this environment.",
+    );
+
+    // Load My Events and wait for the paid row's eligibility check.
+    const eligibilityResponse = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response
+          .url()
+          .includes(`/event/${TEST_PAYMENT_EVENT_IDS.refunds}/enrollment`) &&
+        response.ok(),
+    );
+    await navigateToPath(organizerGroupPage, "/dashboard/user?tab=events");
+    await eligibilityResponse;
+
+    const refundEventRow = organizerGroupPage
+      .locator("#dashboard-content")
+      .locator("tr", { hasText: TEST_PAYMENT_EVENT_NAMES.refunds });
+    await openEventActions(refundEventRow);
+    const refundAction = refundEventRow.getByRole("menuitem", {
+      name: "Request refund",
+    });
+
+    // The eligible action opens the event's refund control in a new tab.
+    await expect(refundAction).toBeVisible();
+    const popupPromise = organizerGroupPage.waitForEvent("popup");
+    await refundAction.click();
+    const refundPage = await popupPromise;
+    await refundPage.waitForLoadState("domcontentloaded");
+    await expect(refundPage).toHaveURL(/#refund-btn-main$/u);
+    await expect(
+      refundPage.locator('[data-attendance-role="refund-btn"]'),
+    ).toContainText("Request refund");
+    await refundPage.close();
   });
 
   test("my events actions update registration answers and cancel attendance", async ({
@@ -218,7 +292,7 @@ test.describe("user dashboard my events view", () => {
     ).toHaveCount(0);
   });
 
-  test("my events respects closed registration windows for pending actions", async ({
+  test("my events exposes offers and active checkout actions after registration closes", async ({
     member2Page,
   }) => {
     // Load My Events before checking registration-window actions.
@@ -230,33 +304,32 @@ test.describe("user dashboard my events view", () => {
       dashboardContent.getByText("My Events", { exact: true }),
     ).toBeVisible();
 
-    // Verify normal pending registration cannot continue after closing.
+    // Verify a waiting-list offer is claimed from the invitations dashboard.
     const closedQuestionsRow = dashboardContent.locator("tr", {
       hasText: TEST_REGISTRATION_WINDOW_EVENTS.questionsClosed.name,
     });
-    await expect(closedQuestionsRow).toContainText("Registration pending");
+    await expect(closedQuestionsRow).toContainText("Event offer");
     await openEventActions(closedQuestionsRow);
-    const closedCompleteRegistration = closedQuestionsRow.getByRole(
-      "menuitem",
-      { name: "Complete registration" },
-    );
-    await expect(closedCompleteRegistration).toBeDisabled();
-    await expect(closedCompleteRegistration).toHaveAttribute(
-      "title",
-      /Registration closed/,
+    await expect(
+      closedQuestionsRow.getByRole("menuitem", { name: "View event offer" }),
+    ).toHaveAttribute(
+      "href",
+      /\/dashboard\/user\?tab=invitations#event-offer-/,
     );
     await closeEventActions(closedQuestionsRow);
 
-    // Verify manual invitations can still complete pending questions.
+    // Verify an organizer invitation uses the same offer claim surface.
     const manualInviteRow = dashboardContent.locator("tr", {
       hasText: TEST_REGISTRATION_WINDOW_EVENTS.questionsManualInviteClosed.name,
     });
-    await expect(manualInviteRow).toContainText("Registration pending");
+    await expect(manualInviteRow).toContainText("Event offer");
     await openEventActions(manualInviteRow);
-    const manualCompleteRegistration = manualInviteRow.getByRole("menuitem", {
-      name: "Complete registration",
-    });
-    await expect(manualCompleteRegistration).toBeEnabled();
+    await expect(
+      manualInviteRow.getByRole("menuitem", { name: "View event offer" }),
+    ).toHaveAttribute(
+      "href",
+      /\/dashboard\/user\?tab=invitations#event-offer-/,
+    );
     await closeEventActions(manualInviteRow);
 
     // Verify an active checkout hold can still be resumed after closing.
@@ -264,9 +337,14 @@ test.describe("user dashboard my events view", () => {
       hasText: TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed.name,
     });
     await expect(pendingPaymentRow).toContainText("Payment pending");
+    await expect(
+      pendingPaymentRow.getByText("Attendee", { exact: true }),
+    ).toHaveCount(0);
     await openEventActions(pendingPaymentRow);
     await expect(
-      pendingPaymentRow.getByRole("menuitem", { name: "Complete payment" }),
+      pendingPaymentRow.getByRole("menuitem", {
+        name: "Continue to checkout",
+      }),
     ).toHaveAttribute(
       "href",
       "https://example.test/checkout/registration-window-pending",
@@ -274,6 +352,11 @@ test.describe("user dashboard my events view", () => {
     await expect(
       pendingPaymentRow.getByRole("menuitem", {
         name: "Complete registration",
+      }),
+    ).toBeEnabled();
+    await expect(
+      pendingPaymentRow.getByRole("menuitem", {
+        name: "Cancel checkout",
       }),
     ).toBeEnabled();
   });

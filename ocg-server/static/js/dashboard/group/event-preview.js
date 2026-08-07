@@ -443,7 +443,7 @@ const renderEventPreviewTags = (modalRoot, tags) => {
   tags.forEach((tag) => {
     const tagBadge = document.createElement("span");
     tagBadge.className =
-      "inline-block max-w-full truncate rounded-full bg-stone-50 px-3 py-1 text-sm uppercase text-stone-700";
+      "custom-badge inline-block max-w-full truncate bg-stone-50 px-2.5 py-0.5 text-stone-700";
     tagBadge.textContent = tag;
     tagList.append(tagBadge);
   });

@@ -255,6 +255,9 @@
                   <div class="group relative">
                     <button type="button"
                             data-event-id="{{ event.event_id }}"
+                            aria-label="Open actions for {{ event.name }}"
+                            aria-controls="dropdown-actions-{{ event.event_id }}"
+                            aria-expanded="false"
                             class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
                                    {% if !can_manage_events -%}
                                      opacity-50 cursor-not-allowed
@@ -269,8 +272,7 @@
                     <div id="dropdown-actions-{{ event.event_id }}"
                          data-event-actions-dropdown
                          class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                      <ul class="py-2 text-sm text-stone-700"
-                          aria-labelledby="dropdownDefaultButton">
+                      <ul class="py-2 text-sm text-stone-700">
                         {# Publish/unpublish button -#}
                         {% if event.published && !event.canceled -%}
                           {{ event_scoped_action(event = event,
@@ -556,6 +558,9 @@
                   <div class="group relative">
                     <button type="button"
                             data-event-id="{{ event.event_id }}"
+                            aria-label="Open actions for {{ event.name }}"
+                            aria-controls="dropdown-actions-{{ event.event_id }}"
+                            aria-expanded="false"
                             class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
                                    {% if !can_manage_events -%}
                                      opacity-50 cursor-not-allowed
@@ -570,8 +575,7 @@
                     <div id="dropdown-actions-{{ event.event_id }}"
                          data-event-actions-dropdown
                          class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                      <ul class="py-2 text-sm text-stone-700"
-                          aria-labelledby="dropdownDefaultButton">
+                      <ul class="py-2 text-sm text-stone-700">
                         {{ event_scoped_action(event = event,
                           can_manage_events = can_manage_events,
                           action = "delete",

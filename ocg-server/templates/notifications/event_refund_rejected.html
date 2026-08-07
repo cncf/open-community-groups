@@ -18,6 +18,11 @@
     Your attendance is still active, and you can continue managing the event from its page.
   </p>
 
+  <p class="default mb-30" style="margin-bottom: 30px">
+    <strong>Reason:</strong>
+    <span style="white-space: pre-wrap; overflow-wrap: anywhere">{{ rejection_reason }}</span>
+  </p>
+
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 {% endblock content -%}
 

@@ -5,19 +5,16 @@ create or replace function submit_event_registration_answers(
     p_event_id uuid,
     p_registration_answers jsonb
 )
-returns boolean as $$
+returns void as $$
 declare
     v_group_id uuid;
     v_has_active_checkout_hold boolean;
-    v_has_ticket_types boolean;
     v_manually_invited boolean;
-    v_previous_status text;
     v_registration_ends_at timestamptz;
     v_registration_questions jsonb;
     v_registration_starts_at timestamptz;
     v_registration_window_open boolean;
     v_starts_at timestamptz;
-    v_updated_status text;
 begin
     -- Load active event context before validating answer edits
     select
@@ -67,13 +64,6 @@ begin
     -- Validate submitted answers against the event questionnaire
     perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
 
-    -- Ticketed registrations must be confirmed by purchase reconciliation
-    select exists (
-        select 1
-        from event_ticket_type ett
-        where ett.event_id = p_event_id
-    ) into v_has_ticket_types;
-
     -- Active checkout holds may finish answering questions after public registration closes
     select exists (
         select 1
@@ -85,12 +75,8 @@ begin
     ) into v_has_active_checkout_hold;
 
     -- Lock the attendee row before storing answers
-    select
-        ea.manually_invited,
-        ea.status
-    into
-        v_manually_invited,
-        v_previous_status
+    select ea.manually_invited
+    into v_manually_invited
     from event_attendee ea
     where ea.event_id = p_event_id
     and ea.user_id = p_actor_user_id
@@ -108,18 +94,12 @@ begin
         raise exception 'event registration is not open';
     end if;
 
-    -- Store answers and confirm pending non-ticketed registrations
+    -- Store answers while checkout retains ownership of pending confirmation
     update event_attendee
-    set
-        registration_answers = p_registration_answers,
-        status = case
-            when v_has_ticket_types and status = 'registration-questions-pending' then status
-            else 'confirmed'
-        end
+    set registration_answers = p_registration_answers
     where event_id = p_event_id
     and user_id = p_actor_user_id
-    and status in ('confirmed', 'registration-questions-pending')
-    returning status into v_updated_status;
+    and status in ('confirmed', 'registration-questions-pending');
 
     -- Track the answer submission
     perform insert_audit_log(
@@ -133,7 +113,5 @@ begin
         jsonb_build_object('event_id', p_event_id, 'user_id', p_actor_user_id)
     );
 
-    return v_previous_status = 'registration-questions-pending'
-        and v_updated_status = 'confirmed';
 end;
 $$ language plpgsql;

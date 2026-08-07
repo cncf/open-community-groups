@@ -1,9 +1,11 @@
+-- Tests publishing events.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,16 +18,21 @@ select plan(18);
 \set eventNoStartDateID '3a2b0000-0000-0000-0000-000000000005'
 \set eventPublishedID '3a2b0000-0000-0000-0000-000000000006'
 \set eventTicketedInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000007'
+\set eventTicketedFreeID '3a2b0000-0000-0000-0000-00000000001a'
 \set eventTicketedNoRecipientID '3a2b0000-0000-0000-0000-000000000008'
 \set groupCategoryID '3a2b0000-0000-0000-0000-000000000009'
 \set groupID '3a2b0000-0000-0000-0000-000000000010'
 \set groupNoRecipientID '3a2b0000-0000-0000-0000-000000000011'
 \set missingGroupID '3a2b0000-0000-0000-0000-000000000012'
 \set previousPublisherID '3a2b0000-0000-0000-0000-000000000013'
+\set priceWindowFreeID '3a2b0000-0000-0000-0000-00000000001b'
+\set priceWindowInvalidCurrencyID '3a2b0000-0000-0000-0000-00000000001c'
+\set priceWindowNoRecipientID '3a2b0000-0000-0000-0000-00000000001d'
 \set sessionMeetingID '3a2b0000-0000-0000-0000-000000000014'
 \set sessionNoMeetingID '3a2b0000-0000-0000-0000-000000000015'
 \set sessionPublishedMeetingID '3a2b0000-0000-0000-0000-000000000016'
 \set ticketTypeInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000017'
+\set ticketTypeFreeID '3a2b0000-0000-0000-0000-00000000001e'
 \set ticketTypeNoRecipientID '3a2b0000-0000-0000-0000-000000000018'
 \set userID '3a2b0000-0000-0000-0000-000000000019'
 
@@ -261,6 +268,31 @@ insert into event (
     false
 );
 
+-- All-zero ticketed event without a payment recipient on its group
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    published
+) values (
+    :'eventTicketedFreeID',
+    :'groupNoRecipientID',
+    'Free Ticketed Event',
+    'free-ticketed-event',
+    'An all-zero ticketed event without a payment recipient',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    current_timestamp + interval '2 days',
+    false
+);
+
 -- Ticketed event with an invalid currency code
 insert into event (
     event_id,
@@ -303,6 +335,21 @@ insert into event_ticket_type (
     'Paid ticket'
 );
 
+-- Ticket type for the all-zero event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeFreeID',
+    :'eventTicketedFreeID',
+    1,
+    50,
+    'Free ticket'
+);
+
 -- Ticket type for the event with an invalid currency code
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -317,6 +364,16 @@ insert into event_ticket_type (
     50,
     'Paid ticket'
 );
+
+-- Price windows determine whether each ticketed event is paid-capable.
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values
+    (:'priceWindowFreeID', 0, :'ticketTypeFreeID'),
+    (:'priceWindowInvalidCurrencyID', 2500, :'ticketTypeInvalidCurrencyID'),
+    (:'priceWindowNoRecipientID', 2500, :'ticketTypeNoRecipientID');
 
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
@@ -574,7 +631,18 @@ select throws_ok(
     'Should throw error when event has no start date'
 );
 
--- Should throw error when ticketed event group has no payment recipient
+-- Should publish all-zero ticketed events without payment setup
+select lives_ok(
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupNoRecipientID',
+        :'eventTicketedFreeID'
+    ),
+    'Should publish all-zero ticketed events without payment setup'
+);
+
+-- Should throw error when paid-capable event group has no payment recipient
 select throws_ok(
     format(
         'select publish_event(%L::uuid, %L::uuid, %L::uuid, ''stripe'')',
@@ -582,8 +650,8 @@ select throws_ok(
         :'groupNoRecipientID',
         :'eventTicketedNoRecipientID'
     ),
-    'ticketed events require a payment recipient',
-    'Should throw error when ticketed event group has no payment recipient'
+    'paid-capable events require a payment recipient',
+    'Should throw error when paid-capable event group has no payment recipient'
 );
 
 -- Should reject ticketed events whose currency code is unsupported

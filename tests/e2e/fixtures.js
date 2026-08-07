@@ -126,6 +126,9 @@ export const test = base.extend({
         TEST_GROUP_IDS.community1.alpha,
       ),
   ),
+  groupsManagerPage: authenticatedPageFixture(
+    TEST_USER_CREDENTIALS.groupsManager1,
+  ),
   member1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member1),
   member2Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member2),
   pending1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.pending1),

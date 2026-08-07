@@ -11,19 +11,17 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig,
+    config::{HttpServerConfig, PaymentsConfig},
     db::{DBExt, DynDB},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::enqueue::{
-        enqueue_event_attendance_cancellation_notifications, enqueue_event_welcome_notification,
-    },
+    services::notifications::enqueue::enqueue_event_attendance_cancellation_notifications,
     templates::dashboard::user::events,
     types::{
-        event::EventAttendanceStatus,
+        event::EventEnrollmentStatus,
         pagination::{self, NavigationLinks},
         questionnaire::RequiredQuestionnaireAnswersForm,
     },
@@ -65,6 +63,7 @@ pub(crate) async fn list_page(
 pub(crate) async fn cancel_attendance(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path((community_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -75,43 +74,30 @@ pub(crate) async fn cancel_attendance(
         .ok_or(HandlerError::NotFound)?;
 
     // Validate the row still represents cancelable attendance
-    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
-    match attendance.status {
-        EventAttendanceStatus::Attendee => {}
-        EventAttendanceStatus::RegistrationQuestionsPending => {
-            // Pending registrations on ticketed events are owned by the checkout hold flow
-            let event = db.get_event_summary_by_id(community_id, event_id).await?;
-            if event.is_ticketed() {
-                return Err(anyhow::anyhow!(
-                    "pending registrations on ticketed events cannot be canceled from My Events"
-                )
-                .into());
-            }
-        }
-        _ => {
-            return Err(anyhow::anyhow!(
-                "only attendee or pending registration attendance can be canceled from My Events"
-            )
-            .into());
-        }
+    let enrollment = db.get_event_enrollment(community_id, event_id, user.user_id).await?;
+    if enrollment.status != EventEnrollmentStatus::Attendee {
+        return Err(
+            anyhow::anyhow!("only attendee attendance can be canceled from My Events").into(),
+        );
     }
 
     // Cancel attendance and enqueue required notifications
+    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
     let required_notification_server_cfg = server_cfg.clone();
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
-                // Cancel attendance and collect any waitlist promotions
-                let leave_result = tx.leave_event(community_id, event_id, user.user_id).await?;
+                // Cancel attendance
+                tx.leave_event(community_id, event_id, user.user_id, payment_provider)
+                    .await?;
 
-                // Enqueue required cancellation and promotion notifications before committing
+                // Enqueue required cancellation notifications before committing
                 enqueue_event_attendance_cancellation_notifications(
                     tx,
                     &required_notification_server_cfg,
                     community_id,
                     event_id,
                     user.user_id,
-                    leave_result.promoted_user_ids,
                 )
                 .await?;
 
@@ -131,7 +117,6 @@ pub(crate) async fn cancel_attendance(
 pub(crate) async fn submit_registration_answers(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    State(server_cfg): State<HttpServerConfig>,
     Path((community_name, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<RequiredQuestionnaireAnswersForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -141,33 +126,18 @@ pub(crate) async fn submit_registration_answers(
         .await?
         .ok_or(HandlerError::NotFound)?;
 
-    // Persist answers and enqueue required welcome notification when registration completes
+    // Persist answers; checkout retains ownership of pending confirmation
     let registration_answers = input.registration_answers;
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
-                // Persist registration answers and detect confirmation
-                let became_confirmed = tx
-                    .submit_event_registration_answers(
-                        user.user_id,
-                        community_id,
-                        event_id,
-                        &registration_answers,
-                    )
-                    .await?;
-
-                // Enqueue required welcome notification when registration completes
-                if became_confirmed {
-                    enqueue_event_welcome_notification(
-                        tx,
-                        &server_cfg,
-                        community_id,
-                        event_id,
-                        user.user_id,
-                        false,
-                    )
-                    .await?;
-                }
+                tx.submit_event_registration_answers(
+                    user.user_id,
+                    community_id,
+                    event_id,
+                    &registration_answers,
+                )
+                .await?;
 
                 Ok(())
             })

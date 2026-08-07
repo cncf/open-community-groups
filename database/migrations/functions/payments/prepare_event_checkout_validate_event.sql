@@ -1,8 +1,7 @@
--- Validates an event for checkout and returns its currency.
+-- Validates an event for checkout and returns its configured currency.
 create or replace function prepare_event_checkout_validate_event(
     p_community_id uuid,
-    p_event_id uuid,
-    p_configured_provider text
+    p_event_id uuid
 )
 returns text as $$
 declare
@@ -13,15 +12,13 @@ declare
     v_event_published boolean;
     v_event_starts_at timestamptz;
     v_group_active boolean;
-    v_payment_recipient jsonb;
 begin
-    -- Lock the event and validate that checkout is still allowed
+    -- Lock the event and load the state required to start checkout
     select
         e.canceled,
         e.deleted,
         e.ends_at,
         g.active,
-        g.payment_recipient,
         e.payment_currency_code,
         e.published,
         e.starts_at
@@ -30,7 +27,6 @@ begin
         v_event_deleted,
         v_event_ends_at,
         v_group_active,
-        v_payment_recipient,
         v_currency_code,
         v_event_published,
         v_event_starts_at
@@ -53,29 +49,7 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
-    -- Require any payment recipient before validating provider compatibility
-    if v_payment_recipient is null then
-        raise exception 'group payments recipient is not configured';
-    end if;
-
-    -- Require the server payments provider before checking group compatibility
-    if p_configured_provider is null then
-        raise exception 'payments are not configured on this server';
-    end if;
-
-    -- Require a recipient configured for the server payments provider
-    if coalesce(v_payment_recipient->>'provider', '') <> p_configured_provider then
-        raise exception 'group payments recipient is not configured for the server payments provider';
-    end if;
-
-    -- Require a payment currency to price the checkout session
-    if v_currency_code is null then
-        raise exception 'ticketed event is missing payment_currency_code';
-    end if;
-
-    perform validate_payment_currency_code(v_currency_code);
-
-    -- Return the event currency used to price the checkout session
+    -- Return the optional event currency after state validation
     return v_currency_code;
 end;
 $$ language plpgsql;

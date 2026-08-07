@@ -6,12 +6,7 @@ import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 // Set input value for the test.
-const setInputValue = async (
-  container,
-  selector,
-  value,
-  eventName = "input",
-) => {
+const setInputValue = async (container, selector, value, eventName = "input") => {
   const field = container.querySelector(selector);
   field.value = value;
   field.dispatchEvent(new Event(eventName, { bubbles: true, composed: true }));
@@ -22,10 +17,13 @@ const setInputValue = async (
 };
 
 // Mount ticket types ui for the test.
-const mountTicketTypesUi = () => {
+const mountTicketTypesUi = ({ freeOnly = false } = {}) => {
   const wrapper = document.createElement("ticket-types-editor");
   wrapper.id = "ticket-types-ui";
   wrapper.setAttribute("ticket-types", "[]");
+  if (freeOnly) {
+    wrapper.setAttribute("free-only", "");
+  }
   wrapper.dataset.disabled = "false";
   document.body.append(wrapper);
   return wrapper;
@@ -39,6 +37,24 @@ const mountDiscountCodesUi = () => {
   wrapper.dataset.disabled = "false";
   document.body.append(wrapper);
   return wrapper;
+};
+
+// Mount the shared enrollment toggles and capacity field.
+const mountEnrollmentControls = () => {
+  const controls = document.createElement("div");
+  controls.innerHTML = `
+    <input id="capacity" value="10">
+    <label data-enrollment-toggle-label="attendee-approval">
+      <input id="toggle_attendee_approval_required" type="checkbox">
+    </label>
+    <input id="attendee_approval_required" value="false">
+    <label data-enrollment-toggle-label="waitlist">
+      <input id="toggle_waitlist_enabled" type="checkbox">
+    </label>
+    <input id="waitlist_enabled" value="false">
+  `;
+  document.body.append(controls);
+  return controls;
 };
 
 describe("ticketing editors", () => {
@@ -71,6 +87,7 @@ describe("ticketing editors", () => {
       JSON.stringify([
         {
           active: true,
+          availability: "invitation_only",
           description: "Main conference ticket",
           seats_total: 25,
           title: "General admission",
@@ -90,17 +107,16 @@ describe("ticketing editors", () => {
 
     // Verify renders ticket type summary rows and preserves hidden field.
     expect(uiRoot.textContent).to.contain("General admission");
+    expect(uiRoot.textContent).to.contain("Invitation only");
+    expect(uiRoot.textContent).to.contain("€30.00");
     expect(uiRoot.textContent).to.contain("25");
+    expect(uiRoot.querySelector('input[name="ticket_types_present"]')?.value).to.equal("true");
+    expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal("General admission");
+    expect(uiRoot.querySelector('input[name="ticket_types[0][availability]"]')?.value).to.equal(
+      "invitation_only",
+    );
     expect(
-      uiRoot.querySelector('input[name="ticket_types_present"]')?.value,
-    ).to.equal("true");
-    expect(
-      uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value,
-    ).to.equal("General admission");
-    expect(
-      uiRoot.querySelector(
-        'input[name="ticket_types[0][price_windows][0][amount_minor]"]',
-      )?.value,
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
     ).to.equal("3000");
     expect(uiRoot.hasConfiguredTicketTypes()).to.equal(true);
   });
@@ -130,16 +146,16 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Read the ticket row cells in the compact layout.
-    const rowCells = uiRoot.querySelectorAll(
-      '[data-ticketing-role="table-body"] tr td',
-    );
+    const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
 
     // Verify keeps seats and status in dedicated table cells on small layouts.
-    expect(rowCells).to.have.length(4);
-    expect(rowCells[1].className).to.not.contain("hidden");
-    expect(rowCells[1].textContent).to.contain("25");
+    expect(rowCells).to.have.length(5);
+    expect(rowCells[1].className).to.contain("hidden");
+    expect(rowCells[1].className).to.contain("xl:table-cell");
     expect(rowCells[2].className).to.not.contain("hidden");
-    expect(rowCells[2].textContent).to.contain("Active");
+    expect(rowCells[2].textContent).to.contain("25");
+    expect(rowCells[3].className).to.not.contain("hidden");
+    expect(rowCells[3].textContent).to.contain("Active");
     expect(rowCells[0].textContent).to.not.contain("25 seats");
   });
 
@@ -148,28 +164,24 @@ describe("ticketing editors", () => {
     const uiRoot = mountTicketTypesUi();
     await uiRoot.updateComplete;
     const events = [];
-    uiRoot.addEventListener("ticket-types-changed", (event) =>
-      events.push(event.detail),
-    );
+    uiRoot.addEventListener("ticket-types-changed", (event) => events.push(event.detail));
 
     // Verify adds ticket types through the modal and emits.
     uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
     // Verify adds ticket types through the modal and emits ticket-types-changed.
-    expect(
-      uiRoot.querySelector('label[for="ticket-title-draft"]')?.textContent,
-    ).to.contain("*");
-    expect(
-      uiRoot.querySelector('label[for="ticket-seats-draft"]')?.textContent,
-    ).to.contain("*");
-    expect(
-      uiRoot.querySelector('label[for="ticket-price-1"]')?.textContent,
-    ).to.contain("*");
+    expect(uiRoot.querySelector('label[for="ticket-title-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="ticket-seats-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="ticket-price-1"]')?.textContent).to.contain("*");
     expect(uiRoot.querySelector("#ticket-price-1")?.max).to.equal("999999.99");
+    expect(uiRoot.querySelector('label[for="ticket-availability-draft"]')?.textContent).to.contain(
+      "Availability",
+    );
 
     // Verify adds ticket types through the modal and emits.
     await setInputValue(uiRoot, "#ticket-title-draft", "Early bird");
+    await setInputValue(uiRoot, "#ticket-availability-draft", "invitation_only", "change");
     await setInputValue(uiRoot, "#ticket-seats-draft", "40");
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
 
@@ -179,18 +191,18 @@ describe("ticketing editors", () => {
 
     // Verify adds ticket types through the modal and emits ticket-types-changed.
     expect(uiRoot.textContent).to.contain("Early bird");
+    expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal("Early bird");
+    expect(uiRoot.querySelector('input[name="ticket_types[0][seats_total]"]')?.value).to.equal("40");
+    expect(uiRoot.querySelector('input[name="ticket_types[0][availability]"]')?.value).to.equal(
+      "invitation_only",
+    );
     expect(
-      uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value,
-    ).to.equal("Early bird");
-    expect(
-      uiRoot.querySelector('input[name="ticket_types[0][seats_total]"]')?.value,
-    ).to.equal("40");
-    expect(
-      uiRoot.querySelector(
-        'input[name="ticket_types[0][price_windows][0][amount_minor]"]',
-      )?.value,
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
     ).to.equal("1500");
-    expect(events.at(-1)).to.deep.equal({ hasTicketTypes: true });
+    expect(events.at(-1)).to.deep.equal({
+      hasPositivePrices: true,
+      hasTicketTypes: true,
+    });
   });
 
   it("rejects ticket prices outside Stripe charge limits before saving", async () => {
@@ -215,12 +227,8 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Verify rejects ticket prices outside Stripe charge limits before saving.
-    expect(priceInput.validationMessage).to.equal(
-      "Use 0 for free tickets, or at least 0.50 USD.",
-    );
-    expect(
-      uiRoot.querySelector('input[name="ticket_types[0][title]"]'),
-    ).to.equal(null);
+    expect(priceInput.validationMessage).to.equal("Use 0 for free tickets, or at least 0.50 USD.");
+    expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')).to.equal(null);
 
     // Verify rejects ticket prices outside Stripe charge limits.
     await setInputValue(uiRoot, "#ticket-price-1", "1000000.00");
@@ -228,9 +236,7 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Verify rejects ticket prices outside Stripe charge limits before saving.
-    expect(priceInput.validationMessage).to.equal(
-      "Stripe allows up to 999999.99 USD.",
-    );
+    expect(priceInput.validationMessage).to.equal("Stripe allows up to 999999.99 USD.");
   });
 
   it("uses explicit ticket type controller dependencies instead of global fields", async () => {
@@ -265,11 +271,7 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("Price (EUR)");
 
     // Verify uses explicit ticket type controller dependencies.
-    await setInputValue(
-      uiRoot,
-      "#ticket-title-draft",
-      "Custom dependency ticket",
-    );
+    await setInputValue(uiRoot, "#ticket-title-draft", "Custom dependency ticket");
     await setInputValue(uiRoot, "#ticket-seats-draft", "20");
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
     await setInputValue(uiRoot, "#ticket-starts-1", "2026-04-10T10:00");
@@ -280,16 +282,12 @@ describe("ticketing editors", () => {
 
     // Verify uses explicit ticket type controller dependencies instead of global.
     expect(
-      uiRoot.querySelector(
-        'input[name="ticket_types[0][price_windows][0][starts_at]"]',
-      )?.value,
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')?.value,
     ).to.equal("2026-04-10T14:00:00.000Z");
 
     // Update the input before asserting it uses explicit ticket type controller.
     currencyInput.value = "JPY";
-    currencyInput.dispatchEvent(
-      new Event("input", { bubbles: true, composed: true }),
-    );
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
     // Verify uses explicit ticket type controller.
@@ -335,9 +333,7 @@ describe("ticketing editors", () => {
     // Click the initial add button.
     initialAddButton.click();
     await uiRoot.updateComplete;
-    expect(
-      uiRoot.querySelector('[data-ticketing-role="ticket-modal"]')?.className,
-    ).to.contain("hidden");
+    expect(uiRoot.querySelector('[data-ticketing-role="ticket-modal"]')?.className).to.contain("hidden");
 
     // Click the reconfigured add button.
     reconfiguredAddButton.click();
@@ -356,16 +352,12 @@ describe("ticketing editors", () => {
 
     // Repeated configure calls keep ticket type dependencies current.
     expect(
-      uiRoot.querySelector(
-        'input[name="ticket_types[0][price_windows][0][starts_at]"]',
-      )?.value,
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')?.value,
     ).to.equal("2026-04-10T14:00:00.000Z");
 
     // Update the input before asserting it reconfigures ticket type dependencies.
     currencyInput.value = "JPY";
-    currencyInput.dispatchEvent(
-      new Event("input", { bubbles: true, composed: true }),
-    );
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
     // Reconfigured ticket type dependencies update field state.
@@ -396,11 +388,56 @@ describe("ticketing editors", () => {
 
     // Verify keeps free ticket prices as amount_minor 0 in hidden fields.
     expect(uiRoot.textContent).to.contain("Free entry");
+    expect(uiRoot.textContent).to.contain("Free");
     expect(
-      uiRoot.querySelector(
-        'input[name="ticket_types[0][price_windows][0][amount_minor]"]',
-      )?.value,
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
     ).to.equal("0");
+  });
+
+  it("fixes new ticket prices at zero in free-only mode", async () => {
+    // Prepare a free-only editor without payment configuration.
+    const uiRoot = mountTicketTypesUi({ freeOnly: true });
+    await uiRoot.updateComplete;
+
+    // Open a new ticket and inspect the fixed price control.
+    uiRoot._openTicketModal();
+    await uiRoot.updateComplete;
+    const priceInput = uiRoot.querySelector("#ticket-price-1");
+
+    // Free-only tickets expose a read-only zero price and serialize it unchanged.
+    expect(priceInput?.value).to.equal("0");
+    expect(priceInput?.readOnly).to.equal(true);
+    expect(priceInput?.max).to.equal("0");
+    await setInputValue(uiRoot, "#ticket-title-draft", "Community pass");
+    await setInputValue(uiRoot, "#ticket-seats-draft", "25");
+    uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
+    expect(
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
+    ).to.equal("0");
+  });
+
+  it("converts copied ticket prices to zero in free-only mode", async () => {
+    // Prepare copied paid ticket data in an editor without payment readiness.
+    const uiRoot = mountTicketTypesUi({ freeOnly: true });
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          price_windows: [{ amount_minor: 2500 }],
+          seats_total: 25,
+          title: "Copied admission",
+        },
+      ]),
+    );
+    await uiRoot.updateComplete;
+
+    // Free-only copied tickets remain valid provider-free form payloads.
+    expect(
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
+    ).to.equal("0");
+    expect(uiRoot.hasConfiguredPositivePrices()).to.equal(false);
   });
 
   it("renders scheduled ticket windows with compact dates", async () => {
@@ -434,6 +471,7 @@ describe("ticketing editors", () => {
 
     // Verify renders scheduled ticket windows with compact dates.
     expect(uiRoot.textContent).to.contain("Early bird");
+    expect(uiRoot.textContent).to.contain("€15.00 – €25.00");
     expect(uiRoot.textContent).to.not.contain("until Apr 10");
     expect(uiRoot.textContent).to.not.contain("from Apr 11");
   });
@@ -470,12 +508,16 @@ describe("ticketing editors", () => {
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Assert that editing opens the ticket modal.
-    expect(
-      uiRoot
-        .querySelector('[data-ticketing-role="modal-title"]')
-        ?.textContent?.trim(),
-    ).to.equal("Edit ticket type");
+    // Assert that editing opens the modal and separates its price windows.
+    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
+      "Edit ticket type",
+    );
+    const priceWindowsSection = uiRoot.querySelector(
+      '[data-ticketing-role="price-windows-list"]',
+    )?.parentElement;
+    expect(priceWindowsSection?.classList.contains("border-t")).to.equal(true);
+    expect(priceWindowsSection?.classList.contains("border-stone-200")).to.equal(true);
+    expect(priceWindowsSection?.classList.contains("pt-6")).to.equal(true);
   });
 
   it("parses ticket type JSON from the element attribute", async () => {
@@ -536,15 +578,11 @@ describe("ticketing editors", () => {
 
     // Verify keeps hidden ticket modal fields disabled so parent form validation.
     expect(form.checkValidity()).to.equal(true);
-    expect(uiRoot.querySelector("#ticket-title-draft")?.disabled).to.equal(
-      true,
-    );
-    expect(uiRoot.querySelector("#ticket-seats-draft")?.disabled).to.equal(
-      true,
-    );
+    expect(uiRoot.querySelector("#ticket-title-draft")?.disabled).to.equal(true);
+    expect(uiRoot.querySelector("#ticket-seats-draft")?.disabled).to.equal(true);
   });
 
-  it("requires an event currency when ticket types are configured", async () => {
+  it("requires an event currency when positive ticket prices are configured", async () => {
     // Keep a reference to the payment currency code element.
     const currencyField = document.getElementById("payment_currency_code");
     currencyField.value = "";
@@ -569,20 +607,79 @@ describe("ticketing editors", () => {
 
     // Verify requires an event currency when ticket types are configured.
     expect(currencyField.required).to.equal(true);
-    expect(currencyField.validationMessage).to.equal(
-      "Ticketed events require an event currency.",
-    );
+    expect(currencyField.validationMessage).to.equal("Paid ticket prices require an event currency.");
     expect(currencyField.checkValidity()).to.equal(false);
 
     // Update the input before asserting it requires an event currency when ticket types.
     currencyField.value = "USD";
-    currencyField.dispatchEvent(
-      new Event("change", { bubbles: true, composed: true }),
-    );
+    currencyField.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
 
     // Verify requires an event currency when ticket types are configured.
     expect(currencyField.validationMessage).to.equal("");
     expect(currencyField.checkValidity()).to.equal(true);
+  });
+
+  it("does not require an event currency for zero-price ticket types", async () => {
+    // Prepare an empty event currency and the enrollment state controller.
+    const currencyField = document.getElementById("payment_currency_code");
+    currencyField.value = "";
+    const uiRoot = mountTicketTypesUi({ freeOnly: true });
+    initializeEventEnrollmentState();
+    await uiRoot.updateComplete;
+
+    // Save an intrinsically free ticket through the editor.
+    uiRoot._openTicketModal();
+    await uiRoot.updateComplete;
+    await setInputValue(uiRoot, "#ticket-title-draft", "Free ticket");
+    await setInputValue(uiRoot, "#ticket-seats-draft", "25");
+    uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
+
+    // Zero-price ticketing does not add a currency requirement.
+    expect(currencyField.required).to.equal(false);
+    expect(currencyField.validationMessage).to.equal("");
+    expect(currencyField.checkValidity()).to.equal(true);
+  });
+
+  it("allows ticketed approval and waitlist modes while keeping them mutually exclusive", async () => {
+    // Prepare ticketed enrollment controls with available capacity.
+    mountEnrollmentControls();
+    const uiRoot = mountTicketTypesUi({ freeOnly: true });
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          availability: "public",
+          seats_total: 25,
+          title: "Free ticket",
+          price_windows: [{ amount_minor: 0, starts_at: "", ends_at: "" }],
+        },
+      ]),
+    );
+    initializeEventEnrollmentState();
+    await uiRoot.updateComplete;
+
+    const approvalToggle = document.getElementById("toggle_attendee_approval_required");
+    const waitlistToggle = document.getElementById("toggle_waitlist_enabled");
+
+    // Ticket configuration leaves both enrollment modes available initially.
+    expect(approvalToggle.disabled).to.equal(false);
+    expect(waitlistToggle.disabled).to.equal(false);
+
+    // Requiring approval disables and clears the mutually exclusive waitlist.
+    approvalToggle.checked = true;
+    approvalToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(waitlistToggle.disabled).to.equal(true);
+    expect(document.getElementById("waitlist_enabled").value).to.equal("false");
+
+    // Enabling the waitlist after clearing approval disables approval instead.
+    approvalToggle.checked = false;
+    approvalToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    waitlistToggle.checked = true;
+    waitlistToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(approvalToggle.disabled).to.equal(true);
+    expect(document.getElementById("attendee_approval_required").value).to.equal("false");
   });
 
   it("renders discount code rows and updates serialization after modal edits", async () => {
@@ -608,10 +705,7 @@ describe("ticketing editors", () => {
     // Verify renders discount code rows and updates serialization after modal edits.
     expect(uiRoot.textContent).to.contain("Early supporter");
     expect(uiRoot.textContent).to.contain("EARLY20");
-    expect(
-      uiRoot.querySelector('input[name="discount_codes[0][percentage]"]')
-        ?.value,
-    ).to.equal("20");
+    expect(uiRoot.querySelector('input[name="discount_codes[0][percentage]"]')?.value).to.equal("20");
 
     // Verify renders discount code rows and updates serialization.
     uiRoot._openDiscountModal(uiRoot._rows[0]._row_id);
@@ -629,16 +723,9 @@ describe("ticketing editors", () => {
     // Verify renders discount code rows and updates serialization after modal edits.
     expect(uiRoot.textContent).to.contain("Member perk");
     expect(uiRoot.textContent).to.contain("MEMBER10");
-    expect(
-      uiRoot.querySelector('input[name="discount_codes[0][title]"]')?.value,
-    ).to.equal("Member perk");
-    expect(
-      uiRoot.querySelector('input[name="discount_codes[0][code]"]')?.value,
-    ).to.equal("MEMBER10");
-    expect(
-      uiRoot.querySelector('input[name="discount_codes[0][percentage]"]')
-        ?.value,
-    ).to.equal("10");
+    expect(uiRoot.querySelector('input[name="discount_codes[0][title]"]')?.value).to.equal("Member perk");
+    expect(uiRoot.querySelector('input[name="discount_codes[0][code]"]')?.value).to.equal("MEMBER10");
+    expect(uiRoot.querySelector('input[name="discount_codes[0][percentage]"]')?.value).to.equal("10");
   });
 
   it("serializes discount availability override state explicitly", async () => {
@@ -675,13 +762,9 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Verify serializes discount availability override state explicitly.
+    expect(uiRoot.querySelector('input[name="discount_codes[0][available]"]')).to.equal(null);
     expect(
-      uiRoot.querySelector('input[name="discount_codes[0][available]"]'),
-    ).to.equal(null);
-    expect(
-      uiRoot.querySelector(
-        'input[name="discount_codes[0][available_override_active]"]',
-      )?.value,
+      uiRoot.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
     ).to.equal("false");
   });
 
@@ -709,13 +792,9 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Verify preserves preloaded discount availability overrides marked dirty.
+    expect(uiRoot.querySelector('input[name="discount_codes[0][available]"]')?.value).to.equal("12");
     expect(
-      uiRoot.querySelector('input[name="discount_codes[0][available]"]')?.value,
-    ).to.equal("12");
-    expect(
-      uiRoot.querySelector(
-        'input[name="discount_codes[0][available_override_active]"]',
-      )?.value,
+      uiRoot.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
     ).to.equal("true");
   });
 
@@ -744,10 +823,7 @@ describe("ticketing editors", () => {
 
     // Verify adds and removes discount codes from the compact card list.
     expect(uiRoot.textContent).to.contain("Sponsor invite");
-    expect(
-      uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')
-        ?.value,
-    ).to.equal("500");
+    expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')?.value).to.equal("500");
 
     // Verify adds and removes discount codes from the compact.
     uiRoot._removeDiscountCode(uiRoot._rows[0]._row_id);
@@ -755,9 +831,7 @@ describe("ticketing editors", () => {
 
     // Verify adds and removes discount codes from the compact card list.
     expect(uiRoot.textContent).to.contain("No discount codes yet.");
-    expect(
-      uiRoot.querySelector('input[name="discount_codes[0][title]"]'),
-    ).to.equal(null);
+    expect(uiRoot.querySelector('input[name="discount_codes[0][title]"]')).to.equal(null);
   });
 
   it("uses explicit discount controller dependencies instead of global fields", async () => {
@@ -793,22 +867,14 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Verify uses explicit discount controller dependencies instead of global fields.
-    expect(
-      uiRoot.querySelector('label[for="discount-title-draft"]')?.textContent,
-    ).to.contain("*");
-    expect(
-      uiRoot.querySelector('label[for="discount-code-draft"]')?.textContent,
-    ).to.contain("*");
-    expect(
-      uiRoot.querySelector('label[for="discount-amount-draft"]')?.textContent,
-    ).to.contain("*");
+    expect(uiRoot.querySelector('label[for="discount-title-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="discount-code-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="discount-amount-draft"]')?.textContent).to.contain("*");
     expect(uiRoot.textContent).to.contain("Amount (EUR)");
 
     // Update the input before checking the discount dependency value.
     currencyInput.value = "GBP";
-    currencyInput.dispatchEvent(
-      new Event("input", { bubbles: true, composed: true }),
-    );
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
     // Verify uses explicit discount controller dependencies instead of global fields.
@@ -822,10 +888,7 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Verify uses explicit discount controller dependencies instead of global fields.
-    expect(
-      uiRoot.querySelector('label[for="discount-percentage-draft"]')
-        ?.textContent,
-    ).to.contain("*");
+    expect(uiRoot.querySelector('label[for="discount-percentage-draft"]')?.textContent).to.contain("*");
   });
 
   it("reconfigures discount dependencies on repeated configure calls", async () => {
@@ -863,9 +926,7 @@ describe("ticketing editors", () => {
     // Click the initial add button.
     initialAddButton.click();
     await uiRoot.updateComplete;
-    expect(
-      uiRoot.querySelector('[data-ticketing-role="discount-modal"]')?.className,
-    ).to.contain("hidden");
+    expect(uiRoot.querySelector('[data-ticketing-role="discount-modal"]')?.className).to.contain("hidden");
 
     // Click the reconfigured add button.
     reconfiguredAddButton.click();
@@ -881,9 +942,7 @@ describe("ticketing editors", () => {
 
     // Update the input before checking reconfigured discount dependencies.
     currencyInput.value = "GBP";
-    currencyInput.dispatchEvent(
-      new Event("input", { bubbles: true, composed: true }),
-    );
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
     // Reconfigured discount dependencies update the dependent fields.
@@ -915,9 +974,7 @@ describe("ticketing editors", () => {
 
     // Verify rejects zero fixed discount amounts in the editor.
     expect(uiRoot.textContent).to.not.contain("Free comp");
-    expect(
-      uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]'),
-    ).to.equal(null);
+    expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')).to.equal(null);
   });
 
   it("renders persisted discount rows from the dataset and wires row actions", async () => {
@@ -948,11 +1005,9 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
 
     // Assert that editing opens the discount modal.
-    expect(
-      uiRoot
-        .querySelector('[data-ticketing-role="modal-title"]')
-        ?.textContent?.trim(),
-    ).to.equal("Edit discount code");
+    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
+      "Edit discount code",
+    );
   });
 
   it("parses discount code JSON from the element attribute", async () => {
@@ -990,16 +1045,12 @@ describe("ticketing editors", () => {
 
     // Verify keeps hidden discount modal fields disabled so parent form validation.
     expect(form.checkValidity()).to.equal(true);
-    expect(uiRoot.querySelector("#discount-title-draft")?.disabled).to.equal(
-      true,
-    );
-    expect(uiRoot.querySelector("#discount-code-draft")?.disabled).to.equal(
-      true,
-    );
+    expect(uiRoot.querySelector("#discount-title-draft")?.disabled).to.equal(true);
+    expect(uiRoot.querySelector("#discount-code-draft")?.disabled).to.equal(true);
   });
 
-  it("preserves persisted remaining counts after discount row rerenders", async () => {
-    // Prepare ui root for preserves persisted remaining counts after discount.
+  it("renders compact discount usage and responsive secondary columns", async () => {
+    // Prepare the discount row with a persisted remaining count.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -1019,19 +1070,33 @@ describe("ticketing editors", () => {
     // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Verify preserves persisted remaining counts after discount row rerenders.
-    expect(uiRoot.textContent).to.contain("12 remaining");
+    // Verify remaining and total uses share one compact value.
+    const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
+    expect(rowCells[0].textContent).to.contain("12 / 50");
+    expect(rowCells[1].textContent.trim()).to.equal("12 / 50");
+    expect(rowCells[0].querySelectorAll(".custom-badge")).to.have.length(3);
+
+    // Verify secondary columns stay hidden until the widest layout.
+    const secondaryHeaders = uiRoot.querySelectorAll("thead th.hidden");
+    expect(secondaryHeaders).to.have.length(4);
+    expect(secondaryHeaders[0].textContent.trim()).to.equal("Redemptions");
+    secondaryHeaders.forEach((header) => {
+      expect(header.classList.contains("2xl:table-cell")).to.equal(true);
+      expect(header.classList.contains("xl:table-cell")).to.equal(false);
+    });
+
+    // Verify the empty-state placeholder still spans the complete semantic table.
+    expect(uiRoot.querySelector('[data-ticketing-role="empty-state"] td')?.colSpan).to.equal(7);
+    expect(uiRoot.textContent).to.contain("Leave blank to let OCG track remaining uses automatically.");
 
     // Keep a reference to the payment currency code element.
     const currencyField = document.getElementById("payment_currency_code");
     currencyField.value = "USD";
-    currencyField.dispatchEvent(
-      new Event("input", { bubbles: true, composed: true }),
-    );
+    currencyField.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
-    // Verify preserves persisted remaining counts after discount row rerenders.
-    expect(uiRoot.textContent).to.contain("12 remaining");
+    // Verify the compact usage survives dependent rerenders.
+    expect(uiRoot.textContent).to.contain("12 / 50");
   });
 
   it("self-bootstraps ticketing editors from page controls after reconnecting", async () => {
@@ -1059,14 +1124,10 @@ describe("ticketing editors", () => {
 
     // Reconnected ticketing editors bootstrap from page controls.
     expect(
-      ticketTypesUiRoot
-        .querySelector('[data-ticketing-role="modal-title"]')
-        ?.textContent?.trim(),
+      ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
     ).to.equal("Add ticket type");
     expect(
-      discountCodesUiRoot
-        .querySelector('[data-ticketing-role="modal-title"]')
-        ?.textContent?.trim(),
+      discountCodesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
     ).to.equal("Add discount code");
 
     // Reconnected ticketing editors keep their page-control wiring.
@@ -1090,14 +1151,10 @@ describe("ticketing editors", () => {
 
     // Reconnected discount editors bootstrap from page controls.
     expect(
-      ticketTypesUiRoot
-        .querySelector('[data-ticketing-role="modal-title"]')
-        ?.textContent?.trim(),
+      ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
     ).to.equal("Add ticket type");
     expect(
-      discountCodesUiRoot
-        .querySelector('[data-ticketing-role="modal-title"]')
-        ?.textContent?.trim(),
+      discountCodesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
     ).to.equal("Add discount code");
   });
 
@@ -1125,5 +1182,46 @@ describe("ticketing editors", () => {
     // Assert the updated document.
     expect(document.body.dataset.modalOpenCount).to.equal("0");
     expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("traps ticket modal focus and restores the external trigger on close", async () => {
+    // Mount the editor with the external control that opens its modal.
+    const ticketButton = document.createElement("button");
+    ticketButton.id = "add-ticket-type-button";
+    document.body.append(ticketButton);
+    const uiRoot = mountTicketTypesUi();
+    await uiRoot.updateComplete;
+    const modal = uiRoot.querySelector('[data-ticketing-role="ticket-modal"]');
+    const closeButton = modal.querySelector('[data-ticketing-action="close-modal"][type="button"]');
+    const saveButton = modal.querySelector('[data-ticketing-action="save-ticket"]');
+
+    // Open the modal and verify focus and accessible state move together.
+    ticketButton.focus();
+    ticketButton.click();
+    await uiRoot.updateComplete;
+    expect(modal.getAttribute("aria-hidden")).to.equal("false");
+    expect(document.activeElement).to.equal(closeButton);
+
+    // Forward and reverse Tab navigation remain contained by the dialog.
+    saveButton.focus();
+    const forwardEvent = new KeyboardEvent("keydown", { cancelable: true, key: "Tab" });
+    document.dispatchEvent(forwardEvent);
+    expect(forwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(closeButton);
+
+    const backwardEvent = new KeyboardEvent("keydown", {
+      cancelable: true,
+      key: "Tab",
+      shiftKey: true,
+    });
+    document.dispatchEvent(backwardEvent);
+    expect(backwardEvent.defaultPrevented).to.equal(true);
+    expect(document.activeElement).to.equal(saveButton);
+
+    // Escape closes the modal and returns focus to its opener.
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await uiRoot.updateComplete;
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+    expect(document.activeElement).to.equal(ticketButton);
   });
 });

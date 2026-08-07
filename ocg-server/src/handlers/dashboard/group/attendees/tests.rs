@@ -15,7 +15,13 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::mock::MockDB,
+    db::{
+        dashboard::group::{
+            EventAdmissionAllocation, EventAdmissionAllocationConflict,
+            EventAdmissionAllocationOutcome, EventAdmissionAllocationResult,
+        },
+        mock::MockDB,
+    },
     handlers::{
         dashboard::group::attendees::{
             EventCustomNotification, EventCustomNotificationRecipientScope,
@@ -29,15 +35,17 @@ use crate::{
     templates::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
-            group::{PresenceFilter, attendees::AttendeesSort},
+            group::{
+                PresenceFilter,
+                attendees::{
+                    AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesSort,
+                },
+            },
         },
-        notifications::{
-            EventAttendanceCanceled, EventCustom, EventInvitation as EventInvitationTemplate,
-            EventWaitlistPromoted,
-        },
+        notifications::{EventAttendanceCanceled, EventCustom},
     },
     types::{
-        event::{EventAttendanceStatus, EventLeaveOutcome},
+        event::{EventEnrollmentReconciliationOutcome, EventEnrollmentStatus, EventLeaveOutcome},
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -47,7 +55,7 @@ use crate::{
 };
 
 #[tokio::test]
-async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
+async fn test_accept_invitation_request_returns_no_content() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -63,8 +71,95 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
         Some(community_id),
         Some(group_id),
     );
-    let event = sample_event_summary(event_id, group_id);
-    let site_settings = sample_site_settings();
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_accept_event_invitation_request()
+        .times(1)
+        .withf(
+            move |actor_id, gid, eid, uid, event_ticket_type_id, payment_provider| {
+                *actor_id == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && *uid == target_user_id
+                    && event_ticket_type_id.is_none()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _, _| {
+            Ok(EventAdmissionAllocationResult::Success(
+                EventAdmissionAllocation {
+                    outcome: EventAdmissionAllocationOutcome::OfferCreated,
+                },
+            ))
+        });
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(HttpServerConfig {
+            base_url: "https://ocg.test".to_string(),
+            ..sample_tracking_server_cfg()
+        })
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/invitation-request/accept"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(""))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees, refresh-event-invitation-requests",
+    );
+}
+
+#[tokio::test]
+async fn test_accept_invitation_request_returns_conflict_when_queue_has_priority() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let target_user_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -85,59 +180,49 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    let mut tx = MockDB::new();
-    tx.expect_accept_event_invitation_request()
+    db.expect_accept_event_invitation_request()
         .times(1)
-        .withf(move |actor_id, gid, eid, uid| {
-            *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
-        })
-        .returning(|_, _, _, _| Ok(()));
-    tx.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    tx.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWelcome)
-                && notification.recipients == vec![target_user_id]
-                && notification.attachments.len() == 1
-        })
-        .returning(|_| Ok(()));
-    expect_successful_transaction(&mut db, tx);
+        .withf(
+            move |actor_id, gid, eid, uid, event_ticket_type_id, payment_provider| {
+                *actor_id == user_id
+                    && *gid == group_id
+                    && *eid == event_id
+                    && *uid == target_user_id
+                    && event_ticket_type_id.is_none()
+                    && payment_provider.is_none()
+            },
+        )
+        .returning(|_, _, _, _, _, _| {
+            Ok(EventAdmissionAllocationResult::Conflict(
+                EventAdmissionAllocationConflict::QueueHasPriority,
+            ))
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(HttpServerConfig {
-            base_url: "https://ocg.test".to_string(),
-            ..sample_tracking_server_cfg()
-        })
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
             "/dashboard/group/events/{event_id}/attendees/{target_user_id}/invitation-request/accept"
         ))
         .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(""))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-event-attendees, refresh-event-invitation-requests",
+    assert_eq!(parts.status, StatusCode::CONFLICT);
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
+        serde_json::json!({
+            "conflict": "queue-has-priority",
+        })
     );
 }
 
@@ -298,12 +383,11 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_notifications() {
+async fn test_cancel_event_attendee_attendance_enqueues_notification() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let promoted_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let target_user_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
@@ -320,7 +404,6 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
     let event_for_notifications = event.clone();
     let site_settings = sample_site_settings();
     let site_settings_for_notifications = site_settings.clone();
-    let primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -344,13 +427,16 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
     let mut tx = MockDB::new();
     tx.expect_cancel_event_attendee_attendance()
         .times(1)
-        .withf(move |actor_id, gid, eid, uid| {
-            *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
+        .withf(move |actor_id, gid, eid, uid, payment_provider| {
+            *actor_id == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && *uid == target_user_id
+                && payment_provider.is_none()
         })
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _, _, _| {
             Ok(EventLeaveOutcome {
-                left_status: EventAttendanceStatus::Attendee,
-                promoted_user_ids: vec![promoted_user_id],
+                left_status: EventEnrollmentStatus::Attendee,
             })
         });
     tx.expect_get_site_settings()
@@ -370,24 +456,6 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                         template.dashboard_link == "https://ocg.test/dashboard/user?tab=events"
                             && template.link
                                 == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
-                    })
-                })
-        })
-        .returning(|_| Ok(()));
-    tx.expect_enqueue_notification()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
-                && notification.recipients == vec![promoted_user_id]
-                && notification.attachments.is_empty()
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
-                        template.dashboard_link.as_deref()
-                            == Some("https://ocg.test/dashboard/user?tab=events")
-                            && template.has_registration_questions
-                            && template.link
-                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
-                            && template.theme.primary_color == primary_color
                     })
                 })
         })
@@ -467,13 +535,16 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
     let mut tx = MockDB::new();
     tx.expect_cancel_event_attendee_attendance()
         .times(1)
-        .withf(move |actor_id, gid, eid, uid| {
-            *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
+        .withf(move |actor_id, gid, eid, uid, payment_provider| {
+            *actor_id == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && *uid == target_user_id
+                && payment_provider.is_none()
         })
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _, _, _| {
             Ok(EventLeaveOutcome {
-                left_status: EventAttendanceStatus::Attendee,
-                promoted_user_ids: vec![],
+                left_status: EventEnrollmentStatus::Attendee,
             })
         });
     tx.expect_get_site_settings()
@@ -520,13 +591,12 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
 }
 
 #[tokio::test]
-async fn test_cancel_event_attendee_invitation_returns_no_content() {
+async fn test_cancel_event_offer_returns_no_content() {
     // Setup identifiers and data structures
+    let admission_offer_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let target_user_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
@@ -556,12 +626,21 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_cancel_event_attendee_invitation()
+    db.expect_cancel_event_admission_offer()
         .times(1)
-        .withf(move |actor_id, gid, eid, uid| {
-            *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
+        .withf(move |actor_id, gid, oid, payment_provider| {
+            *actor_id == user_id
+                && *gid == group_id
+                && *oid == admission_offer_id
+                && payment_provider.is_none()
         })
-        .returning(|_, _, _, _| Ok(()));
+        .returning(move |_, _, _, _| {
+            Ok(EventEnrollmentReconciliationOutcome {
+                community_id,
+                event_id: Uuid::from_u128(1),
+                group_id,
+            })
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -571,7 +650,7 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/invitation/cancel"
+            "/dashboard/group/admission-offers/{admission_offer_id}/cancel"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -585,7 +664,7 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees",
+        "refresh-event-attendees, refresh-event-invitation-requests, refresh-event-waitlist",
     );
 }
 
@@ -617,10 +696,10 @@ async fn test_download_csv_success() {
     attendee_without_name.user.title = None;
     let mut pending_invitation = sample_attendee();
     pending_invitation.user.name = Some("Pending Invite".to_string());
-    pending_invitation.status = "invitation-pending".to_string();
+    pending_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationPending;
     let mut rejected_invitation = sample_attendee();
     rejected_invitation.user.name = Some("Rejected Invite".to_string());
-    rejected_invitation.status = "invitation-rejected".to_string();
+    rejected_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationDeclined;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
@@ -742,7 +821,7 @@ async fn test_download_csv_with_answers_success() {
     attendee_without_answers.registration_answers = None;
     let mut pending_invitation = sample_attendee();
     pending_invitation.user.name = Some("Pending Invite".to_string());
-    pending_invitation.status = "invitation-pending".to_string();
+    pending_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationPending;
     let event = sample_event_summary(event_id, group_id);
     let registration_questions = vec![
         QuestionnaireQuestion {
@@ -1079,117 +1158,13 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_missing() {
 }
 
 #[tokio::test]
-async fn test_invite_event_attendee_returns_created_and_sends_notification() {
+async fn test_invite_event_attendee_returns_created_for_email_target() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let invited_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let mut event = sample_event_summary(event_id, group_id);
-    event.has_registration_questions = true;
-    let expected_link = "https://ocg.test/dashboard/user?tab=events".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-    let site_settings = sample_site_settings();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_invite_event_attendee()
-        .times(1)
-        .withf(move |actor_id, gid, eid, target_user_id, email| {
-            *actor_id == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && target_user_id.is_none()
-                && email.as_deref() == Some("Invitee@Example.com")
-        })
-        .returning(move |_, _, _, _, _| Ok(invited_user_id));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventInvitation)
-                && notification.recipients == vec![invited_user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventInvitationTemplate>(value.clone()).is_ok_and(|template| {
-                        template.has_registration_questions && template.link == expected_link
-                    })
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(HttpServerConfig {
-            base_url: "https://ocg.test/".to_string(),
-            ..sample_tracking_server_cfg()
-        })
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/dashboard/group/events/{event_id}/attendees/invite"
-        ))
-        .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("email=Invitee%40Example.com"))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::CREATED,
-        "refresh-event-attendees, refresh-event-waitlist",
-    );
-}
-
-#[tokio::test]
-async fn test_invite_event_attendee_returns_created_when_notification_context_fails() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let invited_user_id = Uuid::new_v4();
-    let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
@@ -1221,25 +1196,25 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
         .returning(|_, _, _, _| Ok(true));
     db.expect_invite_event_attendee()
         .times(1)
-        .withf(move |actor_id, gid, eid, target_user_id, email| {
+        .withf(move |actor_id, gid, eid, invitation, payment_provider| {
             *actor_id == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && *target_user_id == Some(invited_user_id)
-                && email.is_none()
+                && invitation.user_id.is_none()
+                && invitation.email.as_deref() == Some("Invitee@Example.com")
+                && invitation.event_ticket_type_id == Some(ticket_type_id)
+                && payment_provider.is_none()
         })
-        .returning(move |_, _, _, _, _| Ok(invited_user_id));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Err(anyhow!("event summary error")));
+        .returning(move |_, _, _, _, _| {
+            Ok(EventAdmissionAllocationResult::Success(
+                EventAdmissionAllocation {
+                    outcome: EventAdmissionAllocationOutcome::OfferCreated,
+                },
+            ))
+        });
 
     // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -1250,7 +1225,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("user_id={invited_user_id}")))
+        .body(Body::from(format!(
+            "email=Invitee%40Example.com&event_ticket_type_id={ticket_type_id}"
+        )))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
@@ -1266,17 +1243,16 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
 }
 
 #[tokio::test]
-async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fails() {
+async fn test_invite_event_attendee_returns_created_for_registered_user() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let invited_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let event = sample_event_summary(event_id, group_id);
-    let expected_link = "https://ocg.test/dashboard/user?tab=invitations".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
@@ -1284,7 +1260,6 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         Some(community_id),
         Some(group_id),
     );
-    let site_settings = sample_site_settings();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1307,44 +1282,28 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         .returning(|_, _, _, _| Ok(true));
     db.expect_invite_event_attendee()
         .times(1)
-        .withf(move |actor_id, gid, eid, target_user_id, email| {
+        .withf(move |actor_id, gid, eid, invitation, payment_provider| {
             *actor_id == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && *target_user_id == Some(invited_user_id)
-                && email.is_none()
+                && invitation.user_id == Some(invited_user_id)
+                && invitation.email.is_none()
+                && invitation.event_ticket_type_id == Some(ticket_type_id)
+                && payment_provider.is_none()
         })
-        .returning(move |_, _, _, _, _| Ok(invited_user_id));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
+        .returning(move |_, _, _, _, _| {
+            Ok(EventAdmissionAllocationResult::Success(
+                EventAdmissionAllocation {
+                    outcome: EventAdmissionAllocationOutcome::OfferCreated,
+                },
+            ))
+        });
 
     // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventInvitation)
-                && notification.recipients == vec![invited_user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EventInvitationTemplate>(value.clone())
-                        .is_ok_and(|template| template.link == expected_link)
-                })
-        })
-        .returning(|_| Box::pin(async { Err(anyhow!("enqueue error")) }));
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(HttpServerConfig {
-            base_url: "https://ocg.test/".to_string(),
-            ..sample_tracking_server_cfg()
-        })
-        .build()
-        .await;
+    let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("POST")
         .uri(format!(
@@ -1352,7 +1311,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("user_id={invited_user_id}")))
+        .body(Body::from(format!(
+            "user_id={invited_user_id}&event_ticket_type_id={ticket_type_id}"
+        )))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
@@ -1364,6 +1325,90 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         &bytes,
         StatusCode::CREATED,
         "refresh-event-attendees, refresh-event-waitlist",
+    );
+}
+
+#[tokio::test]
+async fn test_invite_event_attendee_returns_ticket_type_sold_out_conflict() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_invite_event_attendee()
+        .times(1)
+        .withf(move |actor_id, gid, eid, invitation, payment_provider| {
+            *actor_id == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && invitation.user_id.is_none()
+                && invitation.email.as_deref() == Some("invitee@example.com")
+                && invitation.event_ticket_type_id == Some(ticket_type_id)
+                && payment_provider.is_none()
+        })
+        .returning(|_, _, _, _, _| {
+            Ok(EventAdmissionAllocationResult::Conflict(
+                EventAdmissionAllocationConflict::TicketTypeSoldOut,
+            ))
+        });
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!(
+            "email=invitee%40example.com&event_ticket_type_id={ticket_type_id}"
+        )))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::CONFLICT);
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
+        serde_json::json!({
+            "conflict": "ticket-type-sold-out",
+        }),
     );
 }
 
@@ -1454,8 +1499,8 @@ async fn test_list_page_success() {
     let pending_questions_attendee_id = Uuid::new_v4();
     let mut pending_questions_attendee = sample_attendee();
     pending_questions_attendee.checked_in = false;
+    pending_questions_attendee.enrollment_status = AttendeeEnrollmentStatus::RegistrationPending;
     pending_questions_attendee.manually_invited = false;
-    pending_questions_attendee.status = "registration-questions-pending".to_string();
     pending_questions_attendee.user.user_id = pending_questions_attendee_id;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
@@ -1499,9 +1544,10 @@ async fn test_list_page_success() {
                 && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
+                && filters.status.is_none()
         })
         .returning(move |_, _, _| Ok(output.clone()));
-    db.expect_get_event_summary()
+    db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
@@ -1532,6 +1578,8 @@ async fn test_list_page_success() {
     assert!(body.contains("value=\"Test Group: Sample Event\""));
     assert!(body.contains("data-notification-recipient-total=\"2\""));
     assert!(body.contains("data-notification-scope=\"all\""));
+    assert!(body.contains("id=\"attendees-enrollment-status\""));
+    assert!(body.contains("name=\"status\"") && !body.contains("name=\"attendance\""));
     assert!(
         !body.contains(
             "No attendees with verified email addresses and email notifications enabled."
@@ -1588,7 +1636,7 @@ async fn test_list_page_db_error() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Err(anyhow!("db error")));
@@ -1802,7 +1850,7 @@ async fn test_list_page_with_pagination_params() {
                 && filters.offset == Some(10)
         })
         .returning(move |_, _, _| Ok(output.clone()));
-    db.expect_get_event_summary()
+    db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
@@ -1904,11 +1952,12 @@ async fn test_list_page_with_search_query() {
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
                 && filters.sort == Some(AttendeesSort::CreatedAtDesc)
+                && filters.status == Some(AttendeeEnrollmentStatusFilter::History)
                 && filters.title == Some(PresenceFilter::Present)
                 && filters.ts_query.as_deref() == Some("ana")
         })
         .returning(move |_, _, _| Ok(output.clone()));
-    db.expect_get_event_summary()
+    db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
@@ -1928,7 +1977,7 @@ async fn test_list_page_with_search_query() {
             concat!(
                 "/dashboard/group/events/{event_id}/attendees?",
                 "checked_in=true&event_ticket_type_ids[0]={ticket_type_id}&",
-                "sort=created-at-desc&title=present&ts_query=ana"
+                "sort=created-at-desc&status=history&title=present&ts_query=ana"
             ),
             event_id = event_id,
             ticket_type_id = ticket_type_id,
@@ -1943,8 +1992,7 @@ async fn test_list_page_with_search_query() {
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("name=\"ts_query\""));
-    assert!(body.contains("value=\"ana\""));
+    assert!(body.contains("name=\"ts_query\"") && body.contains("value=\"ana\""));
     assert!(body.contains("Ana Lopez"));
     assert!(body.contains("ana@example.test"));
     assert!(body.contains("Example Co"));
@@ -2095,6 +2143,134 @@ async fn test_reject_invitation_request_returns_no_content() {
 }
 
 #[tokio::test]
+async fn test_reject_refund_request_rejects_missing_reason_without_calling_payments_manager() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Reject invalid input before calling the payments manager
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_reject_refund_request().never();
+
+    // Submit a rejection without the required reason
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/refunds/{event_purchase_id}/reject"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check validation fails without side effects
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_reject_refund_request_rejects_whitespace_reason_without_calling_payments_manager() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Reject invalid input before calling the payments manager
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_reject_refund_request().never();
+
+    // Submit a rejection with a whitespace-only reason
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/refunds/{event_purchase_id}/reject"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from("review_note=%20%20%20"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check validation fails without side effects
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_reject_refund_request_returns_no_content_when_payments_manager_succeeds() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -2140,7 +2316,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
             input.actor_user_id == user_id
                 && input.event_purchase_id == event_purchase_id
                 && input.group_id == group_id
-                && input.review_note.is_none()
+                && input.review_note == "Outside the refund policy window"
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -2159,7 +2335,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(""))
+        .body(Body::from("review_note=Outside+the+refund+policy+window"))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();

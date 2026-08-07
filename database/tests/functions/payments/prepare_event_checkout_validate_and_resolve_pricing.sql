@@ -1,9 +1,11 @@
+-- Tests validating event checkout ticket selection and pricing.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,16 +25,25 @@ select plan(13);
 \set inactivePriceWindowID '79260000-0000-0000-0000-000000000015'
 \set inactiveTicketTypeID '79260000-0000-0000-0000-000000000009'
 \set inactiveUserID '79260000-0000-0000-0000-000000000029'
+\set ineffectiveDiscountPriceWindowID '79260000-0000-0000-0000-00000000004a'
+\set ineffectiveDiscountTicketTypeID '79260000-0000-0000-0000-00000000004b'
 \set invalidDiscountUserID '79260000-0000-0000-0000-000000000023'
 \set invitedUserID '79260000-0000-0000-0000-000000000032'
 \set limitedDiscountID '79260000-0000-0000-0000-000000000018'
 \set mainEventID '79260000-0000-0000-0000-000000000003'
 \set missingTicketTypeID '79260000-0000-0000-0000-000000000034'
 \set noActivePriceTicketTypeID '79260000-0000-0000-0000-000000000035'
+\set offerID '79260000-0000-0000-0000-000000000045'
+\set offerUserID '79260000-0000-0000-0000-000000000046'
 \set percentageDiscountID '79260000-0000-0000-0000-000000000019'
 \set percentageDiscountUserID '79260000-0000-0000-0000-000000000027'
+\set privatePriceWindowID '79260000-0000-0000-0000-000000000042'
+\set privateTicketTypeID '79260000-0000-0000-0000-000000000041'
 \set priceWindowAID '79260000-0000-0000-0000-000000000012'
 \set priceWindowBID '79260000-0000-0000-0000-000000000013'
+\set queuePriceWindowID '79260000-0000-0000-0000-000000000048'
+\set queueTicketTypeID '79260000-0000-0000-0000-000000000047'
+\set queueUserID '79260000-0000-0000-0000-000000000049'
 \set redeemedPurchaseID '79260000-0000-0000-0000-000000000020'
 \set redeemedUserID '79260000-0000-0000-0000-000000000030'
 \set rejectedUserID '79260000-0000-0000-0000-000000000033'
@@ -49,6 +60,8 @@ select plan(13);
 \set truncationPriceWindowID '79260000-0000-0000-0000-000000000038'
 \set truncationTicketTypeID '79260000-0000-0000-0000-000000000036'
 \set unavailableDiscountUserID '79260000-0000-0000-0000-000000000024'
+\set zeroPriceWindowID '79260000-0000-0000-0000-000000000044'
+\set zeroTicketTypeID '79260000-0000-0000-0000-000000000043'
 
 -- ============================================================================
 -- SEED DATA
@@ -95,6 +108,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'redeemedUserID', 'hash-9', 'redeemed@example.com', true, 'redeemed-user'),
     (:'soldOutHolderUserID', 'hash-10', 'holder@example.com', true, 'holder-user'),
     (:'invitedUserID', 'hash-11', 'invited@example.com', true, 'invited-user'),
+    (:'offerUserID', 'hash-14', 'offer@example.com', true, 'offer-user'),
+    (:'queueUserID', 'hash-15', 'queue@example.com', true, 'queue-user'),
     (:'rejectedUserID', 'hash-12', 'rejected@example.com', true, 'rejected-user');
 
 -- Group
@@ -176,9 +191,32 @@ values
     (:'ticketTypeAID', true, :'mainEventID', 1, 10, 'General admission'),
     (:'ticketTypeBID', true, :'mainEventID', 2, 10, 'VIP'),
     (:'noActivePriceTicketTypeID', true, :'mainEventID', 3, 10, 'Expired price'),
-    (:'truncationTicketTypeID', true, :'mainEventID', 4, 10, 'Truncated percent'),
+    (:'queueTicketTypeID', true, :'mainEventID', 4, 10, 'Queued admission'),
+    (:'truncationTicketTypeID', true, :'mainEventID', 5, 10, 'Truncated percent'),
     (:'soldOutTicketTypeID', true, :'soldOutEventID', 1, 1, 'General admission'),
     (:'inactiveTicketTypeID', false, :'inactiveEventID', 1, 10, 'General admission');
+
+-- Ticket types for direct-checkout pricing edge cases
+insert into event_ticket_type (
+    active,
+    availability,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values
+    (
+        true,
+        'public',
+        :'mainEventID',
+        :'ineffectiveDiscountTicketTypeID',
+        7,
+        10,
+        'Minor-unit admission'
+    ),
+    (true, 'invitation_only', :'mainEventID', :'privateTicketTypeID', 5, 10, 'Private pass'),
+    (true, 'public', :'mainEventID', :'zeroTicketTypeID', 6, 10, 'Free admission');
 
 -- Price windows
 insert into event_ticket_price_window (
@@ -190,6 +228,15 @@ insert into event_ticket_price_window (
     (:'priceWindowBID', 4000, :'ticketTypeBID'),
     (:'soldOutPriceWindowID', 2500, :'soldOutTicketTypeID'),
     (:'inactivePriceWindowID', 2500, :'inactiveTicketTypeID');
+
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values
+    (1, :'ineffectiveDiscountPriceWindowID', :'ineffectiveDiscountTicketTypeID'),
+    (2500, :'privatePriceWindowID', :'privateTicketTypeID'),
+    (0, :'zeroPriceWindowID', :'zeroTicketTypeID');
 
 -- Price windows for edge cases
 insert into event_ticket_price_window (
@@ -208,6 +255,13 @@ insert into event_ticket_price_window (
     :'truncationPriceWindowID',
     99,
     :'truncationTicketTypeID',
+    null,
+    null
+),
+(
+    :'queuePriceWindowID',
+    2500,
+    :'queueTicketTypeID',
     null,
     null
 );
@@ -331,9 +385,31 @@ insert into event_purchase (
     null,
     :'soldOutEventID',
     :'soldOutTicketTypeID',
-    'completed',
+    'refund-recovery-pending',
     'General admission',
     :'soldOutHolderUserID'
+);
+
+-- FIFO queue that blocks direct pricing for its tier
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (:'mainEventID', :'queueTicketTypeID', :'queueUserID');
+
+insert into admission_offer (
+    admission_offer_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    user_id
+) values (
+    :'offerID',
+    :'mainEventID',
+    :'privateTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    :'offerUserID'
 );
 
 -- ============================================================================
@@ -348,7 +424,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000022'::uuid,
         null
     )$$,
-    'user is already attending this ticketed event',
+    'user is already attending this event',
     'Should reject attendees that already have a seat'
 );
 
@@ -422,6 +498,109 @@ select throws_ok(
     )$$,
     'ticket type does not have an active price window',
     'Should reject ticket types without an active price window'
+);
+
+-- Should reject invitation-only ticket identifiers from direct checkout
+select throws_ok(
+    $$select prepare_event_checkout_validate_and_resolve_pricing(
+        '79260000-0000-0000-0000-000000000003'::uuid,
+        '79260000-0000-0000-0000-000000000041'::uuid,
+        '79260000-0000-0000-0000-000000000026'::uuid,
+        null
+    )$$,
+    'ticket type is not available for direct checkout',
+    'Should reject invitation-only ticket identifiers from direct checkout'
+);
+
+select results_eq(
+    format(
+        $$
+        select final_amount_minor, ticket_title
+        from prepare_event_checkout_validate_and_resolve_pricing(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            %L::uuid
+        )
+        $$,
+        :'mainEventID',
+        :'privateTicketTypeID',
+        :'offerUserID',
+        :'offerID'
+    ),
+    $$ values (2500::bigint, 'Private pass'::text) $$,
+    'Should price the invitation-only tier assigned to an owned offer'
+);
+
+select throws_ok(
+    format(
+        $$
+        select prepare_event_checkout_validate_and_resolve_pricing(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            %L::uuid
+        )
+        $$,
+        :'mainEventID',
+        :'privateTicketTypeID',
+        :'offerUserID',
+        :'missingTicketTypeID'
+    ),
+    'P0001',
+    'admission offer is no longer available',
+    'Should reject pricing without the exact owned offer'
+);
+
+-- Should reject ineffective discount codes on intrinsically free tickets
+select throws_ok(
+    $$select prepare_event_checkout_validate_and_resolve_pricing(
+        '79260000-0000-0000-0000-000000000003'::uuid,
+        '79260000-0000-0000-0000-000000000043'::uuid,
+        '79260000-0000-0000-0000-000000000027'::uuid,
+        'VIP25'
+    )$$,
+    'discount codes cannot be applied to free tickets',
+    'Should reject ineffective discount codes on intrinsically free tickets'
+);
+
+-- Should reject percentage discounts below one minor unit
+select throws_ok(
+    format(
+        $$
+            select prepare_event_checkout_validate_and_resolve_pricing(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                'VIP25'
+            )
+        $$,
+        :'mainEventID',
+        :'ineffectiveDiscountTicketTypeID',
+        :'percentageDiscountUserID'
+    ),
+    'P0001',
+    'discount code does not reduce ticket price',
+    'Should reject percentage discounts below one minor unit'
+);
+
+-- Should reject direct pricing while a tier queue remains blocked
+select throws_ok(
+    format(
+        $$select prepare_event_checkout_validate_and_resolve_pricing(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null
+        )$$,
+        :'mainEventID',
+        :'queueTicketTypeID',
+        :'fixedDiscountUserID'
+    ),
+    'ticket type has queued users',
+    'Should reject direct pricing while a tier queue remains blocked'
 );
 
 -- Should reject unknown discount codes

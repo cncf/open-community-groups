@@ -67,12 +67,26 @@ describe("speakers-selector", () => {
   });
 
   it("keeps the event speakers table visible with an empty-state row", async () => {
+    // Render the event-level table display.
     const element = await mountLitComponent("speakers-selector", {
       displayMode: "table",
     });
+    const title = [...element.querySelectorAll("div")].find(
+      (candidate) => candidate.children.length === 0 && candidate.textContent.trim() === "Speakers",
+    );
     const table = element.querySelector('table[aria-label="Event speakers"]');
     const emptyState = table.querySelector("tbody td");
 
+    // Verify the title matches other event contributor sections.
+    expect(title.tagName).to.equal("DIV");
+    expect([...title.classList]).to.include.members([
+      "text-xl",
+      "lg:text-2xl",
+      "font-medium",
+      "text-stone-900",
+    ]);
+
+    // Verify the empty event speakers table remains visible.
     expect([...table.querySelectorAll("th")].map((header) => header.textContent.trim())).to.deep.equal([
       "Name",
       "Featured",

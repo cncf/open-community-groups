@@ -5,7 +5,7 @@ use std::ops::{Deref, DerefMut};
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -14,6 +14,7 @@ use crate::{
     db::PgExecutor,
     services::payments::CheckoutSession,
     types::{
+        event::EventEnrollmentReconciliationOutcome,
         payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout},
         questionnaire::QuestionnaireAnswers,
     },
@@ -26,7 +27,7 @@ pub(crate) trait DBPayments {
     async fn attach_checkout_session_to_event_purchase(
         &self,
         event_purchase_id: Uuid,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
         checkout_session: &CheckoutSession,
     ) -> Result<()>;
 
@@ -36,23 +37,19 @@ pub(crate) trait DBPayments {
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()>;
 
     /// Claims the next refund ready for the configured provider.
     async fn claim_event_purchase_refund(
         &self,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
     ) -> Result<Option<ClaimedEventPurchaseRefund>>;
 
     /// Completes an externally resolved terminal provider refund.
     async fn complete_event_purchase_refund_recovery(
         &self,
-        actor_user_id: Uuid,
-        group_id: Uuid,
-        event_purchase_refund_id: Uuid,
-        recovery_reference: String,
-        recovery_note: String,
-        notification_template_data: Option<serde_json::Value>,
+        input: &CompleteEventPurchaseRefundRecoveryInput,
     ) -> Result<()>;
 
     /// Completes a free purchase locally without a provider checkout.
@@ -64,7 +61,7 @@ pub(crate) trait DBPayments {
     /// Expires a pending purchase when its provider checkout session expires.
     async fn expire_event_purchase_for_checkout_session(
         &self,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
         provider_session_id: &str,
     ) -> Result<()>;
 
@@ -74,6 +71,7 @@ pub(crate) trait DBPayments {
         event_purchase_refund_id: Uuid,
         claim_id: Uuid,
         notification_template_data: serde_json::Value,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()>;
 
     /// Loads the durable refund record for a purchase.
@@ -100,7 +98,7 @@ pub(crate) trait DBPayments {
         &self,
         community_id: Uuid,
         input: &PrepareEventCheckoutPurchaseInput,
-    ) -> Result<PreparedEventCheckout>;
+    ) -> Result<PrepareEventCheckoutPurchaseResult>;
 
     /// Queues an approved attendee refund request for worker processing.
     async fn queue_event_refund_request_approval(
@@ -114,10 +112,16 @@ pub(crate) trait DBPayments {
     /// Reconciles a provider-backed purchase by checkout session id.
     async fn reconcile_event_purchase_for_checkout_session(
         &self,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
         provider_session_id: &str,
         provider_payment_reference: Option<String>,
     ) -> Result<ReconcileEventPurchaseResult>;
+
+    /// Reconciles one event with a due enrollment reservation.
+    async fn reconcile_next_event_enrollment(
+        &self,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<Option<EventEnrollmentReconciliationOutcome>>;
 
     /// Records an in-progress provider refund for the expected attempt.
     async fn record_event_purchase_refund_pending(
@@ -161,7 +165,7 @@ pub(crate) trait DBPayments {
         actor_user_id: Uuid,
         group_id: Uuid,
         event_purchase_id: Uuid,
-        review_note: Option<String>,
+        review_note: String,
     ) -> Result<CompletedEventPurchase>;
 
     /// Creates a refund request for an attendee purchase.
@@ -195,7 +199,7 @@ where
     async fn attach_checkout_session_to_event_purchase(
         &self,
         event_purchase_id: Uuid,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
         checkout_session: &CheckoutSession,
     ) -> Result<()> {
         self.execute(
@@ -209,7 +213,7 @@ where
             ",
             &[
                 &event_purchase_id,
-                &provider.to_string(),
+                &payment_provider.to_string(),
                 &checkout_session.provider_session_id,
                 &checkout_session.redirect_url,
             ],
@@ -224,10 +228,16 @@ where
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()> {
         self.execute(
-            "select cancel_event_checkout($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &event_id, &user_id],
+            "select cancel_event_checkout($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[
+                &community_id,
+                &event_id,
+                &user_id,
+                &payment_provider.map(|provider| provider.to_string()),
+            ],
         )
         .await
     }
@@ -236,25 +246,20 @@ where
     #[instrument(skip(self), err)]
     async fn claim_event_purchase_refund(
         &self,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
     ) -> Result<Option<ClaimedEventPurchaseRefund>> {
         self.fetch_json_opt(
             "select claim_event_purchase_refund($1::text)",
-            &[&provider.to_string()],
+            &[&payment_provider.to_string()],
         )
         .await
     }
 
     /// [`DBPayments::complete_event_purchase_refund_recovery`].
-    #[instrument(skip(self, recovery_note, notification_template_data), err)]
+    #[instrument(skip(self, input), err)]
     async fn complete_event_purchase_refund_recovery(
         &self,
-        actor_user_id: Uuid,
-        group_id: Uuid,
-        event_purchase_refund_id: Uuid,
-        recovery_reference: String,
-        recovery_note: String,
-        notification_template_data: Option<serde_json::Value>,
+        input: &CompleteEventPurchaseRefundRecoveryInput,
     ) -> Result<()> {
         self.execute(
             "
@@ -264,16 +269,18 @@ where
                 $3::uuid,
                 $4::text,
                 $5::text,
-                $6::jsonb
+                $6::jsonb,
+                $7::text
             )
             ",
             &[
-                &actor_user_id,
-                &group_id,
-                &event_purchase_refund_id,
-                &recovery_reference,
-                &recovery_note,
-                &notification_template_data.as_ref().map(Json),
+                &input.actor_user_id,
+                &input.group_id,
+                &input.event_purchase_refund_id,
+                &input.recovery_reference,
+                &input.recovery_note,
+                &input.notification_template_data.as_ref().map(Json),
+                &input.payment_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -296,12 +303,12 @@ where
     #[instrument(skip(self), err)]
     async fn expire_event_purchase_for_checkout_session(
         &self,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
         provider_session_id: &str,
     ) -> Result<()> {
         self.execute(
             "select expire_event_purchase_for_checkout_session($1::text, $2::text)",
-            &[&provider.to_string(), &provider_session_id],
+            &[&payment_provider.to_string(), &provider_session_id],
         )
         .await
     }
@@ -313,13 +320,22 @@ where
         event_purchase_refund_id: Uuid,
         claim_id: Uuid,
         notification_template_data: serde_json::Value,
+        payment_provider: Option<PaymentProvider>,
     ) -> Result<()> {
         self.execute(
-            "select finalize_event_purchase_refund($1::uuid, $2::uuid, $3::jsonb)",
+            "
+            select finalize_event_purchase_refund(
+                $1::uuid,
+                $2::uuid,
+                $3::jsonb,
+                $4::text
+            )
+            ",
             &[
                 &event_purchase_refund_id,
                 &claim_id,
                 &Json(&notification_template_data),
+                &payment_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -371,30 +387,35 @@ where
         &self,
         community_id: Uuid,
         input: &PrepareEventCheckoutPurchaseInput,
-    ) -> Result<PreparedEventCheckout> {
-        self.fetch_json_one(
-            "
-            select prepare_event_checkout_purchase(
-                $1::uuid,
-                $2::uuid,
-                $3::uuid,
-                $4::uuid,
-                $5::text,
-                $6::text,
-                $7::jsonb
+    ) -> Result<PrepareEventCheckoutPurchaseResult> {
+        let output: PrepareEventCheckoutPurchaseOutput = self
+            .fetch_json_one(
+                "
+                select prepare_event_checkout_purchase(
+                    $1::uuid,
+                    $2::uuid,
+                    $3::uuid,
+                    $4::uuid,
+                    $5::text,
+                    $6::text,
+                    $7::jsonb,
+                    $8::uuid
+                )
+                ",
+                &[
+                    &community_id,
+                    &input.event_id,
+                    &input.event_ticket_type_id,
+                    &input.user_id,
+                    &input.discount_code,
+                    &input.payment_provider.map(|provider| provider.to_string()),
+                    &input.registration_answers.as_ref().map(Json),
+                    &input.admission_offer_id,
+                ],
             )
-            ",
-            &[
-                &community_id,
-                &input.event_id,
-                &input.event_ticket_type_id,
-                &input.user_id,
-                &input.discount_code,
-                &input.configured_provider.map(|provider| provider.to_string()),
-                &input.registration_answers.as_ref().map(Json),
-            ],
-        )
-        .await
+            .await?;
+
+        Ok(output.into())
     }
 
     /// [`DBPayments::queue_event_refund_request_approval`].
@@ -417,7 +438,7 @@ where
     #[instrument(skip(self), err)]
     async fn reconcile_event_purchase_for_checkout_session(
         &self,
-        provider: PaymentProvider,
+        payment_provider: PaymentProvider,
         provider_session_id: &str,
         provider_payment_reference: Option<String>,
     ) -> Result<ReconcileEventPurchaseResult> {
@@ -431,7 +452,7 @@ where
                 )
                 ",
                 &[
-                    &provider.to_string(),
+                    &payment_provider.to_string(),
                     &provider_session_id,
                     &provider_payment_reference,
                 ],
@@ -439,6 +460,19 @@ where
             .await?;
 
         Ok(result.into())
+    }
+
+    /// [`DBPayments::reconcile_next_event_enrollment`].
+    #[instrument(skip(self), err)]
+    async fn reconcile_next_event_enrollment(
+        &self,
+        payment_provider: Option<PaymentProvider>,
+    ) -> Result<Option<EventEnrollmentReconciliationOutcome>> {
+        self.fetch_json_opt(
+            "select reconcile_next_event_enrollment($1::text)",
+            &[&payment_provider.map(|provider| provider.to_string())],
+        )
+        .await
     }
 
     /// [`DBPayments::record_event_purchase_refund_pending`].
@@ -528,7 +562,7 @@ where
         actor_user_id: Uuid,
         group_id: Uuid,
         event_purchase_id: Uuid,
-        review_note: Option<String>,
+        review_note: String,
     ) -> Result<CompletedEventPurchase> {
         self.fetch_json_one(
             "
@@ -683,6 +717,26 @@ pub(crate) struct CompletedEventPurchase {
     pub user_id: Uuid,
 }
 
+/// Input used to complete an externally resolved refund recovery.
+#[derive(Debug, Clone)]
+pub(crate) struct CompleteEventPurchaseRefundRecoveryInput {
+    /// Operator completing the recovery.
+    pub actor_user_id: Uuid,
+    /// Durable refund identifier.
+    pub event_purchase_refund_id: Uuid,
+    /// Group that owns the recovered purchase.
+    pub group_id: Uuid,
+    /// Operator note describing the recovery evidence.
+    pub recovery_note: String,
+    /// External reference proving the recovery.
+    pub recovery_reference: String,
+
+    /// Notification data composed before atomic completion.
+    pub notification_template_data: Option<serde_json::Value>,
+    /// Payment provider configured for queue reconciliation.
+    pub payment_provider: Option<PaymentProvider>,
+}
+
 /// Durable provider refund record used to reconcile local and provider state.
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 pub(crate) struct EventPurchaseRefund {
@@ -766,6 +820,26 @@ pub(crate) enum EventPurchaseRefundStatus {
     ProviderSucceeded,
 }
 
+/// Conflict returned while preparing an attendee checkout.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum PrepareEventCheckoutPurchaseConflict {
+    /// An active admission offer must be claimed through its dedicated checkout path.
+    AdmissionOfferRequired,
+    /// The selected admission offer is no longer claimable.
+    AdmissionOfferUnavailable,
+    /// The selected ticket requires payment setup that is currently unavailable.
+    PaymentSetupUnavailable,
+    /// The selected ticket tier is no longer active.
+    TicketTypeInactive,
+    /// The selected ticket tier has no current price.
+    TicketTypePriceUnavailable,
+    /// The selected ticket tier has no unallocated capacity.
+    TicketTypeSoldOut,
+    /// The selected ticket tier is not available to this checkout path.
+    TicketTypeUnavailable,
+}
+
 /// Input used to prepare an attendee checkout purchase.
 #[derive(Debug, Clone)]
 pub(crate) struct PrepareEventCheckoutPurchaseInput {
@@ -776,12 +850,46 @@ pub(crate) struct PrepareEventCheckoutPurchaseInput {
     /// User identifier.
     pub user_id: Uuid,
 
-    /// Configured payments provider for this deployment.
-    pub configured_provider: Option<PaymentProvider>,
+    /// Admission offer being claimed by the attendee.
+    pub admission_offer_id: Option<Uuid>,
     /// Discount code provided by the attendee.
     pub discount_code: Option<String>,
+    /// Payment provider configured for this deployment.
+    pub payment_provider: Option<PaymentProvider>,
     /// Registration answers provided before checkout starts.
     pub registration_answers: Option<QuestionnaireAnswers>,
+}
+
+/// Result of preparing an attendee checkout purchase.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum PrepareEventCheckoutPurchaseResult {
+    /// Checkout could not reserve the selected ticket.
+    Conflict(PrepareEventCheckoutPurchaseConflict),
+    /// Checkout purchase was created or reused.
+    Prepared(Box<PreparedEventCheckout>),
+}
+
+/// Database output returned after preparing an attendee checkout purchase.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum PrepareEventCheckoutPurchaseOutput {
+    /// Checkout could not reserve the selected ticket.
+    Conflict {
+        /// Conflict kind.
+        conflict: PrepareEventCheckoutPurchaseConflict,
+    },
+    /// Checkout purchase was created or reused.
+    Prepared(Box<PreparedEventCheckout>),
+}
+
+impl From<PrepareEventCheckoutPurchaseOutput> for PrepareEventCheckoutPurchaseResult {
+    /// Converts database checkout preparation output into the caller-facing result.
+    fn from(output: PrepareEventCheckoutPurchaseOutput) -> Self {
+        match output {
+            PrepareEventCheckoutPurchaseOutput::Conflict { conflict } => Self::Conflict(conflict),
+            PrepareEventCheckoutPurchaseOutput::Prepared(checkout) => Self::Prepared(checkout),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -789,7 +897,53 @@ mod tests {
     use serde_json::json;
     use uuid::Uuid;
 
-    use super::{ReconcileEventPurchaseForCheckoutSessionOutput, ReconcileEventPurchaseResult};
+    use super::{
+        PrepareEventCheckoutPurchaseConflict, PrepareEventCheckoutPurchaseOutput,
+        ReconcileEventPurchaseForCheckoutSessionOutput, ReconcileEventPurchaseResult,
+    };
+
+    #[test]
+    fn prepare_event_checkout_purchase_output_maps_conflicts() {
+        for (value, expected) in [
+            (
+                "admission-offer-required",
+                PrepareEventCheckoutPurchaseConflict::AdmissionOfferRequired,
+            ),
+            (
+                "admission-offer-unavailable",
+                PrepareEventCheckoutPurchaseConflict::AdmissionOfferUnavailable,
+            ),
+            (
+                "payment-setup-unavailable",
+                PrepareEventCheckoutPurchaseConflict::PaymentSetupUnavailable,
+            ),
+            (
+                "ticket-type-inactive",
+                PrepareEventCheckoutPurchaseConflict::TicketTypeInactive,
+            ),
+            (
+                "ticket-type-price-unavailable",
+                PrepareEventCheckoutPurchaseConflict::TicketTypePriceUnavailable,
+            ),
+            (
+                "ticket-type-sold-out",
+                PrepareEventCheckoutPurchaseConflict::TicketTypeSoldOut,
+            ),
+            (
+                "ticket-type-unavailable",
+                PrepareEventCheckoutPurchaseConflict::TicketTypeUnavailable,
+            ),
+        ] {
+            let output: PrepareEventCheckoutPurchaseOutput =
+                serde_json::from_value(json!({ "conflict": value })).unwrap();
+
+            assert!(matches!(
+                output,
+                PrepareEventCheckoutPurchaseOutput::Conflict { conflict }
+                    if conflict == expected
+            ));
+        }
+    }
 
     #[test]
     fn reconcile_event_purchase_for_checkout_session_output_maps_completed() {

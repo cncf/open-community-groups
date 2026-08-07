@@ -1,3 +1,4 @@
+{% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
@@ -165,7 +166,8 @@
           <th scope="col" class="px-3 xl:px-5 py-1.5">
             <span class="whitespace-nowrap">Requester</span>
           </th>
-          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
+          <th scope="col"
+              class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5">
             {% call dashboard::table_filter_menu(id = "invitation-requests-position-filter", label = "Position", is_active = title.is_some()) -%}
             <div class="py-2">
               <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
@@ -179,9 +181,6 @@
               </form>
             </div>
             {% endcall -%}
-          </th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
-            <span class="whitespace-nowrap">Requested</span>
           </th>
           <th scope="col" class="px-3 xl:px-5 py-1.5 w-48">
             {% call dashboard::table_filter_menu(id = "invitation-requests-status-filter", label = "Status", is_active = status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All) -%}
@@ -199,6 +198,13 @@
             </div>
             {% endcall -%}
           </th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-48">
+            <span class="whitespace-nowrap">Ticket type</span>
+          </th>
+          <th scope="col"
+              class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40">
+            <span class="whitespace-nowrap">Requested</span>
+          </th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">Reviewed</th>
           <th scope="col" class="px-3 xl:px-5 py-1.5 w-24 text-right">
             <span class="sr-only">Actions</span>
@@ -210,22 +216,23 @@
         {% if invitation_requests.is_empty() -%}
           {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
-            <td class="xl:hidden px-8 py-12 text-center" colspan="3">
+            <td class="2xl:hidden px-8 py-12 text-center" colspan="3">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
                 <span class="text-stone-500">No invitation requests found.</span>
               {% endif -%}
             </td>
-            <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
-                colspan="4">
+            <td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center"
+                colspan="5">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
                 <span class="text-stone-500">No invitation requests found.</span>
               {% endif -%}
             </td>
-            <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
+            <td class="hidden min-[1920px]:table-cell px-8 py-12 text-center"
+                colspan="7">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
@@ -242,12 +249,15 @@
               <td class="px-3 xl:px-5 py-4 max-w-0">
                 {% call dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str())) -%}
                 <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ request.user.name.as_deref() |assigned_or(request.user.username) }}</div>
+                <div class="truncate text-xs text-stone-600 2xl:hidden">
+                  {{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}
+                </div>
                 {% endcall -%}
               </td>
               {# End requester -#}
 
               {# Position -#}
-              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0">
+              <td class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0">
                 <div class="flex flex-col space-y-1">
                   <div class="font-medium text-stone-900 truncate">{{ request.user.company.as_deref() |assigned_or("-") }}</div>
                   {% if let Some(title) = &request.user.title -%}
@@ -257,29 +267,34 @@
               </td>
               {# End position -#}
 
+              {# Status -#}
+              <td class="px-3 xl:px-5 py-4 align-middle">
+                <div class="flex min-w-0 items-center">
+                  {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                    {{ invitation_request_status_badge(request, event, "Pending", false, false) -}}
+                  {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
+                    {{ invitation_request_status_badge(request, event, "Rejected", true, false) -}}
+                  {% else -%}
+                    {{ invitation_request_status_badge(request, event, "Accepted", false, true) -}}
+                  {% endif -%}
+                </div>
+              </td>
+              {# End status -#}
+
+              {# Ticket type -#}
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0 w-48">
+                <div class="truncate font-medium text-stone-900"
+                     title="{{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}">
+                  {{ request.requested_ticket_title.as_deref() |assigned_or("Private admission") }}
+                </div>
+              </td>
+              {# End ticket type -#}
+
               {# Requested -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+              <td class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
                 {{ request.created_at.format("%b %d, %Y") }}
               </td>
               {# End requested -#}
-
-              {# Status -#}
-              <td class="px-3 xl:px-5 py-4 align-middle">
-                {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
-                  <span class="inline-flex w-fit rounded-full border border-amber-800 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                    Pending
-                  </span>
-                {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
-                  <span class="inline-flex w-fit rounded-full border border-red-800 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
-                    Rejected
-                  </span>
-                {% else -%}
-                  <span class="inline-flex w-fit rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                    Accepted
-                  </span>
-                {% endif -%}
-              </td>
-              {# End status -#}
 
               {# Reviewed -#}
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
@@ -293,20 +308,27 @@
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-24">
-                {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
+                  || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                  || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
+                  || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
                   <div class="flex justify-end">
                     <div class="group relative">
                       <button type="button"
                               data-event-id="invitation-request-{{ request.user.user_id }}"
-                              aria-label="Open actions menu for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
-                              aria-haspopup="menu"
+                              aria-label="Open actions for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
                               aria-controls="dropdown-actions-invitation-request-{{ request.user.user_id }}"
+                              aria-expanded="false"
                               class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
-                                     {% if !can_manage_events -%}
+                                     {% if !can_manage_events || event.canceled || event.is_past() -%}
                                        opacity-50 cursor-not-allowed
                                      {% endif -%}"
                               {% if !can_manage_events -%}
                                 disabled title="Your role cannot manage invitation requests."
+                              {% else if event.canceled -%}
+                                disabled title="Canceled events cannot manage invitation requests."
+                              {% else if event.is_past() -%}
+                                disabled title="Past events cannot manage invitation requests."
                               {% endif -%}>
                         <div class="svg-icon size-4 icon-vertical-dots"></div>
                       </button>
@@ -314,49 +336,121 @@
                       {# Dropdown actions -#}
                       <div id="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                            data-event-actions-dropdown
-                           class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                        <ul class="py-2 text-sm text-stone-700" role="menu">
-                          <li>
-                            <button type="button"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/accept"
+                           class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                        <ul class="text-sm text-stone-700">
+                          {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
+                            || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                            <li>
+                              <form hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}reissue{% else %}accept{% endif %}"
                                     hx-indicator="#dashboard-spinner"
-                                    hx-disabled-elt="this"
+                                    hx-disabled-elt="find button[type=submit]"
                                     data-invitation-request-action
-                                    data-error-message="Something went wrong accepting this invitation request. Please check the event capacity and try again later."
-                                    role="menuitem">
-                              <div class="flex items-center">
-                                <div class="svg-icon size-4 icon-check bg-stone-600"></div>
-                                <div class="ms-2">Accept</div>
-                              </div>
-                            </button>
-                          </li>
-                          <li>
-                            <button id="reject-invitation-request-{{ request.user.user_id }}"
-                                    type="button"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/reject"
-                                    hx-indicator="#dashboard-spinner"
-                                    hx-disabled-elt="this"
-                                    hx-trigger="confirmed"
-                                    data-confirm-action
-                                    data-confirm-message="Are you sure you want to reject this invitation request?"
-                                    data-confirm-text="Yes"
-                                    data-error-message="Something went wrong rejecting this invitation request. Please try again later."
-                                    role="menuitem">
-                              <div class="flex items-center">
-                                <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
-                                <div class="ms-2">Reject</div>
-                              </div>
-                            </button>
-                          </li>
+                                    data-success-message="{% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) %}Ticket offer reissued.{% else %}Ticket request accepted.{% endif %}"
+                                    data-error-message="Something went wrong allocating this ticket. Please check ticket availability and payment readiness, then try again.">
+                                {% if let Some(requested_event_ticket_type_id) = request.requested_event_ticket_type_id -%}
+                                  <input type="hidden"
+                                         name="event_ticket_type_id"
+                                         value="{{ requested_event_ticket_type_id }}">
+                                {% else -%}
+                                  <div class="px-4 pb-2">
+                                    <label for="invitation-request-ticket-type-{{ request.user.user_id }}"
+                                           class="form-label">
+                                      Invitation-only ticket <span class="asterisk">*</span>
+                                    </label>
+                                    <select id="invitation-request-ticket-type-{{ request.user.user_id }}"
+                                            data-invitation-request-ticket-type
+                                            name="event_ticket_type_id"
+                                            class="select-primary mt-2"
+                                            required>
+                                      <option value="">Select ticket type</option>
+                                      {% if let Some(ticket_types) = &event.ticket_types -%}
+                                        {% for ticket_type in ticket_types -%}
+                                          {% if ticket_type.active
+                                            && !ticket_type.sold_out
+                                            && ticket_type.current_price.is_some()
+                                            && ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly -%}
+                                            <option value="{{ ticket_type.event_ticket_type_id }}"
+                                                    {% if request.offered_event_ticket_type_id.as_ref() == Some(ticket_type.event_ticket_type_id) -%}
+                                                      selected
+                                                    {% endif -%}>{{ ticket_type.title }}</option>
+                                          {% endif -%}
+                                        {% endfor -%}
+                                      {% endif -%}
+                                    </select>
+                                    <p data-invitation-request-ticket-empty
+                                       class="form-legend hidden text-amber-800">
+                                      No invitation-only ticket types can be assigned. Add seats or activate an
+                                      invitation-only ticket type with a current price before accepting this request.
+                                    </p>
+                                    <p class="form-legend mt-2">Assign an active private tier with current pricing and available seats.</p>
+                                  </div>
+                                {% endif -%}
+                                <button type="submit"
+                                        data-invitation-request-ticket-submit
+                                        class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                                  <div class="flex items-center gap-2">
+                                    <div class="svg-icon size-4 icon-check bg-stone-600"></div>
+                                    <div>
+                                      {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                                        Reissue offer
+                                      {% else -%}
+                                        Accept
+                                      {% endif -%}
+                                    </div>
+                                  </div>
+                                </button>
+                              </form>
+                            </li>
+                          {% endif -%}
+                          {% if request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                            || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending) -%}
+                            {% if let Some(admission_offer_id) = request.admission_offer_id -%}
+                              <li>
+                                <button id="cancel-invitation-request-offer-{{ admission_offer_id }}"
+                                        type="button"
+                                        class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
+                                        hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
+                                        hx-indicator="#dashboard-spinner"
+                                        hx-disabled-elt="this"
+                                        hx-trigger="confirmed"
+                                        data-confirm-action
+                                        data-confirm-message="Are you sure you want to cancel this ticket offer?"
+                                        data-confirm-text="Yes"
+                                        data-success-message="Ticket offer canceled."
+                                        data-error-message="Something went wrong canceling this ticket offer. Please try again later.">
+                                  <div class="flex items-center gap-2">
+                                    <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
+                                    <div>Cancel offer</div>
+                                  </div>
+                                </button>
+                              </li>
+                            {% endif -%}
+                          {% endif -%}
+                          {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                            <li>
+                              <button id="reject-invitation-request-{{ request.user.user_id }}"
+                                      type="button"
+                                      class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
+                                      hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/reject"
+                                      hx-indicator="#dashboard-spinner"
+                                      hx-disabled-elt="this"
+                                      hx-trigger="confirmed"
+                                      data-confirm-action
+                                      data-confirm-message="Are you sure you want to reject this invitation request?"
+                                      data-confirm-text="Yes"
+                                      data-error-message="Something went wrong rejecting this invitation request. Please try again later.">
+                                <div class="flex items-center gap-2">
+                                  <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
+                                  <div>Reject</div>
+                                </div>
+                              </button>
+                            </li>
+                          {% endif -%}
                         </ul>
                       </div>
                       {# End dropdown actions -#}
                     </div>
                   </div>
-                {% else -%}
-                  <div class="text-right text-stone-400">-</div>
                 {% endif -%}
               </td>
               {# End actions -#}
@@ -376,6 +470,70 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#invitation-requests-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Invitation request status badge and ticket offer details. #}
+{% macro invitation_request_status_badge(request, event, label, canceled, published) -%}
+  {% if let Some(offer_status) = request.admission_offer_status -%}
+    {% let request_offer_tooltip_id -%}invitation-request-offer-details-{{ request.user.user_id }}{%- endlet %}
+  <span class="group/request-offer relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            aria-describedby="{{ request_offer_tooltip_id }}">
+      {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white
+                   {% if canceled %}bg-red-800{% else if published %}bg-green-800{% else %}bg-amber-800{% endif %}"
+            aria-hidden="true"></span>
+    </button>
+    {% call dashboard::tooltip_panel(
+      id = request_offer_tooltip_id,
+      title = "Ticket offer",
+      visibility_classes = "group-hover/request-offer:visible group-hover/request-offer:opacity-100 group-focus-within/request-offer:visible group-focus-within/request-offer:opacity-100"
+    ) -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Ticket type</span>
+      <span class="mt-0.5 block text-stone-900">
+        {{ request.offered_ticket_title.as_deref() |assigned_or("RSVP invitation") }}
+      </span>
+    </span>
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Offer status</span>
+      <span class="mt-0.5 block text-stone-900">
+        {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Pending -%}
+          Pending
+        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::CheckoutPending -%}
+          Checkout in progress
+        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Completed -%}
+          Claimed
+        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+          Expired
+        {% else if *offer_status == crate::types::event::EventAdmissionOfferStatus::Canceled -%}
+          Canceled
+        {% else -%}
+          Declined
+        {% endif -%}
+      </span>
+    </span>
+    {% if let Some(offer_expires_at) = &request.offer_expires_at -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">
+          {% if *offer_status == crate::types::event::EventAdmissionOfferStatus::Expired -%}
+            Expired
+          {% else -%}
+            Deadline
+          {% endif -%}
+        </span>
+        <span class="mt-0.5 block text-stone-900">
+          {{ offer_expires_at.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+        </span>
+      </span>
+    {% endif -%}
+    {% endcall -%}
+  </span>
+{% else -%}
+  {{ badges::status_badge(label = label, canceled = canceled, published = published) -}}
+{% endif -%}
+{% endmacro invitation_request_status_badge -%}
+{# End invitation request status badge. #}
 
 {# Invitation request table state fields for filter, sort, and search forms. #}
 {% macro invitation_requests_table_state_inputs(

@@ -2,7 +2,8 @@
 
 # Payments Setup Guide
 
-Use this guide when your group wants to run paid events in OCG.
+Use this guide when your group wants to configure ticket prices that may require
+payment in OCG. Events with only free ticket types do not require Stripe.
 
 In OCG, a group is ready for paid events only when both of these are true:
 
@@ -13,6 +14,10 @@ In OCG, a group is ready for paid events only when both of these are true:
 OCG does not create or onboard Stripe accounts from the group dashboard. The
 group dashboard only stores the Stripe connected account identifier that should
 receive payouts for that group's paid events.
+
+Event enrollment remains available without these prerequisites. An event is
+paid-capable when any active or inactive ticket type has a positive current or
+future price window, including invitation-only tiers.
 
 In practice, this setup usually involves two people: a group administrator
 who wants to enable paid events for the group, and a platform administrator
@@ -36,8 +41,8 @@ who manages the Stripe Connect platform for that OCG deployment.
 Before you configure payments for a group, confirm these points:
 
 - The OCG deployment has Stripe payments enabled. If the payments section does
-  not appear in group settings, ask your platform administrator to verify the
-  server-side Stripe setup.
+  not appear in group settings, paid ticketing is unavailable, but free-only
+  events with free ticket types still work.
 - You have permission to edit the group in
   [Group Dashboard -> Settings](/guides/group-dashboard.md#settings-group-identity).
 
@@ -151,18 +156,19 @@ Once you have the `acct_...` value:
 That setting applies at the group level. Paid events created for that group use
 the saved Stripe recipient.
 
-If you leave the field blank, the group can still run free RSVP events, but it
-cannot use ticketed events.
+If you leave the field blank, the group can run events with free ticket types.
+Positive ticket prices cannot be configured or published.
 
 ## What Happens After Setup
 
-Once the recipient is saved, group administrators can create ticketed events
-for the group, and paid attendees are sent to Stripe Checkout during purchase.
+Once the recipient is saved, group administrators can configure paid-capable
+events. A claim with a positive final price is sent to Stripe Checkout;
+an intrinsically free or discounted-to-zero claim completes inside OCG.
 Refund requests stay managed in OCG by group administrators, while the group
 can continue managing its connected account details in Stripe when needed.
 
 For the rest of the paid-event flow, continue to
-[Event Operations](event-operations.md#paid-events-tickets-discounts-refunds).
+[Event Operations](event-operations.md#tickets-discounts-and-refunds).
 
 ## Official Stripe References
 

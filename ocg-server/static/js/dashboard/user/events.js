@@ -1,12 +1,33 @@
 import "/static/js/common/actions-menu.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
+import {
+  closestElement,
+  getElementById,
+  initializeMatchingRoots,
+  initializeOnReadyAndHtmxLoad,
+  isElementHidden,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 
-const DATA_KEY = "userEventQuestionsReady";
+const DATA_KEY = "userEventsReady";
+const REFUND_ACTION_SELECTOR = "[data-user-event-refund-action]";
+
+/**
+ * Loads exact refund eligibility for paid rows in the current dashboard fragment.
+ * @param {Document|Element} root Dashboard content root.
+ * @returns {void}
+ */
+export const initializeUserEventRefundActions = (root = document) => {
+  initializeMatchingRoots(root, REFUND_ACTION_SELECTOR, (action) => {
+    void loadRefundActionEligibility(action);
+  });
+};
 
 /**
  * Finds the question modal targeted by an open trigger.
@@ -59,7 +80,16 @@ const handleSubmit = (event) => {
 };
 
 const handleAfterRequest = (event) => {
-  const form = event.target;
+  const target = event.target;
+  if (closestElement(target, "[data-user-event-checkout-cancel]")) {
+    // Shared confirmation handling owns feedback for this action.
+    if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+      window.htmx?.trigger?.("#dashboard-content", "refresh-user-dashboard-content");
+    }
+    return;
+  }
+
+  const form = target;
   if (!(form instanceof HTMLFormElement) || !form.matches("[data-user-event-questions-form]")) {
     return;
   }
@@ -84,7 +114,41 @@ const handleKeydown = (event) => {
   });
 };
 
-const initializeUserEventQuestions = () => {
+/**
+ * Shows a refund action only when the enrollment endpoint confirms eligibility.
+ * @param {Element} action Refund action wrapper.
+ * @returns {Promise<void>}
+ */
+const loadRefundActionEligibility = async (action) => {
+  if (!(action instanceof HTMLElement) || !markDatasetReady(action, "refundEligibilityReady")) {
+    return;
+  }
+
+  const enrollmentUrl = action.dataset.enrollmentUrl;
+  if (!enrollmentUrl) {
+    return;
+  }
+
+  try {
+    const response = await ocgFetch(enrollmentUrl, {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      return;
+    }
+
+    const enrollment = await response.json();
+    if (action.isConnected) {
+      setElementHidden(action, enrollment?.can_request_refund !== true);
+    }
+  } catch (_) {
+    setElementHidden(action, true);
+  }
+};
+
+const initializeUserEvents = () => {
   if (!markDatasetReady(document.documentElement, DATA_KEY)) {
     return;
   }
@@ -95,4 +159,5 @@ const initializeUserEventQuestions = () => {
   document.addEventListener("keydown", handleKeydown);
 };
 
-initializeUserEventQuestions();
+initializeUserEvents();
+initializeOnReadyAndHtmxLoad(initializeUserEventRefundActions);
