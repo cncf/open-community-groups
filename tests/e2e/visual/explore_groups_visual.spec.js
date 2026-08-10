@@ -7,7 +7,7 @@ import {
   navigateToPath,
   TEST_COMMUNITY_NAME,
   TEST_GROUP_NAMES,
-} from "../../utils.js";
+} from "../utils.js";
 
 test.describe("site explore groups page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {

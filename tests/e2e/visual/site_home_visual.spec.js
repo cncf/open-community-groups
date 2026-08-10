@@ -5,7 +5,7 @@ import {
   getHomeJumbotronContent,
   navigateToSiteHome,
   TEST_SITE_TITLE,
-} from "../../utils.js";
+} from "../utils.js";
 
 test.describe("site home page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {

@@ -24,7 +24,7 @@ const reportDir = path.resolve(__dirname, "playwright-report");
 const resultsDir = path.resolve(__dirname, "test-results");
 /** Fast cross-browser specs that make up the smoke projects. */
 const smokeSpecPaths = [
-  "dashboard/home/home.spec.js",
+  "dashboard/common/dashboard.spec.js",
   "dashboard/user/my-events/my-events.spec.js",
   "site/common/header.spec.js",
   "site/home/home.spec.js",

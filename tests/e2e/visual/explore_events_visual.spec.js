@@ -7,7 +7,7 @@ import {
   navigateToPath,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
-} from "../../utils.js";
+} from "../utils.js";
 
 test.describe("site explore events page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {

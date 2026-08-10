@@ -6,7 +6,7 @@ import {
   navigateToCommunityHome,
   TEST_COMMUNITY_DESCRIPTION,
   TEST_COMMUNITY_NAME,
-} from "../../utils.js";
+} from "../utils.js";
 
 test.describe("community home page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {

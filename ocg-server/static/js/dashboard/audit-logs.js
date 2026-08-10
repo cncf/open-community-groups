@@ -88,16 +88,11 @@ const setAuditLogDetailsExpanded = (trigger, expanded) => {
  * @param {boolean} suppressHoveredClosed - Whether hovered closed cards should stay hidden.
  * @returns {void}
  */
-const closeAuditLogDetails = (
-  root = document,
-  triggerToKeepOpen = null,
-  suppressHoveredClosed = false,
-) => {
+const closeAuditLogDetails = (root = document, triggerToKeepOpen = null, suppressHoveredClosed = false) => {
   root.querySelectorAll(DETAILS_TRIGGER_SELECTOR).forEach((trigger) => {
     const expanded = trigger === triggerToKeepOpen;
     const group = getAuditLogDetailsGroup(trigger);
-    const hoverDisabled =
-      suppressHoveredClosed && !expanded && group?.matches(":hover");
+    const hoverDisabled = suppressHoveredClosed && !expanded && group?.matches(":hover");
 
     setAuditLogDetailsHoverDisabled(trigger, Boolean(hoverDisabled));
     setAuditLogDetailsExpanded(trigger, expanded);

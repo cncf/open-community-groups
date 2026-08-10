@@ -8,7 +8,7 @@ import {
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
-} from "../../utils.js";
+} from "../utils.js";
 
 test.describe("event page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {

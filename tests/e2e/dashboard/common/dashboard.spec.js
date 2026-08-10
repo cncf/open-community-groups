@@ -10,7 +10,7 @@ const DASHBOARD_ROUTES = [
 
 const MOBILE_WARNING = "This dashboard is not optimized yet for mobile devices";
 
-test.describe("dashboard home", () => {
+test.describe("dashboard access and shared behavior", () => {
   for (const route of DASHBOARD_ROUTES) {
     test(`requires login for ${route}`, async ({ page }) => {
       // Open the protected dashboard route as a guest.

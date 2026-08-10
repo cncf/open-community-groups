@@ -17,9 +17,8 @@ test.describe("group badge definitions", () => {
   }) => {
     // Load badge definitions for the dedicated group without badge records.
     await navigateToPath(organizerEmptyGroupPage, BADGES_PATH);
-    const dashboardContent = organizerEmptyGroupPage.locator(
-      "#dashboard-content",
-    );
+    const dashboardContent =
+      organizerEmptyGroupPage.locator("#dashboard-content");
 
     // Verify first-use guidance and the creation action remain available.
     await expect(dashboardContent).toContainText("0 badges");
@@ -32,7 +31,9 @@ test.describe("group badge definitions", () => {
     ).toBeVisible();
   });
 
-  test("badge definitions table exposes its responsive columns", async ({ organizerGroupPage }) => {
+  test("badge definitions table exposes its responsive columns", async ({
+    organizerGroupPage,
+  }) => {
     // Load badge definitions before checking table structure.
     await navigateToPath(organizerGroupPage, BADGES_PATH);
 
@@ -79,9 +80,18 @@ test.describe("group badge definitions", () => {
     const dashboardNavigation = eventsManagerGroupPage.getByRole("navigation", {
       name: "Dashboard navigation",
     });
-    await expect(eventsManagerGroupPage.getByRole("heading", { name: "Badges", exact: true })).toBeVisible();
-    await expect(dashboardNavigation.getByText("Artwork", { exact: true })).toBeVisible();
-    await expect(dashboardNavigation.getByText("Awards", { exact: true })).toBeVisible();
+    await expect(
+      eventsManagerGroupPage.getByRole("heading", {
+        name: "Badges",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      dashboardNavigation.getByText("Artwork", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboardNavigation.getByText("Awards", { exact: true }),
+    ).toBeVisible();
 
     // Verify a viewer cannot discover or directly request protected badge tabs.
     await navigateToPath(groupViewerPage, "/dashboard/group");
@@ -92,13 +102,17 @@ test.describe("group badge definitions", () => {
     ).toHaveCount(0);
 
     for (const tab of ["artwork", "awards", "badges"]) {
-      const response = await groupViewerPage.request.get(buildE2eUrl(`/dashboard/group?tab=${tab}`));
+      const response = await groupViewerPage.request.get(
+        buildE2eUrl(`/dashboard/group?tab=${tab}`),
+      );
 
       expect(response.status()).toBe(403);
     }
   });
 
-  test("organizer can search, create, edit, and delete a badge", async ({ organizerGroupPage }) => {
+  test("organizer can search, create, edit, and delete a badge", async ({
+    organizerGroupPage,
+  }) => {
     // Create unique badge values for the temporary definition flow.
     const badgeSuffix = Date.now();
     const badgeName = `E2E Lifecycle Badge ${badgeSuffix}`;
@@ -125,14 +139,18 @@ test.describe("group badge definitions", () => {
     ]);
     await expect(badgesRoot).toHaveAttribute("data-group-badges-ready", "true");
     await expect(
-      dashboardContent.getByRole("table", { name: "Badges list" }).getByText("Speaker", {
-        exact: true,
-      }),
+      dashboardContent
+        .getByRole("table", { name: "Badges list" })
+        .getByText("Speaker", {
+          exact: true,
+        }),
     ).toBeVisible();
     await expect(
-      dashboardContent.getByRole("table", { name: "Badges list" }).getByText("Host", {
-        exact: true,
-      }),
+      dashboardContent
+        .getByRole("table", { name: "Badges list" })
+        .getByText("Host", {
+          exact: true,
+        }),
     ).toHaveCount(0);
 
     const clearSearchButton = dashboardContent.getByRole("button", {
@@ -157,11 +175,17 @@ test.describe("group badge definitions", () => {
 
     // Create a definition using seeded gallery artwork.
     await dashboardContent.getByRole("button", { name: "Add badge" }).click();
-    const addDialog = organizerGroupPage.getByRole("dialog", { name: "Add badge" });
+    const addDialog = organizerGroupPage.getByRole("dialog", {
+      name: "Add badge",
+    });
 
     await addDialog.getByLabel("Name").fill(badgeName);
-    await addDialog.getByLabel("Description").fill("Created by the badge lifecycle E2E test.");
-    await addDialog.getByLabel("Criteria").fill("Complete the lifecycle E2E scenario.");
+    await addDialog
+      .getByLabel("Description")
+      .fill("Created by the badge lifecycle E2E test.");
+    await addDialog
+      .getByLabel("Criteria")
+      .fill("Complete the lifecycle E2E scenario.");
     await addDialog.getByLabel("Badge artwork 1").check({ force: true });
     await waitForActionResponse(
       organizerGroupPage,
@@ -173,21 +197,26 @@ test.describe("group badge definitions", () => {
       },
     );
 
-    const createdRow = dashboardContent.getByRole("row", { name: new RegExp(badgeName, "u") });
+    const createdRow = dashboardContent.getByRole("row", {
+      name: new RegExp(badgeName, "u"),
+    });
     await expect(createdRow).toBeVisible();
-    await expect(dashboardContent.locator("[data-group-badges]")).toHaveAttribute(
-      "data-group-badges-ready",
-      "true",
-    );
+    await expect(
+      dashboardContent.locator("[data-group-badges]"),
+    ).toHaveAttribute("data-group-badges-ready", "true");
 
     // Edit the definition and verify the durable list refresh.
-    await createdRow.getByRole("button", { name: `Edit badge: ${badgeName}` }).click();
+    await createdRow
+      .getByRole("button", { name: `Edit badge: ${badgeName}` })
+      .click();
     const editDialog = organizerGroupPage.getByRole("dialog", {
       name: `Edit ${badgeName}`,
     });
 
     await editDialog.getByLabel("Name").fill(updatedBadgeName);
-    await editDialog.getByLabel("Description").fill("Updated by the badge lifecycle E2E test.");
+    await editDialog
+      .getByLabel("Description")
+      .fill("Updated by the badge lifecycle E2E test.");
     await waitForActionResponse(
       organizerGroupPage,
       () => editDialog.getByRole("button", { name: "Save" }).click(),
@@ -207,11 +236,18 @@ test.describe("group badge definitions", () => {
     const updatedRow = dashboardContent.getByRole("row", {
       name: new RegExp(updatedBadgeName, "u"),
     });
-    await updatedRow.getByRole("button", { name: `Delete badge: ${updatedBadgeName}` }).click();
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(`Delete ${updatedBadgeName}?`);
+    await updatedRow
+      .getByRole("button", { name: `Delete badge: ${updatedBadgeName}` })
+      .click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      `Delete ${updatedBadgeName}?`,
+    );
     await waitForActionResponse(
       organizerGroupPage,
-      () => organizerGroupPage.getByRole("button", { name: "Delete badge" }).click(),
+      () =>
+        organizerGroupPage
+          .getByRole("button", { name: "Delete badge" })
+          .click(),
       {
         method: "DELETE",
         urlIncludes: "/dashboard/group/badges/",

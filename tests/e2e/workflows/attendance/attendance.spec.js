@@ -6,13 +6,51 @@ import {
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
   TEST_USER_IDS,
+  getAttendButton,
+  getLeaveButton,
   navigateToEvent,
   navigateToPath,
   waitForActionResponse,
+  waitForAttendanceState,
 } from "../../utils.js";
 import { expectUserProfileModalFromRow } from "../../dashboard/group/events/user-profile-modal-helpers.js";
 
+/** Restores the shared member to a non-attending event state. */
+const resetMemberAttendance = async (page) => {
+  await navigateToEvent(
+    page,
+    TEST_COMMUNITY_NAME,
+    TEST_GROUP_SLUGS.community1.alpha,
+    TEST_EVENT_SLUGS.alpha[0],
+  );
+  await waitForAttendanceState(page);
+
+  const leaveButton = getLeaveButton(page);
+  if (!(await leaveButton.isVisible())) {
+    await expect(getAttendButton(page)).toBeVisible();
+    return;
+  }
+
+  await leaveButton.click();
+  const confirmButton = page.getByRole("button", { name: "Yes" });
+  await expect(confirmButton).toBeVisible();
+  await waitForActionResponse(page, () => confirmButton.click(), {
+    method: "DELETE",
+    urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/leave`,
+  });
+  await waitForAttendanceState(page);
+  await expect(getAttendButton(page)).toBeVisible();
+};
+
 test.describe("event attendance workflow", () => {
+  test.beforeEach(async ({ member2Page }) => {
+    await resetMemberAttendance(member2Page);
+  });
+
+  test.afterEach(async ({ member2Page }) => {
+    await resetMemberAttendance(member2Page);
+  });
+
   test("organizer can see a public attendee on the attendees tab", async ({
     member2Page,
     organizerGroupPage,
@@ -26,12 +64,8 @@ test.describe("event attendance workflow", () => {
     );
 
     // Find the attend button.
-    const attendButton = member2Page.locator(
-      '[data-attendance-role="attend-btn"]',
-    );
-    const leaveButton = member2Page.locator(
-      '[data-attendance-role="leave-btn"]',
-    );
+    const attendButton = getAttendButton(member2Page);
+    const leaveButton = getLeaveButton(member2Page);
 
     // Attend the event as a member.
     await expect(attendButton).toContainText("Attend event");
@@ -103,29 +137,6 @@ test.describe("event attendance workflow", () => {
         "openprofile.dev",
       ],
     );
-
-    // Return to the public event page to restore attendance state.
-    await navigateToEvent(
-      member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
-      TEST_EVENT_SLUGS.alpha[0],
-    );
-
-    // Cancel the temporary attendance record.
-    await leaveButton.click();
-    await expect(
-      member2Page.getByRole("button", { name: "Yes" }),
-    ).toBeVisible();
-
-    // Click Yes.
-    await waitForActionResponse(member2Page, () => member2Page.getByRole("button", { name: "Yes" }).click(), {
-      method: "DELETE",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/leave`,
-    });
-
-    // Assert the expected text is rendered.
-    await expect(attendButton).toContainText("Attend event");
   });
 
   test("organizer can check in an attendee from the attendees tab", async ({
@@ -141,12 +152,8 @@ test.describe("event attendance workflow", () => {
     );
 
     // Find the attend button.
-    const attendButton = member2Page.locator(
-      '[data-attendance-role="attend-btn"]',
-    );
-    const leaveButton = member2Page.locator(
-      '[data-attendance-role="leave-btn"]',
-    );
+    const attendButton = getAttendButton(member2Page);
+    const leaveButton = getLeaveButton(member2Page);
 
     // Attend the event as a member.
     await expect(attendButton).toContainText("Attend event");
@@ -220,28 +227,5 @@ test.describe("event attendance workflow", () => {
       `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`,
     );
     await expect(member2Page.getByText("You're checked in")).toBeVisible();
-
-    // Return to the public event page to restore attendance state.
-    await navigateToEvent(
-      member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
-      TEST_EVENT_SLUGS.alpha[0],
-    );
-
-    // Cancel the temporary attendance record.
-    await leaveButton.click();
-    await expect(
-      member2Page.getByRole("button", { name: "Yes" }),
-    ).toBeVisible();
-
-    // Click Yes.
-    await waitForActionResponse(member2Page, () => member2Page.getByRole("button", { name: "Yes" }).click(), {
-      method: "DELETE",
-      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/leave`,
-    });
-
-    // Assert the expected text is rendered.
-    await expect(attendButton).toContainText("Attend event");
   });
 });

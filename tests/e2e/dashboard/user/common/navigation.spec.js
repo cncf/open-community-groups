@@ -2,7 +2,7 @@ import { expect, test } from "../../../fixtures.js";
 
 import { navigateToPath } from "../../../utils.js";
 
-test.describe("user dashboard home", () => {
+test.describe("user dashboard navigation", () => {
   test("shows the dashboard shell and primary navigation", async ({
     member1Page,
   }) => {

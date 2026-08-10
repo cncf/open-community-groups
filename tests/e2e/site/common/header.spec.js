@@ -157,8 +157,8 @@ test.describe("site header", () => {
   });
 
   test("public shell exposes its skip link, logo, and footer destinations", async ({ page }) => {
-    // Load the public shell before checking its shared destinations.
-    await navigateToSiteHome(page);
+    // Load a non-home public page before checking its shared destinations.
+    await navigateToPath(page, "/stats");
 
     // Verify keyboard users can skip directly to the main content.
     await expect(page.getByRole("link", { name: "Skip to main content" })).toHaveAttribute(
@@ -167,11 +167,9 @@ test.describe("site header", () => {
     );
     await expect(page.locator("main#main-content")).toBeVisible();
 
-    // Find the optional home logo and verify its destination when rendered.
+    // Find the home logo and verify its destination.
     const homeLogo = page.getByRole("link", { name: "Go to homepage" });
-    if ((await homeLogo.count()) > 0) {
-      await expect(homeLogo).toHaveAttribute("href", "/");
-    }
+    await expect(homeLogo).toHaveAttribute("href", "/");
 
     // Find the footer and verify its primary external destination.
     const footer = page.getByRole("contentinfo");

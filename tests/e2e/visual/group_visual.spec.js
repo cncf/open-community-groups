@@ -7,7 +7,7 @@ import {
   TEST_COMMUNITY_NAME,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
-} from "../../utils.js";
+} from "../utils.js";
 
 test.describe("group page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {
