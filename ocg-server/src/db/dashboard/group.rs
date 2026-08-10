@@ -41,7 +41,7 @@ use crate::{
         },
         event::{
             EventCategory, EventEnrollmentReconciliationOutcome, EventKindSummary as EventKind,
-            EventLeaveOutcome, EventSummary, SessionKindSummary as SessionKind,
+            EventSummary, SessionKindSummary as SessionKind,
         },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
         payments::{GroupPaymentRecipient, PaymentProvider},
@@ -140,7 +140,7 @@ pub(crate) trait DBDashboardGroup {
         payment_provider: Option<PaymentProvider>,
     ) -> Result<EventEnrollmentReconciliationOutcome>;
 
-    /// Cancels a confirmed event attendee from the group dashboard.
+    /// Cancels free attendance or queues a paid attendance refund from the group dashboard.
     async fn cancel_event_attendee_attendance(
         &self,
         actor_user_id: Uuid,
@@ -148,7 +148,7 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
         user_id: Uuid,
         payment_provider: Option<PaymentProvider>,
-    ) -> Result<EventLeaveOutcome>;
+    ) -> Result<EventAttendeeCancellationOutcome>;
 
     /// Cancels event series events atomically.
     async fn cancel_event_series_events(
@@ -769,7 +769,7 @@ where
         event_id: Uuid,
         user_id: Uuid,
         payment_provider: Option<PaymentProvider>,
-    ) -> Result<EventLeaveOutcome> {
+    ) -> Result<EventAttendeeCancellationOutcome> {
         self.fetch_json_one(
             "select cancel_event_attendee_attendance($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::text)",
             &[
@@ -1705,6 +1705,19 @@ pub(crate) enum EventAdmissionAllocationOutcome {
     QueueOffer,
 }
 
+/// Database output returned after allocating organizer-controlled event capacity.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum EventAdmissionAllocationOutput {
+    /// Allocation could not proceed without violating capacity priority.
+    Conflict {
+        /// Conflict kind.
+        conflict: EventAdmissionAllocationConflict,
+    },
+    /// Allocation succeeded.
+    Success(EventAdmissionAllocation),
+}
+
 /// Result of allocating organizer-controlled event capacity.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum EventAdmissionAllocationResult {
@@ -1724,6 +1737,23 @@ impl From<EventAdmissionAllocationOutput> for EventAdmissionAllocationResult {
     }
 }
 
+/// Result of an organizer canceling confirmed attendee attendance.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
+pub(crate) struct EventAttendeeCancellationOutcome {
+    /// Whether attendance was canceled or a paid refund was queued.
+    pub cancellation_status: EventAttendeeCancellationStatus,
+}
+
+/// Organizer attendance-cancellation lifecycle result.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventAttendeeCancellationStatus {
+    /// Free attendance was canceled immediately.
+    AttendanceCanceled,
+    /// Paid attendance remains active until its refund is confirmed.
+    RefundQueued,
+}
+
 /// Target payload for an organizer-created event invitation.
 #[derive(Debug, Clone)]
 pub(crate) struct EventAttendeeInvitationInput {
@@ -1733,17 +1763,4 @@ pub(crate) struct EventAttendeeInvitationInput {
     pub event_ticket_type_id: Option<Uuid>,
     /// Existing registered user identifier.
     pub user_id: Option<Uuid>,
-}
-
-/// Database output returned after allocating organizer-controlled event capacity.
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum EventAdmissionAllocationOutput {
-    /// Allocation could not proceed without violating capacity priority.
-    Conflict {
-        /// Conflict kind.
-        conflict: EventAdmissionAllocationConflict,
-    },
-    /// Allocation succeeded.
-    Success(EventAdmissionAllocation),
 }

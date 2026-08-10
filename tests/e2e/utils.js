@@ -323,6 +323,7 @@ export const TEST_USER_CREDENTIALS = {
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
 const LOGIN_NAVIGATION_TIMEOUT_MS = 5_000;
 const LOGIN_RETRY_ATTEMPTS = 3;
+const NAVIGATION_ATTEMPT_TIMEOUT_MS = 5_000;
 const NAVIGATION_RETRY_ATTEMPTS = 10;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
 
@@ -341,12 +342,15 @@ const waitForNavigationRetry = () =>
  */
 const isServerUnavailableNavigationError = (error) => {
   const message = String(error?.message || error);
+  const isNavigationTimeout = error?.name === "TimeoutError" && message.includes("page.goto");
 
   return (
+    isNavigationTimeout ||
     message.includes("Could not connect to the server") ||
     message.includes("ERR_CONNECTION_RESET") ||
     message.includes("ERR_CONNECTION_REFUSED") ||
     message.includes("Navigation completed without a server response") ||
+    message.includes("NS_ERROR_NET_EMPTY_RESPONSE") ||
     message.includes("NS_ERROR_NET_RESET") ||
     message.includes("NS_ERROR_CONNECTION_REFUSED") ||
     message.includes("ECONNRESET") ||
@@ -363,6 +367,7 @@ const navigateToUrl = async (page, url) => {
   for (let attempt = 1; attempt <= NAVIGATION_RETRY_ATTEMPTS; attempt += 1) {
     try {
       const response = await page.goto(url, {
+        timeout: NAVIGATION_ATTEMPT_TIMEOUT_MS,
         waitUntil: "domcontentloaded",
       });
 

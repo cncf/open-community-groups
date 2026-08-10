@@ -1337,6 +1337,14 @@ test.describe("group dashboard attendees tab", () => {
         "data-attendee-refund-reject-open",
         "",
       );
+      const cancelAttendance = rowActionsMenu.getByRole("menuitem", {
+        name: "Cancel attendance and refund",
+      });
+      await expect(cancelAttendance).toBeEnabled();
+      await expect(cancelAttendance).toHaveAttribute(
+        "hx-delete",
+        /\/attendance$/u,
+      );
 
       // Verify approval opens the optional review-note modal.
       await approveRefundAction.click();
@@ -1574,8 +1582,16 @@ test.describe("group dashboard attendees tab", () => {
       ).toBeVisible();
       await expect(rowActionsMenu).toBeVisible();
 
-      // Verify processing refunds cannot be retried or rejected.
+      // Verify processing refunds cannot be canceled, retried, or rejected.
       await rowActionsMenu.locator("summary").click();
+      const cancelAttendance = rowActionsMenu.getByRole("menuitem", {
+        name: "Cancel attendance and refund",
+      });
+      await expect(cancelAttendance).toBeDisabled();
+      await expect(cancelAttendance).toHaveAttribute(
+        "title",
+        "A refund is already in progress for this attendee.",
+      );
       await expect(
         rowActionsMenu.getByRole("menuitem", { name: "Retry refund" }),
       ).toHaveCount(0);
@@ -1584,9 +1600,19 @@ test.describe("group dashboard attendees tab", () => {
       ).toHaveCount(0);
     });
 
-    test("organizer sees rejected refunds with disabled attendance cancellation", async ({
+    test("organizer can queue cancellation after a refund request was rejected", async ({
       organizerGroupPage,
     }) => {
+      // Return a successful cancellation without changing shared seeded payment state.
+      await organizerGroupPage.route("**/attendees/*/attendance", (route) =>
+        route.fulfill({
+          status: 204,
+          headers: {
+            "HX-Trigger": "refresh-event-attendees, refresh-group-refunds",
+          },
+        }),
+      );
+
       // Load the attendees tab for the seeded refund review event.
       const attendeesContent = await openAttendeesTab(
         organizerGroupPage,
@@ -1604,16 +1630,139 @@ test.describe("group dashboard attendees tab", () => {
       ).toBeVisible();
       await expect(rowActionsMenu).toBeVisible();
 
-      // Verify rejected paid attendees cannot be canceled manually.
+      // Verify the organizer can queue a full refund from the attendee action.
       await rowActionsMenu.locator("summary").click();
       const cancelAttendance = rowActionsMenu.getByRole("menuitem", {
-        name: "Cancel attendance",
+        name: "Cancel attendance and refund",
       });
-      await expect(cancelAttendance).toBeDisabled();
-      await expect(cancelAttendance).toHaveAttribute(
-        "title",
-        "Paid attendee attendance cannot be canceled from attendee actions.",
+      await expect(cancelAttendance).toBeEnabled();
+      await expect(cancelAttendance).toHaveAttribute("hx-delete", /attendance$/u);
+      await cancelAttendance.click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Their attendance will remain active until the refund is confirmed.",
       );
+      const attendeesRefreshResponse = organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(
+            `/dashboard/group/events/${TEST_PAYMENT_EVENT_IDS.refunds}/attendees`,
+          ) &&
+          response.ok(),
+      );
+      await waitForActionResponse(
+        organizerGroupPage,
+        () =>
+          organizerGroupPage
+            .getByRole("button", { name: "Queue refund" })
+            .click(),
+        {
+          method: "DELETE",
+          urlIncludes: "/dashboard/group/events/",
+          urlEndsWith: "/attendance",
+        },
+      );
+      await attendeesRefreshResponse;
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Refund queued. Attendance will be canceled after confirmation.",
+      );
+      await expect(
+        attendeesContent.getByRole("table", { name: "Attendees list" }),
+      ).toBeVisible();
+    });
+
+    test("organizer sees an error when paid attendance cancellation fails", async ({
+      organizerGroupPage,
+    }) => {
+      // Return a failed cancellation without changing shared seeded payment state.
+      await organizerGroupPage.route("**/attendees/*/attendance", (route) =>
+        route.fulfill({ status: 500 }),
+      );
+
+      // Open the paid cancellation action for a rejected refund request.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Pending One",
+      });
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
+      await rowActionsMenu.locator("summary").click();
+      const cancelAttendance = rowActionsMenu.locator("button[role='menuitem']", {
+        hasText: "Cancel attendance and refund",
+      });
+      await cancelAttendance.click();
+
+      // Submit the cancellation and verify its paid-specific recovery feedback.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () =>
+          organizerGroupPage
+            .getByRole("button", { name: "Queue refund" })
+            .click(),
+        {
+          method: "DELETE",
+          status: 500,
+          urlIncludes: "/dashboard/group/events/",
+          urlEndsWith: "/attendance",
+        },
+      );
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Something went wrong queueing this refund. Please try again later.",
+      );
+      await organizerGroupPage.locator(".swal2-confirm").click();
+      await expect(cancelAttendance).toBeEnabled();
+    });
+
+    test("paid attendance cancellation stays disabled while its request is pending", async ({
+      organizerGroupPage,
+    }) => {
+      // Hold the cancellation response so its pending state remains observable.
+      let releaseCancellationResponse;
+      const cancellationResponseGate = new Promise((resolve) => {
+        releaseCancellationResponse = resolve;
+      });
+      let cancellationRequestCount = 0;
+      await organizerGroupPage.route(
+        "**/attendees/*/attendance",
+        async (route) => {
+          cancellationRequestCount += 1;
+          await cancellationResponseGate;
+          await route.fulfill({ status: 204 });
+        },
+      );
+
+      // Start paid attendance cancellation from the attendee row.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Pending One",
+      });
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
+      await rowActionsMenu.locator("summary").click();
+      const cancelAttendance = rowActionsMenu.locator("button[role='menuitem']", {
+        hasText: "Cancel attendance and refund",
+      });
+      await cancelAttendance.click();
+      const cancellationResponse = organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().endsWith("/attendance"),
+      );
+      await organizerGroupPage
+        .getByRole("button", { name: "Queue refund" })
+        .click();
+
+      // Verify HTMX prevents another cancellation until the request completes.
+      await expect.poll(() => cancellationRequestCount).toBe(1);
+      await expect(cancelAttendance).toBeDisabled();
+      releaseCancellationResponse();
+      await cancellationResponse;
+      expect(cancellationRequestCount).toBe(1);
     });
 
     test("organizer sees approved refunds with disabled attendance cancellation", async ({
@@ -1639,16 +1788,16 @@ test.describe("group dashboard attendees tab", () => {
       // Verify approved paid attendees cannot be canceled manually.
       await rowActionsMenu.locator("summary").click();
       const cancelAttendance = rowActionsMenu.getByRole("menuitem", {
-        name: "Cancel attendance",
+        name: "Cancel attendance and refund",
       });
       await expect(cancelAttendance).toBeDisabled();
       await expect(cancelAttendance).toHaveAttribute(
         "title",
-        "Paid attendee attendance cannot be canceled from attendee actions.",
+        "This attendee's refund has already been approved.",
       );
     });
 
-    test("viewer cannot review or approve attendee refunds", async ({
+    test("viewer cannot manage attendee refunds", async ({
       groupViewerPage,
     }) => {
       // Load the attendees tab for the seeded refund review event.
@@ -1670,6 +1819,11 @@ test.describe("group dashboard attendees tab", () => {
       ).toHaveCount(0);
       await expect(
         groupViewerPage.locator("#attendee-refund-reject-modal"),
+      ).toHaveCount(0);
+      await expect(
+        attendeesContent.getByRole("menuitem", {
+          name: "Cancel attendance and refund",
+        }),
       ).toHaveCount(0);
     });
   });

@@ -317,13 +317,16 @@ Refunds follow a request-and-review model. Paid attendees do not use `Leave even
 `Request refund` from the public event page instead. Organizers can review refund requests in
 `Event -> Attendees` or the group dashboard `Refunds` tab and approve or reject them. Refund
 requests must be submitted before the event starts, though organizers can still approve or reject
-a request later if it was submitted before the start time. Approved refunds are full refunds only,
-and rejecting a request leaves the attendee and ticket unchanged. A rejection requires a reason;
-the attendee sees the same reason in their notification, on the event page, and in `My Events`.
-Approval notes remain optional and organizer-only. Approval queues the provider refund; both
-dashboard views show its progress until the refund completes or needs intervention.
+a request later if it was submitted before the start time. Organizers can also select
+`Cancel attendance and refund` on a confirmed paid attendee without waiting for an attendee
+request. Both paths queue a full provider refund. Paid attendance and its capacity remain active
+until the refund is confirmed or manual recovery is recorded, then OCG marks the attendance as
+canceled. Rejecting an attendee request leaves the attendee and ticket unchanged. A rejection
+requires a reason; the attendee sees the same reason in their notification, on the event page,
+and in `My Events`. Approval notes remain optional and organizer-only. Both dashboard views show
+refund progress until the refund completes or needs intervention.
 
-Canceling an event is the other way a refund begins. OCG immediately cancels active attendance,
+Canceling the whole event is another way a refund begins. OCG immediately cancels active attendance,
 completes free-ticket refunds locally, and queues every paid ticket for a full provider refund.
 The event remains canceled even if a provider attempt later needs retry or manual recovery.
 After arranging an external refund for a terminal provider failure, an organizer with events write
@@ -448,7 +451,7 @@ This tab supports delivery-day execution. From here you can:
 - Review the attendee list and enrollment timing.
 - Run manual check-in.
 - Open the attendee actions menu to generate a check-in QR code for on-site flow.
-- Cancel confirmed free attendance for future active events.
+- Cancel confirmed attendance for future active events, queueing a full refund for paid tickets.
 - Open the attendee actions menu to invite attendees with an assigned ticket
   type.
 - Award badges to all attendees, checked-in attendees, selected attendees, or one attendee.
@@ -464,10 +467,12 @@ award, and revocation behavior, see
 [Group Badge Management](badges.md#group-badge-management).
 
 `Cancel attendance` is available from confirmed attendee row actions for future, active events
-when the attendee does not have a paid ticket. OCG marks the attendance as canceled, notifies the
-attendee, and can promote the next waitlisted user when a seat opens. Paid attendees stay on the
-refund workflow instead. Canceled attendance remains in the event history rather than being
-deleted.
+with free tickets. OCG marks free attendance as canceled immediately, notifies the attendee, and
+can promote the next waitlisted user when a seat opens. For paid tickets, the action is labeled
+`Cancel attendance and refund`; it queues a full refund and keeps attendance active until refund
+confirmation. The refund completion notification is sent after attendance is canceled and any
+released capacity is reconciled. Canceled attendance remains in the event history rather than
+being deleted.
 
 The attendee actions menu contains event-level attendee actions and exports. `Show check-in QR code`
 opens a QR code for the public check-in flow. `Invite attendee` is available

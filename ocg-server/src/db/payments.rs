@@ -800,6 +800,8 @@ pub(crate) struct EventPurchaseRefundRecoveryContext {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum EventPurchaseRefundKind {
+    /// Full refund caused by an organizer canceling one attendee's attendance.
+    AttendanceCancellation,
     /// Automatic refund for a checkout that can no longer be fulfilled.
     AutomaticUnfulfillableCheckout,
     /// Automatic refund caused by an organizer canceling the event.

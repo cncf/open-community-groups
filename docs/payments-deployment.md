@@ -253,8 +253,8 @@ Reference:
 All provider-mediated refunds run through durable background work. HTTP handlers and verified
 webhooks only queue or update refund state; they do not call Stripe's refund API directly. OCG
 starts two provider refund workers and one stale-claim recovery worker. This same path handles
-approved attendee requests, paid checkouts that can no longer be fulfilled, and automatic refunds
-from event cancellation.
+approved attendee requests, organizer-initiated attendance cancellations, paid checkouts that can
+no longer be fulfilled, and automatic refunds from event cancellation.
 
 A late provider completion that cannot be fulfilled because its hold or offer
 expired, the offer was canceled, capacity changed, or event state changed is
