@@ -87,8 +87,15 @@ test.describe("site docs page", () => {
     await expect(troubleshootingLink).toBeVisible();
     await expect(troubleshootingLink).toHaveAttribute("href", "#/support/troubleshooting");
 
-    // Dismiss the sidebar by clicking the documentation content.
-    await overviewHeading.click();
+    // Dismiss the sidebar through the exposed documentation content.
+    const docsRootBox = await docsRoot.boundingBox();
+    expect(docsRootBox).not.toBeNull();
+    await docsRoot.click({
+      position: {
+        x: docsRootBox.width - 16,
+        y: 16,
+      },
+    });
     await expect(page.locator("body")).not.toHaveClass(/\bclose\b/);
     await expect(docsRoot).not.toHaveClass(/\bclose\b/);
 

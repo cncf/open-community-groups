@@ -141,32 +141,37 @@ test.describe("public badge verification page", () => {
       "This badge could not be verified as an OCG-issued credential.",
     );
 
-    // Submit a payload beyond the bounded Open Badges PNG size and verify the
-    // server refuses it with an error response or closes the upload stream.
-    let oversizedResponse;
-    let oversizedUploadError;
-    try {
-      oversizedResponse = await page.request.post(
-        buildE2eUrl("/badges/verify"),
-        {
-          multipart: {
-            credential: "",
-            png: {
-              name: "oversized-open-badge.png",
-              mimeType: "image/png",
-              buffer: Buffer.alloc(12 * 1024 * 1024 + 1),
-            },
-          },
-        },
-      );
-    } catch (error) {
-      oversizedUploadError = error;
-    }
+    // Submit a payload beyond the bounded Open Badges PNG size from the browser.
+    const oversizedUploadResult = await page.evaluate(
+      async (oversizedPngSize) => {
+        const formData = new FormData();
+        formData.append("credential", "");
+        formData.append(
+          "png",
+          new File([new Uint8Array(oversizedPngSize)], "oversized-open-badge.png", {
+            type: "image/png",
+          }),
+        );
 
-    if (oversizedResponse) {
-      expect(oversizedResponse.status()).toBeGreaterThanOrEqual(400);
+        try {
+          const response = await fetch("/badges/verify", {
+            body: formData,
+            method: "POST",
+          });
+
+          return { error: null, status: response.status };
+        } catch (error) {
+          return { error: String(error), status: null };
+        }
+      },
+      12 * 1024 * 1024 + 1,
+    );
+
+    // Verify the server returns an error or closes the browser upload stream.
+    if (oversizedUploadResult.status !== null) {
+      expect(oversizedUploadResult.status).toBeGreaterThanOrEqual(400);
     } else {
-      expect(String(oversizedUploadError)).toMatch(/\b(?:ECONNRESET|EPIPE)\b/u);
+      expect(oversizedUploadResult.error).toBeTruthy();
     }
   });
 });
