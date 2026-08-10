@@ -515,16 +515,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
     );
-    expect(template).to.include('<td class="lg:hidden px-8 py-12 text-center" colspan="3">');
-    expect(template).to.include(
-      '<td class="hidden lg:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4">',
-    );
-    expect(template).to.include(
-      '<td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center" colspan="5">',
-    );
-    expect(template).to.include(
-      '<td class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="7">',
-    );
+    expect(template).to.include('<td class="px-8 py-12 text-center" colspan="7">');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
     );
