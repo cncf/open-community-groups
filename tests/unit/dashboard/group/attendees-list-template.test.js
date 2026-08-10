@@ -72,6 +72,8 @@ describe("dashboard group attendees list template", () => {
     expect(emptyState).to.include("event_ticket_type_ids.is_some()");
     expect(emptyState).to.include("title.is_some()");
     expect(emptyState).to.include("has_active_attendee_filters");
+    expect(emptyState.match(/group_attendees_empty\.html/g)).to.have.lengthOf(1);
+    expect(emptyState.match(/group_attendees_no_results\.html/g)).to.have.lengthOf(1);
     expect(placeholder).to.include("No attendees found matching your filters.");
     expect(placeholder).to.include("Try adjusting your search or filters");
   });
@@ -129,7 +131,7 @@ describe("dashboard group attendees list template", () => {
     );
     expect(template).to.include("data-actions-menu");
     expect(template).to.include(
-      'class="dropdown absolute end-0 top-8 z-10 w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
+      'class="dropdown absolute end-0 top-8 z-10 w-72 overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg"',
     );
     expect(template).to.include(
       "gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50",
@@ -247,28 +249,55 @@ describe("dashboard group attendees list template", () => {
   it("renders cancel attendance as a confirmed delete action for eligible attendees", async () => {
     // Load the attendees list template before checking cancel attendance markup.
     const template = normalizeWhitespace(await loadTemplate());
+    const cancelAttendanceAction = sliceTemplateSection(
+      template,
+      '<button id="cancel-attendance-{{ attendee.user.user_id }}"',
+      "</button>",
+    );
 
     // Verify eligible attendees get a confirmed cancel action.
-    expect(template).to.include("AttendeeEnrollmentStatus::Confirmed");
-    expect(template).to.include('id="cancel-attendance-{{ attendee.user.user_id }}"');
-    expect(template).to.include(
+    expect(cancelAttendanceAction).to.include(
       'hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance"',
     );
-    expect(template).to.include('hx-trigger="confirmed"');
-    expect(template).to.include('hx-disabled-elt="this"');
-    expect(template).to.include("data-confirm-action");
-    expect(template).to.include('data-confirm-message="Are you sure you want to cancel this attendance?"');
-    expect(template).to.include('data-success-message="Attendance canceled."');
-    expect(template).to.include(
+    expect(cancelAttendanceAction).to.include('hx-trigger="confirmed"');
+    expect(cancelAttendanceAction).to.include('hx-disabled-elt="this"');
+    expect(cancelAttendanceAction).to.include("data-confirm-action");
+    expect(cancelAttendanceAction).to.include(
+      'data-confirm-message="Are you sure you want to cancel this attendance?"',
+    );
+    expect(cancelAttendanceAction).to.include('data-success-message="Attendance canceled."');
+    expect(cancelAttendanceAction).to.include(
       'data-error-message="Something went wrong canceling this attendance. Please try again later."',
     );
-    expect(template).to.include('data-confirm-text="Queue refund"');
-    expect(template).to.include(
+    expect(cancelAttendanceAction).to.include("<span>Cancel attendance</span>");
+  });
+
+  it("renders paid attendance cancellation as a queued refund", async () => {
+    // Load the paid branch of the attendance cancellation action.
+    const template = normalizeWhitespace(await loadTemplate());
+    const cancelAttendanceAction = sliceTemplateSection(
+      template,
+      '<button id="cancel-attendance-{{ attendee.user.user_id }}"',
+      "</button>",
+    );
+    const paidCancellation = sliceTemplateSection(
+      cancelAttendanceAction,
+      "{% if self::is_paid_attendee(attendee.amount_minor) -%}",
+      "{% else -%}",
+    );
+
+    // Verify paid attendees receive the refund-specific contract and label.
+    expect(paidCancellation).to.include('data-confirm-text="Queue refund"');
+    expect(paidCancellation).to.include(
       'data-confirm-message="Queue a full refund for this attendee? Their attendance will remain active until the refund is confirmed."',
     );
-    expect(template).to.include(
+    expect(paidCancellation).to.include(
       'data-success-message="Refund queued. Attendance will be canceled after confirmation."',
     );
+    expect(paidCancellation).to.include(
+      'data-error-message="Something went wrong queueing this refund. Please try again later."',
+    );
+    expect(cancelAttendanceAction).to.include("<span>Cancel attendance and refund</span>");
   });
 
   it("keeps cancel attendance disabled for unsupported attendee states", async () => {
