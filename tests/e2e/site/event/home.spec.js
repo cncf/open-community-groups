@@ -98,18 +98,27 @@ test.describe("event page", () => {
   test("availability refreshes capacity and remaining spots", async ({ page }) => {
     test.skip(!isPrimaryEvent, "Requires Upcoming In-Person Event seed data");
 
+    // Let the initial availability fetch settle so the watcher only matches the reload's
+    // response, whose body stays readable after navigation.
+    await expect(page.locator('[data-availability-url][data-availability-hydrated="true"]')).toBeAttached();
+
     // Watch the public availability endpoint before reloading the event page.
     const availabilityPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}/availability`;
-    const availabilityResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" && new URL(response.url()).pathname === availabilityPath,
-    );
+    const availabilityResponsePromise = page
+      .waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          new URL(response.url()).pathname === availabilityPath,
+      )
+      .then(async (response) => ({
+        availability: await response.json(),
+        responseIsOk: response.ok(),
+      }));
 
     // Reload the page and read the same payload used by the availability UI.
     await page.reload();
-    const availabilityResponse = await availabilityResponsePromise;
-    const availability = await availabilityResponse.json();
-    expect(availabilityResponse.ok()).toBeTruthy();
+    const { availability, responseIsOk } = await availabilityResponsePromise;
+    expect(responseIsOk).toBeTruthy();
     expect(availability.capacity).toBe(100);
     expect(availability.remaining_capacity).toBeGreaterThan(0);
 
@@ -433,16 +442,21 @@ test.describe("event page - sold-out availability", () => {
     // Watch availability while loading the dedicated full event fixture.
     const eventSlug = "alpha-waitlist-lab";
     const availabilityPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${eventSlug}/availability`;
-    const availabilityResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" && new URL(response.url()).pathname === availabilityPath,
-    );
+    const availabilityResponsePromise = page
+      .waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          new URL(response.url()).pathname === availabilityPath,
+      )
+      .then(async (response) => ({
+        availability: await response.json(),
+        responseIsOk: response.ok(),
+      }));
     await navigateToEvent(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG, eventSlug);
 
     // Verify the server and page both expose the exhausted capacity state.
-    const availabilityResponse = await availabilityResponsePromise;
-    const availability = await availabilityResponse.json();
-    expect(availabilityResponse.ok()).toBeTruthy();
+    const { availability, responseIsOk } = await availabilityResponsePromise;
+    expect(responseIsOk).toBeTruthy();
     expect(availability.capacity).toBe(1);
     expect(availability.remaining_capacity).toBe(0);
     await expect(page.locator("[data-availability-capacity]")).toHaveText("1");
