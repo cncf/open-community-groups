@@ -6,8 +6,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Base URL used by browser contexts and the optional web server health check. */
 const baseURL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
-/** Enables CI-specific retries when running in CI. */
-const isCI = process.env.CI === "true";
 /** Starts the application server as part of the Playwright run when requested. */
 const shouldStartServer = process.env.OCG_E2E_START_SERVER === "true";
 /** Reuses an already running app server instead of booting a new one. */
@@ -54,7 +52,7 @@ export default defineConfig({
   testDir: __dirname,
   fullyParallel: false,
   workers: 1,
-  retries: isCI ? 2 : 0,
+  retries: 0,
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.03 },
   },
