@@ -21,8 +21,9 @@ export const queryE2eDatabase = (sql) => {
       e2eDbConfig.user,
       "-d",
       e2eDbConfig.database,
-      // Suppress headers and alignment so callers receive only query values.
-      "-tA",
+      // Suppress headers, alignment, and command status so callers receive only
+      // query values.
+      "-qtA",
       "-c",
       sql,
     ],
