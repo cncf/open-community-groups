@@ -23,6 +23,7 @@ declare
     v_has_pending_invitation_requests boolean;
     v_has_waitlist_entries boolean;
     v_is_paid_capable boolean;
+    v_is_test_event boolean;
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
     v_payment_currency_code text;
@@ -37,6 +38,7 @@ declare
     v_ticket_types_configuration jsonb;
     v_timezone text := p_event->>'timezone';
     v_was_paid_capable boolean;
+    v_was_test_event boolean;
 begin
     -- Lock the group payment state before the event so recipient changes and
     -- paid ticket updates cannot invalidate each other
@@ -74,6 +76,7 @@ begin
     v_event_meeting_hosts := jsonb_text_array(p_event->'meeting_hosts');
     v_event_photos_urls := jsonb_text_array(p_event->'photos_urls');
     v_event_tags := jsonb_text_array(p_event->'tags');
+    v_is_test_event := coalesce((p_event->>'test_event')::boolean, false);
 
     -- Resolve ticketing values and the effective event capacity
     v_discount_codes := case
@@ -95,6 +98,7 @@ begin
         else nullif(v_event_before->>'payment_currency_code', '')
     end;
     v_was_paid_capable := is_event_ticketing_payload_paid_capable(v_event_before->'ticket_types');
+    v_was_test_event := coalesce((v_event_before->>'test_event')::boolean, false);
 
     -- Compare stable ticket configuration without computed read-model fields
     select coalesce(
@@ -229,7 +233,7 @@ begin
     update event set
         name = p_event->>'name',
         description = p_event->>'description',
-        test_event = coalesce((p_event->>'test_event')::boolean, false),
+        test_event = v_is_test_event,
         timezone = p_event->>'timezone',
         event_category_id = (p_event->>'category_id')::uuid,
         event_kind_id = p_event->>'kind_id',
@@ -345,7 +349,9 @@ begin
         p_event_id
     );
 
-    -- Return whether this update made the event paid-capable
-    return not v_was_paid_capable and v_is_paid_capable;
+    -- Return whether the event entered the notifiable paid state
+    return not v_is_test_event
+        and v_is_paid_capable
+        and (v_was_test_event or not v_was_paid_capable);
 end;
 $$ language plpgsql;

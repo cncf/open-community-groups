@@ -3195,7 +3195,7 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
     let payload = event.to_db_payload()?;
 
     // Update the event through the Rust contract
-    let became_paid = db
+    let requires_paid_notification = db
         .update_event(
             organizer_id(),
             group_id(),
@@ -3206,8 +3206,8 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
         )
         .await?;
 
-    // Check the free event remained free
-    assert!(!became_paid);
+    // Check the free test event remained outside the notifiable paid state
+    assert!(!requires_paid_notification);
 
     Ok(())
 }

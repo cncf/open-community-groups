@@ -594,7 +594,7 @@ pub(crate) async fn update(
                 let before = tx.get_event_summary(community_id, group_id, event_id).await?;
 
                 // Update event in database
-                let became_paid = tx
+                let requires_paid_notification = tx
                     .update_event(
                         user.user_id,
                         group_id,
@@ -605,8 +605,8 @@ pub(crate) async fn update(
                     )
                     .await?;
 
-                // Enqueue required admin notification for a free-to-paid transition
-                if became_paid {
+                // Enqueue required admin notification after entering the notifiable paid state
+                if requires_paid_notification {
                     enqueue_event_paid_configured_notifications(
                         tx,
                         community_id,

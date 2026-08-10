@@ -2965,8 +2965,8 @@ async fn test_update_free_success() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_update_free_to_paid_sends_admin_notification() {
-    // Setup identifiers and paid update input
+async fn test_update_free_test_to_paid_live_sends_admin_notification() {
+    // Setup identifiers and a test-event promotion with paid tickets
     let admin_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -2983,9 +2983,15 @@ async fn test_update_free_to_paid_sends_admin_notification() {
     );
     let before = EventSummary {
         published: false,
+        test_event: true,
         ..sample_event_summary(event_id, group_id)
     };
-    let body = sample_paid_event_body();
+    let after = EventSummary {
+        published: false,
+        test_event: false,
+        ..sample_event_summary(event_id, group_id)
+    };
+    let body = format!("{}&test_event=false", sample_paid_event_body());
 
     // Setup authentication and permission checks
     let mut db = MockDB::new();
@@ -3007,11 +3013,13 @@ async fn test_update_free_to_paid_sends_admin_notification() {
         })
         .returning(|_, _, _, _| Ok(true));
 
-    // Setup atomic update and notification expectations
+    // Setup the ordered state transition and notification expectations
+    let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
     tx.expect_get_event_summary()
-        .times(3)
+        .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(before.clone()));
     tx.expect_update_event()
         .times(1)
@@ -3020,8 +3028,10 @@ async fn test_update_free_to_paid_sends_admin_notification() {
                 && *gid == group_id
                 && *eid == event_id
                 && event.get("ticket_types").is_some()
+                && event.get("test_event").and_then(serde_json::Value::as_bool) == Some(false)
                 && *payment_provider == Some(PaymentProvider::Stripe)
         })
+        .in_sequence(&mut sequence)
         .returning(|_, _, _, _, _, _| Ok(true));
     tx.expect_list_community_admin_ids()
         .times(1)
@@ -3030,6 +3040,11 @@ async fn test_update_free_to_paid_sends_admin_notification() {
     tx.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
+        .returning(move |_, _, _| Ok(after.clone()));
     tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
@@ -3044,7 +3059,7 @@ async fn test_update_free_to_paid_sends_admin_notification() {
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
-    // Send the free-to-paid update request
+    // Promote the test event while adding paid tickets
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
             mode: PaymentMode::Test,

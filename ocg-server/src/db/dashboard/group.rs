@@ -502,7 +502,7 @@ pub(crate) trait DBDashboardGroup {
         submission: &CfsSubmissionUpdate,
     ) -> Result<bool>;
 
-    /// Updates an existing event and returns whether it became paid-capable.
+    /// Updates an event and returns whether it entered the notifiable paid state.
     async fn update_event(
         &self,
         actor_user_id: Uuid,

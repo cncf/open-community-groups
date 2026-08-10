@@ -802,10 +802,10 @@ test.describe("event management workflows", () => {
     await expect(sessionDialog).toBeHidden();
   });
 
-  test("organizer can create a paid event with multiple tiers and discount codes", async ({
+  test("organizer can promote a paid test event with multiple tiers and discount codes", async ({
     organizerGroupPage,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
 
     // Skip paid-tier coverage when the environment disables payments.
     test.skip(
@@ -866,6 +866,9 @@ test.describe("event management workflows", () => {
       "description",
       "Paid dashboard event used to cover admission tiers and discount codes.",
     );
+    await organizerGroupPage
+      .locator("#toggle_test_event")
+      .check({ force: true });
     await organizerGroupPage
       .locator("#toggle_waitlist_enabled")
       .check({ force: true });
@@ -1000,12 +1003,28 @@ test.describe("event management workflows", () => {
     await successDialog.getByRole("button", { name: "OK" }).click();
     await expect(successDialog).toBeHidden();
 
-    // Verify creation queued one required notification for the community admin.
+    // Verify paid test-event creation did not queue an admin notification.
+    expect(readPaidEventNotifications().notification_count).toBe(0);
+
+    // Promote the paid test event and wait for the update response.
+    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    await organizerGroupPage
+      .locator("#toggle_test_event")
+      .uncheck({ force: true });
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.locator("#update-event-button").click(),
+      {
+        method: "PUT",
+        status: 204,
+        urlIncludes: "/update",
+      },
+    );
+
+    // Verify promotion queued one required notification for the community admin.
     const paidEventNotifications = readPaidEventNotifications();
     expect(paidEventNotifications.notification_count).toBe(1);
-    expect(paidEventNotifications.recipient_usernames).toEqual([
-      "e2e-admin-1",
-    ]);
+    expect(paidEventNotifications.recipient_usernames).toEqual(["e2e-admin-1"]);
     expect(paidEventNotifications.payloads).toHaveLength(1);
     expect(paidEventNotifications.payloads[0]).toMatchObject({
       community_display_name: "Platform Engineering Community",

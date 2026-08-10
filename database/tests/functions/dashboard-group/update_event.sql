@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(35);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,6 +28,15 @@ select plan(29);
 \set eventPaidToPaidID '3a390000-0000-0000-0000-000000000025'
 \set eventPaidToPaidPriceWindowID '3a390000-0000-0000-0000-000000000030'
 \set eventPaidToPaidTicketTypeID '3a390000-0000-0000-0000-000000000031'
+\set eventTestFreeToPaidID '3a390000-0000-0000-0000-000000000032'
+\set eventTestFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000033'
+\set eventTestFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000034'
+\set eventTestPaidToLiveID '3a390000-0000-0000-0000-000000000035'
+\set eventTestPaidToLivePriceWindowID '3a390000-0000-0000-0000-000000000036'
+\set eventTestPaidToLiveTicketTypeID '3a390000-0000-0000-0000-000000000037'
+\set eventTestPaidToTestID '3a390000-0000-0000-0000-000000000038'
+\set eventTestPaidToTestPriceWindowID '3a390000-0000-0000-0000-000000000039'
+\set eventTestPaidToTestTicketTypeID '3a390000-0000-0000-0000-000000000040'
 \set eventWaitlistWindowID '3a390000-0000-0000-0000-000000000021'
 \set group1ID '3a390000-0000-0000-0000-000000000010'
 \set label1ID '3a390000-0000-0000-0000-000000000011'
@@ -109,7 +118,10 @@ insert into event (
     group_id,
     name,
     slug,
-    timezone
+    timezone,
+
+    payment_currency_code,
+    test_event
 ) values (
     :'eventFreeToPaidID',
     'Free event used for paid transition checks',
@@ -118,7 +130,10 @@ insert into event (
     :'group1ID',
     'Free To Paid',
     'free-to-paid',
-    'UTC'
+    'UTC',
+
+    null,
+    false
 ), (
     :'eventPaidToFreeID',
     'Paid event used for free transition checks',
@@ -127,7 +142,10 @@ insert into event (
     :'group1ID',
     'Paid To Free',
     'paid-to-free',
-    'UTC'
+    'UTC',
+
+    'USD',
+    false
 ), (
     :'eventPaidToPaidID',
     'Paid event used for paid edit checks',
@@ -136,7 +154,46 @@ insert into event (
     :'group1ID',
     'Paid To Paid',
     'paid-to-paid',
-    'UTC'
+    'UTC',
+
+    'USD',
+    false
+), (
+    :'eventTestFreeToPaidID',
+    'Free test event promoted while adding paid tickets',
+    :'category1ID',
+    'virtual',
+    :'group1ID',
+    'Test Free To Paid',
+    'test-free-to-paid',
+    'UTC',
+
+    null,
+    true
+), (
+    :'eventTestPaidToLiveID',
+    'Paid test event promoted without changing tickets',
+    :'category1ID',
+    'virtual',
+    :'group1ID',
+    'Test Paid To Live',
+    'test-paid-to-live',
+    'UTC',
+
+    'USD',
+    true
+), (
+    :'eventTestPaidToTestID',
+    'Paid test event that remains a test event',
+    :'category1ID',
+    'virtual',
+    :'group1ID',
+    'Test Paid To Test',
+    'test-paid-to-test',
+    'UTC',
+
+    'USD',
+    true
 );
 
 -- Group Sponsors
@@ -385,6 +442,9 @@ select
         when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidTicketTypeID'::uuid
         when :'eventPaidToFreeID'::uuid then :'eventPaidToFreeTicketTypeID'::uuid
         when :'eventPaidToPaidID'::uuid then :'eventPaidToPaidTicketTypeID'::uuid
+        when :'eventTestFreeToPaidID'::uuid then :'eventTestFreeToPaidTicketTypeID'::uuid
+        when :'eventTestPaidToLiveID'::uuid then :'eventTestPaidToLiveTicketTypeID'::uuid
+        when :'eventTestPaidToTestID'::uuid then :'eventTestPaidToTestTicketTypeID'::uuid
         else gen_random_uuid()
     end,
     e.event_id,
@@ -405,10 +465,18 @@ select
         when :'eventFreeToPaidID'::uuid then :'eventFreeToPaidPriceWindowID'::uuid
         when :'eventPaidToFreeID'::uuid then :'eventPaidToFreePriceWindowID'::uuid
         when :'eventPaidToPaidID'::uuid then :'eventPaidToPaidPriceWindowID'::uuid
+        when :'eventTestFreeToPaidID'::uuid then :'eventTestFreeToPaidPriceWindowID'::uuid
+        when :'eventTestPaidToLiveID'::uuid then :'eventTestPaidToLivePriceWindowID'::uuid
+        when :'eventTestPaidToTestID'::uuid then :'eventTestPaidToTestPriceWindowID'::uuid
         else gen_random_uuid()
     end,
     case
-        when e.event_id in (:'eventPaidToFreeID'::uuid, :'eventPaidToPaidID'::uuid) then 1200
+        when e.event_id in (
+            :'eventPaidToFreeID'::uuid,
+            :'eventPaidToPaidID'::uuid,
+            :'eventTestPaidToLiveID'::uuid,
+            :'eventTestPaidToTestID'::uuid
+        ) then 1200
         else 0
     end,
     ett.event_ticket_type_id
@@ -434,7 +502,7 @@ select
 -- TESTS
 -- ============================================================================
 
--- Should report no paid transition for a free-to-free update
+-- Should report no paid notification transition for a free-to-free update
 select is(
     (select update_event(
         null::uuid,
@@ -454,7 +522,7 @@ select is(
         }'::jsonb
     )),
     false,
-    'Should report no paid transition for a free-to-free update'
+    'Should report no paid notification transition for a free-to-free update'
 );
 
 -- Should persist basic update and clear omitted hosts, sponsors, and sessions
@@ -534,7 +602,7 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should report a free-to-paid transition for an invitation-only tier
+-- Should report a paid notification transition for an invitation-only tier
 select is(
     update_event(
         null::uuid,
@@ -568,7 +636,7 @@ select is(
         'stripe'
     ),
     true,
-    'Should report a free-to-paid transition for an invitation-only tier'
+    'Should report a paid notification transition for an invitation-only tier'
 );
 
 -- Should persist paid capability after a free-to-paid update
@@ -578,7 +646,7 @@ select is(
     'Should persist paid capability after a free-to-paid update'
 );
 
--- Should report no paid transition for a paid-to-free update
+-- Should report no paid notification transition for a paid-to-free update
 select is(
     update_event(
         null::uuid,
@@ -611,7 +679,7 @@ select is(
         'stripe'
     ),
     false,
-    'Should report no paid transition for a paid-to-free update'
+    'Should report no paid notification transition for a paid-to-free update'
 );
 
 -- Should persist free capability after a paid-to-free update
@@ -621,7 +689,7 @@ select is(
     'Should persist free capability after a paid-to-free update'
 );
 
--- Should report no paid transition for a paid-to-paid update
+-- Should report no paid notification transition for a paid-to-paid update
 select is(
     update_event(
         null::uuid,
@@ -655,7 +723,7 @@ select is(
         'stripe'
     ),
     false,
-    'Should report no paid transition for a paid-to-paid update'
+    'Should report no paid notification transition for a paid-to-paid update'
 );
 
 -- Should persist paid capability after a paid-to-paid update
@@ -663,6 +731,128 @@ select is(
     is_event_paid_capable(:'eventPaidToPaidID'::uuid),
     true,
     'Should persist paid capability after a paid-to-paid update'
+);
+
+-- Should report a paid notification transition when a free test event is promoted with paid tickets
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventTestFreeToPaidID'::uuid,
+        '{
+            "name": "Test Free To Paid",
+            "description": "Free test event promoted while adding paid tickets",
+            "timezone": "UTC",
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "payment_currency_code": "USD",
+            "test_event": false,
+            "ticket_types": [
+                {
+                    "active": true,
+                    "availability": "public",
+                    "event_ticket_type_id": "3a390000-0000-0000-0000-000000000034",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 1500,
+                            "event_ticket_price_window_id": "3a390000-0000-0000-0000-000000000033"
+                        }
+                    ],
+                    "seats_total": 100,
+                    "title": "General Admission"
+                }
+            ]
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    ),
+    true,
+    'Should report a paid notification transition when a free test event is promoted with paid tickets'
+);
+
+-- Should persist a non-test paid state after promoting a free test event with paid tickets
+select is(
+    (
+        select jsonb_build_object(
+            'paid_capable', is_event_paid_capable(e.event_id),
+            'test_event', e.test_event
+        )
+        from event e
+        where e.event_id = :'eventTestFreeToPaidID'::uuid
+    ),
+    '{"paid_capable": true, "test_event": false}'::jsonb,
+    'Should persist a non-test paid state after promoting a free test event with paid tickets'
+);
+
+-- Should report a paid notification transition when a paid test event is promoted
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventTestPaidToLiveID'::uuid,
+        '{
+            "name": "Test Paid To Live",
+            "description": "Paid test event promoted without changing tickets",
+            "timezone": "UTC",
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "test_event": false
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    ),
+    true,
+    'Should report a paid notification transition when a paid test event is promoted'
+);
+
+-- Should persist a non-test paid state after promoting a paid test event
+select is(
+    (
+        select jsonb_build_object(
+            'paid_capable', is_event_paid_capable(e.event_id),
+            'test_event', e.test_event
+        )
+        from event e
+        where e.event_id = :'eventTestPaidToLiveID'::uuid
+    ),
+    '{"paid_capable": true, "test_event": false}'::jsonb,
+    'Should persist a non-test paid state after promoting a paid test event'
+);
+
+-- Should report no paid notification transition while a paid event remains a test event
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventTestPaidToTestID'::uuid,
+        '{
+            "name": "Test Paid To Test",
+            "description": "Paid test event that remains a test event",
+            "timezone": "UTC",
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "test_event": true
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    ),
+    false,
+    'Should report no paid notification transition while a paid event remains a test event'
+);
+
+-- Should persist the paid test state when the event remains a test event
+select is(
+    (
+        select jsonb_build_object(
+            'paid_capable', is_event_paid_capable(e.event_id),
+            'test_event', e.test_event
+        )
+        from event e
+        where e.event_id = :'eventTestPaidToTestID'::uuid
+    ),
+    '{"paid_capable": true, "test_event": true}'::jsonb,
+    'Should persist the paid test state when the event remains a test event'
 );
 
 -- Should initialize meeting flags for requested event without sessions
