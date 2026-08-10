@@ -21,9 +21,7 @@ test.describe("public badges", () => {
     await expect(page.getByText("Issued by", { exact: true })).toBeVisible();
     await expect(page.getByText("Awarded", { exact: true })).toBeVisible();
     // The award date is seeded relative to load time, so assert the format only.
-    await expect(page.locator('dt:text-is("Awarded") + dd')).toHaveText(
-      /^\s*\d{4}-\d{2}-\d{2}\s*$/,
-    );
+    await expect(page.locator('dt:text-is("Awarded") + dd')).toHaveText(/^\s*\d{4}-\d{2}-\d{2}\s*$/);
     await expect(page.getByText("Criteria", { exact: true })).toBeVisible();
     await expect(
       page.getByText("Serve as a host for a Platform Ops Meetup event.", {
@@ -201,9 +199,7 @@ test.describe("public badges", () => {
     );
 
     // Upload a valid site PNG that has no baked credential chunk.
-    const ordinaryImageResponse = await page.request.get(
-      buildE2eUrl("/static/images/e2e/badges/host.png"),
-    );
+    const ordinaryImageResponse = await page.request.get(buildE2eUrl("/static/images/e2e/badges/host.png"));
     expect(ordinaryImageResponse.ok()).toBeTruthy();
     await navigateToPath(page, "/badges/verify");
     await page.locator('image-field[name="png"] input[type="file"]').setInputFiles({
@@ -217,18 +213,29 @@ test.describe("public badges", () => {
     );
 
     // Submit a payload beyond the bounded Open Badges PNG size and verify the
-    // server refuses it with an error status instead of verifying the badge.
-    const oversizedResponse = await page.request.post(buildE2eUrl("/badges/verify"), {
-      multipart: {
-        credential: "",
-        png: {
-          name: "oversized-open-badge.png",
-          mimeType: "image/png",
-          buffer: Buffer.alloc(12 * 1024 * 1024 + 1),
+    // server refuses it with an error response or closes the upload stream.
+    let oversizedResponse;
+    let oversizedUploadError;
+    try {
+      oversizedResponse = await page.request.post(buildE2eUrl("/badges/verify"), {
+        multipart: {
+          credential: "",
+          png: {
+            name: "oversized-open-badge.png",
+            mimeType: "image/png",
+            buffer: Buffer.alloc(12 * 1024 * 1024 + 1),
+          },
         },
-      },
-    });
-    expect(oversizedResponse.status()).toBeGreaterThanOrEqual(400);
+      });
+    } catch (error) {
+      oversizedUploadError = error;
+    }
+
+    if (oversizedResponse) {
+      expect(oversizedResponse.status()).toBeGreaterThanOrEqual(400);
+    } else {
+      expect(String(oversizedUploadError)).toMatch(/\b(?:ECONNRESET|EPIPE)\b/u);
+    }
   });
 
   test("unknown public badge resources return not found", async ({ request }) => {
