@@ -1,5 +1,6 @@
 import { expect, test } from "../../fixtures.js";
 
+import { queryE2eDatabase } from "../../database.js";
 import {
   E2E_MEETINGS_ENABLED,
   E2E_PAYMENTS_ENABLED,
@@ -801,10 +802,10 @@ test.describe("event management workflows", () => {
     await expect(sessionDialog).toBeHidden();
   });
 
-  test("organizer can create a paid event with multiple tiers and discount codes", async ({
+  test("organizer can promote a paid test event with multiple tiers and discount codes", async ({
     organizerGroupPage,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
 
     // Skip paid-tier coverage when the environment disables payments.
     test.skip(
@@ -814,6 +815,35 @@ test.describe("event management workflows", () => {
 
     // Create a unique event name for the tiered payment flow.
     const eventName = `E2E Paid Tier Event ${Date.now()}`;
+
+    // Read notifications whose persisted payload contains the temporary event.
+    const readPaidEventNotifications = () => {
+      const escapedEventName = eventName.replaceAll("'", "''");
+      const result = queryE2eDatabase(`
+        select jsonb_build_object(
+          'notification_count', count(*),
+          'payloads', coalesce(
+            jsonb_agg(ntd.data order by n.created_at, n.notification_id),
+            '[]'::jsonb
+          ),
+          'recipient_usernames', coalesce(
+            jsonb_agg(u.username order by u.username),
+            '[]'::jsonb
+          )
+        )
+        from notification n
+        join "user" u using (user_id)
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-paid-configured'
+        and exists (
+          select 1
+          from jsonb_array_elements(ntd.data->'events') configured_event
+          where configured_event->>'name' = '${escapedEventName}'
+        )
+      `);
+
+      return JSON.parse(result);
+    };
 
     // Open the event form for a payment-ready group.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -836,6 +866,9 @@ test.describe("event management workflows", () => {
       "description",
       "Paid dashboard event used to cover admission tiers and discount codes.",
     );
+    await organizerGroupPage
+      .locator("#toggle_test_event")
+      .check({ force: true });
     await organizerGroupPage
       .locator("#toggle_waitlist_enabled")
       .check({ force: true });
@@ -970,6 +1003,36 @@ test.describe("event management workflows", () => {
     await successDialog.getByRole("button", { name: "OK" }).click();
     await expect(successDialog).toBeHidden();
 
+    // Verify paid test-event creation did not queue an admin notification.
+    expect(readPaidEventNotifications().notification_count).toBe(0);
+
+    // Promote the paid test event and wait for the update response.
+    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    await organizerGroupPage
+      .locator("#toggle_test_event")
+      .uncheck({ force: true });
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.locator("#update-event-button").click(),
+      {
+        method: "PUT",
+        status: 204,
+        urlIncludes: "/update",
+      },
+    );
+
+    // Verify promotion queued one required notification for the community admin.
+    const paidEventNotifications = readPaidEventNotifications();
+    expect(paidEventNotifications.notification_count).toBe(1);
+    expect(paidEventNotifications.recipient_usernames).toEqual(["e2e-admin-1"]);
+    expect(paidEventNotifications.payloads).toHaveLength(1);
+    expect(paidEventNotifications.payloads[0]).toMatchObject({
+      community_display_name: "Platform Engineering Community",
+      event_count: 1,
+      events: [{ name: eventName, timezone: "UTC" }],
+      group_name: "Platform Ops Meetup",
+    });
+
     // Reopen the event and verify tier values persisted.
     await openEventUpdateFormByName(organizerGroupPage, eventName);
     await organizerGroupPage
@@ -1066,6 +1129,9 @@ test.describe("event management workflows", () => {
       ),
       organizerGroupPage.locator("#update-event-button").click(),
     ]);
+
+    // Verify changing the paid event to free did not queue another notification.
+    expect(readPaidEventNotifications().notification_count).toBe(1);
 
     // Reopen the event and verify the removed tier was deleted durably.
     await openEventUpdateFormByName(organizerGroupPage, eventName);

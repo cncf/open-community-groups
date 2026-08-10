@@ -27,8 +27,9 @@ use crate::{
     services::{
         meetings::MeetingProvider,
         notifications::enqueue::{
-            enqueue_event_canceled_notification, enqueue_event_published_notifications,
-            enqueue_event_rescheduled_notification, enqueue_event_series_canceled_notifications,
+            enqueue_event_canceled_notification, enqueue_event_paid_configured_notifications,
+            enqueue_event_published_notifications, enqueue_event_rescheduled_notification,
+            enqueue_event_series_canceled_notifications,
             enqueue_event_series_published_notifications,
         },
     },
@@ -249,6 +250,7 @@ pub(crate) async fn details(
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
@@ -259,31 +261,53 @@ pub(crate) async fn add(
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
     let event_payload = build_event_payload(&event)?;
+    let is_paid_capable = is_event_payload_paid_capable(&event_payload);
+    let recurring_event_payloads = RecurringEventPayloads::from_event(&event, &event_payload)
+        .map_err(|err| HandlerError::Deserialization(err.to_string()))?;
 
-    // Create either a single event or a linked recurring event series
-    if let Some(recurring_event_payloads) =
-        RecurringEventPayloads::from_event(&event, &event_payload)
-            .map_err(|err| HandlerError::Deserialization(err.to_string()))?
-    {
-        db.add_event_series(
-            user.user_id,
-            group_id,
-            &recurring_event_payloads.events,
-            &recurring_event_payloads.recurrence,
-            &cfg_max_participants,
-            payment_provider,
-        )
+    // Persist the events and required notifications atomically
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Create either a single event or a linked recurring event series
+                let event_ids = if let Some(recurring_event_payloads) = recurring_event_payloads {
+                    tx.add_event_series(
+                        user.user_id,
+                        group_id,
+                        &recurring_event_payloads.events,
+                        &recurring_event_payloads.recurrence,
+                        &cfg_max_participants,
+                        payment_provider,
+                    )
+                    .await?
+                } else {
+                    vec![
+                        tx.add_event(
+                            user.user_id,
+                            group_id,
+                            &event_payload,
+                            &cfg_max_participants,
+                            payment_provider,
+                        )
+                        .await?,
+                    ]
+                };
+
+                // Enqueue required admin notifications before committing paid events
+                if is_paid_capable {
+                    enqueue_event_paid_configured_notifications(
+                        tx,
+                        community_id,
+                        group_id,
+                        &event_ids,
+                    )
+                    .await?;
+                }
+
+                Ok(())
+            })
+        })
         .await?;
-    } else {
-        db.add_event(
-            user.user_id,
-            group_id,
-            &event_payload,
-            &cfg_max_participants,
-            payment_provider,
-        )
-        .await?;
-    }
 
     Ok((
         StatusCode::CREATED,
@@ -562,6 +586,7 @@ pub(crate) async fn update(
     let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
     let event_json = build_event_payload(&event)?;
 
+    // Persist the update and required notifications atomically
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
@@ -569,15 +594,27 @@ pub(crate) async fn update(
                 let before = tx.get_event_summary(community_id, group_id, event_id).await?;
 
                 // Update event in database
-                tx.update_event(
-                    user.user_id,
-                    group_id,
-                    event_id,
-                    &event_json,
-                    &cfg_max_participants,
-                    payment_provider,
-                )
-                .await?;
+                let requires_paid_notification = tx
+                    .update_event(
+                        user.user_id,
+                        group_id,
+                        event_id,
+                        &event_json,
+                        &cfg_max_participants,
+                        payment_provider,
+                    )
+                    .await?;
+
+                // Enqueue required admin notification after entering the notifiable paid state
+                if requires_paid_notification {
+                    enqueue_event_paid_configured_notifications(
+                        tx,
+                        community_id,
+                        group_id,
+                        &[event_id],
+                    )
+                    .await?;
+                }
 
                 // Enqueue required reschedule notifications before committing
                 enqueue_event_rescheduled_notification(
@@ -735,6 +772,28 @@ async fn event_action_ids(
     } else {
         Ok(event_ids)
     }
+}
+
+/// Returns whether a normalized event payload contains any positive ticket price.
+fn is_event_payload_paid_capable(event: &serde_json::Value) -> bool {
+    event
+        .get("ticket_types")
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|ticket_types| {
+            ticket_types.iter().any(|ticket_type| {
+                ticket_type
+                    .get("price_windows")
+                    .and_then(serde_json::Value::as_array)
+                    .is_some_and(|price_windows| {
+                        price_windows.iter().any(|price_window| {
+                            price_window
+                                .get("amount_minor")
+                                .and_then(serde_json::Value::as_i64)
+                                .is_some_and(|amount_minor| amount_minor > 0)
+                        })
+                    })
+            })
+        })
 }
 
 /// Parses dashboard event action query parameters.

@@ -34,12 +34,12 @@ use crate::{
             BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
             EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
             EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCustom,
-            EventInvitation, EventPublished, EventRefundApproved, EventRefundRejected,
-            EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
-            EventSeriesPublished, EventTicketRequestApproved, EventTicketWaitlistOffer,
-            EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
-            GroupCustom, GroupTeamInvitation, GroupWelcome, SessionProposalCoSpeakerInvitation,
-            SpeakerSeriesWelcome, SpeakerWelcome,
+            EventInvitation, EventPaidConfigured, EventPublished, EventRefundApproved,
+            EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
+            EventSeriesCanceled, EventSeriesPublished, EventTicketRequestApproved,
+            EventTicketWaitlistOffer, EventWaitlistJoined, EventWaitlistLeft,
+            EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
+            SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
         },
     },
     types::{event::EventSummary, site::SiteSettings},
@@ -458,6 +458,17 @@ impl DeliveryWorker {
                     &template.event.group_name,
                     "You have been invited to an event",
                 );
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventPaidConfigured => {
+                let template: EventPaidConfigured = serde_json::from_value(template_data)?;
+                let base_subject = if template.event_count == 1 {
+                    "Paid event configured"
+                } else {
+                    "Paid events configured"
+                };
+                let subject = Self::scoped_subject(&template.group_name, base_subject);
                 let body = template.render()?;
                 (subject, body)
             }
@@ -933,6 +944,8 @@ pub(crate) enum NotificationKind {
     EventCustom,
     /// Notification for an organizer-created event invitation.
     EventInvitation,
+    /// Notification for paid events configured by an organizer.
+    EventPaidConfigured,
     /// Notification for an event published.
     EventPublished,
     /// Notification for an approved refund.

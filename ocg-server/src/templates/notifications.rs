@@ -4,6 +4,7 @@ use askama::Template;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::types::{
     event::EventSummary, group::GroupSummary, payments::format_amount_minor, site::Theme,
@@ -221,6 +222,37 @@ pub(crate) struct EventInvitation {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+}
+
+/// Template for paid event configuration notifications to community admins.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_paid_configured.html")]
+pub(crate) struct EventPaidConfigured {
+    /// Community display name for the events.
+    pub community_display_name: String,
+    /// Number of events included in the notification.
+    pub event_count: usize,
+    /// Events included in the notification.
+    pub events: Vec<EventPaidConfiguredItem>,
+    /// Name of the group hosting the events.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Event item included in a paid event configuration notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventPaidConfiguredItem {
+    /// Unique identifier for the configured event.
+    pub event_id: Uuid,
+    /// Display name of the configured event.
+    pub name: String,
+    /// Timezone used to display the event start.
+    pub timezone: Tz,
+
+    /// UTC timestamp when the event starts.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
 }
 
 /// Template for event published notification.

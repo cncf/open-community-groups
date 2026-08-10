@@ -1,14 +1,14 @@
 //! Notification payload builders.
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
     templates::notifications::{
-        EventAttendanceCanceled, EventCanceled, EventPublished, EventRefundApproved,
-        EventRefundRejected, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
-        EventWelcome, SpeakerWelcome,
+        EventAttendanceCanceled, EventCanceled, EventPaidConfigured, EventPaidConfiguredItem,
+        EventPublished, EventRefundApproved, EventRefundRejected, EventRescheduled,
+        EventWaitlistJoined, EventWaitlistLeft, EventWelcome, SpeakerWelcome,
     },
     types::{event::EventSummary, site::SiteSettings},
     util::{
@@ -59,6 +59,44 @@ pub(crate) fn build_event_canceled_notification(
     Ok(NewNotification {
         attachments: vec![build_event_calendar_attachment(base_url, event)],
         kind: NotificationKind::EventCanceled,
+        recipients,
+        template_data: Some(serde_json::to_value(&template_data)?),
+    })
+}
+
+/// Builds a paid event configuration notification for community admins.
+pub(super) fn build_event_paid_configured_notification(
+    events: &[EventSummary],
+    recipients: Vec<Uuid>,
+    site_settings: &SiteSettings,
+) -> Result<NewNotification> {
+    // Require common event context before building the aggregate payload
+    let first_event = events
+        .first()
+        .ok_or_else(|| anyhow!("paid event notification requires at least one event"))?;
+
+    // Snapshot only the event details needed by the admin notification
+    let events = events
+        .iter()
+        .map(|event| EventPaidConfiguredItem {
+            event_id: event.event_id,
+            name: event.name.clone(),
+            timezone: event.timezone,
+
+            starts_at: event.starts_at,
+        })
+        .collect::<Vec<_>>();
+    let template_data = EventPaidConfigured {
+        community_display_name: first_event.community_display_name.clone(),
+        event_count: events.len(),
+        events,
+        group_name: first_event.group_name.clone(),
+        theme: site_settings.theme.clone(),
+    };
+
+    Ok(NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventPaidConfigured,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
     })
@@ -251,9 +289,9 @@ mod tests {
         handlers::tests::{sample_event_summary, sample_site_settings},
         services::notifications::NotificationKind,
         templates::notifications::{
-            EventAttendanceCanceled, EventCanceled, EventPublished, EventRefundApproved,
-            EventRefundRejected, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
-            EventWelcome, SpeakerWelcome,
+            EventAttendanceCanceled, EventCanceled, EventPaidConfigured, EventPublished,
+            EventRefundApproved, EventRefundRejected, EventRescheduled, EventWaitlistJoined,
+            EventWaitlistLeft, EventWelcome, SpeakerWelcome,
         },
     };
 
@@ -373,6 +411,62 @@ mod tests {
             serde_json::from_value(speaker.template_data.expect("template data to exist"))
                 .expect("template data to deserialize");
         assert_eq!(speaker_template.event.event_id, event_id);
+    }
+
+    #[test]
+    fn test_build_event_paid_configured_notification_rejects_empty_events() {
+        let err = build_event_paid_configured_notification(
+            &[],
+            vec![Uuid::new_v4()],
+            &sample_site_settings(),
+        )
+        .expect_err("empty events to be rejected");
+
+        assert_eq!(
+            err.to_string(),
+            "paid event notification requires at least one event"
+        );
+    }
+
+    #[test]
+    fn test_build_event_paid_configured_notification_returns_expected_payload() {
+        // Setup ordered events and recipients
+        let event_id = Uuid::new_v4();
+        let related_event_id = Uuid::new_v4();
+        let recipient_user_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let events = vec![
+            sample_event_summary(event_id, group_id),
+            sample_event_summary(related_event_id, group_id),
+        ];
+        let site_settings = sample_site_settings();
+
+        // Build the aggregate notification
+        let notification = build_event_paid_configured_notification(
+            &events,
+            vec![recipient_user_id],
+            &site_settings,
+        )
+        .expect("notification to be built");
+
+        // Check the minimal serialized payload
+        assert!(notification.attachments.is_empty());
+        assert!(matches!(
+            notification.kind,
+            NotificationKind::EventPaidConfigured
+        ));
+        assert_eq!(notification.recipients, vec![recipient_user_id]);
+        let template: EventPaidConfigured =
+            serde_json::from_value(notification.template_data.expect("template data to exist"))
+                .expect("template data to deserialize");
+        assert_eq!(template.event_count, 2);
+        assert_eq!(template.events[0].event_id, event_id);
+        assert_eq!(template.events[1].event_id, related_event_id);
+        assert_eq!(template.group_name, events[0].group_name);
+        assert_eq!(
+            template.theme.primary_color,
+            site_settings.theme.primary_color
+        );
     }
 
     #[test]

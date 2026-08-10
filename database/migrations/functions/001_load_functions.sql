@@ -151,6 +151,7 @@
 {{ template "dashboard-group/list_badge_artwork.sql" }}
 {{ template "dashboard-group/list_badges.sql" }}
 {{ template "dashboard-group/list_cfs_submission_statuses_for_review.sql" }}
+{{ template "dashboard-group/list_community_admin_ids.sql" }}
 {{ template "dashboard-group/list_event_approved_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_attendees_ids.sql" }}
 {{ template "dashboard-group/list_event_categories.sql" }}

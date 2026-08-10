@@ -986,6 +986,78 @@ fn test_delivery_worker_prepare_content_event_invitation() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_paid_configured_plural() {
+    // Setup aggregate paid event notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "admin@example.test".to_string(),
+        kind: NotificationKind::EventPaidConfigured,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_paid_configured_template_data(2)),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check plural subject and link-free admin copy
+    assert_eq!(subject, "[Notification Group] Paid events configured");
+    assert!(body.contains("Paid Event One"));
+    assert!(body.contains("Paid Event Two"));
+    assert!(body.contains("January  1, 2021"));
+    assert!(!body.contains("January  1, 2020"));
+    assert!(body.contains("you're an admin of the Test Community community"));
+    assert!(!body.contains("href="));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_paid_configured_singular() {
+    // Setup single paid event notification
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "admin@example.test".to_string(),
+        kind: NotificationKind::EventPaidConfigured,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_paid_configured_template_data(1)),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check singular subject and event details
+    assert_eq!(subject, "[Notification Group] Paid event configured");
+    assert!(body.contains("Paid Event One"));
+    assert!(!body.contains("Paid Event Two"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_paid_configured_without_start() {
+    // Setup paid event notification without an event start
+    let mut template_data = sample_event_paid_configured_template_data(1);
+    template_data["events"][0]
+        .as_object_mut()
+        .expect("event payload to be an object")
+        .remove("starts_at");
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "admin@example.test".to_string(),
+        kind: NotificationKind::EventPaidConfigured,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification, TEST_BASE_URL).unwrap();
+
+    // Check the optional start is omitted without blocking delivery
+    assert_eq!(subject, "[Notification Group] Paid event configured");
+    assert!(body.contains("Paid Event One"));
+    assert!(!body.contains("January"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_published() {
     // Setup notification
     let notification = Notification {
@@ -2114,6 +2186,40 @@ fn sample_event_invitation_template_data() -> serde_json::Value {
         },
         "has_registration_questions": false,
         "link": "https://example.test/dashboard/user?tab=invitations",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
+/// Sample template payload for paid event configuration notifications.
+fn sample_event_paid_configured_template_data(event_count: usize) -> serde_json::Value {
+    // Build the first configured event payload
+    let mut events = vec![json!({
+        "event_id": "11111111-1111-1111-1111-111111111111",
+        "name": "Paid Event One",
+        "timezone": "UTC",
+
+        "starts_at": 1_609_495_200
+    })];
+
+    // Add a second event for plural delivery scenarios
+    if event_count > 1 {
+        events.push(json!({
+            "event_id": "22222222-2222-2222-2222-222222222222",
+            "name": "Paid Event Two",
+            "timezone": "UTC",
+
+            "starts_at": 1_609_581_600
+        }));
+    }
+
+    // Build the aggregate notification payload
+    json!({
+        "community_display_name": "Test Community",
+        "event_count": event_count,
+        "events": events,
+        "group_name": "Notification Group",
         "theme": {
             "primary_color": "#000000"
         }

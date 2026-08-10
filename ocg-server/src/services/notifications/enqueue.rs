@@ -13,8 +13,8 @@ use crate::{
         NewNotification, NotificationKind, load_event_notification_context,
         payloads::{
             build_event_attendance_canceled_notification, build_event_canceled_notification,
-            build_event_published_notification, build_event_rescheduled_notification,
-            build_speaker_welcome_notification,
+            build_event_paid_configured_notification, build_event_published_notification,
+            build_event_rescheduled_notification, build_speaker_welcome_notification,
         },
     },
     templates::notifications::{
@@ -91,6 +91,44 @@ pub(crate) async fn enqueue_event_canceled_notification(
     let event_summary = EventSummary::from(&event_full);
     let notification =
         build_event_canceled_notification(&event_summary, recipients, server_cfg, &site_settings)?;
+    db.enqueue_notification(&notification).await?;
+
+    Ok(())
+}
+
+/// Enqueues one aggregate paid event configuration notification to community admins.
+pub(crate) async fn enqueue_event_paid_configured_notifications(
+    db: &dyn DBOperations,
+    community_id: Uuid,
+    group_id: Uuid,
+    event_ids: &[Uuid],
+) -> Result<()> {
+    if event_ids.is_empty() {
+        return Ok(());
+    }
+
+    // Resolve required recipients before loading event and theme data
+    let recipients = db.list_community_admin_ids(community_id).await?;
+    if recipients.is_empty() {
+        return Ok(());
+    }
+
+    // Load persisted event details and exclude test events from the aggregate
+    let mut events = Vec::with_capacity(event_ids.len());
+    for event_id in event_ids {
+        let event = db.get_event_summary(community_id, group_id, *event_id).await?;
+        if !event.test_event {
+            events.push(event);
+        }
+    }
+    if events.is_empty() {
+        return Ok(());
+    }
+
+    // Build and enqueue the required admin notification
+    let site_settings = db.get_site_settings().await?;
+    let notification =
+        build_event_paid_configured_notification(&events, recipients, &site_settings)?;
     db.enqueue_notification(&notification).await?;
 
     Ok(())
@@ -468,13 +506,193 @@ mod tests {
         },
         services::notifications::{NewNotification, NotificationKind},
         templates::notifications::{
-            EventRescheduled, EventSeriesCanceled, EventSeriesPublished, SpeakerSeriesWelcome,
-            SpeakerWelcome,
+            EventPaidConfigured, EventRescheduled, EventSeriesCanceled, EventSeriesPublished,
+            SpeakerSeriesWelcome, SpeakerWelcome,
         },
         types::event::{EventFull, EventSummary, Speaker},
     };
 
     use super::*;
+
+    #[tokio::test]
+    async fn test_enqueue_event_paid_configured_notifications_propagates_enqueue_failure() {
+        // Setup persisted event and recipient context
+        let admin_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let event = sample_event_summary(event_id, group_id);
+        let mut db = MockDB::new();
+        db.expect_list_community_admin_ids()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(vec![admin_id]));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| {
+                *cid == community_id && *gid == group_id && *eid == event_id
+            })
+            .returning(move |_, _, _| Ok(event.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+        db.expect_enqueue_notification()
+            .times(1)
+            .returning(|_| Err(anyhow::anyhow!("notification error")));
+
+        // Run the required notification workflow
+        let err =
+            enqueue_event_paid_configured_notifications(&db, community_id, group_id, &[event_id])
+                .await
+                .expect_err("enqueue failure to propagate");
+
+        // Check the required side-effect failure remains visible
+        assert_eq!(err.to_string(), "notification error");
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_event_paid_configured_notifications_returns_for_empty_event_ids() {
+        // Forbid every database operation after the empty-input guard
+        let mut db = MockDB::new();
+        db.expect_list_community_admin_ids().never();
+        db.expect_get_event_summary().never();
+        db.expect_get_site_settings().never();
+        db.expect_enqueue_notification().never();
+
+        // Run the workflow with no event identifiers
+        enqueue_event_paid_configured_notifications(&db, Uuid::new_v4(), Uuid::new_v4(), &[])
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_event_paid_configured_notifications_returns_for_empty_recipients() {
+        // Setup identifiers and recipient query
+        let community_id = Uuid::new_v4();
+        let mut db = MockDB::new();
+        db.expect_list_community_admin_ids()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(|_| Ok(vec![]));
+        db.expect_get_event_summary().never();
+        db.expect_get_site_settings().never();
+        db.expect_enqueue_notification().never();
+
+        // Run the workflow without loading event data
+        enqueue_event_paid_configured_notifications(
+            &db,
+            community_id,
+            Uuid::new_v4(),
+            &[Uuid::new_v4()],
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_event_paid_configured_notifications_returns_for_test_events() {
+        // Setup identifiers and a test event
+        let admin_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let event = EventSummary {
+            test_event: true,
+            ..sample_event_summary(event_id, group_id)
+        };
+
+        // Setup recipient and event queries while forbidding downstream work
+        let mut db = MockDB::new();
+        db.expect_list_community_admin_ids()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(vec![admin_id]));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| {
+                *cid == community_id && *gid == group_id && *eid == event_id
+            })
+            .returning(move |_, _, _| Ok(event.clone()));
+        db.expect_get_site_settings().never();
+        db.expect_enqueue_notification().never();
+
+        // Run the workflow through the empty-items guard
+        enqueue_event_paid_configured_notifications(&db, community_id, group_id, &[event_id])
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_event_paid_configured_notifications_sends_ordered_aggregate() {
+        // Setup ordered events and recipients
+        let admin_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let related_event_id = Uuid::new_v4();
+        let event = sample_event_summary(event_id, group_id);
+        let related_event = sample_event_summary(related_event_id, group_id);
+        let notifications = Arc::new(Mutex::new(Vec::new()));
+
+        // Setup database reads in event-id order
+        let mut db = MockDB::new();
+        db.expect_list_community_admin_ids()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(vec![admin_id]));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| {
+                *cid == community_id && *gid == group_id && *eid == event_id
+            })
+            .returning(move |_, _, _| Ok(event.clone()));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| {
+                *cid == community_id && *gid == group_id && *eid == related_event_id
+            })
+            .returning(move |_, _, _| Ok(related_event.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+        let notifications_for_mock = notifications.clone();
+        db.expect_enqueue_notification()
+            .times(1)
+            .returning(move |notification| {
+                notifications_for_mock
+                    .lock()
+                    .expect("notifications lock not to be poisoned")
+                    .push(notification.clone());
+                Ok(())
+            });
+
+        // Run the workflow
+        enqueue_event_paid_configured_notifications(
+            &db,
+            community_id,
+            group_id,
+            &[event_id, related_event_id],
+        )
+        .await
+        .unwrap();
+
+        // Check the aggregate contract and ordering
+        let notifications = notifications.lock().expect("notifications lock not to be poisoned");
+        assert_eq!(notifications.len(), 1);
+        let notification = &notifications[0];
+        assert!(matches!(
+            notification.kind,
+            NotificationKind::EventPaidConfigured
+        ));
+        assert_eq!(notification.recipients, vec![admin_id]);
+        let template: EventPaidConfigured =
+            from_value(notification.template_data.clone().expect("template data to exist"))
+                .expect("paid event notification to deserialize");
+        assert_eq!(
+            template.events.iter().map(|event| event.event_id).collect::<Vec<_>>(),
+            vec![event_id, related_event_id]
+        );
+    }
 
     #[tokio::test]
     #[allow(clippy::too_many_lines)]

@@ -141,6 +141,10 @@ events receive 500 seats.
 If your group is not payment-ready, keep every price window at zero. Complete
 [Payments Setup](payments-setup.md) before configuring a positive price.
 
+?> Accepted community admins with verified email addresses receive an email when a non-test paid
+event or paid recurring series is created, and whenever an existing event becomes both non-test and
+paid-capable.
+
 Waitlist control also lives here:
 
 - `Waitlist enabled` is an explicit event toggle.

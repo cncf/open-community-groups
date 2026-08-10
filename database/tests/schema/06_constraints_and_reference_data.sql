@@ -480,6 +480,7 @@ select results_eq(
         ('event-canceled', false),
         ('event-custom', true),
         ('event-invitation', false),
+        ('event-paid-configured', false),
         ('event-published', true),
         ('event-refund-approved', false),
         ('event-refund-rejected', false),
