@@ -1111,6 +1111,8 @@ pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
         publishable_key: "pk_test".to_string(),
         secret_key: "sk_test".to_string(),
         webhook_secret: "whsec_test".to_string(),
+
+        platform_fee_bps: 0,
     })
 }
 
@@ -1149,6 +1151,7 @@ pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurch
         discount_amount_minor: 0,
         event_purchase_id: Uuid::new_v4(),
         event_ticket_type_id: Uuid::new_v4(),
+        platform_fee_amount_minor: 0,
         status,
         ticket_title: "General admission".to_string(),
 

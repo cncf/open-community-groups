@@ -220,6 +220,7 @@ impl RefundWorker {
                         idempotency_key: refund.idempotency_key.clone(),
                         provider_payment_reference,
                         purchase_id: refund.event_purchase_id,
+                        refund_application_fee: refund.platform_fee_amount_minor > 0,
                     })
                     .await?
             }

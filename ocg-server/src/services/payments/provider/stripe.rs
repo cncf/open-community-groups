@@ -126,6 +126,14 @@ impl StripeProvider {
             ));
         }
 
+        // Deduct the platform fee from the group's proceeds when configured
+        if input.platform_fee_amount_minor > 0 {
+            form_fields.push((
+                "payment_intent_data[application_fee_amount]".to_string(),
+                input.platform_fee_amount_minor.to_string(),
+            ));
+        }
+
         // Mark test-mode checkouts so webhook consumers can identify them
         if self.cfg.mode == PaymentMode::Test {
             form_fields.push(("metadata[environment]".to_string(), "test".to_string()));
@@ -136,7 +144,7 @@ impl StripeProvider {
 
     /// Builds the Stripe refund form body for a destination charge.
     fn build_refund_form_fields(input: &RefundPaymentInput) -> BTreeMap<String, String> {
-        BTreeMap::from([
+        let mut form_fields = BTreeMap::from([
             ("amount".to_string(), input.amount_minor.to_string()),
             (
                 "metadata[event_purchase_id]".to_string(),
@@ -147,7 +155,14 @@ impl StripeProvider {
                 input.provider_payment_reference.clone(),
             ),
             ("reverse_transfer".to_string(), "true".to_string()),
-        ])
+        ]);
+
+        // Return the platform fee to the group when one was collected
+        if input.refund_application_fee {
+            form_fields.insert("refund_application_fee".to_string(), "true".to_string());
+        }
+
+        form_fields
     }
 
     /// Builds a deterministic idempotency key for Stripe checkout sessions.

@@ -464,6 +464,7 @@ select columns_are('event_purchase', array[
     'discount_amount_minor',
     'event_id',
     'event_ticket_type_id',
+    'platform_fee_amount_minor',
     'status',
     'ticket_title',
     'updated_at',

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(45);
+select plan(51);
 
 -- ============================================================================
 -- VARIABLES
@@ -63,6 +63,8 @@ select plan(45);
 \set paymentSetupUnavailablePriceWindowID '79100000-0000-0000-0000-000000000065'
 \set paymentSetupUnavailableTicketTypeID '79100000-0000-0000-0000-000000000066'
 \set paymentSetupUnavailableUserID '79100000-0000-0000-0000-000000000067'
+\set platformFeeMaxUserID '79100000-0000-0000-0000-000000000072'
+\set platformFeeUserID '79100000-0000-0000-0000-000000000071'
 \set limitedDiscountID '79100000-0000-0000-0000-000000000018'
 \set mainEventID '79100000-0000-0000-0000-000000000003'
 \set priceUnavailableEventID '79100000-0000-0000-0000-000000000068'
@@ -140,6 +142,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'closedWindowNewUserID', 'hash-17', 'closed-new@example.com', true, 'closed-new-user'),
     (:'completedUserID', 'hash-3', 'completed@example.com', true, 'completed-user'),
     (:'ineffectiveDiscountUserID', 'hash-28', 'ineffective@example.com', true, 'ineffective-user'),
+    (:'platformFeeMaxUserID', 'hash-30', 'platform-fee-max@example.com', true, 'platform-fee-max-user'),
+    (:'platformFeeUserID', 'hash-29', 'platform-fee@example.com', true, 'platform-fee-user'),
     (:'invalidDiscountUserID', 'hash-4', 'invalid@example.com', true, 'invalid-user'),
     (:'unavailableDiscountUserID', 'hash-5', 'unavailable@example.com', true, 'unavailable-user'),
     (:'exhaustedDiscountUserID', 'hash-6', 'exhausted@example.com', true, 'exhausted-user'),
@@ -820,16 +824,20 @@ select results_eq(
                 '79100000-0000-0000-0000-00000000004f'::uuid,
                 '79100000-0000-0000-0000-000000000051'::uuid,
                 null,
-                null
+                null,
+                null,
+                null,
+                250
             ) as checkout
         )
         select
             checkout->>'amount_minor',
             checkout ? 'currency_code',
+            checkout->>'platform_fee_amount_minor',
             checkout->'recipient'
         from prepared_checkout
     $$,
-    $$ values ('0'::text, false, 'null'::jsonb) $$,
+    $$ values ('0'::text, false, '0'::text, 'null'::jsonb) $$,
     'Should prepare intrinsic zero-price checkout without payment setup'
 );
 
@@ -852,13 +860,21 @@ select results_eq(
         select
             amount_minor,
             event_ticket_type_id,
+            platform_fee_amount_minor,
             status
         from event_purchase
         where event_id = '79100000-0000-0000-0000-000000000003'::uuid
         and user_id = '79100000-0000-0000-0000-000000000023'::uuid
         and status = 'pending'
     $$,
-    $$ values (2500::bigint, '79100000-0000-0000-0000-000000000006'::uuid, 'pending'::text) $$,
+    $$
+        values (
+            2500::bigint,
+            '79100000-0000-0000-0000-000000000006'::uuid,
+            0::bigint,
+            'pending'::text
+        )
+    $$,
     'Should persist the pending checkout purchase for the selected ticket type'
 );
 
@@ -975,11 +991,135 @@ select is(
         'event_ticket_type_id', :'ticketTypeAID'::uuid,
         'group_slug', 'prepare-group',
         'group_slug_pretty', 'prepare-group-pretty',
+        'platform_fee_amount_minor', 0,
         'recipient', jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
         'status', 'completed',
         'ticket_title', 'General admission'
     ),
     'Should return an existing completed purchase as-is'
+);
+
+-- Should snapshot the platform fee from the final amount rounding down
+select is(
+    (
+        select prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'mainEventID'::uuid,
+            :'ticketTypeAID'::uuid,
+            :'platformFeeUserID'::uuid,
+            null,
+            'stripe',
+            null,
+            null,
+            250
+        )::jsonb->>'platform_fee_amount_minor'
+    ),
+    '62',
+    'Should snapshot the platform fee from the final amount rounding down'
+);
+
+-- Should persist the platform fee snapshot on the pending purchase
+select results_eq(
+    format(
+        $$
+        select platform_fee_amount_minor
+        from event_purchase
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        $$,
+        :'mainEventID',
+        :'platformFeeUserID'
+    ),
+    $$ values (62::bigint) $$,
+    'Should persist the platform fee snapshot on the pending purchase'
+);
+
+-- Should retain the original platform fee snapshot when reusing a purchase
+select is(
+    (
+        select prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'mainEventID'::uuid,
+            :'ticketTypeAID'::uuid,
+            :'platformFeeUserID'::uuid,
+            null,
+            'stripe',
+            null,
+            null,
+            500
+        )::jsonb->>'platform_fee_amount_minor'
+    ),
+    '62',
+    'Should retain the original platform fee snapshot when reusing a purchase'
+);
+
+-- Should allow a platform fee that consumes the full amount
+select is(
+    (
+        select prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'mainEventID'::uuid,
+            :'ticketTypeAID'::uuid,
+            :'platformFeeMaxUserID'::uuid,
+            null,
+            'stripe',
+            null,
+            null,
+            10000
+        )::jsonb->>'platform_fee_amount_minor'
+    ),
+    '2500',
+    'Should allow a platform fee that consumes the full amount'
+);
+
+-- Should reject platform fee basis points above the maximum
+select throws_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            null,
+            10001
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'platformFeeUserID'
+    ),
+    'platform fee basis points must be between 0 and 10000',
+    'Should reject platform fee basis points above the maximum'
+);
+
+-- Should reject negative platform fee basis points
+select throws_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            null,
+            -1
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'platformFeeUserID'
+    ),
+    'platform fee basis points must be between 0 and 10000',
+    'Should reject negative platform fee basis points'
 );
 
 -- Should reuse an equivalent pending purchase after registration closes

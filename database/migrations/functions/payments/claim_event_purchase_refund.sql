@@ -7,6 +7,7 @@ declare
     v_claim_id uuid := gen_random_uuid();
     v_community_id uuid;
     v_event_id uuid;
+    v_platform_fee_amount_minor bigint;
     v_provider_payment_reference text;
     v_refund event_purchase_refund;
 begin
@@ -58,10 +59,12 @@ begin
     select
         g.community_id,
         ep.event_id,
+        ep.platform_fee_amount_minor,
         ep.provider_payment_reference
     into
         v_community_id,
         v_event_id,
+        v_platform_fee_amount_minor,
         v_provider_payment_reference
     from event_purchase ep
     join event e using (event_id)
@@ -84,6 +87,7 @@ begin
             'idempotency_key', v_refund.idempotency_key,
             'kind', v_refund.kind,
             'payment_provider', v_refund.payment_provider_id,
+            'platform_fee_amount_minor', v_platform_fee_amount_minor,
             'status', v_refund.status,
             'terminal_failure', v_refund.terminal_failure,
 

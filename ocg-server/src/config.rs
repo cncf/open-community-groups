@@ -27,6 +27,9 @@ use tracing::instrument;
 
 use crate::types::payments::{PaymentMode, PaymentProvider};
 
+/// Maximum platform fee expressed in basis points (100% of the amount).
+const MAX_PLATFORM_FEE_BPS: u16 = 10_000;
+
 /// Placeholder used when formatting sensitive configuration values.
 const REDACTED_CONFIG_VALUE: &str = "[redacted]";
 
@@ -277,6 +280,13 @@ pub(crate) enum PaymentsConfig {
 }
 
 impl PaymentsConfig {
+    /// Return the platform fee in basis points applied to paid purchases.
+    pub(crate) fn platform_fee_bps(&self) -> u16 {
+        match self {
+            Self::Stripe(cfg) => cfg.platform_fee_bps,
+        }
+    }
+
     /// Return the configured payments provider.
     pub(crate) fn provider(&self) -> PaymentProvider {
         match self {
@@ -306,6 +316,11 @@ pub(crate) struct PaymentsStripeConfig {
     pub secret_key: String,
     /// Stripe webhook secret used for signature verification.
     pub webhook_secret: String,
+
+    /// Platform fee in basis points deducted from the group's proceeds on
+    /// each paid purchase (e.g. 250 = 2.5%). Defaults to 0 (no fee).
+    #[serde(default)]
+    pub platform_fee_bps: u16,
 }
 
 impl fmt::Debug for PaymentsStripeConfig {
@@ -315,6 +330,7 @@ impl fmt::Debug for PaymentsStripeConfig {
             .field("publishable_key", &self.publishable_key)
             .field("secret_key", &REDACTED_CONFIG_VALUE)
             .field("webhook_secret", &REDACTED_CONFIG_VALUE)
+            .field("platform_fee_bps", &self.platform_fee_bps)
             .finish()
     }
 }
@@ -322,6 +338,10 @@ impl fmt::Debug for PaymentsStripeConfig {
 impl PaymentsStripeConfig {
     /// Validate Stripe payments configuration.
     fn validate(&self) -> Result<()> {
+        if self.platform_fee_bps > MAX_PLATFORM_FEE_BPS {
+            bail!("payments.platform_fee_bps cannot exceed {MAX_PLATFORM_FEE_BPS}");
+        }
+
         if self.publishable_key.trim().is_empty() {
             bail!("payments.publishable_key cannot be empty");
         }
@@ -723,6 +743,55 @@ mod tests {
         assert_eq!(result.unwrap_err().to_string(), "server.badges is required");
     }
 
+    #[test]
+    fn test_payments_config_accepts_maximum_platform_fee_bps() {
+        // Setup a Stripe configuration with the maximum platform fee
+        let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
+            unreachable!();
+        };
+        cfg.platform_fee_bps = MAX_PLATFORM_FEE_BPS;
+
+        // Validate the Stripe payments configuration
+        let result = cfg.validate();
+
+        // Check a fee consuming the full amount is accepted
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_payments_config_defaults_platform_fee_bps_to_zero() {
+        // Setup a Stripe configuration without a platform fee entry
+        let cfg: PaymentsConfig = serde_json::from_value(serde_json::json!({
+            "provider": "stripe",
+            "mode": "test",
+            "publishable_key": "pk_test_public",
+            "secret_key": "sk_test_secret",
+            "webhook_secret": "whsec_secret",
+        }))
+        .unwrap();
+
+        // Check the platform fee defaults to zero (no fee)
+        assert_eq!(cfg.platform_fee_bps(), 0);
+    }
+
+    #[test]
+    fn test_payments_config_rejects_platform_fee_bps_above_maximum() {
+        // Setup a Stripe configuration with an out-of-range platform fee
+        let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
+            unreachable!();
+        };
+        cfg.platform_fee_bps = MAX_PLATFORM_FEE_BPS + 1;
+
+        // Validate the Stripe payments configuration
+        let result = cfg.validate();
+
+        // Check the out-of-range fee is rejected
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "payments.platform_fee_bps cannot exceed 10000"
+        );
+    }
+
     // Helpers.
 
     fn sample_config() -> Config {
@@ -814,6 +883,8 @@ mod tests {
                 publishable_key: "pk_test_public".to_string(),
                 secret_key: "stripe-key-sensitive-value".to_string(),
                 webhook_secret: "stripe-webhook-sensitive-value".to_string(),
+
+                platform_fee_bps: 250,
             })),
         }
     }

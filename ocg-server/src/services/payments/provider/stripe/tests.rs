@@ -16,6 +16,36 @@ use crate::{
 use super::{StripeListedRefund, StripeProvider};
 
 #[test]
+fn build_checkout_session_form_fields_includes_platform_fee_when_configured() {
+    // Setup a checkout with a snapshotted platform fee
+    let provider = sample_stripe_provider();
+    let mut input = sample_checkout_session_input();
+    input.platform_fee_amount_minor = 62;
+
+    // Build the provider form fields
+    let form_fields = checkout_session_form_fields_map(&provider, &input);
+
+    // Check the platform fee is deducted from the destination charge
+    assert_eq!(
+        form_fields.get("payment_intent_data[application_fee_amount]"),
+        Some(&"62".to_string())
+    );
+}
+
+#[test]
+fn build_checkout_session_form_fields_omits_platform_fee_when_zero() {
+    // Setup a checkout without a platform fee
+    let provider = sample_stripe_provider();
+    let input = sample_checkout_session_input();
+
+    // Build the provider form fields
+    let form_fields = checkout_session_form_fields_map(&provider, &input);
+
+    // Check no application fee is sent to Stripe
+    assert!(!form_fields.contains_key("payment_intent_data[application_fee_amount]"));
+}
+
+#[test]
 fn build_checkout_session_form_fields_populates_checkout_metadata() {
     let provider = sample_stripe_provider();
     let input = sample_checkout_session_input();
@@ -69,6 +99,22 @@ fn build_checkout_session_form_fields_restricts_checkout_to_card_payments() {
 }
 
 #[test]
+fn build_refund_form_fields_includes_platform_fee_refund_when_collected() {
+    // Setup a refund for a purchase that collected a platform fee
+    let mut input = sample_refund_payment_input();
+    input.refund_application_fee = true;
+
+    // Build the provider form fields
+    let form_fields = StripeProvider::build_refund_form_fields(&input);
+
+    // Check the platform fee is returned along with the payment
+    assert_eq!(
+        form_fields.get("refund_application_fee"),
+        Some(&"true".to_string())
+    );
+}
+
+#[test]
 fn build_refund_form_fields_reverses_destination_transfer() {
     // Setup a refund for a destination charge
     let input = sample_refund_payment_input();
@@ -90,6 +136,7 @@ fn build_refund_form_fields_reverses_destination_transfer() {
         form_fields.get("reverse_transfer"),
         Some(&"true".to_string())
     );
+    assert!(!form_fields.contains_key("refund_application_fee"));
 }
 
 #[test]
@@ -507,6 +554,7 @@ fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
         event_id: Uuid::new_v4(),
         event_slug: "event".to_string(),
         group_slug: "group".to_string(),
+        platform_fee_amount_minor: 0,
         purchase_id: Uuid::new_v4(),
         recipient: GroupPaymentRecipient {
             provider: PaymentProvider::Stripe,
@@ -549,6 +597,7 @@ fn sample_refund_payment_input() -> RefundPaymentInput {
         idempotency_key: "event-purchase-refund-test".to_string(),
         provider_payment_reference: "pi_test_123".to_string(),
         purchase_id: Uuid::new_v4(),
+        refund_application_fee: false,
     }
 }
 
@@ -565,6 +614,8 @@ fn sample_stripe_provider() -> StripeProvider {
         publishable_key: "pk_test".to_string(),
         secret_key: "sk_test".to_string(),
         webhook_secret: "whsec_test".to_string(),
+
+        platform_fee_bps: 0,
     })
 }
 

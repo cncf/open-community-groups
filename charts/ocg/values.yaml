@@ -102,6 +102,7 @@ payments:
   publishableKey: ""
   secretKey: ""
   webhookSecret: ""
+  platformFeeBps: 0
 
 # Database migrator configuration
 dbmigrator:

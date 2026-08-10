@@ -115,15 +115,16 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
+    platform_fee_amount_minor,
     provider_payment_reference
 ) values
-    (2500, 'USD', :'eventID', :'exhaustedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_exhausted'),
-    (2500, 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_failed'),
-    (2500, 'USD', :'eventID', :'futurePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_future'),
-    (2500, 'USD', :'eventID', :'otherProviderPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'other-provider', 'pi_other'),
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending'),
-    (2500, 'USD', :'eventID', :'succeededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_succeeded'),
-    (2500, 'USD', :'eventID', :'terminalPurchaseID', :'ticketTypeID', 'refund-recovery-pending', 'General admission', :'userID', 'stripe', 'pi_terminal');
+    (2500, 'USD', :'eventID', :'exhaustedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_exhausted'),
+    (2500, 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_failed'),
+    (2500, 'USD', :'eventID', :'futurePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_future'),
+    (2500, 'USD', :'eventID', :'otherProviderPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'other-provider', 0, 'pi_other'),
+    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_pending'),
+    (2500, 'USD', :'eventID', :'succeededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 250, 'pi_succeeded'),
+    (2500, 'USD', :'eventID', :'terminalPurchaseID', :'ticketTypeID', 'refund-recovery-pending', 'General admission', :'userID', 'stripe', 0, 'pi_terminal');
 
 -- Refund rows covering priority, retry, scheduling, exhaustion, and provider scoping
 insert into event_purchase_refund (
@@ -164,6 +165,7 @@ select results_eq(
             result->>'event_id',
             result->>'event_purchase_refund_id',
             (result->>'attempt_count')::int,
+            (result->>'platform_fee_amount_minor')::bigint,
             result->>'provider_payment_reference',
             result->>'provider_refund_id',
             result->>'status'
@@ -174,6 +176,7 @@ select results_eq(
         %L::text,
         %L::text,
         4,
+        250::bigint,
         'pi_succeeded'::text,
         're_succeeded'::text,
         'processing'::text
@@ -198,10 +201,11 @@ select results_eq(
         select
             result->>'event_purchase_refund_id',
             (result->>'attempt_count')::int,
+            (result->>'platform_fee_amount_minor')::bigint,
             result->>'status'
         from (select claim_event_purchase_refund('stripe')::jsonb as result) claimed
     $$,
-    format($$ values (%L::text, 1, 'processing'::text) $$, :'pendingRefundID'),
+    format($$ values (%L::text, 1, 0::bigint, 'processing'::text) $$, :'pendingRefundID'),
     'Should claim due pending work and increment its attempt count'
 );
 

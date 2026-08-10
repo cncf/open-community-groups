@@ -439,6 +439,7 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
     assert_eq!(refund.community_id, community_id());
     assert_eq!(refund.event_id, paid_event_id());
     assert_eq!(refund.event_purchase_id, refund_approve_purchase_id());
+    assert_eq!(refund.platform_fee_amount_minor, 250);
     assert_eq!(refund.status, EventPurchaseRefundStatus::Processing);
     assert!(refund.provider_refunded_at.is_some());
 
@@ -1055,6 +1056,7 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
     assert_eq!(summary.event_purchase_id, summary_purchase_id());
     assert_eq!(summary.event_ticket_type_id, paid_ticket_type_id());
     assert!(summary.hold_expires_at.is_some());
+    assert_eq!(summary.platform_fee_amount_minor, 250);
     assert_eq!(summary.status, EventPurchaseStatus::Pending);
     assert_eq!(summary.ticket_title, "Contract Paid Ticket");
 
@@ -2675,6 +2677,7 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
     let input = PrepareEventCheckoutPurchaseInput {
         event_id: paid_event_id(),
         event_ticket_type_id: paid_ticket_type_id(),
+        platform_fee_bps: 250,
         user_id: checkout_buyer_id(),
 
         admission_offer_id: None,
@@ -2702,6 +2705,7 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
         paid_ticket_type_id()
     );
     assert!(checkout.purchase.hold_expires_at.is_some());
+    assert_eq!(checkout.purchase.platform_fee_amount_minor, 62);
     assert_eq!(checkout.purchase.status, EventPurchaseStatus::Pending);
     assert_eq!(checkout.purchase.ticket_title, "Contract Paid Ticket");
     assert_eq!(

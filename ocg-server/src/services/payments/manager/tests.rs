@@ -301,6 +301,7 @@ async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
             input.amount_minor == 2_500
                 && input.discount_code.as_deref() == Some("SPRING")
                 && input.event_id == event_id
+                && input.platform_fee_amount_minor == 62
                 && input.purchase_id == event_purchase_id
                 && input.recipient == recipient
                 && input.user_id == user_id
@@ -881,6 +882,7 @@ fn sample_event_purchase_summary(
         currency_code: Some("usd".to_string()),
         event_purchase_id,
         event_ticket_type_id,
+        platform_fee_amount_minor: 62,
         ticket_title: "General admission".to_string(),
 
         discount_code,

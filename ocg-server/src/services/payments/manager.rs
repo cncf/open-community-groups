@@ -215,6 +215,7 @@ impl PgPaymentsManager {
                 event_id: prepared_checkout.event_id,
                 event_slug: prepared_checkout.event_slug.clone(),
                 group_slug: prepared_checkout.group_slug.clone(),
+                platform_fee_amount_minor: prepared_checkout.purchase.platform_fee_amount_minor,
                 purchase_id: prepared_checkout.purchase.event_purchase_id,
                 recipient: recipient.clone(),
                 ticket_title: prepared_checkout.purchase.ticket_title.clone(),

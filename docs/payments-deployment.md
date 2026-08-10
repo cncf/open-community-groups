@@ -53,6 +53,7 @@ payments:
   publishableKey: "pk_test_..."
   secretKey: "sk_test_..."
   webhookSecret: "whsec_..."
+  platformFeeBps: 0
 ```
 
 A few notes about these values:
@@ -64,6 +65,8 @@ A few notes about these values:
 - Use `mode: live` only with live Stripe keys.
 - `publishableKey`, `secretKey`, and `webhookSecret` are all required when
   payments are enabled.
+- `platformFeeBps` is optional and defaults to `0` (no platform fee). See
+  [Platform Fee](#platform-fee) for its semantics.
 
 ### Raw Server Config
 
@@ -76,10 +79,42 @@ payments:
   publishable_key: "pk_test_..."
   secret_key: "sk_test_..."
   webhook_secret: "whsec_..."
+  platform_fee_bps: 0
 ```
 
 The current server validates that `publishable_key`, `secret_key`, and
-`webhook_secret` are non-empty when Stripe payments are configured.
+`webhook_secret` are non-empty when Stripe payments are configured, and that
+`platform_fee_bps` does not exceed `10000`.
+
+### Platform Fee
+
+OCG can collect a deployment-wide platform fee on every paid event purchase.
+The fee is expressed in basis points (`250` = 2.5%) and is deducted from the
+group's proceeds through Stripe Connect application fees; attendees always pay
+the listed ticket price.
+
+How the fee behaves:
+
+- The fee applies to the final charged amount after discounts, rounded down to
+  the nearest minor unit (for example, 250 bps on a 25.00 USD ticket collects
+  0.62 USD, since 62.5 cents rounds down to 62).
+- Each purchase snapshots the fee amount when its checkout hold is created.
+  Changing `platform_fee_bps` affects only new purchases; existing holds and
+  completed purchases keep their original fee.
+- Purchases with a zero final amount never collect a fee.
+- When a purchase that collected a fee is refunded through OCG, the platform
+  fee is refunded to the group as well, so the group is made whole for the
+  full refunded amount.
+- Manual refund recovery records an externally arranged refund and does not
+  call Stripe, so it does not return the collected application fee. Operators
+  who want to return the fee for such refunds must reverse it directly in the
+  Stripe Dashboard.
+
+Collecting application fees requires your Stripe Connect platform account to
+be eligible for application fees on destination charges.
+
+Reference:
+[Collect fees with Stripe Connect](https://docs.stripe.com/connect/direct-charges#collect-fees).
 
 ## Stripe Dashboard Setup
 

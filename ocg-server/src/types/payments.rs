@@ -177,6 +177,8 @@ pub struct EventPurchaseSummary {
     pub event_purchase_id: Uuid,
     /// Ticket type identifier.
     pub event_ticket_type_id: Uuid,
+    /// Platform fee deducted from the group's proceeds, in minor units.
+    pub platform_fee_amount_minor: i64,
     /// Purchase status.
     pub status: EventPurchaseStatus,
     /// Ticket type title snapshot.

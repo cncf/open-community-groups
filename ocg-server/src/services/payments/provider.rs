@@ -75,6 +75,8 @@ pub(crate) struct CreateCheckoutSessionInput {
     pub event_slug: String,
     /// Generated group slug used in return URLs.
     pub group_slug: String,
+    /// Platform fee deducted from the group's proceeds, in minor units.
+    pub platform_fee_amount_minor: i64,
     /// Purchase identifier tracked by OCG.
     pub purchase_id: Uuid,
     /// Recipient account for the group.
@@ -157,6 +159,8 @@ pub(crate) struct RefundPaymentInput {
     pub provider_payment_reference: String,
     /// Platform purchase identifier.
     pub purchase_id: Uuid,
+    /// Whether the platform fee is refunded along with the payment.
+    pub refund_application_fee: bool,
 }
 
 /// Result returned after a provider refund request or lookup.

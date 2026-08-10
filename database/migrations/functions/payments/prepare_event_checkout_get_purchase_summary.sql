@@ -10,6 +10,7 @@ returns jsonb as $$
             'discount_amount_minor', ep.discount_amount_minor,
             'event_purchase_id', ep.event_purchase_id,
             'event_ticket_type_id', ep.event_ticket_type_id,
+            'platform_fee_amount_minor', ep.platform_fee_amount_minor,
             'status', ep.status,
             'ticket_title', ep.ticket_title,
 
