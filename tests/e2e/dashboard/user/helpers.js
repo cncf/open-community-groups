@@ -8,6 +8,7 @@ import {
   navigateToEvent,
   selectCommunityContext,
   selectGroupContext,
+  waitForActionResponse,
 } from "../../utils.js";
 import { fillMarkdownEditor } from "../form-helpers.js";
 
@@ -168,15 +169,11 @@ export const createSessionProposal = async (page, title) => {
     "A reusable proposal created from the e2e suite.",
   );
 
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/dashboard/user/session-proposals") &&
-        response.status() === 201,
-    ),
-    modal.getByRole("button", { name: "Save" }).click(),
-  ]);
+  await waitForActionResponse(page, () => modal.getByRole("button", { name: "Save" }).click(), {
+    method: "POST",
+    status: 201,
+    urlIncludes: "/dashboard/user/session-proposals",
+  });
 
   await expect(modal).toBeHidden();
   return dashboardContent;
@@ -199,15 +196,10 @@ export const submitProposalToOpenCfsEvent = async (page, proposalTitle) => {
     .locator("#session_proposal_id")
     .selectOption({ label: proposalTitle });
 
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/cfs-submissions") &&
-        response.ok(),
-    ),
-    modal.getByRole("button", { name: "Submit proposal" }).click(),
-  ]);
+  await waitForActionResponse(page, () => modal.getByRole("button", { name: "Submit proposal" }).click(), {
+    method: "POST",
+    urlIncludes: "/cfs-submissions",
+  });
 
   await expect(
     modal.getByText("Submission received. We'll review it soon."),

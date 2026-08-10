@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../fixtures.js";
 
 import {
   E2E_PAYMENTS_ENABLED,
@@ -12,15 +12,95 @@ import {
   TEST_COMMUNITY_TITLE,
   TEST_COMMUNITY_TITLE_2,
   TEST_EVENT_NAMES,
+  TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+  buildE2eUrl,
   getSectionLink,
   getStatsContainer,
   getStatValue,
   navigateToCommunityHome,
+  navigateToGroup,
 } from "../../utils.js";
 
 test.describe("community home page", () => {
+  test("community without active groups omits collection sections", async ({
+    adminSecondaryCommunityPage,
+    page,
+  }) => {
+    // Temporarily deactivate every secondary-community group.
+    const groupIds = Object.values(TEST_GROUP_IDS.community2);
+    const deactivatedGroupIds = [];
+    try {
+      for (const groupId of groupIds) {
+        const response = await adminSecondaryCommunityPage.request.put(
+          buildE2eUrl(`/dashboard/community/groups/${groupId}/deactivate`),
+        );
+        expect(response.ok()).toBeTruthy();
+        deactivatedGroupIds.push(groupId);
+      }
+
+      // Load the active community after its public collections become empty.
+      await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
+      await expect(
+        page.getByRole("heading", {
+          level: 1,
+          name: TEST_COMMUNITY_TITLE_2,
+        }),
+      ).toBeVisible();
+
+      // Verify absent collections do not render empty public sections.
+      await expect(
+        page.getByText("Latest groups added", { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByText("upcoming in-person events", { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByText("upcoming virtual events", { exact: true }),
+      ).toHaveCount(0);
+    } finally {
+      // Restore every group changed by this scenario for later public tests.
+      for (const groupId of deactivatedGroupIds) {
+        const response = await adminSecondaryCommunityPage.request.put(
+          buildE2eUrl(`/dashboard/community/groups/${groupId}/activate`),
+        );
+        expect(response.ok()).toBeTruthy();
+      }
+    }
+  });
+
+  test("community social links and new group instructions render from seeds", async ({
+    page,
+  }) => {
+    // Load the secondary community that carries seeded social links.
+    await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
+
+    // Verify each seeded social link exposes its destination.
+    const mainContent = page.locator("#main-content");
+    await expect(mainContent.locator('a[title="Twitter"]')).toHaveAttribute(
+      "href",
+      "https://twitter.com/e2e-devex",
+    );
+    await expect(mainContent.locator('a[title="GitHub"]')).toHaveAttribute(
+      "href",
+      "https://github.com/e2e-devex",
+    );
+    await expect(mainContent.locator('a[title="LinkedIn"]')).toHaveAttribute(
+      "href",
+      "https://linkedin.com/company/e2e-devex",
+    );
+
+    // Verify the seeded new group instructions block renders as markdown.
+    await expect(page.getByText("New groups", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(
+        "Open an issue in our GitHub organization to propose a new group.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+  });
+
   test.describe("default viewport", () => {
     test.beforeEach(async ({ page }) => {
       // Load the community home page before each default viewport assertion.
@@ -46,6 +126,96 @@ test.describe("community home page", () => {
       await expect(
         page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
       ).toBeVisible();
+    });
+
+    test("page metadata and event cards expose complete seeded contracts", async ({
+      page,
+    }) => {
+      // Verify the community page title, canonical URL, and responsive banners.
+      await expect(page).toHaveTitle(`${TEST_COMMUNITY_TITLE} community`);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        buildE2eUrl(`/${TEST_COMMUNITY_NAME}`),
+      );
+      await expect(page.getByAltText("Banner")).toHaveCount(2);
+
+      // Verify social previews use the canonical community contract.
+      await expect(page.locator('meta[property="og:type"]')).toHaveAttribute(
+        "content",
+        "website",
+      );
+      await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+        "content",
+        `${TEST_COMMUNITY_TITLE} community`,
+      );
+      await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+        "content",
+        buildE2eUrl(`/${TEST_COMMUNITY_NAME}`),
+      );
+      await expect(
+        page.locator('meta[property="og:description"]'),
+      ).toHaveAttribute(
+        "content",
+        "Open Community Groups, where Open Source communities thrive.",
+      );
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+        "content",
+        /\/images\/og\/[a-f0-9]{64}\.png$/,
+      );
+      await expect(
+        page.locator('meta[property="og:image:alt"]'),
+      ).toHaveAttribute("content", TEST_COMMUNITY_TITLE);
+      await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+        "content",
+        "summary_large_image",
+      );
+
+      // Find the in-person event card and verify its group, venue, and date.
+      const inPersonEventCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.alpha[0] })
+        .first();
+      await expect(inPersonEventCard).toContainText(TEST_GROUP_NAMES.alpha);
+      await expect(inPersonEventCard).toContainText(
+        "Tech Conference Center, New York",
+      );
+      await expect(inPersonEventCard).toContainText(/\w{3} \d{1,2}, \d{4}/);
+
+      // Find the virtual event card and verify its location label.
+      const virtualEventCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.alpha[1] })
+        .first();
+      await expect(virtualEventCard).toContainText("Virtual");
+
+      // Find the hybrid event card and verify its fallback metadata.
+      const hybridEventCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.alpha[2] })
+        .first();
+      await expect(hybridEventCard).toContainText("No location provided");
+      await expect(hybridEventCard).toContainText("hybrid");
+    });
+
+    test("community page sends its page-view beacon", async ({ page }) => {
+      // Read the rendered community identifier before watching its analytics endpoint.
+      const communityId = await page
+        .locator('[data-page-view][data-entity-type="community"]')
+        .getAttribute("data-entity-id");
+      expect(communityId).toBeTruthy();
+      const pageViewRequestPromise = page.waitForRequest(
+        (request) =>
+          request.method() === "POST" &&
+          new URL(request.url()).pathname ===
+            `/communities/${communityId}/views`,
+      );
+
+      // Reload the page and verify the beacon targets the current community.
+      await page.reload();
+      const pageViewRequest = await pageViewRequestPromise;
+      expect(new URL(pageViewRequest.url()).pathname).toBe(
+        `/communities/${communityId}/views`,
+      );
     });
 
     test("CTA link includes community filter parameter", async ({ page }) => {
@@ -271,6 +441,79 @@ test.describe("community home page", () => {
       );
       await expect(advertisementCard).toHaveClass(/hover:border-primary-300/);
       await expect(advertisementCard).toHaveClass(/hover:shadow-sm/);
+    });
+
+    test("inline advertisement banner is hidden below the md breakpoint", async ({
+      page,
+    }) => {
+      // Load the secondary community with the seeded advertisement banner.
+      await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
+
+      // Target the inline advertisement by its accessible image name.
+      const advertisementImage = page.getByRole("img", {
+        name: `${TEST_COMMUNITY_TITLE_2} advertisement`,
+      });
+      await expect(advertisementImage).toBeVisible();
+
+      // Verify the inline advertisement disappears below the md breakpoint.
+      await page.setViewportSize({ width: 767, height: 900 });
+      await expect(advertisementImage).toBeHidden();
+    });
+
+    test("advertisement dismissal persists for the current banner content", async ({
+      page,
+    }) => {
+      // Load a secondary-community group page with a clean banner preference.
+      await page.evaluate(() => {
+        Object.keys(localStorage)
+          .filter((key) => key.startsWith("ocg:ad-banner:hidden"))
+          .forEach((key) => localStorage.removeItem(key));
+      });
+      await navigateToGroup(
+        page,
+        TEST_COMMUNITY_NAME_2,
+        TEST_GROUP_SLUGS.community2.delta,
+      );
+
+      // Close the visible banner and verify its content-scoped preference.
+      const advertisementBanner = page.locator('[data-ad-banner="floating"]');
+      await expect(advertisementBanner).toBeVisible();
+      await page
+        .getByRole("button", { name: "Close advertisement banner" })
+        .click();
+      await expect(advertisementBanner).toBeHidden();
+      const storedDismissals = await page.evaluate(() =>
+        Object.entries(localStorage).filter(
+          ([key, value]) =>
+            key.startsWith("ocg:ad-banner:hidden") && value === "true",
+        ),
+      );
+      expect(storedDismissals).toHaveLength(1);
+
+      // Reload the same content and verify it remains dismissed.
+      await page.reload();
+      await expect(page.locator('[data-ad-banner="floating"]')).toBeHidden();
+    });
+
+    test("advertisement hides when its image cannot load", async ({ page }) => {
+      // Fail the seeded advertisement image before loading the group page.
+      await page.route("**/static/images/e2e/event-banner.svg", (route) =>
+        route.fulfill({
+          body: "",
+          contentType: "image/svg+xml",
+          status: 404,
+        }),
+      );
+      await navigateToGroup(
+        page,
+        TEST_COMMUNITY_NAME_2,
+        TEST_GROUP_SLUGS.community2.delta,
+      );
+
+      // Verify broken advertisement content is not presented to visitors.
+      const advertisementBanner = page.locator('[data-ad-banner="floating"]');
+      await expect(advertisementBanner).toBeAttached();
+      await expect(advertisementBanner).toBeHidden();
     });
 
     test("stats strip shows desktop layout at lg breakpoint", async ({

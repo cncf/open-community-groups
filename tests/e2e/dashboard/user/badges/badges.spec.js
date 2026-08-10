@@ -1,6 +1,6 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { buildE2eUrl, navigateToPath } from "../../../utils.js";
+import { buildE2eUrl, navigateToPath, waitForActionResponse } from "../../../utils.js";
 
 const HOST_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada06";
 const VOLUNTEER_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada08";
@@ -12,6 +12,20 @@ const setListingValue = (toggle, isListed) =>
   }, isListed);
 
 test.describe("user dashboard badges", () => {
+  test("empty state explains where awarded badges will appear", async ({
+    emptyUserPage,
+  }) => {
+    // Load badges for the dedicated user without awarded credentials.
+    await navigateToPath(emptyUserPage, "/dashboard/user?tab=badges");
+    const emptyState = emptyUserPage.locator("[data-user-badges-empty]");
+
+    // Verify the empty card names the state and its source of future content.
+    await expect(emptyState).toContainText("No active badges yet");
+    await expect(emptyState).toContainText(
+      "Badges awarded by your groups will appear here.",
+    );
+  });
+
   test("shows labelled credential actions", async ({ member1Page }) => {
     // Load the badge dashboard with seeded credentials.
     await navigateToPath(member1Page, "/dashboard/user?tab=badges");
@@ -129,15 +143,10 @@ test.describe("user dashboard badges", () => {
     await expect(badgeList).toHaveAttribute("data-badge-controls-ready", "true");
     await expect(listingToggle).toBeChecked();
     try {
-      await Promise.all([
-        member1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().endsWith(`/badges/${HOST_CREDENTIAL_ID}/listing`) &&
-            response.ok(),
-        ),
-        setListingValue(listingToggle, false),
-      ]);
+      await waitForActionResponse(member1Page, () => setListingValue(listingToggle, false), {
+        method: "PUT",
+        urlEndsWith: `/badges/${HOST_CREDENTIAL_ID}/listing`,
+      });
       await expect(listingToggle).not.toBeChecked();
 
       // Verify both a reload and the public endpoint reflect the saved state.
@@ -161,15 +170,10 @@ test.describe("user dashboard badges", () => {
           .getByRole("checkbox", { name: "Show on profile" });
 
         if (!(await currentToggle.isChecked())) {
-          await Promise.all([
-            member1Page.waitForResponse(
-              (response) =>
-                response.request().method() === "PUT" &&
-                response.url().endsWith(`/badges/${HOST_CREDENTIAL_ID}/listing`) &&
-                response.ok(),
-            ),
-            setListingValue(currentToggle, true),
-          ]);
+          await waitForActionResponse(member1Page, () => setListingValue(currentToggle, true), {
+            method: "PUT",
+            urlEndsWith: `/badges/${HOST_CREDENTIAL_ID}/listing`,
+          });
         }
       }
     }
@@ -185,15 +189,10 @@ test.describe("user dashboard badges", () => {
 
     await expect(badgeList.locator("[data-user-badge-id]").first()).toContainText("Speaker");
     try {
-      await Promise.all([
-        member1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().endsWith("/dashboard/user/badges/order") &&
-            response.ok(),
-        ),
-        hostHandle.press("ArrowUp"),
-      ]);
+      await waitForActionResponse(member1Page, () => hostHandle.press("ArrowUp"), {
+        method: "PUT",
+        urlEndsWith: "/dashboard/user/badges/order",
+      });
       await expect(badgeList.locator("[data-user-badge-id]").first()).toContainText("Host");
 
       // Reload to prove the order was persisted by the server.
@@ -209,15 +208,10 @@ test.describe("user dashboard badges", () => {
         const firstBadge = member1Page.locator("[data-badge-order-list] [data-user-badge-id]").first();
 
         if ((await firstBadge.getAttribute("data-user-badge-id")) === HOST_CREDENTIAL_ID) {
-          await Promise.all([
-            member1Page.waitForResponse(
-              (response) =>
-                response.request().method() === "PUT" &&
-                response.url().endsWith("/dashboard/user/badges/order") &&
-                response.ok(),
-            ),
-            restoredHostHandle.press("ArrowDown"),
-          ]);
+          await waitForActionResponse(member1Page, () => restoredHostHandle.press("ArrowDown"), {
+            method: "PUT",
+            urlEndsWith: "/dashboard/user/badges/order",
+          });
         }
       }
     }
@@ -250,15 +244,14 @@ test.describe("user dashboard badges", () => {
         name: "Permanently revoke Volunteer?",
       }),
     ).toBeVisible();
-    await Promise.all([
-      member2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().endsWith(`/dashboard/user/badges/${VOLUNTEER_CREDENTIAL_ID}`) &&
-          response.ok(),
-      ),
-      member2Page.getByRole("button", { name: "Permanently revoke" }).click(),
-    ]);
+    await waitForActionResponse(
+      member2Page,
+      () => member2Page.getByRole("button", { name: "Permanently revoke" }).click(),
+      {
+        method: "DELETE",
+        urlEndsWith: `/dashboard/user/badges/${VOLUNTEER_CREDENTIAL_ID}`,
+      },
+    );
 
     // Verify it leaves the active dashboard but retains its public history.
     await expect(volunteerBadge).toHaveCount(0);

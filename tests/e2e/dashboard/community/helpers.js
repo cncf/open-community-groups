@@ -1,5 +1,5 @@
 import { expect } from "../../fixtures.js";
-import { navigateToPath } from "../../utils.js";
+import { navigateToPath, waitForActionResponse } from "../../utils.js";
 
 export const taxonomyCases = [
   {
@@ -44,16 +44,34 @@ export const ensureCommunityGroupsManagerRole = async (role, page) => {
     return;
   }
 
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "PUT" &&
-        response.url().includes("/dashboard/community/team/") &&
-        response.url().endsWith("/role") &&
-        response.ok(),
-    ),
-    currentRoleSelect.selectOption(role),
-  ]);
+  await waitForActionResponse(page, () => currentRoleSelect.selectOption(role), {
+    method: "PUT",
+    urlEndsWith: "/role",
+    urlIncludes: "/dashboard/community/team/",
+  });
 
   await expect(currentRoleSelect).toHaveValue(role);
+};
+
+/**
+ * Runs a community dashboard mutation and waits for its table refresh.
+ */
+export const waitForCommunityDashboardMutation = async (
+  page,
+  refreshPath,
+  action,
+  responseOptions,
+) => {
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const requestUrl = new URL(response.url());
+
+      return (
+        response.request().method() === "GET" &&
+        requestUrl.pathname === refreshPath &&
+        response.ok()
+      );
+    }),
+    waitForActionResponse(page, action, responseOptions),
+  ]);
 };

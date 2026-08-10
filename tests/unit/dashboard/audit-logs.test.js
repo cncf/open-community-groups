@@ -32,6 +32,15 @@ describe("dashboard audit logs", () => {
         ></button>
         <div id="audit-log-details-1" data-audit-log-details-card class="hidden"></div>
       </div>
+      <div data-audit-log-details-group>
+        <button
+          type="button"
+          data-audit-log-details-trigger
+          aria-controls="audit-log-details-2"
+          aria-expanded="false"
+        ></button>
+        <div id="audit-log-details-2" data-audit-log-details-card class="hidden"></div>
+      </div>
     `;
   };
 
@@ -93,6 +102,31 @@ describe("dashboard audit logs", () => {
     document.body.click();
     expect(trigger.getAttribute("aria-expanded")).to.equal("false");
     expect(card.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps a hovered previous popover hidden when another opens", () => {
+    // Simulate the pointer remaining over the first trigger group.
+    const groups = document.querySelectorAll("[data-audit-log-details-group]");
+    const triggers = document.querySelectorAll("[data-audit-log-details-trigger]");
+    const firstCard = document.getElementById("audit-log-details-1");
+    const secondCard = document.getElementById("audit-log-details-2");
+    Object.defineProperty(groups[0], "matches", {
+      value: (selector) => selector === ":hover",
+    });
+    initializeAuditLogs();
+
+    // Open each trigger in turn as a keyboard user can.
+    triggers[0].click();
+    triggers[1].click();
+
+    // Keep the visual and accessible states synchronized.
+    expect(groups[0].getAttribute("data-audit-log-hover-disabled")).to.equal(
+      "true",
+    );
+    expect(triggers[0].getAttribute("aria-expanded")).to.equal("false");
+    expect(firstCard.classList.contains("hidden")).to.equal(true);
+    expect(triggers[1].getAttribute("aria-expanded")).to.equal("true");
+    expect(secondCard.classList.contains("hidden")).to.equal(false);
   });
 
   it("initializes swapped audit log content on htmx load", () => {

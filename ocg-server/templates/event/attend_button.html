@@ -452,7 +452,7 @@
        class="hidden"
        hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"
        hx-trigger="load, attendance-changed from:body"
-       hx-swap="none"></div>
+       hx-swap="none ignoreTitle:true"></div>
   {# End attendance checker -#}
 </div>
 {# End attend button section -#}

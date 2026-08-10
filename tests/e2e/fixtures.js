@@ -86,6 +86,14 @@ export const test = base.extend({
     TEST_USER_CREDENTIALS.admin1,
     (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
   ),
+  adminEmptyCommunityPage: authenticatedPageFixture(
+    TEST_USER_CREDENTIALS.admin1,
+    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.empty),
+  ),
+  adminSecondaryCommunityPage: authenticatedPageFixture(
+    TEST_USER_CREDENTIALS.admin2,
+    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community2),
+  ),
   communityViewerPage: authenticatedPageFixture(
     TEST_USER_CREDENTIALS.communityViewer1,
     (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
@@ -97,6 +105,15 @@ export const test = base.extend({
         page,
         TEST_COMMUNITY_IDS.community1,
         TEST_GROUP_IDS.community1.alpha,
+      ),
+  ),
+  organizerEmptyGroupPage: authenticatedPageFixture(
+    TEST_USER_CREDENTIALS.organizer1,
+    (page) =>
+      selectGroupContext(
+        page,
+        TEST_COMMUNITY_IDS.community1,
+        TEST_GROUP_IDS.community1.empty,
       ),
   ),
   organizerGroupWithoutPaymentsPage: authenticatedPageFixture(
@@ -129,6 +146,7 @@ export const test = base.extend({
   groupsManagerPage: authenticatedPageFixture(
     TEST_USER_CREDENTIALS.groupsManager1,
   ),
+  emptyUserPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.empty),
   member1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member1),
   member2Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member2),
   pending1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.pending1),

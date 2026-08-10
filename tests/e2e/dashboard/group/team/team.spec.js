@@ -1,13 +1,52 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { TEST_USER_IDS, navigateToPath } from "../../../utils.js";
+import {
+  TEST_USER_IDS,
+  expectPaginationNavigation,
+  expectTableColumnsAtViewport,
+  expectTableHeaders,
+  navigateToPath,
+  waitForActionResponse,
+} from "../../../utils.js";
 
 import { ensureGroupViewerRole } from "../helpers.js";
 
 test.describe("group dashboard team view", () => {
-  test("group team page shows seeded roles and last-admin protection", async ({
-    organizerGroupPage,
-  }) => {
+  test("group team table exposes its responsive columns", async ({ organizerGroupPage }) => {
+    // Load the group team dashboard before checking table structure.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
+
+    // Find the group team table.
+    const teamTable = organizerGroupPage.locator("#dashboard-content").getByRole("table");
+
+    // Verify header order and column visibility across dashboard breakpoints.
+    await expectTableHeaders(teamTable, ["Member", "Position", "Role", "Actions"]);
+    await expectTableColumnsAtViewport(
+      organizerGroupPage,
+      teamTable,
+      1024,
+      ["Member", "Role", "Actions"],
+      ["Position"],
+    );
+    await expectTableColumnsAtViewport(
+      organizerGroupPage,
+      teamTable,
+      1280,
+      ["Member", "Position", "Role", "Actions"],
+      [],
+    );
+  });
+
+  test("organizer can move between group team result pages", async ({ organizerGroupPage }) => {
+    // Paginate the seeded team rows with one result per page.
+    await expectPaginationNavigation(
+      organizerGroupPage,
+      "/dashboard/group?tab=team&limit=1&offset=0",
+      "#dashboard-content tbody tr",
+    );
+  });
+
+  test("group team page shows seeded roles and last-admin protection", async ({ organizerGroupPage }) => {
     // Restore the seeded viewer role before checking team permissions.
     await ensureGroupViewerRole(organizerGroupPage, "viewer");
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
@@ -16,12 +55,8 @@ test.describe("group dashboard team view", () => {
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
 
     // Verify group team page shows seeded roles and last-admin protection.
-    await expect(
-      dashboardContent.getByText("Group Team", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      dashboardContent.getByRole("button", { name: "Add member" }),
-    ).toBeEnabled();
+    await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
+    await expect(dashboardContent.getByRole("button", { name: "Add member" })).toBeEnabled();
 
     // Find the admin row.
     const adminRow = dashboardContent.locator("tr", {
@@ -37,22 +72,16 @@ test.describe("group dashboard team view", () => {
     const eventsManagerRow = dashboardContent.locator("tr", {
       hasText: "E2E Events Manager One",
     });
-    await expect(eventsManagerRow.locator('select[name="role"]')).toHaveValue(
-      "events-manager",
-    );
+    await expect(eventsManagerRow.locator('select[name="role"]')).toHaveValue("events-manager");
 
     // Find the viewer row.
     const viewerRow = dashboardContent.locator("tr", {
       hasText: "E2E Group Viewer One",
     });
-    await expect(viewerRow.locator('select[name="role"]')).toHaveValue(
-      "viewer",
-    );
+    await expect(viewerRow.locator('select[name="role"]')).toHaveValue("viewer");
   });
 
-  test("organizer can invite and remove a pending group team member", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can invite and remove a pending group team member", async ({ organizerGroupPage }) => {
     // Load the group team tab before inviting a temporary member.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
 
@@ -60,9 +89,7 @@ test.describe("group dashboard team view", () => {
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
 
     // Verify organizer can invite and remove a pending group team member.
-    await expect(
-      dashboardContent.getByText("Group Team", { exact: true }),
-    ).toBeVisible();
+    await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
 
     // Click Add member.
     await dashboardContent.getByRole("button", { name: "Add member" }).click();
@@ -73,32 +100,25 @@ test.describe("group dashboard team view", () => {
 
     // Find the search input.
     const searchInput = addMemberForm.locator("#search-input");
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes("/dashboard/group/users/search?q=e2e-pending-1") &&
-          response.ok(),
-      ),
-      searchInput.fill("e2e-pending-1"),
-    ]);
+    await waitForActionResponse(organizerGroupPage, () => searchInput.fill("e2e-pending-1"), {
+      method: "GET",
+      urlIncludes: "/dashboard/group/users/search?q=e2e-pending-1",
+    });
 
     // Click E2E Pending One.
     await addMemberForm.getByText("E2E Pending One", { exact: true }).click();
     await addMemberForm.locator("#team-add-role").selectOption("viewer");
 
     // Submit and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/dashboard/group/team/add") &&
-          response.status() === 201,
-      ),
-      addMemberForm.locator("#team-add-submit").click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => addMemberForm.locator("#team-add-submit").click(),
+      {
+        method: "POST",
+        urlIncludes: "/dashboard/group/team/add",
+        status: 201,
+      },
+    );
 
     // Find the pending row.
     const pendingRow = dashboardContent.locator("tr", {
@@ -106,48 +126,31 @@ test.describe("group dashboard team view", () => {
     });
     await expect(pendingRow).toBeVisible();
     await expect(pendingRow).toContainText("Invitation sent");
-    await expect(pendingRow.locator('select[name="role"]')).toHaveValue(
-      "viewer",
-    );
+    await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
 
     // Find the remove button.
-    const removeButton = pendingRow.locator(
-      `#remove-member-${TEST_USER_IDS.pending1}`,
-    );
-    await pendingRow
-      .locator(
-        'summary[aria-label="Open team member actions for E2E Pending One"]',
-      )
-      .click();
+    const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending1}`);
+    await pendingRow.locator('summary[aria-label="Open team member actions for E2E Pending One"]').click();
     await removeButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Are you sure you would like to delete this team member?",
     );
 
     // Click Yes.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/team/${TEST_USER_IDS.pending1}/delete`,
-            ) &&
-          response.ok(),
-      ),
-      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "DELETE",
+        urlIncludes: `/dashboard/group/team/${TEST_USER_IDS.pending1}/delete`,
+      },
+    );
 
     // Assert how many matching elements are shown.
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Pending One" }),
-    ).toHaveCount(0);
+    await expect(dashboardContent.locator("tr", { hasText: "E2E Pending One" })).toHaveCount(0);
   });
 
-  test("organizer can update and restore a group team member role", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can update and restore a group team member role", async ({ organizerGroupPage }) => {
     // Define the seeded team member role that must be restored.
     const seededRole = "viewer";
     const updatedRole = "events-manager";
@@ -167,22 +170,19 @@ test.describe("group dashboard team view", () => {
         .locator('select[name="role"]');
 
       // Verify organizer can update and restore a group team member role.
-      await expect(
-        dashboardContent.getByText("Group Team", { exact: true }),
-      ).toBeVisible();
+      await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
       await expect(currentRoleSelect).toHaveValue(seededRole);
 
       // Submit and wait for the server response.
-      await Promise.all([
-        organizerGroupPage.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().includes("/dashboard/group/team/") &&
-            response.url().endsWith("/role") &&
-            response.ok(),
-        ),
-        currentRoleSelect.selectOption(updatedRole),
-      ]);
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => currentRoleSelect.selectOption(updatedRole),
+        {
+          method: "PUT",
+          urlIncludes: "/dashboard/group/team/",
+          urlEndsWith: "/role",
+        },
+      );
 
       // Assert the field value was updated.
       await expect(currentRoleSelect).toHaveValue(updatedRole);

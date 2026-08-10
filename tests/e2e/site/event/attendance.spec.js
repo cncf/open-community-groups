@@ -2,11 +2,13 @@ import { expect, test } from "../../fixtures.js";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  TEST_APPROVAL_REQUIRED_EVENT,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
+  TEST_OPEN_CHECK_IN_EVENT,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_PAYMENT_EVENT_SLUGS,
@@ -18,6 +20,7 @@ import {
   getLeaveButton,
   navigateToEvent,
   navigateToPath,
+  waitForActionResponse,
   waitForAttendanceState,
 } from "../../utils.js";
 
@@ -81,6 +84,27 @@ const getSignInButton = (page) =>
   page.locator('[data-attendance-role="signin-btn"]');
 
 test.describe("event attendance", () => {
+  test("guest attendance action links to sign in with the event return URL", async ({
+    page,
+  }) => {
+    // Load the public event as a guest.
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+
+    // Find the attendance sign-in action and verify its event return URL.
+    const signInButton = getSignInButton(page);
+    await expect(signInButton).toContainText("Attend event");
+    // The action is a button that navigates through its data-path value.
+    await expect(signInButton).toHaveAttribute(
+      "data-path",
+      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`,
+    );
+  });
+
   test("member can attend and cancel from the public event page", async ({
     member2Page,
   }) => {
@@ -113,23 +137,105 @@ test.describe("event attendance", () => {
     await expect(attendButton).toBeVisible();
 
     // Attend the event and wait for attendance to be created.
-    await Promise.all([
-      member2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.one}/attend`) &&
-          response.ok(),
-      ),
-      attendButton.click(),
-    ]);
+    await waitForActionResponse(member2Page, () => attendButton.click(), {
+      method: "POST",
+      urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/attend`,
+    });
 
     // Verify the member can now cancel attendance.
     await expect(getLeaveButton(member2Page)).toBeVisible();
 
     // Restore the reusable attendance state.
     await cancelAttendance(member2Page, TEST_EVENT_IDS.alpha.one);
+  });
+
+  test("failed attendance changes preserve the current action for retry", async ({
+    member2Page,
+  }) => {
+    // Load a reusable event and restore the member to a non-attendee state.
+    const attendPath = `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.one}/attend`;
+    const leavePath = `**/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.one}/leave`;
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+    await waitForAttendanceState(member2Page);
+    if (await getLeaveButton(member2Page).isVisible()) {
+      await cancelAttendance(member2Page, TEST_EVENT_IDS.alpha.one);
+    }
+
+    try {
+      // Fail registration and verify the attend action returns with explicit feedback.
+      await member2Page.route(attendPath, (route) =>
+        route.fulfill({
+          body: "Temporary attendance failure",
+          contentType: "text/plain",
+          status: 500,
+        }),
+      );
+      await waitForActionResponse(member2Page, () => getAttendButton(member2Page).click(), {
+        method: "POST",
+        status: 500,
+        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/attend`,
+      });
+      await expect(member2Page.locator(".swal2-popup")).toContainText(
+        "Something went wrong registering for this event. Please try again later.",
+      );
+      await expect(getAttendButton(member2Page)).toBeVisible();
+      await expect(getAttendButton(member2Page)).toBeEnabled();
+      await member2Page.getByRole("button", { name: "OK" }).click();
+
+      // Register successfully before exercising failed cancellation.
+      await member2Page.unroute(attendPath);
+      await waitForActionResponse(member2Page, () => getAttendButton(member2Page).click(), {
+        method: "POST",
+        urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/attend`,
+      });
+      await expect(getLeaveButton(member2Page)).toBeVisible();
+      await dismissProfileCompletionPrompt(member2Page);
+
+      // Fail cancellation and verify the durable attendance action is preserved.
+      await member2Page.route(leavePath, (route) =>
+        route.fulfill({
+          body: "Temporary cancellation failure",
+          contentType: "text/plain",
+          status: 500,
+        }),
+      );
+      await getLeaveButton(member2Page).click();
+      await expect(
+        member2Page.getByRole("button", { name: "Yes" }),
+      ).toBeVisible();
+      await waitForActionResponse(
+        member2Page,
+        () => member2Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          status: 500,
+          urlIncludes: `/event/${TEST_EVENT_IDS.alpha.one}/leave`,
+        },
+      );
+      await expect(member2Page.locator(".swal2-popup")).toContainText(
+        "Something went wrong canceling your attendance. Please try again later.",
+      );
+      await expect(getLeaveButton(member2Page)).toBeVisible();
+      await expect(getLeaveButton(member2Page)).toBeEnabled();
+    } finally {
+      await member2Page.unroute(attendPath);
+      await member2Page.unroute(leavePath);
+      if (
+        !member2Page.isClosed() &&
+        (await getLeaveButton(member2Page).isVisible())
+      ) {
+        const confirmation = member2Page.getByRole("button", { name: "OK" });
+        if (await confirmation.isVisible()) {
+          await confirmation.click();
+        }
+        await cancelAttendance(member2Page, TEST_EVENT_IDS.alpha.one);
+      }
+    }
   });
 
   test("member answers registration questions before attending", async ({
@@ -205,24 +311,20 @@ test.describe("event attendance", () => {
         hasText: "Anything the organizers should know?",
       })
       .locator("textarea")
-      .fill("Please share slides afterward.");
+      .fill("Please share slides afterward."      );
 
-    // Submit the answers and wait for attendance to be created.
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(
-              `/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`,
-            ) &&
-          response.ok(),
-      ),
-      registrationModal
-        .locator('[data-attendance-role="registration-modal-submit"]')
-        .click(),
-    ]);
+      // Submit the answers and wait for attendance to be created.
+      await waitForActionResponse(
+        pending2Page,
+        () =>
+          registrationModal
+            .locator('[data-attendance-role="registration-modal-submit"]')
+            .click(),
+        {
+          method: "POST",
+          urlIncludes: `/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`,
+        },
+      );
 
     // Verify the member can now cancel attendance.
     await expect(registrationModal).toBeHidden();
@@ -276,6 +378,203 @@ test.describe("event attendance", () => {
       await expect(getAttendButton(page)).toContainText("Invitation only");
       await expect(getAttendButton(page)).toBeDisabled();
     }
+  });
+
+  test("required registration questions block an empty submission", async ({
+    pending2Page,
+  }) => {
+    // Load the event with required registration questions.
+    await navigateToEvent(
+      pending2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_REGISTRATION_QUESTIONS_EVENT.slug,
+    );
+    await waitForAttendanceState(pending2Page);
+
+    // Restore an unregistered state before opening the form.
+    if (await getLeaveButton(pending2Page).isVisible()) {
+      await cancelAttendance(
+        pending2Page,
+        TEST_REGISTRATION_QUESTIONS_EVENT.id,
+      );
+    }
+
+    // Track attendance requests so browser validation can be verified.
+    let attendanceRequests = 0;
+    pending2Page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        request
+          .url()
+          .includes(`/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`)
+      ) {
+        attendanceRequests += 1;
+      }
+    });
+
+    // Open the questions modal and submit it without required answers.
+    await getAttendButton(pending2Page).click();
+    const registrationModal = pending2Page.locator(
+      '[data-attendance-role="registration-modal"]',
+    );
+    const requiredAnswer = registrationModal
+      .locator("fieldset", {
+        hasText: "What are you hoping to learn from this event?",
+      })
+      .locator("textarea");
+    await registrationModal
+      .locator('[data-attendance-role="registration-modal-submit"]')
+      .click();
+
+    // Verify the form remains open and no attendance request is sent.
+    await expect(registrationModal).toBeVisible();
+    // Native required validation blocks the submit before any request fires.
+    await expect
+      .poll(() => requiredAnswer.evaluate((input) => input.validity.valueMissing))
+      .toBe(true);
+    await expect
+      .poll(() => requiredAnswer.evaluate((input) => input.validationMessage.length))
+      .toBeGreaterThan(0);
+    expect(attendanceRequests).toBe(0);
+
+    // Close the invalid form and verify the modal is dismissed.
+    await registrationModal
+      .locator('[data-attendance-role="registration-modal-cancel"]')
+      .click();
+    await expect(registrationModal).toBeHidden();
+  });
+
+  test("member can request and cancel approval-required attendance", async ({
+    pending1Page,
+  }) => {
+    // Load the seeded approval-required event and resolve the current state.
+    await navigateToEvent(
+      pending1Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_APPROVAL_REQUIRED_EVENT.slug,
+    );
+    await waitForAttendanceState(pending1Page);
+
+    // Clear a pending request left by an interrupted retry.
+    if (await getLeaveButton(pending1Page).isVisible()) {
+      await cancelAttendance(pending1Page, TEST_APPROVAL_REQUIRED_EVENT.id);
+    }
+
+    // Verify the event labels the approval action before submission.
+    const requestInvitationButton = getAttendButton(pending1Page);
+    await expect(requestInvitationButton).toContainText("Request invitation");
+
+    // Submit the invitation request and wait for its pending state.
+    await waitForActionResponse(pending1Page, () => requestInvitationButton.click(), {
+      method: "POST",
+      urlIncludes: `/event/${TEST_APPROVAL_REQUIRED_EVENT.id}/attend`,
+    });
+
+    // Verify the public action explains the organizer-review state.
+    const cancelRequestButton = getLeaveButton(pending1Page);
+    await expect(cancelRequestButton).toContainText("Request pending");
+    await expect(cancelRequestButton).toHaveAttribute(
+      "title",
+      "Your invitation request is waiting for organizer review.",
+    );
+
+    // Cancel the request and restore the reusable no-request fixture.
+    await cancelAttendance(pending1Page, TEST_APPROVAL_REQUIRED_EVENT.id);
+    await expect(getAttendButton(pending1Page)).toContainText(
+      "Request invitation",
+    );
+  });
+
+  test("rejected approval request remains disabled with recovery copy", async ({
+    pending2Page,
+  }) => {
+    // Load the approval event with a seeded rejected request.
+    await navigateToEvent(
+      pending2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_APPROVAL_REQUIRED_EVENT.slug,
+    );
+    await waitForAttendanceState(pending2Page);
+
+    // Verify rejected users cannot submit another invitation request.
+    const rejectedRequestButton = getAttendButton(pending2Page);
+    await expect(rejectedRequestButton).toContainText("Request rejected");
+    await expect(rejectedRequestButton).toBeDisabled();
+    await expect(rejectedRequestButton).toHaveAttribute(
+      "title",
+      "Your invitation request was rejected.",
+    );
+  });
+
+  test("accepted approval request surfaces the offer claim state", async ({
+    member1Page,
+  }) => {
+    // Load the approval event with a seeded accepted request and offer.
+    await navigateToEvent(
+      member1Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_APPROVAL_REQUIRED_EVENT.slug,
+    );
+    await waitForAttendanceState(member1Page);
+
+    // Verify the approved offer routes claiming through the dashboard.
+    const attendButton = getAttendButton(member1Page);
+    await expect(attendButton).toContainText("Confirm RSVP");
+    await expect(attendButton).toHaveAttribute(
+      "data-resume-url",
+      `/dashboard/user?tab=invitations#event-offer-${TEST_APPROVAL_REQUIRED_EVENT.offerId}`,
+    );
+  });
+
+  test("attendee sees the meeting link while the event is live", async ({
+    pending2Page,
+  }) => {
+    // Load the live event where the user is a seeded attendee.
+    await navigateToEvent(
+      pending2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_OPEN_CHECK_IN_EVENT.slug,
+    );
+    await waitForAttendanceState(pending2Page);
+
+    // Verify the meeting details reveal the seeded join instructions.
+    const meetingDetails = pending2Page
+      .locator("[data-meeting-details]")
+      .first();
+    await expect(meetingDetails).toBeVisible();
+    await expect(
+      meetingDetails.getByText(
+        "Use the passcode shared with attendees to join the room.",
+      ),
+    ).toBeVisible();
+
+    // Verify the meeting link exposes the seeded join destination.
+    const meetingLink = meetingDetails.getByRole("link", {
+      name: "Meeting link",
+    });
+    await expect(meetingLink).toBeVisible();
+    await expect(meetingLink).toHaveAttribute(
+      "href",
+      "https://meet.example.com/e2e-open-check-in",
+    );
+
+    // Verify the agenda session exposes its attendee-only join link.
+    const sessionItem = pending2Page.locator("li", {
+      hasText: "Live Check-In Briefing",
+    });
+    const sessionJoinLink = sessionItem.getByRole("link", {
+      name: "Join session",
+    });
+    await expect(sessionJoinLink).toBeVisible();
+    await expect(sessionJoinLink).toHaveAttribute(
+      "href",
+      "https://meet.example.com/e2e-live-briefing",
+    );
   });
 
   test.describe("payment-enabled attendance flows", () => {
@@ -466,17 +765,17 @@ test.describe("event attendance", () => {
             request.method() === "POST" &&
             request.url().includes(`/event/${event.id}/attend`),
         );
-        await Promise.all([
-          member1Page.waitForResponse(
-            (response) =>
-              response.request().method() === "POST" &&
-              response.url().includes(`/event/${event.id}/attend`) &&
-              response.ok(),
-          ),
-          registrationModal
-            .locator('[data-attendance-role="registration-modal-submit"]')
-            .click(),
-        ]);
+        await waitForActionResponse(
+          member1Page,
+          () =>
+            registrationModal
+              .locator('[data-attendance-role="registration-modal-submit"]')
+              .click(),
+          {
+            method: "POST",
+            urlIncludes: `/event/${event.id}/attend`,
+          },
+        );
         const request = await requestPromise;
         const requestData = new URLSearchParams(request.postData() ?? "");
         const answers = JSON.parse(
@@ -648,20 +947,15 @@ test.describe("event attendance", () => {
             .url()
             .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
       );
-      const checkoutResponse = member2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`) &&
-          response.ok(),
-      );
 
       // Submit checkout for the selected free ticket.
-      await getCheckoutButton(member2Page).click();
+      await waitForActionResponse(member2Page, () => getCheckoutButton(member2Page).click(), {
+        method: "POST",
+        urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
+      });
 
       // Wait for checkout request details and the successful response.
-      const [request] = await Promise.all([checkoutRequest, checkoutResponse]);
+      const request = await checkoutRequest;
       const postData = request.postData() ?? "";
 
       // Verify checkout does not send a discount code.
@@ -733,15 +1027,10 @@ test.describe("event attendance", () => {
             request.method() === "POST" &&
             request.url().includes(`/event/${event.id}/attend`),
         );
-        await Promise.all([
-          pending1Page.waitForResponse(
-            (response) =>
-              response.request().method() === "POST" &&
-              response.url().includes(`/event/${event.id}/attend`) &&
-              response.ok(),
-          ),
-          getCheckoutButton(pending1Page).click(),
-        ]);
+        await waitForActionResponse(pending1Page, () => getCheckoutButton(pending1Page).click(), {
+          method: "POST",
+          urlIncludes: `/event/${event.id}/attend`,
+        });
         const requestData = new URLSearchParams(
           (await waitlistRequest).postData() ?? "",
         );
@@ -858,7 +1147,9 @@ test.describe("event attendance", () => {
         );
         await expect(unavailableCard).toContainText("Not on sale");
         await expect(
-          unavailableCard.locator('[data-attendance-role="ticket-type-option"]'),
+          unavailableCard.locator(
+            '[data-attendance-role="ticket-type-option"]',
+          ),
         ).toBeDisabled();
       } finally {
         await member1Page.unroute(availabilityUrl);
@@ -949,17 +1240,11 @@ test.describe("event attendance", () => {
         .fill("EXPIRED15");
 
       // Submit checkout with an expired discount and wait for validation.
-      await Promise.all([
-        member1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response
-              .url()
-              .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`) &&
-            response.status() === 422,
-        ),
-        getCheckoutButton(member1Page).click(),
-      ]);
+      await waitForActionResponse(member1Page, () => getCheckoutButton(member1Page).click(), {
+        method: "POST",
+        status: 422,
+        urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
+      });
 
       // Verify the expired discount keeps the ticket modal open.
       await expect(member1Page.locator(".swal2-popup")).toContainText(
@@ -995,17 +1280,11 @@ test.describe("event attendance", () => {
         .fill("LIMIT5");
 
       // Submit checkout with an exhausted discount and wait for validation.
-      await Promise.all([
-        member1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response
-              .url()
-              .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`) &&
-            response.status() === 422,
-        ),
-        getCheckoutButton(member1Page).click(),
-      ]);
+      await waitForActionResponse(member1Page, () => getCheckoutButton(member1Page).click(), {
+        method: "POST",
+        status: 422,
+        urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
+      });
 
       // Verify the exhausted discount keeps the ticket modal open.
       await expect(member1Page.locator(".swal2-popup")).toContainText(
@@ -1017,6 +1296,7 @@ test.describe("event attendance", () => {
     test("member can resume and cancel a pending checkout from the event page", async ({
       pending2Page,
     }) => {
+      // Allow enough time for the pending checkout resume and cancellation flow.
       test.setTimeout(90_000);
 
       // Load the paid event before starting checkout.
@@ -1054,17 +1334,14 @@ test.describe("event attendance", () => {
       );
 
       // Confirm checkout cancellation and verify ticket selection is restored.
-      await Promise.all([
-        pending2Page.waitForResponse(
-          (response) =>
-            response.request().method() === "DELETE" &&
-            response
-              .url()
-              .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`) &&
-            response.ok(),
-        ),
-        pending2Page.getByRole("button", { name: "Yes" }).click(),
-      ]);
+      await waitForActionResponse(
+        pending2Page,
+        () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "DELETE",
+          urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
+        },
+      );
       await expect(pending2Page.locator(".swal2-popup")).toContainText(
         "Your checkout has been canceled. You can choose a different ticket.",
       );
@@ -1176,19 +1453,14 @@ test.describe("event attendance", () => {
         .fill("Unable to attend");
 
       // Submit the request and verify the reason reaches the refund endpoint.
-      const [refundResponse] = await Promise.all([
-        pending2Page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response
-              .url()
-              .includes(
-                `/event/${TEST_PAYMENT_EVENT_IDS.refunds}/refund-request`,
-              ) &&
-            response.ok(),
-        ),
-        refundModal.getByRole("button", { name: "Request refund" }).click(),
-      ]);
+      const refundResponse = await waitForActionResponse(
+        pending2Page,
+        () => refundModal.getByRole("button", { name: "Request refund" }).click(),
+        {
+          method: "POST",
+          urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.refunds}/refund-request`,
+        },
+      );
       const refundRequestData = new URLSearchParams(
         refundResponse.request().postData(),
       );

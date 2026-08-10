@@ -85,12 +85,17 @@ const setAuditLogDetailsExpanded = (trigger, expanded) => {
  * Closes all audit log detail popovers except the optional open trigger.
  * @param {Document|Element} root - Root element to search from.
  * @param {Element|null} triggerToKeepOpen - Trigger that should remain open.
+ * @param {boolean} suppressHoveredClosed - Whether hovered closed cards should stay hidden.
  * @returns {void}
  */
-const closeAuditLogDetails = (root = document, triggerToKeepOpen = null) => {
+const closeAuditLogDetails = (root = document, triggerToKeepOpen = null, suppressHoveredClosed = false) => {
   root.querySelectorAll(DETAILS_TRIGGER_SELECTOR).forEach((trigger) => {
-    setAuditLogDetailsHoverDisabled(trigger, false);
-    setAuditLogDetailsExpanded(trigger, trigger === triggerToKeepOpen);
+    const expanded = trigger === triggerToKeepOpen;
+    const group = getAuditLogDetailsGroup(trigger);
+    const hoverDisabled = suppressHoveredClosed && !expanded && group?.matches(":hover");
+
+    setAuditLogDetailsHoverDisabled(trigger, Boolean(hoverDisabled));
+    setAuditLogDetailsExpanded(trigger, expanded);
   });
 };
 
@@ -151,7 +156,7 @@ const bindAuditLogGlobalHandlers = () => {
     if (trigger) {
       const isExpanded = trigger.getAttribute("aria-expanded") === "true";
 
-      closeAuditLogDetails(document, isExpanded ? null : trigger);
+      closeAuditLogDetails(document, isExpanded ? null : trigger, true);
       setAuditLogDetailsHoverDisabled(trigger, isExpanded);
       return;
     }
@@ -167,7 +172,7 @@ const bindAuditLogGlobalHandlers = () => {
     }
 
     closeAuditLogFiltersModal();
-    closeAuditLogDetails(document);
+    closeAuditLogDetails(document, null, true);
   });
 };
 

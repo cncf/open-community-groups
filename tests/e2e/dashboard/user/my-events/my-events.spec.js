@@ -9,10 +9,14 @@ import {
   TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
   TEST_REGISTRATION_WINDOW_EVENTS,
+  expectPaginationNavigation,
+  expectTableColumnsAtViewport,
+  expectTableHeaders,
   getAttendButton,
   getLeaveButton,
   navigateToEvent,
   navigateToPath,
+  waitForActionResponse,
   waitForAttendanceState,
 } from "../../../utils.js";
 
@@ -22,15 +26,10 @@ const cancelPublicAttendance = async (page, eventId) => {
   await leaveButton.click();
   await expect(page.getByRole("button", { name: "Yes" })).toBeVisible();
 
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "DELETE" &&
-        response.url().includes(`/event/${eventId}/leave`) &&
-        response.ok(),
-    ),
-    page.getByRole("button", { name: "Yes" }).click(),
-  ]);
+  await waitForActionResponse(page, () => page.getByRole("button", { name: "Yes" }).click(), {
+    method: "DELETE",
+    urlIncludes: `/event/${eventId}/leave`,
+  });
 };
 
 // Fill all seeded registration question types in the visible modal.
@@ -69,6 +68,20 @@ const closeEventActions = async (eventRow) => {
 };
 
 test.describe("user dashboard my events view", () => {
+  test("empty state explains when the user has no upcoming events", async ({
+    emptyUserPage,
+  }) => {
+    // Load My Events for the dedicated user without event participation.
+    await navigateToPath(emptyUserPage, "/dashboard/user?tab=events");
+    const dashboardContent = emptyUserPage.locator("#dashboard-content");
+
+    // Verify the zero count and empty result guidance remain visible.
+    await expect(dashboardContent).toContainText("0 events");
+    await expect(dashboardContent).toContainText(
+      "You don't have any upcoming events yet.",
+    );
+  });
+
   test("my events page lists only upcoming published participation", async ({
     member1Page,
   }) => {
@@ -138,16 +151,14 @@ test.describe("user dashboard my events view", () => {
     );
 
     // Load My Events and wait for the paid row's eligibility check.
-    const eligibilityResponse = organizerGroupPage.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response
-          .url()
-          .includes(`/event/${TEST_PAYMENT_EVENT_IDS.refunds}/enrollment`) &&
-        response.ok(),
+    await waitForActionResponse(
+      organizerGroupPage,
+      () => navigateToPath(organizerGroupPage, "/dashboard/user?tab=events"),
+      {
+        method: "GET",
+        urlIncludes: `/event/${TEST_PAYMENT_EVENT_IDS.refunds}/enrollment`,
+      },
     );
-    await navigateToPath(organizerGroupPage, "/dashboard/user?tab=events");
-    await eligibilityResponse;
 
     const refundEventRow = organizerGroupPage
       .locator("#dashboard-content")
@@ -203,21 +214,14 @@ test.describe("user dashboard my events view", () => {
     });
 
     // Submit the public registration answers.
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(
-              `/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`,
-            ) &&
-          response.ok(),
-      ),
-      publicRegistrationModal
-        .locator('[data-attendance-role="registration-modal-submit"]')
-        .click(),
-    ]);
+    await waitForActionResponse(
+      pending2Page,
+      () => publicRegistrationModal.locator('[data-attendance-role="registration-modal-submit"]').click(),
+      {
+        method: "POST",
+        urlIncludes: `/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`,
+      },
+    );
     await expect(getLeaveButton(pending2Page)).toContainText(
       "Cancel attendance",
     );
@@ -247,21 +251,14 @@ test.describe("user dashboard my events view", () => {
       organizerNote: "Updated through My Events.",
       sessionFormat: "Hands-on workshop",
     });
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/registration-answers`,
-            ) &&
-          response.ok(),
-      ),
-      dashboardRegistrationModal
-        .getByRole("button", { name: "Save answers" })
-        .click(),
-    ]);
+    await waitForActionResponse(
+      pending2Page,
+      () => dashboardRegistrationModal.getByRole("button", { name: "Save answers" }).click(),
+      {
+        method: "PUT",
+        urlIncludes: `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/registration-answers`,
+      },
+    );
     await expect(dashboardRegistrationModal).toBeHidden();
 
     // Reopen the row menu and cancel attendance from My Events.
@@ -272,19 +269,14 @@ test.describe("user dashboard my events view", () => {
     );
 
     // Confirm cancellation and verify the dashboard row disappears.
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attendance`,
-            ) &&
-          response.ok(),
-      ),
-      pending2Page.getByRole("button", { name: "Yes" }).click(),
-    ]);
+    await waitForActionResponse(
+      pending2Page,
+      () => pending2Page.getByRole("button", { name: "Yes" }).click(),
+      {
+        method: "DELETE",
+        urlIncludes: `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attendance`,
+      },
+    );
     await expect(
       dashboardContent.locator("tr", {
         hasText: TEST_REGISTRATION_QUESTIONS_EVENT.name,
@@ -360,4 +352,49 @@ test.describe("user dashboard my events view", () => {
       }),
     ).toBeEnabled();
   });
+});
+test("my events table exposes every column at its responsive breakpoint", async ({
+  member1Page,
+}) => {
+  // Load My Events before checking table structure.
+  await navigateToPath(member1Page, "/dashboard/user?tab=events");
+
+  // Find the events table and its complete ordered header set.
+  const eventsTable = member1Page
+    .locator("#dashboard-content")
+    .getByRole("table");
+  const headers = ["Title", "Location", "Date", "Role", "Status", "Actions"];
+
+  // Verify header order and column visibility across dashboard breakpoints.
+  await expectTableColumnsAtViewport(
+    member1Page,
+    eventsTable,
+    1024,
+    ["Title", "Status / role", "Actions"],
+    ["Location", "Date", "Status"],
+  );
+  await expectTableColumnsAtViewport(
+    member1Page,
+    eventsTable,
+    1280,
+    ["Title", "Date", "Role", "Status", "Actions"],
+    ["Location"],
+  );
+  await expectTableColumnsAtViewport(
+    member1Page,
+    eventsTable,
+    1536,
+    headers,
+    [],
+  );
+  await expectTableHeaders(eventsTable, headers);
+});
+
+test("member can move between event result pages", async ({ member1Page }) => {
+  // Paginate the seeded user-event rows with one result per page.
+  await expectPaginationNavigation(
+    member1Page,
+    "/dashboard/user?tab=events&limit=1&offset=0",
+    "#dashboard-content tbody tr",
+  );
 });

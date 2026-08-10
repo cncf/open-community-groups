@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
+import { waitForActionResponse } from "../utils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +21,10 @@ export const TEST_UPLOAD_ASSET_PATHS = {
   alternateLogo: path.resolve(
     __dirname,
     "../../../ocg-server/static/images/e2e/community-secondary-logo.svg",
+  ),
+  badgeArtwork: path.resolve(
+    __dirname,
+    "../../../ocg-server/static/images/e2e/badges/host.png",
   ),
   banner: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-primary-banner.svg"),
   bannerMobile: path.resolve(
@@ -63,15 +68,15 @@ export const uploadImageField = async (page, fieldName, filePath) => {
       await uploadResponsePromise;
     }
   } else {
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/images") &&
-          response.status() === 201,
-      ),
-      imageField.locator('input[type="file"]').setInputFiles(filePath),
-    ]);
+    await waitForActionResponse(
+      page,
+      () => imageField.locator('input[type="file"]').setInputFiles(filePath),
+      {
+        method: "POST",
+        urlIncludes: "/images",
+        status: 201,
+      },
+    );
   }
 
   await expect(imageField.locator(`input[name="${fieldName}"]`)).toHaveValue(/\/images\//);
@@ -115,15 +120,11 @@ export const uploadGalleryImages = async (page, fieldName, filePaths) => {
   const initialImageCount = await galleryField.locator(`input[name="${fieldName}[]"]`).count();
 
   for (const filePath of filePaths) {
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/images") &&
-          response.status() === 201,
-      ),
-      fileInput.setInputFiles(filePath),
-    ]);
+    await waitForActionResponse(page, () => fileInput.setInputFiles(filePath), {
+      method: "POST",
+      urlIncludes: "/images",
+      status: 201,
+    });
   }
 
   await expect(galleryField.locator(`input[name="${fieldName}[]"]`)).toHaveCount(
