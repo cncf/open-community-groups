@@ -362,6 +362,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::events::update),
         )
         .route(
+            "/financial-work/recovery",
+            put(dashboard::group::refunds::complete_financial_recovery),
+        )
+        .route(
+            "/financial-work/retry",
+            put(dashboard::group::refunds::retry_financial_recovery),
+        )
+        .route(
             "/notifications/{event_id}",
             post(dashboard::group::attendees::send_event_custom_notification),
         )
@@ -510,6 +518,15 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             put(dashboard::user::invitations::reject_group_team_invitation),
         )
         .route("/logs", get(dashboard::user::logs::list_page))
+        .route("/purchases", get(dashboard::user::purchases::list_page))
+        .route(
+            "/purchases/{event_purchase_id}/credit-notes/{event_purchase_credit_note_id}",
+            get(dashboard::user::purchases::credit_note_document),
+        )
+        .route(
+            "/purchases/{event_purchase_id}/invoice",
+            get(dashboard::user::purchases::invoice_document),
+        )
         .route(
             "/session-proposals",
             get(dashboard::user::session_proposals::list_page)

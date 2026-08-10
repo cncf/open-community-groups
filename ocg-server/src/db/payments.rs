@@ -23,12 +23,32 @@ use crate::{
 /// Database operations for payments.
 #[async_trait]
 pub(crate) trait DBPayments {
+    /// Attaches an asynchronously created application fee to its direct-charge purchase.
+    async fn attach_application_fee_to_event_purchase(
+        &self,
+        payment_provider: PaymentProvider,
+        connected_seller_id: &str,
+        provider_charge_id: &str,
+        provider_application_fee_id: &str,
+        amount_minor: i64,
+    ) -> Result<()>;
+
     /// Adds the provider checkout session details to a pending purchase.
     async fn attach_checkout_session_to_event_purchase(
         &self,
         event_purchase_id: Uuid,
         payment_provider: PaymentProvider,
         checkout_session: &CheckoutSession,
+    ) -> Result<()>;
+
+    /// Adds a paid invoice and current provider URLs to its purchase.
+    async fn attach_invoice_to_event_purchase(
+        &self,
+        event_purchase_id: Uuid,
+        connected_seller_id: &str,
+        provider_invoice_id: &str,
+        provider_invoice_hosted_url: &str,
+        provider_invoice_pdf_url: Option<String>,
     ) -> Result<()>;
 
     /// Cancels an attendee's active pending checkout.
@@ -40,11 +60,35 @@ pub(crate) trait DBPayments {
         payment_provider: Option<PaymentProvider>,
     ) -> Result<()>;
 
+    /// Claims the next due application-fee adjustment.
+    async fn claim_event_purchase_application_fee_adjustment(
+        &self,
+        payment_provider: PaymentProvider,
+    ) -> Result<Option<ClaimedEventPurchaseApplicationFeeAdjustment>>;
+
+    /// Claims the next due credit note.
+    async fn claim_event_purchase_credit_note(
+        &self,
+        payment_provider: PaymentProvider,
+    ) -> Result<Option<ClaimedEventPurchaseCreditNote>>;
+
     /// Claims the next refund ready for the configured provider.
     async fn claim_event_purchase_refund(
         &self,
         payment_provider: PaymentProvider,
     ) -> Result<Option<ClaimedEventPurchaseRefund>>;
+
+    /// Completes an application-fee adjustment resolved outside OCG.
+    async fn complete_event_purchase_application_fee_adjustment_recovery(
+        &self,
+        input: &CompleteEventPurchaseFinancialRecoveryInput,
+    ) -> Result<()>;
+
+    /// Completes a credit note issued outside OCG.
+    async fn complete_event_purchase_credit_note_recovery(
+        &self,
+        input: &CompleteEventPurchaseFinancialRecoveryInput,
+    ) -> Result<()>;
 
     /// Completes an externally resolved terminal provider refund.
     async fn complete_event_purchase_refund_recovery(
@@ -62,6 +106,7 @@ pub(crate) trait DBPayments {
     async fn expire_event_purchase_for_checkout_session(
         &self,
         payment_provider: PaymentProvider,
+        provider_object_account_id: String,
         provider_session_id: &str,
     ) -> Result<()>;
 
@@ -93,6 +138,14 @@ pub(crate) trait DBPayments {
         event_purchase_id: Uuid,
     ) -> Result<EventPurchaseSummary>;
 
+    /// Resolves an attendee-owned invoice or credit note through provider scope.
+    async fn get_user_purchase_document_context(
+        &self,
+        user_id: Uuid,
+        event_purchase_id: Uuid,
+        event_purchase_credit_note_id: Option<Uuid>,
+    ) -> Result<Option<UserPurchaseDocumentContext>>;
+
     /// Prepares a checkout purchase for an attendee ticket purchase.
     async fn prepare_event_checkout_purchase(
         &self,
@@ -112,9 +165,7 @@ pub(crate) trait DBPayments {
     /// Reconciles a provider-backed purchase by checkout session id.
     async fn reconcile_event_purchase_for_checkout_session(
         &self,
-        payment_provider: PaymentProvider,
-        provider_session_id: &str,
-        provider_payment_reference: Option<String>,
+        input: &ReconcileEventPurchaseForCheckoutSessionInput,
     ) -> Result<ReconcileEventPurchaseResult>;
 
     /// Reconciles one event with a due enrollment reservation.
@@ -122,6 +173,40 @@ pub(crate) trait DBPayments {
         &self,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<Option<EventEnrollmentReconciliationOutcome>>;
+
+    /// Releases a failed application-fee adjustment claim for retry.
+    async fn record_event_purchase_application_fee_adjustment_failure(
+        &self,
+        adjustment_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
+    ) -> Result<()>;
+
+    /// Records a completed provider application-fee refund.
+    async fn record_event_purchase_application_fee_adjustment_succeeded(
+        &self,
+        adjustment_id: Uuid,
+        claim_id: Uuid,
+        provider_application_fee_refund_id: String,
+    ) -> Result<()>;
+
+    /// Releases a failed credit-note claim for retry.
+    async fn record_event_purchase_credit_note_failure(
+        &self,
+        credit_note_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
+    ) -> Result<()>;
+
+    /// Records an issued provider credit note and current document URLs.
+    async fn record_event_purchase_credit_note_succeeded(
+        &self,
+        credit_note_id: Uuid,
+        claim_id: Uuid,
+        provider_credit_note_id: String,
+        provider_hosted_url: Option<String>,
+        provider_pdf_url: Option<String>,
+    ) -> Result<()>;
 
     /// Records an in-progress provider refund for the expected attempt.
     async fn record_event_purchase_refund_pending(
@@ -178,6 +263,20 @@ pub(crate) trait DBPayments {
         notification_template_data: serde_json::Value,
     ) -> Result<()>;
 
+    /// Requeues an exhausted application-fee adjustment.
+    async fn requeue_event_purchase_application_fee_adjustment(
+        &self,
+        group_id: Uuid,
+        adjustment_id: Uuid,
+    ) -> Result<()>;
+
+    /// Requeues an exhausted credit note.
+    async fn requeue_event_purchase_credit_note(
+        &self,
+        group_id: Uuid,
+        credit_note_id: Uuid,
+    ) -> Result<()>;
+
     /// Requeues a retryable refund after an administrator requests another attempt.
     async fn requeue_event_purchase_refund(
         &self,
@@ -194,6 +293,29 @@ impl<T> DBPayments for T
 where
     T: PgExecutor + Send + Sync,
 {
+    /// [`DBPayments::attach_application_fee_to_event_purchase`].
+    #[instrument(skip(self), err)]
+    async fn attach_application_fee_to_event_purchase(
+        &self,
+        payment_provider: PaymentProvider,
+        connected_seller_id: &str,
+        provider_charge_id: &str,
+        provider_application_fee_id: &str,
+        amount_minor: i64,
+    ) -> Result<()> {
+        self.execute(
+            "select attach_application_fee_to_event_purchase($1::text, $2::text, $3::text, $4::text, $5::bigint)",
+            &[
+                &payment_provider.to_string(),
+                &connected_seller_id,
+                &provider_charge_id,
+                &provider_application_fee_id,
+                &amount_minor,
+            ],
+        )
+        .await
+    }
+
     /// [`DBPayments::attach_checkout_session_to_event_purchase`].
     #[instrument(skip(self, checkout_session), err)]
     async fn attach_checkout_session_to_event_purchase(
@@ -208,14 +330,55 @@ where
                 $1::uuid,
                 $2::text,
                 $3::text,
-                $4::text
+                $4::text,
+                $5::text,
+                $6::text,
+                $7::text,
+                $8::text,
+                $9::text
             )
             ",
             &[
                 &event_purchase_id,
                 &payment_provider.to_string(),
+                &checkout_session.provider_object_account_id,
                 &checkout_session.provider_session_id,
                 &checkout_session.redirect_url,
+                &checkout_session.provider_tax_location_id,
+                &checkout_session.performance_location_fingerprint,
+                &checkout_session.provider_tax_product_id,
+                &checkout_session.product_fingerprint,
+            ],
+        )
+        .await
+    }
+
+    /// [`DBPayments::attach_invoice_to_event_purchase`].
+    #[instrument(skip(self), err)]
+    async fn attach_invoice_to_event_purchase(
+        &self,
+        event_purchase_id: Uuid,
+        connected_seller_id: &str,
+        provider_invoice_id: &str,
+        provider_invoice_hosted_url: &str,
+        provider_invoice_pdf_url: Option<String>,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select attach_invoice_to_event_purchase(
+                $1::uuid,
+                $2::text,
+                $3::text,
+                $4::text,
+                $5::text
+            )
+            ",
+            &[
+                &event_purchase_id,
+                &connected_seller_id,
+                &provider_invoice_id,
+                &provider_invoice_hosted_url,
+                &provider_invoice_pdf_url,
             ],
         )
         .await
@@ -242,6 +405,32 @@ where
         .await
     }
 
+    /// [`DBPayments::claim_event_purchase_application_fee_adjustment`].
+    #[instrument(skip(self), err)]
+    async fn claim_event_purchase_application_fee_adjustment(
+        &self,
+        payment_provider: PaymentProvider,
+    ) -> Result<Option<ClaimedEventPurchaseApplicationFeeAdjustment>> {
+        self.fetch_json_opt(
+            "select claim_event_purchase_application_fee_adjustment($1::text)",
+            &[&payment_provider.to_string()],
+        )
+        .await
+    }
+
+    /// [`DBPayments::claim_event_purchase_credit_note`].
+    #[instrument(skip(self), err)]
+    async fn claim_event_purchase_credit_note(
+        &self,
+        payment_provider: PaymentProvider,
+    ) -> Result<Option<ClaimedEventPurchaseCreditNote>> {
+        self.fetch_json_opt(
+            "select claim_event_purchase_credit_note($1::text)",
+            &[&payment_provider.to_string()],
+        )
+        .await
+    }
+
     /// [`DBPayments::claim_event_purchase_refund`].
     #[instrument(skip(self), err)]
     async fn claim_event_purchase_refund(
@@ -251,6 +440,64 @@ where
         self.fetch_json_opt(
             "select claim_event_purchase_refund($1::text)",
             &[&payment_provider.to_string()],
+        )
+        .await
+    }
+
+    /// [`DBPayments::complete_event_purchase_application_fee_adjustment_recovery`].
+    #[instrument(skip(self, input), err)]
+    async fn complete_event_purchase_application_fee_adjustment_recovery(
+        &self,
+        input: &CompleteEventPurchaseFinancialRecoveryInput,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select complete_event_purchase_application_fee_adjustment_recovery(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::text,
+                $5::text,
+                $6::text
+            )
+            ",
+            &[
+                &input.actor_user_id,
+                &input.group_id,
+                &input.work_id,
+                &input.provider_object_id,
+                &input.recovery_reference,
+                &input.recovery_note,
+            ],
+        )
+        .await
+    }
+
+    /// [`DBPayments::complete_event_purchase_credit_note_recovery`].
+    #[instrument(skip(self, input), err)]
+    async fn complete_event_purchase_credit_note_recovery(
+        &self,
+        input: &CompleteEventPurchaseFinancialRecoveryInput,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select complete_event_purchase_credit_note_recovery(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::text,
+                $5::text,
+                $6::text
+            )
+            ",
+            &[
+                &input.actor_user_id,
+                &input.group_id,
+                &input.work_id,
+                &input.provider_object_id,
+                &input.recovery_reference,
+                &input.recovery_note,
+            ],
         )
         .await
     }
@@ -304,11 +551,16 @@ where
     async fn expire_event_purchase_for_checkout_session(
         &self,
         payment_provider: PaymentProvider,
+        provider_object_account_id: String,
         provider_session_id: &str,
     ) -> Result<()> {
         self.execute(
-            "select expire_event_purchase_for_checkout_session($1::text, $2::text)",
-            &[&payment_provider.to_string(), &provider_session_id],
+            "select expire_event_purchase_for_checkout_session($1::text, $2::text, $3::text)",
+            &[
+                &payment_provider.to_string(),
+                &provider_object_account_id,
+                &provider_session_id,
+            ],
         )
         .await
     }
@@ -381,6 +633,21 @@ where
         .await
     }
 
+    /// [`DBPayments::get_user_purchase_document_context`].
+    #[instrument(skip(self), err)]
+    async fn get_user_purchase_document_context(
+        &self,
+        user_id: Uuid,
+        event_purchase_id: Uuid,
+        event_purchase_credit_note_id: Option<Uuid>,
+    ) -> Result<Option<UserPurchaseDocumentContext>> {
+        self.fetch_json_opt(
+            "select get_user_purchase_document_context($1::uuid, $2::uuid, $3::uuid)",
+            &[&user_id, &event_purchase_id, &event_purchase_credit_note_id],
+        )
+        .await
+    }
+
     /// [`DBPayments::prepare_event_checkout_purchase`].
     #[instrument(skip(self, input), err)]
     async fn prepare_event_checkout_purchase(
@@ -440,9 +707,7 @@ where
     #[instrument(skip(self), err)]
     async fn reconcile_event_purchase_for_checkout_session(
         &self,
-        payment_provider: PaymentProvider,
-        provider_session_id: &str,
-        provider_payment_reference: Option<String>,
+        input: &ReconcileEventPurchaseForCheckoutSessionInput,
     ) -> Result<ReconcileEventPurchaseResult> {
         let result: ReconcileEventPurchaseForCheckoutSessionOutput = self
             .fetch_json_one(
@@ -450,13 +715,23 @@ where
                 select reconcile_event_purchase_for_checkout_session(
                     $1::text,
                     $2::text,
-                    $3::text
+                    $3::text,
+                    $4::text,
+                    $5::text,
+                    $6::bigint,
+                    $7::bigint,
+                    $8::text
                 )
                 ",
                 &[
-                    &payment_provider.to_string(),
-                    &provider_session_id,
-                    &provider_payment_reference,
+                    &input.payment_provider.to_string(),
+                    &input.provider_object_account_id,
+                    &input.provider_session_id,
+                    &input.provider_payment_reference,
+                    &input.provider_charge_id,
+                    &input.provider_total_minor,
+                    &input.tax_amount_minor,
+                    &input.provider_application_fee_id,
                 ],
             )
             .await?;
@@ -473,6 +748,78 @@ where
         self.fetch_json_opt(
             "select reconcile_next_event_enrollment($1::text)",
             &[&payment_provider.map(|provider| provider.to_string())],
+        )
+        .await
+    }
+
+    /// [`DBPayments::record_event_purchase_application_fee_adjustment_failure`].
+    #[instrument(skip(self, failure_message), err)]
+    async fn record_event_purchase_application_fee_adjustment_failure(
+        &self,
+        adjustment_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
+    ) -> Result<()> {
+        self.execute(
+            "select record_event_purchase_application_fee_adjustment_failure($1::uuid, $2::uuid, $3::text)",
+            &[&adjustment_id, &claim_id, &failure_message],
+        )
+        .await
+    }
+
+    /// [`DBPayments::record_event_purchase_application_fee_adjustment_succeeded`].
+    #[instrument(skip(self), err)]
+    async fn record_event_purchase_application_fee_adjustment_succeeded(
+        &self,
+        adjustment_id: Uuid,
+        claim_id: Uuid,
+        provider_application_fee_refund_id: String,
+    ) -> Result<()> {
+        self.execute(
+            "select record_event_purchase_application_fee_adjustment_succeeded($1::uuid, $2::uuid, $3::text)",
+            &[
+                &adjustment_id,
+                &claim_id,
+                &provider_application_fee_refund_id,
+            ],
+        )
+        .await
+    }
+
+    /// [`DBPayments::record_event_purchase_credit_note_failure`].
+    #[instrument(skip(self, failure_message), err)]
+    async fn record_event_purchase_credit_note_failure(
+        &self,
+        credit_note_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
+    ) -> Result<()> {
+        self.execute(
+            "select record_event_purchase_credit_note_failure($1::uuid, $2::uuid, $3::text)",
+            &[&credit_note_id, &claim_id, &failure_message],
+        )
+        .await
+    }
+
+    /// [`DBPayments::record_event_purchase_credit_note_succeeded`].
+    #[instrument(skip(self), err)]
+    async fn record_event_purchase_credit_note_succeeded(
+        &self,
+        credit_note_id: Uuid,
+        claim_id: Uuid,
+        provider_credit_note_id: String,
+        provider_hosted_url: Option<String>,
+        provider_pdf_url: Option<String>,
+    ) -> Result<()> {
+        self.execute(
+            "select record_event_purchase_credit_note_succeeded($1::uuid, $2::uuid, $3::text, $4::text, $5::text)",
+            &[
+                &credit_note_id,
+                &claim_id,
+                &provider_credit_note_id,
+                &provider_hosted_url,
+                &provider_pdf_url,
+            ],
         )
         .await
     }
@@ -611,6 +958,34 @@ where
         .await
     }
 
+    /// [`DBPayments::requeue_event_purchase_application_fee_adjustment`].
+    #[instrument(skip(self), err)]
+    async fn requeue_event_purchase_application_fee_adjustment(
+        &self,
+        group_id: Uuid,
+        adjustment_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select requeue_event_purchase_application_fee_adjustment($1::uuid, $2::uuid)",
+            &[&group_id, &adjustment_id],
+        )
+        .await
+    }
+
+    /// [`DBPayments::requeue_event_purchase_credit_note`].
+    #[instrument(skip(self), err)]
+    async fn requeue_event_purchase_credit_note(
+        &self,
+        group_id: Uuid,
+        credit_note_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select requeue_event_purchase_credit_note($1::uuid, $2::uuid)",
+            &[&group_id, &credit_note_id],
+        )
+        .await
+    }
+
     /// [`DBPayments::requeue_event_purchase_refund`].
     #[instrument(skip(self), err)]
     async fn requeue_event_purchase_refund(
@@ -635,62 +1010,61 @@ where
 
 // Types.
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "snake_case", tag = "outcome")]
-enum ReconcileEventPurchaseForCheckoutSessionOutput {
-    /// Purchase completed successfully.
-    Completed {
-        /// Community that owns the event.
-        community_id: Uuid,
-        /// Purchased event identifier.
-        event_id: Uuid,
-        /// Purchasing user identifier.
-        user_id: Uuid,
-    },
-    /// Purchase was already reconciled.
-    Noop,
-    /// Purchase cannot be fulfilled and its refund was durably queued.
-    RefundQueued,
+/// Claimed application-fee adjustment with immutable provider context.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ClaimedEventPurchaseApplicationFeeAdjustment {
+    /// Amount returned to the connected seller, in minor units.
+    pub amount_minor: i64,
+    /// Current worker claim identifier.
+    pub claim_id: Uuid,
+    /// Connected seller that owns the direct charge.
+    pub connected_seller_id: String,
+    /// Durable adjustment identifier.
+    pub event_purchase_application_fee_adjustment_id: Uuid,
+    /// Purchase whose application fee is adjusted.
+    pub event_purchase_id: Uuid,
+    /// Stable provider idempotency key.
+    pub idempotency_key: String,
+    /// Adjustment reason.
+    pub kind: String,
+    /// Provider application fee being refunded.
+    pub provider_application_fee_id: String,
 }
 
-/// Result of reconciling a provider-backed purchase completion webhook.
-#[derive(Debug, Clone)]
-pub(crate) enum ReconcileEventPurchaseResult {
-    /// The purchase was completed successfully.
-    Completed(CompletedEventPurchase),
-    /// No local work remains for this webhook.
-    Noop,
-    /// The purchase can no longer be fulfilled and its refund is queued.
-    RefundQueued,
-}
-
-impl From<ReconcileEventPurchaseForCheckoutSessionOutput> for ReconcileEventPurchaseResult {
-    fn from(value: ReconcileEventPurchaseForCheckoutSessionOutput) -> Self {
-        match value {
-            ReconcileEventPurchaseForCheckoutSessionOutput::Completed {
-                community_id,
-                event_id,
-                user_id,
-            } => Self::Completed(CompletedEventPurchase {
-                community_id,
-                event_id,
-                user_id,
-            }),
-            ReconcileEventPurchaseForCheckoutSessionOutput::Noop => Self::Noop,
-            ReconcileEventPurchaseForCheckoutSessionOutput::RefundQueued => Self::RefundQueued,
-        }
-    }
+/// Claimed credit-note creation with immutable invoice and refund context.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ClaimedEventPurchaseCreditNote {
+    /// Gross credit-note amount, in minor units.
+    pub amount_minor: i64,
+    /// Current worker claim identifier.
+    pub claim_id: Uuid,
+    /// Connected seller that owns the invoice and refund.
+    pub connected_seller_id: String,
+    /// Durable credit-note identifier.
+    pub event_purchase_credit_note_id: Uuid,
+    /// Purchase receiving the credit note.
+    pub event_purchase_id: Uuid,
+    /// Customer refund linked to the credit note.
+    pub event_purchase_refund_id: Uuid,
+    /// Stable provider idempotency key.
+    pub idempotency_key: String,
+    /// Provider invoice receiving the credit note.
+    pub provider_invoice_id: String,
+    /// Existing provider refund linked without creating another refund.
+    pub provider_refund_id: String,
+    /// Expected tax amount in the full credit.
+    pub tax_amount_minor: i64,
 }
 
 /// Claimed refund work with the context required for atomic notification handoff.
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct ClaimedEventPurchaseRefund {
+    /// Connected account that owns a direct charge.
+    pub connected_seller_id: String,
     /// Community identifier.
     pub community_id: Uuid,
     /// Event identifier.
     pub event_id: Uuid,
-    /// Platform fee snapshotted on the purchase, in minor units.
-    pub platform_fee_amount_minor: i64,
     /// Durable provider refund state.
     #[serde(flatten)]
     pub refund: EventPurchaseRefund,
@@ -719,6 +1093,23 @@ pub(crate) struct CompletedEventPurchase {
     pub event_id: Uuid,
     /// User identifier.
     pub user_id: Uuid,
+}
+
+/// Input used to complete exhausted financial work outside OCG.
+#[derive(Debug, Clone)]
+pub(crate) struct CompleteEventPurchaseFinancialRecoveryInput {
+    /// Operator completing the recovery.
+    pub actor_user_id: Uuid,
+    /// Group that owns the purchase.
+    pub group_id: Uuid,
+    /// Provider object created outside OCG.
+    pub provider_object_id: String,
+    /// Operator note describing the recovery evidence.
+    pub recovery_note: String,
+    /// External reference proving the recovery.
+    pub recovery_reference: String,
+    /// Durable financial-work identifier.
+    pub work_id: Uuid,
 }
 
 /// Input used to complete an externally resolved refund recovery.
@@ -898,6 +1289,86 @@ impl From<PrepareEventCheckoutPurchaseOutput> for PrepareEventCheckoutPurchaseRe
             PrepareEventCheckoutPurchaseOutput::Prepared(checkout) => Self::Prepared(checkout),
         }
     }
+}
+
+/// Provider completion context used to reconcile a checkout purchase.
+#[derive(Debug, Clone)]
+pub(crate) struct ReconcileEventPurchaseForCheckoutSessionInput {
+    /// Payments provider that owns the completed Checkout Session.
+    pub payment_provider: PaymentProvider,
+    /// Charge created by the Checkout `PaymentIntent`.
+    pub provider_charge_id: String,
+    /// Connected account that owns the direct-charge objects.
+    pub provider_object_account_id: String,
+    /// `PaymentIntent` created by Checkout.
+    pub provider_payment_reference: String,
+    /// Completed Checkout Session identifier.
+    pub provider_session_id: String,
+    /// Total amount collected from the attendee.
+    pub provider_total_minor: i64,
+    /// Tax included in or added to the ticket line.
+    pub tax_amount_minor: i64,
+
+    /// Asynchronously created application fee, when already available.
+    pub provider_application_fee_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "outcome")]
+enum ReconcileEventPurchaseForCheckoutSessionOutput {
+    /// Purchase completed successfully.
+    Completed {
+        /// Community that owns the event.
+        community_id: Uuid,
+        /// Purchased event identifier.
+        event_id: Uuid,
+        /// Purchasing user identifier.
+        user_id: Uuid,
+    },
+    /// Purchase was already reconciled.
+    Noop,
+    /// Purchase cannot be fulfilled and its refund was durably queued.
+    RefundQueued,
+}
+
+/// Result of reconciling a provider-backed purchase completion webhook.
+#[derive(Debug, Clone)]
+pub(crate) enum ReconcileEventPurchaseResult {
+    /// The purchase was completed successfully.
+    Completed(CompletedEventPurchase),
+    /// No local work remains for this webhook.
+    Noop,
+    /// The purchase can no longer be fulfilled and its refund is queued.
+    RefundQueued,
+}
+
+impl From<ReconcileEventPurchaseForCheckoutSessionOutput> for ReconcileEventPurchaseResult {
+    fn from(value: ReconcileEventPurchaseForCheckoutSessionOutput) -> Self {
+        match value {
+            ReconcileEventPurchaseForCheckoutSessionOutput::Completed {
+                community_id,
+                event_id,
+                user_id,
+            } => Self::Completed(CompletedEventPurchase {
+                community_id,
+                event_id,
+                user_id,
+            }),
+            ReconcileEventPurchaseForCheckoutSessionOutput::Noop => Self::Noop,
+            ReconcileEventPurchaseForCheckoutSessionOutput::RefundQueued => Self::RefundQueued,
+        }
+    }
+}
+
+/// Provider scope for an attendee-owned financial document.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub(crate) struct UserPurchaseDocumentContext {
+    /// Connected seller that owns the invoice or credit note.
+    pub connected_seller_id: String,
+    /// Configured provider that owns the document.
+    pub payment_provider: PaymentProvider,
+    /// Durable provider invoice or credit-note identifier.
+    pub provider_document_id: String,
 }
 
 #[cfg(test)]

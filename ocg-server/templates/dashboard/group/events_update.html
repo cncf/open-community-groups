@@ -714,7 +714,7 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Location search -#}
         <div class="col-span-full">
-          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}  {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}  {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}  {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}  {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
+          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}  {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}  {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}  {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}  {% if let Some(venue_state) = &event.venue_state %}initial-state="{{ venue_state }}"{% endif %}  {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %}  {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %}  {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
           </location-search-field>
         </div>
         {# End location search -#}
@@ -888,6 +888,48 @@
                 </select>
               </div>
               <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
+            </div>
+
+            <div class="col-span-full 2xl:col-span-3">
+              <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
+              <div class="mt-2">
+                <select id="tax_behavior"
+                        name="tax_behavior"
+                        class="select-primary"
+                        {% if ticketing_read_only %}disabled{% endif %}>
+                  <option value="inclusive"
+                          {% if !self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax included in ticket price</option>
+                  <option value="exclusive"
+                          {% if self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax added at Checkout</option>
+                </select>
+                {% if ticketing_read_only -%}
+                  <input type="hidden"
+                         name="tax_behavior"
+                         value="{% if self.uses_exclusive_ticket_tax() %}exclusive{% else %}inclusive{% endif %}">
+                {% endif -%}
+              </div>
+              <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
+            </div>
+
+            <div class="col-span-full 2xl:col-span-3">
+              <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+              <div class="mt-2">
+                <select id="tax_calculation_mode"
+                        name="tax_calculation_mode"
+                        class="select-primary"
+                        {% if ticketing_read_only %}disabled{% endif %}>
+                  <option value="automatic"
+                          {% if !self.uses_manual_ticket_tax() %}selected{% endif %}>Automatic Stripe Tax</option>
+                  <option value="manual"
+                          {% if self.uses_manual_ticket_tax() %}selected{% endif %}>Sponsor-approved fixed rates</option>
+                </select>
+                {% if ticketing_read_only -%}
+                  <input type="hidden"
+                         name="tax_calculation_mode"
+                         value="{% if self.uses_manual_ticket_tax() %}manual{% else %}automatic{% endif %}">
+                {% endif -%}
+              </div>
+              <p class="form-legend">Manual rates must match this fiscal sponsor, currency, venue, and tax display.</p>
             </div>
           </div>
         </div>

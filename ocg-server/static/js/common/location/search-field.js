@@ -230,6 +230,31 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
+   * Replaces every configured location field from an external location payload.
+   * @param {Object} location Location values to apply.
+   * @returns {void}
+   */
+  setLocationFields(location = {}) {
+    const normalizedLocation = {
+      country: location.country || "",
+      countryCode: location.countryCode || "",
+      latitude: location.latitude ?? "",
+      longitude: location.longitude ?? "",
+      state: location.state || "",
+      venueAddress: location.venueAddress || "",
+      venueCity: location.venueCity || "",
+      venueName: location.venueName || "",
+      venueZipCode: location.venueZipCode || "",
+    };
+
+    this._setInternalLocationValues(normalizedLocation);
+
+    for (const update of this._getExternalFieldUpdates(normalizedLocation)) {
+      setTextValue(update.fieldId, update.value);
+    }
+  }
+
+  /**
    * Clears the current query and results and restores the focus to the input.
    * @private
    */

@@ -45,7 +45,6 @@ async fn process_next_refund_creates_missing_provider_refund_and_finalizes_succe
     let mut claimed_refund = sample_refund(claim_id, purchase_id, refund_id);
     claimed_refund.community_id = community_id;
     claimed_refund.event_id = event_id;
-    claimed_refund.platform_fee_amount_minor = 250;
     let mut succeeded_refund = claimed_refund.refund.clone();
     succeeded_refund.provider_refund_id = Some("re_worker".to_string());
     succeeded_refund.provider_refunded_at = Some(Utc::now());
@@ -99,7 +98,7 @@ async fn process_next_refund_creates_missing_provider_refund_and_finalizes_succe
                 && input.idempotency_key == format!("event-purchase-refund-{purchase_id}")
                 && input.provider_payment_reference == "pi_worker"
                 && input.purchase_id == purchase_id
-                && input.refund_application_fee
+                && input.connected_seller_id == "acct_worker"
         })
         .times(1)
         .return_once(|_| {
@@ -1068,8 +1067,8 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
 fn sample_refund(claim_id: Uuid, purchase_id: Uuid, refund_id: Uuid) -> ClaimedEventPurchaseRefund {
     ClaimedEventPurchaseRefund {
         community_id: Uuid::new_v4(),
+        connected_seller_id: "acct_worker".to_string(),
         event_id: Uuid::new_v4(),
-        platform_fee_amount_minor: 0,
         refund: EventPurchaseRefund {
             amount_minor: 2_500,
             currency_code: "USD".to_string(),

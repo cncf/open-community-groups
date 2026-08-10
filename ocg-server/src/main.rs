@@ -35,7 +35,7 @@ use crate::{
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
         payments::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
-            start_refund_workers,
+            start_financial_workers, start_refund_workers,
         },
     },
 };
@@ -130,9 +130,15 @@ async fn main() -> Result<()> {
         &background_tasks.cancellation_token,
         cfg.payments.as_ref().map(PaymentsConfig::provider),
     );
-    let refund_workers_db = db.clone() as DynDB;
+    let payments_workers_db = db.clone() as DynDB;
+    start_financial_workers(
+        &payments_workers_db,
+        payments_provider.as_ref(),
+        &background_tasks.task_tracker,
+        &background_tasks.cancellation_token,
+    );
     start_refund_workers(
-        &refund_workers_db,
+        &payments_workers_db,
         notifications_manager.clone(),
         payments_provider.as_ref(),
         cfg.server.clone(),

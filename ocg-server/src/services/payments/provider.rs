@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 use crate::{
     config::PaymentsConfig,
-    types::payments::{GroupPaymentRecipient, PaymentProvider},
+    types::payments::{
+        FiscalSponsorSeller, ManualTaxComponent, PaymentProvider, TicketTaxBehavior,
+        TicketTaxCalculationMode, TicketVenue,
+    },
 };
 
 pub(super) mod stripe;
@@ -32,15 +35,43 @@ pub(crate) trait PaymentsProvider {
     /// Finds an existing provider refund for a purchase when retrying.
     async fn find_refund(&self, input: &FindRefundInput) -> Result<Option<RefundPaymentResult>>;
 
+    /// Retrieves authoritative financial fields for a completed Checkout Session.
+    async fn get_checkout_financial_context(
+        &self,
+        input: &GetCheckoutFinancialContextInput,
+    ) -> Result<CheckoutFinancialContext>;
+
+    /// Retrieves the current account-scoped URL for an issued financial document.
+    async fn get_financial_document(
+        &self,
+        input: &GetFinancialDocumentInput,
+    ) -> Result<FinancialDocument>;
+
     /// Returns the configured provider.
     fn provider(&self) -> PaymentProvider;
+
+    /// Finds or creates an idempotent application-fee refund.
+    async fn reconcile_application_fee_adjustment(
+        &self,
+        input: &ApplicationFeeAdjustmentInput,
+    ) -> Result<ApplicationFeeAdjustmentResult>;
+
+    /// Finds or creates an idempotent credit note linked to an existing refund.
+    async fn reconcile_credit_note(&self, input: &CreditNoteInput) -> Result<CreditNoteResult>;
 
     /// Refunds a completed payment.
     async fn refund_payment(&self, input: &RefundPaymentInput) -> Result<RefundPaymentResult>;
 
+    /// Validates a fiscal sponsor before paid ticket configuration is persisted.
+    async fn validate_fiscal_sponsor(
+        &self,
+        input: &FiscalSponsorReadinessInput,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError>;
+
     /// Verifies and parses a webhook payload.
     fn verify_and_parse_webhook(
         &self,
+        endpoint: PaymentsWebhookEndpoint,
         headers: &HeaderMap,
         body: &str,
     ) -> Result<PaymentsWebhookEvent>;
@@ -49,13 +80,64 @@ pub(crate) trait PaymentsProvider {
 /// Shared payments provider trait object.
 pub(crate) type DynPaymentsProvider = Arc<dyn PaymentsProvider + Send + Sync>;
 
-/// Result returned after creating a checkout session.
+/// Request used to return part or all of an application fee to a seller.
+#[derive(Clone, Debug)]
+pub(crate) struct ApplicationFeeAdjustmentInput {
+    /// Amount returned to the seller, in minor units.
+    pub amount_minor: i64,
+    /// Connected seller that received the original application fee deduction.
+    pub connected_seller_id: String,
+    /// Durable purchase identifier used in provider metadata.
+    pub event_purchase_id: Uuid,
+    /// Stable idempotency key for provider creation.
+    pub idempotency_key: String,
+    /// Durable adjustment kind used in provider metadata.
+    pub kind: String,
+    /// Provider application fee being refunded.
+    pub provider_application_fee_id: String,
+}
+
+/// Result of an idempotent provider application-fee adjustment.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct ApplicationFeeAdjustmentResult {
+    /// Provider application-fee refund identifier.
+    pub provider_application_fee_refund_id: String,
+}
+
+/// Authoritative provider amounts and object references for a completed checkout.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct CheckoutFinancialContext {
+    /// Charge created by the Checkout `PaymentIntent`.
+    pub provider_charge_id: String,
+    /// `PaymentIntent` created by Checkout.
+    pub provider_payment_reference: String,
+    /// Total amount collected from the attendee.
+    pub provider_total_minor: i64,
+    /// Tax included in or added to the ticket line.
+    pub tax_amount_minor: i64,
+
+    /// Application fee created for the direct charge, when nonzero.
+    pub provider_application_fee_id: Option<String>,
+}
+
+/// Result returned after creating a checkout session.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) struct CheckoutSession {
+    /// Connected account that owns the Checkout Session.
+    pub provider_object_account_id: String,
     /// Provider-specific checkout session identifier.
     pub provider_session_id: String,
     /// Redirect URL for the attendee.
     pub redirect_url: String,
+
+    /// Fingerprint of the immutable performance location inputs.
+    pub performance_location_fingerprint: Option<String>,
+    /// Fingerprint of the immutable Product inputs.
+    pub product_fingerprint: Option<String>,
+    /// Provider performance location identifier.
+    pub provider_tax_location_id: Option<String>,
+    /// Provider ticket Product identifier.
+    pub provider_tax_product_id: Option<String>,
 }
 
 /// Parameters used to create a checkout session.
@@ -65,31 +147,57 @@ pub(crate) struct CreateCheckoutSessionInput {
     pub amount_minor: i64,
     /// Base URL of the application.
     pub base_url: String,
+    /// Community display name shown in invoice context.
+    pub community_display_name: String,
     /// Community slug used in return URLs.
     pub community_name: String,
     /// Currency code for the payment.
     pub currency_code: String,
     /// Event identifier.
     pub event_id: Uuid,
+    /// Event display name shown in invoice context.
+    pub event_name: String,
     /// Event slug used in return URLs.
     pub event_slug: String,
+    /// Event time zone used in provider display context.
+    pub event_timezone: String,
+    /// Group display name shown in invoice context.
+    pub group_name: String,
     /// Generated group slug used in return URLs.
     pub group_slug: String,
     /// Platform fee deducted from the group's proceeds, in minor units.
-    pub platform_fee_amount_minor: i64,
+    pub provisional_platform_fee_amount_minor: i64,
     /// Purchase identifier tracked by OCG.
     pub purchase_id: Uuid,
-    /// Recipient account for the group.
-    pub recipient: GroupPaymentRecipient,
+    /// Fiscal sponsor that owns the Checkout Session and charge.
+    pub seller: FiscalSponsorSeller,
+    /// Ticket price tax inclusion behavior.
+    pub tax_behavior: TicketTaxBehavior,
+    /// Selected automatic or manual tax path.
+    pub tax_calculation_mode: TicketTaxCalculationMode,
     /// Ticket title shown in the provider checkout.
     pub ticket_title: String,
     /// User identifier for the attendee.
     pub user_id: Uuid,
+    /// Physical venue used as the ticket performance location.
+    pub venue: TicketVenue,
 
+    /// Fingerprint for a reusable sponsor-scoped performance location.
+    pub cached_performance_location_fingerprint: Option<String>,
+    /// Fingerprint for a reusable sponsor-scoped ticket Product.
+    pub cached_product_fingerprint: Option<String>,
+    /// Reusable provider performance location identifier.
+    pub cached_provider_tax_location_id: Option<String>,
+    /// Reusable provider ticket Product identifier.
+    pub cached_provider_tax_product_id: Option<String>,
     /// Discount code applied to the purchase.
     pub discount_code: Option<String>,
     /// Admin-managed group slug used in return URLs.
     pub group_slug_pretty: Option<String>,
+    /// Sponsor-approved fixed Tax Rates for manual mode.
+    pub manual_tax_components: Option<Vec<ManualTaxComponent>>,
+    /// Fixed event ticket tax code used by automatic tax.
+    pub tax_code: Option<String>,
 }
 
 impl CreateCheckoutSessionInput {
@@ -99,11 +207,71 @@ impl CreateCheckoutSessionInput {
     }
 }
 
+/// Request used to issue a full credit note linked to an existing refund.
+#[derive(Clone, Debug)]
+pub(crate) struct CreditNoteInput {
+    /// Expected gross credit-note amount, in minor units.
+    pub amount_minor: i64,
+    /// Connected account that owns every provider object.
+    pub connected_seller_id: String,
+    /// Durable purchase identifier used in provider metadata.
+    pub event_purchase_id: Uuid,
+    /// Durable refund identifier used in provider metadata.
+    pub event_purchase_refund_id: Uuid,
+    /// Stable idempotency key for provider creation.
+    pub idempotency_key: String,
+    /// Provider invoice receiving the credit note.
+    pub provider_invoice_id: String,
+    /// Existing customer refund linked to the credit note.
+    pub provider_refund_id: String,
+    /// Expected tax amount in the full credit, in minor units.
+    pub tax_amount_minor: i64,
+}
+
+/// Issued provider credit note and its current document URLs.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct CreditNoteResult {
+    /// Provider credit-note identifier.
+    pub provider_credit_note_id: String,
+
+    /// Current provider-hosted credit-note URL when available.
+    pub provider_hosted_url: Option<String>,
+    /// Current provider credit-note PDF URL when available.
+    pub provider_pdf_url: Option<String>,
+}
+
+/// Issued provider document returned through its connected-account scope.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct FinancialDocument {
+    /// Current provider-hosted document URL when available.
+    pub hosted_url: Option<String>,
+    /// Current provider PDF URL when available.
+    pub pdf_url: Option<String>,
+}
+
+impl FinancialDocument {
+    /// Selects the best current attendee-facing provider URL.
+    pub(crate) fn url(self) -> Option<String> {
+        self.hosted_url.or(self.pdf_url)
+    }
+}
+
+/// Provider financial-document type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FinancialDocumentKind {
+    /// Credit note linked to a completed refund.
+    CreditNote,
+    /// Post-payment invoice.
+    Invoice,
+}
+
 /// Request used to find an existing provider refund.
 #[derive(Clone, Debug)]
 pub(crate) struct FindRefundInput {
     /// Completed purchase amount in minor units.
     pub amount_minor: i64,
+    /// Connected account that owns the refund.
+    pub connected_seller_id: String,
     /// Provider payment reference used for refunds.
     pub provider_payment_reference: String,
     /// Platform purchase identifier.
@@ -113,21 +281,106 @@ pub(crate) struct FindRefundInput {
     pub provider_refund_id: Option<String>,
 }
 
+/// Failure returned while validating a fiscal sponsor for paid event setup.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum FiscalSponsorReadinessError {
+    /// Sponsor configuration that an organizer can correct.
+    #[error("{0}")]
+    NotReady(String),
+    /// Infrastructure or provider failure that an organizer cannot correct.
+    #[error(transparent)]
+    Unexpected(#[from] anyhow::Error),
+}
+
+/// Fiscal-sponsor readiness required before paid ticket configuration is saved.
+#[derive(Clone, Debug)]
+pub(crate) struct FiscalSponsorReadinessInput {
+    /// Connected account selected as the legal seller.
+    pub connected_seller_id: String,
+    /// Payments provider that owns the connected account.
+    pub provider: PaymentProvider,
+    /// Whether active automatic-tax settings are required.
+    pub require_automatic_tax: bool,
+}
+
+/// Request used to retrieve authoritative Checkout financial fields.
+#[derive(Clone, Debug)]
+pub(crate) struct GetCheckoutFinancialContextInput {
+    /// Connected account that owns the Checkout Session and charge.
+    pub connected_seller_id: String,
+    /// Provider-specific Checkout Session identifier.
+    pub provider_session_id: String,
+}
+
+/// Request used to retrieve a current account-scoped document URL.
+#[derive(Clone, Debug)]
+pub(crate) struct GetFinancialDocumentInput {
+    /// Connected account that owns the document.
+    pub connected_seller_id: String,
+    /// Provider document type.
+    pub kind: FinancialDocumentKind,
+    /// Durable provider invoice or credit-note identifier.
+    pub provider_document_id: String,
+}
+
+/// Stripe webhook endpoint scope used to select the signing secret.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum PaymentsWebhookEndpoint {
+    /// Events emitted for connected accounts.
+    ConnectedAccount,
+    /// Events emitted for the platform account.
+    PlatformAccount,
+}
+
 /// Supported webhook events normalized across providers.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum PaymentsWebhookEvent {
+    /// A direct-charge application fee was created asynchronously.
+    ApplicationFeeCreated {
+        /// Application fee amount in minor units.
+        amount_minor: i64,
+        /// Connected account whose direct charge created the fee.
+        connected_account_id: String,
+        /// Whether the provider event belongs to live mode.
+        is_live: bool,
+        /// Provider application-fee identifier.
+        provider_application_fee_id: String,
+        /// Connected-account charge that created the application fee.
+        provider_charge_id: String,
+    },
     /// A checkout session completed successfully.
     CheckoutCompleted {
+        /// Connected account that owns the Checkout Session.
+        connected_account_id: String,
+        /// Whether the provider event belongs to live mode.
+        is_live: bool,
         /// Provider-specific checkout session identifier.
         provider_session_id: String,
-
-        /// Provider payment reference used for refunds.
-        provider_payment_reference: Option<String>,
     },
     /// A checkout session expired before payment.
     CheckoutExpired {
+        /// Connected account that owns the Checkout Session.
+        connected_account_id: String,
+        /// Whether the provider event belongs to live mode.
+        is_live: bool,
         /// Provider-specific checkout session identifier.
         provider_session_id: String,
+    },
+    /// A paid invoice was issued for an OCG purchase.
+    InvoicePaid {
+        /// Connected account that owns the invoice.
+        connected_account_id: String,
+        /// Current hosted invoice URL.
+        hosted_url: String,
+        /// Whether the provider event belongs to live mode.
+        is_live: bool,
+        /// Provider invoice identifier.
+        provider_invoice_id: String,
+        /// Platform purchase identifier from invoice metadata.
+        purchase_id: Uuid,
+
+        /// Current invoice PDF URL.
+        pdf_url: Option<String>,
     },
     /// A verified provider event that does not belong to OCG.
     Noop,
@@ -135,8 +388,12 @@ pub(crate) enum PaymentsWebhookEvent {
     RefundUpdated {
         /// Refunded amount in minor units.
         amount_minor: i64,
+        /// Connected account that owns a direct-charge refund.
+        connected_account_id: String,
         /// Refund currency code.
         currency_code: String,
+        /// Whether the provider event belongs to live mode.
+        is_live: bool,
         /// Provider payment reference owning the refund.
         provider_payment_reference: String,
         /// Provider-specific refund identifier.
@@ -153,14 +410,14 @@ pub(crate) enum PaymentsWebhookEvent {
 pub(crate) struct RefundPaymentInput {
     /// Completed purchase amount in minor units.
     pub amount_minor: i64,
+    /// Connected account that owns the refund.
+    pub connected_seller_id: String,
     /// Provider idempotency key used to deduplicate refund creation.
     pub idempotency_key: String,
     /// Provider payment reference used for refunds.
     pub provider_payment_reference: String,
     /// Platform purchase identifier.
     pub purchase_id: Uuid,
-    /// Whether the platform fee is refunded along with the payment.
-    pub refund_application_fee: bool,
 }
 
 /// Result returned after a provider refund request or lookup.

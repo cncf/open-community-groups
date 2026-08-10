@@ -140,7 +140,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    2500,
+    0,
     'USD',
     'PROTECT',
     :'discountCodeOtherID',

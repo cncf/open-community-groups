@@ -16,7 +16,8 @@ use crate::{
         group::GroupSummary,
         location::{LocationParts, build_location},
         payments::{
-            EventDiscountCode, EventRefundRequestStatus, EventTicketType, format_amount_minor,
+            EventDiscountCode, EventRefundRequestStatus, EventTicketType, TicketTaxBehavior,
+            TicketTaxCalculationMode, format_amount_minor,
         },
         questionnaire::QuestionnaireQuestion,
         user::User,
@@ -314,6 +315,10 @@ pub struct EventFull {
     pub speakers: Vec<Speaker>,
     /// Event sponsors.
     pub sponsors: Vec<EventSponsor>,
+    /// Whether ticket prices include tax or have tax added at Checkout.
+    pub tax_behavior: TicketTaxBehavior,
+    /// Automatic Stripe Tax or sponsor-approved manual rates.
+    pub tax_calculation_mode: TicketTaxCalculationMode,
     /// Whether the event was created only for testing.
     #[serde(default)]
     pub test_event: bool,

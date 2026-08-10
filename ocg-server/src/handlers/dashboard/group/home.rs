@@ -59,7 +59,14 @@ pub(crate) async fn page(
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
-    // Load dashboard context
+    // Load dashboard context and payment readiness only for the refunds tab
+    let payment_recipient = async {
+        if matches!(&tab, Tab::Refunds) {
+            db.get_group_payment_recipient(community_id, group_id).await
+        } else {
+            Ok(None)
+        }
+    };
     let (can_manage_badges, groups_by_community, payment_recipient, site_settings) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -68,7 +75,7 @@ pub(crate) async fn page(
             GroupPermission::BadgesWrite
         ),
         db.list_user_groups(&user.user_id),
-        db.get_group_payment_recipient(community_id, group_id),
+        payment_recipient,
         db.get_site_settings()
     )?;
     let payments_ready = payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref());
@@ -77,10 +84,6 @@ pub(crate) async fn page(
     if !can_manage_badges && matches!(&tab, Tab::Artwork | Tab::Awards | Tab::Badges) {
         return Err(HandlerError::Forbidden);
     }
-    if !payments_ready && matches!(&tab, Tab::Refunds) {
-        return Err(HandlerError::Forbidden);
-    }
-
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Analytics => {

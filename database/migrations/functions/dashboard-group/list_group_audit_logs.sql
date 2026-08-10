@@ -26,6 +26,7 @@ returns json as $$
             and al.action = any(array[
                 'cfs_submission_updated',
                 'event_added',
+                'event_application_fee_adjustment_recovery_completed',
                 'event_attendee_attendance_canceled',
                 'event_attendee_checked_in',
                 'event_attendee_invitation_accepted',
@@ -33,6 +34,7 @@ returns json as $$
                 'event_attendee_invitation_rejected',
                 'event_attendee_invitation_sent',
                 'event_canceled',
+                'event_credit_note_recovery_completed',
                 'event_custom_notification_sent',
                 'event_deleted',
                 'event_invitation_request_accepted',

@@ -533,6 +533,28 @@ test.describe("event management workflows", () => {
       .click();
     await expect(organizerGroupPage.locator("#starts_at")).toHaveValue("");
     await expect(organizerGroupPage.locator("#ends_at")).toHaveValue("");
+    await expect(organizerGroupPage.locator("#kind_id")).toHaveValue("hybrid");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_name"),
+    ).toHaveValue("E2E Admission Hall");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_address"),
+    ).toHaveValue("123 Payment Way");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_city"),
+    ).toHaveValue("New York");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_state"),
+    ).toHaveValue("NY");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_country_name"),
+    ).toHaveValue("United States");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_country_code"),
+    ).toHaveValue("US");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_zip_code"),
+    ).toHaveValue("10001");
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Event details copied.",
     );
@@ -985,7 +1007,40 @@ test.describe("event management workflows", () => {
     );
     await expect(visibleAddEventButton).toBeVisible();
 
-    // Submit the tiered event and wait for creation.
+    // Verify virtual events remain free-only when a positive price is present.
+    const virtualResponse = await waitForActionResponse(
+      organizerGroupPage,
+      () => visibleAddEventButton.click(),
+      {
+        method: "POST",
+        urlIncludes: "/dashboard/group/events/add",
+        status: 422,
+      },
+    );
+    expect(await virtualResponse.text()).toContain(
+      "paid ticketing requires an in-person or hybrid event with a complete physical venue",
+    );
+    await expect(organizerGroupPage.locator(".swal2-popup")).toBeVisible();
+    await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+
+    // Make the paid event hybrid and supply its physical admission venue.
+    await organizerGroupPage.locator("#kind_id").selectOption("hybrid");
+    await organizerGroupPage
+      .locator('button[data-section="date-venue"]')
+      .click();
+    await fillEventVenue(organizerGroupPage, {
+      address: "123 Hybrid Way",
+      city: "New York",
+      countryCode: "US",
+      countryName: "United States",
+      latitude: "40.7128",
+      longitude: "-74.006",
+      name: "Hybrid Admission Hall",
+      state: "NY",
+      zipCode: "10001",
+    });
+
+    // Submit the eligible tiered event and wait for creation.
     await waitForActionResponse(
       organizerGroupPage,
       () => visibleAddEventButton.click(),
@@ -1038,6 +1093,30 @@ test.describe("event management workflows", () => {
     await organizerGroupPage
       .locator('button[data-section="date-venue"]')
       .click();
+
+    // Verify the paid hybrid event retains its physical admission venue.
+    await expect(organizerGroupPage.locator("#kind_id")).toHaveValue("hybrid");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_name"),
+    ).toHaveValue("Hybrid Admission Hall");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_address"),
+    ).toHaveValue("123 Hybrid Way");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_city"),
+    ).toHaveValue("New York");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_state"),
+    ).toHaveValue("NY");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_country_name"),
+    ).toHaveValue("United States");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_country_code"),
+    ).toHaveValue("US");
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_zip_code"),
+    ).toHaveValue("10001");
 
     // Verify the reopened event keeps online meeting details.
     if (E2E_MEETINGS_ENABLED) {
@@ -1243,9 +1322,12 @@ test.describe("event management workflows", () => {
       timezone: "UTC",
       venueAddress: "123 Platform Street",
       venueCity: "Barcelona",
+      venueCountryCode: "ES",
+      venueCountryName: "Spain",
       venueLatitude: "41.3874",
       venueLongitude: "2.1686",
       venueName: "Platform Hall",
+      venueState: "Catalonia",
       venueZipCode: "08001",
       attendeeApprovalRequired: false,
       waitlistEnabled: true,
@@ -1311,9 +1393,12 @@ test.describe("event management workflows", () => {
       timezone: "Europe/Madrid",
       venueAddress: "456 Cloud Avenue",
       venueCity: "Madrid",
+      venueCountryCode: "ES",
+      venueCountryName: "Spain",
       venueLatitude: "40.4168",
       venueLongitude: "-3.7038",
       venueName: "Cloud Forum",
+      venueState: "Community of Madrid",
       venueZipCode: "28001",
       attendeeApprovalRequired: true,
       waitlistEnabled: false,
@@ -1427,9 +1512,12 @@ test.describe("event management workflows", () => {
       await fillEventVenue(organizerGroupPage, {
         address: values.venueAddress,
         city: values.venueCity,
+        countryCode: values.venueCountryCode,
+        countryName: values.venueCountryName,
         latitude: values.venueLatitude,
         longitude: values.venueLongitude,
         name: values.venueName,
+        state: values.venueState,
         zipCode: values.venueZipCode,
       });
       await organizerGroupPage
@@ -1650,6 +1738,15 @@ test.describe("event management workflows", () => {
     await expect(
       organizerGroupPage.locator("#location-search-venue_city"),
     ).toHaveValue(updatedValues.venueCity);
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_state"),
+    ).toHaveValue(updatedValues.venueState);
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_country_name"),
+    ).toHaveValue(updatedValues.venueCountryName);
+    await expect(
+      organizerGroupPage.locator("#location-search-venue_country_code"),
+    ).toHaveValue(updatedValues.venueCountryCode);
     await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
       updatedValues.meetingJoinUrl,
     );

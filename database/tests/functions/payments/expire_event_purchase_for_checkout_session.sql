@@ -89,7 +89,11 @@ values (
     :'groupCategoryID',
     'Expire Group',
     'expire-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_test_group',
+        'seller_display_name', 'Expire Checkout Fiscal Sponsor'
+    )
 );
 
 -- Event
@@ -206,6 +210,8 @@ insert into event_purchase (
     admission_offer_id,
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     discount_amount_minor,
     discount_code,
@@ -214,14 +220,29 @@ insert into event_purchase (
     event_ticket_type_id,
     hold_expires_at,
     payment_provider_id,
+    provider_charge_id,
     provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
     status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot,
+
+    final_platform_fee_amount_minor
 ) values (
     :'offerID',
     :'pendingPurchaseID',
     2000,
+    'direct-charge',
+    'acct_expire',
     'USD',
     500,
     'SAVE5',
@@ -230,14 +251,28 @@ insert into event_purchase (
     :'eventTicketTypeID',
     now() + interval '15 minutes',
     'stripe',
+    null,
     'cs_pending',
+    'acct_expire',
+    null,
+    null,
+    '{"connected_account_id":"acct_expire","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'pending',
+    null,
+    null,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'userID'
+    :'userID',
+    '{}'::jsonb,
+    null
 ), (
     null,
     :'completedPurchaseID',
     2500,
+    'direct-charge',
+    'acct_expire',
     'USD',
     0,
     null,
@@ -246,10 +281,22 @@ insert into event_purchase (
     :'eventTicketTypeID',
     null,
     'stripe',
+    'ch_completed',
     'cs_completed',
+    'acct_expire',
+    'pi_completed',
+    2500,
+    '{"connected_account_id":"acct_expire","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'completed',
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'completedUserID'
+    :'completedUserID',
+    '{}'::jsonb,
+    0
 );
 
 -- Pending attendee row with registration answers created during checkout
@@ -266,7 +313,7 @@ values (
 
 -- Should expire the matching pending purchase
 select lives_ok(
-    $$select expire_event_purchase_for_checkout_session('stripe', 'cs_pending')$$,
+    $$select expire_event_purchase_for_checkout_session('stripe', 'acct_expire', 'cs_pending')$$,
     'Should expire the matching pending purchase'
 );
 
@@ -308,13 +355,13 @@ select is(
 
 -- Should ignore missing checkout sessions
 select lives_ok(
-    $$select expire_event_purchase_for_checkout_session('stripe', 'cs_missing')$$,
+    $$select expire_event_purchase_for_checkout_session('stripe', 'acct_expire', 'cs_missing')$$,
     'Should ignore missing checkout sessions'
 );
 
 -- Should leave completed purchases unchanged
 select lives_ok(
-    $$select expire_event_purchase_for_checkout_session('stripe', 'cs_completed')$$,
+    $$select expire_event_purchase_for_checkout_session('stripe', 'acct_expire', 'cs_completed')$$,
     'Should leave completed purchases unchanged'
 );
 

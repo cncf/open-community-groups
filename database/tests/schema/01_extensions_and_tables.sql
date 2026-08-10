@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(76);
+select plan(82);
 
 -- ============================================================================
 -- TESTS
@@ -47,8 +47,12 @@ select has_table('event_discount_code');
 select has_table('event_host');
 select has_table('event_invitation_request');
 select has_table('event_kind');
+select has_table('event_manual_tax_component');
+select has_table('event_manual_tax_configuration');
 select has_table('event_organizer');
 select has_table('event_purchase');
+select has_table('event_purchase_application_fee_adjustment');
+select has_table('event_purchase_credit_note');
 select has_table('event_purchase_refund');
 select has_table('event_refund_request');
 select has_table('event_ticket_price_window');
@@ -80,6 +84,8 @@ select has_table('notification_attachment');
 select has_table('notification_kind');
 select has_table('notification_template_data');
 select has_table('payment_provider');
+select has_table('payment_provider_tax_location');
+select has_table('payment_provider_tax_product');
 select has_table('region');
 select has_table('session');
 select has_table('session_kind');

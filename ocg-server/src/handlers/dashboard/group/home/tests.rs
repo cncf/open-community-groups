@@ -34,10 +34,6 @@ async fn test_page_analytics_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -103,7 +99,7 @@ async fn test_page_analytics_tab_success() {
     assert!(!body.contains("tab=artwork"));
     assert!(!body.contains("tab=awards"));
     assert!(!body.contains("tab=badges"));
-    assert!(!body.contains("tab=refunds"));
+    assert!(body.contains("tab=refunds"));
 }
 
 #[tokio::test]
@@ -125,10 +121,6 @@ async fn test_page_badge_tabs_require_management_permission() {
 
     // Require every protected tab to stop before loading its page data
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(3)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(3)
         .withf(move |cid, gid, uid, permission| {
@@ -207,10 +199,6 @@ async fn test_page_events_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -312,10 +300,6 @@ async fn test_page_logs_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -403,10 +387,6 @@ async fn test_page_members_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -506,10 +486,6 @@ async fn test_page_settings_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -618,10 +594,6 @@ async fn test_page_sponsors_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -721,10 +693,6 @@ async fn test_page_team_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(None));
     db.expect_user_has_group_permission()
         .times(2)
         .withf(move |cid, gid, uid, permission| {
@@ -799,8 +767,8 @@ async fn test_page_team_tab_success() {
 }
 
 #[tokio::test]
-async fn test_page_refunds_tab_forbids_group_without_payments_setup() {
-    // Setup a readable group with server payments but no payment recipient
+async fn test_page_refunds_tab_preserves_history_without_payments_setup() {
+    // Setup a readable group after its current payment setup was removed
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -814,8 +782,14 @@ async fn test_page_refunds_tab_forbids_group_without_payments_setup() {
         Some(group_id),
     );
     let groups = sample_user_groups_by_community(community_id, group_id);
+    let output = crate::templates::dashboard::group::refunds::RefundsOutput {
+        events: vec![],
+        financial_recoveries: vec![],
+        refunds: vec![],
+        total: 0,
+    };
 
-    // Setup dashboard context and missing group recipient expectations
+    // Setup dashboard context and historical refund-list expectations
     let mut db = MockDB::new();
     db.expect_get_group_payment_recipient()
         .times(1)
@@ -832,7 +806,15 @@ async fn test_page_refunds_tab_forbids_group_without_payments_setup() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_group_refunds().never();
+    db.expect_list_group_refunds()
+        .times(1)
+        .withf(move |gid, filters| {
+            *gid == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+                && filters.view == crate::templates::dashboard::group::refunds::RefundsView::Active
+        })
+        .returning(move |_, _| Ok(output.clone()));
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -855,10 +837,18 @@ async fn test_page_refunds_tab_forbids_group_without_payments_setup() {
                 && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
 
-    // Request the refunds tab with incomplete payment setup
+    // Request the refunds tab without a configured payments provider
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_cfg(sample_payments_cfg())
         .build()
         .await;
     let request = Request::builder()
@@ -871,8 +861,11 @@ async fn test_page_refunds_tab_forbids_group_without_payments_setup() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the protected tab fails before loading refund data
-    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
+    // Check history remains visible and current-provider actions are explained
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).expect("refunds response to be UTF-8");
+    assert!(body.contains("Historical refunds and recovery records remain accessible"));
+    assert!(body.contains("tab=refunds"));
 }
 
 #[tokio::test]
@@ -893,6 +886,7 @@ async fn test_page_refunds_tab_success() {
     let groups = sample_user_groups_by_community(community_id, group_id);
     let output = crate::templates::dashboard::group::refunds::RefundsOutput {
         events: vec![],
+        financial_recoveries: vec![],
         refunds: vec![],
         total: 0,
     };

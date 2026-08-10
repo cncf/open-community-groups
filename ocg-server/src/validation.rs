@@ -15,6 +15,8 @@ use garde::rules::email::parse_email;
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 
+use crate::types::payments::GroupPaymentRecipient;
+
 /// Allowed CFS label colors.
 pub const CFS_LABEL_COLORS: [&str; 10] = [
     "#FFD866", "#FC9867", "#FF6188", "#AB9DF2", "#78DCE8", "#A9DC76", "#A88F6A", "#9DA5B4",
@@ -294,6 +296,36 @@ pub fn valid_longitude(value: &Option<f64>, _ctx: &()) -> garde::Result {
     {
         return Err(garde::Error::new("longitude must be between -180 and 180"));
     }
+    Ok(())
+}
+
+/// Validates the paired Stripe account and attendee-visible legal seller name.
+pub fn valid_payment_recipient(value: &Option<GroupPaymentRecipient>, _ctx: &()) -> garde::Result {
+    let Some(recipient) = value else {
+        return Ok(());
+    };
+    let recipient_id = recipient.recipient_id.trim();
+    let seller_display_name = recipient.seller_display_name.trim();
+
+    if recipient_id.is_empty() && seller_display_name.is_empty() {
+        return Ok(());
+    }
+    if recipient_id.is_empty() || seller_display_name.is_empty() {
+        return Err(garde::Error::new(
+            "payment recipient account and seller name must be provided together",
+        ));
+    }
+    if recipient_id.len() > MAX_LEN_M {
+        return Err(garde::Error::new(format!(
+            "payment recipient account exceeds max length of {MAX_LEN_M}",
+        )));
+    }
+    if seller_display_name.len() > MAX_LEN_ENTITY_NAME {
+        return Err(garde::Error::new(format!(
+            "seller name exceeds max length of {MAX_LEN_ENTITY_NAME}",
+        )));
+    }
+
     Ok(())
 }
 
@@ -729,6 +761,51 @@ mod tests {
         assert!(valid_longitude(&Some(-180.0), &()).is_ok());
         assert!(valid_longitude(&Some(90.0), &()).is_ok());
         assert!(valid_longitude(&Some(-90.0), &()).is_ok());
+    }
+
+    #[test]
+    fn test_valid_payment_recipient_blank_pair_is_valid() {
+        let recipient = GroupPaymentRecipient::default();
+
+        assert!(valid_payment_recipient(&Some(recipient), &()).is_ok());
+    }
+
+    #[test]
+    fn test_valid_payment_recipient_invalid_pair_or_length() {
+        let missing_name = GroupPaymentRecipient {
+            recipient_id: "acct_test".to_string(),
+            ..GroupPaymentRecipient::default()
+        };
+        let missing_account = GroupPaymentRecipient {
+            seller_display_name: "Fiscal Sponsor".to_string(),
+            ..GroupPaymentRecipient::default()
+        };
+        let long_account = GroupPaymentRecipient {
+            recipient_id: "a".repeat(MAX_LEN_M + 1),
+            seller_display_name: "Fiscal Sponsor".to_string(),
+            ..GroupPaymentRecipient::default()
+        };
+        let long_name = GroupPaymentRecipient {
+            recipient_id: "acct_test".to_string(),
+            seller_display_name: "a".repeat(MAX_LEN_ENTITY_NAME + 1),
+            ..GroupPaymentRecipient::default()
+        };
+
+        assert!(valid_payment_recipient(&Some(missing_name), &()).is_err());
+        assert!(valid_payment_recipient(&Some(missing_account), &()).is_err());
+        assert!(valid_payment_recipient(&Some(long_account), &()).is_err());
+        assert!(valid_payment_recipient(&Some(long_name), &()).is_err());
+    }
+
+    #[test]
+    fn test_valid_payment_recipient_valid() {
+        let recipient = GroupPaymentRecipient {
+            recipient_id: "acct_test".to_string(),
+            seller_display_name: "Fiscal Sponsor".to_string(),
+            ..GroupPaymentRecipient::default()
+        };
+
+        assert!(valid_payment_recipient(&Some(recipient), &()).is_ok());
     }
 
     // Deserializers.

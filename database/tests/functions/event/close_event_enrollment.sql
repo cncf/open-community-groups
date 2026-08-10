@@ -92,7 +92,7 @@ insert into "group" (
     :'communityID',
     :'groupCategoryID',
     'Enrollment Closure Group',
-    '{"provider": "stripe", "recipient_id": "acct_close"}'::jsonb,
+    '{"provider": "stripe", "recipient_id": "acct_close", "seller_display_name": "Close Event Fiscal Sponsor"}'::jsonb,
     'enrollment-closure-group'
 );
 
@@ -335,7 +335,7 @@ insert into event_purchase (
 ) values
     (
         :'checkoutOfferID',
-        500,
+        0,
         'USD',
         500,
         'CLOSE5',
@@ -350,7 +350,7 @@ insert into event_purchase (
     ),
     (
         null,
-        500,
+        0,
         'USD',
         500,
         'CLOSE5',
@@ -376,7 +376,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    1000,
+    0,
     'USD',
     0,
     :'queueEventID',

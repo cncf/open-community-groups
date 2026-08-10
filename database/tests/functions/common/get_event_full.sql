@@ -1032,6 +1032,8 @@ select is(
         "registration_questions_locked": false,
         "starts_at": 1718438400,
         "tags": ["technology", "conference", "workshops"],
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "automatic",
         "venue_address": "123 Main St",
         "venue_city": "New York",
         "venue_country_code": "US",

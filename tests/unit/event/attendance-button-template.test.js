@@ -42,6 +42,15 @@ describe("event attendance button template", () => {
     );
   });
 
+  it("does not expose purchase documents in the public event actions", async () => {
+    // Load the public event actions menu.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Purchase documents remain exclusive to the authenticated user dashboard.
+    expect(template).to.not.include('data-attendance-role="invoice-link"');
+    expect(template).to.not.include("View invoice");
+  });
+
   it("keeps price-ineligible approval tickets disabled in cached markup", async () => {
     // Load the cached ticket controls used when availability refresh fails.
     const template = normalizeWhitespace(await loadTemplate());

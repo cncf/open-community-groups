@@ -20,6 +20,7 @@ use crate::{
     services::{
         meetings::MeetingProvider,
         notifications::{MockNotificationsManager, NotificationKind},
+        payments::{FiscalSponsorReadinessError, MockPaymentsManager},
     },
     templates::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
@@ -128,9 +129,10 @@ async fn test_add_page_success() {
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
             secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -221,9 +223,10 @@ async fn test_list_page_success() {
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
             secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -370,9 +373,10 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
             secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -504,9 +508,10 @@ async fn test_update_page_success() {
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
             secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -801,6 +806,8 @@ async fn test_add_paid_event_notification_failure_rolls_back() {
         })
         .returning(|_, _, _, _| Ok(true));
 
+    expect_group_payment_recipient(&mut db, community_id, group_id);
+
     // Setup a successful mutation followed by a required notification failure
     let mut tx = MockDB::new();
     tx.expect_add_event()
@@ -829,14 +836,7 @@ async fn test_add_paid_event_notification_failure_rolls_back() {
 
     // Send the paid event creation request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
-            mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
-            secret_key: "sk_test_123".to_string(),
-            webhook_secret: "whsec_test_123".to_string(),
-
-            platform_fee_bps: 0,
-        }))
+        .with_payments_cfg(sample_payments_cfg())
         .build()
         .await;
     let request = Request::builder()
@@ -914,6 +914,8 @@ async fn test_add_paid_recurring_success() {
         })
         .returning(|_, _, _, _| Ok(true));
 
+    expect_group_payment_recipient(&mut db, community_id, group_id);
+
     // Setup atomic recurring creation and aggregate notification expectations
     let mut tx = MockDB::new();
     tx.expect_add_event().never();
@@ -976,9 +978,10 @@ async fn test_add_paid_recurring_success() {
     // Send the paid recurring event creation request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
             secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -1006,8 +1009,84 @@ async fn test_add_paid_recurring_success() {
 }
 
 #[tokio::test]
+async fn test_add_paid_rejects_unready_fiscal_sponsor_without_persisting() {
+    // Setup an authenticated automatic-tax paid event request
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Authorize the request and return its configured sponsor
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    expect_group_payment_recipient(&mut db, community_id, group_id);
+
+    // Reject the sponsor before the event transaction can start
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_configured_provider()
+        .times(1)
+        .return_const(Some(PaymentProvider::Stripe));
+    payments_manager
+        .expect_validate_fiscal_sponsor()
+        .withf(|recipient, require_automatic_tax| {
+            recipient.provider == PaymentProvider::Stripe
+                && recipient.recipient_id == "acct_test"
+                && *require_automatic_tax
+        })
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Err(FiscalSponsorReadinessError::NotReady(
+                    "Stripe Tax is not active".to_string(),
+                ))
+            })
+        });
+
+    // Submit the paid event through the routed handler
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/add")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(sample_paid_event_body()))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+
+    // Check no database transaction was opened after provider rejection
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
 async fn test_add_paid_success() {
-    // Setup identifiers and paid event input
     let admin_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1045,6 +1124,8 @@ async fn test_add_paid_success() {
         })
         .returning(|_, _, _, _| Ok(true));
 
+    expect_group_payment_recipient(&mut db, community_id, group_id);
+
     // Setup atomic creation and notification expectations
     let mut tx = MockDB::new();
     tx.expect_add_event()
@@ -1056,6 +1137,11 @@ async fn test_add_paid_success() {
                     .get("ticket_types")
                     .and_then(serde_json::Value::as_array)
                     .is_some_and(|ticket_types| !ticket_types.is_empty())
+                && event.get("_payment_validation").is_some_and(|validation| {
+                    validation["require_automatic_tax"] == true
+                        && validation["expected_payment_recipient"]["recipient_id"] == "acct_test"
+                        && validation["validated_payment_recipient"]["recipient_id"] == "acct_test"
+                })
                 && *payment_provider == Some(PaymentProvider::Stripe)
         })
         .returning(move |_, _, _, _, _| Ok(event_id));
@@ -1087,14 +1173,7 @@ async fn test_add_paid_success() {
 
     // Send the paid event creation request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
-            mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
-            secret_key: "sk_test_123".to_string(),
-            webhook_secret: "whsec_test_123".to_string(),
-
-            platform_fee_bps: 0,
-        }))
+        .with_payments_cfg(sample_payments_cfg())
         .build()
         .await;
     let request = Request::builder()
@@ -2001,10 +2080,14 @@ async fn test_publish_success() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid, payment_provider| {
-            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
+        .withf(move |uid, gid, eid, payment_provider, payment_validation| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && payment_provider.is_none()
+                && payment_validation.is_none()
         })
-        .returning(move |_, _, _, _| Ok(()));
+        .returning(move |_, _, _, _, _| Ok(()));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2120,10 +2203,14 @@ async fn test_publish_test_event_no_notification() {
         .returning(move |_, _, _| Ok(unpublished_test_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid, payment_provider| {
-            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
+        .withf(move |uid, gid, eid, payment_provider, payment_validation| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && payment_provider.is_none()
+                && payment_validation.is_none()
         })
-        .returning(move |_, _, _, _| Ok(()));
+        .returning(move |_, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
@@ -2216,13 +2303,16 @@ async fn test_publish_series_success() {
     tx.expect_publish_event().times(0);
     tx.expect_publish_event_series_events()
         .times(1)
-        .withf(move |uid, gid, event_ids, payment_provider| {
-            *uid == user_id
-                && *gid == group_id
-                && event_ids == expected_series_event_ids.as_slice()
-                && payment_provider.is_none()
-        })
-        .returning(move |_, _, _, _| Ok(()));
+        .withf(
+            move |uid, gid, event_ids, payment_provider, payment_validation| {
+                *uid == user_id
+                    && *gid == group_id
+                    && event_ids == expected_series_event_ids.as_slice()
+                    && payment_provider.is_none()
+                    && payment_validation.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
@@ -2332,13 +2422,16 @@ async fn test_publish_series_sends_aggregate_notification() {
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     tx.expect_publish_event_series_events()
         .times(1)
-        .withf(move |uid, gid, event_ids, payment_provider| {
-            *uid == user_id
-                && *gid == group_id
-                && event_ids == expected_series_event_ids.as_slice()
-                && payment_provider.is_none()
-        })
-        .returning(move |_, _, _, _| Ok(()));
+        .withf(
+            move |uid, gid, event_ids, payment_provider, payment_validation| {
+                *uid == user_id
+                    && *gid == group_id
+                    && event_ids == expected_series_event_ids.as_slice()
+                    && payment_provider.is_none()
+                    && payment_validation.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _| Ok(()));
     tx.expect_list_group_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
@@ -2448,10 +2541,14 @@ async fn test_publish_already_published_no_notification() {
         .returning(move |_, _, _| Ok(already_published_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid, payment_provider| {
-            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
+        .withf(move |uid, gid, eid, payment_provider, payment_validation| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && payment_provider.is_none()
+                && payment_validation.is_none()
         })
-        .returning(move |_, _, _, _| Ok(()));
+        .returning(move |_, _, _, _, _| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected)
@@ -2536,10 +2633,14 @@ async fn test_publish_speakers_only() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     tx.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid, payment_provider| {
-            *uid == user_id && *gid == group_id && *eid == event_id && payment_provider.is_none()
+        .withf(move |uid, gid, eid, payment_provider, payment_validation| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && payment_provider.is_none()
+                && payment_validation.is_none()
         })
-        .returning(move |_, _, _, _| Ok(()));
+        .returning(move |_, _, _, _, _| Ok(()));
     tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3027,6 +3128,18 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
         })
         .returning(|_, _, _, _| Ok(true));
 
+    db.expect_event_ticketing_configuration_changed()
+        .times(1)
+        .withf(move |cid, gid, eid, event| {
+            *cid == community_id
+                && *gid == group_id
+                && *eid == event_id
+                && event.get("ticket_types").is_some()
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    expect_group_payment_recipient(&mut db, community_id, group_id);
+
     // Setup the ordered state transition and notification expectations
     let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
@@ -3043,6 +3156,10 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
                 && *eid == event_id
                 && event.get("ticket_types").is_some()
                 && event.get("test_event").and_then(serde_json::Value::as_bool) == Some(false)
+                && event.get("_payment_validation").is_some_and(|validation| {
+                    validation["require_automatic_tax"] == true
+                        && validation["expected_payment_recipient"]["recipient_id"] == "acct_test"
+                })
                 && *payment_provider == Some(PaymentProvider::Stripe)
         })
         .in_sequence(&mut sequence)
@@ -3076,9 +3193,10 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
     // Promote the test event while adding paid tickets
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
             secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -3212,7 +3330,19 @@ async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_group_payment_recipient().times(0);
+    db.expect_event_ticketing_configuration_changed()
+        .times(1)
+        .withf(move |cid, gid, eid, event| {
+            *cid == community_id
+                && *gid == group_id
+                && *eid == event_id
+                && event.get("ticket_types").is_some()
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(None));
     let mut tx = MockDB::new();
     tx.expect_get_event_summary()
         .times(1)
@@ -3239,9 +3369,10 @@ async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test".to_string(),
             secret_key: "sk_test".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test".to_string(),
 
             platform_fee_bps: 0,
@@ -3308,6 +3439,18 @@ async fn test_update_paid_notification_failure_rolls_back() {
         })
         .returning(|_, _, _, _| Ok(true));
 
+    db.expect_event_ticketing_configuration_changed()
+        .times(1)
+        .withf(move |cid, gid, eid, event| {
+            *cid == community_id
+                && *gid == group_id
+                && *eid == event_id
+                && event.get("ticket_types").is_some()
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    expect_group_payment_recipient(&mut db, community_id, group_id);
+
     // Setup a successful update followed by a required notification failure
     let mut tx = MockDB::new();
     tx.expect_get_event_summary()
@@ -3340,9 +3483,10 @@ async fn test_update_paid_notification_failure_rolls_back() {
     // Send the free-to-paid update request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
-            publishable_key: "pk_test_123".to_string(),
             secret_key: "sk_test_123".to_string(),
+            ticket_tax_api_version: "2025-12-26.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -4021,4 +4165,113 @@ async fn test_update_skips_notification_for_past_event() {
         StatusCode::NO_CONTENT,
         "refresh-group-dashboard-table",
     );
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_update_unrelated_paid_event_edit_skips_fiscal_sponsor_validation() {
+    // Setup an unrelated mutation whose submitted ticketing configuration is unchanged
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let before = sample_event_summary(event_id, group_id);
+    let body = sample_paid_event_body();
+
+    // Authorize the update and report that paid-ticket readiness fields are unchanged
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_event_ticketing_configuration_changed()
+        .times(1)
+        .withf(move |cid, gid, eid, event| {
+            *cid == community_id
+                && *gid == group_id
+                && *eid == event_id
+                && event.get("ticket_types").is_some()
+        })
+        .returning(|_, _, _, _| Ok(false));
+    db.expect_get_group_payment_recipient().never();
+
+    // Persist the unrelated edit without entering a notifiable paid state
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
+        .times(2)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(before.clone()));
+    tx.expect_update_event()
+        .times(1)
+        .withf(move |uid, gid, eid, event, _, payment_provider| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && event.get("ticket_types").is_some()
+                && *payment_provider == Some(PaymentProvider::Stripe)
+        })
+        .returning(|_, _, _, _, _, _| Ok(false));
+    expect_successful_transaction(&mut db, tx);
+
+    // Keep unrelated edits independent of live provider availability
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_configured_provider()
+        .times(1)
+        .return_const(Some(PaymentProvider::Stripe));
+    payments_manager.expect_validate_fiscal_sponsor().never();
+
+    // Submit the unrelated edit through the routed handler
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the update succeeds without sponsor validation
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
+    );
+}
+
+/// Expects a paid event mutation to load its configured fiscal sponsor.
+fn expect_group_payment_recipient(db: &mut MockDB, community_id: Uuid, group_id: Uuid) {
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 }

@@ -8,6 +8,7 @@ create or replace function record_event_purchase_refund_succeeded(
 returns jsonb as $$
 declare
     v_event_id uuid;
+    v_purchase event_purchase;
     v_refund event_purchase_refund;
 begin
     -- Validate the provider attempt identifiers
@@ -103,6 +104,52 @@ begin
                 end if;
             end if;
         end if;
+
+        -- Queue direct-charge fee and document work without another customer refund
+        select ep.*
+        into v_purchase
+        from event_purchase ep
+        where ep.event_purchase_id = v_refund.event_purchase_id;
+
+        insert into event_purchase_application_fee_adjustment (
+                amount_minor,
+                event_purchase_id,
+                idempotency_key,
+                kind
+            )
+            select
+                v_purchase.final_platform_fee_amount_minor,
+                v_purchase.event_purchase_id,
+                format(
+                    'event-purchase-refund-fee-adjustment-%s',
+                    v_purchase.event_purchase_id
+                ),
+                'purchase-refund'
+            where v_purchase.final_platform_fee_amount_minor > 0
+        on conflict (event_purchase_id, kind) do nothing;
+
+        insert into event_purchase_credit_note (
+            amount_minor,
+            currency_code,
+            event_purchase_refund_id,
+            idempotency_key,
+            payment_provider_id,
+            provider_object_account_id,
+            tax_amount_minor
+        )
+        select
+            v_purchase.provider_total_minor,
+            v_purchase.currency_code,
+            v_refund.event_purchase_refund_id,
+            format(
+                'event-purchase-credit-note-%s',
+                v_refund.event_purchase_refund_id
+            ),
+            v_purchase.payment_provider_id,
+            v_purchase.provider_object_account_id,
+            v_purchase.tax_amount_minor
+        where v_purchase.provider_invoice_id is not null
+        on conflict (event_purchase_refund_id) do nothing;
     end if;
 
     -- Return the durable refund state after recording provider success

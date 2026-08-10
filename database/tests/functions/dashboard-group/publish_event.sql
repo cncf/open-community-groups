@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(19);
 \set eventNoMeetingID '3a2b0000-0000-0000-0000-000000000004'
 \set eventNoStartDateID '3a2b0000-0000-0000-0000-000000000005'
 \set eventPublishedID '3a2b0000-0000-0000-0000-000000000006'
+\set eventTicketedHybridID '3a2b0000-0000-0000-0000-00000000001f'
 \set eventTicketedInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000007'
 \set eventTicketedFreeID '3a2b0000-0000-0000-0000-00000000001a'
 \set eventTicketedNoRecipientID '3a2b0000-0000-0000-0000-000000000008'
@@ -26,6 +27,7 @@ select plan(19);
 \set missingGroupID '3a2b0000-0000-0000-0000-000000000012'
 \set previousPublisherID '3a2b0000-0000-0000-0000-000000000013'
 \set priceWindowFreeID '3a2b0000-0000-0000-0000-00000000001b'
+\set priceWindowHybridID '3a2b0000-0000-0000-0000-000000000021'
 \set priceWindowInvalidCurrencyID '3a2b0000-0000-0000-0000-00000000001c'
 \set priceWindowNoRecipientID '3a2b0000-0000-0000-0000-00000000001d'
 \set sessionMeetingID '3a2b0000-0000-0000-0000-000000000014'
@@ -33,6 +35,7 @@ select plan(19);
 \set sessionPublishedMeetingID '3a2b0000-0000-0000-0000-000000000016'
 \set ticketTypeInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000017'
 \set ticketTypeFreeID '3a2b0000-0000-0000-0000-00000000001e'
+\set ticketTypeHybridID '3a2b0000-0000-0000-0000-000000000020'
 \set ticketTypeNoRecipientID '3a2b0000-0000-0000-0000-000000000018'
 \set userID '3a2b0000-0000-0000-0000-000000000019'
 
@@ -83,7 +86,11 @@ insert into "group" (
     'Test Group',
     'test-group',
     'A test group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_test_group',
+        'seller_display_name', 'Test Fiscal Sponsor'
+    )
 );
 
 -- Group without a payment recipient
@@ -320,6 +327,47 @@ insert into event (
     false
 );
 
+-- Paid-capable hybrid event with a complete physical venue
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    payment_currency_code,
+    published,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_country_name,
+    venue_name,
+    venue_state,
+    venue_zip_code
+) values (
+    :'eventTicketedHybridID',
+    :'groupID',
+    'Paid Hybrid Event',
+    'paid-hybrid-event',
+    'A paid hybrid event with physical admission',
+    'UTC',
+    :'eventCategoryID',
+    'hybrid',
+    current_timestamp + interval '2 days',
+    'USD',
+    false,
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'United States',
+    'Community Hall',
+    'CA',
+    '94105'
+);
+
 -- Ticket type for the group without a payment recipient
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -333,6 +381,21 @@ insert into event_ticket_type (
     1,
     50,
     'Paid ticket'
+);
+
+-- Ticket type for the paid hybrid event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeHybridID',
+    :'eventTicketedHybridID',
+    1,
+    50,
+    'Hybrid admission'
 );
 
 -- Ticket type for the all-zero event
@@ -372,6 +435,7 @@ insert into event_ticket_price_window (
     event_ticket_type_id
 ) values
     (:'priceWindowFreeID', 0, :'ticketTypeFreeID'),
+    (:'priceWindowHybridID', 2500, :'ticketTypeHybridID'),
     (:'priceWindowInvalidCurrencyID', 2500, :'ticketTypeInvalidCurrencyID'),
     (:'priceWindowNoRecipientID', 2500, :'ticketTypeNoRecipientID');
 
@@ -642,10 +706,79 @@ select lives_ok(
     'Should publish all-zero ticketed events without payment setup'
 );
 
+-- Should publish a paid-capable hybrid event with a complete physical venue
+select lives_ok(
+    format(
+        $$select publish_event(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'stripe',
+            '{
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_test_group",
+                    "seller_display_name": "Test Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_test_group",
+                    "seller_display_name": "Test Fiscal Sponsor"
+                }
+            }'::jsonb
+        )$$,
+        :'userID',
+        :'groupID',
+        :'eventTicketedHybridID'
+    ),
+    'Should publish a paid-capable hybrid event with a complete physical venue'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'event_kind_id', event_kind_id,
+            'published', published,
+            'venue_address', venue_address,
+            'venue_city', venue_city,
+            'venue_country_code', venue_country_code,
+            'venue_country_name', venue_country_name,
+            'venue_name', venue_name,
+            'venue_state', venue_state,
+            'venue_zip_code', venue_zip_code
+        )
+        from event
+        where event_id = :'eventTicketedHybridID'::uuid
+    ),
+    '{
+        "event_kind_id": "hybrid",
+        "published": true,
+        "venue_address": "123 Main St",
+        "venue_city": "San Francisco",
+        "venue_country_code": "US",
+        "venue_country_name": "United States",
+        "venue_name": "Community Hall",
+        "venue_state": "CA",
+        "venue_zip_code": "94105"
+    }'::jsonb,
+    'Should retain paid hybrid eligibility data when publishing'
+);
+
 -- Should throw error when paid-capable event group has no payment recipient
 select throws_ok(
     format(
-        'select publish_event(%L::uuid, %L::uuid, %L::uuid, ''stripe'')',
+        $$select publish_event(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'stripe',
+            '{
+                "expected_payment_recipient": null,
+                "require_automatic_tax": true,
+                "validated_payment_recipient": null
+            }'::jsonb
+        )$$,
         :'userID',
         :'groupNoRecipientID',
         :'eventTicketedNoRecipientID'
@@ -654,10 +787,58 @@ select throws_ok(
     'Should throw error when paid-capable event group has no payment recipient'
 );
 
+-- Should reject publication validated against a stale sponsor
+select throws_ok(
+    format(
+        $$select publish_event(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'stripe',
+            '{
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_stale",
+                    "seller_display_name": "Stale Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_stale",
+                    "seller_display_name": "Stale Fiscal Sponsor"
+                }
+            }'::jsonb
+        )$$,
+        :'userID',
+        :'groupID',
+        :'eventTicketedInvalidCurrencyID'
+    ),
+    'payment configuration changed during provider validation',
+    'Should reject publication validated against a stale sponsor'
+);
+
 -- Should reject ticketed events whose currency code is unsupported
 select throws_ok(
     format(
-        'select publish_event(%L::uuid, %L::uuid, %L::uuid, ''stripe'')',
+        $$select publish_event(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'stripe',
+            '{
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_test_group",
+                    "seller_display_name": "Test Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_test_group",
+                    "seller_display_name": "Test Fiscal Sponsor"
+                }
+            }'::jsonb
+        )$$,
         :'userID',
         :'groupID',
         :'eventTicketedInvalidCurrencyID'

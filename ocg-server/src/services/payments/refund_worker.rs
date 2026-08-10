@@ -200,6 +200,7 @@ impl RefundWorker {
         let provider_refund = payments_provider
             .find_refund(&FindRefundInput {
                 amount_minor: refund.amount_minor,
+                connected_seller_id: refund.connected_seller_id.clone(),
                 provider_payment_reference: provider_payment_reference.clone(),
                 purchase_id: refund.event_purchase_id,
 
@@ -217,10 +218,10 @@ impl RefundWorker {
                 payments_provider
                     .refund_payment(&RefundPaymentInput {
                         amount_minor: refund.amount_minor,
+                        connected_seller_id: refund.connected_seller_id.clone(),
                         idempotency_key: refund.idempotency_key.clone(),
                         provider_payment_reference,
                         purchase_id: refund.event_purchase_id,
-                        refund_application_fee: refund.platform_fee_amount_minor > 0,
                     })
                     .await?
             }

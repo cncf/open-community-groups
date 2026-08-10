@@ -28,14 +28,13 @@ declare
     v_new_starts_at timestamptz;
     v_payment_currency_code text;
     v_payment_recipient jsonb;
+    v_payment_validation jsonb := p_event->'_payment_validation';
     v_registration_ends_at timestamptz;
     v_registration_questions jsonb;
     v_registration_starts_at timestamptz;
     v_ticket_capacity int;
     v_ticketing_configuration_changed boolean;
     v_ticket_types jsonb;
-    v_ticket_types_before_configuration jsonb;
-    v_ticket_types_configuration jsonb;
     v_timezone text := p_event->>'timezone';
     v_was_paid_capable boolean;
     v_was_test_event boolean;
@@ -100,33 +99,38 @@ begin
     v_was_paid_capable := is_event_ticketing_payload_paid_capable(v_event_before->'ticket_types');
     v_was_test_event := coalesce((v_event_before->>'test_event')::boolean, false);
 
-    -- Compare stable ticket configuration without computed read-model fields
-    select coalesce(
-        jsonb_agg(
-            ticket_type - 'current_price' - 'remaining_seats' - 'sold_out'
-            order by ordinality
-        ),
-        '[]'::jsonb
-    )
-    into v_ticket_types_before_configuration
-    from jsonb_array_elements(coalesce(v_event_before->'ticket_types', '[]'::jsonb))
-        with ordinality as ticket_types(ticket_type, ordinality);
+    v_ticketing_configuration_changed := event_ticketing_configuration_changed(
+        v_event_before,
+        p_event
+    );
 
-    select coalesce(
-        jsonb_agg(
-            ticket_type - 'current_price' - 'remaining_seats' - 'sold_out'
-            order by ordinality
-        ),
-        '[]'::jsonb
-    )
-    into v_ticket_types_configuration
-    from jsonb_array_elements(coalesce(v_ticket_types, '[]'::jsonb))
-        with ordinality as ticket_types(ticket_type, ordinality);
-
-    v_ticketing_configuration_changed :=
-        v_discount_codes is distinct from v_event_before->'discount_codes'
-        or v_payment_currency_code is distinct from nullif(v_event_before->>'payment_currency_code', '')
-        or v_ticket_types_configuration is distinct from v_ticket_types_before_configuration;
+    -- Bind provider validation to the recipient protected by the group lock
+    if p_configured_provider is not null
+       and v_is_paid_capable
+       and v_ticketing_configuration_changed
+       and (
+           v_payment_validation is null
+           or not (v_payment_validation ? 'expected_payment_recipient')
+           or not (v_payment_validation ? 'validated_payment_recipient')
+           or not (v_payment_validation ? 'require_automatic_tax')
+           or v_payment_recipient is distinct from nullif(
+               v_payment_validation->'expected_payment_recipient',
+               'null'::jsonb
+           )
+           or v_payment_recipient is distinct from nullif(
+               v_payment_validation->'validated_payment_recipient',
+               'null'::jsonb
+           )
+           or (
+               coalesce(
+                   nullif(p_event->>'tax_calculation_mode', ''),
+                   'automatic'
+               ) = 'automatic'
+               and not (v_payment_validation->>'require_automatic_tax')::boolean
+           )
+       ) then
+        raise exception 'payment configuration changed during provider validation';
+    end if;
 
     -- Resolve registration question defaults
     v_registration_questions := case
@@ -195,7 +199,9 @@ begin
         v_payment_currency_code,
         v_payment_recipient,
         v_ticket_types,
-        false
+        false,
+        p_event_id,
+        p_event
     );
 
     -- Parse event timestamps once for validation and row updates
@@ -293,13 +299,18 @@ begin
         registration_starts_at = v_registration_starts_at,
         starts_at = v_new_starts_at,
         tags = v_event_tags,
-        venue_address = nullif(p_event->>'venue_address', ''),
-        venue_city = nullif(p_event->>'venue_city', ''),
-        venue_country_code = nullif(p_event->>'venue_country_code', ''),
-        venue_country_name = nullif(p_event->>'venue_country_name', ''),
-        venue_name = nullif(p_event->>'venue_name', ''),
-        venue_state = nullif(p_event->>'venue_state', ''),
-        venue_zip_code = nullif(p_event->>'venue_zip_code', ''),
+        tax_behavior = coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive'),
+        tax_calculation_mode = coalesce(
+            nullif(p_event->>'tax_calculation_mode', ''),
+            'automatic'
+        ),
+        venue_address = nullif(btrim(p_event->>'venue_address'), ''),
+        venue_city = nullif(btrim(p_event->>'venue_city'), ''),
+        venue_country_code = nullif(btrim(p_event->>'venue_country_code'), ''),
+        venue_country_name = nullif(btrim(p_event->>'venue_country_name'), ''),
+        venue_name = nullif(btrim(p_event->>'venue_name'), ''),
+        venue_state = nullif(btrim(p_event->>'venue_state'), ''),
+        venue_zip_code = nullif(btrim(p_event->>'venue_zip_code'), ''),
         waitlist_enabled = v_event_waitlist_enabled
     where event_id = p_event_id
     and group_id = p_group_id
@@ -317,7 +328,9 @@ begin
         v_payment_currency_code,
         v_payment_recipient,
         v_ticket_types,
-        v_ticketing_configuration_changed
+        v_ticketing_configuration_changed,
+        p_event_id,
+        p_event
     );
 
     -- Fill ticket-tier capacity made available by the synchronized payload

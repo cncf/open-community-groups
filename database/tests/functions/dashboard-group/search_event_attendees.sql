@@ -666,64 +666,162 @@ insert into event_attendee (
     :'user3ID'
 );
 
--- Purchases
+-- Completed discounted direct-charge purchase
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     discount_amount_minor,
     discount_code,
     event_discount_code_id,
     event_id,
     event_ticket_type_id,
-    hold_expires_at,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
     status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
-)
-values
-    (
-        :'eventPurchase1ID',
-        2500,
-        'USD',
-        500,
-        'SAVE5',
-        :'eventDiscountCode1ID',
-        :'event1ID',
-        :'eventTicketType1ID',
-        null,
-        'completed',
-        'General admission',
-        :'user1ID'
-    ),
-    (
-        :'eventPurchase2ID',
-        4000,
-        'USD',
-        0,
-        null,
-        null,
-        :'event2ID',
-        :'eventTicketType2ID',
-        null,
-        'refund-requested',
-        'VIP',
-        :'user2ID'
-    ),
-    (
-        :'eventPurchasePendingCheckoutID',
-        2500,
-        'USD',
-        0,
-        null,
-        null,
-        :'eventPendingCheckoutID',
-        :'eventTicketTypePendingCheckoutID',
-        current_timestamp + interval '10 minutes',
-        'pending',
-        'General admission',
-        :'pendingCheckoutUserID'
-    );
+    user_id,
+    venue_snapshot
+) values (
+    :'eventPurchase1ID',
+    2500,
+    'direct-charge',
+    'acct_attendee_search_test',
+    'USD',
+    500,
+    'SAVE5',
+    :'eventDiscountCode1ID',
+    :'event1ID',
+    :'eventTicketType1ID',
+    0,
+    'stripe',
+    'ch_attendee_search_1',
+    'cs_attendee_search_1',
+    'acct_attendee_search_test',
+    'pi_attendee_search_1',
+    2500,
+    '{}'::jsonb,
+    'completed',
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'user1ID',
+    '{}'::jsonb
+);
+
+-- Direct-charge purchase with a pending refund request
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    :'eventPurchase2ID',
+    4000,
+    'direct-charge',
+    'acct_attendee_search_test',
+    'USD',
+    0,
+    :'event2ID',
+    :'eventTicketType2ID',
+    0,
+    'stripe',
+    'ch_attendee_search_2',
+    'cs_attendee_search_2',
+    'acct_attendee_search_test',
+    'pi_attendee_search_2',
+    4000,
+    '{}'::jsonb,
+    'refund-requested',
+    4000,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'VIP',
+    :'user2ID',
+    '{}'::jsonb
+);
+
+-- Pending direct-charge checkout
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
+    status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    :'eventPurchasePendingCheckoutID',
+    2500,
+    'direct-charge',
+    'acct_attendee_search_test',
+    'USD',
+    0,
+    :'eventPendingCheckoutID',
+    :'eventTicketTypePendingCheckoutID',
+    current_timestamp + interval '10 minutes',
+    'stripe',
+    'acct_attendee_search_test',
+    '{}'::jsonb,
+    'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'pendingCheckoutUserID',
+    '{}'::jsonb
+);
 
 -- Refund requests
 insert into event_refund_request (
@@ -741,32 +839,167 @@ values (
 
 -- Purchases representing abandoned checkout, active checkout, and worker-controlled progress
 insert into event_purchase (
+    event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     event_id,
-    event_purchase_id,
     event_ticket_type_id,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
     user_id,
+    venue_snapshot,
 
+    final_platform_fee_amount_minor,
     hold_expires_at,
-    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_payment_reference,
+    provider_total_minor,
+    refunded_at,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor
+)
+select
+    fixture.event_purchase_id,
+    2500,
+    'direct-charge',
+    'acct_refund_progress_test',
+    'USD',
+    :'refundProgressEventID'::uuid,
+    :'refundProgressTicketTypeID'::uuid,
+    'stripe',
+    'acct_refund_progress_test',
+    '{}'::jsonb,
+    fixture.status,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'Refund progress',
+    fixture.user_id,
+    '{}'::jsonb,
+
+    case when fixture.status <> 'pending' then 0 end,
+    fixture.hold_expires_at,
+    case when fixture.status <> 'pending' then 'ch_' || fixture.event_purchase_id end,
+    case when fixture.status <> 'pending' then 'cs_' || fixture.event_purchase_id end,
+    fixture.provider_payment_reference,
+    case when fixture.status <> 'pending' then 2500 end,
+    fixture.refunded_at,
+    case when fixture.status <> 'pending' then 2500 end,
+    case when fixture.status <> 'pending' then 0 end
+from (values
+    (
+        :'abandonedCheckoutPurchaseID'::uuid,
+        'pending',
+        :'abandonedCheckoutUserID'::uuid,
+        current_timestamp - interval '10 minutes',
+        null::text,
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase1ID'::uuid,
+        'pending',
+        :'user1ID'::uuid,
+        current_timestamp + interval '10 minutes',
+        null::text,
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase2ID'::uuid,
+        'refunded',
+        :'user2ID'::uuid,
+        null::timestamptz,
+        'pi_progress_2',
+        current_timestamp
+    ),
+    (
+        :'progressPurchase3ID'::uuid,
+        'refunded',
+        :'user3ID'::uuid,
+        null::timestamptz,
+        'pi_progress_3',
+        current_timestamp
+    ),
+    (
+        :'progressPurchase4ID'::uuid,
+        'refund-pending',
+        :'user4ID'::uuid,
+        null::timestamptz,
+        'pi_progress_4',
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase5ID'::uuid,
+        'refund-pending',
+        :'user5ID'::uuid,
+        null::timestamptz,
+        'pi_progress_5',
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase6ID'::uuid,
+        'refund-pending',
+        :'user6ID'::uuid,
+        null::timestamptz,
+        'pi_progress_6',
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase7ID'::uuid,
+        'refund-pending',
+        :'pendingCheckoutUserID'::uuid,
+        null::timestamptz,
+        'pi_progress_7',
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase8ID'::uuid,
+        'refund-pending',
+        :'questionsAttendeeUserID'::uuid,
+        null::timestamptz,
+        'pi_progress_8',
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase9ID'::uuid,
+        'refund-recovery-pending',
+        :'userStopwordSearchID'::uuid,
+        null::timestamptz,
+        'pi_progress_9',
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase10ID'::uuid,
+        'refund-pending',
+        :'progressUser7ID'::uuid,
+        null::timestamptz,
+        'pi_progress_10',
+        null::timestamptz
+    ),
+    (
+        :'progressPurchase11ID'::uuid,
+        'refund-pending',
+        :'progressUser8ID'::uuid,
+        null::timestamptz,
+        'pi_progress_11',
+        null::timestamptz
+    )
+) as fixture(
+    event_purchase_id,
+    status,
+    user_id,
+    hold_expires_at,
     provider_payment_reference,
     refunded_at
-) values
-    (2500, 'USD', :'refundProgressEventID', :'abandonedCheckoutPurchaseID', :'refundProgressTicketTypeID', 'pending', 'Refund progress', :'abandonedCheckoutUserID', current_timestamp - interval '10 minutes', 'stripe', null, null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase1ID', :'refundProgressTicketTypeID', 'pending', 'Refund progress', :'user1ID', current_timestamp + interval '10 minutes', 'stripe', null, null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase2ID', :'refundProgressTicketTypeID', 'refunded', 'Refund progress', :'user2ID', null, 'stripe', 'pi_progress_2', current_timestamp),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase3ID', :'refundProgressTicketTypeID', 'refunded', 'Refund progress', :'user3ID', null, 'stripe', 'pi_progress_3', current_timestamp),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase4ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'user4ID', null, 'stripe', 'pi_progress_4', null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase5ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'user5ID', null, 'stripe', 'pi_progress_5', null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase6ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'user6ID', null, 'stripe', 'pi_progress_6', null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase7ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'pendingCheckoutUserID', null, 'stripe', 'pi_progress_7', null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase8ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'questionsAttendeeUserID', null, 'stripe', 'pi_progress_8', null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase9ID', :'refundProgressTicketTypeID', 'refund-recovery-pending', 'Refund progress', :'userStopwordSearchID', null, 'stripe', 'pi_progress_9', null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase10ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'progressUser7ID', null, 'stripe', 'pi_progress_10', null),
-    (2500, 'USD', :'refundProgressEventID', :'progressPurchase11ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'progressUser8ID', null, 'stripe', 'pi_progress_11', null);
+);
 
 -- Durable refunds representing every provider progress branch
 insert into event_purchase_refund (

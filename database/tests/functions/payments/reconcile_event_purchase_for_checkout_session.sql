@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(33);
+select plan(43);
 
 -- ============================================================================
 -- VARIABLES
@@ -135,7 +135,7 @@ insert into "group" (
     :'groupCategoryID',
     :'groupID',
     'Complete Group',
-    '{"provider":"stripe","recipient_id":"acct_complete"}'::jsonb,
+    '{"provider":"stripe","recipient_id":"acct_complete","seller_display_name":"Complete Fiscal Sponsor"}'::jsonb,
     'complete-group'
 );
 
@@ -312,8 +312,97 @@ insert into event_purchase (
     provider_payment_reference,
     status,
     ticket_title,
-    user_id
-) values (
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.event_purchase_id::uuid,
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.discount_amount_minor,
+    fixtures.discount_code,
+    fixtures.event_discount_code_id::uuid,
+    fixtures.event_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.hold_expires_at,
+    fixtures.payment_provider_id,
+    coalesce(
+        fixtures.provider_checkout_session_id,
+        case
+            when fixtures.status in (
+                'completed',
+                'refund-recovery-pending'
+            ) then 'cs_' || fixtures.event_purchase_id::text
+        end
+    ),
+    fixtures.provider_payment_reference,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+
+    'direct-charge',
+    'acct_complete',
+    case
+        when fixtures.status in (
+            'completed',
+            'refund-recovery-pending'
+        ) then 0
+    end,
+    case
+        when fixtures.event_purchase_id::uuid = :'purchaseConfirmedID'::uuid then 250
+        else 0
+    end,
+    case
+        when fixtures.event_purchase_id::uuid = :'purchaseConfirmedID'::uuid then 62
+        when fixtures.event_purchase_id::uuid = :'purchaseExpiredID'::uuid then 50
+        else 0
+    end,
+    case
+        when fixtures.status in (
+            'completed',
+            'refund-recovery-pending'
+        ) then 'ch_' || fixtures.event_purchase_id::text
+    end,
+    'acct_complete',
+    case
+        when fixtures.status in (
+            'completed',
+            'refund-recovery-pending'
+        ) then fixtures.amount_minor
+    end,
+    '{"connected_account_id":"acct_complete","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    case
+        when fixtures.status in (
+            'completed',
+            'refund-recovery-pending'
+        ) then fixtures.amount_minor
+    end,
+    case
+        when fixtures.status in (
+            'completed',
+            'refund-recovery-pending'
+        ) then 0
+    end,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values (
     :'purchaseCompleteID',
     2500,
     'USD',
@@ -505,14 +594,14 @@ insert into event_purchase (
     'completed',
     'General admission',
     :'user5ID'
-);
-
--- Expired provider checkout whose payment must reserve the only race-event seat
-insert into event_purchase (
+)) as fixtures (
+    event_purchase_id,
     amount_minor,
     currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
     event_id,
-    event_purchase_id,
     event_ticket_type_id,
     hold_expires_at,
     payment_provider_id,
@@ -521,8 +610,34 @@ insert into event_purchase (
     status,
     ticket_title,
     user_id
+);
+
+-- Expired provider checkout whose payment must reserve the only race-event seat
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    seller_snapshot,
+    status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
 ) values (
     2500,
+    'direct-charge',
+    'acct_complete',
     'USD',
     :'raceEventID',
     :'racePurchaseID',
@@ -530,39 +645,61 @@ insert into event_purchase (
     current_timestamp - interval '15 minutes',
     'stripe',
     'cs_capacity_race',
+    'acct_complete',
     'pi_capacity_race',
+    '{"connected_account_id":"acct_complete","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'Race admission',
-    :'raceUserID'
+    :'raceUserID',
+    '{}'::jsonb
 );
 
 -- Expired direct checkout that paid after the user received an offer
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     event_id,
     event_ticket_type_id,
     hold_expires_at,
     payment_provider_id,
     provider_checkout_session_id,
+    provider_object_account_id,
     provider_payment_reference,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values (
     :'activeOfferRefundPurchaseID',
     2500,
+    'direct-charge',
+    'acct_complete',
     'USD',
     :'activeEventID',
     :'activeTicketTypeID',
     current_timestamp - interval '15 minutes',
     'stripe',
     'cs_expired_active_offer',
+    'acct_complete',
     'pi_expired_active_offer',
+    '{"connected_account_id":"acct_complete","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'expired',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'activeOfferRefundUserID'
+    :'activeOfferRefundUserID',
+    '{}'::jsonb
 );
 
 -- Active organizer offer created after the direct checkout expired
@@ -645,6 +782,8 @@ insert into admission_offer (
 insert into event_purchase (
     admission_offer_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     discount_amount_minor,
     event_id,
@@ -653,14 +792,22 @@ insert into event_purchase (
     hold_expires_at,
     payment_provider_id,
     provider_checkout_session_id,
+    provider_object_account_id,
     provider_payment_reference,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values
     (
         :'linkedOfferID',
         2500,
+        'direct-charge',
+        'acct_complete',
         'USD',
         0,
         :'activeEventID',
@@ -669,14 +816,22 @@ insert into event_purchase (
         current_timestamp + interval '15 minutes',
         'stripe',
         'cs_offer_complete',
+        'acct_complete',
         null,
+        '{"connected_account_id":"acct_complete","display_name":"Sponsor","provider":"stripe"}'::jsonb,
         'pending',
+        'inclusive',
+        'manual',
+        'professional-event-admission',
         'General admission',
-        :'linkedUserID'
+        :'linkedUserID',
+        '{}'::jsonb
     ),
     (
         :'dueOfferID',
         2500,
+        'direct-charge',
+        'acct_complete',
         'USD',
         0,
         :'activeEventID',
@@ -685,16 +840,24 @@ insert into event_purchase (
         current_timestamp + interval '15 minutes',
         'stripe',
         'cs_offer_due',
+        'acct_complete',
         'pi_offer_due',
+        '{"connected_account_id":"acct_complete","display_name":"Sponsor","provider":"stripe"}'::jsonb,
         'pending',
+        'inclusive',
+        'manual',
+        'professional-event-admission',
         'General admission',
-        :'dueUserID'
+        :'dueUserID',
+        '{}'::jsonb
     );
 
 -- Canceled first checkout that can pay after its replacement completes
 insert into event_purchase (
     admission_offer_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     created_at,
     currency_code,
     discount_amount_minor,
@@ -704,12 +867,20 @@ insert into event_purchase (
     hold_expires_at,
     payment_provider_id,
     provider_checkout_session_id,
+    provider_object_account_id,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values (
     :'linkedOfferID',
     2500,
+    'direct-charge',
+    'acct_complete',
     current_timestamp - interval '1 hour',
     'USD',
     0,
@@ -719,9 +890,15 @@ insert into event_purchase (
     current_timestamp - interval '45 minutes',
     'stripe',
     'cs_offer_late',
+    'acct_complete',
+    '{"connected_account_id":"acct_complete","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'expired',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'linkedUserID'
+    :'linkedUserID',
+    '{}'::jsonb
 );
 
 -- Pending attendee row with registration answers created during checkout
@@ -776,7 +953,10 @@ values
 
 -- Should return noop when there is no matching checkout session
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_missing', 'pi_missing')::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_missing', 'pi_missing',
+        'ch_missing', 2500, 0, null
+    )::jsonb,
     '{"outcome":"noop"}'::jsonb,
     'Should return noop when there is no matching checkout session'
 );
@@ -785,8 +965,13 @@ select is(
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe',
+        'acct_complete',
         'cs_capacity_race',
-        'pi_capacity_race'
+        'pi_capacity_race',
+        'ch_capacity_race',
+        2500,
+        0,
+        null
     )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should reserve capacity before reconciling a late paid checkout'
@@ -827,14 +1012,20 @@ select results_eq(
 
 -- Should return noop for expired purchases whose hold has not expired locally
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_expired_active_hold', null)::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_expired_active_hold',
+        'pi_expired_active_hold', 'ch_expired_active_hold', 2500, 0, null
+    )::jsonb,
     '{"outcome":"noop"}'::jsonb,
     'Should return noop for expired purchases whose hold has not expired locally'
 );
 
 -- Should complete a valid pending checkout session
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_complete', 'pi_complete')::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_complete', 'pi_complete',
+        'ch_complete', 2500, 0, null
+    )::jsonb,
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'activeEventID'::uuid,
@@ -912,8 +1103,13 @@ select results_eq(
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe',
+        'acct_complete',
         'cs_offer_complete',
-        'pi_offer_complete'
+        'pi_offer_complete',
+        'ch_offer_complete',
+        2500,
+        0,
+        null
     )::jsonb,
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
@@ -957,8 +1153,13 @@ select get_event_ticket_type_allocated_seat_count(
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe',
+        'acct_complete',
         'cs_offer_late',
-        'pi_offer_late'
+        'pi_offer_late',
+        'ch_offer_late',
+        2500,
+        0,
+        null
     )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should queue a late offer payment after its replacement completed'
@@ -997,7 +1198,12 @@ select results_eq(
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe',
+        'acct_complete',
         'cs_offer_due',
+        'pi_offer_due',
+        'ch_offer_due',
+        2500,
+        0,
         null
     )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
@@ -1030,7 +1236,10 @@ select results_eq(
 
 -- Should require refund for expired local holds
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_expired', null)::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_expired', 'pi_expired',
+        'ch_expired', 2000, 0, null
+    )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund for expired local holds'
 );
@@ -1055,10 +1264,72 @@ select results_eq(
 );
 
 -- Should keep requiring refund for refund-pending purchases after the refund handoff
+select lives_ok(
+    $$select attach_application_fee_to_event_purchase(
+        'stripe', 'acct_complete', 'ch_expired', 'fee_expired', 50
+    )$$,
+    'Should attach a delayed application fee to a refund-pending purchase'
+);
+
+-- Claim and complete the fee adjustment before another Checkout replay arrives
+select lives_ok(
+    $$
+        with claim as (
+            select claim_event_purchase_application_fee_adjustment('stripe') as payload
+        )
+        select record_event_purchase_application_fee_adjustment_succeeded(
+            (payload->>'event_purchase_application_fee_adjustment_id')::uuid,
+            (payload->>'claim_id')::uuid,
+            'fr_expired'
+        )
+        from claim
+    $$,
+    'Should complete financial reconciliation before Checkout replay'
+);
+
+-- Replay the refund-pending Checkout after financial work completed
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_expired', null)::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_expired', 'pi_expired',
+        'ch_expired', 2000, 0, null
+    )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should keep requiring refund for refund-pending purchases after the refund handoff'
+);
+
+select results_eq(
+    format($$
+        select
+            ep.provider_application_fee_id,
+            ep.financially_reconciled_at is not null,
+            count(epafa.*)::int
+        from event_purchase ep
+        left join event_purchase_application_fee_adjustment epafa
+            using (event_purchase_id)
+        where ep.event_purchase_id = %L::uuid
+        group by ep.event_purchase_id
+    $$, :'purchaseExpiredID'),
+    $$ values ('fee_expired'::text, true, 1::int) $$,
+    'Should preserve completed financial state and one adjustment across replay'
+);
+
+select throws_ok(
+    $$select reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_expired', 'pi_expired',
+        'ch_expired', 2000, 0, 'fee_conflicting'
+    )$$,
+    'provider application fee does not match the purchase',
+    'Should reject a conflicting application fee during replay'
+);
+
+select is(
+    (
+        select provider_application_fee_id
+        from event_purchase
+        where event_purchase_id = :'purchaseExpiredID'::uuid
+    ),
+    'fee_expired',
+    'Should preserve the attached application fee after a conflicting replay'
 );
 
 -- Should not restore discount availability twice for already expired purchases
@@ -1074,7 +1345,10 @@ select is(
 
 -- Should require refund when the event can no longer be fulfilled
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_canceled', null)::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_canceled', 'pi_canceled',
+        'ch_canceled', 2500, 0, null
+    )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when the event can no longer be fulfilled'
 );
@@ -1083,8 +1357,13 @@ select is(
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe',
+        'acct_complete',
         'cs_recovery_replacement',
-        'pi_recovery_replacement'
+        'pi_recovery_replacement',
+        'ch_recovery_replacement',
+        2500,
+        0,
+        null
     )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when recovery won before a replacement checkout payment'
@@ -1116,7 +1395,10 @@ select results_eq(
 
 -- Should require refund when the event has already started
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_started', 'pi_started')::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_started', 'pi_started',
+        'ch_started', 2500, 0, null
+    )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when the event has already started'
 );
@@ -1125,8 +1407,13 @@ select is(
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe',
+        'acct_complete',
         'cs_open_until_start',
-        'pi_open_until_start'
+        'pi_open_until_start',
+        'ch_open_until_start',
+        2500,
+        0,
+        null
     )::jsonb,
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
@@ -1234,14 +1521,20 @@ select results_eq(
 
 -- Should reject refund-required paths without a provider payment reference
 select throws_ok(
-    $$select reconcile_event_purchase_for_checkout_session('stripe', 'cs_missing_ref', null)$$,
-    'provider payment reference is required for refund',
+    $$select reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_missing_ref', null,
+        'ch_missing_ref', 2500, 0, null
+    )$$,
+    'direct-charge payment references are required',
     'Should reject refund-required paths without a provider payment reference'
 );
 
 -- Should require refund when the attendee row cannot be confirmed
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_invited', null)::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_invited', 'pi_invited',
+        'ch_invited', 2500, 0, null
+    )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when the attendee row cannot be confirmed'
 );
@@ -1315,7 +1608,10 @@ select is(
 
 -- Should complete checkout sessions for already confirmed attendees
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_confirmed', null)::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_confirmed', 'pi_confirmed',
+        'ch_confirmed', 2500, 0, null
+    )::jsonb,
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'activeEventID'::uuid,
@@ -1325,9 +1621,63 @@ select is(
     'Should complete checkout sessions for already confirmed attendees'
 );
 
+-- Should persist authoritative amounts without waiting for the asynchronous fee
+select results_eq(
+    $$
+        select
+            financially_reconciled_at is not null,
+            provider_application_fee_id,
+            provider_charge_id,
+            status
+        from event_purchase
+        where provider_checkout_session_id = 'cs_confirmed'
+    $$,
+    $$ values (true, null::text, 'ch_confirmed'::text, 'completed'::text) $$,
+    'Should fulfill a paid checkout before its application fee is available'
+);
+
+-- Should reject an application fee whose amount does not match Checkout
+select throws_ok(
+    $$select attach_application_fee_to_event_purchase(
+        'stripe', 'acct_complete', 'ch_confirmed', 'fee_confirmed', 61
+    )$$,
+    'application fee amount does not match the purchase',
+    'Should reject an application fee with the wrong amount'
+);
+
+-- Should attach the delayed provider application fee through its charge scope
+select lives_ok(
+    $$select attach_application_fee_to_event_purchase(
+        'stripe', 'acct_complete', 'ch_confirmed', 'fee_confirmed', 62
+    )$$,
+    'Should attach the asynchronously created application fee'
+);
+
+-- Should persist the application fee on its completed purchase
+select is(
+    (
+        select provider_application_fee_id
+        from event_purchase
+        where provider_checkout_session_id = 'cs_confirmed'
+    ),
+    'fee_confirmed',
+    'Should persist the asynchronously created application fee'
+);
+
+-- Should idempotently accept the same application fee delivery again
+select lives_ok(
+    $$select attach_application_fee_to_event_purchase(
+        'stripe', 'acct_complete', 'ch_confirmed', 'fee_confirmed', 62
+    )$$,
+    'Should accept an application-fee webhook replay'
+);
+
 -- Should noop for already completed purchases
 select is(
-    reconcile_event_purchase_for_checkout_session('stripe', 'cs_done', null)::jsonb,
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_done', 'pi_done',
+        'ch_done', 2500, 0, null
+    )::jsonb,
     '{"outcome":"noop"}'::jsonb,
     'Should noop for already completed purchases'
 );
@@ -1336,8 +1686,13 @@ select is(
 select is(
     reconcile_event_purchase_for_checkout_session(
         'stripe',
+        'acct_complete',
         'cs_expired_active_offer',
-        'pi_expired_active_offer'
+        'pi_expired_active_offer',
+        'ch_expired_active_offer',
+        2500,
+        0,
+        null
     )::jsonb,
     jsonb_build_object('outcome', 'refund_queued'),
     'Should queue a late direct payment while a newer offer remains active'

@@ -111,7 +111,7 @@ insert into "group" (
     :'communityID',
     :'groupCategoryID',
     'Reconciliation Group',
-    '{"provider": "stripe", "recipient_id": "acct_reconciliation"}'::jsonb,
+    '{"provider": "stripe", "recipient_id": "acct_reconciliation", "seller_display_name": "Reconciliation Fiscal Sponsor"}'::jsonb,
     'reconciliation-group'
 );
 
@@ -672,7 +672,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'retryOfferID',
-    500,
+    0,
     'USD',
     500,
     'SAVE5',
@@ -714,7 +714,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'refundPendingOfferID',
-    1000,
+    0,
     'USD',
     0,
     :'refundPendingEventID',

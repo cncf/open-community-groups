@@ -27,8 +27,8 @@ use tracing::instrument;
 
 use crate::types::payments::{PaymentMode, PaymentProvider};
 
-/// Maximum platform fee expressed in basis points (100% of the amount).
-const MAX_PLATFORM_FEE_BPS: u16 = 10_000;
+/// Maximum platform fee expressed in basis points (99.99% of the amount).
+const MAX_PLATFORM_FEE_BPS: u16 = 9_999;
 
 /// Placeholder used when formatting sensitive configuration values.
 const REDACTED_CONFIG_VALUE: &str = "[redacted]";
@@ -305,15 +305,17 @@ impl PaymentsConfig {
 /// Stripe payments configuration.
 #[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct PaymentsStripeConfig {
-    /// Mode used for the configured keys.
+    /// Stripe Connect webhook secret used for connected-account events.
+    pub connected_webhook_secret: String,
+    /// Mode used for the configured credentials.
     ///
-    /// Use `test` with Stripe test keys and webhook secret during development.
+    /// Use `test` with Stripe test credentials during development.
     /// Use `live` only for real payments in production environments.
     pub mode: PaymentMode,
-    /// Stripe publishable key used by the frontend.
-    pub publishable_key: String,
     /// Stripe secret key used by the backend.
     pub secret_key: String,
+    /// Private-preview API version approved for Tax for ticket sales.
+    pub ticket_tax_api_version: String,
     /// Stripe webhook secret used for signature verification.
     pub webhook_secret: String,
 
@@ -326,9 +328,10 @@ pub(crate) struct PaymentsStripeConfig {
 impl fmt::Debug for PaymentsStripeConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PaymentsStripeConfig")
+            .field("connected_webhook_secret", &REDACTED_CONFIG_VALUE)
             .field("mode", &self.mode)
-            .field("publishable_key", &self.publishable_key)
             .field("secret_key", &REDACTED_CONFIG_VALUE)
+            .field("ticket_tax_api_version", &self.ticket_tax_api_version)
             .field("webhook_secret", &REDACTED_CONFIG_VALUE)
             .field("platform_fee_bps", &self.platform_fee_bps)
             .finish()
@@ -342,12 +345,16 @@ impl PaymentsStripeConfig {
             bail!("payments.platform_fee_bps cannot exceed {MAX_PLATFORM_FEE_BPS}");
         }
 
-        if self.publishable_key.trim().is_empty() {
-            bail!("payments.publishable_key cannot be empty");
+        if self.connected_webhook_secret.trim().is_empty() {
+            bail!("payments.connected_webhook_secret cannot be empty");
         }
 
         if self.secret_key.trim().is_empty() {
             bail!("payments.secret_key cannot be empty");
+        }
+
+        if self.ticket_tax_api_version.trim().is_empty() {
+            bail!("payments.ticket_tax_api_version cannot be empty");
         }
 
         if self.webhook_secret.trim().is_empty() {
@@ -754,7 +761,7 @@ mod tests {
         // Validate the Stripe payments configuration
         let result = cfg.validate();
 
-        // Check a fee consuming the full amount is accepted
+        // Check the largest fee strictly below the charge is accepted
         assert!(result.is_ok());
     }
 
@@ -763,9 +770,10 @@ mod tests {
         // Setup a Stripe configuration without a platform fee entry
         let cfg: PaymentsConfig = serde_json::from_value(serde_json::json!({
             "provider": "stripe",
+            "connected_webhook_secret": "whsec_connect_secret",
             "mode": "test",
-            "publishable_key": "pk_test_public",
             "secret_key": "sk_test_secret",
+            "ticket_tax_api_version": "2025-12-26.preview",
             "webhook_secret": "whsec_secret",
         }))
         .unwrap();
@@ -788,8 +796,74 @@ mod tests {
         // Check the out-of-range fee is rejected
         assert_eq!(
             result.unwrap_err().to_string(),
-            "payments.platform_fee_bps cannot exceed 10000"
+            "payments.platform_fee_bps cannot exceed 9999"
         );
+    }
+
+    #[test]
+    fn test_payments_config_rejects_blank_connected_webhook_secret() {
+        // Setup a Stripe configuration with a blank Connect webhook secret
+        let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
+            unreachable!();
+        };
+        cfg.connected_webhook_secret = "  ".to_string();
+
+        // Validate the Stripe payments configuration
+        let result = cfg.validate();
+
+        // Check startup rejects a secret that cannot verify Connect events
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "payments.connected_webhook_secret cannot be empty"
+        );
+    }
+
+    #[test]
+    fn test_payments_config_rejects_blank_ticket_tax_api_version() {
+        // Setup a Stripe configuration with a blank ticket-tax API version
+        let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
+            unreachable!();
+        };
+        cfg.ticket_tax_api_version = "  ".to_string();
+
+        // Validate the Stripe payments configuration
+        let result = cfg.validate();
+
+        // Check startup rejects a version that cannot be sent to Stripe
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "payments.ticket_tax_api_version cannot be empty"
+        );
+    }
+
+    #[test]
+    fn test_payments_config_rejects_missing_connected_webhook_secret() {
+        // Setup serialized Stripe configuration without a Connect webhook secret
+        let result = serde_json::from_value::<PaymentsConfig>(serde_json::json!({
+            "provider": "stripe",
+            "mode": "test",
+            "secret_key": "sk_test_secret",
+            "ticket_tax_api_version": "2025-12-26.preview",
+            "webhook_secret": "whsec_secret",
+        }));
+
+        // Check deserialization rejects an unverifiable Connect configuration
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_payments_config_rejects_missing_ticket_tax_api_version() {
+        // Setup serialized Stripe configuration without the ticket-tax API version
+        let result = serde_json::from_value::<PaymentsConfig>(serde_json::json!({
+            "provider": "stripe",
+            "connected_webhook_secret": "whsec_connect_secret",
+            "mode": "test",
+            "secret_key": "sk_test_secret",
+            "webhook_secret": "whsec_secret",
+        }));
+
+        // Check deserialization rejects an incomplete tax and credit-note configuration
+        assert!(result.is_err());
     }
 
     // Helpers.
@@ -879,9 +953,10 @@ mod tests {
                 }),
             }),
             payments: Some(PaymentsConfig::Stripe(PaymentsStripeConfig {
+                connected_webhook_secret: "stripe-connect-webhook-sensitive-value".to_string(),
                 mode: PaymentMode::Test,
-                publishable_key: "pk_test_public".to_string(),
                 secret_key: "stripe-key-sensitive-value".to_string(),
+                ticket_tax_api_version: "2025-12-26.preview".to_string(),
                 webhook_secret: "stripe-webhook-sensitive-value".to_string(),
 
                 platform_fee_bps: 250,
@@ -902,13 +977,14 @@ mod tests {
         }
     }
 
-    fn sensitive_values() -> [&'static str; 10] {
+    fn sensitive_values() -> [&'static str; 11] {
         [
             "db-password-sensitive-value",
             "db-url-sensitive-value",
             "oauth2-sensitive-value",
             "oidc-sensitive-value",
             "s3-sensitive-value",
+            "stripe-connect-webhook-sensitive-value",
             "smtp-sensitive-value",
             "stripe-key-sensitive-value",
             "stripe-webhook-sensitive-value",

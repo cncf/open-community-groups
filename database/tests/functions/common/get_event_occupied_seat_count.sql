@@ -269,7 +269,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    1000,
+    0,
     'USD',
     :'ticketedEventID',
     :'ticketTypeID',
@@ -278,7 +278,7 @@ insert into event_purchase (
     'General admission',
     :'activeCheckoutUserID'
 ), (
-    1000,
+    0,
     'USD',
     :'ticketedEventID',
     :'ticketTypeID',
@@ -287,7 +287,7 @@ insert into event_purchase (
     'General admission',
     :'confirmedUserID'
 ), (
-    1000,
+    0,
     'USD',
     :'ticketedEventID',
     :'ticketTypeID',
@@ -364,7 +364,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    1000,
+    0,
     'USD',
     :'refundEventID',
     :'refundTicketTypeID',

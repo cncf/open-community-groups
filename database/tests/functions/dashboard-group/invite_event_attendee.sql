@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(50);
+select plan(52);
 
 -- ============================================================================
 -- VARIABLES
@@ -34,6 +34,11 @@ select plan(50);
 \set inProgressPriceWindowID '3a130000-0000-0000-0000-000000000027'
 \set inProgressTicketTypeID '3a130000-0000-0000-0000-000000000028'
 \set invalidTicketUserID '3a130000-0000-0000-0000-000000000029'
+\set paidContextEventID '3a130000-0000-0000-0000-000000000049'
+\set paidContextGroupID '3a130000-0000-0000-0000-00000000004a'
+\set paidContextInviteUserID '3a130000-0000-0000-0000-00000000004b'
+\set paidContextPriceWindowID '3a130000-0000-0000-0000-00000000004c'
+\set paidContextTicketTypeID '3a130000-0000-0000-0000-00000000004d'
 \set paidEventID '3a130000-0000-0000-0000-00000000002a'
 \set paidInviteUserID '3a130000-0000-0000-0000-00000000002b'
 \set paidPriceWindowID '3a130000-0000-0000-0000-00000000002c'
@@ -111,9 +116,32 @@ values (:'groupCategoryID', 'Tech', :'communityID');
 insert into event_category (event_category_id, name, community_id)
 values (:'eventCategoryID', 'General', :'communityID');
 
--- Group
+-- Group owning events without payment readiness
 insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+
+-- Group with a valid payment recipient for stored event readiness
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+
+    payment_recipient
+) values (
+    :'paidContextGroupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Paid Context Group',
+    'paid-context-group',
+
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_paid_invite",
+        "seller_display_name": "Paid Invite Fiscal Sponsor"
+    }'::jsonb
+);
 
 -- Users
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
@@ -138,6 +166,17 @@ values
     ('hash-unverified', 'unverified@example.com', false, 'Unverified', :'unverifiedUserID', 'unverified'),
     ('hash-waitlisted', 'waitlisted@example.com', true, 'Waitlisted', :'waitlistedUserID', 'waitlisted'),
     ('hash-rq-invited', 'rq-invited@example.com', true, 'RQ Invited', :'questionsInvitedUserID', 'rq-invited');
+
+-- Invitee used to validate stored paid-event context
+insert into "user" (auth_hash, email, email_verified, name, user_id, username)
+values (
+    'hash-paid-context-invite',
+    'paid-context-invite@example.com',
+    true,
+    'Paid Context Invite',
+    :'paidContextInviteUserID',
+    'paid-context-invite'
+);
 
 -- Users used by expired RSVP reservation reconciliation
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
@@ -337,6 +376,39 @@ values
         false
     );
 
+-- Paid event with an incomplete stored venue for readiness validation
+insert into event (
+    event_id,
+    canceled,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    timezone,
+    waitlist_enabled,
+
+    payment_currency_code,
+    starts_at
+) values (
+    :'paidContextEventID',
+    false,
+    'Paid event with incomplete venue context',
+    :'eventCategoryID',
+    'in-person',
+    :'paidContextGroupID',
+    'Paid Context Event',
+    true,
+    'paid-context-event',
+    'UTC',
+    false,
+
+    'USD',
+    current_timestamp + interval '1 day'
+);
+
 -- RSVP event whose expired reservation is reconciled before organizer invite allocation
 insert into event (
     capacity,
@@ -451,6 +523,21 @@ values
     (:'ticketTypeID', :'ticketedEventID', 1, 100, 'General'),
     (:'ticketTypeSecondaryID', :'ticketedEventID', 2, 25, 'Secondary admission');
 
+-- Paid ticket tier used to validate stored event readiness
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'paidContextTicketTypeID',
+    :'paidContextEventID',
+    1,
+    100,
+    'Paid context admission'
+);
+
 -- Inactive ticket type used to reject unavailable ticketed invitations
 insert into event_ticket_type (
     active,
@@ -480,6 +567,17 @@ insert into event_ticket_price_window (
     (0, :'soldOutPriceWindowID', :'soldOutTicketTypeID'),
     (0, :'ticketPriceWindowID', :'ticketTypeID'),
     (0, :'ticketPriceWindowSecondaryID', :'ticketTypeSecondaryID');
+
+-- Positive ticket price used to exercise paid stored event readiness
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'paidContextPriceWindowID',
+    2500,
+    :'paidContextTicketTypeID'
+);
 
 -- Events without a specialized ticket fixture use a default free tier
 insert into event_ticket_type (
@@ -1060,6 +1158,33 @@ select is(
     ),
     0,
     'Should not create an offer when paid ticket readiness fails'
+);
+
+-- Should validate the stored event venue for paid ticket invitations
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L, %L) $$,
+        :'actorID',
+        :'paidContextGroupID',
+        :'paidContextEventID',
+        :'paidContextInviteUserID',
+        :'paidContextTicketTypeID',
+        'stripe'
+    ),
+    'P0001',
+    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
+    'Should validate the stored event venue for paid ticket invitations'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'paidContextEventID'::uuid
+        and user_id = :'paidContextInviteUserID'::uuid
+    ),
+    0,
+    'Should not create an offer when the stored paid event is ineligible'
 );
 
 -- Should return a queue offer when reconciliation promotes the invitee

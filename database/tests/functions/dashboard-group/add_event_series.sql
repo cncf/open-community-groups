@@ -153,6 +153,11 @@ select throws_ok(
                 {
                     "name": "Paid Weekly Study Group",
                     "description": "Base event",
+                    "_payment_validation": {
+                        "expected_payment_recipient": null,
+                        "require_automatic_tax": true,
+                        "validated_payment_recipient": null
+                    },
                     "timezone": "UTC",
                     "category_id": "%s",
                     "kind_id": "virtual",

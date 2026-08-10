@@ -327,7 +327,7 @@ insert into event_purchase (
     user_id
 ) values
     (
-        3000,
+        0,
         'USD',
         :'eventProtectedID',
         :'ticketTypeProtectedID',
@@ -336,7 +336,7 @@ insert into event_purchase (
         :'userCompletedID'
     ),
     (
-        3000,
+        0,
         'USD',
         :'eventProtectedID',
         :'ticketTypeProtectedID',
@@ -345,7 +345,7 @@ insert into event_purchase (
         :'userRefundPendingID'
     ),
     (
-        3000,
+        0,
         'USD',
         :'eventProtectedID',
         :'ticketTypeProtectedID',

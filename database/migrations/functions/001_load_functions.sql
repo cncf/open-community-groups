@@ -113,6 +113,7 @@
 {{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
 {{ template "dashboard-group/validate_event_ticketing_payment_readiness.sql" }}
 {{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/event_ticketing_configuration_changed.sql" }} -- Dependency for update_event and HTTP preflight
 {{ template "dashboard-group/validate_add_event_dates.sql" }} -- Dependency for add_event
 {{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
@@ -146,6 +147,7 @@
 {{ template "dashboard-group/get_event_summary_dashboard.sql" }} -- Dependency for list_group_events
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
+{{ template "dashboard-group/group_requires_automatic_tax_readiness.sql" }}
 {{ template "dashboard-group/invite_event_attendee.sql" }}
 {{ template "dashboard-group/list_awarded_badges.sql" }}
 {{ template "dashboard-group/list_badge_artwork.sql" }}
@@ -213,6 +215,7 @@
 {{ template "dashboard-user/list_user_events.sql" }}
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_pending_session_proposal_co_speaker_invitations.sql" }}
+{{ template "dashboard-user/list_user_purchase_documents.sql" }}
 {{ template "dashboard-user/list_user_session_proposals.sql" }}
 {{ template "dashboard-user/refresh_user_badge_identity.sql" }}
 {{ template "dashboard-user/reject_community_team_invitation.sql" }}
@@ -279,15 +282,22 @@
 {{ template "notifications/enqueue_tracked_custom_notification.sql" }}
 {{ template "notifications/update_notification.sql" }}
 
+{{ template "payments/attach_application_fee_to_event_purchase.sql" }}
 {{ template "payments/attach_checkout_session_to_event_purchase.sql" }}
+{{ template "payments/attach_invoice_to_event_purchase.sql" }}
 {{ template "payments/cancel_event_checkout.sql" }}
+{{ template "payments/claim_event_purchase_application_fee_adjustment.sql" }}
+{{ template "payments/claim_event_purchase_credit_note.sql" }}
 {{ template "payments/claim_event_purchase_refund.sql" }}
+{{ template "payments/complete_event_purchase_application_fee_adjustment_recovery.sql" }}
+{{ template "payments/complete_event_purchase_credit_note_recovery.sql" }}
 {{ template "payments/complete_event_purchase_refund_recovery.sql" }}
 {{ template "payments/complete_free_event_purchase.sql" }}
 {{ template "payments/expire_event_purchase_for_checkout_session.sql" }}
 {{ template "payments/finalize_event_purchase_refund.sql" }}
 {{ template "payments/get_event_purchase_refund.sql" }}
 {{ template "payments/get_event_purchase_refund_recovery_context.sql" }}
+{{ template "payments/get_user_purchase_document_context.sql" }}
 {{ template "payments/prepare_event_checkout_expire_previous_hold.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_expire_stale_holds.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_find_existing_purchase.sql" }} -- Dependency for prepare_event_checkout_purchase
@@ -300,6 +310,10 @@
 {{ template "payments/prepare_event_checkout_purchase.sql" }}
 {{ template "payments/queue_event_refund_request_approval.sql" }}
 {{ template "payments/reconcile_event_purchase_for_checkout_session.sql" }}
+{{ template "payments/record_event_purchase_application_fee_adjustment_failure.sql" }}
+{{ template "payments/record_event_purchase_application_fee_adjustment_succeeded.sql" }}
+{{ template "payments/record_event_purchase_credit_note_failure.sql" }}
+{{ template "payments/record_event_purchase_credit_note_succeeded.sql" }}
 {{ template "payments/record_event_purchase_refund_pending.sql" }}
 {{ template "payments/record_event_purchase_refund_retryable_failure.sql" }}
 {{ template "payments/record_event_purchase_refund_succeeded.sql" }}
@@ -307,6 +321,8 @@
 {{ template "payments/reject_event_refund_request.sql" }}
 {{ template "payments/release_event_discount_code_availability.sql" }}
 {{ template "payments/request_event_refund.sql" }}
+{{ template "payments/requeue_event_purchase_application_fee_adjustment.sql" }}
+{{ template "payments/requeue_event_purchase_credit_note.sql" }}
 {{ template "payments/requeue_event_purchase_refund.sql" }}
 {{ template "payments/requeue_stale_event_purchase_refund_claims.sql" }}
 

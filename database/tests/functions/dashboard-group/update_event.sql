@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(35);
+select plan(36);
 
 -- ============================================================================
 -- VARIABLES
@@ -106,7 +106,7 @@ insert into "group" (
     'abc1234',
     'A test group',
     '3a390000-0000-0000-0000-000000000006',
-    '{"provider": "stripe", "recipient_id": "acct_update_event"}'::jsonb
+    '{"provider": "stripe", "recipient_id": "acct_update_event", "seller_display_name": "Update Event Fiscal Sponsor"}'::jsonb
 );
 
 -- Events used for paid-capability transition results
@@ -548,6 +548,8 @@ select is(
         "speakers": [],
         "sponsors": [],
         "test_event": false,
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "automatic",
         "timezone": "America/Los_Angeles",
 
         "attendee_approval_required": false,
@@ -611,10 +613,29 @@ select is(
         '{
             "name": "Free To Paid",
             "description": "Free event used for paid transition checks",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                }
+            },
             "timezone": "UTC",
             "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
+            "kind_id": "in-person",
             "payment_currency_code": "USD",
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state": "CA",
+            "venue_zip_code": "94105",
             "ticket_types": [
                 {
                     "active": true,
@@ -644,6 +665,46 @@ select is(
     is_event_paid_capable(:'eventFreeToPaidID'::uuid),
     true,
     'Should persist paid capability after a free-to-paid update'
+);
+
+-- Should reject a paid update validated against a stale sponsor
+select throws_ok(
+    $$select update_event(
+        null::uuid,
+        '3a390000-0000-0000-0000-000000000010'::uuid,
+        '3a390000-0000-0000-0000-000000000023'::uuid,
+        '{
+            "name": "Free To Paid",
+            "description": "Free event used for paid transition checks",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_stale",
+                    "seller_display_name": "Stale Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_stale",
+                    "seller_display_name": "Stale Sponsor"
+                }
+            },
+            "timezone": "UTC",
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "kind_id": "in-person",
+            "payment_currency_code": "USD",
+            "venue_address": "456 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state": "CA",
+            "venue_zip_code": "94105"
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    )$$,
+    'payment configuration changed during provider validation',
+    'Should reject a paid update validated against a stale sponsor'
 );
 
 -- Should report no paid notification transition for a paid-to-free update
@@ -698,10 +759,29 @@ select is(
         '{
             "name": "Paid To Paid",
             "description": "Paid event used for paid edit checks",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                }
+            },
             "timezone": "UTC",
             "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
+            "kind_id": "in-person",
             "payment_currency_code": "USD",
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state": "CA",
+            "venue_zip_code": "94105",
             "ticket_types": [
                 {
                     "active": true,
@@ -742,11 +822,30 @@ select is(
         '{
             "name": "Test Free To Paid",
             "description": "Free test event promoted while adding paid tickets",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                }
+            },
             "timezone": "UTC",
             "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
+            "kind_id": "in-person",
             "payment_currency_code": "USD",
             "test_event": false,
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state": "CA",
+            "venue_zip_code": "94105",
             "ticket_types": [
                 {
                     "active": true,
@@ -796,8 +895,14 @@ select is(
             "description": "Paid test event promoted without changing tickets",
             "timezone": "UTC",
             "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "test_event": false
+            "kind_id": "in-person",
+            "test_event": false,
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state": "CA",
+            "venue_zip_code": "94105"
         }'::jsonb,
         null::jsonb,
         'stripe'
@@ -831,8 +936,14 @@ select is(
             "description": "Paid test event that remains a test event",
             "timezone": "UTC",
             "category_id": "3a390000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "test_event": true
+            "kind_id": "in-person",
+            "test_event": true,
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state": "CA",
+            "venue_zip_code": "94105"
         }'::jsonb,
         null::jsonb,
         'stripe'
@@ -900,13 +1011,13 @@ select lives_ok(
             "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
             "tags": ["updated", "event", "tags"],
             "test_event": true,
-            "venue_address": "456 New St",
-            "venue_city": "Tokyo",
-            "venue_country_code": "JP",
-            "venue_country_name": "Japan",
-            "venue_name": "New Venue",
-            "venue_state": "TK",
-            "venue_zip_code": "100-0001",
+            "venue_address": " 456 New St ",
+            "venue_city": " Tokyo ",
+            "venue_country_code": " JP ",
+            "venue_country_name": " Japan ",
+            "venue_name": " New Venue ",
+            "venue_state": " TK ",
+            "venue_zip_code": " 100-0001 ",
             "hosts": ["3a390000-0000-0000-0000-000000000017", "3a390000-0000-0000-0000-000000000018"],
             "speakers": [
                 {"user_id": "3a390000-0000-0000-0000-000000000017", "featured": true},
@@ -985,6 +1096,8 @@ select is(
         "has_related_events": false,
         "has_ticket_purchases": false,
         "tags": ["updated", "event", "tags"],
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "automatic",
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
         "venue_country_code": "JP",

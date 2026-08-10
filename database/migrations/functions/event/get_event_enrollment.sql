@@ -56,12 +56,21 @@ returns json as $$
     ),
     -- Prefer resumable checkout state before completed attendee purchases.
     purchase_state as (
-        select ep.amount_minor, ep.event_purchase_id, ep.provider_checkout_url
+        select
+            ep.amount_minor,
+            ep.event_purchase_id,
+            ep.provider_checkout_url
         from event_purchase ep
         where ep.event_id = p_event_id
         and ep.user_id = p_user_id
         and (
-            ep.status in ('completed', 'refund-requested')
+            ep.status in (
+                'completed',
+                'refund-pending',
+                'refund-recovery-pending',
+                'refund-requested',
+                'refunded'
+            )
             or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
         )
         and exists (select 1 from scoped_event)

@@ -556,7 +556,9 @@ describe("event attendance", () => {
     dispatchHtmxBeforeRequest(attendButton);
     dispatchHtmxAfterRequest(attendButton, {
       status: 409,
-      responseText: JSON.stringify({ conflict: "registration-answers-required" }),
+      responseText: JSON.stringify({
+        conflict: "registration-answers-required",
+      }),
     });
 
     // Restore the action and collect answers before retrying it.

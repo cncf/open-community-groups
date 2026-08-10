@@ -1,14 +1,57 @@
 use std::sync::Arc;
 
 use axum::{
+    body::{Body, to_bytes},
     extract::State,
-    http::{HeaderMap, HeaderValue, StatusCode},
+    http::{HeaderMap, HeaderValue, Request, StatusCode},
     response::IntoResponse,
 };
+use tower::ServiceExt;
 
-use crate::services::payments::{DynPaymentsManager, HandleWebhookError, MockPaymentsManager};
+use crate::{
+    db::mock::MockDB,
+    handlers::tests::{TestRouterBuilder, assert_empty_response, sample_payments_cfg},
+    services::{
+        notifications::MockNotificationsManager,
+        payments::{DynPaymentsManager, HandleWebhookError, MockPaymentsManager},
+    },
+};
 
 use super::webhook;
+
+#[tokio::test]
+async fn test_connected_webhook_route_dispatches_to_connected_account_handler() {
+    // Expect the connected route to select only the connected-account boundary
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_handle_connected_webhook()
+        .times(1)
+        .withf(|headers, body| {
+            headers.get("stripe-signature") == Some(&HeaderValue::from_static("sig_test"))
+                && body == "payload"
+        })
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager.expect_handle_webhook().never();
+
+    // Send the provider payload through the configured application route
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .with_payments_cfg(sample_payments_cfg())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/webhooks/payments/connected")
+        .header("stripe-signature", "sig_test")
+        .body(Body::from("payload"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the connected endpoint accepts the successfully handled event
+    assert_empty_response(&parts, &bytes, StatusCode::OK);
+}
 
 #[tokio::test]
 async fn test_webhook_returns_not_found_when_payments_are_not_configured() {

@@ -108,12 +108,27 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending'),
-    (2500, 'USD', :'eventID', :'recentPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_recent'),
-    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale'),
-    (2500, 'USD', :'eventID', :'staleSucceededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_succeeded');
+    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending', 'direct-charge', 'acct_refunds', 0, 'ch_stale_pending', 'cs_stale_pending', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'recentPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_recent', 'direct-charge', 'acct_refunds', 0, 'ch_stale_recent', 'cs_stale_recent', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale', 'direct-charge', 'acct_refunds', 0, 'ch_stale', 'cs_stale', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'staleSucceededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_succeeded', 'direct-charge', 'acct_refunds', 0, 'ch_stale_succeeded', 'cs_stale_succeeded', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb);
 
 -- Refund rows covering stale unknown, stale succeeded, recent, and non-processing states
 insert into event_purchase_refund (

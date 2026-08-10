@@ -96,7 +96,7 @@ insert into "group" (
     :'groupCategoryID',
     :'groupID',
     'Group',
-    '{"provider": "stripe", "recipient_id": "acct_finalize"}'::jsonb,
+    '{"provider": "stripe", "recipient_id": "acct_finalize", "seller_display_name": "Finalize Refund Fiscal Sponsor"}'::jsonb,
     'group'
 );
 
@@ -218,13 +218,73 @@ insert into event_purchase (
     discount_code,
     event_discount_code_id,
     payment_provider_id,
-    provider_payment_reference
-) values
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.event_id::uuid,
+    fixtures.event_purchase_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+    fixtures.discount_amount_minor,
+    fixtures.discount_code,
+    fixtures.event_discount_code_id::uuid,
+    fixtures.payment_provider_id,
+    fixtures.provider_payment_reference,
+
+    'direct-charge',
+    'acct_refunds',
+    0,
+    'ch_' || fixtures.event_purchase_id,
+    'cs_' || fixtures.event_purchase_id,
+    'acct_refunds',
+    fixtures.amount_minor,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    fixtures.amount_minor,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values
     (2500, 'USD', :'eventID', :'happyPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'happyUserID', 500, 'SAVE5', :'discountCodeID', 'stripe', 'pi_happy'),
     (2500, 'USD', :'eventID', :'incompletePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'incompleteUserID', 0, null, null, 'stripe', 'pi_incomplete'),
     (2000, 'USD', :'eventID', :'questionsPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'questionsUserID', 500, 'SAVE5', :'discountCodeID', 'stripe', 'pi_questions'),
     (2500, 'USD', :'eventID', :'rejectedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'rejectedUserID', 0, null, null, 'stripe', 'pi_rejected'),
-    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'staleUserID', 0, null, null, 'stripe', 'pi_stale');
+    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'staleUserID', 0, null, null, 'stripe', 'pi_stale')
+) as fixtures (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    payment_provider_id,
+    provider_payment_reference
+);
 
 -- Replacement and late-refund purchases linked to the same completed offer.
 insert into event_purchase (
@@ -239,8 +299,52 @@ insert into event_purchase (
     provider_payment_reference,
     status,
     ticket_title,
-    user_id
-) values
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.admission_offer_id::uuid,
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.discount_amount_minor,
+    fixtures.event_id::uuid,
+    fixtures.event_purchase_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.payment_provider_id,
+    fixtures.provider_payment_reference,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+
+    'direct-charge',
+    'acct_refunds',
+    0,
+    'ch_' || fixtures.event_purchase_id,
+    'cs_' || fixtures.event_purchase_id,
+    'acct_refunds',
+    fixtures.amount_minor,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    fixtures.amount_minor,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values
     (
         :'replacementOfferID', 2500, 'USD', 0, :'eventID', :'replacementPurchaseID',
         :'ticketTypeID', 'stripe', 'pi_replacement', 'completed', 'General admission',
@@ -250,7 +354,21 @@ insert into event_purchase (
         :'replacementOfferID', 2500, 'USD', 0, :'eventID', :'replacementRefundedPurchaseID',
         :'ticketTypeID', 'stripe', 'pi_replaced', 'refund-pending', 'General admission',
         :'replacementUserID'
-    );
+    )
+) as fixtures (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+);
 
 -- Attendee rows removed from active capacity only after successful finalization
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id) values

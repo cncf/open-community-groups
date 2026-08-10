@@ -16,6 +16,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [User Dashboard Structure](#user-dashboard-structure)
 - [My Groups](#my-groups)
 - [My Events: Upcoming Participation](#my-events-upcoming-participation)
+- [Purchases and Financial Documents](#purchases-and-financial-documents)
 - [Profile: Public Identity](#profile-public-identity)
 - [Badges: Portable Credentials](#badges-portable-credentials)
 - [Invitations: Access and Attendance](#invitations-access-and-attendance)
@@ -26,10 +27,11 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into eight areas:
+The dashboard is organized into nine areas:
 
 - [My Groups](/dashboard/user?tab=groups ':ignore')
 - [My Events](/dashboard/user?tab=events ':ignore')
+- [Purchases & documents](/dashboard/user?tab=purchases ':ignore')
 - [Profile](/dashboard/user?tab=account ':ignore')
 - [Badges](/dashboard/user?tab=badges ':ignore')
 - [Invitations](/dashboard/user?tab=invitations ':ignore')
@@ -101,6 +103,21 @@ Expired checkout holds disappear from the list unless you have another active ro
 hold expiration is reflected when the dashboard content next loads or refreshes.
 
 ![User profile area](../screenshots/dashboard-user-my-events.png)
+
+## Purchases and Financial Documents
+
+`Purchases & documents` is the durable history for paid tickets. Unlike `My
+Events`, it includes completed and refunded purchases for past and canceled
+events.
+
+Each row shows the event, ticket, fiscal-sponsor seller, amount paid, purchase
+or refund status, and available provider documents. Open invoice and issued
+credit-note links in a new tab. A processing label means Stripe has not issued
+the document yet or OCG is still reconciling its current link.
+
+Use this dashboard history to access documents for upcoming, past, and canceled
+events. Free and discounted-to-zero purchases do not create Stripe invoices or
+credit notes.
 
 ## Profile: Public Identity
 

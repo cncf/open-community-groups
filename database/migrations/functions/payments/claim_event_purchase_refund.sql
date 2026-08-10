@@ -6,8 +6,8 @@ returns jsonb as $$
 declare
     v_claim_id uuid := gen_random_uuid();
     v_community_id uuid;
+    v_connected_seller_id text;
     v_event_id uuid;
-    v_platform_fee_amount_minor bigint;
     v_provider_payment_reference text;
     v_refund event_purchase_refund;
 begin
@@ -58,13 +58,13 @@ begin
     -- Resolve the purchase and notification context required by the worker
     select
         g.community_id,
+        ep.connected_seller_id,
         ep.event_id,
-        ep.platform_fee_amount_minor,
         ep.provider_payment_reference
     into
         v_community_id,
+        v_connected_seller_id,
         v_event_id,
-        v_platform_fee_amount_minor,
         v_provider_payment_reference
     from event_purchase ep
     join event e using (event_id)
@@ -75,11 +75,16 @@ begin
         raise exception 'event purchase not found';
     end if;
 
+    if nullif(btrim(v_connected_seller_id), '') is null then
+        raise exception 'event purchase is missing connected seller account';
+    end if;
+
     -- Return all state required for a provider call outside this transaction
     return jsonb_strip_nulls(
         jsonb_build_object(
             'amount_minor', v_refund.amount_minor,
             'community_id', v_community_id,
+            'connected_seller_id', v_connected_seller_id,
             'currency_code', v_refund.currency_code,
             'event_id', v_event_id,
             'event_purchase_id', v_refund.event_purchase_id,
@@ -87,7 +92,6 @@ begin
             'idempotency_key', v_refund.idempotency_key,
             'kind', v_refund.kind,
             'payment_provider', v_refund.payment_provider_id,
-            'platform_fee_amount_minor', v_platform_fee_amount_minor,
             'status', v_refund.status,
             'terminal_failure', v_refund.terminal_failure,
 

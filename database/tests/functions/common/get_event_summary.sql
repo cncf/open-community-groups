@@ -515,7 +515,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    3000,
+    0,
     'USD',
     :'eventPaidID',
     :'ticketTypeID',
@@ -524,7 +524,7 @@ insert into event_purchase (
     'General admission',
     :'activeCheckoutUserID'
 ), (
-    3000,
+    0,
     'USD',
     :'eventPaidID',
     :'ticketTypeID',

@@ -294,7 +294,7 @@ insert into event_purchase (
     user_id
 ) values
     (
-        2500,
+        0,
         'USD',
         :'eventID',
         :'publicTicketTypeID',
@@ -304,7 +304,7 @@ insert into event_purchase (
         :'completedPurchaseUserID'
     ),
     (
-        2500,
+        0,
         'USD',
         :'eventID',
         :'publicTicketTypeID',
@@ -314,7 +314,7 @@ insert into event_purchase (
         :'activeHoldUserID'
     ),
     (
-        2500,
+        0,
         'USD',
         :'eventID',
         :'publicTicketTypeID',

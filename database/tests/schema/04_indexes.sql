@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(88);
+select plan(106);
 
 -- ============================================================================
 -- TESTS
@@ -286,11 +286,90 @@ select indexes_are('event_purchase', array[
     'event_purchase_event_id_idx',
     'event_purchase_event_id_status_idx',
     'event_purchase_event_id_user_id_active_idx',
+    'event_purchase_provider_charge_id_idx',
     'event_purchase_provider_checkout_session_idx',
+    'event_purchase_provider_invoice_id_idx',
+    'event_purchase_provider_payment_reference_idx',
     'event_purchase_user_id_idx'
 ]);
 select index_is_unique('event_purchase', 'event_purchase_admission_offer_id_active_idx');
 select index_is_unique('event_purchase', 'event_purchase_event_id_user_id_active_idx');
+select index_is_unique('event_purchase', 'event_purchase_provider_charge_id_idx');
+select index_is_unique('event_purchase', 'event_purchase_provider_checkout_session_idx');
+select index_is_unique('event_purchase', 'event_purchase_provider_invoice_id_idx');
+select index_is_unique('event_purchase', 'event_purchase_provider_payment_reference_idx');
+
+-- Test: manual tax configuration indexes should match expected
+select indexes_are('event_manual_tax_configuration', array[
+    'event_manual_tax_configuration_pkey',
+    'event_manual_tax_configuration_event_id_active_idx',
+    'event_manual_tax_configuration_event_id_idx',
+    'event_manual_tax_configuration_event_version_key',
+    'event_manual_tax_configuration_id_behavior_key'
+]);
+select index_is_unique(
+    'event_manual_tax_configuration',
+    'event_manual_tax_configuration_event_id_active_idx'
+);
+select indexes_are('event_manual_tax_component', array[
+    'event_manual_tax_component_pkey',
+    'event_manual_tax_component_configuration_id_idx'
+]);
+
+-- Test: durable financial-work indexes should match expected
+select indexes_are('event_purchase_application_fee_adjustment', array[
+    'event_purchase_application_fee_adjustment_pkey',
+    'event_purchase_application_fee_adjustment_idempotency_key_idx',
+    'event_purchase_application_fee_adjustment_provider_refund_idx',
+    'event_purchase_application_fee_adjustment_purchase_kind_key',
+    'event_purchase_application_fee_adjustment_work_idx'
+]);
+select index_is_unique(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_application_fee_adjustment_idempotency_key_idx'
+);
+select index_is_unique(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_application_fee_adjustment_provider_refund_idx'
+);
+select indexes_are('event_purchase_credit_note', array[
+    'event_purchase_credit_note_pkey',
+    'event_purchase_credit_note_event_purchase_refund_id_key',
+    'event_purchase_credit_note_idempotency_key_key',
+    'event_purchase_credit_note_provider_id_idx',
+    'event_purchase_credit_note_work_idx'
+]);
+select index_is_unique(
+    'event_purchase_credit_note',
+    'event_purchase_credit_note_provider_id_idx'
+);
+-- Test: cached provider tax-resource indexes should match expected
+select indexes_are('payment_provider_tax_location', array[
+    'payment_provider_tax_location_pkey',
+    'payment_provider_tax_location_seller_fingerprint_key',
+    'payment_provider_tax_location_seller_provider_id_key'
+]);
+select index_is_unique(
+    'payment_provider_tax_location',
+    'payment_provider_tax_location_seller_fingerprint_key'
+);
+select index_is_unique(
+    'payment_provider_tax_location',
+    'payment_provider_tax_location_seller_provider_id_key'
+);
+select indexes_are('payment_provider_tax_product', array[
+    'payment_provider_tax_product_pkey',
+    'payment_provider_tax_product_seller_fingerprint_key',
+    'payment_provider_tax_product_seller_provider_id_key'
+]);
+select index_is_unique(
+    'payment_provider_tax_product',
+    'payment_provider_tax_product_seller_fingerprint_key'
+);
+select index_is_unique(
+    'payment_provider_tax_product',
+    'payment_provider_tax_product_seller_provider_id_key'
+);
 
 -- Test: event_purchase_refund indexes should match expected
 select indexes_are('event_purchase_refund', array[

@@ -164,7 +164,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'pendingCheckoutPurchaseID',
-    2500,
+    0,
     'USD',
     0,
     :'pendingCheckoutEventID',

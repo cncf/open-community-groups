@@ -171,7 +171,6 @@ jobs:
           payments:
             provider: stripe
             mode: test
-            publishable_key: pk_test_e2e
             secret_key: sk_test_e2e
             webhook_secret: whsec_e2e
           meetings:

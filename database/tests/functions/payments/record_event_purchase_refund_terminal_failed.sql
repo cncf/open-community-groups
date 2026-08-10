@@ -1,3 +1,5 @@
+-- Tests recording terminal event purchase refund failures.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -180,8 +182,53 @@ insert into event_purchase (
     ticket_title,
     user_id,
 
-    refunded_at
-) values (
+    refunded_at,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.event_purchase_id::uuid,
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.event_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+    fixtures.refunded_at,
+
+    'direct-charge',
+    'acct_refunds',
+    0,
+    'stripe',
+    'ch_' || fixtures.event_purchase_id,
+    'cs_' || fixtures.event_purchase_id,
+    'acct_refunds',
+    'pi_' || fixtures.event_purchase_id,
+    fixtures.amount_minor,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    fixtures.amount_minor,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values (
     :'failedPurchaseID',
     2500,
     'USD',
@@ -247,6 +294,16 @@ insert into event_purchase (
     :'succeededUserID',
 
     null
+)) as fixtures (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+    refunded_at
 );
 
 -- Provider refund records

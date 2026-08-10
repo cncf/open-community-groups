@@ -1,8 +1,13 @@
 -- Reconciles a completed provider checkout session with its local purchase.
 create or replace function reconcile_event_purchase_for_checkout_session(
     p_provider text,
+    p_provider_object_account_id text,
     p_provider_session_id text,
-    p_provider_payment_reference text
+    p_provider_payment_reference text,
+    p_provider_charge_id text,
+    p_provider_total_minor bigint default null,
+    p_tax_amount_minor bigint default null,
+    p_provider_application_fee_id text default null
 )
 returns jsonb as $$
 declare
@@ -13,17 +18,32 @@ declare
     v_event_discount_code_id uuid;
     v_event_id uuid;
     v_event_ticket_type_id uuid;
+    v_final_platform_fee_amount_minor bigint;
     v_hold_expired boolean;
     v_lock_user_id uuid;
     v_manually_invited boolean;
+    v_provider_application_fee_id text;
     v_provider_payment_reference text;
+    v_provider_total_minor bigint;
     v_purchase_id uuid;
     v_recovery_pending boolean;
     v_requires_refund boolean;
     v_status text;
+    v_subtotal_excluding_tax_minor bigint;
+    v_tax_amount_minor bigint;
     v_unfulfillable boolean;
     v_user_id uuid;
 begin
+    -- Validate the required direct-charge provider context
+    if nullif(btrim(p_provider_object_account_id), '') is null then
+        raise exception 'connected seller account is required';
+    end if;
+
+    if nullif(btrim(p_provider_payment_reference), '') is null
+       or nullif(btrim(p_provider_charge_id), '') is null then
+        raise exception 'direct-charge payment references are required';
+    end if;
+
     -- Resolve immutable enrollment identifiers before taking lifecycle locks
     select
         ep.admission_offer_id,
@@ -37,6 +57,7 @@ begin
         v_user_id
     from event_purchase ep
     where ep.payment_provider_id = p_provider
+    and ep.provider_object_account_id = p_provider_object_account_id
     and ep.provider_checkout_session_id = p_provider_session_id;
 
     if not found then
@@ -115,7 +136,9 @@ begin
         ep.hold_expires_at is not null
             and ep.hold_expires_at <= current_timestamp,
         coalesce(ao.source = 'organizer_invitation', false),
+        ep.provider_application_fee_id,
         coalesce(p_provider_payment_reference, ep.provider_payment_reference),
+        p_provider_total_minor,
         ep.event_purchase_id,
         exists (
             select 1
@@ -126,6 +149,8 @@ begin
             and recovery_ep.user_id = ep.user_id
         ),
         ep.status,
+        p_provider_total_minor - p_tax_amount_minor,
+        p_tax_amount_minor,
         e.canceled
             or e.deleted
             or not e.published
@@ -154,10 +179,14 @@ begin
         v_event_id,
         v_hold_expired,
         v_manually_invited,
+        v_provider_application_fee_id,
         v_provider_payment_reference,
+        v_provider_total_minor,
         v_purchase_id,
         v_recovery_pending,
         v_status,
+        v_subtotal_excluding_tax_minor,
+        v_tax_amount_minor,
         v_unfulfillable,
         v_user_id
     from event_purchase ep
@@ -166,6 +195,7 @@ begin
     left join admission_offer ao
         on ao.admission_offer_id = ep.admission_offer_id
     where ep.payment_provider_id = p_provider
+    and ep.provider_object_account_id = p_provider_object_account_id
     and ep.provider_checkout_session_id = p_provider_session_id
     for update of ep;
 
@@ -184,6 +214,84 @@ begin
     ) then
         return jsonb_build_object('outcome', 'noop');
     end if;
+
+    -- Validate and snapshot authoritative direct-charge financial amounts
+    if v_provider_total_minor is null
+       or v_tax_amount_minor is null
+       or v_provider_total_minor <= 0
+       or v_tax_amount_minor < 0
+       or v_subtotal_excluding_tax_minor < 0 then
+        raise exception 'direct-charge checkout is missing authoritative amounts';
+    end if;
+
+    if exists (
+        select 1
+        from event_purchase ep
+        where ep.event_purchase_id = v_purchase_id
+        and (
+            (
+                ep.tax_behavior = 'inclusive'
+                and v_provider_total_minor <> ep.amount_minor
+            )
+            or (
+                ep.tax_behavior = 'exclusive'
+                and v_subtotal_excluding_tax_minor <> ep.amount_minor
+            )
+        )
+    ) then
+        raise exception 'provider total does not match the ticket tax behavior';
+    end if;
+
+    select (v_subtotal_excluding_tax_minor * ep.platform_fee_bps) / 10000
+    into v_final_platform_fee_amount_minor
+    from event_purchase ep
+    where ep.event_purchase_id = v_purchase_id;
+
+    if v_provider_application_fee_id is not null
+       and p_provider_application_fee_id is not null
+       and v_provider_application_fee_id <> p_provider_application_fee_id then
+        raise exception 'provider application fee does not match the purchase';
+    end if;
+
+    -- Persist authoritative amounts and reconcile purchases with unchanged fees
+    update event_purchase
+    set
+        final_platform_fee_amount_minor = v_final_platform_fee_amount_minor,
+        financially_reconciled_at = case
+            when provisional_platform_fee_amount_minor =
+                v_final_platform_fee_amount_minor
+            then coalesce(financially_reconciled_at, current_timestamp)
+            else financially_reconciled_at
+        end,
+        provider_application_fee_id = coalesce(
+            p_provider_application_fee_id,
+            v_provider_application_fee_id
+        ),
+        provider_charge_id = p_provider_charge_id,
+        provider_total_minor = v_provider_total_minor,
+        subtotal_excluding_tax_minor = v_subtotal_excluding_tax_minor,
+        tax_amount_minor = v_tax_amount_minor,
+        updated_at = current_timestamp
+    where event_purchase_id = v_purchase_id;
+
+    -- Persist tax-related fee work before acknowledging successful payment
+    insert into event_purchase_application_fee_adjustment (
+        amount_minor,
+        event_purchase_id,
+        idempotency_key,
+        kind
+    )
+    select
+        ep.provisional_platform_fee_amount_minor
+            - v_final_platform_fee_amount_minor,
+        ep.event_purchase_id,
+        format('event-purchase-tax-fee-adjustment-%s', ep.event_purchase_id),
+        'tax-reconciliation'
+    from event_purchase ep
+    where ep.event_purchase_id = v_purchase_id
+    and ep.provisional_platform_fee_amount_minor >
+        v_final_platform_fee_amount_minor
+    on conflict (event_purchase_id, kind) do nothing;
 
     -- Reserve inventory for paid checkouts that can no longer be fulfilled
     v_requires_refund := v_status = 'refund-pending'
@@ -283,7 +391,7 @@ begin
         update event_purchase
         set
             hold_expires_at = null,
-            provider_payment_reference = v_provider_payment_reference,
+                provider_payment_reference = v_provider_payment_reference,
             status = 'refund-pending',
             updated_at = current_timestamp
         where event_purchase_id = v_purchase_id;
@@ -307,7 +415,7 @@ begin
         payment_provider_id,
         status
     ) values (
-        v_amount_minor,
+        v_provider_total_minor,
         v_currency_code,
         v_purchase_id,
         format('event-purchase-refund-%s', v_purchase_id),

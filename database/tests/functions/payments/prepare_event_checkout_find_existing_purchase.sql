@@ -129,7 +129,11 @@ values (
     :'groupCategoryID',
     'Find Reusable Group',
     'find-reusable-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_find_reusable')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_find_reusable',
+        'seller_display_name', 'Reusable Purchase Fiscal Sponsor'
+    )
 );
 
 -- Event
@@ -207,8 +211,56 @@ insert into event_purchase (
     hold_expires_at,
     status,
     ticket_title,
-    user_id
-) values (
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.event_purchase_id::uuid,
+    fixtures.amount_minor,
+    fixtures.created_at,
+    fixtures.currency_code,
+    fixtures.discount_amount_minor,
+    fixtures.discount_code,
+    fixtures.event_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.hold_expires_at,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+
+    'direct-charge',
+    'acct_find',
+    case when fixtures.status <> 'pending' then 0 end,
+    'stripe',
+    case when fixtures.status <> 'pending' then 'ch_' || fixtures.event_purchase_id end,
+    case when fixtures.status <> 'pending' then 'cs_' || fixtures.event_purchase_id end,
+    'acct_find',
+    case when fixtures.status <> 'pending' then 'pi_' || fixtures.event_purchase_id end,
+    case when fixtures.status <> 'pending' then fixtures.amount_minor end,
+    '{"connected_account_id":"acct_find","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    case when fixtures.status <> 'pending' then fixtures.amount_minor end,
+    case when fixtures.status <> 'pending' then 0 end,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values (
     :'pendingPurchaseID',
     2000,
     now() - interval '1 hour',
@@ -286,6 +338,19 @@ insert into event_purchase (
     'completed',
     'VIP',
     :'recoveryUserID'
+)) as fixtures (
+    event_purchase_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
 );
 
 -- Offer-linked pending purchase isolated from direct checkout lookups
@@ -352,9 +417,19 @@ insert into event_purchase (
     event_purchase_id,
     event_ticket_type_id,
     hold_expires_at,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot,
+
+    charge_model,
+    connected_seller_id
 ) values (
     :'offerID',
     2500,
@@ -364,9 +439,18 @@ insert into event_purchase (
     :'offerPurchaseID',
     :'ticketTypeAID',
     current_timestamp + interval '15 minutes',
+    'stripe',
+    'acct_find',
+    '{"connected_account_id":"acct_find","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'offerUserID'
+    :'offerUserID',
+    '{}'::jsonb,
+    'direct-charge',
+    'acct_find'
 );
 
 -- Refund-pending purchase linked to its selected admission offer
@@ -379,9 +463,26 @@ insert into event_purchase (
     event_purchase_id,
     event_ticket_type_id,
     hold_expires_at,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
     status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor
 ) values (
     :'refundPendingOfferID',
     2500,
@@ -391,9 +492,25 @@ insert into event_purchase (
     :'refundPendingPurchaseID',
     :'ticketTypeAID',
     null,
+    'stripe',
+    'ch_find_refund',
+    'cs_find_refund',
+    'acct_find',
+    'pi_find_refund',
+    2500,
+    '{"connected_account_id":"acct_find","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'refund-pending',
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'refundPendingUserID'
+    :'refundPendingUserID',
+    '{}'::jsonb,
+    'direct-charge',
+    'acct_find',
+    0
 );
 
 -- ============================================================================

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(78);
+select plan(84);
 
 -- ============================================================================
 -- TESTS
@@ -337,7 +337,9 @@ select columns_are('event', array[
     'venue_name',
     'venue_state',
     'venue_zip_code',
-    'waitlist_enabled'
+    'waitlist_enabled',
+    'tax_behavior',
+    'tax_calculation_mode'
 ]);
 
 select is(
@@ -448,6 +450,40 @@ select columns_are('event_kind', array[
     'display_name'
 ]);
 
+-- Test: manual event tax columns should match expected
+select columns_are('event_manual_tax_configuration', array[
+    'event_manual_tax_configuration_id',
+    'approved_at',
+    'approved_by_user_id',
+    'connected_seller_id',
+    'created_at',
+    'currency_code',
+    'event_id',
+    'evidence_reference',
+    'tax_behavior',
+    'valid_from',
+    'venue_snapshot',
+    'version',
+
+    'valid_until'
+]);
+
+-- Test: event_manual_tax_component columns should match expected
+select columns_are('event_manual_tax_component', array[
+    'event_manual_tax_component_id',
+    'created_at',
+    'display_name',
+    'event_manual_tax_configuration_id',
+    'jurisdiction',
+    'percentage',
+    'provider_tax_rate_id',
+    'tax_behavior',
+    'tax_type',
+
+    'country_code',
+    'state'
+]);
+
 -- Test: event_organizer columns should match expected
 select columns_are('event_organizer', array[
     'event_id',
@@ -464,7 +500,7 @@ select columns_are('event_purchase', array[
     'discount_amount_minor',
     'event_id',
     'event_ticket_type_id',
-    'platform_fee_amount_minor',
+    'provisional_platform_fee_amount_minor',
     'status',
     'ticket_title',
     'updated_at',
@@ -480,7 +516,86 @@ select columns_are('event_purchase', array[
     'provider_checkout_session_id',
     'provider_checkout_url',
     'provider_payment_reference',
-    'refunded_at'
+    'refunded_at',
+    'charge_model',
+    'platform_fee_bps',
+
+    'connected_seller_id',
+    'final_platform_fee_amount_minor',
+    'financially_reconciled_at',
+    'manual_tax_snapshot',
+    'performance_location_fingerprint',
+    'provider_application_fee_id',
+    'provider_charge_id',
+    'provider_invoice_hosted_url',
+    'provider_invoice_id',
+    'provider_invoice_pdf_url',
+    'provider_object_account_id',
+    'provider_product_fingerprint',
+    'provider_tax_code',
+    'provider_tax_location_id',
+    'provider_tax_product_id',
+    'provider_total_minor',
+    'seller_snapshot',
+    'subtotal_excluding_tax_minor',
+    'tax_amount_minor',
+    'tax_behavior',
+    'tax_calculation_mode',
+    'tax_classification',
+    'venue_snapshot'
+]);
+
+-- Test: durable purchase financial-work columns should match expected
+select columns_are('event_purchase_application_fee_adjustment', array[
+    'event_purchase_application_fee_adjustment_id',
+    'amount_minor',
+    'attempt_count',
+    'created_at',
+    'event_purchase_id',
+    'idempotency_key',
+    'kind',
+    'next_attempt_at',
+    'status',
+    'updated_at',
+
+    'claim_id',
+    'claimed_at',
+    'completed_at',
+    'failure_message',
+    'provider_application_fee_refund_id',
+    'recovery_completed_at',
+    'recovery_completed_by_user_id',
+    'recovery_note',
+    'recovery_reference'
+]);
+
+-- Test: event_purchase_credit_note columns should match expected
+select columns_are('event_purchase_credit_note', array[
+    'event_purchase_credit_note_id',
+    'amount_minor',
+    'attempt_count',
+    'created_at',
+    'currency_code',
+    'event_purchase_refund_id',
+    'idempotency_key',
+    'next_attempt_at',
+    'payment_provider_id',
+    'provider_object_account_id',
+    'status',
+    'tax_amount_minor',
+    'updated_at',
+
+    'claim_id',
+    'claimed_at',
+    'completed_at',
+    'failure_message',
+    'provider_credit_note_id',
+    'provider_hosted_url',
+    'provider_pdf_url',
+    'recovery_completed_at',
+    'recovery_completed_by_user_id',
+    'recovery_note',
+    'recovery_reference'
 ]);
 
 -- Test: event_purchase_refund columns should match expected
@@ -910,6 +1025,30 @@ select columns_are('notification_template_data', array[
 select columns_are('payment_provider', array[
     'payment_provider_id',
     'display_name'
+]);
+
+-- Test: cached provider tax-resource columns should match expected
+select columns_are('payment_provider_tax_location', array[
+    'payment_provider_tax_location_id',
+    'connected_seller_id',
+    'created_at',
+    'fingerprint',
+    'payment_provider_id',
+    'provider_tax_location_id',
+    'venue_snapshot'
+]);
+
+-- Test: payment_provider_tax_product columns should match expected
+select columns_are('payment_provider_tax_product', array[
+    'payment_provider_tax_product_id',
+    'connected_seller_id',
+    'created_at',
+    'fingerprint',
+    'payment_provider_id',
+    'provider_tax_location_id',
+    'provider_tax_product_id',
+    'tax_code',
+    'title'
 ]);
 
 -- Test: region columns should match expected

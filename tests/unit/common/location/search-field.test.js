@@ -228,6 +228,36 @@ describe("location-search-field", () => {
     ]);
   });
 
+  it("sets complete location fields from an external payload", async () => {
+    // Render the event venue field used by copy workflows.
+    const element = await renderField();
+
+    // Apply every persisted venue value through the public component API.
+    element.setLocationFields({
+      country: "Spain",
+      countryCode: "ES",
+      latitude: 36.7213,
+      longitude: -4.4214,
+      state: "Andalusia",
+      venueAddress: "Av. de José Ortega y Gasset, 201",
+      venueCity: "Málaga",
+      venueName: "FYCMA",
+      venueZipCode: "29006",
+    });
+    await element.updateComplete;
+
+    // Verify the generated form controls expose the complete submitted venue.
+    expect(element.querySelector('[name="venue_name"]')?.value).to.equal("FYCMA");
+    expect(element.querySelector('[name="venue_address"]')?.value).to.equal("Av. de José Ortega y Gasset, 201");
+    expect(element.querySelector('[name="venue_city"]')?.value).to.equal("Málaga");
+    expect(element.querySelector('[name="venue_state"]')?.value).to.equal("Andalusia");
+    expect(element.querySelector('[name="venue_country"]')?.value).to.equal("Spain");
+    expect(element.querySelector('[name="venue_country_code"]')?.value).to.equal("ES");
+    expect(element.querySelector('[name="venue_zip_code"]')?.value).to.equal("29006");
+    expect(element.querySelector('[name="venue_latitude"]')?.value).to.equal("36.7213");
+    expect(element.querySelector('[name="venue_longitude"]')?.value).to.equal("-4.4214");
+  });
+
   it("supports keyboard navigation and selects the highlighted result on enter", async () => {
     // Render the field fixture.
     const element = await renderField();

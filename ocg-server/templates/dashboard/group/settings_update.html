@@ -9,7 +9,7 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #group-settings-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button"
-      data-hx-keep-empty="payment_recipient[recipient_id]"
+      data-hx-keep-empty="payment_recipient[recipient_id] payment_recipient[seller_display_name]"
       data-htmx-response
       data-success-message="You have successfully updated the group."
       data-error-message="Something went wrong updating the group. Please try again later.">
@@ -197,13 +197,29 @@
 {% if payments_enabled -%}
   {# Payments section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {{ dashboard::form_title(title = "Payments", description = "Configure how this group receives money for paid events.") -}}
+    {{ dashboard::form_title(title = "Fiscal Sponsor", description = "Configure the legal seller for this group's paid events.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       <input type="hidden" name="payment_recipient[provider]" value="stripe">
 
       <div class="col-span-full lg:col-span-4">
-        <label for="payment_recipient_recipient_id" class="form-label">Stripe Recipient</label>
+        <label for="payment_recipient_seller_display_name" class="form-label">Fiscal Sponsor Legal Name</label>
+        <div class="mt-2">
+          <input type="text"
+                 name="payment_recipient[seller_display_name]"
+                 id="payment_recipient_seller_display_name"
+                 class="input-primary"
+                 maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                 placeholder="Example Fiscal Sponsor, Inc."
+                 {% if let Some(payment_recipient) = &group.payment_recipient %}
+                   value="{{ payment_recipient.seller_display_name }}"
+                 {% endif %}>
+        </div>
+        <p class="form-legend">Legal seller name shown to attendees in purchase and refund records.</p>
+      </div>
+
+      <div class="col-span-full lg:col-span-4">
+        <label for="payment_recipient_recipient_id" class="form-label">Fiscal Sponsor Stripe Account</label>
         <div class="mt-2">
           <input type="text"
                  name="payment_recipient[recipient_id]"
@@ -215,8 +231,8 @@
                  {% endif %}>
         </div>
         <p class="form-legend">
-          Enter the Stripe connected account that should receive money for this group's paid events.
-          Leave this blank to keep the group on free events only.
+          Enter the Standard-like Stripe connected account owned by the named fiscal sponsor that sells tickets and handles tax, invoices, refunds, disputes, and negative balances.
+          Leave both fiscal sponsor fields blank to keep the group on free events only.
         </p>
       </div>
     </div>

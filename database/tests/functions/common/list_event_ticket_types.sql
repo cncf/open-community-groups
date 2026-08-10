@@ -191,7 +191,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    2500,
+    0,
     'USD',
     :'eventID',
     :'ticketTypeAlphaID',
@@ -200,7 +200,7 @@ insert into event_purchase (
     'Alpha pass',
     :'user1ID'
 ), (
-    2500,
+    0,
     'USD',
     :'eventID',
     :'ticketTypeAlphaID',
@@ -209,7 +209,7 @@ insert into event_purchase (
     'Alpha pass',
     :'user2ID'
 ), (
-    2500,
+    0,
     'USD',
     :'eventID',
     :'ticketTypeAlphaID',
@@ -218,7 +218,7 @@ insert into event_purchase (
     'Alpha pass',
     :'user3ID'
 ), (
-    2500,
+    0,
     'USD',
     :'eventID',
     :'ticketTypeAlphaID',
@@ -227,7 +227,7 @@ insert into event_purchase (
     'Alpha pass',
     :'user4ID'
 ), (
-    2500,
+    0,
     'USD',
     :'eventID',
     :'ticketTypeAlphaID',
@@ -236,7 +236,7 @@ insert into event_purchase (
     'Alpha pass',
     :'user5ID'
 ), (
-    2500,
+    0,
     'USD',
     :'eventID',
     :'ticketTypeAlphaID',

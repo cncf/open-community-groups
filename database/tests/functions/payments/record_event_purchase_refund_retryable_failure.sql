@@ -109,12 +109,27 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values
-    (2500, 'USD', :'eventID', :'blankPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_blank'),
-    (2500, 'USD', :'eventID', :'cappedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_capped'),
-    (2500, 'USD', :'eventID', :'normalPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_normal'),
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending');
+    (2500, 'USD', :'eventID', :'blankPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_blank', 'direct-charge', 'acct_refunds', 0, 'ch_blank', 'cs_blank', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'cappedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_capped', 'direct-charge', 'acct_refunds', 0, 'ch_capped', 'cs_capped', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'normalPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_normal', 'direct-charge', 'acct_refunds', 0, 'ch_normal', 'cs_normal', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending', 'direct-charge', 'acct_refunds', 0, 'ch_pending', 'cs_pending_retry', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb);
 
 -- Refund rows covering message normalization, backoff bounds, and invalid state
 insert into event_purchase_refund (

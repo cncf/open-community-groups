@@ -3,9 +3,17 @@ create or replace function validate_event_ticketing_payment_readiness(
     p_configured_provider text,
     p_paid_capable boolean,
     p_payment_currency_code text,
-    p_payment_recipient jsonb
+    p_payment_recipient jsonb,
+    p_event_id uuid default null,
+    p_event_payload jsonb default null
 )
 returns void as $$
+declare
+    v_event_kind_id text;
+    v_manual_configuration_is_ready boolean := false;
+    v_tax_behavior text;
+    v_tax_calculation_mode text;
+    v_venue_snapshot jsonb;
 begin
     -- Skip provider requirements when every configured ticket price is zero
     if p_paid_capable is not true then
@@ -34,6 +42,101 @@ begin
 
     if nullif(btrim(p_payment_recipient->>'recipient_id'), '') is null then
         raise exception 'paid-capable events require a valid payment recipient';
+    end if;
+
+    if nullif(btrim(p_payment_recipient->>'seller_display_name'), '') is null then
+        raise exception 'paid-capable events require a payment recipient seller name';
+    end if;
+
+    -- Resolve the event and venue snapshot from a mutation payload or stored row
+    if p_event_payload is not null then
+        v_event_kind_id := p_event_payload->>'kind_id';
+        v_tax_behavior := coalesce(nullif(p_event_payload->>'tax_behavior', ''), 'inclusive');
+        v_tax_calculation_mode := coalesce(
+            nullif(p_event_payload->>'tax_calculation_mode', ''),
+            'automatic'
+        );
+        v_venue_snapshot := jsonb_build_object(
+            'address', nullif(btrim(p_event_payload->>'venue_address'), ''),
+            'city', nullif(btrim(p_event_payload->>'venue_city'), ''),
+            'country_code', nullif(btrim(p_event_payload->>'venue_country_code'), ''),
+            'name', nullif(btrim(p_event_payload->>'venue_name'), ''),
+            'state', nullif(btrim(p_event_payload->>'venue_state'), ''),
+            'zip_code', nullif(btrim(p_event_payload->>'venue_zip_code'), '')
+        );
+    elsif p_event_id is not null then
+        select
+            e.event_kind_id,
+            e.tax_behavior,
+            e.tax_calculation_mode,
+            jsonb_build_object(
+                'address', nullif(btrim(e.venue_address), ''),
+                'city', nullif(btrim(e.venue_city), ''),
+                'country_code', nullif(btrim(e.venue_country_code), ''),
+                'name', nullif(btrim(e.venue_name), ''),
+                'state', nullif(btrim(e.venue_state), ''),
+                'zip_code', nullif(btrim(e.venue_zip_code), '')
+            )
+        into
+            v_event_kind_id,
+            v_tax_behavior,
+            v_tax_calculation_mode,
+            v_venue_snapshot
+        from event e
+        where e.event_id = p_event_id;
+
+        if not found then
+            raise exception 'event not found or inactive';
+        end if;
+    else
+        raise exception 'paid-capable event readiness requires event context';
+    end if;
+
+    -- Limit paid sales to event kinds with complete physical venues
+    if v_event_kind_id not in ('in-person', 'hybrid')
+       or v_venue_snapshot->>'address' is null
+       or v_venue_snapshot->>'city' is null
+       or v_venue_snapshot->>'country_code' is null
+       or v_venue_snapshot->>'name' is null
+       or v_venue_snapshot->>'zip_code' is null then
+        raise exception 'paid ticketing requires an in-person or hybrid event with a complete physical venue';
+    end if;
+
+    -- Require one fully configured tax calculation path
+    if v_tax_calculation_mode = 'automatic' then
+        -- Mutable account and Tax readiness are revalidated against Stripe at Checkout
+        null;
+    elsif v_tax_calculation_mode = 'manual' and p_event_id is not null then
+        select
+            count(*) = 1
+            and coalesce(bool_and(matching_configuration.has_components), false)
+        into v_manual_configuration_is_ready
+        from (
+            select exists (
+                select 1
+                from event_manual_tax_component emtco
+                where emtco.event_manual_tax_configuration_id =
+                    emtc.event_manual_tax_configuration_id
+                and emtco.percentage > 0
+                and emtco.provider_tax_rate_id is not null
+            ) as has_components
+            from event_manual_tax_configuration emtc
+            where emtc.event_id = p_event_id
+            and emtc.connected_seller_id = p_payment_recipient->>'recipient_id'
+            and emtc.currency_code = p_payment_currency_code
+            and emtc.tax_behavior = v_tax_behavior
+            and emtc.valid_from <= current_timestamp
+            and (emtc.valid_until is null or emtc.valid_until > current_timestamp)
+            and emtc.venue_snapshot = v_venue_snapshot
+        ) matching_configuration;
+
+        if not v_manual_configuration_is_ready then
+            raise exception 'manual ticket tax is not ready for this sponsor and venue';
+        end if;
+    elsif v_tax_calculation_mode = 'manual' then
+        raise exception 'manual ticket tax must be configured after the event is created';
+    else
+        raise exception 'unsupported ticket tax calculation mode';
     end if;
 end;
 $$ language plpgsql;

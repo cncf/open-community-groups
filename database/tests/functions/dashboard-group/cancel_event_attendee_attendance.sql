@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -324,100 +324,70 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 )
-values
-    (
-        :'purchaseID',
-        2500,
-        'USD',
-        :'eventPaidID',
-        :'eventTicketTypeID',
-        'completed',
-        'Paid admission',
-        :'paidAttendeeID',
+select
+    fixture.event_purchase_id,
+    fixture.amount_minor,
+    fixture.currency_code,
+    fixture.event_id,
+    fixture.event_ticket_type_id,
+    fixture.status,
+    fixture.ticket_title,
+    fixture.user_id,
 
-        'stripe',
-        'pi_paid_attendance_cancel'
-    ),
-    (
-        :'freeTicketPurchaseID',
-        0,
-        null,
-        :'eventTicketedFreeID',
-        :'freeTicketTypeID',
-        'completed',
-        'Free admission',
-        :'freeTicketAttendeeID',
+    fixture.payment_provider_id,
+    fixture.provider_payment_reference,
 
-        null,
-        null
-    ),
-    (
-        :'approvalRefundPurchaseID',
-        2500,
-        'USD',
-        :'eventPaidID',
-        :'eventTicketTypeID',
-        'refund-requested',
-        'Paid admission',
-        :'approvalRefundAttendeeID',
-
-        'stripe',
-        'pi_approval_refund'
-    ),
-    (
-        :'approvedRequestPurchaseID',
-        2500,
-        'USD',
-        :'eventPaidID',
-        :'eventTicketTypeID',
-        'completed',
-        'Paid admission',
-        :'approvedRequestAttendeeID',
-
-        'stripe',
-        'pi_approved_request'
-    ),
-    (
-        :'conflictingRefundPurchaseID',
-        2500,
-        'USD',
-        :'eventPaidID',
-        :'eventTicketTypeID',
-        'refund-requested',
-        'Paid admission',
-        :'conflictingRefundAttendeeID',
-
-        'stripe',
-        'pi_conflicting_refund'
-    ),
-    (
-        :'invalidProviderPurchaseID',
-        2500,
-        'USD',
-        :'eventPaidID',
-        :'eventTicketTypeID',
-        'completed',
-        'Paid admission',
-        :'invalidProviderAttendeeID',
-
-        null,
-        null
-    ),
-    (
-        :'rejectedRequestPurchaseID',
-        2500,
-        'USD',
-        :'eventPaidID',
-        :'eventTicketTypeID',
-        'completed',
-        'Paid admission',
-        :'rejectedRequestAttendeeID',
-
-        'stripe',
-        'pi_rejected_request'
-    );
+    case when fixture.amount_minor > 0 then 'direct-charge' else 'ocg-free' end,
+    case when fixture.amount_minor > 0 then 'acct_attendance_test' end,
+    case when fixture.amount_minor > 0 then 0 end,
+    case when fixture.amount_minor > 0 then 'ch_' || fixture.event_purchase_id end,
+    case when fixture.amount_minor > 0 then 'cs_' || fixture.event_purchase_id end,
+    case when fixture.amount_minor > 0 then 'acct_attendance_test' end,
+    case when fixture.amount_minor > 0 then fixture.amount_minor end,
+    case when fixture.amount_minor > 0 then '{}'::jsonb end,
+    case when fixture.amount_minor > 0 then fixture.amount_minor end,
+    case when fixture.amount_minor > 0 then 0 end,
+    case when fixture.amount_minor > 0 then 'inclusive' end,
+    case when fixture.amount_minor > 0 then 'manual' end,
+    case when fixture.amount_minor > 0 then 'professional-event-admission' end,
+    case when fixture.amount_minor > 0 then '{}'::jsonb end
+from (
+    values
+        (:'purchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'completed', 'Paid admission', :'paidAttendeeID'::uuid, 'stripe', 'pi_paid_attendance_cancel'),
+        (:'freeTicketPurchaseID'::uuid, 0, null, :'eventTicketedFreeID'::uuid, :'freeTicketTypeID'::uuid, 'completed', 'Free admission', :'freeTicketAttendeeID'::uuid, null, null),
+        (:'approvalRefundPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'refund-requested', 'Paid admission', :'approvalRefundAttendeeID'::uuid, 'stripe', 'pi_approval_refund'),
+        (:'approvedRequestPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'completed', 'Paid admission', :'approvedRequestAttendeeID'::uuid, 'stripe', 'pi_approved_request'),
+        (:'conflictingRefundPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'refund-requested', 'Paid admission', :'conflictingRefundAttendeeID'::uuid, 'stripe', 'pi_conflicting_refund'),
+        (:'rejectedRequestPurchaseID'::uuid, 2500, 'USD', :'eventPaidID'::uuid, :'eventTicketTypeID'::uuid, 'completed', 'Paid admission', :'rejectedRequestAttendeeID'::uuid, 'stripe', 'pi_rejected_request')
+) as fixture(
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+    payment_provider_id,
+    provider_payment_reference
+);
 
 -- Attendees including a checked-in row whose active state must be cleared
 insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id)
@@ -834,16 +804,6 @@ select throws_ok(
     ),
     'event purchase refund already started with different kind',
     'Should reject durable work created for a different refund kind'
-);
-
--- Should reject a paid purchase without provider references
-select throws_ok(
-    format(
-        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
-        :'actorID', :'groupID', :'eventPaidID', :'invalidProviderAttendeeID'
-    ),
-    'paid purchase is not ready for refund',
-    'Should reject a paid purchase without provider references'
 );
 
 -- Should promote a rejected request into attendance cancellation work

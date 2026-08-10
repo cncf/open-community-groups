@@ -239,7 +239,11 @@ insert into "group" (
         jsonb_build_object('name', 'Discord', 'url', 'https://discord.gg/seattlek8s'),
         jsonb_build_object('name', 'Forum', 'url', 'https://forum.seattlek8s.com')
     ),
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group'),
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_test_group',
+        'seller_display_name', 'Test Fiscal Sponsor'
+    ),
     '2024-01-15 10:00:00+00'
 );
 
@@ -451,7 +455,8 @@ select is(
         "og_image_url": "https://example.com/group-og.png",
         "payment_recipient": {
             "provider": "stripe",
-            "recipient_id": "acct_test_group"
+            "recipient_id": "acct_test_group",
+            "seller_display_name": "Test Fiscal Sponsor"
         },
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "region": {

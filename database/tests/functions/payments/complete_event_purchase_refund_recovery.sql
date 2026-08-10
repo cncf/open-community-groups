@@ -217,7 +217,7 @@ values (
     :'groupCategoryID',
     :'groupID',
     'Complete Refund Recovery Group',
-    '{"provider":"stripe","recipient_id":"acct_recovery"}'::jsonb,
+    '{"provider":"stripe","recipient_id":"acct_recovery","seller_display_name":"Recovery Fiscal Sponsor"}'::jsonb,
     'complete-refund-recovery-group'
 );
 
@@ -483,8 +483,56 @@ insert into event_purchase (
     ticket_title,
     user_id,
 
-    refunded_at
-) values (
+    refunded_at,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.event_purchase_id::uuid,
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.discount_amount_minor,
+    fixtures.discount_code,
+    fixtures.event_discount_code_id::uuid,
+    fixtures.event_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+    fixtures.refunded_at,
+
+    'direct-charge',
+    'acct_refunds',
+    0,
+    'stripe',
+    'ch_' || fixtures.event_purchase_id,
+    'cs_' || fixtures.event_purchase_id,
+    'acct_refunds',
+    'pi_' || fixtures.event_purchase_id,
+    fixtures.amount_minor,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    fixtures.amount_minor,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values (
     :'purchaseID',
     2500,
     'USD',
@@ -624,6 +672,19 @@ insert into event_purchase (
     :'unpinnedUserID',
 
     null
+)) as fixtures (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+    refunded_at
 );
 
 -- Recoverable purchase currently occupying the active tier
@@ -636,7 +697,24 @@ insert into event_purchase (
     refunded_at,
     status,
     ticket_title,
-    user_id
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     2500,
     'USD',
@@ -646,7 +724,11 @@ insert into event_purchase (
     current_timestamp,
     'refund-recovery-pending',
     'Recovery admission',
-    :'activeRecoveryUserID'
+    :'activeRecoveryUserID',
+    'direct-charge', 'acct_refunds', 0, 'stripe', 'ch_active_recovery',
+    'cs_active_recovery', 'acct_refunds', 'pi_active_recovery', 2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
 -- FIFO queue waiting for active-tier recovery to release capacity

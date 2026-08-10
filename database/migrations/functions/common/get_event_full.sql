@@ -21,6 +21,8 @@ returns json as $$
             'published', e.published,
             'registration_questions', e.registration_questions,
             'slug', e.slug,
+            'tax_behavior', e.tax_behavior,
+            'tax_calculation_mode', e.tax_calculation_mode,
             'test_event', e.test_event,
             'timezone', e.timezone
         )

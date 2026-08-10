@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/common/location/search-field.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/group/event-selector/selector.js";
@@ -210,10 +211,17 @@ describe("event-selector", () => {
         <option value="">Select currency</option>
         <option value="EUR">EUR</option>
       </select>
-      <input id="venue_name" />
-      <input id="venue_address" />
-      <input id="venue_city" />
-      <input id="venue_zip_code" />
+      <location-search-field
+        venue-name-field-name="venue_name"
+        venue-address-field-name="venue_address"
+        venue-city-field-name="venue_city"
+        venue-zip-code-field-name="venue_zip_code"
+        state-field-name="venue_state"
+        country-name-field-name="venue_country_name"
+        country-code-field-name="venue_country_code"
+        latitude-field-name="latitude"
+        longitude-field-name="longitude"
+      ></location-search-field>
       <textarea id="meeting_join_instructions">filled</textarea>
       <input id="meeting_join_url" value="filled" />
       <input id="meeting_recording_url" value="filled" />
@@ -340,15 +348,22 @@ describe("event-selector", () => {
         },
       ],
       timezone: "Europe/Madrid",
-      venue_name: "FYCMA",
       venue_address: "Av. de José Ortega y Gasset, 201",
       venue_city: "Málaga",
+      venue_country_code: "ES",
+      venue_country_name: "Spain",
+      venue_name: "FYCMA",
+      venue_state: "Andalusia",
       venue_zip_code: "29006",
+      latitude: 36.7213,
+      longitude: -4.4214,
       hosts: [{ user: { user_id: "1", username: "alice" } }],
       sponsors: [{ name: "ACME", level: 2 }],
     });
 
     // Wait for the component to finish rendering.
+    const locationSearchField = document.querySelector("location-search-field");
+    await locationSearchField.updateComplete;
     await ticketTypesEditor.updateComplete;
     await discountCodesEditor.updateComplete;
 
@@ -386,7 +401,27 @@ describe("event-selector", () => {
     expect(document.getElementById("payment_currency_code")?.value).to.equal(
       "EUR",
     );
-    expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
+    expect(
+      document.getElementById("location-search-venue_address")?.value,
+    ).to.equal("Av. de José Ortega y Gasset, 201");
+    expect(
+      document.getElementById("location-search-venue_city")?.value,
+    ).to.equal("Málaga");
+    expect(
+      document.getElementById("location-search-venue_country_code")?.value,
+    ).to.equal("ES");
+    expect(
+      document.getElementById("location-search-venue_country_name")?.value,
+    ).to.equal("Spain");
+    expect(
+      document.getElementById("location-search-venue_name")?.value,
+    ).to.equal("FYCMA");
+    expect(
+      document.getElementById("location-search-venue_state")?.value,
+    ).to.equal("Andalusia");
+    expect(
+      document.getElementById("location-search-venue_zip_code")?.value,
+    ).to.equal("29006");
     expect(
       document.getElementById("meeting_join_instructions")?.value,
     ).to.equal("Use your registration name when joining.");

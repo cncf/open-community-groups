@@ -177,8 +177,8 @@ pub struct EventPurchaseSummary {
     pub event_purchase_id: Uuid,
     /// Ticket type identifier.
     pub event_ticket_type_id: Uuid,
-    /// Platform fee deducted from the group's proceeds, in minor units.
-    pub platform_fee_amount_minor: i64,
+    /// Provisional platform fee requested at Checkout creation, in minor units.
+    pub provisional_platform_fee_amount_minor: i64,
     /// Purchase status.
     pub status: EventPurchaseStatus,
     /// Ticket type title snapshot.
@@ -196,10 +196,14 @@ pub struct EventPurchaseSummary {
     pub hold_expires_at: Option<DateTime<Utc>>,
     /// Provider checkout URL for resuming the payment.
     pub provider_checkout_url: Option<String>,
+    /// Connected account that owns provider objects for direct charges.
+    pub provider_object_account_id: Option<String>,
     /// Provider payment reference used to manage the completed payment.
     pub provider_payment_reference: Option<String>,
     /// Provider purchase session identifier.
     pub provider_session_id: Option<String>,
+    /// Authoritative total paid to the provider, in minor units.
+    pub provider_total_minor: Option<i64>,
     /// When the purchase was refunded.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub refunded_at: Option<DateTime<Utc>>,
@@ -331,6 +335,17 @@ pub enum EventTicketTypeAvailability {
     Public,
 }
 
+/// Immutable fiscal-sponsor seller snapshot used by a purchase.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct FiscalSponsorSeller {
+    /// Connected account that owns the provider objects.
+    pub connected_account_id: String,
+    /// Seller name displayed for operational context.
+    pub display_name: String,
+    /// Payments provider that owns the seller account.
+    pub provider: PaymentProvider,
+}
+
 /// Group-level payout recipient details.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -339,28 +354,131 @@ pub struct GroupPaymentRecipient {
     pub provider: PaymentProvider,
     /// Provider recipient identifier.
     pub recipient_id: String,
+    /// Legal seller name displayed to attendees.
+    pub seller_display_name: String,
+}
+
+/// Sponsor-approved fixed tax component snapshotted onto a purchase.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ManualTaxComponent {
+    /// Display label used by Stripe Checkout and invoices.
+    pub display_name: String,
+    /// Sponsor-supplied jurisdiction label.
+    pub jurisdiction: String,
+    /// Decimal percentage encoded without floating-point conversion.
+    pub percentage: String,
+    /// Connected-account Stripe Tax Rate identifier.
+    pub provider_tax_rate_id: String,
+    /// Sponsor-supplied tax type.
+    pub tax_type: String,
+
+    /// ISO country code when supplied by the sponsor.
+    pub country_code: Option<String>,
+    /// State or province when supplied by the sponsor.
+    pub state: Option<String>,
+}
+
+/// Provider validation bound to the payment configuration observed before mutation.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct PaymentConfigurationValidation {
+    /// Whether the provider validation included automatic-tax readiness.
+    pub require_automatic_tax: bool,
+
+    /// Payment recipient observed before taking the database mutation lock.
+    pub expected_payment_recipient: Option<GroupPaymentRecipient>,
+    /// Payment recipient validated at the provider boundary.
+    pub validated_payment_recipient: Option<GroupPaymentRecipient>,
 }
 
 /// Checkout data returned after preparing an attendee purchase.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PreparedEventCheckout {
+    /// Community display name used in invoice context.
+    pub community_display_name: String,
     /// Community slug used in attendee-facing routes.
     pub community_name: String,
     /// Event identifier.
     pub event_id: Uuid,
+    /// Event display name used in invoice context.
+    pub event_name: String,
     /// Event slug used in attendee-facing routes.
     pub event_slug: String,
+    /// Event time zone used to format invoice context.
+    pub event_timezone: String,
+    /// Group display name used in invoice context.
+    pub group_name: String,
     /// Generated group slug used in attendee-facing routes.
     pub group_slug: String,
     /// Prepared purchase summary for the attendee.
     #[serde(flatten)]
     pub purchase: EventPurchaseSummary,
 
+    /// Fingerprint for a reusable sponsor-scoped performance location.
+    pub cached_performance_location_fingerprint: Option<String>,
+    /// Fingerprint for a reusable sponsor-scoped ticket Product.
+    pub cached_product_fingerprint: Option<String>,
+    /// Reusable provider performance location identifier.
+    pub cached_provider_tax_location_id: Option<String>,
+    /// Reusable provider ticket Product identifier.
+    pub cached_provider_tax_product_id: Option<String>,
+    /// Event start time used in invoice context.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub event_starts_at: Option<DateTime<Utc>>,
     /// Admin-managed group slug used in attendee-facing routes.
     pub group_slug_pretty: Option<String>,
-    /// Recipient account configured for the event's group.
-    pub recipient: Option<GroupPaymentRecipient>,
+    /// Fixed manual tax components selected for the purchase.
+    pub manual_tax_components: Option<Vec<ManualTaxComponent>>,
+    /// Immutable connected fiscal-sponsor seller snapshot.
+    pub seller: Option<FiscalSponsorSeller>,
+    /// Ticket price tax inclusion behavior.
+    pub tax_behavior: Option<TicketTaxBehavior>,
+    /// Selected automatic or manual tax path.
+    pub tax_calculation_mode: Option<TicketTaxCalculationMode>,
+    /// Fixed professional-event tax code used for automatic tax.
+    pub tax_code: Option<String>,
+    /// Immutable physical venue used for tax calculation.
+    pub venue: Option<TicketVenue>,
+}
+
+/// Tax inclusion behavior selected for an event ticket.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TicketTaxBehavior {
+    /// Tax is added to the configured ticket price.
+    Exclusive,
+    /// Tax is included in the configured ticket price.
+    #[default]
+    Inclusive,
+}
+
+/// Tax calculation path selected for an event ticket.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TicketTaxCalculationMode {
+    /// Stripe Tax calculates tax from the performance location.
+    #[default]
+    Automatic,
+    /// Stripe applies sponsor-approved fixed venue Tax Rates.
+    Manual,
+}
+
+/// Immutable physical venue snapshot used for ticket tax.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TicketVenue {
+    /// Street address of the venue.
+    pub address: String,
+    /// City containing the venue.
+    pub city: String,
+    /// ISO country code of the venue.
+    pub country_code: String,
+    /// Venue display name.
+    pub name: String,
+    /// Postal code of the venue.
+    pub zip_code: String,
+
+    /// State or province containing the venue.
+    pub state: Option<String>,
 }
 
 // Helpers.

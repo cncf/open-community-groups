@@ -49,7 +49,7 @@ select lives_ok(
         'stripe',
         null,
         'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -63,7 +63,17 @@ select lives_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb
+        ]'::jsonb,
+        true,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_zip_code": "94105"
+        }'::jsonb
     )$$,
     'Should accept waitlists for ticketed events'
 );
@@ -74,7 +84,7 @@ select throws_ok(
         'stripe',
         null,
         null,
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -100,7 +110,7 @@ select throws_ok(
         'stripe',
         null,
         'USDD',
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -141,7 +151,7 @@ select throws_ok(
             }
         ]'::jsonb,
         'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
@@ -219,7 +229,7 @@ select throws_ok(
         'stripe',
         null,
         'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -253,7 +263,7 @@ select throws_ok(
         'stripe',
         null,
         'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -267,7 +277,17 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb
+        ]'::jsonb,
+        true,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_zip_code": "94105"
+        }'::jsonb
     )$$,
     'payment amount must be zero or at least Stripe minimum charge amount',
     'Should reject non-zero ticket prices below Stripe minimums'
@@ -279,7 +299,7 @@ select throws_ok(
         'stripe',
         null,
         'USD',
-        '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb,
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
         '[
             {
                 "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
@@ -293,7 +313,17 @@ select throws_ok(
                 "seats_total": 50,
                 "title": "General admission"
             }
-        ]'::jsonb
+        ]'::jsonb,
+        true,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_zip_code": "94105"
+        }'::jsonb
     )$$,
     'payment amount exceeds Stripe maximum charge amount',
     'Should reject ticket prices above Stripe maximums'

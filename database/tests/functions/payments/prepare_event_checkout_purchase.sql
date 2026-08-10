@@ -5,13 +5,14 @@
 -- ============================================================================
 
 begin;
-select plan(51);
+select plan(52);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set attendeeUserID '79100000-0000-0000-0000-000000000022'
+\set cacheUserID '79100000-0000-0000-0000-000000000073'
 \set checkoutUserID '79100000-0000-0000-0000-000000000023'
 \set closedWindowEventID '79100000-0000-0000-0000-000000000041'
 \set closedWindowMatchingPurchaseID '79100000-0000-0000-0000-000000000042'
@@ -193,7 +194,11 @@ values
         :'groupCategoryID',
         'Prepare Group',
         'prepare-group',
-        jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
+        jsonb_build_object(
+            'provider', 'stripe',
+            'recipient_id', 'acct_prepare',
+            'seller_display_name', 'Prepare Fiscal Sponsor'
+        ),
         'prepare-group-pretty'
     );
 
@@ -211,7 +216,14 @@ insert into event (
     payment_currency_code,
     published,
     published_at,
-    registration_questions
+    registration_questions,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_country_name,
+    venue_name,
+    venue_state,
+    venue_zip_code
 ) values (
     :'freeEventID',
     :'eventCategoryID',
@@ -225,11 +237,12 @@ insert into event (
     null,
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
 ), (
     :'mainEventID',
     :'eventCategoryID',
-    'in-person',
+    'hybrid',
     :'groupID',
     'Main Event',
     'main-event',
@@ -239,7 +252,8 @@ insert into event (
     'USD',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', 'United States', 'Venue', 'OR', '97201'
 ), (
     :'soldOutEventID',
     :'eventCategoryID',
@@ -253,7 +267,8 @@ insert into event (
     'USD',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
 ), (
     :'inactiveEventID',
     :'eventCategoryID',
@@ -267,7 +282,8 @@ insert into event (
     'USD',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
 ), (
     :'queueEventID',
     :'eventCategoryID',
@@ -281,7 +297,8 @@ insert into event (
     'USD',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
 ), (
     -- Event that requires registration answers before checkout can proceed
     :'questionsEventID',
@@ -302,7 +319,8 @@ insert into event (
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
-    ))
+    )),
+    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
 );
 
 -- Closed registration window event that is still active
@@ -321,7 +339,12 @@ insert into event (
     published,
     published_at,
     registration_starts_at,
-    registration_questions
+    registration_questions,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
 ) values (
     :'closedWindowEventID',
     :'eventCategoryID',
@@ -337,7 +360,8 @@ insert into event (
     true,
     now(),
     now() - interval '2 hours',
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', 'Venue', '97201'
 );
 
 -- Paid event without payment setup used by the readiness conflict
@@ -354,7 +378,12 @@ insert into event (
     payment_currency_code,
     published,
     published_at,
-    registration_questions
+    registration_questions,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
 ) values (
     :'paymentSetupUnavailableEventID',
     :'eventCategoryID',
@@ -368,7 +397,8 @@ insert into event (
     'USD',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', 'Venue', '97201'
 );
 
 -- Event with a lapsed ticket price used by the price availability conflict
@@ -385,7 +415,12 @@ insert into event (
     payment_currency_code,
     published,
     published_at,
-    registration_questions
+    registration_questions,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
 ) values (
     :'priceUnavailableEventID',
     :'eventCategoryID',
@@ -399,7 +434,8 @@ insert into event (
     'USD',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    '1 Main St', 'Portland', 'US', 'Venue', '97201'
 );
 
 -- Ticket types
@@ -620,83 +656,146 @@ values (:'mainEventID', :'invitedUserID', true, 'invitation-pending');
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     discount_amount_minor,
     event_id,
     event_ticket_type_id,
     hold_expires_at,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values (
     :'invitedPendingPurchaseID',
     2500,
+    'direct-charge',
+    'acct_prepare',
     'USD',
     0,
     :'mainEventID',
     :'ticketTypeAID',
     now() + interval '15 minutes',
+    'stripe',
+    'acct_prepare',
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'invitedUserID'
+    :'invitedUserID',
+    '{}'::jsonb
 );
 
 -- Pending purchases that should remain reusable after registration or availability closes
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     discount_amount_minor,
     event_id,
     event_ticket_type_id,
     hold_expires_at,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values (
     :'closedWindowMatchingPurchaseID',
     2500,
+    'direct-charge',
+    'acct_prepare',
     'USD',
     0,
     :'closedWindowEventID',
     :'closedWindowTicketTypeAID',
     now() + interval '15 minutes',
+    'stripe',
+    'acct_prepare',
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'closedWindowMatchingUserID'
+    :'closedWindowMatchingUserID',
+    '{}'::jsonb
 ), (
     :'closedWindowMismatchedPurchaseID',
     2500,
+    'direct-charge',
+    'acct_prepare',
     'USD',
     0,
     :'closedWindowEventID',
     :'closedWindowTicketTypeAID',
     now() + interval '15 minutes',
+    'stripe',
+    'acct_prepare',
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'closedWindowMismatchedUserID'
+    :'closedWindowMismatchedUserID',
+    '{}'::jsonb
 ), (
     :'queueExpiredPurchaseID',
     2500,
+    'direct-charge',
+    'acct_prepare',
     'USD',
     0,
     :'queueEventID',
     :'queueTicketTypeID',
     now() - interval '1 minute',
+    'stripe',
+    'acct_prepare',
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'Queue admission',
-    :'queueHolderUserID'
+    :'queueHolderUserID',
+    '{}'::jsonb
 ), (
     :'soldOutPendingPurchaseID',
     2500,
+    'direct-charge',
+    'acct_prepare',
     'USD',
     0,
     :'soldOutEventID',
     :'soldOutTicketTypeID',
     now() + interval '15 minutes',
+    'stripe',
+    'acct_prepare',
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'soldOutPendingUserID'
+    :'soldOutPendingUserID',
+    '{}'::jsonb
 );
 
 -- Existing completed purchases
@@ -711,8 +810,55 @@ insert into event_purchase (
     event_ticket_type_id,
     status,
     ticket_title,
-    user_id
-) values (
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.event_purchase_id::uuid,
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.discount_amount_minor,
+    fixtures.discount_code,
+    fixtures.event_discount_code_id::uuid,
+    fixtures.event_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+
+    'direct-charge',
+    'acct_prepare',
+    0,
+    'stripe',
+    'ch_' || fixtures.event_purchase_id,
+    'cs_' || fixtures.event_purchase_id,
+    'acct_prepare',
+    'pi_' || fixtures.event_purchase_id,
+    fixtures.amount_minor,
+    '{"connected_account_id":"acct_prepare","display_name":"Prepare Group","provider":"stripe"}'::jsonb,
+    fixtures.amount_minor,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values (
     :'completedPurchaseID',
     2500,
     'USD',
@@ -748,6 +894,18 @@ insert into event_purchase (
     'completed',
     'General admission',
     :'soldOutHolderUserID'
+)) as fixtures (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
 );
 
 -- FIFO queue that must take released capacity before direct checkout
@@ -810,6 +968,71 @@ insert into admission_offer (
         :'offerPaidUserID'
     );
 
+-- Fresh attendee used by the automatic-tax cache-reuse scenario
+insert into "user" (user_id, auth_hash, email, username)
+values (:'cacheUserID', 'hash-cache', 'cache@example.com', 'cache-user');
+
+-- Account-scoped tax location reused by the cache-reuse scenario
+insert into payment_provider_tax_location (
+    connected_seller_id,
+    fingerprint,
+    payment_provider_id,
+    provider_tax_location_id,
+    venue_snapshot
+)
+select
+    'acct_prepare',
+    encode(
+        digest(
+            convert_to('1 Main St', 'UTF8') || decode('00', 'hex')
+            || convert_to('Portland', 'UTF8') || decode('00', 'hex')
+            || convert_to('US', 'UTF8') || decode('00', 'hex')
+            || convert_to('Venue', 'UTF8') || decode('00', 'hex')
+            || convert_to('OR', 'UTF8') || decode('00', 'hex')
+            || convert_to('97201', 'UTF8') || decode('00', 'hex'),
+            'sha256'
+        ),
+        'hex'
+    ),
+    'stripe',
+    'loc_cached',
+    '{
+        "address": "1 Main St",
+        "city": "Portland",
+        "country_code": "US",
+        "name": "Venue",
+        "state": "OR",
+        "zip_code": "97201"
+    }'::jsonb;
+
+-- Account-scoped tax product reused by the cache-reuse scenario
+insert into payment_provider_tax_product (
+    connected_seller_id,
+    fingerprint,
+    payment_provider_id,
+    provider_tax_location_id,
+    provider_tax_product_id,
+    tax_code,
+    title
+)
+values (
+    'acct_prepare',
+    encode(
+        digest(
+            convert_to('General admission', 'UTF8') || decode('00', 'hex')
+            || convert_to('loc_cached', 'UTF8') || decode('00', 'hex')
+            || convert_to('txcd_50013001', 'UTF8') || decode('00', 'hex'),
+            'sha256'
+        ),
+        'hex'
+    ),
+    'stripe',
+    'loc_cached',
+    'prod_cached',
+    'txcd_50013001',
+    'General admission'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -833,11 +1056,11 @@ select results_eq(
         select
             checkout->>'amount_minor',
             checkout ? 'currency_code',
-            checkout->>'platform_fee_amount_minor',
-            checkout->'recipient'
+            checkout->>'provisional_platform_fee_amount_minor',
+            checkout ? 'seller'
         from prepared_checkout
     $$,
-    $$ values ('0'::text, false, '0'::text, 'null'::jsonb) $$,
+    $$ values ('0'::text, false, '0'::text, false) $$,
     'Should prepare intrinsic zero-price checkout without payment setup'
 );
 
@@ -854,28 +1077,44 @@ select lives_ok(
     'Should create a pending checkout purchase'
 );
 
--- Should persist the pending checkout purchase for the selected ticket type
+-- Should snapshot paid hybrid admission for the selected ticket type
 select results_eq(
     $$
         select
-            amount_minor,
-            event_ticket_type_id,
-            platform_fee_amount_minor,
-            status
-        from event_purchase
-        where event_id = '79100000-0000-0000-0000-000000000003'::uuid
-        and user_id = '79100000-0000-0000-0000-000000000023'::uuid
-        and status = 'pending'
+            e.event_kind_id,
+            ep.amount_minor,
+            ep.event_ticket_type_id,
+            ep.provider_tax_code,
+            ep.provisional_platform_fee_amount_minor,
+            ep.status,
+            ep.tax_classification,
+            ep.venue_snapshot
+        from event_purchase ep
+        join event e using (event_id)
+        where ep.event_id = '79100000-0000-0000-0000-000000000003'::uuid
+        and ep.user_id = '79100000-0000-0000-0000-000000000023'::uuid
+        and ep.status = 'pending'
     $$,
     $$
         values (
+            'hybrid'::text,
             2500::bigint,
             '79100000-0000-0000-0000-000000000006'::uuid,
+            'txcd_50013001'::text,
             0::bigint,
-            'pending'::text
+            'pending'::text,
+            'professional-event-admission'::text,
+            '{
+                "address": "1 Main St",
+                "city": "Portland",
+                "country_code": "US",
+                "name": "Venue",
+                "state": "OR",
+                "zip_code": "97201"
+            }'::jsonb
         )
     $$,
-    'Should persist the pending checkout purchase for the selected ticket type'
+    'Should snapshot paid hybrid admission and its complete physical venue'
 );
 
 -- Should return the checkout route and recipient context alongside the purchase
@@ -896,7 +1135,7 @@ select results_eq(
             checkout->>'event_slug',
             checkout->>'group_slug',
             checkout->>'group_slug_pretty',
-            checkout->'recipient'->>'recipient_id'
+            checkout->'seller'->>'connected_account_id'
         from prepared_checkout
     $$,
     $$ values ('prepare-community'::text, 'main-event'::text, 'prepare-group'::text, 'prepare-group-pretty'::text, 'acct_prepare'::text) $$,
@@ -970,33 +1209,33 @@ select results_eq(
     'Should create the requested pending purchase and expire the previous one'
 );
 
--- Should return an existing completed purchase as-is
-select is(
-    prepare_event_checkout_purchase(
-        :'communityID'::uuid,
-        :'mainEventID'::uuid,
-        :'ticketTypeBID'::uuid,
-        :'completedUserID'::uuid,
-        null,
-        'stripe'
-    )::jsonb,
-    jsonb_build_object(
-        'amount_minor', 2500,
-        'community_name', 'prepare-community',
-        'currency_code', 'USD',
-        'discount_amount_minor', 0,
-        'event_id', :'mainEventID'::uuid,
-        'event_slug', 'main-event',
-        'event_purchase_id', :'completedPurchaseID'::uuid,
-        'event_ticket_type_id', :'ticketTypeAID'::uuid,
-        'group_slug', 'prepare-group',
-        'group_slug_pretty', 'prepare-group-pretty',
-        'platform_fee_amount_minor', 0,
-        'recipient', jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
-        'status', 'completed',
-        'ticket_title', 'General admission'
-    ),
-    'Should return an existing completed purchase as-is'
+-- Should return an existing completed purchase without internal charge metadata
+select results_eq(
+    format($$
+        with prepared as (
+            select prepare_event_checkout_purchase(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                null,
+                'stripe'
+            ) as checkout
+        )
+        select
+            checkout ? 'charge_model',
+            checkout->>'event_purchase_id',
+            checkout->'seller'->>'connected_account_id',
+            checkout->>'status'
+        from prepared
+    $$, :'communityID', :'mainEventID', :'ticketTypeBID', :'completedUserID'),
+    format($$ values (
+        false,
+        %L::text,
+        'acct_prepare'::text,
+        'completed'::text
+    ) $$, :'completedPurchaseID'),
+    'Should return an existing completed purchase without internal charge metadata'
 );
 
 -- Should snapshot the platform fee from the final amount rounding down
@@ -1012,7 +1251,7 @@ select is(
             null,
             null,
             250
-        )::jsonb->>'platform_fee_amount_minor'
+        )::jsonb->>'provisional_platform_fee_amount_minor'
     ),
     '62',
     'Should snapshot the platform fee from the final amount rounding down'
@@ -1022,7 +1261,7 @@ select is(
 select results_eq(
     format(
         $$
-        select platform_fee_amount_minor
+        select provisional_platform_fee_amount_minor
         from event_purchase
         where event_id = %L::uuid
         and user_id = %L::uuid
@@ -1047,29 +1286,32 @@ select is(
             null,
             null,
             500
-        )::jsonb->>'platform_fee_amount_minor'
+        )::jsonb->>'provisional_platform_fee_amount_minor'
     ),
     '62',
     'Should retain the original platform fee snapshot when reusing a purchase'
 );
 
--- Should allow a platform fee that consumes the full amount
-select is(
-    (
-        select prepare_event_checkout_purchase(
-            :'communityID'::uuid,
-            :'mainEventID'::uuid,
-            :'ticketTypeAID'::uuid,
-            :'platformFeeMaxUserID'::uuid,
+-- Should reject a platform fee that consumes the full amount
+select throws_ok(
+    format($$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             null,
             'stripe',
             null,
             null,
             10000
-        )::jsonb->>'platform_fee_amount_minor'
+        )$$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'platformFeeMaxUserID'
     ),
-    '2500',
-    'Should allow a platform fee that consumes the full amount'
+    'platform fee basis points must be between 0 and 9999',
+    'Should reject a platform fee that consumes the full amount'
 );
 
 -- Should reject platform fee basis points above the maximum
@@ -1093,7 +1335,7 @@ select throws_ok(
         :'ticketTypeAID',
         :'platformFeeUserID'
     ),
-    'platform fee basis points must be between 0 and 10000',
+    'platform fee basis points must be between 0 and 9999',
     'Should reject platform fee basis points above the maximum'
 );
 
@@ -1118,7 +1360,7 @@ select throws_ok(
         :'ticketTypeAID',
         :'platformFeeUserID'
     ),
-    'platform fee basis points must be between 0 and 10000',
+    'platform fee basis points must be between 0 and 9999',
     'Should reject negative platform fee basis points'
 );
 
@@ -1617,14 +1859,23 @@ select results_eq(
             ao.discount_amount_minor,
             ao.discount_code,
             ep.amount_minor,
-            ep.currency_code
+            ep.currency_code,
+            ep.provider_tax_code
         from admission_offer ao
         join event_purchase ep using (admission_offer_id)
         where ao.admission_offer_id = %L::uuid
         $$,
         :'offerDiscountID'
     ),
-    $$ values (0::bigint, 'USD'::text, 2500::bigint, 'FREEPASS'::text, 0::bigint, 'USD'::text) $$,
+    $$ values (
+        0::bigint,
+        'USD'::text,
+        2500::bigint,
+        'FREEPASS'::text,
+        0::bigint,
+        'USD'::text,
+        null::text
+    ) $$,
     'Should retain discounted-to-zero offer price snapshots'
 );
 
@@ -1714,14 +1965,22 @@ select results_eq(
             ao.currency_code,
             ao.status,
             ep.amount_minor,
-            ep.currency_code
+            ep.currency_code,
+            ep.provider_tax_code
         from admission_offer ao
         join event_purchase ep using (admission_offer_id)
         where ao.admission_offer_id = %L::uuid
         $$,
         :'offerFreeID'
     ),
-    $$ values (0::bigint, null::text, 'checkout_pending'::text, 0::bigint, null::text) $$,
+    $$ values (
+        0::bigint,
+        null::text,
+        'checkout_pending'::text,
+        0::bigint,
+        null::text,
+        null::text
+    ) $$,
     'Should retain intrinsic-free offer price snapshots'
 );
 
@@ -1891,6 +2150,38 @@ select is(
     ),
     '{"conflict":"payment-setup-unavailable"}'::jsonb,
     'Should return a typed conflict when paid checkout setup is unavailable'
+);
+
+-- Should return matching immutable account-scoped automatic-tax resources
+select results_eq(
+    format($$
+        with prepared as (
+            select prepare_event_checkout_purchase(
+                '79100000-0000-0000-0000-000000000001'::uuid,
+                '79100000-0000-0000-0000-000000000003'::uuid,
+                '79100000-0000-0000-0000-000000000006'::uuid,
+                %L::uuid,
+                null,
+                'stripe'
+            ) as value
+        )
+        select
+            value->>'cached_provider_tax_location_id',
+            value->>'cached_provider_tax_product_id',
+            value->>'cached_performance_location_fingerprint' = (
+                select fingerprint
+                from payment_provider_tax_location
+                where provider_tax_location_id = 'loc_cached'
+            ),
+            value->>'cached_product_fingerprint' = (
+                select fingerprint
+                from payment_provider_tax_product
+                where provider_tax_product_id = 'prod_cached'
+            )
+        from prepared
+    $$, :'cacheUserID'),
+    $$ values ('loc_cached'::text, 'prod_cached'::text, true, true) $$,
+    'Should return matching immutable account-scoped automatic-tax resources'
 );
 
 -- ============================================================================

@@ -213,7 +213,7 @@ insert into event_purchase (
 ) values
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -224,7 +224,7 @@ insert into event_purchase (
     ),
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -235,7 +235,7 @@ insert into event_purchase (
     ),
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -246,7 +246,7 @@ insert into event_purchase (
     ),
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -257,7 +257,7 @@ insert into event_purchase (
     ),
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -268,7 +268,7 @@ insert into event_purchase (
     ),
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -279,7 +279,7 @@ insert into event_purchase (
     ),
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -290,7 +290,7 @@ insert into event_purchase (
     ),
     (
         null,
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',
@@ -301,7 +301,7 @@ insert into event_purchase (
     ),
     (
         :'checkoutOfferID',
-        1000,
+        0,
         'USD',
         :'eventID',
         :'ticketTypeAllocatedID',

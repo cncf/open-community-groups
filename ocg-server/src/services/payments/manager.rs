@@ -14,12 +14,15 @@ use crate::{
     config::HttpServerConfig,
     db::{DynDB, payments::CompleteEventPurchaseRefundRecoveryInput},
     services::notifications::DynNotificationsManager,
-    types::payments::PreparedEventCheckout,
+    types::payments::{
+        GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxCalculationMode,
+    },
 };
 
 use super::{
-    CreateCheckoutSessionInput, DynPaymentsProvider,
-    notification_composer::PaymentsNotificationComposer,
+    CreateCheckoutSessionInput, DynPaymentsProvider, FinancialDocumentKind,
+    FiscalSponsorReadinessError, FiscalSponsorReadinessInput, GetFinancialDocumentInput,
+    notification_composer::PaymentsNotificationComposer, provider::PaymentsWebhookEndpoint,
     webhook_reconciler::PaymentsWebhookReconciler,
 };
 
@@ -45,6 +48,9 @@ pub(crate) trait PaymentsManager {
     /// Completes an externally resolved terminal provider refund.
     async fn complete_refund_recovery(&self, input: &CompleteRefundRecoveryInput) -> Result<()>;
 
+    /// Returns the configured payments provider, when paid operations are enabled.
+    fn configured_provider(&self) -> Option<PaymentProvider>;
+
     /// Creates or reuses the provider checkout URL for a pending event purchase.
     async fn get_or_create_checkout_redirect_url(
         &self,
@@ -52,7 +58,22 @@ pub(crate) trait PaymentsManager {
         user_id: Uuid,
     ) -> Result<String>;
 
-    /// Verifies and processes a webhook payload.
+    /// Retrieves the current provider URL for an attendee-owned financial document.
+    async fn get_purchase_document_url(
+        &self,
+        user_id: Uuid,
+        event_purchase_id: Uuid,
+        event_purchase_credit_note_id: Option<Uuid>,
+    ) -> Result<Option<String>>;
+
+    /// Verifies and processes a connected-account webhook payload.
+    async fn handle_connected_webhook(
+        &self,
+        headers: &HeaderMap,
+        body: &str,
+    ) -> std::result::Result<(), HandleWebhookError>;
+
+    /// Verifies and processes a platform-account webhook payload.
     async fn handle_webhook(
         &self,
         headers: &HeaderMap,
@@ -64,6 +85,13 @@ pub(crate) trait PaymentsManager {
 
     /// Records an attendee refund request with notification payload data.
     async fn request_refund(&self, input: &RequestRefundInput) -> Result<()>;
+
+    /// Validates a fiscal sponsor before persisting paid ticket configuration.
+    async fn validate_fiscal_sponsor(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        require_automatic_tax: bool,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError>;
 }
 
 /// Shared payments manager trait object.
@@ -177,6 +205,13 @@ impl PgPaymentsManager {
             .await
     }
 
+    /// Returns the configured payments provider, when paid operations are enabled.
+    pub(crate) fn configured_provider(&self) -> Option<PaymentProvider> {
+        self.payments_provider
+            .as_ref()
+            .map(|payments_provider| payments_provider.provider())
+    }
+
     /// Creates or reuses the provider checkout URL for a pending event purchase.
     pub(crate) async fn get_or_create_checkout_redirect_url(
         &self,
@@ -196,13 +231,33 @@ impl PgPaymentsManager {
             .currency_code
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("paid checkout is missing currency_code"))?;
-        let recipient = prepared_checkout
-            .recipient
+        let seller = prepared_checkout
+            .seller
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing a payment recipient"))?;
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing a fiscal sponsor seller"))?;
+        let tax_behavior = prepared_checkout
+            .tax_behavior
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing tax behavior"))?;
+        let tax_calculation_mode = prepared_checkout
+            .tax_calculation_mode
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing tax calculation mode"))?;
+        let tax_code = match tax_calculation_mode {
+            TicketTaxCalculationMode::Automatic => Some(
+                prepared_checkout
+                    .tax_code
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("paid checkout is missing ticket tax code"))?
+                    .clone(),
+            ),
+            TicketTaxCalculationMode::Manual => None,
+        };
+        let venue = prepared_checkout
+            .venue
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("paid checkout is missing venue snapshot"))?;
 
-        if recipient.provider != payments_provider.provider() {
-            bail!("group payments recipient is not configured for this provider");
+        if seller.provider != payments_provider.provider() {
+            bail!("fiscal sponsor seller is not configured for this provider");
         }
 
         // Create the provider checkout session
@@ -210,19 +265,40 @@ impl PgPaymentsManager {
             .create_checkout_session(&CreateCheckoutSessionInput {
                 amount_minor: prepared_checkout.purchase.amount_minor,
                 base_url: self.server_cfg.base_url.clone(),
+                community_display_name: prepared_checkout.community_display_name.clone(),
                 community_name: prepared_checkout.community_name.clone(),
                 currency_code: currency_code.clone(),
                 event_id: prepared_checkout.event_id,
+                event_name: prepared_checkout.event_name.clone(),
                 event_slug: prepared_checkout.event_slug.clone(),
+                event_timezone: prepared_checkout.event_timezone.clone(),
+                group_name: prepared_checkout.group_name.clone(),
                 group_slug: prepared_checkout.group_slug.clone(),
-                platform_fee_amount_minor: prepared_checkout.purchase.platform_fee_amount_minor,
+                provisional_platform_fee_amount_minor: prepared_checkout
+                    .purchase
+                    .provisional_platform_fee_amount_minor,
                 purchase_id: prepared_checkout.purchase.event_purchase_id,
-                recipient: recipient.clone(),
+                seller: seller.clone(),
+                tax_behavior,
+                tax_calculation_mode,
                 ticket_title: prepared_checkout.purchase.ticket_title.clone(),
                 user_id,
+                venue: venue.clone(),
 
+                cached_performance_location_fingerprint: prepared_checkout
+                    .cached_performance_location_fingerprint
+                    .clone(),
+                cached_product_fingerprint: prepared_checkout.cached_product_fingerprint.clone(),
+                cached_provider_tax_location_id: prepared_checkout
+                    .cached_provider_tax_location_id
+                    .clone(),
+                cached_provider_tax_product_id: prepared_checkout
+                    .cached_provider_tax_product_id
+                    .clone(),
                 discount_code: prepared_checkout.purchase.discount_code.clone(),
                 group_slug_pretty: prepared_checkout.group_slug_pretty.clone(),
+                manual_tax_components: prepared_checkout.manual_tax_components.clone(),
+                tax_code,
             })
             .await?;
 
@@ -247,31 +323,64 @@ impl PgPaymentsManager {
         })
     }
 
+    /// Retrieves the current provider URL for an attendee-owned financial document.
+    pub(crate) async fn get_purchase_document_url(
+        &self,
+        user_id: Uuid,
+        event_purchase_id: Uuid,
+        event_purchase_credit_note_id: Option<Uuid>,
+    ) -> Result<Option<String>> {
+        let Some(context) = self
+            .db
+            .get_user_purchase_document_context(
+                user_id,
+                event_purchase_id,
+                event_purchase_credit_note_id,
+            )
+            .await?
+        else {
+            return Ok(None);
+        };
+        let payments_provider = self.payments_provider()?;
+        if context.payment_provider != payments_provider.provider() {
+            bail!("purchase document is not owned by the configured provider");
+        }
+
+        let document = payments_provider
+            .get_financial_document(&GetFinancialDocumentInput {
+                connected_seller_id: context.connected_seller_id,
+                kind: if event_purchase_credit_note_id.is_some() {
+                    FinancialDocumentKind::CreditNote
+                } else {
+                    FinancialDocumentKind::Invoice
+                },
+                provider_document_id: context.provider_document_id,
+            })
+            .await?;
+
+        Ok(Some(document.url().ok_or_else(|| {
+            anyhow::anyhow!("provider financial document has no current URL")
+        })?))
+    }
+
     /// Verifies and processes a webhook payload.
+    pub(crate) async fn handle_connected_webhook(
+        &self,
+        headers: &HeaderMap,
+        body: &str,
+    ) -> std::result::Result<(), HandleWebhookError> {
+        self.handle_scoped_webhook(PaymentsWebhookEndpoint::ConnectedAccount, headers, body)
+            .await
+    }
+
+    /// Verifies and processes a platform-account webhook payload.
     pub(crate) async fn handle_webhook(
         &self,
         headers: &HeaderMap,
         body: &str,
     ) -> std::result::Result<(), HandleWebhookError> {
-        let payments_provider = self
-            .payments_provider
-            .as_ref()
-            .ok_or(HandleWebhookError::PaymentsNotConfigured)?;
-
-        // Verify the webhook payload before dispatching the normalized event
-        let webhook_event =
-            payments_provider
-                .verify_and_parse_webhook(headers, body)
-                .map_err(|err| {
-                    warn!(error = %err, "failed to verify payments webhook");
-                    HandleWebhookError::InvalidPayload
-                })?;
-
-        // Reconcile the verified webhook through the focused webhook helper
-        self.webhook_reconciler(payments_provider.clone())
-            .handle_webhook_event(webhook_event)
+        self.handle_scoped_webhook(PaymentsWebhookEndpoint::PlatformAccount, headers, body)
             .await
-            .map_err(HandleWebhookError::Unexpected)
     }
 
     /// Rejects a pending refund request and notifies the attendee.
@@ -326,6 +435,51 @@ impl PgPaymentsManager {
             .await
     }
 
+    /// Validates a fiscal sponsor before persisting paid ticket configuration.
+    pub(crate) async fn validate_fiscal_sponsor(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        require_automatic_tax: bool,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError> {
+        let payments_provider = self
+            .payments_provider()
+            .map_err(FiscalSponsorReadinessError::Unexpected)?;
+        payments_provider
+            .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+                connected_seller_id: recipient.recipient_id.clone(),
+                provider: recipient.provider,
+                require_automatic_tax,
+            })
+            .await
+    }
+
+    /// Verifies and processes a webhook payload in the expected account scope.
+    async fn handle_scoped_webhook(
+        &self,
+        endpoint: PaymentsWebhookEndpoint,
+        headers: &HeaderMap,
+        body: &str,
+    ) -> std::result::Result<(), HandleWebhookError> {
+        let payments_provider = self
+            .payments_provider
+            .as_ref()
+            .ok_or(HandleWebhookError::PaymentsNotConfigured)?;
+
+        // Verify the webhook payload before dispatching the normalized event
+        let webhook_event = payments_provider
+            .verify_and_parse_webhook(endpoint, headers, body)
+            .map_err(|err| {
+                warn!(error = %err, "failed to verify payments webhook");
+                HandleWebhookError::InvalidPayload
+            })?;
+
+        // Reconcile the verified webhook through the focused webhook helper
+        self.webhook_reconciler(payments_provider.clone())
+            .handle_webhook_event(webhook_event)
+            .await
+            .map_err(HandleWebhookError::Unexpected)
+    }
+
     /// Returns the configured payments provider when paid operations are available.
     fn payments_provider(&self) -> Result<&DynPaymentsProvider> {
         self.payments_provider
@@ -376,6 +530,11 @@ impl PaymentsManager for PgPaymentsManager {
         PgPaymentsManager::complete_refund_recovery(self, input).await
     }
 
+    /// [`PaymentsManager::configured_provider`].
+    fn configured_provider(&self) -> Option<PaymentProvider> {
+        PgPaymentsManager::configured_provider(self)
+    }
+
     /// [`PaymentsManager::get_or_create_checkout_redirect_url`].
     async fn get_or_create_checkout_redirect_url(
         &self,
@@ -384,6 +543,31 @@ impl PaymentsManager for PgPaymentsManager {
     ) -> Result<String> {
         PgPaymentsManager::get_or_create_checkout_redirect_url(self, prepared_checkout, user_id)
             .await
+    }
+
+    /// [`PaymentsManager::get_purchase_document_url`].
+    async fn get_purchase_document_url(
+        &self,
+        user_id: Uuid,
+        event_purchase_id: Uuid,
+        event_purchase_credit_note_id: Option<Uuid>,
+    ) -> Result<Option<String>> {
+        PgPaymentsManager::get_purchase_document_url(
+            self,
+            user_id,
+            event_purchase_id,
+            event_purchase_credit_note_id,
+        )
+        .await
+    }
+
+    /// [`PaymentsManager::handle_connected_webhook`].
+    async fn handle_connected_webhook(
+        &self,
+        headers: &HeaderMap,
+        body: &str,
+    ) -> std::result::Result<(), HandleWebhookError> {
+        PgPaymentsManager::handle_connected_webhook(self, headers, body).await
     }
 
     /// [`PaymentsManager::handle_webhook`].
@@ -403,6 +587,15 @@ impl PaymentsManager for PgPaymentsManager {
     /// [`PaymentsManager::request_refund`].
     async fn request_refund(&self, input: &RequestRefundInput) -> Result<()> {
         PgPaymentsManager::request_refund(self, input).await
+    }
+
+    /// [`PaymentsManager::validate_fiscal_sponsor`].
+    async fn validate_fiscal_sponsor(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        require_automatic_tax: bool,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError> {
+        PgPaymentsManager::validate_fiscal_sponsor(self, recipient, require_automatic_tax).await
     }
 }
 

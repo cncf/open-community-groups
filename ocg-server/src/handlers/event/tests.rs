@@ -859,7 +859,7 @@ async fn test_attend_event_completes_with_registration_answers() {
                     group_slug: "group".to_string(),
                     purchase: purchase.clone(),
                     group_slug_pretty: None,
-                    recipient: None,
+                    ..PreparedEventCheckout::default()
                 },
             )))
         });
@@ -1104,10 +1104,7 @@ async fn test_attend_event_resolves_omitted_single_paid_ticket_type() {
                     purchase: purchase.clone(),
 
                     group_slug_pretty: None,
-                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
-                        provider: crate::types::payments::PaymentProvider::Stripe,
-                        recipient_id: "acct_test_123".to_string(),
-                    }),
+                    ..PreparedEventCheckout::default()
                 },
             )))
         });
@@ -1266,10 +1263,7 @@ async fn test_attend_event_routes_newly_available_ticket_to_checkout() {
                     purchase: purchase.clone(),
 
                     group_slug_pretty: None,
-                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
-                        provider: crate::types::payments::PaymentProvider::Stripe,
-                        recipient_id: "acct_test_123".to_string(),
-                    }),
+                    ..PreparedEventCheckout::default()
                 },
             )))
         });
@@ -2445,10 +2439,7 @@ async fn test_start_checkout_blocks_refund_requested_purchase() {
                     group_slug: "group".to_string(),
                     purchase: sample_purchase_summary(EventPurchaseStatus::RefundRequested),
                     group_slug_pretty: None,
-                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
-                        provider: crate::types::payments::PaymentProvider::Stripe,
-                        recipient_id: "acct_test_123".to_string(),
-                    }),
+                    ..PreparedEventCheckout::default()
                 },
             )))
         });
@@ -2488,7 +2479,7 @@ async fn test_start_checkout_blocks_refund_requested_purchase() {
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
 async fn test_start_checkout_completes_free_ticket_without_payments_config() {
-    // Setup an intrinsically free ticket and authenticated attendee.
+    // Setup an intrinsically free ticket and authenticated attendee
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
@@ -2525,7 +2516,7 @@ async fn test_start_checkout_completes_free_ticket_without_payments_config() {
     purchase.event_ticket_type_id = ticket_type_id;
     purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
 
-    // Prepare the provider-free checkout through the database boundary.
+    // Prepare the provider-free checkout through the database boundary
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -2570,12 +2561,12 @@ async fn test_start_checkout_completes_free_ticket_without_payments_config() {
                     group_slug: "group".to_string(),
                     purchase: purchase.clone(),
                     group_slug_pretty: None,
-                    recipient: None,
+                    ..PreparedEventCheckout::default()
                 },
             )))
         });
 
-    // Complete locally without attempting to create a provider checkout.
+    // Complete locally without attempting to create a provider checkout
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager
         .expect_complete_free_checkout()
@@ -2589,7 +2580,7 @@ async fn test_start_checkout_completes_free_ticket_without_payments_config() {
         .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
     payments_manager.expect_get_or_create_checkout_redirect_url().times(0);
 
-    // Submit checkout without a PaymentsConfig.
+    // Submit checkout without a PaymentsConfig
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .with_payments_manager(payments_manager)
         .build()
@@ -2605,7 +2596,7 @@ async fn test_start_checkout_completes_free_ticket_without_payments_config() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check local completion is returned as confirmed attendance.
+    // Check local completion is returned as confirmed attendance
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
     assert_eq!(body["status"], json!("attendee"));
@@ -2694,10 +2685,7 @@ async fn test_start_checkout_keeps_active_hold_after_registration_window_closes(
                     group_slug: "group".to_string(),
                     purchase: purchase.clone(),
                     group_slug_pretty: None,
-                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
-                        provider: crate::types::payments::PaymentProvider::Stripe,
-                        recipient_id: "acct_test_123".to_string(),
-                    }),
+                    ..PreparedEventCheckout::default()
                 },
             )))
         });
@@ -2818,10 +2806,7 @@ async fn test_start_checkout_keeps_active_hold_when_tickets_are_unavailable() {
                     group_slug: "group".to_string(),
                     purchase: purchase.clone(),
                     group_slug_pretty: None,
-                    recipient: Some(crate::types::payments::GroupPaymentRecipient {
-                        provider: crate::types::payments::PaymentProvider::Stripe,
-                        recipient_id: "acct_test_123".to_string(),
-                    }),
+                    ..PreparedEventCheckout::default()
                 },
             )))
         });

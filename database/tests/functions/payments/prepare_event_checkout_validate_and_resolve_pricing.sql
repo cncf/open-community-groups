@@ -127,7 +127,11 @@ values (
     :'groupCategoryID',
     'Resolve Pricing Group',
     'resolve-pricing-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_resolve_pricing')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_resolve_pricing',
+        'seller_display_name', 'Resolve Pricing Fiscal Sponsor'
+    )
 );
 
 -- Events
@@ -363,8 +367,55 @@ insert into event_purchase (
     event_ticket_type_id,
     status,
     ticket_title,
-    user_id
-) values (
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.event_purchase_id::uuid,
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.discount_amount_minor,
+    fixtures.discount_code,
+    fixtures.event_discount_code_id::uuid,
+    fixtures.event_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+
+    'direct-charge',
+    'acct_pricing',
+    0,
+    'stripe',
+    'ch_' || fixtures.event_purchase_id,
+    'cs_' || fixtures.event_purchase_id,
+    'acct_pricing',
+    'pi_' || fixtures.event_purchase_id,
+    fixtures.amount_minor,
+    '{"connected_account_id":"acct_pricing","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    fixtures.amount_minor,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values (
     :'redeemedPurchaseID',
     2000,
     'USD',
@@ -388,6 +439,18 @@ insert into event_purchase (
     'refund-recovery-pending',
     'General admission',
     :'soldOutHolderUserID'
+)) as fixtures (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
 );
 
 -- FIFO queue that blocks direct pricing for its tier

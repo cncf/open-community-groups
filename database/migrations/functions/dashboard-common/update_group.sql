@@ -9,7 +9,9 @@ returns void as $$
 declare
     v_current_parent_group_id uuid;
     v_payment_recipient_changed boolean := false;
+    v_payment_validation jsonb;
     v_parent_group_id_present boolean := false;
+    v_provider_account_changed boolean := false;
     v_new_parent_group_id uuid;
     v_new_payment_recipient jsonb;
     v_previous_payment_recipient jsonb;
@@ -47,15 +49,40 @@ begin
         raise exception 'you must be able to manage the selected parent group';
     end if;
 
+    -- Require the provider account and attendee-visible seller name together
+    if p_group ? 'payment_recipient'
+       and nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '')
+           is not null
+       and (
+           nullif(btrim(coalesce(p_group->'payment_recipient'->>'provider', '')), '')
+               is null
+           or nullif(
+               btrim(coalesce(p_group->'payment_recipient'->>'seller_display_name', '')),
+               ''
+           ) is null
+       ) then
+        raise exception 'payment recipient account and seller name must be provided together';
+    end if;
+
+    if p_group ? 'payment_recipient'
+       and nullif(
+           btrim(coalesce(p_group->'payment_recipient'->>'seller_display_name', '')),
+           ''
+       ) is not null
+       and nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '')
+           is null then
+        raise exception 'payment recipient account and seller name must be provided together';
+    end if;
+
     -- Normalize the optional payment recipient before persisting it
     v_new_payment_recipient := case
         when p_group ? 'payment_recipient' then case
             when nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '') is not null
-            then jsonb_set(
-                p_group->'payment_recipient',
-                '{recipient_id}',
-                to_jsonb(btrim(p_group->'payment_recipient'->>'recipient_id')),
-                true
+            then jsonb_build_object(
+                'provider', btrim(p_group->'payment_recipient'->>'provider'),
+                'recipient_id', btrim(p_group->'payment_recipient'->>'recipient_id'),
+                'seller_display_name',
+                    btrim(p_group->'payment_recipient'->>'seller_display_name')
             )
             else null
         end
@@ -64,6 +91,39 @@ begin
     -- Determine if the payment recipient is changing with the update
     v_payment_recipient_changed := p_group ? 'payment_recipient'
         and v_previous_payment_recipient is distinct from v_new_payment_recipient;
+    v_provider_account_changed := v_payment_recipient_changed
+        and v_new_payment_recipient is not null
+        and (
+            v_previous_payment_recipient is null
+            or v_previous_payment_recipient->>'provider' is distinct from
+                v_new_payment_recipient->>'provider'
+            or v_previous_payment_recipient->>'recipient_id' is distinct from
+                v_new_payment_recipient->>'recipient_id'
+        );
+
+    -- Bind external provider validation to the payment state locked above
+    if v_provider_account_changed then
+        v_payment_validation := p_group->'_payment_validation';
+        if v_payment_validation is null
+           or not (v_payment_validation ? 'expected_payment_recipient')
+           or not (v_payment_validation ? 'validated_payment_recipient')
+           or not (v_payment_validation ? 'require_automatic_tax')
+           or v_previous_payment_recipient is distinct from nullif(
+               v_payment_validation->'expected_payment_recipient',
+               'null'::jsonb
+           )
+           or v_new_payment_recipient is distinct from nullif(
+               v_payment_validation->'validated_payment_recipient',
+               'null'::jsonb
+           )
+           or group_requires_automatic_tax_readiness(
+               p_community_id,
+               p_group_id
+           ) is distinct from (v_payment_validation->>'require_automatic_tax')::boolean
+        then
+            raise exception 'payment configuration changed during provider validation';
+        end if;
+    end if;
 
     -- Prevent clearing the recipient from breaking checkout for active paid events
     if v_payment_recipient_changed
@@ -82,6 +142,28 @@ begin
            )
        ) then
         raise exception 'paid-capable events require a payment recipient';
+    end if;
+
+    -- Reject sponsor replacements that invalidate active manual-tax events
+    if v_payment_recipient_changed and v_new_payment_recipient is not null then
+        perform validate_event_ticketing_payment_readiness(
+            v_new_payment_recipient->>'provider',
+            true,
+            e.payment_currency_code,
+            v_new_payment_recipient,
+            e.event_id
+        )
+        from event e
+        where e.group_id = p_group_id
+        and e.canceled = false
+        and e.deleted = false
+        and e.published = true
+        and e.tax_calculation_mode = 'manual'
+        and is_event_paid_capable(e.event_id)
+        and (
+            coalesce(e.ends_at, e.starts_at) is null
+            or coalesce(e.ends_at, e.starts_at) > current_timestamp
+        );
     end if;
 
     -- Update the group fields from the payload

@@ -14,6 +14,7 @@ declare
     v_max_retries int := 10;
     v_payment_currency_code text := nullif(p_event->>'payment_currency_code', '');
     v_payment_recipient jsonb;
+    v_payment_validation jsonb := p_event->'_payment_validation';
     v_retries int := 0;
     v_slug text;
     v_ticket_types jsonb := coalesce(
@@ -42,6 +43,33 @@ begin
     where g.group_id = p_group_id
     for update of g;
 
+    -- Bind provider validation to the recipient protected by the group lock
+    if p_configured_provider is not null
+       and is_event_ticketing_payload_paid_capable(v_ticket_types)
+       and (
+           v_payment_validation is null
+           or not (v_payment_validation ? 'expected_payment_recipient')
+           or not (v_payment_validation ? 'validated_payment_recipient')
+           or not (v_payment_validation ? 'require_automatic_tax')
+           or v_payment_recipient is distinct from nullif(
+               v_payment_validation->'expected_payment_recipient',
+               'null'::jsonb
+           )
+           or v_payment_recipient is distinct from nullif(
+               v_payment_validation->'validated_payment_recipient',
+               'null'::jsonb
+           )
+           or (
+               coalesce(
+                   nullif(p_event->>'tax_calculation_mode', ''),
+                   'automatic'
+               ) = 'automatic'
+               and not (v_payment_validation->>'require_automatic_tax')::boolean
+           )
+       ) then
+        raise exception 'payment configuration changed during provider validation';
+    end if;
+
     -- Validate enrollment and ticketing payload rules
     perform validate_event_enrollment_payload(
         v_event_attendee_approval_required,
@@ -53,7 +81,10 @@ begin
         v_discount_codes,
         v_payment_currency_code,
         v_payment_recipient,
-        v_ticket_types
+        v_ticket_types,
+        true,
+        null,
+        p_event
     );
 
     -- Validate add-specific event and session date rules
@@ -114,6 +145,8 @@ begin
                 registration_starts_at,
                 starts_at,
                 tags,
+                tax_behavior,
+                tax_calculation_mode,
                 venue_address,
                 venue_city,
                 venue_country_code,
@@ -167,13 +200,15 @@ begin
                 (p_event->>'registration_starts_at')::timestamp at time zone (p_event->>'timezone'),
                 (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
                 jsonb_text_array(p_event->'tags'),
-                nullif(p_event->>'venue_address', ''),
-                nullif(p_event->>'venue_city', ''),
-                nullif(p_event->>'venue_country_code', ''),
-                nullif(p_event->>'venue_country_name', ''),
-                nullif(p_event->>'venue_name', ''),
-                nullif(p_event->>'venue_state', ''),
-                nullif(p_event->>'venue_zip_code', ''),
+                coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive'),
+                coalesce(nullif(p_event->>'tax_calculation_mode', ''), 'automatic'),
+                nullif(btrim(p_event->>'venue_address'), ''),
+                nullif(btrim(p_event->>'venue_city'), ''),
+                nullif(btrim(p_event->>'venue_country_code'), ''),
+                nullif(btrim(p_event->>'venue_country_name'), ''),
+                nullif(btrim(p_event->>'venue_name'), ''),
+                nullif(btrim(p_event->>'venue_state'), ''),
+                nullif(btrim(p_event->>'venue_zip_code'), ''),
                 coalesce((p_event->>'waitlist_enabled')::boolean, false)
             )
             returning event_id into v_event_id;

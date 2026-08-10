@@ -543,25 +543,57 @@ insert into event_purchase (
     :'user1ID'
 );
 
--- Event Purchase
+-- Completed direct-charge purchase for the paid event
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     event_id,
     event_ticket_type_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
     status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values (
     :'eventPaidTicketedPurchaseID',
     1500,
+    'direct-charge',
+    'acct_leave_event_test',
     'USD',
     :'eventPaidTicketed',
     :'eventPaidTicketTypeID',
+    0,
+    'stripe',
+    'ch_leave_event_paid',
+    'cs_leave_event_paid',
+    'acct_leave_event_test',
+    'pi_leave_event_paid',
+    1500,
+    '{}'::jsonb,
     'completed',
+    1500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'Paid admission',
-    :'user3ID'
+    :'user3ID',
+    '{}'::jsonb
 );
 
 -- Every confirmed attendee owns capacity through a completed purchase

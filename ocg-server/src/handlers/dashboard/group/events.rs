@@ -32,6 +32,7 @@ use crate::{
             enqueue_event_series_canceled_notifications,
             enqueue_event_series_published_notifications,
         },
+        payments::DynPaymentsManager,
     },
     templates::dashboard::group::{
         events::{self, Event, EventsListFilters, EventsTab},
@@ -40,6 +41,7 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, NavigationLinks},
+        payments::{PaymentConfigurationValidation, TicketTaxCalculationMode},
         permissions::GroupPermission,
     },
 };
@@ -254,14 +256,26 @@ pub(crate) async fn add(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
-    State(payments_cfg): State<Option<crate::config::PaymentsConfig>>,
+    State(payments_manager): State<DynPaymentsManager>,
     ValidatedFormQs(event): ValidatedFormQs<Event>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare and validate the event payload
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let event_payload = build_event_payload(&event)?;
+    let payment_provider = payments_manager.configured_provider();
+    let mut event_payload = build_event_payload(&event)?;
     let is_paid_capable = is_event_payload_paid_capable(&event_payload);
+
+    if payment_provider.is_some() && is_paid_capable {
+        let payment_validation = validate_group_fiscal_sponsor(
+            db.as_ref(),
+            &payments_manager,
+            community_id,
+            group_id,
+            event.tax_calculation_mode,
+        )
+        .await?;
+        bind_payment_validation(&mut event_payload, &payment_validation)?;
+    }
     let recurring_event_payloads = RecurringEventPayloads::from_event(&event, &event_payload)
         .map_err(|err| HandlerError::Deserialization(err.to_string()))?;
 
@@ -441,7 +455,7 @@ pub(crate) async fn publish(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
+    State(payments_manager): State<DynPaymentsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     RawQuery(raw_query): RawQuery,
@@ -449,7 +463,25 @@ pub(crate) async fn publish(
     // Resolve action scope
     let query = parse_event_action_query(raw_query.as_deref())?;
     let scope = query.scope;
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
+    let payment_provider = payments_manager.configured_provider();
+    let payment_validation = if payment_provider.is_some() {
+        let event_ids = match scope {
+            EventActionScope::Series => {
+                db.list_event_series_publishable_event_ids(group_id, event_id).await?
+            }
+            EventActionScope::This => vec![event_id],
+        };
+        validate_publish_fiscal_sponsor(
+            db.as_ref(),
+            &payments_manager,
+            community_id,
+            group_id,
+            &event_ids,
+        )
+        .await?
+    } else {
+        None
+    };
 
     db.as_ref()
         .transaction(|tx| {
@@ -474,12 +506,19 @@ pub(crate) async fn publish(
                             group_id,
                             &event_ids,
                             payment_provider,
+                            payment_validation.clone(),
                         )
                         .await?;
                     }
                     EventActionScope::This => {
-                        tx.publish_event(user.user_id, group_id, event_id, payment_provider)
-                            .await?;
+                        tx.publish_event(
+                            user.user_id,
+                            group_id,
+                            event_id,
+                            payment_provider,
+                            payment_validation.clone(),
+                        )
+                        .await?;
                     }
                 }
 
@@ -569,7 +608,7 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
-    State(payments_cfg): State<Option<crate::config::PaymentsConfig>>,
+    State(payments_manager): State<DynPaymentsManager>,
     State(serde_qs_de): State<serde_qs::Config>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
@@ -583,8 +622,26 @@ pub(crate) async fn update(
 
     // Prepare update payload and ticketing prerequisites
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    let payment_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
-    let event_json = build_event_payload(&event)?;
+    let payment_provider = payments_manager.configured_provider();
+    let mut event_json = build_event_payload(&event)?;
+
+    let ticketing_configuration_changed = if payment_provider.is_some() {
+        db.event_ticketing_configuration_changed(community_id, group_id, event_id, &event_json)
+            .await?
+    } else {
+        false
+    };
+    if ticketing_configuration_changed {
+        let payment_validation = validate_group_fiscal_sponsor(
+            db.as_ref(),
+            &payments_manager,
+            community_id,
+            group_id,
+            event.tax_calculation_mode,
+        )
+        .await?;
+        bind_payment_validation(&mut event_json, &payment_validation)?;
+    }
 
     // Persist the update and required notifications atomically
     db.as_ref()
@@ -716,6 +773,23 @@ pub(crate) async fn prepare_list_page(
     Ok((filters, template))
 }
 
+/// Embeds provider validation into the payload committed after database locking.
+fn bind_payment_validation(
+    event: &mut serde_json::Value,
+    payment_validation: &PaymentConfigurationValidation,
+) -> Result<(), HandlerError> {
+    let event = event.as_object_mut().ok_or_else(|| {
+        HandlerError::Deserialization("event payload must be an object".to_string())
+    })?;
+    event.insert(
+        "_payment_validation".to_string(),
+        serde_json::to_value(payment_validation)
+            .map_err(|err| HandlerError::Deserialization(err.to_string()))?,
+    );
+
+    Ok(())
+}
+
 /// Builds the database payload for an event form.
 fn build_event_payload(event: &Event) -> Result<serde_json::Value, HandlerError> {
     event
@@ -799,4 +873,69 @@ fn is_event_payload_paid_capable(event: &serde_json::Value) -> bool {
 /// Parses dashboard event action query parameters.
 fn parse_event_action_query(raw_query: Option<&str>) -> Result<EventActionQuery, HandlerError> {
     Ok(serde_qs_config().deserialize_str(raw_query.unwrap_or_default())?)
+}
+
+/// Validates the configured group sponsor before paid event configuration is persisted.
+async fn validate_group_fiscal_sponsor(
+    db: &dyn DBOperations,
+    payments_manager: &DynPaymentsManager,
+    community_id: Uuid,
+    group_id: Uuid,
+    tax_calculation_mode: TicketTaxCalculationMode,
+) -> Result<PaymentConfigurationValidation, HandlerError> {
+    let payment_recipient = db.get_group_payment_recipient(community_id, group_id).await?;
+    if let Some(recipient) = payment_recipient.as_ref() {
+        payments_manager
+            .validate_fiscal_sponsor(
+                recipient,
+                tax_calculation_mode == TicketTaxCalculationMode::Automatic,
+            )
+            .await?;
+    }
+
+    Ok(PaymentConfigurationValidation {
+        require_automatic_tax: tax_calculation_mode == TicketTaxCalculationMode::Automatic,
+
+        expected_payment_recipient: payment_recipient.clone(),
+        validated_payment_recipient: payment_recipient,
+    })
+}
+
+/// Validates the selected sponsor against every paid event about to be published.
+async fn validate_publish_fiscal_sponsor(
+    db: &dyn DBOperations,
+    payments_manager: &DynPaymentsManager,
+    community_id: Uuid,
+    group_id: Uuid,
+    event_ids: &[Uuid],
+) -> Result<Option<PaymentConfigurationValidation>, HandlerError> {
+    let mut has_paid_event = false;
+    let mut require_automatic_tax = false;
+    for event_id in event_ids {
+        let event = db.get_event_full(community_id, group_id, *event_id).await?;
+        if event.is_paid_capable() {
+            has_paid_event = true;
+            require_automatic_tax |=
+                event.tax_calculation_mode == TicketTaxCalculationMode::Automatic;
+        }
+    }
+
+    if has_paid_event {
+        let tax_calculation_mode = if require_automatic_tax {
+            TicketTaxCalculationMode::Automatic
+        } else {
+            TicketTaxCalculationMode::Manual
+        };
+        return validate_group_fiscal_sponsor(
+            db,
+            payments_manager,
+            community_id,
+            group_id,
+            tax_calculation_mode,
+        )
+        .await
+        .map(Some);
+    }
+
+    Ok(None)
 }

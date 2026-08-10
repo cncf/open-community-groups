@@ -14,6 +14,7 @@ use crate::{
             events::{UserEventsFilters, UserEventsOutput},
             groups::{UserGroupsFilters, UserGroupsOutput},
             invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
+            purchases::{PurchaseDocumentsFilters, PurchaseDocumentsOutput},
             session_proposals::{
                 PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
                 SessionProposalsFilters, SessionProposalsOutput,
@@ -137,6 +138,13 @@ pub(crate) trait DBDashboardUser {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<PendingCoSpeakerInvitation>>;
+
+    /// Lists durable paid-ticket invoices and credit notes for the user.
+    async fn list_user_purchase_documents(
+        &self,
+        user_id: Uuid,
+        filters: &PurchaseDocumentsFilters,
+    ) -> Result<PurchaseDocumentsOutput>;
 
     /// Lists session proposals for the user.
     async fn list_user_session_proposals(
@@ -471,6 +479,20 @@ where
         self.fetch_json_one(
             "select list_user_pending_session_proposal_co_speaker_invitations($1::uuid)",
             &[&user_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::list_user_purchase_documents`].
+    #[instrument(skip(self, filters), err)]
+    async fn list_user_purchase_documents(
+        &self,
+        user_id: Uuid,
+        filters: &PurchaseDocumentsFilters,
+    ) -> Result<PurchaseDocumentsOutput> {
+        self.fetch_json_one(
+            "select list_user_purchase_documents($1::uuid, $2::jsonb)",
+            &[&user_id, &Json(filters)],
         )
         .await
     }

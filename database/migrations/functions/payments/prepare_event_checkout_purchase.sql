@@ -20,31 +20,45 @@ declare
     v_admission_offer_snapshot_event_discount_code_id uuid;
     v_admission_offer_snapshot_ticket_title text;
     v_admission_offer_status text;
+    v_cached_performance_location_fingerprint text;
+    v_cached_product_fingerprint text;
+    v_cached_provider_tax_location_id text;
+    v_cached_provider_tax_product_id text;
+    v_community_display_name text;
     v_community_name text;
     v_currency_code text;
     v_discount_amount_minor bigint;
     v_event_discount_code_id uuid;
+    v_event_name text;
     v_event_registration_ends_at timestamptz;
     v_event_registration_starts_at timestamptz;
     v_event_slug text;
     v_event_starts_at timestamptz;
+    v_event_timezone text;
     v_existing_purchase_id uuid;
     v_existing_purchase_matches_selection boolean;
     v_existing_purchase_status text;
     v_final_amount_minor bigint;
+    v_group_name text;
     v_group_slug text;
     v_group_slug_pretty text;
     v_hold_expires_at timestamptz := current_timestamp + interval '15 minutes';
+    v_manual_tax_configuration_ids uuid[];
+    v_manual_tax_snapshot jsonb;
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
-    v_platform_fee_amount_minor bigint;
+    v_provisional_platform_fee_amount_minor bigint;
     v_purchase_id uuid;
     v_recipient jsonb;
     v_registration_questions jsonb;
+    v_seller_snapshot jsonb;
+    v_tax_behavior text;
+    v_tax_calculation_mode text;
     v_ticket_title text;
+    v_venue_snapshot jsonb;
 begin
     -- Reject platform fee configuration outside the valid basis-point range
-    if p_platform_fee_bps is null or p_platform_fee_bps < 0 or p_platform_fee_bps > 10000 then
-        raise exception 'platform fee basis points must be between 0 and 10000';
+    if p_platform_fee_bps is null or p_platform_fee_bps < 0 or p_platform_fee_bps >= 10000 then
+        raise exception 'platform fee basis points must be between 0 and 9999';
     end if;
 
     -- Lock the event first to keep a consistent event -> purchase -> attendee
@@ -66,22 +80,43 @@ begin
 
     -- Load the route and recipient details needed by the checkout provider
     select
+        c.display_name,
         c.name,
+        e.name,
         e.registration_ends_at,
         e.registration_questions,
         e.registration_starts_at,
         e.slug,
         e.starts_at,
+        e.tax_behavior,
+        e.tax_calculation_mode,
+        e.timezone,
+        jsonb_build_object(
+            'address', nullif(btrim(e.venue_address), ''),
+            'city', nullif(btrim(e.venue_city), ''),
+            'country_code', nullif(btrim(e.venue_country_code), ''),
+            'name', nullif(btrim(e.venue_name), ''),
+            'state', nullif(btrim(e.venue_state), ''),
+            'zip_code', nullif(btrim(e.venue_zip_code), '')
+        ),
+        g.name,
         g.slug,
         g.slug_pretty,
         g.payment_recipient
     into
+        v_community_display_name,
         v_community_name,
+        v_event_name,
         v_event_registration_ends_at,
         v_registration_questions,
         v_event_registration_starts_at,
         v_event_slug,
         v_event_starts_at,
+        v_tax_behavior,
+        v_tax_calculation_mode,
+        v_event_timezone,
+        v_venue_snapshot,
+        v_group_name,
         v_group_slug,
         v_group_slug_pretty,
         v_recipient
@@ -190,12 +225,16 @@ begin
 
             return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id)
                 || jsonb_build_object(
+                    'community_display_name', v_community_display_name,
                     'community_name', v_community_name,
                     'event_id', p_event_id,
+                    'event_name', v_event_name,
                     'event_slug', v_event_slug,
+                    'event_starts_at', extract(epoch from v_event_starts_at)::bigint,
+                    'event_timezone', v_event_timezone,
+                    'group_name', v_group_name,
                     'group_slug', v_group_slug,
-                    'group_slug_pretty', v_group_slug_pretty,
-                    'recipient', v_recipient
+                    'group_slug_pretty', v_group_slug_pretty
                 );
         end if;
     end if;
@@ -266,7 +305,8 @@ begin
                 p_configured_provider,
                 true,
                 v_currency_code,
-                v_recipient
+                v_recipient,
+                p_event_id
             );
         exception
             when raise_exception then
@@ -289,6 +329,98 @@ begin
         -- Intrinsic zero-price purchases do not depend on event payment setup
         v_currency_code := null;
         v_recipient := null;
+    end if;
+
+    -- Snapshot the immutable seller and selected manual-rate components
+    if v_final_amount_minor > 0 then
+        v_seller_snapshot := jsonb_build_object(
+            'connected_account_id', v_recipient->>'recipient_id',
+            'display_name', v_recipient->>'seller_display_name',
+            'provider', v_recipient->>'provider'
+        );
+
+        -- Reuse immutable automatic-tax resources within the seller account
+        if v_tax_calculation_mode = 'automatic' then
+            v_cached_performance_location_fingerprint := encode(
+                digest(
+                    convert_to(v_venue_snapshot->>'address', 'UTF8') || decode('00', 'hex')
+                    || convert_to(v_venue_snapshot->>'city', 'UTF8') || decode('00', 'hex')
+                    || convert_to(v_venue_snapshot->>'country_code', 'UTF8') || decode('00', 'hex')
+                    || convert_to(v_venue_snapshot->>'name', 'UTF8') || decode('00', 'hex')
+                    || convert_to(coalesce(v_venue_snapshot->>'state', ''), 'UTF8') || decode('00', 'hex')
+                    || convert_to(v_venue_snapshot->>'zip_code', 'UTF8') || decode('00', 'hex'),
+                    'sha256'
+                ),
+                'hex'
+            );
+
+            select pptl.provider_tax_location_id
+            into v_cached_provider_tax_location_id
+            from payment_provider_tax_location pptl
+            where pptl.payment_provider_id = p_configured_provider
+            and pptl.connected_seller_id = v_recipient->>'recipient_id'
+            and pptl.fingerprint = v_cached_performance_location_fingerprint;
+
+            if v_cached_provider_tax_location_id is not null then
+                v_cached_product_fingerprint := encode(
+                    digest(
+                        convert_to(left(v_ticket_title, 250), 'UTF8') || decode('00', 'hex')
+                        || convert_to(v_cached_provider_tax_location_id, 'UTF8') || decode('00', 'hex')
+                        || convert_to('txcd_50013001', 'UTF8') || decode('00', 'hex'),
+                        'sha256'
+                    ),
+                    'hex'
+                );
+
+                select pptp.provider_tax_product_id
+                into v_cached_provider_tax_product_id
+                from payment_provider_tax_product pptp
+                where pptp.payment_provider_id = p_configured_provider
+                and pptp.connected_seller_id = v_recipient->>'recipient_id'
+                and pptp.fingerprint = v_cached_product_fingerprint;
+            end if;
+        end if;
+
+        if v_tax_calculation_mode = 'manual' then
+            select array_agg(
+                emtcf.event_manual_tax_configuration_id
+                order by emtcf.event_manual_tax_configuration_id
+            )
+            into v_manual_tax_configuration_ids
+            from event_manual_tax_configuration emtcf
+            where emtcf.event_id = p_event_id
+            and emtcf.connected_seller_id = v_recipient->>'recipient_id'
+            and emtcf.currency_code = v_currency_code
+            and emtcf.tax_behavior = v_tax_behavior
+            and emtcf.valid_from <= current_timestamp
+            and (emtcf.valid_until is null or emtcf.valid_until > current_timestamp)
+            and emtcf.venue_snapshot = v_venue_snapshot;
+
+            if coalesce(cardinality(v_manual_tax_configuration_ids), 0) <> 1 then
+                return jsonb_build_object('conflict', 'payment-setup-unavailable');
+            end if;
+
+            select jsonb_agg(
+                jsonb_build_object(
+                    'country_code', emtc.country_code,
+                    'display_name', emtc.display_name,
+                    'jurisdiction', emtc.jurisdiction,
+                    'percentage', emtc.percentage::text,
+                    'provider_tax_rate_id', emtc.provider_tax_rate_id,
+                    'state', emtc.state,
+                    'tax_type', emtc.tax_type
+                )
+                order by emtc.event_manual_tax_component_id
+            )
+            into v_manual_tax_snapshot
+            from event_manual_tax_component emtc
+            where emtc.event_manual_tax_configuration_id =
+                v_manual_tax_configuration_ids[1];
+
+            if v_manual_tax_snapshot is null then
+                return jsonb_build_object('conflict', 'payment-setup-unavailable');
+            end if;
+        end if;
     end if;
 
     -- Release any replaced pending selection before creating the new hold
@@ -335,12 +467,15 @@ begin
     end if;
 
     -- Snapshot the platform fee deducted from the group's proceeds, rounding down
-    v_platform_fee_amount_minor := (v_final_amount_minor * p_platform_fee_bps) / 10000;
+    v_provisional_platform_fee_amount_minor :=
+        (v_final_amount_minor * p_platform_fee_bps) / 10000;
 
     -- Insert the new pending purchase and return the attendee-facing summary
     insert into event_purchase (
         admission_offer_id,
         amount_minor,
+        charge_model,
+        connected_seller_id,
         currency_code,
         discount_amount_minor,
         discount_code,
@@ -348,13 +483,25 @@ begin
         event_id,
         event_ticket_type_id,
         hold_expires_at,
-        platform_fee_amount_minor,
+        manual_tax_snapshot,
+        payment_provider_id,
+        platform_fee_bps,
+        provider_object_account_id,
+        provider_tax_code,
+        provisional_platform_fee_amount_minor,
+        seller_snapshot,
         status,
+        tax_behavior,
+        tax_calculation_mode,
+        tax_classification,
         ticket_title,
-        user_id
+        user_id,
+        venue_snapshot
     ) values (
         p_admission_offer_id,
         v_final_amount_minor,
+        case when v_final_amount_minor > 0 then 'direct-charge' else 'ocg-free' end,
+        case when v_final_amount_minor > 0 then v_recipient->>'recipient_id' end,
         v_currency_code,
         v_discount_amount_minor,
         v_normalized_discount_code,
@@ -362,22 +509,46 @@ begin
         p_event_id,
         p_event_ticket_type_id,
         v_hold_expires_at,
-        v_platform_fee_amount_minor,
+        v_manual_tax_snapshot,
+        case when v_final_amount_minor > 0 then p_configured_provider end,
+        p_platform_fee_bps,
+        case when v_final_amount_minor > 0 then v_recipient->>'recipient_id' end,
+        case
+            when v_final_amount_minor > 0 and v_tax_calculation_mode = 'automatic'
+                then 'txcd_50013001'
+        end,
+        v_provisional_platform_fee_amount_minor,
+        v_seller_snapshot,
         'pending',
+        case when v_final_amount_minor > 0 then v_tax_behavior end,
+        case when v_final_amount_minor > 0 then v_tax_calculation_mode end,
+        case when v_final_amount_minor > 0 then 'professional-event-admission' end,
         v_ticket_title,
-        p_user_id
+        p_user_id,
+        case when v_final_amount_minor > 0 then v_venue_snapshot end
     )
     returning event_purchase_id into v_purchase_id;
 
     -- Return the pending purchase summary used by the checkout flow
     return prepare_event_checkout_get_purchase_summary(v_purchase_id)
         || jsonb_build_object(
+            'community_display_name', v_community_display_name,
             'community_name', v_community_name,
             'event_id', p_event_id,
+            'event_name', v_event_name,
             'event_slug', v_event_slug,
+            'event_starts_at', extract(epoch from v_event_starts_at)::bigint,
+            'event_timezone', v_event_timezone,
+            'group_name', v_group_name,
             'group_slug', v_group_slug,
-            'group_slug_pretty', v_group_slug_pretty,
-            'recipient', v_recipient
-        );
+            'group_slug_pretty', v_group_slug_pretty
+        )
+        || jsonb_strip_nulls(jsonb_build_object(
+            'cached_performance_location_fingerprint',
+                v_cached_performance_location_fingerprint,
+            'cached_product_fingerprint', v_cached_product_fingerprint,
+            'cached_provider_tax_location_id', v_cached_provider_tax_location_id,
+            'cached_provider_tax_product_id', v_cached_provider_tax_product_id
+        ));
 end;
 $$ language plpgsql;

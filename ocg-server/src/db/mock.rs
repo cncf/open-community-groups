@@ -494,6 +494,13 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn event_ticketing_configuration_changed(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            event: &serde_json::Value,
+        ) -> Result<bool>;
         async fn get_cfs_submission_notification_data(
             &self,
             event_id: Uuid,
@@ -521,6 +528,11 @@ mock! {
             group_id: Uuid,
             include_subgroups: bool,
         ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
+        async fn group_requires_automatic_tax_readiness(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<bool>;
         async fn invite_event_attendee(
             &self,
             actor_user_id: Uuid,
@@ -657,6 +669,7 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
+            payment_validation: Option<crate::types::payments::PaymentConfigurationValidation>,
         ) -> Result<()>;
         async fn publish_event_series_events(
             &self,
@@ -664,6 +677,7 @@ mock! {
             group_id: Uuid,
             event_ids: &[Uuid],
             payment_provider: Option<crate::types::payments::PaymentProvider>,
+            payment_validation: Option<crate::types::payments::PaymentConfigurationValidation>,
         ) -> Result<()>;
         async fn reject_event_invitation_request(
             &self,
@@ -850,6 +864,11 @@ mock! {
         ) -> Result<Vec<
             crate::templates::dashboard::user::session_proposals::PendingCoSpeakerInvitation,
         >>;
+        async fn list_user_purchase_documents(
+            &self,
+            user_id: Uuid,
+            filters: &crate::templates::dashboard::user::purchases::PurchaseDocumentsFilters,
+        ) -> Result<crate::templates::dashboard::user::purchases::PurchaseDocumentsOutput>;
         async fn list_user_session_proposals(
             &self,
             user_id: Uuid,
@@ -1168,11 +1187,27 @@ mock! {
 
     #[async_trait]
     impl crate::db::payments::DBPayments for DB {
+        async fn attach_application_fee_to_event_purchase(
+            &self,
+            payment_provider: crate::types::payments::PaymentProvider,
+            connected_seller_id: &str,
+            provider_charge_id: &str,
+            provider_application_fee_id: &str,
+            amount_minor: i64,
+        ) -> Result<()>;
         async fn attach_checkout_session_to_event_purchase(
             &self,
             event_purchase_id: Uuid,
             payment_provider: crate::types::payments::PaymentProvider,
             checkout_session: &crate::services::payments::CheckoutSession,
+        ) -> Result<()>;
+        async fn attach_invoice_to_event_purchase(
+            &self,
+            event_purchase_id: Uuid,
+            connected_seller_id: &str,
+            provider_invoice_id: &str,
+            provider_invoice_hosted_url: &str,
+            provider_invoice_pdf_url: Option<String>,
         ) -> Result<()>;
         async fn cancel_event_checkout(
             &self,
@@ -1181,10 +1216,26 @@ mock! {
             user_id: Uuid,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<()>;
+        async fn claim_event_purchase_application_fee_adjustment(
+            &self,
+            payment_provider: crate::types::payments::PaymentProvider,
+        ) -> Result<Option<crate::db::payments::ClaimedEventPurchaseApplicationFeeAdjustment>>;
+        async fn claim_event_purchase_credit_note(
+            &self,
+            payment_provider: crate::types::payments::PaymentProvider,
+        ) -> Result<Option<crate::db::payments::ClaimedEventPurchaseCreditNote>>;
         async fn claim_event_purchase_refund(
             &self,
             payment_provider: crate::types::payments::PaymentProvider,
         ) -> Result<Option<crate::db::payments::ClaimedEventPurchaseRefund>>;
+        async fn complete_event_purchase_application_fee_adjustment_recovery(
+            &self,
+            input: &crate::db::payments::CompleteEventPurchaseFinancialRecoveryInput,
+        ) -> Result<()>;
+        async fn complete_event_purchase_credit_note_recovery(
+            &self,
+            input: &crate::db::payments::CompleteEventPurchaseFinancialRecoveryInput,
+        ) -> Result<()>;
         async fn complete_event_purchase_refund_recovery(
             &self,
             input: &crate::db::payments::CompleteEventPurchaseRefundRecoveryInput,
@@ -1196,6 +1247,7 @@ mock! {
         async fn expire_event_purchase_for_checkout_session(
             &self,
             payment_provider: crate::types::payments::PaymentProvider,
+            provider_object_account_id: String,
             provider_session_id: &str,
         ) -> Result<()>;
         async fn finalize_event_purchase_refund(
@@ -1218,6 +1270,12 @@ mock! {
             &self,
             event_purchase_id: Uuid,
         ) -> Result<crate::types::payments::EventPurchaseSummary>;
+        async fn get_user_purchase_document_context(
+            &self,
+            user_id: Uuid,
+            event_purchase_id: Uuid,
+            event_purchase_credit_note_id: Option<Uuid>,
+        ) -> Result<Option<crate::db::payments::UserPurchaseDocumentContext>>;
         async fn prepare_event_checkout_purchase(
             &self,
             community_id: Uuid,
@@ -1232,14 +1290,38 @@ mock! {
         ) -> Result<()>;
         async fn reconcile_event_purchase_for_checkout_session(
             &self,
-            payment_provider: crate::types::payments::PaymentProvider,
-            provider_session_id: &str,
-            provider_payment_reference: Option<String>,
+            input: &crate::db::payments::ReconcileEventPurchaseForCheckoutSessionInput,
         ) -> Result<crate::db::payments::ReconcileEventPurchaseResult>;
         async fn reconcile_next_event_enrollment(
             &self,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Option<crate::types::event::EventEnrollmentReconciliationOutcome>>;
+        async fn record_event_purchase_application_fee_adjustment_failure(
+            &self,
+            adjustment_id: Uuid,
+            claim_id: Uuid,
+            failure_message: String,
+        ) -> Result<()>;
+        async fn record_event_purchase_application_fee_adjustment_succeeded(
+            &self,
+            adjustment_id: Uuid,
+            claim_id: Uuid,
+            provider_application_fee_refund_id: String,
+        ) -> Result<()>;
+        async fn record_event_purchase_credit_note_failure(
+            &self,
+            credit_note_id: Uuid,
+            claim_id: Uuid,
+            failure_message: String,
+        ) -> Result<()>;
+        async fn record_event_purchase_credit_note_succeeded(
+            &self,
+            credit_note_id: Uuid,
+            claim_id: Uuid,
+            provider_credit_note_id: String,
+            provider_hosted_url: Option<String>,
+            provider_pdf_url: Option<String>,
+        ) -> Result<()>;
         async fn record_event_purchase_refund_pending(
             &self,
             event_purchase_refund_id: Uuid,
@@ -1282,6 +1364,16 @@ mock! {
             user_id: Uuid,
             requested_reason: Option<String>,
             notification_template_data: serde_json::Value,
+        ) -> Result<()>;
+        async fn requeue_event_purchase_application_fee_adjustment(
+            &self,
+            group_id: Uuid,
+            adjustment_id: Uuid,
+        ) -> Result<()>;
+        async fn requeue_event_purchase_credit_note(
+            &self,
+            group_id: Uuid,
+            credit_note_id: Uuid,
         ) -> Result<()>;
         async fn requeue_event_purchase_refund(
             &self,

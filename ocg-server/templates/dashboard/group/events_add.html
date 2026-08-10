@@ -599,7 +599,7 @@
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
               {# Location search -#}
               <div class="col-span-full">
-                <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude">
+                <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude">
                 </location-search-field>
               </div>
               {# End location search -#}
@@ -717,6 +717,30 @@
                     </select>
                   </div>
                   <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
+                </div>
+
+                <div class="col-span-full lg:col-span-3">
+                  <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
+                  <div class="mt-2">
+                    <select id="tax_behavior" name="tax_behavior" class="select-primary">
+                      <option value="inclusive" selected>Tax included in ticket price</option>
+                      <option value="exclusive">Tax added at Checkout</option>
+                    </select>
+                  </div>
+                  <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
+                </div>
+
+                <div class="col-span-full lg:col-span-3">
+                  <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+                  <div class="mt-2">
+                    <select id="tax_calculation_mode"
+                            name="tax_calculation_mode"
+                            class="select-primary">
+                      <option value="automatic" selected>Automatic Stripe Tax</option>
+                      <option value="manual">Sponsor-approved fixed rates</option>
+                    </select>
+                  </div>
+                  <p class="form-legend">Manual rates must be approved for this fiscal sponsor and venue before positive prices can be saved.</p>
                 </div>
               </div>
             </div>

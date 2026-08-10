@@ -3,7 +3,8 @@ create or replace function publish_event_series_events(
     p_actor_user_id uuid,
     p_group_id uuid,
     p_event_ids uuid[],
-    p_configured_provider text
+    p_configured_provider text,
+    p_payment_validation jsonb default null
 )
 returns void as $$
 declare
@@ -20,7 +21,8 @@ begin
             p_actor_user_id,
             p_group_id,
             v_event_id,
-            p_configured_provider
+            p_configured_provider,
+            p_payment_validation
         );
     end loop;
 end;

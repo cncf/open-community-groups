@@ -850,7 +850,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    1000,
+    0,
     'USD',
     :'eventReissuePurchaseBlockID',
     :'reissuePurchaseBlockTicketTypeID',

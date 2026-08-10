@@ -409,7 +409,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'pendingPurchaseID',
-    1000,
+    0,
     'USD',
     :'eventTicketedID',
     :'eventTicketTypeID',
@@ -419,7 +419,7 @@ insert into event_purchase (
     :'ticketedPendingUserID'
 ), (
     :'windowCheckoutPurchaseID',
-    1000,
+    0,
     'USD',
     :'eventTicketedRegistrationClosedID',
     :'eventTicketedRegistrationClosedTicketTypeID',

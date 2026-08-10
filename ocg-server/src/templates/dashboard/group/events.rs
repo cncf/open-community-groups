@@ -20,7 +20,10 @@ use crate::{
         },
         group::GroupSponsor,
         pagination::{self, Pagination, ToRawQuery},
-        payments::{EventDiscountType, EventTicketTypeAvailability, GroupPaymentRecipient},
+        payments::{
+            EventDiscountType, EventTicketTypeAvailability, GroupPaymentRecipient,
+            TicketTaxBehavior, TicketTaxCalculationMode,
+        },
         questionnaire::QuestionnaireQuestion,
     },
     validation::{
@@ -139,6 +142,16 @@ impl UpdatePage {
     /// Returns true when the provided currency code matches the current event currency.
     pub(crate) fn is_selected_payment_currency_code(&self, payment_currency_code: &str) -> bool {
         self.event.payment_currency_code.as_deref() == Some(payment_currency_code)
+    }
+
+    /// Returns true when tax is added to the configured ticket price.
+    pub(crate) fn uses_exclusive_ticket_tax(&self) -> bool {
+        self.event.tax_behavior == TicketTaxBehavior::Exclusive
+    }
+
+    /// Returns true when the event uses sponsor-approved fixed tax rates.
+    pub(crate) fn uses_manual_ticket_tax(&self) -> bool {
+        self.event.tax_calculation_mode == TicketTaxCalculationMode::Manual
     }
 }
 
@@ -360,6 +373,14 @@ pub(crate) struct Event {
     /// Tags associated with the event.
     #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,
+    /// Whether ticket prices include tax or have tax added at Checkout.
+    #[serde(default)]
+    #[garde(skip)]
+    pub tax_behavior: TicketTaxBehavior,
+    /// Automatic Stripe Tax or sponsor-approved manual rates.
+    #[serde(default)]
+    #[garde(skip)]
+    pub tax_calculation_mode: TicketTaxCalculationMode,
     /// Whether this event is only for testing.
     #[garde(skip)]
     pub test_event: Option<bool>,

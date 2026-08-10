@@ -19,6 +19,7 @@ import {
 } from "/static/js/dashboard/group/event-form-helpers.js";
 
 const getOnlineEventDetails = () => document.querySelector("online-event-details");
+const getLocationSearchField = () => document.querySelector("location-search-field");
 
 /**
  * Resets meeting-related fields to avoid copying existing links or sync state.
@@ -53,6 +54,27 @@ const copyManualMeetingFields = (details) => {
   const meetingDetails = getOnlineEventDetails();
   if (meetingDetails && typeof meetingDetails.setManualMeetingDetails === "function") {
     meetingDetails.setManualMeetingDetails(meetingFields);
+  }
+};
+
+/**
+ * Copies the complete physical venue into the event location component.
+ * @param {object} details Event details payload
+ */
+const copyVenueFields = (details) => {
+  const locationSearchField = getLocationSearchField();
+  if (locationSearchField && typeof locationSearchField.setLocationFields === "function") {
+    locationSearchField.setLocationFields({
+      country: details.venue_country_name,
+      countryCode: details.venue_country_code,
+      latitude: details.latitude,
+      longitude: details.longitude,
+      state: details.venue_state,
+      venueAddress: details.venue_address,
+      venueCity: details.venue_city,
+      venueName: details.venue_name,
+      venueZipCode: details.venue_zip_code,
+    });
   }
 };
 
@@ -92,10 +114,7 @@ export const applyCopiedEventDetails = async (details) => {
   setWaitlistEnabled(details.waitlist_enabled === true);
   setAttendeeApprovalRequired(details.attendee_approval_required === true);
   updateTimezone(details.timezone);
-  setTextValue("venue_name", details.venue_name);
-  setTextValue("venue_address", details.venue_address);
-  setTextValue("venue_city", details.venue_city);
-  setTextValue("venue_zip_code", details.venue_zip_code);
+  copyVenueFields(details);
   copyManualMeetingFields(details);
   setHosts(details.hosts);
   setSponsors(details.sponsors);

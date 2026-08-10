@@ -1,3 +1,5 @@
+-- Tests refunding free event purchases.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -200,17 +202,59 @@ insert into event_purchase (
     'refund-requested',
     'General admission',
     :'refundRequestedUserID'
-), (
-    :'paidPurchaseID',
+);
+
+-- Completed direct charge used to verify the free-refund boundary
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
     2500,
+    'direct-charge',
+    'acct_free_boundary',
     'USD',
-    null,
-    null,
     :'eventID',
+    :'paidPurchaseID',
     :'eventPaidTicketTypeID',
+    0,
+    'stripe',
+    'ch_free_boundary',
+    'cs_free_boundary',
+    'acct_free_boundary',
+    'pi_free_boundary',
+    2500,
+    '{"connected_account_id":"acct_free_boundary","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'completed',
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'Paid admission',
-    :'paidUserID'
+    :'paidUserID',
+    '{}'::jsonb
 );
 
 -- Refund request
