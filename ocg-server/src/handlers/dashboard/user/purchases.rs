@@ -19,10 +19,32 @@ use crate::{
     types::pagination::{self, NavigationLinks},
 };
 
+#[cfg(test)]
+mod tests;
+
 /// URL used by the full dashboard page.
 const DASHBOARD_URL: &str = "/dashboard/user?tab=purchases";
 /// URL used by the purchases tab partial.
 const PARTIAL_URL: &str = "/dashboard/user/purchases";
+
+// Pages handlers.
+
+/// Returns the purchase-document list partial.
+#[instrument(skip_all, err)]
+pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (filters, template) =
+        prepare_list_page(&db, user.user_id, raw_query.as_deref().unwrap_or_default()).await?;
+    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
+}
+
+// Actions handlers.
 
 /// Redirects an attendee to the provider's current credit-note URL.
 #[instrument(skip_all, err)]
@@ -50,20 +72,7 @@ pub(crate) async fn invoice_document(
     purchase_document_redirect(&payments_manager, user.user_id, event_purchase_id, None).await
 }
 
-/// Returns the purchase-document list partial.
-#[instrument(skip_all, err)]
-pub(crate) async fn list_page(
-    CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-    RawQuery(raw_query): RawQuery,
-) -> Result<impl IntoResponse, HandlerError> {
-    let (filters, template) =
-        prepare_list_page(&db, user.user_id, raw_query.as_deref().unwrap_or_default()).await?;
-    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
-    let headers = [(HeaderName::from_static("hx-push-url"), url)];
-
-    Ok((headers, Html(template.render()?)))
-}
+// Helpers.
 
 /// Prepares purchase-document history for either the full page or tab partial.
 pub(crate) async fn prepare_list_page(

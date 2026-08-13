@@ -9,15 +9,21 @@ declare
     v_connected_seller_id text;
     v_provider_application_fee_id text;
 begin
-    -- Surface an abandoned final attempt instead of reclaiming it forever
+    -- Surface an abandoned final attempt without losing provider diagnostics
     update event_purchase_application_fee_adjustment epafa
     set
         claim_id = null,
         claimed_at = null,
-        failure_message = coalesce(
-            failure_message,
-            'Worker claim expired after the final automatic attempt'
-        ),
+        failure_message = case
+            -- Record expiration as the only diagnostic when no provider error exists
+            when failure_message is null then
+                'Application-fee adjustment worker claim expired after the final automatic attempt; provider outcome is unknown'
+            -- Retain the provider error and add one final-attempt expiration notice
+            else concat(
+                failure_message,
+                E'\nApplication-fee adjustment worker claim expired after the final automatic attempt; provider outcome is unknown'
+            )
+        end,
         status = 'failed',
         updated_at = current_timestamp
     from event_purchase ep
@@ -51,6 +57,7 @@ begin
     for update of epafa skip locked
     limit 1;
 
+    -- Return idle state when no compatible work is due
     if not found then
         return null;
     end if;
@@ -77,11 +84,13 @@ begin
     from event_purchase ep
     where ep.event_purchase_id = v_adjustment.event_purchase_id;
 
+    -- Reject claims whose immutable provider context is incomplete
     if nullif(btrim(v_connected_seller_id), '') is null
        or nullif(btrim(v_provider_application_fee_id), '') is null then
         raise exception 'application-fee adjustment is missing provider context';
     end if;
 
+    -- Return the claimed adjustment contract
     return jsonb_build_object(
         'amount_minor', v_adjustment.amount_minor,
         'claim_id', v_adjustment.claim_id,

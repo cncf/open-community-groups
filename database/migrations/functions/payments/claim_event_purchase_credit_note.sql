@@ -11,15 +11,21 @@ declare
     v_provider_invoice_id text;
     v_provider_refund_id text;
 begin
-    -- Surface an abandoned final attempt instead of reclaiming it forever
+    -- Surface an abandoned final attempt without losing provider diagnostics
     update event_purchase_credit_note epcn
     set
         claim_id = null,
         claimed_at = null,
-        failure_message = coalesce(
-            failure_message,
-            'Worker claim expired after the final automatic attempt'
-        ),
+        failure_message = case
+            -- Record expiration as the only diagnostic when no provider error exists
+            when failure_message is null then
+                'Credit-note worker claim expired after the final automatic attempt; provider outcome is unknown'
+            -- Retain the provider error and add one final-attempt expiration notice
+            else concat(
+                failure_message,
+                E'\nCredit-note worker claim expired after the final automatic attempt; provider outcome is unknown'
+            )
+        end,
         status = 'failed',
         updated_at = current_timestamp
     where epcn.payment_provider_id = p_payment_provider_id
@@ -51,6 +57,7 @@ begin
     for update of epcn skip locked
     limit 1;
 
+    -- Return idle state when no compatible work is due
     if not found then
         return null;
     end if;
@@ -82,12 +89,14 @@ begin
     join event_purchase ep using (event_purchase_id)
     where epr.event_purchase_refund_id = v_credit_note.event_purchase_refund_id;
 
+    -- Reject claims whose immutable provider context is incomplete
     if nullif(btrim(v_connected_seller_id), '') is null
        or nullif(btrim(v_provider_invoice_id), '') is null
        or nullif(btrim(v_provider_refund_id), '') is null then
         raise exception 'credit note is missing provider context';
     end if;
 
+    -- Return the claimed credit-note contract
     return jsonb_build_object(
         'amount_minor', v_credit_note.amount_minor,
         'claim_id', v_credit_note.claim_id,

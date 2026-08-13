@@ -60,6 +60,27 @@ impl ListPage {
 
 // Types.
 
+/// Durable financial-work kinds that support operator recovery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum FinancialRecoveryKind {
+    /// Application-fee refund or tax correction.
+    ApplicationFeeAdjustment,
+    /// Customer credit-note creation.
+    CreditNote,
+}
+
+impl FinancialRecoveryKind {
+    /// Returns the label for the provider object captured during recovery.
+    pub(crate) fn provider_object_label(self) -> &'static str {
+        match self {
+            Self::ApplicationFeeAdjustment => "Stripe application-fee refund ID",
+            Self::CreditNote => "Stripe credit note ID",
+        }
+    }
+}
+
 /// Exhausted application-fee or credit-note work shown to group operators.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupFinancialRecovery {
@@ -92,27 +113,6 @@ impl GroupFinancialRecovery {
     /// Formats the provider operation amount for display.
     pub(crate) fn formatted_amount(&self) -> String {
         format_amount_minor(self.amount_minor, &self.currency_code)
-    }
-}
-
-/// Durable financial-work kinds that support operator recovery.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub(crate) enum FinancialRecoveryKind {
-    /// Application-fee refund or tax correction.
-    ApplicationFeeAdjustment,
-    /// Customer credit-note creation.
-    CreditNote,
-}
-
-impl FinancialRecoveryKind {
-    /// Returns the label for the provider object captured during recovery.
-    pub(crate) fn provider_object_label(self) -> &'static str {
-        match self {
-            Self::ApplicationFeeAdjustment => "Stripe application-fee refund ID",
-            Self::CreditNote => "Stripe credit note ID",
-        }
     }
 }
 

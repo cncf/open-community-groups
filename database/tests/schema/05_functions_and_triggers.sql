@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(386);
+select plan(388);
 
 -- ============================================================================
 -- VARIABLES
@@ -454,6 +454,11 @@ select has_function(
     'requeue_notification',
     array['uuid', 'text', 'bigint', 'bigint', 'integer', 'timestamp with time zone']::name[]
 );
+select has_function(
+    'requeue_stale_event_purchase_application_fee_adjustment_claims',
+    '{}'::name[]
+);
+select has_function('requeue_stale_event_purchase_credit_note_claims', '{}'::name[]);
 select has_function('requeue_stale_event_purchase_refund_claims', '{}'::name[]);
 select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);

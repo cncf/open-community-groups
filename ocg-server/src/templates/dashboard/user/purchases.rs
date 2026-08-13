@@ -16,6 +16,8 @@ use crate::{
     validation::MAX_PAGINATION_LIMIT,
 };
 
+// Pages templates.
+
 /// Purchase-document history page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/user/purchases_list.html")]
@@ -32,6 +34,8 @@ pub(crate) struct ListPage {
     /// Pagination offset.
     pub offset: Option<usize>,
 }
+
+// Types.
 
 /// One issued or pending credit-note document.
 #[skip_serializing_none]

@@ -165,7 +165,7 @@ insert into event_purchase_application_fee_adjustment (
     (
         80, 10, gen_random_uuid(), current_timestamp - interval '16 minutes',
         '2024-01-04 00:00:00+00', :'finalAdjustmentID', :'finalPurchaseID',
-        null, 'claim-final-fee-adjustment', 'purchase-refund',
+        'provider timed out', 'claim-final-fee-adjustment', 'purchase-refund',
         '2024-01-04 00:00:00+00', 'processing'
     );
 
@@ -261,7 +261,7 @@ select results_eq(
     $$ values (
         10,
         null::uuid,
-        'Worker claim expired after the final automatic attempt'::text,
+        E'provider timed out\nApplication-fee adjustment worker claim expired after the final automatic attempt; provider outcome is unknown'::text,
         'failed'::text
     ) $$,
     'Should surface an abandoned final application-fee attempt for operator action'

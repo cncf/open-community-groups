@@ -324,6 +324,8 @@
 {{ template "payments/requeue_event_purchase_application_fee_adjustment.sql" }}
 {{ template "payments/requeue_event_purchase_credit_note.sql" }}
 {{ template "payments/requeue_event_purchase_refund.sql" }}
+{{ template "payments/requeue_stale_event_purchase_application_fee_adjustment_claims.sql" }}
+{{ template "payments/requeue_stale_event_purchase_credit_note_claims.sql" }}
 {{ template "payments/requeue_stale_event_purchase_refund_claims.sql" }}
 
 {{ template "site/get_filters_options.sql" }}

@@ -319,22 +319,26 @@ calculation and reporting do not make Stripe or OCG the tax filer.
 
 ### Refund Recovery
 
-All provider-mediated refunds run through durable background work. HTTP handlers and verified
-webhooks only queue or update refund state; they do not call Stripe's refund API directly. OCG
-starts two provider refund workers and one stale-claim recovery worker. This same path handles
-approved attendee requests, organizer-initiated attendance cancellations, paid checkouts that can
-no longer be fulfilled, and automatic refunds from event cancellation.
+All provider-mediated refunds run through durable background work. HTTP handlers
+and verified webhooks only queue or update refund state; they do not call
+Stripe's refund API directly. OCG starts two provider refund workers and one
+payment recovery worker. The recovery worker sweeps abandoned refund,
+application-fee adjustment, and credit-note claims even when no payment provider
+is configured. The refund path handles approved attendee requests,
+organizer-initiated attendance cancellations, paid checkouts that can no longer
+be fulfilled, and automatic refunds from event cancellation.
 
 A late provider completion that cannot be fulfilled because its hold or offer
 expired, the offer was canceled, capacity changed, or event state changed is
 recorded and queued for an automatic full refund. It never creates attendance
 or revives the terminal offer.
 
-Workers look up an existing Stripe refund before creating one and reuse the purchase's stable
-idempotency key. Transient failures use up to ten claims with exponential backoff from one to
-thirty minutes. A claim left in `processing` for fifteen minutes is released by the recovery
-worker. If Stripe success was already persisted before interruption, recovery resumes local
-finalization without creating another refund.
+Workers look up an existing Stripe refund before creating one and reuse the
+purchase's stable idempotency key. Transient failures use up to ten claims with
+exponential backoff from one to thirty minutes. A claim left in `processing`
+for fifteen minutes is released by the payment recovery worker. If Stripe
+success was already persisted before interruption, refund recovery resumes
+local finalization without creating another refund.
 
 When this deployment has no payments provider configured, refund work remains queued and visible
 to organizers. It is not discarded or treated as complete.
@@ -361,6 +365,14 @@ bounded retry cycle or record the operation as completed directly in Stripe.
 External completion captures the Stripe object ID, an independent recovery
 reference, and the evidence reviewed, then appends an event audit entry. Exact
 completion replays are idempotent; conflicting evidence is rejected.
+
+An abandoned application-fee adjustment or credit-note claim below ten
+attempts becomes retryable immediately with its existing idempotency key. It is
+resumable when a compatible provider is configured, but it is not shown as
+financial recovery work in the dashboard until all ten automatic attempts are
+exhausted. An abandoned tenth claim is marked failed for dashboard recovery,
+and its last provider error remains attached with an expiration notice that
+the provider outcome is unknown.
 
 OCG does not subscribe to, reconcile, or notify administrators about dispute
 events. The fiscal sponsor monitors and handles disputes entirely in Stripe,

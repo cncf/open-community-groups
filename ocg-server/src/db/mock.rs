@@ -1380,6 +1380,10 @@ mock! {
             group_id: Uuid,
             event_purchase_id: Uuid,
         ) -> Result<()>;
+        async fn requeue_stale_event_purchase_application_fee_adjustment_claims(
+            &self,
+        ) -> Result<i32>;
+        async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32>;
         async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
     }
 

@@ -106,6 +106,7 @@ impl StripeProvider {
 
     /// Canonicalizes a plain or exponential decimal without floating-point conversion.
     fn canonical_decimal(value: &str) -> Option<(bool, String, i64)> {
+        // Separate the sign, coefficient, and optional exponent
         let value = value.trim();
         let (negative, unsigned) =
             value.strip_prefix('-').map_or((false, value), |value| (true, value));
@@ -117,6 +118,7 @@ impl StripeProvider {
             return None;
         }
 
+        // Validate and separate the coefficient digits around the decimal point
         let mut coefficient_parts = coefficient.split('.');
         let integer = coefficient_parts.next()?;
         let fraction = coefficient_parts.next().unwrap_or_default();
@@ -128,11 +130,13 @@ impl StripeProvider {
             return None;
         }
 
+        // Collapse every zero representation into one canonical value
         let mut digits = format!("{integer}{fraction}").trim_start_matches('0').to_string();
         if digits.is_empty() {
             return Some((false, "0".to_string(), 0));
         }
 
+        // Remove insignificant trailing zeros while preserving the decimal value
         let mut scale = i64::try_from(fraction.len()).ok()? - exponent;
         while digits.ends_with('0') {
             digits.pop();
@@ -299,6 +303,7 @@ impl StripeProvider {
         input: &CreateCheckoutSessionInput,
         api_version: &str,
     ) -> Result<(String, String)> {
+        // Fingerprint the complete venue snapshot used by Stripe Tax
         let state = input.venue.state.as_deref().unwrap_or_default();
         let fingerprint = Self::provider_fingerprint(&[
             &input.venue.address,
@@ -309,12 +314,14 @@ impl StripeProvider {
             &input.venue.zip_code,
         ]);
 
+        // Reuse the persisted location while its source snapshot still matches
         if input.cached_performance_location_fingerprint.as_deref() == Some(fingerprint.as_str())
             && let Some(provider_tax_location_id) = input.cached_provider_tax_location_id.as_ref()
         {
             return Ok((provider_tax_location_id.clone(), fingerprint));
         }
 
+        // Build the performance location request without an empty state field
         let mut form_fields = vec![
             ("address[city]", input.venue.city.as_str()),
             ("address[country]", input.venue.country_code.as_str()),
@@ -341,6 +348,7 @@ impl StripeProvider {
             .await
             .context("error creating Stripe performance location")?;
 
+        // Parse the created location identifier
         let response = Self::parse_provider_response::<StripeIdResponse>(
             response,
             "performance location creation",
@@ -357,6 +365,7 @@ impl StripeProvider {
         api_version: &str,
         provider_tax_location_id: &str,
     ) -> Result<(String, String)> {
+        // Validate and fingerprint the immutable Product snapshot
         let tax_code = input
             .tax_code
             .as_deref()
@@ -365,6 +374,7 @@ impl StripeProvider {
         let fingerprint = Self::provider_fingerprint(&[&title, provider_tax_location_id, tax_code]);
         let mut replaced_provider_tax_product_id = None;
 
+        // Revalidate a fingerprint-matched cached Product against Stripe
         if input.cached_product_fingerprint.as_deref() == Some(fingerprint.as_str())
             && let Some(provider_tax_product_id) = input.cached_provider_tax_product_id.as_ref()
         {
@@ -376,15 +386,18 @@ impl StripeProvider {
                 )
                 .await?;
 
+            // Reuse only a complete active Product match
             if product.as_ref().is_some_and(|product| {
                 Self::tax_product_matches(product, &title, provider_tax_location_id, tax_code)
             }) {
                 return Ok((provider_tax_product_id.clone(), fingerprint));
             }
 
+            // Bind any replacement to the stale Product identifier
             replaced_provider_tax_product_id = Some(provider_tax_product_id.as_str());
         }
 
+        // Build the Product request from the validated snapshot
         let form_fields = [
             ("name", title.as_str()),
             (
@@ -394,6 +407,7 @@ impl StripeProvider {
             ("tax_details[tax_code]", tax_code),
         ];
 
+        // Keep initial creation stable while rotating a stale cached Product
         let idempotency_fingerprint = replaced_provider_tax_product_id.map_or_else(
             || fingerprint.clone(),
             |provider_tax_product_id| {
@@ -418,6 +432,7 @@ impl StripeProvider {
             .await
             .context("error creating Stripe ticket Product")?;
 
+        // Parse the created Product identifier
         let response =
             Self::parse_provider_response::<StripeIdResponse>(response, "Product creation").await?;
 
@@ -1517,53 +1532,6 @@ impl PaymentsProvider for StripeProvider {
     }
 }
 
-/// Minimal response payload returned by Stripe checkout session creation.
-#[derive(Debug, Deserialize)]
-struct StripeCheckoutSessionResponse {
-    /// Stripe checkout session identifier.
-    id: String,
-    /// Hosted checkout URL.
-    url: String,
-}
-
-/// Expanded Charge fields required for fee reconciliation.
-#[derive(Debug, Deserialize)]
-struct StripeExpandedCharge {
-    /// Charge identifier.
-    id: String,
-
-    /// Application fee created for the direct charge.
-    application_fee: Option<String>,
-}
-
-/// Expanded `PaymentIntent` fields returned with a Checkout Session.
-#[derive(Debug, Deserialize)]
-struct StripeExpandedPaymentIntent {
-    /// `PaymentIntent` identifier.
-    id: String,
-
-    /// Charge created for the completed payment.
-    latest_charge: Option<StripeExpandedCharge>,
-}
-
-/// Account-scoped completed Checkout Session with authoritative amounts.
-#[derive(Debug, Deserialize)]
-struct StripeExpandedCheckoutSessionResponse {
-    /// Total amount collected from the attendee.
-    amount_total: i64,
-    /// Expanded `PaymentIntent` and Charge.
-    payment_intent: StripeExpandedPaymentIntent,
-    /// Authoritative total breakdown.
-    total_details: StripeCheckoutTotalDetails,
-}
-
-/// Checkout total breakdown needed for authoritative tax amounts.
-#[derive(Debug, Deserialize)]
-struct StripeCheckoutTotalDetails {
-    /// Total tax included in or added to the ticket amount.
-    amount_tax: i64,
-}
-
 /// Connected account responsibility fields required for direct charges.
 #[derive(Debug, Deserialize)]
 struct StripeAccountController {
@@ -1622,84 +1590,20 @@ struct StripeApplicationFeeRefundList {
     data: Vec<StripeApplicationFeeRefund>,
 }
 
-/// Minimal refund payload used to reconcile existing Stripe refunds.
+/// Minimal response payload returned by Stripe checkout session creation.
 #[derive(Debug, Deserialize)]
-struct StripeListedRefund {
-    /// Refund amount in minor units.
-    amount: i64,
-    /// Stripe refund identifier.
+struct StripeCheckoutSessionResponse {
+    /// Stripe checkout session identifier.
     id: String,
-    /// Stripe refund lifecycle status.
-    status: String,
-
-    /// Metadata attached when the refund was created.
-    #[serde(default)]
-    metadata: BTreeMap<String, String>,
+    /// Hosted checkout URL.
+    url: String,
 }
 
-/// Minimal response payload returned by Stripe refund creation.
+/// Checkout total breakdown needed for authoritative tax amounts.
 #[derive(Debug, Deserialize)]
-struct StripeRefundResponse {
-    /// Stripe refund identifier.
-    id: String,
-    /// Stripe refund lifecycle status.
-    status: String,
-}
-
-/// Minimal response payload returned by Stripe refund listing.
-#[derive(Debug, Deserialize)]
-struct StripeRefundListResponse {
-    /// Stripe refunds returned by the list operation.
-    data: Vec<StripeListedRefund>,
-}
-
-/// Nested webhook event data containing the Stripe object payload.
-#[derive(Debug, Deserialize)]
-struct StripeWebhookData {
-    /// Event object supplied by Stripe when present.
-    object: Option<StripeWebhookObject>,
-}
-
-/// Stripe webhook event envelope received from the webhook endpoint.
-#[derive(Debug, Deserialize)]
-struct StripeWebhookEvent {
-    /// Data envelope containing the Stripe object.
-    data: StripeWebhookData,
-    /// Stripe event type.
-    #[serde(rename = "type")]
-    event_type: String,
-    /// Whether the event belongs to live mode.
-    livemode: bool,
-
-    /// Connected account that owns the event object.
-    account: Option<String>,
-}
-
-/// Stripe webhook object used by the supported checkout and refund events.
-#[derive(Debug, Deserialize)]
-struct StripeWebhookObject {
-    /// Stripe object identifier.
-    id: String,
-
-    /// Connected account associated with a platform application fee.
-    account: Option<String>,
-    /// Refund or application-fee amount in minor units.
-    amount: Option<i64>,
-    /// Direct charge associated with a platform application fee.
-    charge: Option<String>,
-    /// Refund currency code.
-    currency: Option<String>,
-    /// Hosted invoice URL when the object is an invoice.
-    hosted_invoice_url: Option<String>,
-    /// Invoice PDF URL when the object is an invoice.
-    invoice_pdf: Option<String>,
-    /// Metadata attached to the Stripe object.
-    #[serde(default)]
-    metadata: BTreeMap<String, String>,
-    /// Payment intent associated with a checkout session or refund.
-    payment_intent: Option<String>,
-    /// Refund lifecycle status when the object is a refund.
-    status: Option<String>,
+struct StripeCheckoutTotalDetails {
+    /// Total tax included in or added to the ticket amount.
+    amount_tax: i64,
 }
 
 /// Provider credit-note list response.
@@ -1756,11 +1660,51 @@ struct StripeCreditNoteTaxAmount {
     amount: i64,
 }
 
+/// Expanded Charge fields required for fee reconciliation.
+#[derive(Debug, Deserialize)]
+struct StripeExpandedCharge {
+    /// Charge identifier.
+    id: String,
+
+    /// Application fee created for the direct charge.
+    application_fee: Option<String>,
+}
+
+/// Account-scoped completed Checkout Session with authoritative amounts.
+#[derive(Debug, Deserialize)]
+struct StripeExpandedCheckoutSessionResponse {
+    /// Total amount collected from the attendee.
+    amount_total: i64,
+    /// Expanded `PaymentIntent` and Charge.
+    payment_intent: StripeExpandedPaymentIntent,
+    /// Authoritative total breakdown.
+    total_details: StripeCheckoutTotalDetails,
+}
+
+/// Expanded `PaymentIntent` fields returned with a Checkout Session.
+#[derive(Debug, Deserialize)]
+struct StripeExpandedPaymentIntent {
+    /// `PaymentIntent` identifier.
+    id: String,
+
+    /// Charge created for the completed payment.
+    latest_charge: Option<StripeExpandedCharge>,
+}
+
 /// Minimal response returned by Stripe create endpoints.
 #[derive(Debug, Deserialize)]
 struct StripeIdResponse {
     /// Provider object identifier.
     id: String,
+}
+
+/// Current provider URLs returned when retrieving an invoice.
+#[derive(Debug, Deserialize)]
+struct StripeInvoiceDocumentResponse {
+    /// Current Stripe-hosted invoice URL.
+    hosted_invoice_url: Option<String>,
+    /// Current Stripe invoice PDF URL.
+    invoice_pdf: Option<String>,
 }
 
 /// Provider invoice-line list response.
@@ -1777,13 +1721,56 @@ struct StripeInvoiceLineResponse {
     id: String,
 }
 
-/// Current provider URLs returned when retrieving an invoice.
+/// Minimal refund payload used to reconcile existing Stripe refunds.
 #[derive(Debug, Deserialize)]
-struct StripeInvoiceDocumentResponse {
-    /// Current Stripe-hosted invoice URL.
-    hosted_invoice_url: Option<String>,
-    /// Current Stripe invoice PDF URL.
-    invoice_pdf: Option<String>,
+struct StripeListedRefund {
+    /// Refund amount in minor units.
+    amount: i64,
+    /// Stripe refund identifier.
+    id: String,
+    /// Stripe refund lifecycle status.
+    status: String,
+
+    /// Metadata attached when the refund was created.
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
+}
+
+/// Minimal response payload returned by Stripe refund listing.
+#[derive(Debug, Deserialize)]
+struct StripeRefundListResponse {
+    /// Stripe refunds returned by the list operation.
+    data: Vec<StripeListedRefund>,
+}
+
+/// Minimal response payload returned by Stripe refund creation.
+#[derive(Debug, Deserialize)]
+struct StripeRefundResponse {
+    /// Stripe refund identifier.
+    id: String,
+    /// Stripe refund lifecycle status.
+    status: String,
+}
+
+/// Minimal Product fields revalidated before automatic-tax Checkout.
+#[derive(Debug, Deserialize)]
+struct StripeTaxProductResponse {
+    /// Whether Stripe currently allows the Product to be used.
+    active: bool,
+    /// Product name snapshotted from the ticket title.
+    name: String,
+
+    /// Stripe Tax inputs attached to the Product.
+    tax_details: Option<StripeTaxProductTaxDetailsResponse>,
+}
+
+/// Stripe Tax fields attached to an automatic-tax Product.
+#[derive(Debug, Deserialize)]
+struct StripeTaxProductTaxDetailsResponse {
+    /// Connected-account performance-location identifier.
+    performance_location: Option<String>,
+    /// Stripe tax code selected for the ticket.
+    tax_code: Option<String>,
 }
 
 /// Minimal Tax Rate fields revalidated before manual-tax Checkout.
@@ -1808,30 +1795,58 @@ struct StripeTaxRateResponse {
     tax_type: Option<String>,
 }
 
-/// Minimal Product fields revalidated before automatic-tax Checkout.
-#[derive(Debug, Deserialize)]
-struct StripeTaxProductResponse {
-    /// Whether Stripe currently allows the Product to be used.
-    active: bool,
-    /// Product name snapshotted from the ticket title.
-    name: String,
-
-    /// Stripe Tax inputs attached to the Product.
-    tax_details: Option<StripeTaxProductTaxDetailsResponse>,
-}
-
-/// Stripe Tax fields attached to an automatic-tax Product.
-#[derive(Debug, Deserialize)]
-struct StripeTaxProductTaxDetailsResponse {
-    /// Connected-account performance-location identifier.
-    performance_location: Option<String>,
-    /// Stripe tax code selected for the ticket.
-    tax_code: Option<String>,
-}
-
 /// Minimal Stripe Tax settings response used for automatic-tax readiness.
 #[derive(Debug, Deserialize)]
 struct StripeTaxSettingsResponse {
     /// Whether the account's Tax settings are ready for calculations.
     status: String,
+}
+
+/// Nested webhook event data containing the Stripe object payload.
+#[derive(Debug, Deserialize)]
+struct StripeWebhookData {
+    /// Event object supplied by Stripe when present.
+    object: Option<StripeWebhookObject>,
+}
+
+/// Stripe webhook event envelope received from the webhook endpoint.
+#[derive(Debug, Deserialize)]
+struct StripeWebhookEvent {
+    /// Data envelope containing the Stripe object.
+    data: StripeWebhookData,
+    /// Stripe event type.
+    #[serde(rename = "type")]
+    event_type: String,
+    /// Whether the event belongs to live mode.
+    livemode: bool,
+
+    /// Connected account that owns the event object.
+    account: Option<String>,
+}
+
+/// Stripe webhook object used by the supported checkout and refund events.
+#[derive(Debug, Deserialize)]
+struct StripeWebhookObject {
+    /// Stripe object identifier.
+    id: String,
+
+    /// Connected account associated with a platform application fee.
+    account: Option<String>,
+    /// Refund or application-fee amount in minor units.
+    amount: Option<i64>,
+    /// Direct charge associated with a platform application fee.
+    charge: Option<String>,
+    /// Refund currency code.
+    currency: Option<String>,
+    /// Hosted invoice URL when the object is an invoice.
+    hosted_invoice_url: Option<String>,
+    /// Invoice PDF URL when the object is an invoice.
+    invoice_pdf: Option<String>,
+    /// Metadata attached to the Stripe object.
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
+    /// Payment intent associated with a checkout session or refund.
+    payment_intent: Option<String>,
+    /// Refund lifecycle status when the object is a refund.
+    status: Option<String>,
 }

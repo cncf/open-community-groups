@@ -284,6 +284,12 @@ pub(crate) trait DBPayments {
         event_purchase_id: Uuid,
     ) -> Result<()>;
 
+    /// Releases stale claims left by interrupted application-fee adjustment workers.
+    async fn requeue_stale_event_purchase_application_fee_adjustment_claims(&self) -> Result<i32>;
+
+    /// Releases stale claims left by interrupted credit-note workers.
+    async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32>;
+
     /// Releases stale claims left by interrupted refund workers.
     async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
 }
@@ -996,6 +1002,26 @@ where
         self.execute(
             "select requeue_event_purchase_refund($1::uuid, $2::uuid)",
             &[&group_id, &event_purchase_id],
+        )
+        .await
+    }
+
+    /// [`DBPayments::requeue_stale_event_purchase_application_fee_adjustment_claims`].
+    #[instrument(skip(self), err)]
+    async fn requeue_stale_event_purchase_application_fee_adjustment_claims(&self) -> Result<i32> {
+        self.fetch_scalar_one(
+            "select requeue_stale_event_purchase_application_fee_adjustment_claims()",
+            &[],
+        )
+        .await
+    }
+
+    /// [`DBPayments::requeue_stale_event_purchase_credit_note_claims`].
+    #[instrument(skip(self), err)]
+    async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32> {
+        self.fetch_scalar_one(
+            "select requeue_stale_event_purchase_credit_note_claims()",
+            &[],
         )
         .await
     }

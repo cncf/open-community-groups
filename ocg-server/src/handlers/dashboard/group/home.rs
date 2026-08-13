@@ -59,7 +59,7 @@ pub(crate) async fn page(
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
-    // Load dashboard context and payment readiness only for the refunds tab
+    // Load dashboard context and payment readiness
     let payment_recipient = async {
         if matches!(&tab, Tab::Refunds) {
             db.get_group_payment_recipient(community_id, group_id).await

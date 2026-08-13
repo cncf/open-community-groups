@@ -179,7 +179,8 @@ insert into event_purchase_credit_note (
     (
         2500, 10, gen_random_uuid(), current_timestamp - interval '16 minutes',
         '2024-01-04 00:00:00+00', 'USD', :'finalCreditNoteID', :'finalRefundID',
-        null, 'claim-final-credit-note', '2024-01-04 00:00:00+00', 'stripe',
+        'provider timed out', 'claim-final-credit-note',
+        '2024-01-04 00:00:00+00', 'stripe',
         'acct_credit', 'processing', 200
     );
 
@@ -277,7 +278,7 @@ select results_eq(
     $$ values (
         10,
         null::uuid,
-        'Worker claim expired after the final automatic attempt'::text,
+        E'provider timed out\nCredit-note worker claim expired after the final automatic attempt; provider outcome is unknown'::text,
         'failed'::text
     ) $$,
     'Should surface an abandoned final credit-note attempt for operator action'

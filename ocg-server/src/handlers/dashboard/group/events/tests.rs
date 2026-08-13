@@ -806,7 +806,10 @@ async fn test_add_paid_event_notification_failure_rolls_back() {
         })
         .returning(|_, _, _, _| Ok(true));
 
-    expect_group_payment_recipient(&mut db, community_id, group_id);
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 
     // Setup a successful mutation followed by a required notification failure
     let mut tx = MockDB::new();
@@ -914,7 +917,10 @@ async fn test_add_paid_recurring_success() {
         })
         .returning(|_, _, _, _| Ok(true));
 
-    expect_group_payment_recipient(&mut db, community_id, group_id);
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 
     // Setup atomic recurring creation and aggregate notification expectations
     let mut tx = MockDB::new();
@@ -1043,7 +1049,10 @@ async fn test_add_paid_rejects_unready_fiscal_sponsor_without_persisting() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    expect_group_payment_recipient(&mut db, community_id, group_id);
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 
     // Reject the sponsor before the event transaction can start
     let mut payments_manager = MockPaymentsManager::new();
@@ -1086,6 +1095,7 @@ async fn test_add_paid_rejects_unready_fiscal_sponsor_without_persisting() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_add_paid_success() {
     let admin_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -1124,7 +1134,10 @@ async fn test_add_paid_success() {
         })
         .returning(|_, _, _, _| Ok(true));
 
-    expect_group_payment_recipient(&mut db, community_id, group_id);
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 
     // Setup atomic creation and notification expectations
     let mut tx = MockDB::new();
@@ -3138,7 +3151,10 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
         })
         .returning(|_, _, _, _| Ok(true));
 
-    expect_group_payment_recipient(&mut db, community_id, group_id);
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 
     // Setup the ordered state transition and notification expectations
     let mut sequence = Sequence::new();
@@ -3449,7 +3465,10 @@ async fn test_update_paid_notification_failure_rolls_back() {
         })
         .returning(|_, _, _, _| Ok(true));
 
-    expect_group_payment_recipient(&mut db, community_id, group_id);
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 
     // Setup a successful update followed by a required notification failure
     let mut tx = MockDB::new();
@@ -4266,12 +4285,4 @@ async fn test_update_unrelated_paid_event_edit_skips_fiscal_sponsor_validation()
         StatusCode::NO_CONTENT,
         "refresh-group-dashboard-table",
     );
-}
-
-/// Expects a paid event mutation to load its configured fiscal sponsor.
-fn expect_group_payment_recipient(db: &mut MockDB, community_id: Uuid, group_id: Uuid) {
-    db.expect_get_group_payment_recipient()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
 }

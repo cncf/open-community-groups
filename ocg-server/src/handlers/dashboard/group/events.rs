@@ -265,6 +265,9 @@ pub(crate) async fn add(
     let mut event_payload = build_event_payload(&event)?;
     let is_paid_capable = is_event_payload_paid_capable(&event_payload);
 
+    // Validate the group fiscal sponsor with the provider before persisting a
+    // paid event, embedding the validated recipient in the payload so the
+    // database can verify it did not change before committing
     if payment_provider.is_some() && is_paid_capable {
         let payment_validation = validate_group_fiscal_sponsor(
             db.as_ref(),
@@ -463,6 +466,10 @@ pub(crate) async fn publish(
     // Resolve action scope
     let query = parse_event_action_query(raw_query.as_deref())?;
     let scope = query.scope;
+
+    // Validate the group fiscal sponsor with the provider before publishing
+    // paid events, passing the validated recipient to the database so it can
+    // verify it did not change before committing
     let payment_provider = payments_manager.configured_provider();
     let payment_validation = if payment_provider.is_some() {
         let event_ids = match scope {
@@ -625,6 +632,10 @@ pub(crate) async fn update(
     let payment_provider = payments_manager.configured_provider();
     let mut event_json = build_event_payload(&event)?;
 
+    // Validate the group fiscal sponsor with the provider when the update
+    // changes the ticketing configuration, embedding the validated recipient
+    // in the payload so the database can verify it did not change before
+    // committing
     let ticketing_configuration_changed = if payment_provider.is_some() {
         db.event_ticketing_configuration_changed(community_id, group_id, event_id, &event_json)
             .await?

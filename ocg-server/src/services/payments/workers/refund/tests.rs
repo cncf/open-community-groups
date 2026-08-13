@@ -1,9 +1,8 @@
-use std::{future::pending, sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use chrono::Utc;
 use mockall::predicate::eq;
 use serde_json::{Value, to_value};
-use tokio::{sync::Notify, time::timeout};
 use uuid::Uuid;
 
 use crate::{
@@ -22,7 +21,6 @@ use crate::{
             DynPaymentsProvider, RefundPaymentResult, RefundPaymentStatus,
             notification_composer::PaymentsNotificationComposer, provider::MockPaymentsProvider,
         },
-        workers::run_until_cancelled,
     },
     templates::notifications::EventRefundApproved,
     types::{
@@ -32,7 +30,7 @@ use crate::{
     },
 };
 
-use super::{RefundRecoveryWorker, RefundWorker};
+use super::Worker;
 
 #[tokio::test]
 async fn process_next_refund_creates_missing_provider_refund_and_finalizes_success() {
@@ -111,7 +109,7 @@ async fn process_next_refund_creates_missing_provider_refund_and_finalizes_succe
         });
 
     // Process the claimed refund
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -170,7 +168,7 @@ async fn process_next_refund_finalizes_persisted_success_without_provider_call_a
     provider.expect_refund_payment().never();
 
     // Resume local finalization
-    let worker = refund_worker(Arc::new(db), notifications_manager, Some(provider));
+    let worker = worker(Arc::new(db), notifications_manager, Some(provider));
     let processed = worker
         .process_next_refund()
         .await
@@ -233,7 +231,7 @@ async fn process_next_refund_finds_existing_success_without_creating_refund() {
     provider.expect_refund_payment().never();
 
     // Reconcile the existing provider refund
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -290,7 +288,7 @@ async fn process_next_refund_handles_persisted_success_finalization_error() {
     provider.expect_refund_payment().never();
 
     // Process the provider-complete refund
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -351,7 +349,7 @@ async fn process_next_refund_persists_pending_provider_result() {
     provider.expect_refund_payment().never();
 
     // Reconcile provider progress
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -412,7 +410,7 @@ async fn process_next_refund_persists_terminal_provider_failure() {
     provider.expect_refund_payment().never();
 
     // Reconcile the terminal provider result
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -463,7 +461,7 @@ async fn process_next_refund_records_retryable_failure_after_creation_error() {
         .return_once(|_| Box::pin(async { Err(anyhow::anyhow!("creation unavailable")) }));
 
     // Process the failed provider attempt
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -532,7 +530,7 @@ async fn process_next_refund_records_retryable_failure_after_finalization_error(
     provider.expect_refund_payment().never();
 
     // Process the provider-complete refund
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -580,7 +578,7 @@ async fn process_next_refund_records_retryable_failure_after_lookup_error() {
     provider.expect_refund_payment().never();
 
     // Process the failed provider attempt
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -630,7 +628,7 @@ async fn process_next_refund_records_retryable_failure_after_missing_pinned_refu
     provider.expect_refund_payment().never();
 
     // Process the missing pinned provider refund
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -689,7 +687,7 @@ async fn process_next_refund_records_retryable_failure_after_notification_contex
     provider.expect_refund_payment().never();
 
     // Process the provider-complete refund without required notification data
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -753,7 +751,7 @@ async fn process_next_refund_records_retryable_failure_after_success_persistence
     });
 
     // Process the provider success with failed local persistence
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -804,7 +802,7 @@ async fn process_next_refund_records_retryable_failure_when_payment_reference_is
     provider.expect_refund_payment().never();
 
     // Process the malformed claim
-    let worker = refund_worker(
+    let worker = worker(
         Arc::new(db),
         MockNotificationsManager::new(),
         Some(provider),
@@ -825,7 +823,7 @@ async fn process_next_refund_without_provider_leaves_durable_work_unclaimed() {
     db.expect_claim_event_purchase_refund().never();
 
     // Attempt to process queued work without a provider
-    let worker = refund_worker(Arc::new(db), MockNotificationsManager::new(), None);
+    let worker = worker(Arc::new(db), MockNotificationsManager::new(), None);
     let processed = worker
         .process_next_refund()
         .await
@@ -833,134 +831,6 @@ async fn process_next_refund_without_provider_leaves_durable_work_unclaimed() {
 
     // Check durable work remains queued
     assert!(!processed);
-}
-
-#[tokio::test]
-async fn refund_recovery_worker_run_does_not_mutate_after_cancellation() {
-    // Forbid stale-claim recovery after cancellation
-    let mut db = MockDB::new();
-    db.expect_requeue_stale_event_purchase_refund_claims().never();
-    let cancellation_token = tokio_util::sync::CancellationToken::new();
-    cancellation_token.cancel();
-    let worker = RefundRecoveryWorker {
-        cancellation_token,
-        db: Arc::new(db),
-    };
-
-    // Run the already canceled recovery worker
-    worker.run().await;
-}
-
-#[tokio::test]
-async fn refund_recovery_worker_run_stops_pending_work_after_cancellation() {
-    // Setup recovery work that remains pending after it starts
-    let cancellation_token = tokio_util::sync::CancellationToken::new();
-    let cancellation_token_for_task = cancellation_token.clone();
-    let recovery_started = Arc::new(Notify::new());
-    let recovery_started_for_task = recovery_started.clone();
-    let recovery_task = tokio::spawn(async move {
-        run_until_cancelled(&cancellation_token_for_task, async move {
-            recovery_started_for_task.notify_one();
-            pending::<()>().await;
-        })
-        .await
-    });
-    timeout(Duration::from_secs(1), recovery_started.notified())
-        .await
-        .expect("refund recovery to start");
-
-    // Cancel and require the pending operation to be dropped promptly
-    cancellation_token.cancel();
-    let result = timeout(Duration::from_secs(1), recovery_task)
-        .await
-        .expect("refund recovery wait to stop promptly")
-        .expect("refund recovery wait task to complete");
-    assert!(result.is_none());
-}
-
-#[tokio::test]
-async fn refund_worker_run_does_not_claim_after_cancellation() {
-    // Forbid claims after cancellation begins
-    let mut db = MockDB::new();
-    db.expect_claim_event_purchase_refund().never();
-    let cancellation_token = tokio_util::sync::CancellationToken::new();
-    cancellation_token.cancel();
-    let mut provider = MockPaymentsProvider::new();
-    provider.expect_provider().never();
-    provider.expect_find_refund().never();
-    provider.expect_refund_payment().never();
-    let db = Arc::new(db) as DynDB;
-    let worker = RefundWorker {
-        cancellation_token,
-        db: db.clone(),
-        notification_composer: PaymentsNotificationComposer::new(
-            db,
-            Arc::new(MockNotificationsManager::new()),
-            HttpServerConfig::default(),
-        ),
-        payments_provider: Some(Arc::new(provider)),
-    };
-
-    // Run the already canceled provider worker
-    worker.run().await;
-}
-
-#[tokio::test]
-async fn refund_worker_run_stops_during_provider_request_after_cancellation() {
-    // Setup claimed work whose provider lookup remains in flight
-    let claim_id = Uuid::new_v4();
-    let purchase_id = Uuid::new_v4();
-    let refund_id = Uuid::new_v4();
-    let claimed_refund = sample_refund(claim_id, purchase_id, refund_id);
-    let mut db = MockDB::new();
-    db.expect_claim_event_purchase_refund()
-        .with(eq(PaymentProvider::Stripe))
-        .times(1)
-        .return_once(move |_| Ok(Some(claimed_refund)));
-    db.expect_record_event_purchase_refund_retryable_failure().never();
-
-    // Hold the provider request until graceful cancellation drops it
-    let provider_started = Arc::new(Notify::new());
-    let provider_started_for_lookup = provider_started.clone();
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
-    provider.expect_find_refund().times(1).return_once(move |_| {
-        Box::pin(async move {
-            provider_started_for_lookup.notify_one();
-            pending().await
-        })
-    });
-    provider.expect_refund_payment().never();
-
-    // Start the worker and wait until its provider request is in flight
-    let cancellation_token = tokio_util::sync::CancellationToken::new();
-    let db = Arc::new(db) as DynDB;
-    let worker = RefundWorker {
-        cancellation_token: cancellation_token.clone(),
-        db: db.clone(),
-        notification_composer: PaymentsNotificationComposer::new(
-            db,
-            Arc::new(MockNotificationsManager::new()),
-            HttpServerConfig::default(),
-        ),
-        payments_provider: Some(Arc::new(provider)),
-    };
-    let worker_task = tokio::spawn(async move {
-        worker.run().await;
-    });
-    timeout(Duration::from_secs(1), provider_started.notified())
-        .await
-        .expect("provider request to start");
-
-    // Cancel and require shutdown without waiting for the provider future
-    cancellation_token.cancel();
-    timeout(Duration::from_secs(1), worker_task)
-        .await
-        .expect("refund worker to stop promptly")
-        .expect("refund worker task to complete");
 }
 
 // Helpers.
@@ -984,28 +854,6 @@ fn expect_refund_approval_context(db: &mut MockDB, refund: &ClaimedEventPurchase
         theme: SiteSettings::default().theme,
     })
     .unwrap()
-}
-
-/// Creates a refund worker with test doubles and a fresh cancellation token.
-fn refund_worker(
-    db: Arc<MockDB>,
-    notifications_manager: MockNotificationsManager,
-    payments_provider: Option<MockPaymentsProvider>,
-) -> RefundWorker {
-    let db = db as DynDB;
-    let payments_provider =
-        payments_provider.map(|provider| Arc::new(provider) as DynPaymentsProvider);
-
-    RefundWorker {
-        cancellation_token: tokio_util::sync::CancellationToken::new(),
-        db: db.clone(),
-        notification_composer: PaymentsNotificationComposer::new(
-            db,
-            Arc::new(notifications_manager),
-            HttpServerConfig::default(),
-        ),
-        payments_provider,
-    }
 }
 
 /// Creates an event summary for refund-completion notification tests.
@@ -1088,5 +936,27 @@ fn sample_refund(claim_id: Uuid, purchase_id: Uuid, refund_id: Uuid) -> ClaimedE
             provider_refund_id: None,
             provider_refunded_at: None,
         },
+    }
+}
+
+/// Creates a refund worker with test doubles and a fresh cancellation token.
+fn worker(
+    db: Arc<MockDB>,
+    notifications_manager: MockNotificationsManager,
+    payments_provider: Option<MockPaymentsProvider>,
+) -> Worker {
+    let db = db as DynDB;
+    let payments_provider =
+        payments_provider.map(|provider| Arc::new(provider) as DynPaymentsProvider);
+
+    Worker {
+        cancellation_token: tokio_util::sync::CancellationToken::new(),
+        db: db.clone(),
+        notification_composer: PaymentsNotificationComposer::new(
+            db,
+            Arc::new(notifications_manager),
+            HttpServerConfig::default(),
+        ),
+        payments_provider,
     }
 }

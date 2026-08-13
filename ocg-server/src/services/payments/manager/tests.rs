@@ -18,7 +18,7 @@ use crate::{
         payments::{
             ApproveRefundRequestInput, CheckoutSession, CompleteRefundRecoveryInput,
             DynPaymentsProvider, FinancialDocument, FinancialDocumentKind, HandleWebhookError,
-            MockPaymentsProvider, PaymentsWebhookEvent, PgPaymentsManager,
+            MockPaymentsProvider, PaymentsManager, PaymentsWebhookEvent, PgPaymentsManager,
             RejectRefundRequestInput, RequestRefundInput,
         },
     },
@@ -728,6 +728,138 @@ async fn get_or_create_checkout_redirect_url_reuses_existing_url_without_provide
 }
 
 #[tokio::test]
+async fn get_purchase_document_url_hides_documents_not_owned_by_attendee() {
+    // Setup a document lookup that is not owned by the attendee
+    let mut db = MockDB::new();
+    db.expect_get_user_purchase_document_context()
+        .times(1)
+        .returning(|_, _, _| Ok(None));
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+
+    // Attempt to load the unavailable purchase document
+    let url = manager
+        .get_purchase_document_url(Uuid::new_v4(), Uuid::new_v4(), None)
+        .await
+        .unwrap();
+
+    // Check the document remains hidden
+    assert!(url.is_none());
+}
+
+#[tokio::test]
+async fn get_purchase_document_url_retrieves_current_account_scoped_credit_note() {
+    // Setup credit-note identifiers and attendee-owned document context
+    let event_purchase_credit_note_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    db.expect_get_user_purchase_document_context()
+        .withf(move |user, purchase, credit_note| {
+            *user == user_id
+                && *purchase == event_purchase_id
+                && *credit_note == Some(event_purchase_credit_note_id)
+        })
+        .times(1)
+        .returning(|_, _, _| {
+            Ok(Some(UserPurchaseDocumentContext {
+                connected_seller_id: "acct_sponsor".to_string(),
+                payment_provider: PaymentProvider::Stripe,
+                provider_document_id: "cn_purchase".to_string(),
+            }))
+        });
+
+    // Setup account-scoped credit-note retrieval
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    provider
+        .expect_get_financial_document()
+        .withf(|input| {
+            input.connected_seller_id == "acct_sponsor"
+                && input.kind == FinancialDocumentKind::CreditNote
+                && input.provider_document_id == "cn_purchase"
+        })
+        .times(1)
+        .returning(|_| {
+            Box::pin(async {
+                Ok(FinancialDocument {
+                    hosted_url: None,
+                    pdf_url: Some("https://credit.test/current.pdf".to_string()),
+                })
+            })
+        });
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+
+    // Retrieve the current credit-note URL
+    let url = manager
+        .get_purchase_document_url(
+            user_id,
+            event_purchase_id,
+            Some(event_purchase_credit_note_id),
+        )
+        .await
+        .unwrap();
+
+    // Check the provider PDF URL is returned
+    assert_eq!(url.as_deref(), Some("https://credit.test/current.pdf"));
+}
+
+#[tokio::test]
+async fn get_purchase_document_url_retrieves_current_account_scoped_invoice() {
+    // Setup invoice identifiers and attendee-owned document context
+    let event_purchase_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    db.expect_get_user_purchase_document_context()
+        .withf(move |user, purchase, credit_note| {
+            *user == user_id && *purchase == event_purchase_id && credit_note.is_none()
+        })
+        .times(1)
+        .returning(|_, _, _| {
+            Ok(Some(UserPurchaseDocumentContext {
+                connected_seller_id: "acct_sponsor".to_string(),
+                payment_provider: PaymentProvider::Stripe,
+                provider_document_id: "in_purchase".to_string(),
+            }))
+        });
+
+    // Setup account-scoped invoice retrieval
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    provider
+        .expect_get_financial_document()
+        .withf(|input| {
+            input.connected_seller_id == "acct_sponsor"
+                && input.kind == FinancialDocumentKind::Invoice
+                && input.provider_document_id == "in_purchase"
+        })
+        .times(1)
+        .returning(|_| {
+            Box::pin(async {
+                Ok(FinancialDocument {
+                    hosted_url: Some("https://invoice.test/current".to_string()),
+                    pdf_url: Some("https://invoice.test/current.pdf".to_string()),
+                })
+            })
+        });
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+
+    // Retrieve the current invoice URL
+    let url = manager
+        .get_purchase_document_url(user_id, event_purchase_id, None)
+        .await
+        .unwrap();
+
+    // Check the provider-hosted URL is preferred
+    assert_eq!(url.as_deref(), Some("https://invoice.test/current"));
+}
+
+#[tokio::test]
 async fn handle_webhook_accepts_verified_noop_event() {
     // Setup a provider verifier that returns an irrelevant signed event
     let mut provider = MockPaymentsProvider::new();
@@ -932,125 +1064,6 @@ async fn request_refund_returns_error_when_notification_context_load_fails() {
 
     // Check the context error remains visible
     assert_eq!(err.to_string(), "context unavailable");
-}
-
-#[tokio::test]
-async fn get_purchase_document_url_retrieves_current_account_scoped_invoice() {
-    let event_purchase_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    db.expect_get_user_purchase_document_context()
-        .withf(move |user, purchase, credit_note| {
-            *user == user_id && *purchase == event_purchase_id && credit_note.is_none()
-        })
-        .times(1)
-        .returning(|_, _, _| {
-            Ok(Some(UserPurchaseDocumentContext {
-                connected_seller_id: "acct_sponsor".to_string(),
-                payment_provider: PaymentProvider::Stripe,
-                provider_document_id: "in_purchase".to_string(),
-            }))
-        });
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
-    provider
-        .expect_get_financial_document()
-        .withf(|input| {
-            input.connected_seller_id == "acct_sponsor"
-                && input.kind == FinancialDocumentKind::Invoice
-                && input.provider_document_id == "in_purchase"
-        })
-        .times(1)
-        .returning(|_| {
-            Box::pin(async {
-                Ok(FinancialDocument {
-                    hosted_url: Some("https://invoice.test/current".to_string()),
-                    pdf_url: Some("https://invoice.test/current.pdf".to_string()),
-                })
-            })
-        });
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
-
-    let url = manager
-        .get_purchase_document_url(user_id, event_purchase_id, None)
-        .await
-        .unwrap();
-
-    assert_eq!(url.as_deref(), Some("https://invoice.test/current"));
-}
-
-#[tokio::test]
-async fn get_purchase_document_url_retrieves_current_account_scoped_credit_note() {
-    let event_purchase_credit_note_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let user_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    db.expect_get_user_purchase_document_context()
-        .withf(move |user, purchase, credit_note| {
-            *user == user_id
-                && *purchase == event_purchase_id
-                && *credit_note == Some(event_purchase_credit_note_id)
-        })
-        .times(1)
-        .returning(|_, _, _| {
-            Ok(Some(UserPurchaseDocumentContext {
-                connected_seller_id: "acct_sponsor".to_string(),
-                payment_provider: PaymentProvider::Stripe,
-                provider_document_id: "cn_purchase".to_string(),
-            }))
-        });
-    let mut provider = MockPaymentsProvider::new();
-    provider
-        .expect_provider()
-        .times(1)
-        .return_const(PaymentProvider::Stripe);
-    provider
-        .expect_get_financial_document()
-        .withf(|input| {
-            input.connected_seller_id == "acct_sponsor"
-                && input.kind == FinancialDocumentKind::CreditNote
-                && input.provider_document_id == "cn_purchase"
-        })
-        .times(1)
-        .returning(|_| {
-            Box::pin(async {
-                Ok(FinancialDocument {
-                    hosted_url: None,
-                    pdf_url: Some("https://credit.test/current.pdf".to_string()),
-                })
-            })
-        });
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
-
-    let url = manager
-        .get_purchase_document_url(
-            user_id,
-            event_purchase_id,
-            Some(event_purchase_credit_note_id),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(url.as_deref(), Some("https://credit.test/current.pdf"));
-}
-
-#[tokio::test]
-async fn get_purchase_document_url_hides_documents_not_owned_by_attendee() {
-    let mut db = MockDB::new();
-    db.expect_get_user_purchase_document_context()
-        .times(1)
-        .returning(|_, _, _| Ok(None));
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
-
-    let url = manager
-        .get_purchase_document_url(Uuid::new_v4(), Uuid::new_v4(), None)
-        .await
-        .unwrap();
-
-    assert!(url.is_none());
 }
 
 #[tokio::test]
