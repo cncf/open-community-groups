@@ -638,7 +638,8 @@ insert into event_manual_tax_configuration (
       "city": "Portland",
       "country_code": "US",
       "name": "Community Hall",
-      "state": "OR",
+      "state_code": "OR",
+      "state_name": "Oregon",
       "zip_code": "97201"
     }'::jsonb,
     1
@@ -675,7 +676,8 @@ select throws_ok(
               "city": "Portland",
               "country_code": "US",
               "name": "Community Hall",
-              "state": "OR",
+              "state_code": "OR",
+              "state_name": "Oregon",
               "zip_code": "97201"
             }'::jsonb,
             2
@@ -714,7 +716,8 @@ select lives_ok(
               "city": "Portland",
               "country_code": "US",
               "name": "Community Hall",
-              "state": "OR",
+              "state_code": "OR",
+              "state_name": "Oregon",
               "zip_code": "97201"
             }'::jsonb,
             2

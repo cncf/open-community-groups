@@ -2919,6 +2919,14 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
     assert_eq!(checkout.event_id, paid_event_id());
     assert_eq!(checkout.event_slug, "contract-paid-event");
     assert_eq!(checkout.group_slug, "contract-group");
+    assert_eq!(
+        checkout.venue.as_ref().and_then(|venue| venue.state_code.as_deref()),
+        Some("CA")
+    );
+    assert_eq!(
+        checkout.venue.as_ref().and_then(|venue| venue.state_name.as_deref()),
+        Some("California")
+    );
     assert_eq!(checkout.purchase.amount_minor, 2500);
     assert_eq!(
         checkout.purchase.event_ticket_type_id,

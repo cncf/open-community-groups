@@ -669,7 +669,8 @@ insert into event (
     venue_country_code,
     venue_country_name,
     venue_name,
-    venue_state,
+    venue_state_code,
+    venue_state_name,
     venue_zip_code,
     waitlist_enabled
 ) values
@@ -705,6 +706,7 @@ insert into event (
         'United States',
         'Contract Hall',
         'CA',
+        'California',
         '94105',
         true
     ),
@@ -734,6 +736,7 @@ insert into event (
         '2000-05-20 17:00:00+00',
         array['rust', 'contract'],
         'UTC',
+        null,
         null,
         null,
         null,
@@ -1086,6 +1089,8 @@ insert into event (
     venue_city,
     venue_country_code,
     venue_name,
+    venue_state_code,
+    venue_state_name,
     venue_zip_code
 ) values (
     100,
@@ -1106,6 +1111,8 @@ insert into event (
     'San Francisco',
     'US',
     'Contract Venue',
+    'CA',
+    'California',
     '94105'
 );
 

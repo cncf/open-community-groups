@@ -160,7 +160,7 @@ select
     'professional-event-admission',
     'General admission',
     :'userID',
-    '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state":"OR","zip_code":"97201"}'::jsonb
+    '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state_code":"OR","state_name":"Oregon","zip_code":"97201"}'::jsonb
 from (values
     (:'exhaustedPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_stripe', 0::bigint, 'pi_exhausted'),
     (:'failedPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_stripe', 0::bigint, 'pi_failed'),

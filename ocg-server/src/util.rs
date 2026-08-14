@@ -218,7 +218,7 @@ mod tests {
         assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
         assert!(unfolded.contains("GEO:37.780000;-122.420000"));
         assert!(unfolded.contains(
-            "LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States"
+            "LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, California\\, United States"
         ));
         assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CONFIRMED"));
@@ -230,14 +230,12 @@ mod tests {
             )
         );
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
-        assert!(
-            unfolded.contains(
-                "X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
-            )
-        );
+        assert!(unfolded.contains(
+            "X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, California, United States\""
+        ));
         assert!(unfolded.contains("X-APPLE-RADIUS=100"));
         assert!(unfolded.contains(
-            "X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
+            "X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, California, United States\""
         ));
     }
 
@@ -260,7 +258,7 @@ mod tests {
         assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
         assert!(unfolded.contains("GEO:37.780000;-122.420000"));
         assert!(unfolded.contains(
-            "LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States"
+            "LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, California\\, United States"
         ));
         assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CANCELLED"));
@@ -272,14 +270,12 @@ mod tests {
         );
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
-        assert!(
-            unfolded.contains(
-                "X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
-            )
-        );
+        assert!(unfolded.contains(
+            "X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, California, United States\""
+        ));
         assert!(unfolded.contains("X-APPLE-RADIUS=100"));
         assert!(unfolded.contains(
-            "X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
+            "X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, California, United States\""
         ));
     }
 
@@ -366,7 +362,8 @@ mod tests {
             venue_country_code: Some("US".to_string()),
             venue_country_name: Some("United States".to_string()),
             venue_name: Some("Test Venue".to_string()),
-            venue_state: Some("CA".to_string()),
+            venue_state_code: Some("CA".to_string()),
+            venue_state_name: Some("California".to_string()),
             zip_code: Some("94105".to_string()),
         }
     }

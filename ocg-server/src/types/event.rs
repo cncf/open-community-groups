@@ -141,8 +141,10 @@ pub struct EventSummary {
     pub venue_country_name: Option<String>,
     /// Name of the venue.
     pub venue_name: Option<String>,
-    /// State or province where the venue is located.
-    pub venue_state: Option<String>,
+    /// ISO state or province code of the venue's location.
+    pub venue_state_code: Option<String>,
+    /// Full state or province name of the venue's location.
+    pub venue_state_name: Option<String>,
     /// Venue zip code.
     pub zip_code: Option<String>,
 }
@@ -207,7 +209,8 @@ impl EventSummary {
             .country_code(self.venue_country_code.as_deref())
             .country_name(self.venue_country_name.as_deref())
             .name(self.venue_name.as_deref())
-            .state(self.venue_state.as_deref());
+            .state_code(self.venue_state_code.as_deref())
+            .state_name(self.venue_state_name.as_deref());
 
         build_location(&parts, max_len)
     }
@@ -426,8 +429,10 @@ pub struct EventFull {
     pub venue_country_name: Option<String>,
     /// Name of the venue.
     pub venue_name: Option<String>,
-    /// State or province where the venue is located.
-    pub venue_state: Option<String>,
+    /// ISO state or province code of the venue's location.
+    pub venue_state_code: Option<String>,
+    /// Full state or province name of the venue's location.
+    pub venue_state_name: Option<String>,
     /// Venue zip code.
     pub venue_zip_code: Option<String>,
 }
@@ -549,7 +554,8 @@ impl EventFull {
             .country_code(self.venue_country_code.as_deref())
             .country_name(self.venue_country_name.as_deref())
             .name(self.venue_name.as_deref())
-            .state(self.venue_state.as_deref());
+            .state_code(self.venue_state_code.as_deref())
+            .state_name(self.venue_state_name.as_deref());
 
         build_location(&parts, max_len)
     }
@@ -692,7 +698,8 @@ impl From<&EventFull> for EventSummary {
             venue_country_code: event.venue_country_code.clone(),
             venue_country_name: event.venue_country_name.clone(),
             venue_name: event.venue_name.clone(),
-            venue_state: event.venue_state.clone(),
+            venue_state_code: event.venue_state_code.clone(),
+            venue_state_name: event.venue_state_name.clone(),
             zip_code: event.venue_zip_code.clone(),
         }
     }

@@ -345,7 +345,8 @@ insert into event (
     venue_country_code,
     venue_country_name,
     venue_name,
-    venue_state,
+    venue_state_code,
+    venue_state_name,
     venue_zip_code
 ) values (
     :'eventTicketedHybridID',
@@ -365,6 +366,7 @@ insert into event (
     'United States',
     'Community Hall',
     'CA',
+    'California',
     '94105'
 );
 
@@ -745,7 +747,8 @@ select is(
             'venue_country_code', venue_country_code,
             'venue_country_name', venue_country_name,
             'venue_name', venue_name,
-            'venue_state', venue_state,
+            'venue_state_code', venue_state_code,
+            'venue_state_name', venue_state_name,
             'venue_zip_code', venue_zip_code
         )
         from event
@@ -759,7 +762,8 @@ select is(
         "venue_country_code": "US",
         "venue_country_name": "United States",
         "venue_name": "Community Hall",
-        "venue_state": "CA",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
         "venue_zip_code": "94105"
     }'::jsonb,
     'Should retain paid hybrid eligibility data when publishing'

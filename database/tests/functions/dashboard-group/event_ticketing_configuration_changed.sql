@@ -45,7 +45,8 @@ insert into test_event_before values ('{
   "venue_city": "Portland",
   "venue_country_code": "US",
   "venue_name": "Community Hall",
-  "venue_state": "OR",
+  "venue_state_code": "OR",
+  "venue_state_name": "Oregon",
   "venue_zip_code": "97201"
 }'::jsonb);
 
@@ -135,7 +136,7 @@ select is(
           "venue_city": "Portland",
           "venue_country_code": "US",
           "venue_name": "Community Hall",
-          "venue_state": "OR",
+          "venue_state": "Oregon",
           "venue_zip_code": "97201"
         }'::jsonb
     ),
@@ -175,7 +176,8 @@ select is(
           "venue_city": "Portland",
           "venue_country_code": "US",
           "venue_name": "Community Hall",
-          "venue_state": "OR",
+          "venue_state_code": "OR",
+          "venue_state_name": "Oregon",
           "venue_zip_code": "97201"
         }'::jsonb
     ),

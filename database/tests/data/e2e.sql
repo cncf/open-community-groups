@@ -248,7 +248,7 @@ where group_id = '44444444-4444-4444-4444-444444444443';
 insert into event (
     event_id, name, slug, description, description_short, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
-    venue_name, venue_address, venue_city, venue_state, venue_country_name,
+    venue_name, venue_address, venue_city, venue_state_code, venue_state_name, venue_country_name,
     venue_country_code, venue_zip_code, location, banner_url, logo_url, capacity,
     tags, meetup_url, meeting_join_url, photos_urls
 ) values (
@@ -267,6 +267,7 @@ insert into event (
     'Tech Conference Center',
     '123 Main Street',
     'New York',
+    'NY',
     'NY',
     'United States',
     'US',
@@ -1410,7 +1411,11 @@ set
     venue_country_code = 'US',
     venue_country_name = 'United States',
     venue_name = 'E2E Admission Hall',
-    venue_state = case
+    venue_state_code = case
+        when event_id = '55555555-5555-5555-5555-555555555507' then 'IL'
+        else 'NY'
+    end,
+    venue_state_name = case
         when event_id = '55555555-5555-5555-5555-555555555507' then 'IL'
         else 'NY'
     end,
@@ -3722,7 +3727,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_pending', 4000, 4000, 0
 ), (
     '59555555-5555-5555-5555-555555555522',
@@ -3745,7 +3750,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_retry', 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555523',
@@ -3768,7 +3773,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_rejected', 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555524',
@@ -3791,7 +3796,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_available', 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555525',
@@ -3814,7 +3819,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_approved', 5000, 5000, 0
 );
 
@@ -3871,7 +3876,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_processing', null, 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555527',
@@ -3893,7 +3898,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_retryable', null, 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555528',
@@ -3915,7 +3920,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_finalized', 'in_e2e_refund_finalized', 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555529',
@@ -3937,7 +3942,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_rejection', null, 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555530',
@@ -3959,7 +3964,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_recovery_durable', null, 5000, 5000, 0
 );
 
@@ -4021,7 +4026,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_past_document', 'in_e2e_past_document', 2500, 2500, 0
 ), (
     '59555555-5555-5555-5555-555555555542',
@@ -4048,7 +4053,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_canceled_document', null, 3500, 3500, 0
 );
 
@@ -4094,7 +4099,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb
 ), (
     '59555555-5555-5555-5555-555555555912',
     2500,
@@ -4113,7 +4118,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb
 );
 
 insert into event_purchase (
@@ -4165,7 +4170,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_payment_return_confirmed', 2500, 2500, 0
 );
 
@@ -4213,7 +4218,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb
 ), (
     '59555555-5555-5555-5555-555555555916',
     '59555555-5555-5555-5555-555555555916',
@@ -4233,7 +4238,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb
 );
 
 insert into event_purchase (
@@ -4278,7 +4283,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb
 );
 
 insert into event_purchase (
@@ -4332,7 +4337,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refunded_capacity', 3000, 3000, 0
 );
 
@@ -4385,7 +4390,7 @@ values (
     'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
-    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state_code":"NY","state_name":"New York","zip_code":"10001"}'::jsonb,
     0, 'ch_e2e_refund_action_available', 5000, 5000, 0
 );
 

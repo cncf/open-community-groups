@@ -152,7 +152,8 @@ begin
                 venue_country_code,
                 venue_country_name,
                 venue_name,
-                venue_state,
+                venue_state_code,
+                venue_state_name,
                 venue_zip_code,
                 waitlist_enabled
             ) values (
@@ -204,10 +205,11 @@ begin
                 coalesce(nullif(p_event->>'tax_calculation_mode', ''), 'automatic'),
                 nullif(btrim(p_event->>'venue_address'), ''),
                 nullif(btrim(p_event->>'venue_city'), ''),
-                nullif(btrim(p_event->>'venue_country_code'), ''),
+                upper(nullif(btrim(p_event->>'venue_country_code'), '')),
                 nullif(btrim(p_event->>'venue_country_name'), ''),
                 nullif(btrim(p_event->>'venue_name'), ''),
-                nullif(btrim(p_event->>'venue_state'), ''),
+                upper(nullif(btrim(p_event->>'venue_state_code'), '')),
+                nullif(btrim(coalesce(p_event->>'venue_state_name', p_event->>'venue_state')), ''),
                 nullif(btrim(p_event->>'venue_zip_code'), ''),
                 coalesce((p_event->>'waitlist_enabled')::boolean, false)
             )

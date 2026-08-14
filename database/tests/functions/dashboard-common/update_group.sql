@@ -305,7 +305,8 @@ insert into event (
     venue_city,
     venue_country_code,
     venue_name,
-    venue_state,
+    venue_state_code,
+    venue_state_name,
     venue_zip_code
 ) values (
     'Published ticketed event for payment recipient validation',
@@ -325,6 +326,7 @@ insert into event (
     'US',
     'Community Hall',
     'OR',
+    'Oregon',
     '97201'
 );
 
@@ -354,7 +356,8 @@ insert into event_manual_tax_configuration (
         "city": "Portland",
         "country_code": "US",
         "name": "Community Hall",
-        "state": "OR",
+        "state_code": "OR",
+        "state_name": "Oregon",
         "zip_code": "97201"
     }'::jsonb,
     1

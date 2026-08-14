@@ -306,14 +306,21 @@ impl StripeProvider {
         input: &CreateCheckoutSessionInput,
         api_version: &str,
     ) -> Result<(String, String)> {
+        // Require the ISO subdivision code expected by Stripe Tax
+        let state_code = input
+            .venue
+            .state_code
+            .as_deref()
+            .filter(|state_code| !state_code.trim().is_empty())
+            .context("automatic ticket tax requires a venue state code")?;
+
         // Fingerprint the complete venue snapshot used by Stripe Tax
-        let state = input.venue.state.as_deref().unwrap_or_default();
         let fingerprint = Self::provider_fingerprint(&[
             &input.venue.address,
             &input.venue.city,
             &input.venue.country_code,
             &input.venue.name,
-            state,
+            state_code,
             &input.venue.zip_code,
         ]);
 
@@ -324,18 +331,16 @@ impl StripeProvider {
             return Ok((provider_tax_location_id.clone(), fingerprint));
         }
 
-        // Build the performance location request without an empty state field
-        let mut form_fields = vec![
+        // Build the performance location request with ISO location codes
+        let form_fields = vec![
             ("address[city]", input.venue.city.as_str()),
             ("address[country]", input.venue.country_code.as_str()),
             ("address[line1]", input.venue.address.as_str()),
             ("address[postal_code]", input.venue.zip_code.as_str()),
+            ("address[state]", state_code),
             ("description", input.venue.name.as_str()),
             ("type", "performance"),
         ];
-        if !state.is_empty() {
-            form_fields.push(("address[state]", state));
-        }
 
         // Create the immutable location with an account-and-address stable key
         let response = self

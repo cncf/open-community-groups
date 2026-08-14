@@ -33,6 +33,23 @@ use super::{
 };
 
 #[tokio::test]
+async fn automatic_tax_location_rejects_missing_state_code() {
+    // Setup an automatic-tax checkout without an ISO subdivision code
+    let provider = sample_stripe_provider();
+    let mut input = sample_checkout_session_input();
+    input.venue.state_code = None;
+
+    // Resolve the required Stripe performance location
+    let err = provider
+        .create_performance_location(&input, super::STRIPE_API_VERSION)
+        .await
+        .expect_err("missing state code to fail before calling Stripe");
+
+    // Check the defensive provider boundary reports the missing code
+    assert!(format!("{err:#}").contains("automatic ticket tax requires a venue state code"));
+}
+
+#[tokio::test]
 async fn automatic_tax_location_reuses_matching_persisted_cache_entry() {
     // Setup a checkout whose location snapshot still matches its persisted cache
     let provider = sample_stripe_provider();
@@ -42,7 +59,7 @@ async fn automatic_tax_location_reuses_matching_persisted_cache_entry() {
         &input.venue.city,
         &input.venue.country_code,
         &input.venue.name,
-        input.venue.state.as_deref().unwrap_or_default(),
+        input.venue.state_code.as_deref().expect("sample state code to exist"),
         &input.venue.zip_code,
     ]);
     input.cached_performance_location_fingerprint = Some(location_fingerprint.clone());
@@ -57,6 +74,54 @@ async fn automatic_tax_location_reuses_matching_persisted_cache_entry() {
     // Check no replacement was needed and the durable fingerprint is preserved
     assert_eq!(location_id, "loc_cached");
     assert_eq!(returned_location_fingerprint, location_fingerprint);
+}
+
+#[tokio::test]
+async fn automatic_tax_location_sends_iso_country_and_state_codes() {
+    // Capture the Stripe performance-location request body
+    let captured_body = Arc::new(Mutex::new(String::new()));
+    let request_body = Arc::clone(&captured_body);
+    let router = Router::new().route(
+        "/v1/tax/locations",
+        post(move |body: String| {
+            let request_body = Arc::clone(&request_body);
+            async move {
+                *request_body
+                    .lock()
+                    .expect("captured request body lock to be available") = body;
+                Json(json!({"id": "loc_created"}))
+            }
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+    let input = sample_checkout_session_input();
+
+    // Create the performance location through the provider boundary
+    let (location_id, _) = provider
+        .create_performance_location(&input, super::STRIPE_API_VERSION)
+        .await
+        .expect("complete ISO codes to create a performance location");
+    server.abort();
+
+    // Check Stripe receives code values rather than display names
+    let form_fields: BTreeMap<String, String> = serde_urlencoded::from_str(
+        &captured_body
+            .lock()
+            .expect("captured request body lock to be available"),
+    )
+    .expect("captured request body to be valid form data");
+    assert_eq!(location_id, "loc_created");
+    assert_eq!(
+        form_fields.get("address[country]").map(String::as_str),
+        Some("US")
+    );
+    assert_eq!(
+        form_fields.get("address[state]").map(String::as_str),
+        Some("CA")
+    );
+    assert!(!form_fields.values().any(|value| value == "California"));
 }
 
 #[test]
@@ -1634,7 +1699,8 @@ fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
             country_code: "US".to_string(),
             name: "Example Venue".to_string(),
             zip_code: "12345".to_string(),
-            state: Some("CA".to_string()),
+            state_code: Some("CA".to_string()),
+            state_name: Some("California".to_string()),
         },
 
         cached_performance_location_fingerprint: None,

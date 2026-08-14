@@ -202,7 +202,7 @@ insert into event_purchase (
     'professional-event-admission',
     'General admission',
     :'userID',
-    '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state":"OR","zip_code":"97201"}'::jsonb,
+    '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state_code":"OR","state_name":"Oregon","zip_code":"97201"}'::jsonb,
     null
 ), (
     :'purchaseWithProviderFieldsID',
@@ -236,7 +236,7 @@ insert into event_purchase (
     'professional-event-admission',
     'General admission',
     :'userID',
-    '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state":"OR","zip_code":"97201"}'::jsonb,
+    '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state_code":"OR","state_name":"Oregon","zip_code":"97201"}'::jsonb,
     200
 );
 
@@ -262,7 +262,7 @@ select is(
         'tax_behavior', 'inclusive',
         'tax_calculation_mode', 'manual',
         'ticket_title', 'General admission',
-        'venue', '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state":"OR","zip_code":"97201"}'::jsonb
+        'venue', '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state_code":"OR","state_name":"Oregon","zip_code":"97201"}'::jsonb
     ),
     'Should return the attendee-facing checkout summary without null provider fields'
 );
@@ -292,7 +292,7 @@ select is(
         'tax_behavior', 'inclusive',
         'tax_calculation_mode', 'manual',
         'ticket_title', 'General admission',
-        'venue', '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state":"OR","zip_code":"97201"}'::jsonb
+        'venue', '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state_code":"OR","state_name":"Oregon","zip_code":"97201"}'::jsonb
     ),
     'Should return all checkout summary fields when they are present'
 );

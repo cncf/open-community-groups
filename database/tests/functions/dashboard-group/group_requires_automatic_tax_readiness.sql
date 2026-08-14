@@ -115,6 +115,7 @@ insert into event (
     payment_currency_code,
     published,
     slug,
+    starts_at,
     tax_calculation_mode,
     timezone
 ) values (
@@ -129,6 +130,7 @@ insert into event (
     'USD',
     true,
     'automatic-tax-event',
+    current_timestamp,
     'automatic',
     'UTC'
 ), (
@@ -143,6 +145,7 @@ insert into event (
     'USD',
     true,
     'manual-tax-event',
+    current_timestamp,
     'manual',
     'UTC'
 ), (
@@ -157,6 +160,7 @@ insert into event (
     null,
     true,
     'free-event',
+    current_timestamp,
     'automatic',
     'UTC'
 ), (
@@ -171,6 +175,7 @@ insert into event (
     'USD',
     false,
     'unpublished-event',
+    current_timestamp,
     'automatic',
     'UTC'
 ), (
@@ -185,6 +190,7 @@ insert into event (
     'USD',
     true,
     'canceled-event',
+    current_timestamp,
     'automatic',
     'UTC'
 ), (
@@ -199,6 +205,7 @@ insert into event (
     'USD',
     true,
     'past-event',
+    current_timestamp - interval '2 days',
     'automatic',
     'UTC'
 ), (
@@ -213,6 +220,7 @@ insert into event (
     'USD',
     true,
     'undated-event',
+    null,
     'automatic',
     'UTC'
 );

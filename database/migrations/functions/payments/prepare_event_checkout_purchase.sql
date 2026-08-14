@@ -96,7 +96,8 @@ begin
             'city', nullif(btrim(e.venue_city), ''),
             'country_code', nullif(btrim(e.venue_country_code), ''),
             'name', nullif(btrim(e.venue_name), ''),
-            'state', nullif(btrim(e.venue_state), ''),
+            'state_code', nullif(btrim(e.venue_state_code), ''),
+            'state_name', nullif(btrim(e.venue_state_name), ''),
             'zip_code', nullif(btrim(e.venue_zip_code), '')
         ),
         g.name,
@@ -347,7 +348,7 @@ begin
                     || convert_to(v_venue_snapshot->>'city', 'UTF8') || decode('00', 'hex')
                     || convert_to(v_venue_snapshot->>'country_code', 'UTF8') || decode('00', 'hex')
                     || convert_to(v_venue_snapshot->>'name', 'UTF8') || decode('00', 'hex')
-                    || convert_to(coalesce(v_venue_snapshot->>'state', ''), 'UTF8') || decode('00', 'hex')
+                    || convert_to(v_venue_snapshot->>'state_code', 'UTF8') || decode('00', 'hex')
                     || convert_to(v_venue_snapshot->>'zip_code', 'UTF8') || decode('00', 'hex'),
                     'sha256'
                 ),

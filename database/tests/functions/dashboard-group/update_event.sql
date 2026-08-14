@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(36);
+select plan(37);
 
 -- ============================================================================
 -- VARIABLES
@@ -195,6 +195,14 @@ insert into event (
     'USD',
     true
 );
+
+-- Existing ISO fields exercise updates from the deferred legacy form.
+update event
+set
+    venue_country_code = 'US',
+    venue_state_code = 'CA',
+    venue_state_name = 'California'
+where event_id = :'eventFreeToPaidID';
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
@@ -634,7 +642,7 @@ select is(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state": "California",
             "venue_zip_code": "94105",
             "ticket_types": [
                 {
@@ -667,6 +675,13 @@ select is(
     'Should persist paid capability after a free-to-paid update'
 );
 
+-- Should preserve a code omitted by the deferred legacy form.
+select is(
+    (select venue_state_code from event where event_id = :'eventFreeToPaidID'::uuid),
+    'CA',
+    'Should preserve a stored venue state code when unchanged legacy fields omit it'
+);
+
 -- Should reject a paid update validated against a stale sponsor
 select throws_ok(
     $$select update_event(
@@ -697,7 +712,8 @@ select throws_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb,
         null::jsonb,
@@ -780,7 +796,8 @@ select is(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105",
             "ticket_types": [
                 {
@@ -844,7 +861,8 @@ select is(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105",
             "ticket_types": [
                 {
@@ -893,6 +911,19 @@ select is(
         '{
             "name": "Test Paid To Live",
             "description": "Paid test event promoted without changing tickets",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                }
+            },
             "timezone": "UTC",
             "category_id": "3a390000-0000-0000-0000-000000000001",
             "kind_id": "in-person",
@@ -901,7 +932,8 @@ select is(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb,
         null::jsonb,
@@ -934,6 +966,19 @@ select is(
         '{
             "name": "Test Paid To Test",
             "description": "Paid test event that remains a test event",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_event",
+                    "seller_display_name": "Update Event Fiscal Sponsor"
+                }
+            },
             "timezone": "UTC",
             "category_id": "3a390000-0000-0000-0000-000000000001",
             "kind_id": "in-person",
@@ -942,7 +987,8 @@ select is(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb,
         null::jsonb,
@@ -1016,7 +1062,8 @@ select lives_ok(
             "venue_country_code": " JP ",
             "venue_country_name": " Japan ",
             "venue_name": " New Venue ",
-            "venue_state": " TK ",
+            "venue_state_code": " tk ",
+            "venue_state_name": " Tokyo ",
             "venue_zip_code": " 100-0001 ",
             "hosts": ["3a390000-0000-0000-0000-000000000017", "3a390000-0000-0000-0000-000000000018"],
             "speakers": [
@@ -1103,7 +1150,8 @@ select is(
         "venue_country_code": "JP",
         "venue_country_name": "Japan",
         "venue_name": "New Venue",
-        "venue_state": "TK",
+        "venue_state_code": "TK",
+        "venue_state_name": "Tokyo",
         "venue_zip_code": "100-0001",
         "waitlist_count": 0,
         "waitlist_enabled": false,

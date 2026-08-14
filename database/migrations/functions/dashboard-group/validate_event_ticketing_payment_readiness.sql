@@ -10,6 +10,9 @@ create or replace function validate_event_ticketing_payment_readiness(
 returns void as $$
 declare
     v_event_kind_id text;
+    v_existing_venue_country_code text;
+    v_existing_venue_state_code text;
+    v_existing_venue_state_name text;
     v_manual_configuration_is_ready boolean := false;
     v_tax_behavior text;
     v_tax_calculation_mode text;
@@ -50,6 +53,36 @@ begin
 
     -- Resolve the event and venue snapshot from a mutation payload or stored row
     if p_event_payload is not null then
+        -- Preserve stored codes while the deferred frontend omits the new field
+        if p_event_id is not null and not (p_event_payload ? 'venue_state_code') then
+            select
+                e.venue_country_code,
+                e.venue_state_code,
+                e.venue_state_name
+            into
+                v_existing_venue_country_code,
+                v_existing_venue_state_code,
+                v_existing_venue_state_name
+            from event e
+            where e.event_id = p_event_id;
+
+            -- Discard a code invalidated by a legacy country or subdivision edit
+            if upper(nullif(btrim(p_event_payload->>'venue_country_code'), ''))
+                    is distinct from upper(nullif(btrim(v_existing_venue_country_code), ''))
+                or (
+                    (
+                        p_event_payload ? 'venue_state_name'
+                        or p_event_payload ? 'venue_state'
+                    )
+                    and nullif(btrim(coalesce(
+                        p_event_payload->>'venue_state_name',
+                        p_event_payload->>'venue_state'
+                    )), '') is distinct from nullif(btrim(v_existing_venue_state_name), '')
+                ) then
+                v_existing_venue_state_code := null;
+            end if;
+        end if;
+
         v_event_kind_id := p_event_payload->>'kind_id';
         v_tax_behavior := coalesce(nullif(p_event_payload->>'tax_behavior', ''), 'inclusive');
         v_tax_calculation_mode := coalesce(
@@ -59,9 +92,21 @@ begin
         v_venue_snapshot := jsonb_build_object(
             'address', nullif(btrim(p_event_payload->>'venue_address'), ''),
             'city', nullif(btrim(p_event_payload->>'venue_city'), ''),
-            'country_code', nullif(btrim(p_event_payload->>'venue_country_code'), ''),
+            'country_code', upper(nullif(btrim(p_event_payload->>'venue_country_code'), '')),
             'name', nullif(btrim(p_event_payload->>'venue_name'), ''),
-            'state', nullif(btrim(p_event_payload->>'venue_state'), ''),
+            'state_code', upper(nullif(btrim(
+                case
+                    -- Validate an explicitly submitted subdivision code
+                    when p_event_payload ? 'venue_state_code'
+                        then p_event_payload->>'venue_state_code'
+                    -- Reuse the persisted code while the frontend omits it
+                    else v_existing_venue_state_code
+                end
+            ), '')),
+            'state_name', nullif(
+                btrim(coalesce(p_event_payload->>'venue_state_name', p_event_payload->>'venue_state')),
+                ''
+            ),
             'zip_code', nullif(btrim(p_event_payload->>'venue_zip_code'), '')
         );
     elsif p_event_id is not null then
@@ -74,7 +119,8 @@ begin
                 'city', nullif(btrim(e.venue_city), ''),
                 'country_code', nullif(btrim(e.venue_country_code), ''),
                 'name', nullif(btrim(e.venue_name), ''),
-                'state', nullif(btrim(e.venue_state), ''),
+                'state_code', nullif(btrim(e.venue_state_code), ''),
+                'state_name', nullif(btrim(e.venue_state_name), ''),
                 'zip_code', nullif(btrim(e.venue_zip_code), '')
             )
         into
@@ -104,8 +150,10 @@ begin
 
     -- Require one fully configured tax calculation path
     if v_tax_calculation_mode = 'automatic' then
-        -- Mutable account and Tax readiness are revalidated against Stripe at Checkout
-        null;
+        -- Require the ISO subdivision code used by Stripe's performance location
+        if v_venue_snapshot->>'state_code' is null then
+            raise exception 'automatic ticket tax requires a venue state code';
+        end if;
     elsif v_tax_calculation_mode = 'manual' and p_event_id is not null then
         select
             count(*) = 1

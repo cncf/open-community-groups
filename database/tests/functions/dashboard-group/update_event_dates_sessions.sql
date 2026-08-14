@@ -512,7 +512,8 @@ select lives_ok(
             "venue_country_code": "US",
             "venue_country_name": "United States",
             "venue_name": "Updated Venue",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "12345",
             "hosts": ["3a3a0000-0000-0000-0000-000000000013"],
             "speakers": [{"user_id": "3a3a0000-0000-0000-0000-000000000014", "featured": true}],
@@ -552,7 +553,8 @@ select is(
             'venue_country_code', venue_country_code,
             'venue_country_name', venue_country_name,
             'venue_name', venue_name,
-            'venue_state', venue_state,
+            'venue_state_code', venue_state_code,
+            'venue_state_name', venue_state_name,
             'venue_zip_code', venue_zip_code
         )
         from event
@@ -584,7 +586,8 @@ select is(
         'venue_country_code', 'US',
         'venue_country_name', 'United States',
         'venue_name', 'Updated Venue',
-        'venue_state', 'CA',
+        'venue_state_code', 'CA',
+        'venue_state_name', 'California',
         'venue_zip_code', '12345'
     ),
     'Should update past event fields'

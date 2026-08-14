@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- TESTS
@@ -25,6 +25,7 @@ select lives_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
+            "venue_state_code": "CA",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
@@ -45,7 +46,8 @@ select lives_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
@@ -88,6 +90,27 @@ select throws_ok(
     )$$,
     'paid-capable events require payment_currency_code',
     'Should reject a missing payment currency for paid-capable events'
+);
+
+-- Should reject a missing state code for automatic ticket tax
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        'stripe',
+        true,
+        'USD',
+        '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_zip_code": "94105"
+        }'::jsonb
+    )$$,
+    'automatic ticket tax requires a venue state code',
+    'Should reject a missing state code for automatic ticket tax'
 );
 
 -- Should reject a missing payment recipient for paid-capable events
@@ -171,7 +194,8 @@ select throws_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,

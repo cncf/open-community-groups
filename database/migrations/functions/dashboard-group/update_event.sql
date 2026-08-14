@@ -306,10 +306,30 @@ begin
         ),
         venue_address = nullif(btrim(p_event->>'venue_address'), ''),
         venue_city = nullif(btrim(p_event->>'venue_city'), ''),
-        venue_country_code = nullif(btrim(p_event->>'venue_country_code'), ''),
+        venue_country_code = upper(nullif(btrim(p_event->>'venue_country_code'), '')),
         venue_country_name = nullif(btrim(p_event->>'venue_country_name'), ''),
         venue_name = nullif(btrim(p_event->>'venue_name'), ''),
-        venue_state = nullif(btrim(p_event->>'venue_state'), ''),
+        venue_state_code = case
+            -- Apply an explicitly submitted subdivision code
+            when p_event ? 'venue_state_code'
+                then upper(nullif(btrim(p_event->>'venue_state_code'), ''))
+            -- Clear a code invalidated by a legacy country or subdivision edit
+            when upper(nullif(btrim(p_event->>'venue_country_code'), ''))
+                    is distinct from upper(nullif(btrim(v_event_before->>'venue_country_code'), ''))
+                or (
+                    (p_event ? 'venue_state_name' or p_event ? 'venue_state')
+                    and nullif(
+                        btrim(coalesce(p_event->>'venue_state_name', p_event->>'venue_state')),
+                        ''
+                    ) is distinct from nullif(btrim(v_event_before->>'venue_state_name'), '')
+                ) then null
+            -- Preserve the code while the deferred frontend omits this field
+            else event.venue_state_code
+        end,
+        venue_state_name = nullif(
+            btrim(coalesce(p_event->>'venue_state_name', p_event->>'venue_state')),
+            ''
+        ),
         venue_zip_code = nullif(btrim(p_event->>'venue_zip_code'), ''),
         waitlist_enabled = v_event_waitlist_enabled
     where event_id = p_event_id

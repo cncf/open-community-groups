@@ -98,7 +98,7 @@ impl GroupSummary {
             .city(self.city.as_deref())
             .country_code(self.country_code.as_deref())
             .country_name(self.country_name.as_deref())
-            .state(self.state.as_deref());
+            .state_name(self.state.as_deref());
 
         build_location(&parts, max_len)
     }
@@ -207,7 +207,7 @@ impl GroupFull {
             .city(self.city.as_deref())
             .country_code(self.country_code.as_deref())
             .country_name(self.country_name.as_deref())
-            .state(self.state.as_deref());
+            .state_name(self.state.as_deref());
 
         build_location(&parts, max_len)
     }

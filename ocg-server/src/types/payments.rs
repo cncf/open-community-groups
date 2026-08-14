@@ -477,8 +477,10 @@ pub struct TicketVenue {
     /// Postal code of the venue.
     pub zip_code: String,
 
-    /// State or province containing the venue.
-    pub state: Option<String>,
+    /// ISO state or province code containing the venue.
+    pub state_code: Option<String>,
+    /// Full state or province name containing the venue.
+    pub state_name: Option<String>,
 }
 
 // Helpers.

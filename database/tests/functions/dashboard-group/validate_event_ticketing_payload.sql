@@ -72,6 +72,7 @@ select lives_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
+            "venue_state_code": "CA",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
@@ -286,6 +287,7 @@ select throws_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
+            "venue_state_code": "CA",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
@@ -322,6 +324,7 @@ select throws_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
+            "venue_state_code": "CA",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,

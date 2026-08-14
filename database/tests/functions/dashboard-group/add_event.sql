@@ -313,7 +313,8 @@ with new_event as (
             "venue_country_code": " US ",
             "venue_country_name": " United States ",
             "venue_name": " Tech Center ",
-            "venue_state": " CA ",
+            "venue_state_code": " ca ",
+            "venue_state": " California ",
             "venue_zip_code": " 94105 ",
             "hosts": ["3a020000-0000-0000-0000-000000000020", "3a020000-0000-0000-0000-000000000021"],
             "speakers": [
@@ -409,7 +410,8 @@ select ok(
         "venue_country_code": "US",
         "venue_country_name": "United States",
         "venue_name": "Tech Center",
-        "venue_state": "CA",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
         "venue_zip_code": "94105",
         "waitlist_count": 0,
         "waitlist_enabled": false,
@@ -819,7 +821,8 @@ select add_event(
         "venue_country_code": "US",
         "venue_country_name": "United States",
         "venue_name": "Community Hall",
-        "venue_state": "CA",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
         "venue_zip_code": "94105"
     }'::jsonb,
     null::jsonb,
@@ -837,7 +840,8 @@ select is(
             'venue_country_code', e.venue_country_code,
             'venue_country_name', e.venue_country_name,
             'venue_name', e.venue_name,
-            'venue_state', e.venue_state,
+            'venue_state_code', e.venue_state_code,
+            'venue_state_name', e.venue_state_name,
             'venue_zip_code', e.venue_zip_code
         )
         from event e
@@ -854,7 +858,8 @@ select is(
         "venue_country_code": "US",
         "venue_country_name": "United States",
         "venue_name": "Community Hall",
-        "venue_state": "CA",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
         "venue_zip_code": "94105"
     }'::jsonb,
     'Should persist paid hybrid ticketing and its complete physical venue'

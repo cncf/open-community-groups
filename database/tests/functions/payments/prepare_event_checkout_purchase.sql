@@ -222,7 +222,7 @@ insert into event (
     venue_country_code,
     venue_country_name,
     venue_name,
-    venue_state,
+    venue_state_code,
     venue_zip_code
 ) values (
     :'freeEventID',
@@ -238,7 +238,7 @@ insert into event (
     true,
     now(),
     '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
+    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
 ), (
     :'mainEventID',
     :'eventCategoryID',
@@ -268,7 +268,7 @@ insert into event (
     true,
     now(),
     '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
+    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
 ), (
     :'inactiveEventID',
     :'eventCategoryID',
@@ -283,7 +283,7 @@ insert into event (
     true,
     now(),
     '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
+    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
 ), (
     :'queueEventID',
     :'eventCategoryID',
@@ -298,7 +298,7 @@ insert into event (
     true,
     now(),
     '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
+    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
 ), (
     -- Event that requires registration answers before checkout can proceed
     :'questionsEventID',
@@ -320,7 +320,7 @@ insert into event (
         'prompt', 'Note',
         'required', true
     )),
-    '1 Main St', 'Portland', 'US', null, 'Venue', null, '97201'
+    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
 );
 
 -- Closed registration window event that is still active
@@ -1001,7 +1001,8 @@ select
         "city": "Portland",
         "country_code": "US",
         "name": "Venue",
-        "state": "OR",
+        "state_code": "OR",
+        "state_name": null,
         "zip_code": "97201"
     }'::jsonb;
 
@@ -1109,7 +1110,8 @@ select results_eq(
                 "city": "Portland",
                 "country_code": "US",
                 "name": "Venue",
-                "state": "OR",
+                "state_code": "OR",
+                "state_name": null,
                 "zip_code": "97201"
             }'::jsonb
         )

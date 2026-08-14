@@ -1159,7 +1159,8 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         venue_country_code: None,
         venue_country_name: None,
         venue_name: None,
-        venue_state: None,
+        venue_state_code: None,
+        venue_state_name: None,
         zip_code: None,
     }
 }
@@ -1241,7 +1242,8 @@ fn sample_prepared_event_checkout(
             country_code: "US".to_string(),
             name: "Example Venue".to_string(),
             zip_code: "12345".to_string(),
-            state: Some("CA".to_string()),
+            state_code: Some("CA".to_string()),
+            state_name: Some("California".to_string()),
         }),
         ..PreparedEventCheckout::default()
     }

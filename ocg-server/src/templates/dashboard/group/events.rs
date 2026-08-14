@@ -405,9 +405,12 @@ pub(crate) struct Event {
     /// Name of the venue.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_ENTITY_NAME))]
     pub venue_name: Option<String>,
-    /// State or province where the venue is located.
+    /// ISO state or province code of the venue's location.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_COUNTRY_CODE))]
+    pub venue_state_code: Option<String>,
+    /// Full state or province name of the venue's location.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub venue_state: Option<String>,
+    pub venue_state_name: Option<String>,
     /// Venue zip code.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub venue_zip_code: Option<String>,

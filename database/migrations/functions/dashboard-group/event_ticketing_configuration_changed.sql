@@ -106,8 +106,15 @@ begin
             is distinct from nullif(btrim(p_event_before->>'venue_country_code'), '')
         or nullif(btrim(p_event->>'venue_name'), '')
             is distinct from nullif(btrim(p_event_before->>'venue_name'), '')
-        or nullif(btrim(p_event->>'venue_state'), '')
-            is distinct from nullif(btrim(p_event_before->>'venue_state'), '')
+        or upper(nullif(btrim(
+            case
+                when p_event ? 'venue_state_code' then p_event->>'venue_state_code'
+                else p_event_before->>'venue_state_code'
+            end
+        ), ''))
+            is distinct from upper(nullif(btrim(p_event_before->>'venue_state_code'), ''))
+        or nullif(btrim(coalesce(p_event->>'venue_state_name', p_event->>'venue_state')), '')
+            is distinct from nullif(btrim(p_event_before->>'venue_state_name'), '')
         or nullif(btrim(p_event->>'venue_zip_code'), '')
             is distinct from nullif(btrim(p_event_before->>'venue_zip_code'), '');
 

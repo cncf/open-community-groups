@@ -536,7 +536,8 @@ insert into event (
     venue_country_code,
     venue_country_name,
     venue_name,
-    venue_state,
+    venue_state_code,
+    venue_state_name,
     venue_zip_code
 ) values (
     :'event19ID',
@@ -555,6 +556,7 @@ insert into event (
     'United States',
     'Community Hall',
     'CA',
+    'California',
     '94105'
 );
 
@@ -623,7 +625,8 @@ insert into event (
     venue_country_code,
     venue_country_name,
     venue_name,
-    venue_state,
+    venue_state_code,
+    venue_state_name,
     venue_zip_code
 ) values (
     10,
@@ -642,6 +645,7 @@ insert into event (
     'United States',
     'Community Hall',
     'CA',
+    'California',
     '94105'
 );
 
@@ -1203,7 +1207,8 @@ select lives_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
@@ -1293,7 +1298,8 @@ select lives_ok(
             "venue_country_code": "US",
             "venue_country_name": "United States",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
@@ -1311,7 +1317,8 @@ select is(
             'venue_country_code', e.venue_country_code,
             'venue_country_name', e.venue_country_name,
             'venue_name', e.venue_name,
-            'venue_state', e.venue_state,
+            'venue_state_code', e.venue_state_code,
+            'venue_state_name', e.venue_state_name,
             'venue_zip_code', e.venue_zip_code
         )
         from event e
@@ -1328,7 +1335,8 @@ select is(
         "venue_country_code": "US",
         "venue_country_name": "United States",
         "venue_name": "Community Hall",
-        "venue_state": "CA",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
         "venue_zip_code": "94105"
     }'::jsonb,
     'Should persist paid hybrid ticketing and its complete physical venue'
@@ -1365,7 +1373,8 @@ select throws_ok(
             "venue_country_code": "US",
             "venue_country_name": "United States",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
@@ -1652,7 +1661,8 @@ select lives_ok(
             "venue_city": "San Francisco",
             "venue_country_code": "US",
             "venue_name": "Community Hall",
-            "venue_state": "CA",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
             "venue_zip_code": "94105",
             "waitlist_enabled": true
         }'::jsonb
@@ -1870,7 +1880,8 @@ select lives_ok(
                 "venue_city": "San Francisco",
                 "venue_country_code": "US",
                 "venue_name": "Community Hall",
-                "venue_state": "CA",
+                "venue_state_code": "CA",
+                "venue_state_name": "California",
                 "venue_zip_code": "94105"
             }',
             :'category1ID',
@@ -1983,7 +1994,7 @@ select lives_ok(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000056'::uuid,
-        '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "venue_address": "123 Main St", "venue_city": "San Francisco", "venue_country_code": "US", "venue_name": "Community Hall", "venue_state": "CA", "venue_zip_code": "94105"}'::jsonb
+        '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "venue_address": "123 Main St", "venue_city": "San Francisco", "venue_country_code": "US", "venue_name": "Community Hall", "venue_state_code": "CA", "venue_state_name": "California", "venue_zip_code": "94105"}'::jsonb
     )$$,
     'Should allow unrelated event edits while checkout holds are active'
 );
