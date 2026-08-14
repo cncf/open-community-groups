@@ -59,7 +59,7 @@ The value saved in group settings should look like `acct_...`.
 
 ## How The Setup Flow Works
 
-The setup usually happens in three parts:
+The setup usually happens in four parts:
 
 1. The group identifies a fiscal sponsor or steward that agrees to be the
    seller and tax filer.
@@ -87,15 +87,15 @@ When a group asks to enable paid events, the Stripe-side work is usually:
    pays Stripe fees, and is responsible for payment losses.
 5. Confirm charges are enabled, details are submitted, invoice business
    details are correct, and the sponsor can use the Stripe Dashboard.
-6. Confirm Stripe Tax is active for automatic tax, including required
-   registrations and the ticket-tax preview. If automatic tax is unavailable,
-   record only fixed venue rates explicitly supplied or approved by the
-   sponsor.
+6. Confirm Stripe Tax is active for automatic tax, including the head-office
+   address and registrations applicable to the event locations. If automatic
+   tax is unavailable, record only fixed venue rates explicitly supplied or
+   approved by the sponsor.
 
 Useful Stripe references for this step:
 
-- [Manage connected accounts with the Dashboard](https://docs.stripe.com/connect/dashboard)
 - [Create a connected account](https://docs.stripe.com/connect/saas/tasks/create)
+- [Manage connected accounts with the Dashboard](https://docs.stripe.com/connect/dashboard)
 - [Onboard your connected account](https://docs.stripe.com/connect/saas/tasks/onboard)
 - [Stripe Dashboard access](https://docs.stripe.com/connect/dashboard)
 
@@ -136,6 +136,31 @@ Typical sponsor tasks include:
 - Monitoring refunds, disputes, negative balances, and Stripe notifications.
 
 This step is completed by the fiscal sponsor's authorized administrator.
+
+For automatic tax, configure each fiscal sponsor's connected account in
+Stripe:
+
+1. Activate Stripe Tax.
+2. Set the head-office address and the default product tax code to
+   `txcd_20030000` (`General - Services`).
+3. In a sandbox, add every registration applicable to the locations used by
+   test events.
+4. Before live sales, add the registrations that reflect where the fiscal
+   sponsor is registered to collect tax and the jurisdictions applicable to
+   its event locations.
+
+Tax for ticket sales is in public preview and requires API version
+`2026-03-25.preview` or later. The OCG deployment configuration pins the version
+used for these calls; prior Stripe approval is not part of the current setup.
+Contact Stripe Support only if a qualifying version returns an access or
+feature-disabled error.
+
+OCG checks that the connected account's Stripe Tax settings are active whenever
+automatic-tax readiness is required. OCG does not determine whether the
+sponsor's registrations cover every event jurisdiction. Without an applicable
+registration, Stripe can return zero tax because the sponsor is not collecting
+there, so the sponsor and platform administrator must test each venue's tax
+result.
 
 At the end of this step, the connected account must be ready to create direct
 charges and own Checkout, Customer, invoice, refund, dispute, Tax, and credit
@@ -200,11 +225,13 @@ For the rest of the paid-event flow, continue to
 
 ## Official Stripe References
 
-- [Manage individual accounts](https://docs.stripe.com/connect/dashboard/managing-individual-accounts)
-- [Onboard your connected account](https://docs.stripe.com/connect/saas/tasks/onboard)
-- [Manage payout accounts for connected accounts](https://docs.stripe.com/connect/payouts-bank-accounts?bank-account-collection-method=manual-entry)
 - [Connected Accounts API reference](https://docs.stripe.com/api/connected_accounts)
 - [Create direct charges](https://docs.stripe.com/connect/direct-charges)
-- [Tax for ticket sales](https://docs.stripe.com/tax/tax-for-tickets/integration-guide)
-- [Use manual Tax Rates](https://docs.stripe.com/payments/checkout/use-manual-tax-rates)
 - [Disputes on Connect platforms](https://docs.stripe.com/connect/disputes)
+- [Manage individual accounts](https://docs.stripe.com/connect/dashboard/managing-individual-accounts)
+- [Manage payout accounts for connected accounts](https://docs.stripe.com/connect/payouts-bank-accounts?bank-account-collection-method=manual-entry)
+- [Onboard your connected account](https://docs.stripe.com/connect/saas/tasks/onboard)
+- [Product release phases](https://docs.stripe.com/release-phases)
+- [Tax for ticket sales](https://docs.stripe.com/tax/tax-for-tickets/integration-guide)
+- [Tax registrations](https://docs.stripe.com/tax/registrations-api)
+- [Use manual Tax Rates](https://docs.stripe.com/payments/checkout/use-manual-tax-rates)

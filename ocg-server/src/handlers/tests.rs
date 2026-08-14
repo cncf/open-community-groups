@@ -1111,7 +1111,7 @@ pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
         connected_webhook_secret: "whsec_connect_test".to_string(),
         mode: PaymentMode::Test,
         secret_key: "sk_test".to_string(),
-        ticket_tax_api_version: "2025-12-26.preview".to_string(),
+        ticket_tax_api_version: "2026-07-29.preview".to_string(),
         webhook_secret: "whsec_test".to_string(),
 
         platform_fee_bps: 0,

@@ -314,7 +314,7 @@ pub(crate) struct PaymentsStripeConfig {
     pub mode: PaymentMode,
     /// Stripe secret key used by the backend.
     pub secret_key: String,
-    /// Private-preview API version approved for Tax for ticket sales.
+    /// Public-preview API version used for Tax for ticket sales.
     pub ticket_tax_api_version: String,
     /// Stripe webhook secret used for signature verification.
     pub webhook_secret: String,
@@ -773,7 +773,7 @@ mod tests {
             "connected_webhook_secret": "whsec_connect_secret",
             "mode": "test",
             "secret_key": "sk_test_secret",
-            "ticket_tax_api_version": "2025-12-26.preview",
+            "ticket_tax_api_version": "2026-07-29.preview",
             "webhook_secret": "whsec_secret",
         }))
         .unwrap();
@@ -843,7 +843,7 @@ mod tests {
             "provider": "stripe",
             "mode": "test",
             "secret_key": "sk_test_secret",
-            "ticket_tax_api_version": "2025-12-26.preview",
+            "ticket_tax_api_version": "2026-07-29.preview",
             "webhook_secret": "whsec_secret",
         }));
 
@@ -956,7 +956,7 @@ mod tests {
                 connected_webhook_secret: "stripe-connect-webhook-sensitive-value".to_string(),
                 mode: PaymentMode::Test,
                 secret_key: "stripe-key-sensitive-value".to_string(),
-                ticket_tax_api_version: "2025-12-26.preview".to_string(),
+                ticket_tax_api_version: "2026-07-29.preview".to_string(),
                 webhook_secret: "stripe-webhook-sensitive-value".to_string(),
 
                 platform_fee_bps: 250,

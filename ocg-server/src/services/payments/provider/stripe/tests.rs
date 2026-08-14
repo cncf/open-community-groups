@@ -596,7 +596,7 @@ async fn get_checkout_financial_context_reads_authoritative_connected_account_am
         "/v1/checkout/sessions/cs_test_123",
         get(|headers: HeaderMap, uri: Uri| async move {
             assert_eq!(headers["stripe-account"], "acct_test_123");
-            assert_eq!(headers["stripe-version"], "2025-12-26.preview");
+            assert_eq!(headers["stripe-version"], "2026-07-29.preview");
             assert_eq!(
                 uri.query(),
                 Some("expand%5B%5D=payment_intent.latest_charge")
@@ -812,7 +812,7 @@ async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_do
             "/v1/credit_notes",
             get(|headers: HeaderMap, uri: Uri| async move {
                 assert_eq!(headers["stripe-account"], "acct_test_123");
-                assert_eq!(headers["stripe-version"], "2025-12-26.preview");
+                assert_eq!(headers["stripe-version"], "2026-07-29.preview");
                 let query: BTreeMap<String, String> = serde_urlencoded::from_str(
                     uri.query().expect("credit-note list query to exist"),
                 )
@@ -823,7 +823,7 @@ async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_do
             })
             .post(|headers: HeaderMap, body: String| async move {
                 assert_eq!(headers["stripe-account"], "acct_test_123");
-                assert_eq!(headers["stripe-version"], "2025-12-26.preview");
+                assert_eq!(headers["stripe-version"], "2026-07-29.preview");
                 assert_eq!(headers["idempotency-key"], "credit-note-test");
                 let form: BTreeMap<String, String> =
                     serde_urlencoded::from_str(&body).expect("credit-note form to parse");
@@ -852,7 +852,7 @@ async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_do
             "/v1/credit_notes/preview",
             get(|headers: HeaderMap, uri: Uri| async move {
                 assert_eq!(headers["stripe-account"], "acct_test_123");
-                assert_eq!(headers["stripe-version"], "2025-12-26.preview");
+                assert_eq!(headers["stripe-version"], "2026-07-29.preview");
                 let query: BTreeMap<String, String> = serde_urlencoded::from_str(
                     uri.query().expect("credit-note preview query to exist"),
                 )
@@ -873,7 +873,7 @@ async fn reconcile_credit_note_previews_and_issues_the_full_connected_account_do
             "/v1/invoices/in_test_123/lines",
             get(|headers: HeaderMap, uri: Uri| async move {
                 assert_eq!(headers["stripe-account"], "acct_test_123");
-                assert_eq!(headers["stripe-version"], "2025-12-26.preview");
+                assert_eq!(headers["stripe-version"], "2026-07-29.preview");
                 assert_eq!(uri.query(), Some("limit=2"));
                 Json(json!({"data": [{"id": "il_test_123"}]}))
             }),
@@ -1643,7 +1643,7 @@ fn sample_stripe_provider() -> StripeProvider {
         connected_webhook_secret: "whsec_connect_test".to_string(),
         mode: PaymentMode::Test,
         secret_key: "sk_test".to_string(),
-        ticket_tax_api_version: "2025-12-26.preview".to_string(),
+        ticket_tax_api_version: "2026-07-29.preview".to_string(),
         webhook_secret: "whsec_test".to_string(),
 
         platform_fee_bps: 0,

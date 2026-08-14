@@ -132,7 +132,7 @@ async fn test_add_page_success() {
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -226,7 +226,7 @@ async fn test_list_page_success() {
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -376,7 +376,7 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -511,7 +511,7 @@ async fn test_update_page_success() {
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -987,7 +987,7 @@ async fn test_add_paid_recurring_success() {
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -3212,7 +3212,7 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,
@@ -3388,7 +3388,7 @@ async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test".to_string(),
 
             platform_fee_bps: 0,
@@ -3505,7 +3505,7 @@ async fn test_update_paid_notification_failure_rolls_back() {
             connected_webhook_secret: "whsec_connect_test".to_string(),
             mode: PaymentMode::Test,
             secret_key: "sk_test_123".to_string(),
-            ticket_tax_api_version: "2025-12-26.preview".to_string(),
+            ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
             platform_fee_bps: 0,

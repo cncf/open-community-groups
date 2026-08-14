@@ -35,18 +35,21 @@ You need:
   Stripe `live` mode.
 - Standard-like connected accounts whose controller configuration makes the
   connected account responsible for Stripe fees and payment losses.
-- Stripe Tax registration and account readiness for each fiscal sponsor.
-- Access to the Tax for ticket sales preview and its approved API version when
-  automatic tax is used. A sponsor-approved fixed Tax Rate configuration is
-  required instead when manual tax is used.
+- Active Stripe Tax settings, a head-office address, and applicable tax
+  registrations for each fiscal sponsor that uses automatic tax.
+- A Tax for ticket sales public-preview API version of `2026-03-25.preview` or
+  later. A sponsor-approved fixed Tax Rate configuration is required instead
+  when manual tax is used.
 
 Useful Stripe references:
 
-- [Platforms and marketplaces with Stripe Connect](https://docs.stripe.com/connect)
-- [How Connect works](https://docs.stripe.com/connect/how-connect-works)
-- [Use a prebuilt Stripe-hosted payment page](https://docs.stripe.com/payments/checkout)
 - [API keys](https://docs.stripe.com/keys)
+- [How Connect works](https://docs.stripe.com/connect/how-connect-works)
+- [Platforms and marketplaces with Stripe Connect](https://docs.stripe.com/connect)
+- [Product release phases](https://docs.stripe.com/release-phases)
 - [Receive Stripe events in your webhook endpoint](https://docs.stripe.com/webhooks)
+- [Tax for ticket sales](https://docs.stripe.com/tax/tax-for-tickets/integration-guide)
+- [Use a prebuilt Stripe-hosted payment page](https://docs.stripe.com/payments/checkout)
 
 ## OCG Configuration
 
@@ -61,7 +64,7 @@ payments:
   mode: test
   connectedWebhookSecret: "whsec_..."
   secretKey: "sk_test_..."
-  ticketTaxApiVersion: "2025-12-26.preview"
+  ticketTaxApiVersion: "2026-07-29.preview"
   webhookSecret: "whsec_..."
   platformFeeBps: 0
 ```
@@ -77,8 +80,10 @@ A few notes about these values:
   payments are enabled. The two signing secrets must come from their respective
   Stripe event destinations.
 - `ticketTaxApiVersion` is required when payments are enabled and is used for
-  automatic ticket tax and credit-note operations. Use only the version
-  enabled for the Stripe platform.
+  automatic ticket tax and credit-note operations. Tax for ticket sales is in
+  public preview and requires `2026-03-25.preview` or later. This example pins
+  `2026-07-29.preview`; test the complete payment flow before changing it
+  because Stripe preview versions can contain breaking changes.
 - `platformFeeBps` is optional and defaults to `0` (no platform fee). See
   [Platform Fee](#platform-fee) for its semantics.
 
@@ -92,13 +97,18 @@ payments:
   mode: test
   connected_webhook_secret: "whsec_..."
   secret_key: "sk_test_..."
-  ticket_tax_api_version: "2025-12-26.preview"
+  ticket_tax_api_version: "2026-07-29.preview"
   webhook_secret: "whsec_..."
   platform_fee_bps: 0
 ```
 
 The server validates that both webhook secrets, the API key, and the ticket Tax
-API version are non-empty when Stripe payments are configured.
+API version are non-empty when Stripe payments are configured. Stripe rejects
+unsupported API versions when OCG makes a request. Tax for ticket sales does
+not require an advance access request while it is in public preview; contact
+Stripe Support if a qualifying version returns an access or feature-disabled
+error.
+
 `platform_fee_bps` cannot exceed `9999`, because an application fee must remain
 strictly below a positive charge.
 
@@ -435,15 +445,16 @@ card payments only when OCG creates Stripe Checkout sessions.
 1. Enable Stripe Connect on your Stripe platform account.
 2. Decide whether this OCG environment uses Stripe `test` or `live` mode.
 3. Copy the matching Stripe secret key.
-4. Confirm the automatic ticket-tax preview/API version or prepare an approved
-   manual fixed-rate configuration.
+4. Confirm a Tax for ticket sales public-preview API version of
+   `2026-03-25.preview` or later and prepare an approved manual fixed-rate
+   configuration for events that do not use automatic tax.
 5. Create the platform webhook at
    `https://{YOUR_OCG_BASE_URL}/webhooks/payments` and the Connect destination
    at `https://{YOUR_OCG_BASE_URL}/webhooks/payments/connected`.
 6. Subscribe the platform endpoint to `application_fee.created` and the Connect
    destination to the Checkout completion/expiration, invoice, and refund
    events listed above.
-7. Copy both distinct signing secrets and the approved ticket-tax API version
+7. Copy both distinct signing secrets and the pinned ticket-tax API version
    into OCG config.
 8. Deploy OCG with `payments.enabled: true`.
 9. Verify the `Payments` section appears in group settings and the event editor
@@ -510,8 +521,9 @@ Check that:
 - The group settings were saved successfully.
 - The event is in-person or hybrid with a complete physical venue and currency.
 - Every paid hybrid ticket includes physical admission and is not virtual-only.
-- Automatic Stripe Tax is active with the approved ticket-tax preview, or the
-  event has a current sponsor-approved manual rate configuration.
+- Automatic Stripe Tax is active with a head-office address, applicable
+  registrations, and a supported public-preview API version, or the event has
+  a current sponsor-approved manual rate configuration.
 
 If only free tickets are needed, remove positive current and future price
 windows and leave the event currency and discount codes empty.
