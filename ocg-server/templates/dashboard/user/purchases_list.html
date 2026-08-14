@@ -25,16 +25,13 @@
     </thead>
     <tbody>
       {% if purchases.is_empty() -%}
-        <tr class="border-b border-stone-200 bg-white">
-          <td colspan="5" class="px-8 py-20 text-center">
-            <div class="mx-auto max-w-md">
-              <h2 class="text-base font-semibold text-stone-800">No paid-ticket documents yet</h2>
-              <p class="mt-2 text-sm text-stone-500">
-                Invoices appear here after a paid checkout. Free tickets do not create invoices.
-              </p>
-            </div>
+        {# Empty state -#}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-20 text-center" colspan="5">
+            {% include "dashboard/placeholders/user_purchases_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for purchase in purchases -%}
           <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
