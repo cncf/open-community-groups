@@ -51,8 +51,9 @@ Before you configure payments for a group, confirm these points:
   events can use only free tickets. Every paid hybrid ticket must include
   physical admission; it may also include virtual access, but cannot be
   virtual-only.
-- The fiscal sponsor has agreed to sell the tickets and handle registrations,
-  filing, remittance, provider fees, refunds, disputes, and negative balances.
+- The fiscal sponsor has agreed to sell the tickets, handle registrations,
+  filing and remittance, pay provider fees, and monitor refunds, disputes, and
+  negative balances.
 
 !> OCG expects a Stripe connected account ID.
 The value saved in group settings should look like `acct_...`.
@@ -63,8 +64,9 @@ The setup usually happens in four parts:
 
 1. The group identifies a fiscal sponsor or steward that agrees to be the
    seller and tax filer.
-2. A platform administrator creates or connects that entity's Standard-like
-   Stripe account and checks direct-charge and tax readiness.
+2. A platform administrator creates or opens that entity's
+   application-controlled, Standard-like Stripe connected account and checks
+   direct-charge and tax readiness.
 3. The sponsor completes onboarding, business/invoice details, tax
    registrations, and payout setup.
 4. The group saves the sponsor's legal name and connected account ID in OCG
@@ -83,8 +85,11 @@ When a group asks to enable paid events, the Stripe-side work is usually:
 1. Open the Stripe Dashboard for the OCG deployment's platform account.
 2. Go to `Connected accounts`.
 3. Create or open the connected account belonging to the fiscal sponsor.
-4. Confirm it uses Standard-like responsibility: the account controls itself,
-   pays Stripe fees, and is responsible for payment losses.
+4. Confirm it uses the Standard-like controller configuration required by OCG:
+   the platform controls the account relationship, the connected account pays
+   Stripe fees, Stripe collects onboarding and KYC requirements, Stripe assumes
+   ultimate liability for payment-related negative balances, and the sponsor
+   has full Stripe Dashboard access.
 5. Confirm charges are enabled, details are submitted, invoice business
    details are correct, and the sponsor can use the Stripe Dashboard.
 6. Confirm Stripe Tax is active for automatic tax, including the head-office
@@ -94,6 +99,8 @@ When a group asks to enable paid events, the Stripe-side work is usually:
 
 Useful Stripe references for this step:
 
+- [Account API reference](https://docs.stripe.com/api/accounts/object)
+- [Account controller properties](https://docs.stripe.com/connect/migrate-to-controller-properties)
 - [Create a connected account](https://docs.stripe.com/connect/saas/tasks/create)
 - [Manage connected accounts with the Dashboard](https://docs.stripe.com/connect/dashboard)
 - [Onboard your connected account](https://docs.stripe.com/connect/saas/tasks/onboard)
@@ -103,6 +110,9 @@ Useful Stripe references for this step:
 
 OCG currently requires an existing Stripe connected account that belongs to the
 Stripe Connect platform used by this OCG deployment.
+
+The account must be application-controlled by that platform. Account-controlled
+Standard accounts connected through OAuth are not supported.
 
 If the sponsor does not already have one, ask your platform administrator to
 create the connected account owned by that legal entity.
@@ -180,7 +190,7 @@ After the connected account exists, copy its Stripe account ID. Make sure you
 copy the connected account ID itself, not a publishable key, secret key,
 payment link, or customer ID. Stripe documents connected account IDs as values
 that usually start with `acct_`:
-[Connected Accounts API reference](https://docs.stripe.com/api/connected_accounts).
+[Account API reference](https://docs.stripe.com/api/accounts/object).
 
 If you are working from the Stripe dashboard, use the account details for the
 connected account created for the group in the previous step.
@@ -225,7 +235,8 @@ For the rest of the paid-event flow, continue to
 
 ## Official Stripe References
 
-- [Connected Accounts API reference](https://docs.stripe.com/api/connected_accounts)
+- [Account API reference](https://docs.stripe.com/api/accounts/object)
+- [Account controller properties](https://docs.stripe.com/connect/migrate-to-controller-properties)
 - [Create direct charges](https://docs.stripe.com/connect/direct-charges)
 - [Disputes on Connect platforms](https://docs.stripe.com/connect/disputes)
 - [Manage individual accounts](https://docs.stripe.com/connect/dashboard/managing-individual-accounts)

@@ -35,6 +35,9 @@ use super::{
 #[cfg(test)]
 mod tests;
 
+/// Readiness error for connected accounts outside OCG's supported controller model.
+const STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR: &str = "fiscal sponsor Stripe account must use application control, full Dashboard access, sponsor-paid fees, Stripe-collected requirements, and Stripe liability for payment-related negative balances";
+
 /// Stripe API version used by OCG requests.
 const STRIPE_API_VERSION: &str = "2024-10-28.acacia";
 
@@ -835,6 +838,7 @@ impl StripeProvider {
         &self,
         input: &FiscalSponsorReadinessInput,
     ) -> std::result::Result<(), FiscalSponsorReadinessError> {
+        // Retrieve the connected account through the configured platform relationship
         let response = self
             .client
             .get(format!(
@@ -855,26 +859,50 @@ impl StripeProvider {
         )
         .await?;
 
+        // Require the provider response to match the configured fiscal sponsor
         if account.id != input.connected_seller_id {
             return Err(FiscalSponsorReadinessError::NotReady(
                 "Stripe connected account response does not match the fiscal sponsor".to_string(),
             ));
         }
+
+        // Require completed onboarding and current charge capability
         if !account.charges_enabled || !account.details_submitted {
             return Err(FiscalSponsorReadinessError::NotReady(
                 "fiscal sponsor Stripe account is not ready to accept charges".to_string(),
             ));
         }
-        if account.controller.controller_type != "account"
-            || account.controller.fees.payer != "account"
-            || account.controller.losses.payments != "stripe"
-        {
+
+        // Require an application-controlled account relationship
+        let Some(controller) = account.controller.as_ref() else {
             return Err(FiscalSponsorReadinessError::NotReady(
-                "fiscal sponsor Stripe account must own its Dashboard, fees, and payment losses"
-                    .to_string(),
+                STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR.to_string(),
+            ));
+        };
+        if controller.controller_type != "application" {
+            return Err(FiscalSponsorReadinessError::NotReady(
+                STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR.to_string(),
             ));
         }
 
+        // Require the Standard-like controller responsibilities used by OCG
+        if controller.fees.as_ref().is_none_or(|fees| fees.payer != "account")
+            || controller
+                .losses
+                .as_ref()
+                .is_none_or(|losses| losses.payments != "stripe")
+            || controller.requirement_collection.as_deref() != Some("stripe")
+            || controller
+                .stripe_dashboard
+                .as_ref()
+                .is_none_or(|dashboard| dashboard.dashboard_type != "full")
+        {
+            return Err(FiscalSponsorReadinessError::NotReady(
+                STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR.to_string(),
+            ));
+        }
+
+        // Require active sponsor-scoped Tax settings when the event uses automatic tax
         if input.require_automatic_tax {
             self.validate_connected_tax_settings(&input.connected_seller_id)
                 .await?;
@@ -1535,13 +1563,26 @@ impl PaymentsProvider for StripeProvider {
 /// Connected account responsibility fields required for direct charges.
 #[derive(Debug, Deserialize)]
 struct StripeAccountController {
-    /// Whether the account or application controls the account.
+    /// Entity controlling the account relationship.
     #[serde(rename = "type")]
     controller_type: String,
-    /// Fee responsibility for direct charges.
-    fees: StripeAccountFees,
-    /// Negative-balance responsibility for payments.
-    losses: StripeAccountLosses,
+
+    /// Fee responsibility for direct charges, when visible to the platform.
+    fees: Option<StripeAccountFees>,
+    /// Negative-balance responsibility for payments, when visible to the platform.
+    losses: Option<StripeAccountLosses>,
+    /// Entity collecting account requirements, when visible to the platform.
+    requirement_collection: Option<String>,
+    /// Connected account Dashboard access, when visible to the platform.
+    stripe_dashboard: Option<StripeAccountDashboard>,
+}
+
+/// Connected account Stripe Dashboard configuration.
+#[derive(Debug, Deserialize)]
+struct StripeAccountDashboard {
+    /// Stripe Dashboard available to the connected account.
+    #[serde(rename = "type")]
+    dashboard_type: String,
 }
 
 /// Connected account fee-payer configuration.
@@ -1563,12 +1604,13 @@ struct StripeAccountLosses {
 struct StripeAccountResponse {
     /// Whether the account can accept charges.
     charges_enabled: bool,
-    /// Controller responsibility settings.
-    controller: StripeAccountController,
     /// Whether the account has completed onboarding details.
     details_submitted: bool,
     /// Connected account identifier.
     id: String,
+
+    /// Controller settings visible to the requesting platform.
+    controller: Option<StripeAccountController>,
 }
 
 /// Provider application-fee refund used for lookup-before-create reconciliation.

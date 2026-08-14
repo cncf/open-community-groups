@@ -33,8 +33,10 @@ You need:
 - A public HTTPS URL for your OCG server.
 - A decision about whether this deployment is running in Stripe `test` mode or
   Stripe `live` mode.
-- Standard-like connected accounts whose controller configuration makes the
-  connected account responsible for Stripe fees and payment losses.
+- Application-controlled, Standard-like connected accounts where the connected
+  account pays Stripe fees, Stripe collects requirements, Stripe assumes
+  ultimate liability for payment-related negative balances, and the sponsor has
+  full Dashboard access.
 - Active Stripe Tax settings, a head-office address, and applicable tax
   registrations for each fiscal sponsor that uses automatic tax.
 - A Tax for ticket sales public-preview API version of `2026-03-25.preview` or
@@ -43,6 +45,8 @@ You need:
 
 Useful Stripe references:
 
+- [Account API reference](https://docs.stripe.com/api/accounts/object)
+- [Account controller properties](https://docs.stripe.com/connect/migrate-to-controller-properties)
 - [API keys](https://docs.stripe.com/keys)
 - [How Connect works](https://docs.stripe.com/connect/how-connect-works)
 - [Platforms and marketplaces with Stripe Connect](https://docs.stripe.com/connect)
@@ -250,12 +254,17 @@ still needs a fiscal sponsor or steward with a compatible connected account on
 the same Stripe Connect platform. One sponsor account may support multiple
 groups.
 
+OCG supports application-controlled connected accounts created through the
+platform Dashboard. Account-controlled Standard accounts connected through
+OAuth are not supported.
+
 The expected flow is:
 
 1. The group identifies a legal entity willing to act as seller and indirect-tax
    filer.
-2. A platform administrator creates or connects the sponsor's Standard-like
-   account and verifies payments, controller, fee, and loss responsibility.
+2. A platform administrator creates or opens the sponsor's
+   application-controlled, Standard-like account and verifies payments and the
+   required controller properties.
 3. The sponsor completes onboarding, invoice business details, tax
    registrations, payout setup, and Dashboard access.
 4. The group saves the sponsor's legal seller name and `acct_...` account ID in
@@ -323,9 +332,11 @@ Reference:
 
 The fiscal sponsor owns the Customer, PaymentIntent, Charge, invoice, credit
 note, refund, dispute, and Tax resources. Stripe charges its processing,
-Invoicing, and Tax fees to that account, and the sponsor is responsible for
-negative balances, registrations, filing, and remittance. Stripe Tax
-calculation and reporting do not make Stripe or OCG the tax filer.
+Invoicing, and Tax fees to that account. Refunds and disputes debit the sponsor's
+connected account, while Stripe assumes ultimate liability when the account
+cannot repay a payment-related negative balance. The sponsor remains responsible
+for registrations, filing, and remittance. Stripe Tax calculation and reporting
+do not make Stripe or OCG the tax filer.
 
 ### Refund Recovery
 
@@ -459,8 +470,9 @@ card payments only when OCG creates Stripe Checkout sessions.
 8. Deploy OCG with `payments.enabled: true`.
 9. Verify the `Payments` section appears in group settings and the event editor
    `Tickets` tab is available.
-10. Create or connect a Standard-like fiscal-sponsor account and verify its
-    controller, payment, fee, loss, invoice, Tax, and payout readiness.
+10. Create or open an application-controlled, Standard-like fiscal-sponsor
+    account and verify its controller, payment, invoice, Tax, and payout
+    readiness.
 11. Save the sponsor's legal seller name and `acct_...` connected account ID
     for two test groups.
 12. Run inclusive and exclusive test purchases, invoice delivery, a full
@@ -514,7 +526,9 @@ Check that:
 - The platform administrator created a connected account for that group on the
   same Stripe Connect platform used by OCG.
 - The sponsor account reports charges enabled, onboarding details submitted,
-  and Standard-like fee/loss responsibility.
+  application controller type, connected-account fee payment, Stripe
+  requirement collection, Stripe liability for payment-related negative
+  balances, and full Dashboard access.
 - The group saved the fiscal sponsor's legal seller name and a Stripe connected
   account ID in `acct_...` format.
 - The connected account belongs to the same Stripe platform used by OCG.

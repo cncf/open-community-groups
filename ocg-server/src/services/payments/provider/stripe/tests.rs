@@ -418,18 +418,7 @@ async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() 
     let router = Router::new()
         .route(
             "/v1/accounts/acct_test_123",
-            get(|| async {
-                Json(json!({
-                    "charges_enabled": true,
-                    "controller": {
-                        "fees": {"payer": "account"},
-                        "losses": {"payments": "stripe"},
-                        "type": "account"
-                    },
-                    "details_submitted": true,
-                    "id": "acct_test_123"
-                }))
-            }),
+            get(|| async { Json(sample_stripe_account_response()) }),
         )
         .route(
             "/v1/tax_rates/txr_test",
@@ -956,23 +945,14 @@ fn refund_result_rejects_unknown_statuses() {
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_accepts_charge_and_automatic_tax_readiness() {
-    // Setup a connected account with direct-charge ownership and active Tax
+async fn validate_fiscal_sponsor_accepts_dashboard_created_account_and_automatic_tax_readiness() {
+    // Setup a Dashboard-created connected account with Standard-like responsibilities and Tax
     let router = Router::new()
         .route(
             "/v1/accounts/acct_test_123",
             get(|headers: HeaderMap| async move {
                 assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
-                Json(json!({
-                    "charges_enabled": true,
-                    "controller": {
-                        "fees": {"payer": "account"},
-                        "losses": {"payments": "stripe"},
-                        "type": "account"
-                    },
-                    "details_submitted": true,
-                    "id": "acct_test_123"
-                }))
+                Json(sample_stripe_account_response())
             }),
         )
         .route(
@@ -1002,23 +982,49 @@ async fn validate_fiscal_sponsor_accepts_charge_and_automatic_tax_readiness() {
 }
 
 #[tokio::test]
+async fn validate_fiscal_sponsor_rejects_account_controlled_response_without_conditional_fields() {
+    // Setup an OAuth-shaped account response without platform-only controller properties
+    let router = Router::new().route(
+        "/v1/accounts/acct_test_123",
+        get(|| async {
+            Json(json!({
+                "charges_enabled": true,
+                "controller": {"type": "account"},
+                "details_submitted": true,
+                "id": "acct_test_123"
+            }))
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate the unsupported account through the public provider boundary
+    let err = provider
+        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            provider: PaymentProvider::Stripe,
+            require_automatic_tax: false,
+        })
+        .await
+        .expect_err("account-controlled sponsor should fail readiness validation");
+    server.abort();
+
+    // Keep the unsupported account model organizer-correctable
+    assert!(matches!(
+        err,
+        FiscalSponsorReadinessError::NotReady(ref message)
+            if message == super::STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR
+    ));
+}
+
+#[tokio::test]
 async fn validate_fiscal_sponsor_rejects_inactive_automatic_tax_settings() {
     // Setup a charge-ready connected account whose Tax settings are inactive
     let router = Router::new()
         .route(
             "/v1/accounts/acct_test_123",
-            get(|| async {
-                Json(json!({
-                    "charges_enabled": true,
-                    "controller": {
-                        "fees": {"payer": "account"},
-                        "losses": {"payments": "stripe"},
-                        "type": "account"
-                    },
-                    "details_submitted": true,
-                    "id": "acct_test_123"
-                }))
-            }),
+            get(|| async { Json(sample_stripe_account_response()) }),
         )
         .route(
             "/v1/tax/settings",
@@ -1045,6 +1051,69 @@ async fn validate_fiscal_sponsor_rejects_inactive_automatic_tax_settings() {
         FiscalSponsorReadinessError::NotReady(ref message)
             if message == "fiscal sponsor Stripe Tax settings are not active"
     ));
+}
+
+#[tokio::test]
+async fn validate_fiscal_sponsor_rejects_incompatible_controller_configuration() {
+    // Setup every controller property that can violate the required account model
+    let scenarios = [
+        (
+            "application-managed losses",
+            "/controller/losses/payments",
+            "application",
+        ),
+        (
+            "application-managed requirements",
+            "/controller/requirement_collection",
+            "application",
+        ),
+        (
+            "application-paid fees",
+            "/controller/fees/payer",
+            "application",
+        ),
+        (
+            "Express Dashboard access",
+            "/controller/stripe_dashboard/type",
+            "express",
+        ),
+    ];
+
+    for (scenario, property_path, incompatible_value) in scenarios {
+        // Replace one compatible controller property for this provider response
+        let mut account = sample_stripe_account_response();
+        *account
+            .pointer_mut(property_path)
+            .expect("sample controller property to exist") = json!(incompatible_value);
+        let router = Router::new().route(
+            "/v1/accounts/acct_test_123",
+            get(move || {
+                let account = account.clone();
+                async move { Json(account) }
+            }),
+        );
+        let (api_base_url, server) = spawn_stripe_api(router).await;
+        let mut provider = sample_stripe_provider();
+        provider.api_base_url = api_base_url;
+
+        // Validate the incompatible account through the public provider boundary
+        let err = provider
+            .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+                connected_seller_id: "acct_test_123".to_string(),
+                provider: PaymentProvider::Stripe,
+                require_automatic_tax: false,
+            })
+            .await
+            .expect_err(&format!("{scenario} should fail readiness validation"));
+        server.abort();
+
+        // Check every controller mismatch remains an organizer-correctable failure
+        assert!(matches!(
+            err,
+            FiscalSponsorReadinessError::NotReady(ref message)
+                if message == super::STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR
+        ));
+    }
 }
 
 #[tokio::test]
@@ -1635,6 +1704,22 @@ fn sample_signature_header(body: &str, timestamp: i64) -> String {
 fn sample_signature_header_with_secret(body: &str, timestamp: i64, secret: &str) -> String {
     let signature = StripeProvider::compute_signature(secret, &format!("{timestamp}.{body}"));
     format!("t={timestamp},v1={signature}")
+}
+
+/// Creates a Dashboard-created connected account with Standard-like responsibilities.
+fn sample_stripe_account_response() -> serde_json::Value {
+    json!({
+        "charges_enabled": true,
+        "controller": {
+            "type": "application",
+            "fees": {"payer": "account"},
+            "losses": {"payments": "stripe"},
+            "requirement_collection": "stripe",
+            "stripe_dashboard": {"type": "full"}
+        },
+        "details_submitted": true,
+        "id": "acct_test_123"
+    })
 }
 
 /// Creates a sample Stripe provider.
