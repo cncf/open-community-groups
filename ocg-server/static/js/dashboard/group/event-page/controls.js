@@ -52,14 +52,6 @@ export const initializeSharedEventPageControls = ({
     endsAtInput,
   } = controls;
 
-  const validationCallbacks = createEventPageValidationCallbacks({
-    pageRoot,
-    queryOne,
-    displayActiveSection,
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-  });
-
   const updateCfsFields = createEventPageCfsFieldUpdater({
     cfsStartsAtInput,
     cfsEndsAtInput,
@@ -73,7 +65,7 @@ export const initializeSharedEventPageControls = ({
     queryOne,
   });
 
-  initializeCommonEventPageToggles({
+  const syncEventEnrollmentState = initializeCommonEventPageToggles({
     pageRoot,
     toggleCfsEnabled,
     cfsEnabledInput,
@@ -83,12 +75,22 @@ export const initializeSharedEventPageControls = ({
     bindDisabledCfsToggle,
   });
 
+  const validationCallbacks = createEventPageValidationCallbacks({
+    pageRoot,
+    queryOne,
+    displayActiveSection,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    syncEventEnrollmentState,
+  });
+
   initializeEventKindField({
     kindSelect,
     onlineEventDetails,
     hasVenueData: () => hasVenueData(pageRoot),
     confirmVenueDataDeletion,
     clearVenueFields: () => clearVenueFields(pageRoot),
+    onKindSettled: syncEventEnrollmentState,
     updateSectionVisibility: (kind) => updateSectionVisibility(kind, pageRoot),
   });
 
@@ -283,7 +285,7 @@ const bindSharedEventDateFieldListeners = ({
  * @param {(enabled: boolean) => void} config.updateCfsFields CFS field updater.
  * @param {boolean} [config.bindDisabledCfsToggle=false]
  * Whether disabled CFS toggles should bind changes.
- * @returns {void}
+ * @returns {() => void} Enrollment state synchronization callback.
  */
 const initializeCommonEventPageToggles = ({
   pageRoot,
@@ -299,7 +301,7 @@ const initializeCommonEventPageToggles = ({
     hiddenInput: getElementById(pageRoot, "test_event"),
   });
 
-  initializeEventEnrollmentState(pageRoot);
+  const syncEventEnrollmentState = initializeEventEnrollmentState(pageRoot);
 
   bindBooleanToggle({
     toggle: getElementById(pageRoot, "toggle_event_reminder_enabled"),
@@ -331,6 +333,8 @@ const initializeCommonEventPageToggles = ({
       },
     });
   }
+
+  return syncEventEnrollmentState;
 };
 
 /**
@@ -366,6 +370,7 @@ const configureScopedTicketingEditors = ({ pageRoot, queryOne }) => {
  * @param {() => boolean} config.hasVenueData Whether venue data exists.
  * @param {() => Promise<boolean>} config.confirmVenueDataDeletion Confirmation callback.
  * @param {() => void} config.clearVenueFields Venue clearing callback.
+ * @param {() => void} config.onKindSettled Event kind synchronization callback.
  * @param {(kind: string) => void} config.updateSectionVisibility
  * Section visibility callback.
  * @returns {void}
@@ -376,6 +381,7 @@ const initializeEventKindField = ({
   hasVenueData,
   confirmVenueDataDeletion,
   clearVenueFields,
+  onKindSettled,
   updateSectionVisibility,
 }) => {
   if (!kindSelect) {
@@ -400,6 +406,7 @@ const initializeEventKindField = ({
         if (onlineEventDetails) {
           onlineEventDetails.kind = kindSelect.value;
         }
+        onKindSettled();
         return;
       }
       clearVenueFields();
@@ -410,11 +417,13 @@ const initializeEventKindField = ({
       if (!accepted) {
         kindSelect.value = previousKindValue;
         updateSectionVisibility(kindSelect.value || "");
+        onKindSettled();
         return;
       }
     }
 
     previousKindValue = newValue;
     updateSectionVisibility(newValue);
+    onKindSettled();
   });
 };

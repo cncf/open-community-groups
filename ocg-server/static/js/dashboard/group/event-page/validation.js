@@ -142,6 +142,7 @@ const validateSessionOnlineDetailsWidgets = ({ queryOne, displayActiveSection })
  * Section activation callback.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
+ * @param {() => void} config.syncEventEnrollmentState Enrollment state callback.
  * @returns {Object} Shared validation callbacks.
  */
 export const createEventPageValidationCallbacks = ({
@@ -150,15 +151,18 @@ export const createEventPageValidationCallbacks = ({
   displayActiveSection,
   cfsStartsAtInput,
   cfsEndsAtInput,
+  syncEventEnrollmentState,
 }) => ({
-  validateEventForms: () =>
-    validateEventFormsAcrossSections({
+  validateEventForms: () => {
+    syncEventEnrollmentState();
+    return validateEventFormsAcrossSections({
       pageRoot,
       formSections: EVENT_PAGE_FORM_IDS,
       displayActiveSection,
       cfsStartsAtInput,
       cfsEndsAtInput,
-    }),
+    });
+  },
   validateSessionOnlineDetails: () =>
     validateSessionOnlineDetailsWidgets({
       queryOne,

@@ -96,6 +96,14 @@ describe("dashboard group event add template", () => {
     );
   });
 
+  it("explains the event and venue requirements for paid tickets", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      "Paid ticket prices require an in-person or hybrid event with a venue name, address, city, postal code, and country.",
+    );
+  });
+
   it("does not expose payment recipient details", async () => {
     // Load the event add template before checking payment recipient copy.
     const template = normalizeWhitespace(await loadTemplate());

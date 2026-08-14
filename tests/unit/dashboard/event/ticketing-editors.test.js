@@ -641,6 +641,72 @@ describe("ticketing editors", () => {
     expect(currencyField.checkValidity()).to.equal(true);
   });
 
+  it("requires an eligible event kind and complete venue for paid tickets", async () => {
+    // Render the event kind and physical venue controls.
+    const eventFields = document.createElement("div");
+    eventFields.innerHTML = `
+      <select id="kind_id" name="kind_id">
+        <option value="virtual" selected>Virtual</option>
+        <option value="hybrid">Hybrid</option>
+      </select>
+      <input name="venue_name" />
+      <input name="venue_address" />
+      <input name="venue_city" />
+      <input name="venue_zip_code" />
+      <input name="venue_country_name" />
+      <input name="venue_country_code" type="hidden" />
+    `;
+    document.body.append(eventFields);
+
+    // Configure a ticket with a positive price and initialize enrollment state.
+    const uiRoot = mountTicketTypesUi();
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          price_windows: [{ amount_minor: 1500 }],
+          seats_total: 25,
+          title: "Paid ticket",
+        },
+      ]),
+    );
+    await uiRoot.updateComplete;
+    const syncEventEnrollmentState = initializeEventEnrollmentState();
+    const kindInput = document.getElementById("kind_id");
+
+    // Virtual paid events are invalid without activating hidden venue fields.
+    expect(kindInput.validationMessage).to.equal("Paid tickets require an in-person or hybrid event.");
+    expect(document.querySelector('[name="venue_name"]').required).to.equal(false);
+
+    // An eligible event kind requires every server-backed venue value.
+    kindInput.value = "hybrid";
+    kindInput.dispatchEvent(new Event("change", { bubbles: true }));
+    syncEventEnrollmentState();
+
+    expect(kindInput.validationMessage).to.equal("");
+    expect(document.querySelector('[name="venue_name"]').validationMessage).to.equal(
+      "Paid tickets require a venue name.",
+    );
+    expect(document.querySelector('[name="venue_country_name"]').validationMessage).to.equal(
+      "Paid tickets require a country selected from the location search results.",
+    );
+
+    // Completing the venue clears every paid-ticket validation error.
+    for (const fieldName of [
+      "venue_name",
+      "venue_address",
+      "venue_city",
+      "venue_zip_code",
+      "venue_country_name",
+      "venue_country_code",
+    ]) {
+      await setInputValue(document.body, `[name="${fieldName}"]`, "Complete value");
+    }
+
+    expect(document.querySelector('[name="venue_name"]').checkValidity()).to.equal(true);
+    expect(document.querySelector('[name="venue_country_name"]').checkValidity()).to.equal(true);
+  });
+
   it("allows ticketed approval and waitlist modes while keeping them mutually exclusive", async () => {
     // Prepare ticketed enrollment controls with available capacity.
     mountEnrollmentControls();

@@ -169,6 +169,14 @@ describe("dashboard group event update template", () => {
     expect(template).not.to.include("{{ payment_recipient.recipient_id }}");
   });
 
+  it("explains the event and venue requirements for paid tickets", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      "Paid ticket prices require an in-person or hybrid event with a venue name, address, city, postal code, and country.",
+    );
+  });
+
   it("keeps payment guidance only for read-only paid events", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
