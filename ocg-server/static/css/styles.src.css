@@ -708,6 +708,7 @@ input:placeholder-shown {
 .icon-image { --icon-url: url('/static/images/icons/image.svg'); }
 .icon-info { --icon-url: url('/static/images/icons/info.svg'); }
 .icon-in-person { --icon-url: url('/static/images/icons/in_person.svg'); }
+.icon-invoice { --icon-url: url('/static/images/icons/invoice.svg'); }
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }
 .icon-lines { --icon-url: url('/static/images/icons/lines.svg'); }

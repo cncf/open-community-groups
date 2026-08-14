@@ -12,22 +12,27 @@
   </div>
 </div>
 
-<div class="relative overflow-x-auto">
+<div class="relative overflow-x-auto lg:overflow-x-visible">
   <table class="w-full table-auto text-left text-xs text-stone-500 lg:text-sm">
     <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
       <tr>
         <th scope="col" class="px-3 py-3 xl:px-5">Event</th>
-        <th scope="col" class="hidden px-3 py-3 md:table-cell xl:px-5">Purchased</th>
+        <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Purchased</th>
         <th scope="col" class="px-3 py-3 xl:px-5">Amount</th>
         <th scope="col" class="hidden px-3 py-3 lg:table-cell xl:px-5">Status</th>
-        <th scope="col" class="px-3 py-3 text-right xl:px-5">Documents</th>
+        <th scope="col" class="w-[112px] px-3 py-3 text-right xl:px-5">Documents</th>
       </tr>
     </thead>
     <tbody>
       {% if purchases.is_empty() -%}
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-20 text-center" colspan="5">
+          <td class="px-8 py-20 text-center lg:hidden" colspan="3">
+            {% include "dashboard/placeholders/user_purchases_table.html" -%}
+          </td>
+          <td class="hidden px-8 py-20 text-center lg:table-cell xl:hidden"
+              colspan="4">{% include "dashboard/placeholders/user_purchases_table.html" -%}</td>
+          <td class="hidden px-8 py-20 text-center xl:table-cell" colspan="5">
             {% include "dashboard/placeholders/user_purchases_table.html" -%}
           </td>
         </tr>
@@ -51,7 +56,7 @@
                 {% endif -%}
               </div>
             </th>
-            <td class="hidden whitespace-nowrap px-3 py-4 md:table-cell xl:px-5">
+            <td class="hidden whitespace-nowrap px-3 py-4 xl:table-cell xl:px-5">
               {% if let Some(completed_at) = purchase.completed_at -%}
                 {{ completed_at.format("%b %d, %Y") }}
               {% else -%}
@@ -79,27 +84,35 @@
                 {% endif -%}
               </div>
             </td>
-            <td class="min-w-40 px-3 py-4 text-right xl:px-5">
-              <div class="flex flex-col items-end gap-1.5">
-                {% if purchase.provider_invoice_id.is_some() -%}
-                  <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/invoice"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="font-medium text-primary-700 hover:underline">Invoice</a>
-                {% else -%}
-                  <span class="text-stone-400">Invoice processing</span>
-                {% endif -%}
-
+            <td class="w-[112px] px-3 py-4 text-right xl:px-5">
+              <div class="flex items-center justify-end gap-2">
                 {% for credit_note in purchase.credit_notes -%}
                   {% if credit_note.status == "issued" && credit_note.provider_credit_note_id.is_some() -%}
                     <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/credit-notes/{{ credit_note.event_purchase_credit_note_id }}"
                        target="_blank"
                        rel="noopener noreferrer"
-                       class="font-medium text-primary-700 hover:underline">Credit note</a>
+                       class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
+                       aria-label="Download credit note"
+                       title="Download credit note">
+                      <span class="svg-icon size-4 icon-download" aria-hidden="true"></span>
+                    </a>
                   {% else -%}
                     <span class="text-stone-400">Credit note {{ credit_note.status_label().to_lowercase() }}</span>
                   {% endif -%}
                 {% endfor -%}
+
+                {% if purchase.provider_invoice_id.is_some() -%}
+                  <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/invoice"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
+                     aria-label="View invoice"
+                     title="View invoice">
+                    <span class="svg-icon size-4 icon-eye" aria-hidden="true"></span>
+                  </a>
+                {% else -%}
+                  <span class="text-stone-400">Invoice processing</span>
+                {% endif -%}
               </div>
             </td>
           </tr>

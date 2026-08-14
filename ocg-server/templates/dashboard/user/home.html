@@ -22,7 +22,7 @@
     {{ dashboard::menu_title(text = "User", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "My Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/user?tab=groups") -}}
     {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events") -}}
-    {{ dashboard::menu_item(name = "Purchases & documents", icon = "ticket", is_active = content.is_purchases() , href = "/dashboard/user?tab=purchases") -}}
+    {{ dashboard::menu_item(name = "Purchases & documents", icon = "invoice", is_active = content.is_purchases() , href = "/dashboard/user?tab=purchases") -}}
     {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
     {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/user?tab=badges") -}}
     {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations") -}}
