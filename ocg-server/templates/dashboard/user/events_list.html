@@ -6,11 +6,11 @@
 {# Refund status badge and rejection reason tooltip. #}
 {% macro refund_status_badge(item, status_instance) -%}
   {% if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
-    {{ badges::invitation_badge(label = "Refund requested", with_border = true) -}}
+    {{ badges::payment_status_badge(label = "Refund requested") -}}
   {% else if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-    {{ badges::invitation_badge(label = "Refund processing", with_border = true) -}}
+    {{ badges::payment_status_badge(label = "Refund processing") -}}
   {% else if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approved) -%}
-    {{ badges::invitation_badge(label = "Refund approved", tone = "success", with_border = true) -}}
+    {{ badges::payment_status_badge(label = "Refund approved") -}}
   {% else if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Rejected) -%}
     {% if let Some(refund_rejection_reason) = &item.refund_rejection_reason -%}
       {% let refund_rejection_tooltip_id -%}refund-rejection-reason-{{ item.event.event_id }}-{{ status_instance }}{%- endlet %}
@@ -18,7 +18,7 @@
       <button type="button"
               class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
               aria-describedby="{{ refund_rejection_tooltip_id }}">
-        {{ badges::invitation_badge(label = "Refund rejected", tone = "danger", with_border = true) -}}
+        {{ badges::payment_status_badge(label = "Refund rejected") -}}
         <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800"
               aria-hidden="true"></span>
       </button>
@@ -34,7 +34,7 @@
       {% endcall -%}
     </span>
   {% else -%}
-    {{ badges::invitation_badge(label = "Refund rejected", tone = "danger", with_border = true) -}}
+    {{ badges::payment_status_badge(label = "Refund rejected") -}}
   {% endif -%}
 {% endif -%}
 {% endmacro refund_status_badge -%}
@@ -163,7 +163,7 @@
               </div>
               <div class="mt-1.5 flex flex-wrap items-center gap-1.5 xl:hidden">
                 {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
-                  {{ badges::status_badge(label = enrollment_status_label) -}}
+                  {{ badges::payment_status_badge(label = enrollment_status_label) -}}
                 {% endif -%}
                 {{ refund_status_badge(item, "mobile") -}}
               </div>
@@ -174,7 +174,7 @@
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 w-56">
               <div class="flex flex-wrap items-center gap-1.5">
                 {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
-                  {{ badges::status_badge(label = enrollment_status_label) -}}
+                  {{ badges::payment_status_badge(label = enrollment_status_label) -}}
                 {% endif -%}
                 {{ refund_status_badge(item, "desktop") -}}
               </div>

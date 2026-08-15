@@ -313,8 +313,8 @@
                             icon = "cancel",
                             label = "Cancel",
                             disabled_title = "Your role cannot cancel events.",
-                            series_message = "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?",
-                            single_message = "Cancel this event? This cannot be undone. All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
+                            series_message = "Canceling is permanent. Attendee registrations are canceled immediately, and full refunds for eligible paid purchases are queued and may take time to process. Which events would you like to cancel?",
+                            single_message = "Cancel this event? This cannot be undone. All attendee registrations will be canceled immediately. Full refunds for eligible paid purchases will be queued and may take time to process.",
                             success_message = "You have successfully canceled the event.",
                             series_success_message = "You have successfully canceled the events.",
                             series_error_message = "Something went wrong canceling these events. Please try again later.",
@@ -647,7 +647,8 @@
             {% else -%}
               data-series-scope-text="All in series"
             {% endif -%}
-            data-confirm-text="Yes"
+            data-confirm-text="{% if action == "cancel" %}Cancel event{% else %}Yes{% endif %}"
+            data-cancel-text="{% if action == "cancel" %}Keep event{% else %}No{% endif %}"
             data-series-message="{{ series_message }}"
             data-single-message="{{ single_message }}"
             data-success-message="{{ success_message }}"

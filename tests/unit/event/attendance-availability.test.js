@@ -96,27 +96,47 @@ describe("attendance availability", () => {
         },
       ],
       waitlist_count: 0,
-      waitlist_enabled: true,
+      waitlist_enabled: false,
     });
 
     // Availability updates metadata, public counters, and ticket controls.
     expect(container.dataset.capacity).to.equal("10");
     expect(container.dataset.remainingCapacity).to.equal("4");
-    expect(document.querySelector("[data-availability-capacity]")?.textContent).to.equal("10");
-    expect(document.querySelector("[data-availability-remaining]")?.textContent).to.equal("4");
-    expect(document.querySelector('[data-attendance-role="ticket-type-option"]')?.disabled).to.equal(false);
-    const ticketCardBody = document.querySelector('[data-attendance-role="ticket-type-card-body"]');
-    expect(ticketCardBody.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(
+      document.querySelector("[data-availability-capacity]")?.textContent,
+    ).to.equal("10");
+    expect(
+      document.querySelector("[data-availability-remaining]")?.textContent,
+    ).to.equal("4");
+    expect(
+      document.querySelector('[data-attendance-role="ticket-type-option"]')
+        ?.disabled,
+    ).to.equal(false);
+    const ticketCardBody = document.querySelector(
+      '[data-attendance-role="ticket-type-card-body"]',
+    );
+    expect(
+      ticketCardBody.classList.contains("hover:border-primary-300"),
+    ).to.equal(true);
     expect(ticketCardBody.classList.contains("hover:shadow-sm")).to.equal(true);
-    expect(document.querySelector('[data-attendance-role="ticket-type-status-label"]')?.textContent).to.equal(
-      "Available now",
+    expect(
+      document.querySelector(
+        '[data-attendance-role="ticket-type-status-label"]',
+      )?.textContent,
+    ).to.equal("Available now");
+    expect(
+      document.querySelector('[data-attendance-role="ticket-type-price-badge"]')
+        ?.textContent,
+    ).to.equal(
+      new Intl.NumberFormat(undefined, {
+        currency: "EUR",
+        style: "currency",
+      }).format(20),
     );
-    expect(document.querySelector('[data-attendance-role="ticket-type-price-badge"]')?.textContent).to.equal(
-      new Intl.NumberFormat(undefined, { currency: "EUR", style: "currency" }).format(20),
-    );
-    expect(document.querySelector('[data-attendance-role="ticket-type-title"]')?.textContent).to.equal(
-      "General admission",
-    );
+    expect(
+      document.querySelector('[data-attendance-role="ticket-type-title"]')
+        ?.textContent,
+    ).to.equal("General admission");
   });
 
   it("renders closed registration windows into messages and disabled tickets", () => {
@@ -146,9 +166,15 @@ describe("attendance availability", () => {
 
     // Render a closed registration window over otherwise sellable tickets.
     const container = document.querySelector("[data-attendance-container]");
-    const ticketOption = container.querySelector('[data-attendance-role="ticket-type-option"]');
-    const ticketStatusLabel = container.querySelector('[data-attendance-role="ticket-type-status-label"]');
-    const ticketCardBody = container.querySelector('[data-attendance-role="ticket-type-card-body"]');
+    const ticketOption = container.querySelector(
+      '[data-attendance-role="ticket-type-option"]',
+    );
+    const ticketStatusLabel = container.querySelector(
+      '[data-attendance-role="ticket-type-status-label"]',
+    );
+    const ticketCardBody = container.querySelector(
+      '[data-attendance-role="ticket-type-card-body"]',
+    );
     renderAttendanceAvailability(container, {
       attendee_approval_required: false,
       capacity: null,
@@ -174,15 +200,23 @@ describe("attendance availability", () => {
     });
 
     // Closed windows update metadata, show the message and disable ticket selection.
-    const message = document.querySelector("[data-registration-window-message-display]");
+    const message = document.querySelector(
+      "[data-registration-window-message-display]",
+    );
     expect(container.dataset.registrationWindowOpen).to.equal("false");
-    expect(container.dataset.registrationWindowUnavailableTitle).to.equal("Registration closed May 1, 2099.");
+    expect(container.dataset.registrationWindowUnavailableTitle).to.equal(
+      "Registration closed May 1, 2099.",
+    );
     expect(message.textContent).to.equal("Registration closed May 1, 2099.");
     expect(message.classList.contains("hidden")).to.equal(false);
     expect(ticketOption.disabled).to.equal(true);
     expect(ticketOption.checked).to.equal(false);
-    expect(ticketCardBody.classList.contains("hover:border-primary-300")).to.equal(false);
-    expect(ticketCardBody.classList.contains("hover:shadow-sm")).to.equal(false);
+    expect(
+      ticketCardBody.classList.contains("hover:border-primary-300"),
+    ).to.equal(false);
+    expect(ticketCardBody.classList.contains("hover:shadow-sm")).to.equal(
+      false,
+    );
     expect(ticketStatusLabel.textContent).to.equal("Registration not open");
   });
 
@@ -228,13 +262,25 @@ describe("attendance availability", () => {
     await card.updateComplete;
 
     // Appended cards should use the same closed-registration state as cached cards.
-    const ticketOption = card.querySelector('[data-attendance-role="ticket-type-option"]');
-    const ticketCardBody = card.querySelector('[data-attendance-role="ticket-type-card-body"]');
-    const ticketStatusLabel = card.querySelector('[data-attendance-role="ticket-type-status-label"]');
-    const ticketTitle = card.querySelector('[data-attendance-role="ticket-type-title"]');
+    const ticketOption = card.querySelector(
+      '[data-attendance-role="ticket-type-option"]',
+    );
+    const ticketCardBody = card.querySelector(
+      '[data-attendance-role="ticket-type-card-body"]',
+    );
+    const ticketStatusLabel = card.querySelector(
+      '[data-attendance-role="ticket-type-status-label"]',
+    );
+    const ticketTitle = card.querySelector(
+      '[data-attendance-role="ticket-type-title"]',
+    );
     expect(ticketOption.disabled).to.equal(true);
-    expect(ticketCardBody.classList.contains("cursor-not-allowed")).to.equal(true);
-    expect(ticketStatusLabel.textContent.trim()).to.equal("Registration not open");
+    expect(ticketCardBody.classList.contains("cursor-not-allowed")).to.equal(
+      true,
+    );
+    expect(ticketStatusLabel.textContent.trim()).to.equal(
+      "Registration not open",
+    );
     expect(ticketTitle.textContent.trim()).to.equal("General admission");
   });
 
@@ -268,15 +314,29 @@ describe("attendance availability", () => {
 
     const card = container.querySelector("attendance-ticket-card");
     await card.updateComplete;
-    const ticketOption = card.querySelector('[data-attendance-role="ticket-type-option"]');
-    const ticketCardBody = card.querySelector('[data-attendance-role="ticket-type-card-body"]');
+    const ticketOption = card.querySelector(
+      '[data-attendance-role="ticket-type-option"]',
+    );
+    const ticketCardBody = card.querySelector(
+      '[data-attendance-role="ticket-type-card-body"]',
+    );
 
     ticketOption.focus();
 
-    expect(card.querySelector('[data-attendance-role="ticket-type-indicator"]')).to.not.equal(null);
-    expect(card.querySelector('[data-attendance-role="ticket-type-status-dot"]')).to.not.equal(null);
-    expect(card.textContent).to.include("Includes lunch and workshop materials.");
-    expect(ticketCardBody.classList.contains("group-has-[input:focus-visible]:ring-2")).to.equal(true);
+    expect(
+      card.querySelector('[data-attendance-role="ticket-type-indicator"]'),
+    ).to.not.equal(null);
+    expect(
+      card.querySelector('[data-attendance-role="ticket-type-status-dot"]'),
+    ).to.not.equal(null);
+    expect(card.textContent).to.include(
+      "Includes lunch and workshop materials.",
+    );
+    expect(
+      ticketCardBody.classList.contains(
+        "group-has-[input:focus-visible]:ring-2",
+      ),
+    ).to.equal(true);
     expect(document.activeElement).to.equal(ticketOption);
   });
 
@@ -377,14 +437,20 @@ describe("attendance availability", () => {
 
     // Fresh copy replaces the cached description.
     renderAttendanceAvailability(container, availability);
-    expect(container.querySelector('[data-attendance-role="ticket-type-description"]').textContent).to.equal(
-      "Updated description",
-    );
+    expect(
+      container.querySelector(
+        '[data-attendance-role="ticket-type-description"]',
+      ).textContent,
+    ).to.equal("Updated description");
 
     // Removing the description from availability also removes stale cached copy.
     availability.ticket_types[0].description = null;
     renderAttendanceAvailability(container, availability);
-    expect(container.querySelector('[data-attendance-role="ticket-type-description"]')).to.equal(null);
+    expect(
+      container.querySelector(
+        '[data-attendance-role="ticket-type-description"]',
+      ),
+    ).to.equal(null);
   });
 
   it("removes cached tickets missing from public availability", () => {
@@ -431,7 +497,9 @@ describe("attendance availability", () => {
     });
 
     // The private tier and its cached attendee-facing details are removed together.
-    expect(container.querySelector('[value="ticket-public"]')).to.not.equal(null);
+    expect(container.querySelector('[value="ticket-public"]')).to.not.equal(
+      null,
+    );
     expect(container.querySelector('[value="ticket-private"]')).to.equal(null);
     expect(container.textContent).to.not.include("Invitation-only details");
   });

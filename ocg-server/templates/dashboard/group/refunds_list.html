@@ -320,7 +320,13 @@
                   </span>
                   {% if let Some(reason) = &refund.requested_reason -%}
                     <span class="block">
-                      <span class="block font-semibold text-stone-500">Reason</span>
+                      <span class="block font-semibold text-stone-500">
+                        {% if refund.kind.as_deref() == Some("attendance-cancellation") || refund.kind.as_deref() == Some("event-cancellation") -%}
+                          Original attendee request reason
+                        {% else -%}
+                          Reason
+                        {% endif -%}
+                      </span>
                       <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ reason }}</span>
                     </span>
                   {% endif -%}
@@ -345,8 +351,9 @@
                   {% endcall -%}
                 </span>
               </div>
+              <div class="mt-1 text-xs text-stone-600">{{ refund.kind_label() }}</div>
               <div class="mt-2 xl:hidden">
-                {{ badges::invitation_badge(label = refund.status.label() , tone = refund.status.tone(), with_border = true) -}}
+                {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
                 {% if let Some(attempt_count) = refund.attempt_count -%}
                   {% if *attempt_count > 0 && refund.can_retry() -%}
                     <div class="mt-1 text-xs text-stone-600">
@@ -357,7 +364,7 @@
               </div>
             </td>
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
-              {{ badges::invitation_badge(label = refund.status.label() , tone = refund.status.tone(), with_border = true) -}}
+              {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
               {% if let Some(attempt_count) = refund.attempt_count -%}
                 {% if *attempt_count > 0 && refund.can_retry() -%}
                   <div class="mt-2 text-xs text-stone-600">

@@ -8,7 +8,10 @@ import {
 } from "/static/js/event/attendance-view.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
+import {
+  dispatchHtmxAfterRequest,
+  dispatchHtmxBeforeRequest,
+} from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 // Initialize attendance dom for the test.
@@ -92,7 +95,18 @@ const renderAttendanceDom = ({
         <div class="svg-icon icon-refund" data-attendance-icon></div>
         <span data-attendance-label>Request refund</span>
       </button>
-      <p data-attendance-role="refund-rejection-reason" class="hidden"></p>
+      <button
+        data-attendance-role="refund-rejection-trigger"
+        class="hidden"
+        aria-describedby="refund-rejection-reason-test"
+      ></button>
+      <span data-attendance-role="refund-rejection-tooltip" class="hidden">
+        <p
+          id="refund-rejection-reason-test"
+          data-attendance-role="refund-rejection-reason"
+          class="hidden"
+        ></p>
+      </span>
       ${
         includeRegistrationQuestions
           ? `
@@ -148,27 +162,57 @@ const renderAttendanceDom = ({
 
   return {
     container: document.querySelector("[data-attendance-container]"),
-    checker: document.querySelector('[data-attendance-role="attendance-checker"]'),
-    loadingButton: document.querySelector('[data-attendance-role="loading-btn"]'),
+    checker: document.querySelector(
+      '[data-attendance-role="attendance-checker"]',
+    ),
+    loadingButton: document.querySelector(
+      '[data-attendance-role="loading-btn"]',
+    ),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
     leaveButton: document.querySelector('[data-attendance-role="leave-btn"]'),
     refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
-    refundRejectionReason: document.querySelector('[data-attendance-role="refund-rejection-reason"]'),
-    questionsModal: document.querySelector('[data-attendance-role="registration-modal"]'),
-    meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
+    refundRejectionReason: document.querySelector(
+      '[data-attendance-role="refund-rejection-reason"]',
+    ),
+    refundRejectionTooltip: document.querySelector(
+      '[data-attendance-role="refund-rejection-tooltip"]',
+    ),
+    refundRejectionTrigger: document.querySelector(
+      '[data-attendance-role="refund-rejection-trigger"]',
+    ),
+    questionsModal: document.querySelector(
+      '[data-attendance-role="registration-modal"]',
+    ),
+    meetingDetails: Array.from(
+      document.querySelectorAll("[data-meeting-details]"),
+    ),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
     liveJoinLink: document.querySelector("[data-join-link]"),
     menuJoinLink: document.querySelector("[data-join-link-menu]"),
     availabilityCaptions: {
-      capacity: document.querySelector('[data-availability-caption="capacity"]'),
-      attendees: document.querySelector('[data-availability-caption="attendees"]'),
-      remaining: document.querySelector('[data-availability-caption="remaining"]'),
-      waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
+      capacity: document.querySelector(
+        '[data-availability-caption="capacity"]',
+      ),
+      attendees: document.querySelector(
+        '[data-availability-caption="attendees"]',
+      ),
+      remaining: document.querySelector(
+        '[data-availability-caption="remaining"]',
+      ),
+      waitlist: document.querySelector(
+        '[data-availability-caption="waitlist"]',
+      ),
     },
-    availabilityAttendeeCount: document.querySelector("[data-availability-attendee-count]"),
-    availabilityCapacity: document.querySelector("[data-availability-capacity]"),
-    soldOutRibbon: document.querySelector("[data-availability-sold-out-ribbon]"),
+    availabilityAttendeeCount: document.querySelector(
+      "[data-availability-attendee-count]",
+    ),
+    availabilityCapacity: document.querySelector(
+      "[data-availability-capacity]",
+    ),
+    soldOutRibbon: document.querySelector(
+      "[data-availability-sold-out-ribbon]",
+    ),
   };
 };
 
@@ -183,7 +227,13 @@ describe("event attendance", () => {
 
   it("shows attendee controls and meeting details after a successful attendance check", () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, leaveButton, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
+    const {
+      checker,
+      leaveButton,
+      alwaysJoinLink,
+      liveJoinLink,
+      meetingDetails,
+    } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "true",
     });
 
@@ -194,10 +244,14 @@ describe("event attendance", () => {
 
     // Confirm a successful attendance check reveals attendee-only controls.
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
-    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Cancel attendance");
-    expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
-      true,
-    );
+    expect(
+      leaveButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Cancel attendance");
+    expect(
+      leaveButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-cancel"),
+    ).to.equal(true);
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
@@ -207,7 +261,13 @@ describe("event attendance", () => {
 
   it("shows the join meeting link when attendee meeting access is open", () => {
     // Read controls for the attendee meeting-access state.
-    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
+    const {
+      checker,
+      alwaysJoinLink,
+      liveJoinLink,
+      menuJoinLink,
+      meetingDetails,
+    } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "true",
     });
 
@@ -259,12 +319,20 @@ describe("event attendance", () => {
 
     // Verify attendance clicks work after the page body is swapped.
     expect(env.current.swal.calls[0].icon).to.equal("info");
-    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=%2Fevents%2Ftest-event");
+    expect(env.current.swal.calls[0].html).to.include(
+      "/log-in?next_url=%2Fevents%2Ftest-event",
+    );
   });
 
   it("keeps the join meeting link hidden when the event is canceled", () => {
     // Read controls for canceled meeting-access state.
-    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
+    const {
+      checker,
+      alwaysJoinLink,
+      liveJoinLink,
+      menuJoinLink,
+      meetingDetails,
+    } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "true",
       canceled: "true",
     });
@@ -285,7 +353,13 @@ describe("event attendance", () => {
 
   it("keeps the join meeting link hidden before attendee meeting access opens", () => {
     // Read controls for meeting access before it opens.
-    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
+    const {
+      checker,
+      alwaysJoinLink,
+      liveJoinLink,
+      menuJoinLink,
+      meetingDetails,
+    } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "false",
     });
 
@@ -305,11 +379,12 @@ describe("event attendance", () => {
 
   it("falls back to the waitlist sign-in state when the check response cannot be parsed", () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, signinButton, attendButton, leaveButton } = renderAttendanceDom({
-      capacity: "10",
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { checker, signinButton, attendButton, leaveButton } =
+      renderAttendanceDom({
+        capacity: "10",
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      });
 
     // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
@@ -318,7 +393,9 @@ describe("event attendance", () => {
 
     // Confirm an unparseable response falls back to the waitlist sign-in state.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
-    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Join waiting list");
+    expect(
+      signinButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Join waiting list");
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
   });
@@ -341,7 +418,9 @@ describe("event attendance", () => {
     // Check the public tier controls the simple RSVP action
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Join waiting list");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Join waiting list");
   });
 
   it("uses the request invitation icon for approval-required sign-in state", () => {
@@ -356,12 +435,18 @@ describe("event attendance", () => {
     });
 
     // Verify uses the request invitation icon for approval-required sign-in state.
-    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
     expect(
-      signinButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-request-invitation"),
+      signinButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request invitation");
+    expect(
+      signinButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-request-invitation"),
     ).to.equal(true);
     expect(
-      signinButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
+      signinButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-user-plus"),
     ).to.equal(false);
   });
 
@@ -379,7 +464,9 @@ describe("event attendance", () => {
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(signinButton.disabled).to.equal(false);
     expect(signinButton.hasAttribute("title")).to.equal(false);
-    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(
+      signinButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
     expect(attendButton.classList.contains("hidden")).to.equal(true);
   });
 
@@ -395,7 +482,9 @@ describe("event attendance", () => {
 
     // Verify keeps no-capacity events behind sign-in when signed out.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
-    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(
+      signinButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
     expect(attendButton.classList.contains("hidden")).to.equal(true);
   });
 
@@ -412,7 +501,9 @@ describe("event attendance", () => {
 
     // Confirm approval-required no-capacity events stay behind sign-in.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
-    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
+    expect(
+      signinButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request invitation");
     expect(attendButton.classList.contains("hidden")).to.equal(true);
   });
 
@@ -425,7 +516,11 @@ describe("event attendance", () => {
     });
 
     // Dispatch the HTMX before-request event.
-    const beforeRequestEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const beforeRequestEvent = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
 
     // Verify shows loading state before attending and emits a waitlist success.
     expect(beforeRequestEvent.defaultPrevented).to.equal(false);
@@ -449,13 +544,18 @@ describe("event attendance", () => {
 
   it("blocks the attend request until registration questions are answered", () => {
     // Render attendance controls with registration questions.
-    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
-      includeRegistrationQuestions: true,
-    });
+    const { attendButton, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        includeRegistrationQuestions: true,
+      });
 
     // Expose the attend button before dispatching the event.
     attendButton.classList.remove("hidden");
-    const event = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const event = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
 
     // Verify blocks the attend request until registration questions are answered.
     expect(event.defaultPrevented).to.equal(true);
@@ -467,23 +567,38 @@ describe("event attendance", () => {
 
   it("allows answered registration question requests to continue", () => {
     // Render attendance controls with registration questions.
-    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
-      includeRegistrationQuestions: true,
-    });
-    const registrationAnswer = questionsModal.querySelector("[data-question-answer]");
-    const registrationForm = questionsModal.querySelector('[data-attendance-role="registration-form"]');
+    const { attendButton, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        includeRegistrationQuestions: true,
+      });
+    const registrationAnswer = questionsModal.querySelector(
+      "[data-question-answer]",
+    );
+    const registrationForm = questionsModal.querySelector(
+      '[data-attendance-role="registration-form"]',
+    );
 
     // First request opens the questions modal instead of submitting.
     attendButton.classList.remove("hidden");
-    const blockedEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const blockedEvent = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
     expect(blockedEvent.defaultPrevented).to.equal(true);
 
     // Submit valid answers through the same modal flow used by the page.
     registrationAnswer.value = "Vegetarian lunch";
-    registrationForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    registrationForm.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
 
     // The resumed attend request is no longer blocked by question gating.
-    const resumedEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const resumedEvent = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
     expect(resumedEvent.defaultPrevented).to.equal(false);
     expect(container.dataset.questionsContinueAction).to.equal(undefined);
     expect(attendButton.classList.contains("hidden")).to.equal(true);
@@ -511,12 +626,13 @@ describe("event attendance", () => {
 
   it("allows waitlist joins before registration questions are answered", () => {
     // Render full-event attendance controls with waitlist enabled.
-    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
-      capacity: "10",
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        capacity: "10",
+        includeRegistrationQuestions: true,
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      });
     const event = new CustomEvent("htmx:beforeRequest", {
       bubbles: true,
       cancelable: true,
@@ -543,11 +659,12 @@ describe("event attendance", () => {
 
   it("reopens questions when a simple waitlist ticket becomes available", () => {
     // Render a simple sold-out flow that initially defers registration questions.
-    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        includeRegistrationQuestions: true,
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      });
     container.dataset.hasSoldOutTicketTypes = "true";
     container.dataset.ticketPurchaseAvailable = "false";
     attendButton.classList.remove("hidden");
@@ -625,8 +742,12 @@ describe("event attendance", () => {
         </div>
       `,
     );
-    const ticketModal = container.querySelector('[data-attendance-role="ticket-modal"]');
-    const checkoutForm = container.querySelector('[data-attendance-role="checkout-form"]');
+    const ticketModal = container.querySelector(
+      '[data-attendance-role="ticket-modal"]',
+    );
+    const checkoutForm = container.querySelector(
+      '[data-attendance-role="checkout-form"]',
+    );
 
     // Choosing a tier comes before collecting registration answers.
     attendButton.classList.remove("hidden");
@@ -637,7 +758,8 @@ describe("event attendance", () => {
     // Joining the sold-out tier does not open questions or submit stale answers.
     const parameters = {
       event_ticket_type_id: "sold-out-tier",
-      registration_answers: '{"answers":[{"question_id":"question-1","value":"early"}]}',
+      registration_answers:
+        '{"answers":[{"question_id":"question-1","value":"early"}]}',
     };
     const event = new CustomEvent("htmx:configRequest", {
       bubbles: true,
@@ -676,7 +798,9 @@ describe("event attendance", () => {
         </form>
       `,
     );
-    const checkoutForm = container.querySelector('[data-attendance-role="checkout-form"]');
+    const checkoutForm = container.querySelector(
+      '[data-attendance-role="checkout-form"]',
+    );
     const parameters = {
       discount_code: "SAVE",
       event_ticket_type_id: "free-tier",
@@ -693,17 +817,20 @@ describe("event attendance", () => {
     });
     checkoutForm.dispatchEvent(event);
     expect(parameters).to.not.have.property("discount_code");
-    expect(event.detail.unfilteredParameters).to.not.have.property("discount_code");
+    expect(event.detail.unfilteredParameters).to.not.have.property(
+      "discount_code",
+    );
   });
 
   it("opens registration questions for promoted waitlist attendees", () => {
     // Render waitlist controls with registration questions.
-    const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
-      capacity: "10",
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, checker, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        capacity: "10",
+        includeRegistrationQuestions: true,
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      });
 
     // Apply the promoted waitlist state from the attendance check.
     dispatchHtmxAfterRequest(checker, {
@@ -714,11 +841,13 @@ describe("event attendance", () => {
 
     // Verify opens registration questions for promoted waitlist attendees.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Complete registration",
-    );
     expect(
-      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-list-check"),
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Complete registration");
+    expect(
+      attendButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-list-check"),
     ).to.equal(true);
 
     // Click the attend button.
@@ -758,9 +887,10 @@ describe("event attendance", () => {
 
   it("completes ticketed pending questions without reopening ticket selection", () => {
     // Render a ticketed promoted-attendee state with required questions.
-    const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
-      includeRegistrationQuestions: true,
-    });
+    const { attendButton, checker, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        includeRegistrationQuestions: true,
+      });
     container.dataset.hasVisibleTicketTypes = "true";
     container.dataset.isSimpleRsvp = "false";
     container.insertAdjacentHTML(
@@ -771,25 +901,41 @@ describe("event attendance", () => {
         </div>
       `,
     );
-    const ticketModal = container.querySelector('[data-attendance-role="ticket-modal"]');
-    const registrationAnswer = questionsModal.querySelector("[data-question-answer]");
-    const registrationForm = questionsModal.querySelector('[data-attendance-role="registration-form"]');
+    const ticketModal = container.querySelector(
+      '[data-attendance-role="ticket-modal"]',
+    );
+    const registrationAnswer = questionsModal.querySelector(
+      "[data-question-answer]",
+    );
+    const registrationForm = questionsModal.querySelector(
+      '[data-attendance-role="registration-form"]',
+    );
 
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({
         status: "registration-questions-pending",
       }),
     });
-    const unansweredEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const unansweredEvent = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
     expect(unansweredEvent.defaultPrevented).to.equal(true);
     attendButton.click();
     registrationAnswer.value = "Vegetarian lunch";
-    registrationForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    registrationForm.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
 
     // Valid answers resume the attendance request without looping through ticket choice.
     expect(questionsModal.classList.contains("hidden")).to.equal(true);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
-    const resumedEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const resumedEvent = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
     expect(resumedEvent.defaultPrevented).to.equal(false);
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
@@ -800,16 +946,20 @@ describe("event attendance", () => {
     const { signinButton, leaveButton } = renderAttendanceDom();
 
     // Keep a reference to the attendance label element.
-    signinButton.querySelector("[data-attendance-label]").textContent = "Join waiting list";
+    signinButton.querySelector("[data-attendance-label]").textContent =
+      "Join waiting list";
     signinButton.click();
 
     // Verify shows sign-in info for waitlists and confirms leaving the waitlist.
     expect(env.current.swal.calls[0].icon).to.equal("info");
     expect(env.current.swal.calls[0].html).to.include("join the waiting list");
-    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=%2Fevents%2Ftest-event");
+    expect(env.current.swal.calls[0].html).to.include(
+      "/log-in?next_url=%2Fevents%2Ftest-event",
+    );
 
     // Keep a reference to the attendance label element.
-    leaveButton.querySelector("[data-attendance-label]").textContent = "Leave waiting list";
+    leaveButton.querySelector("[data-attendance-label]").textContent =
+      "Leave waiting list";
     env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
     await waitForMicrotask();
@@ -819,7 +969,9 @@ describe("event attendance", () => {
       text: "Are you sure you want to leave the waiting list?",
       icon: "warning",
     });
-    expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      ["#leave-btn", "confirmed"],
+    ]);
   });
 
   it("escapes the sign-in return path in attendance alerts", () => {
@@ -841,7 +993,8 @@ describe("event attendance", () => {
     const { leaveButton } = renderAttendanceDom();
 
     // Keep a reference to the attendance label element.
-    leaveButton.querySelector("[data-attendance-label]").textContent = "Request pending";
+    leaveButton.querySelector("[data-attendance-label]").textContent =
+      "Request pending";
     leaveButton.setAttribute("aria-label", "Request pending – cancel request");
     env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
@@ -852,7 +1005,9 @@ describe("event attendance", () => {
       text: "Are you sure you want to cancel your invitation request?",
       icon: "warning",
     });
-    expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      ["#leave-btn", "confirmed"],
+    ]);
   });
 
   it("uses cancel icons for waitlist and pending invitation cancellation", () => {
@@ -865,11 +1020,15 @@ describe("event attendance", () => {
     });
 
     // Verify uses cancel icons for waitlist and pending invitation cancellation.
-    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Leave waiting list");
+    expect(
+      leaveButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Leave waiting list");
     expect(leaveButton.hasAttribute("aria-label")).to.equal(false);
-    expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
-      true,
-    );
+    expect(
+      leaveButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-cancel"),
+    ).to.equal(true);
 
     // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
@@ -877,11 +1036,17 @@ describe("event attendance", () => {
     });
 
     // Verify uses cancel icons for waitlist and pending invitation cancellation.
-    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request pending");
-    expect(leaveButton.getAttribute("aria-label")).to.equal("Request pending – cancel request");
-    expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
-      true,
+    expect(
+      leaveButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request pending");
+    expect(leaveButton.getAttribute("aria-label")).to.equal(
+      "Request pending – cancel request",
     );
+    expect(
+      leaveButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-cancel"),
+    ).to.equal(true);
   });
 
   it("disables attendance changes for past events", () => {
@@ -917,12 +1082,18 @@ describe("event attendance", () => {
     });
 
     // Verify uses the request invitation icon for approval-required guest state.
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
     expect(
-      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-request-invitation"),
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request invitation");
+    expect(
+      attendButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-request-invitation"),
     ).to.equal(true);
     expect(
-      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
+      attendButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-user-plus"),
     ).to.equal(false);
   });
 
@@ -943,9 +1114,13 @@ describe("event attendance", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
     expect(
-      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
+    expect(
+      attendButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-user-plus"),
     ).to.equal(true);
   });
 
@@ -965,9 +1140,16 @@ describe("event attendance", () => {
     });
 
     // The event page identifies the claim action without describing the user as an attendee.
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Claim ticket");
-    expect(attendButton.dataset.resumeUrl).to.equal("/dashboard/user?tab=invitations#event-offer-offer-1");
-    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(true);
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Claim ticket");
+    expect(attendButton.dataset.resumeUrl).to.equal(
+      "/dashboard/user?tab=invitations#event-offer-offer-1",
+    );
+    expect(
+      dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true })
+        .defaultPrevented,
+    ).to.equal(true);
   });
 
   it("clears a cached offer action when the offer is no longer claimable", () => {
@@ -980,17 +1162,22 @@ describe("event attendance", () => {
         status: "invitation-approved",
       }),
     });
-    expect(attendButton.dataset.resumeUrl).to.equal("/dashboard/user?tab=invitations#event-offer-offer-1");
+    expect(attendButton.dataset.resumeUrl).to.equal(
+      "/dashboard/user?tab=invitations#event-offer-offer-1",
+    );
 
     // A non-claimable response restores the normal event action without a stale link.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "none" }),
     });
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
     expect(attendButton.hasAttribute("data-resume-url")).to.equal(false);
-    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(
-      false,
-    );
+    expect(
+      dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true })
+        .defaultPrevented,
+    ).to.equal(false);
   });
 
   it("routes owned simple RSVP offers with questions to the dashboard claim surface", () => {
@@ -1009,10 +1196,17 @@ describe("event attendance", () => {
     });
 
     // The dashboard owns offer acceptance and its registration question flow.
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Confirm RSVP");
-    expect(attendButton.dataset.resumeUrl).to.equal("/dashboard/user?tab=invitations#event-offer-offer-2");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Confirm RSVP");
+    expect(attendButton.dataset.resumeUrl).to.equal(
+      "/dashboard/user?tab=invitations#event-offer-offer-2",
+    );
     expect(questionsModal.classList.contains("hidden")).to.equal(true);
-    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(true);
+    expect(
+      dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true })
+        .defaultPrevented,
+    ).to.equal(true);
   });
 
   it("shows an expired ticket offer as a disabled terminal state", () => {
@@ -1027,9 +1221,9 @@ describe("event attendance", () => {
     });
 
     // The user sees the exact terminal state and cannot retry the expired offer.
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Ticket offer expired",
-    );
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Ticket offer expired");
     expect(attendButton.disabled).to.equal(true);
   });
 
@@ -1051,7 +1245,9 @@ describe("event attendance", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event has been canceled.");
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
   });
 
   it("shows a sold-out attend button when no waitlist is available", () => {
@@ -1110,7 +1306,9 @@ describe("event attendance", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(false);
     expect(attendButton.title).to.equal("");
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Join waiting list");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Join waiting list");
   });
 
   it("allows approval requests when event capacity is zero", () => {
@@ -1130,7 +1328,9 @@ describe("event attendance", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(false);
     expect(attendButton.title).to.equal("");
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request invitation");
   });
 
   it("clears the availability spinner when refreshed capacity is zero", async () => {
@@ -1165,13 +1365,15 @@ describe("event attendance", () => {
 
       // Verify hydration replaces the spinner with the resolved zero capacity.
       expect(availabilityCapacity.textContent.trim()).to.equal("0");
-      expect(availabilityCapacity.querySelector("[data-availability-spinner]")).to.equal(null);
+      expect(
+        availabilityCapacity.querySelector("[data-availability-spinner]"),
+      ).to.equal(null);
     } finally {
       fetchMock.restore();
     }
   });
 
-  it("shows remaining seats instead of waitlist while capacity is still available", async () => {
+  it("hides remaining seats when the waitlist is enabled", async () => {
     // Render the attendance fixture.
     const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
@@ -1195,20 +1397,32 @@ describe("event attendance", () => {
       },
     });
 
-    // Verify shows remaining seats instead of waitlist.
+    // Verify the waitlist mode does not expose a separate remaining-seat count.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Verify shows remaining seats instead of waitlist while capacity is still.
-      expect(availabilityCaptions.attendees.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(false);
+      // Capacity remains visible, while remaining and waitlist counts stay hidden.
+      expect(
+        availabilityCaptions.attendees.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.capacity.classList.contains("hidden"),
+      ).to.equal(false);
       expect(availabilityCapacity.textContent.trim()).to.equal("2");
-      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
-      expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(true);
-      expect(availabilityCaptions.remaining.textContent).to.include("1");
-      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(false);
+      expect(
+        availabilityCaptions.remaining.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.remaining.classList.contains("inline"),
+      ).to.equal(false);
+      expect(availabilityCaptions.remaining.textContent).to.not.include("1");
+      expect(
+        availabilityCaptions.waitlist.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.waitlist.classList.contains("inline"),
+      ).to.equal(false);
       expect(availabilityCaptions.waitlist.textContent).to.not.include("1");
     } finally {
       fetchMock.restore();
@@ -1380,11 +1594,19 @@ describe("event attendance", () => {
 
       // Assert the expected text is rendered.
       expect(availabilityCapacity.textContent.trim()).to.equal("2");
-      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(false);
-      expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(true);
+      expect(
+        availabilityCaptions.waitlist.classList.contains("hidden"),
+      ).to.equal(false);
+      expect(
+        availabilityCaptions.waitlist.classList.contains("inline"),
+      ).to.equal(true);
       expect(availabilityCaptions.waitlist.textContent).to.include("3");
-      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(false);
+      expect(
+        availabilityCaptions.remaining.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.remaining.classList.contains("inline"),
+      ).to.equal(false);
       expect(availabilityCaptions.remaining.textContent).to.not.include("3");
     } finally {
       fetchMock.restore();
@@ -1393,7 +1615,11 @@ describe("event attendance", () => {
 
   it("shows attendee count when refreshed availability is unlimited", async () => {
     // Keep references to the fixture controls under assertion.
-    const { availabilityAttendeeCount, availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
+    const {
+      availabilityAttendeeCount,
+      availabilityCapacity,
+      availabilityCaptions,
+    } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
     const fetchMock = mockFetch({
@@ -1424,11 +1650,21 @@ describe("event attendance", () => {
       // Verify shows attendee count when refreshed availability is unlimited.
       expect(availabilityCapacity.textContent.trim()).to.equal("");
       expect(availabilityAttendeeCount.textContent.trim()).to.equal("12");
-      expect(availabilityCaptions.attendees.classList.contains("hidden")).to.equal(false);
-      expect(availabilityCaptions.attendees.classList.contains("flex")).to.equal(true);
-      expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
+      expect(
+        availabilityCaptions.attendees.classList.contains("hidden"),
+      ).to.equal(false);
+      expect(
+        availabilityCaptions.attendees.classList.contains("flex"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.capacity.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.remaining.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.waitlist.classList.contains("hidden"),
+      ).to.equal(true);
     } finally {
       fetchMock.restore();
     }
@@ -1436,9 +1672,10 @@ describe("event attendance", () => {
 
   it("hides attendee count when refreshed unlimited availability has no attendees", async () => {
     // Keep references to the fixture controls under assertion.
-    const { availabilityAttendeeCount, availabilityCaptions } = renderAttendanceDom({
-      availabilityUrl: "/events/test-event/availability",
-    });
+    const { availabilityAttendeeCount, availabilityCaptions } =
+      renderAttendanceDom({
+        availabilityUrl: "/events/test-event/availability",
+      });
     const fetchMock = mockFetch({
       response: {
         ok: true,
@@ -1466,8 +1703,12 @@ describe("event attendance", () => {
 
       // Verify hides attendee count when refreshed unlimited availability has no.
       expect(availabilityAttendeeCount.textContent.trim()).to.equal("");
-      expect(availabilityCaptions.attendees.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.attendees.classList.contains("flex")).to.equal(false);
+      expect(
+        availabilityCaptions.attendees.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(
+        availabilityCaptions.attendees.classList.contains("flex"),
+      ).to.equal(false);
     } finally {
       fetchMock.restore();
     }
@@ -1475,7 +1716,7 @@ describe("event attendance", () => {
 
   it("keeps the sold-out ribbon hidden for canceled availability", async () => {
     // Render the attendance fixture.
-    const { soldOutRibbon } = renderAttendanceDom({
+    const { availabilityCaptions, soldOutRibbon } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
     const fetchMock = mockFetch({
@@ -1489,7 +1730,7 @@ describe("event attendance", () => {
           is_live: false,
           is_past: false,
           is_simple_rsvp: true,
-          remaining_capacity: 0,
+          remaining_capacity: 1,
           ticket_types: [],
           waitlist_count: 0,
           waitlist_enabled: false,
@@ -1497,13 +1738,17 @@ describe("event attendance", () => {
       },
     });
 
-    // Verify keeps the sold-out ribbon hidden for canceled.
+    // Apply canceled availability that would otherwise show remaining seats.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Verify keeps the sold-out ribbon hidden for canceled availability.
+      // Verify canceled events hide sold-out and remaining-capacity indicators.
       expect(soldOutRibbon.classList.contains("hidden")).to.equal(true);
+      expect(
+        availabilityCaptions.remaining.classList.contains("hidden"),
+      ).to.equal(true);
+      expect(availabilityCaptions.remaining.textContent).to.not.include("1");
     } finally {
       fetchMock.restore();
     }
@@ -1546,33 +1791,49 @@ describe("event attendance", () => {
     // Cached paid attendance data keeps refund requests available.
     expect(refundButton.classList.contains("hidden")).to.equal(false);
     expect(refundButton.disabled).to.equal(false);
-    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request refund");
+    expect(
+      refundButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request refund");
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("shows escaped refund rejection reasons and clears stale reason state", () => {
     // Render the attendee refund controls with their reason container.
-    const { checker, refundButton, refundRejectionReason } = renderAttendanceDom();
+    const {
+      checker,
+      refundButton,
+      refundRejectionReason,
+      refundRejectionTooltip,
+      refundRejectionTrigger,
+    } = renderAttendanceDom();
 
     // Render a rejected request with organizer-provided markup-like text.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({
         purchase_amount_minor: 2500,
-        refund_rejection_reason: "Outside policy\n<strong>Contact support</strong>",
+        refund_rejection_reason:
+          "Outside policy\n<strong>Contact support</strong>",
         refund_request_status: "rejected",
         status: "attendee",
       }),
     });
 
-    // Verify the rejected state preserves lines and treats the reason as text.
-    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Refund rejected");
+    // Verify the accessible tooltip preserves lines and treats the reason as text.
+    expect(
+      refundButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Refund rejected");
     expect(refundButton.disabled).to.equal(true);
     expect(refundRejectionReason.classList.contains("hidden")).to.equal(false);
     expect(refundRejectionReason.textContent).to.equal(
-      "Reason: Outside policy\n<strong>Contact support</strong>",
+      "Outside policy\n<strong>Contact support</strong>",
     );
     expect(refundRejectionReason.innerHTML).to.include("&lt;strong&gt;");
     expect(refundRejectionReason.querySelector("strong")).to.equal(null);
+    expect(refundRejectionTrigger.classList.contains("hidden")).to.equal(false);
+    expect(refundRejectionTooltip.classList.contains("hidden")).to.equal(false);
+    expect(refundRejectionTrigger.getAttribute("aria-describedby")).to.equal(
+      refundRejectionReason.id,
+    );
 
     // Move to a different refund state and clear the previous reason.
     dispatchHtmxAfterRequest(checker, {
@@ -1584,6 +1845,8 @@ describe("event attendance", () => {
     });
     expect(refundRejectionReason.classList.contains("hidden")).to.equal(true);
     expect(refundRejectionReason.textContent).to.equal("");
+    expect(refundRejectionTrigger.classList.contains("hidden")).to.equal(true);
+    expect(refundRejectionTooltip.classList.contains("hidden")).to.equal(true);
 
     // Keep a usable generic rejected state when the reason is malformed or absent.
     dispatchHtmxAfterRequest(checker, {
@@ -1593,9 +1856,13 @@ describe("event attendance", () => {
         status: "attendee",
       }),
     });
-    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Refund rejected");
+    expect(
+      refundButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Refund rejected");
     expect(refundRejectionReason.classList.contains("hidden")).to.equal(true);
     expect(refundRejectionReason.textContent).to.equal("");
+    expect(refundRejectionTrigger.classList.contains("hidden")).to.equal(true);
+    expect(refundRejectionTooltip.classList.contains("hidden")).to.equal(true);
   });
 
   it("leaves standalone ticket price badge text untouched", async () => {
@@ -1637,7 +1904,8 @@ describe("event attendance", () => {
     });
 
     // Keep a reference to the attendance label element.
-    leaveButton.querySelector("[data-attendance-label]").textContent = "Leave waiting list";
+    leaveButton.querySelector("[data-attendance-label]").textContent =
+      "Leave waiting list";
     dispatchHtmxBeforeRequest(leaveButton);
 
     // Dispatch the HTMX after-request event.

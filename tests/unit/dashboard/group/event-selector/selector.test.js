@@ -211,6 +211,10 @@ describe("event-selector", () => {
         <option value="">Select currency</option>
         <option value="EUR">EUR</option>
       </select>
+      <select id="tax_behavior">
+        <option value="inclusive" selected>Tax included in ticket price</option>
+        <option value="exclusive">Tax added at Checkout</option>
+      </select>
       <location-search-field
         venue-name-field-name="venue_name"
         venue-address-field-name="venue_address"
@@ -318,6 +322,7 @@ describe("event-selector", () => {
       meeting_join_url: "https://meet.example.com/cloud-native-malaga",
       meeting_recording_url: "https://video.example.com/old-recording",
       payment_currency_code: "EUR",
+      tax_behavior: "exclusive",
       photos_urls: [" one.png ", "two.png"],
       tags: ["cloud", " malaga "],
       ticket_types: [
@@ -400,6 +405,9 @@ describe("event-selector", () => {
     );
     expect(document.getElementById("payment_currency_code")?.value).to.equal(
       "EUR",
+    );
+    expect(document.getElementById("tax_behavior")?.value).to.equal(
+      "exclusive",
     );
     expect(
       document.getElementById("location-search-venue_address")?.value,

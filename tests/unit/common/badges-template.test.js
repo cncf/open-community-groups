@@ -23,7 +23,9 @@ describe("badge macros template", () => {
     expect(template).to.include(
       'class="custom-badge inline-block max-w-full truncate px-2.5 py-0.5 text-stone-900',
     );
-    expect(invitationBadge.match(/<span class="custom-badge bg-/g)).to.have.lengthOf(3);
+    expect(
+      invitationBadge.match(/<span class="custom-badge bg-/g),
+    ).to.have.lengthOf(3);
     expect(invitationBadge).to.include(
       "{% if with_border %}border-green-800{% else %}border-transparent{% endif %}",
     );
@@ -33,5 +35,28 @@ describe("badge macros template", () => {
     expect(invitationBadge).to.include(
       "{% if with_border %}border-yellow-800{% else %}border-transparent{% endif %}",
     );
+  });
+
+  it("uses semantic payment colors without blue states", async () => {
+    // Load and isolate the shared payment badge before checking its palette.
+    const template = normalizeWhitespace(await loadTemplate());
+    const paymentStatusBadge = template.slice(
+      template.indexOf("{% macro payment_status_badge"),
+      template.indexOf("{% endmacro payment_status_badge"),
+    );
+
+    // Verify terminal, active, and neutral payment states use semantic colors.
+    expect(paymentStatusBadge).to.include('label.to_string() == "Paid"');
+    expect(paymentStatusBadge).to.include("border-green-800 bg-green-100");
+    expect(paymentStatusBadge).to.include(
+      'label.to_string() == "Refund requested"',
+    );
+    expect(paymentStatusBadge).to.include("border-amber-800 bg-amber-100");
+    expect(paymentStatusBadge).to.include(
+      'label.to_string() == "Refund rejected"',
+    );
+    expect(paymentStatusBadge).to.include("border-red-800 bg-red-100");
+    expect(paymentStatusBadge).to.include("border-stone-500 bg-stone-100");
+    expect(paymentStatusBadge).not.to.include("blue");
   });
 });

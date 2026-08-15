@@ -20,7 +20,9 @@
         <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Purchased</th>
         <th scope="col" class="px-3 py-3 xl:px-5">Amount</th>
         <th scope="col" class="hidden px-3 py-3 lg:table-cell xl:px-5">Status</th>
-        <th scope="col" class="w-[112px] px-3 py-3 text-right xl:px-5">Documents</th>
+        <th scope="col" class="w-[72px] px-3 py-3 text-right xl:px-5">
+          <span class="sr-only">Actions</span>
+        </th>
       </tr>
     </thead>
     <tbody>
@@ -49,8 +51,16 @@
               <div class="mt-0.5 truncate text-xs font-normal text-stone-400">
                 {{ purchase.group_name }} · {{ purchase.ticket_title }}
               </div>
+              <div class="mt-0.5 text-xs font-normal text-stone-500 xl:hidden">
+                Purchased
+                {% if let Some(completed_at) = purchase.completed_at -%}
+                  {{ completed_at.format("%b %d, %Y at %H:%M UTC") }}
+                {% else -%}
+                  {{ purchase.created_at.format("%b %d, %Y at %H:%M UTC") }}
+                {% endif -%}
+              </div>
               <div class="mt-1 flex flex-wrap gap-1.5 lg:hidden">
-                {{ badges::status_badge(label = purchase.status_label()) -}}
+                {{ badges::payment_status_badge(label = purchase.status_label()) -}}
                 {% if purchase.event_canceled -%}
                   {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
                 {% endif -%}
@@ -69,7 +79,7 @@
               {% endif -%}
             </td>
             <td class="whitespace-nowrap px-3 py-4 font-medium text-stone-800 xl:px-5">
-              {{ purchase.formatted_amount() }}
+              <span data-localized-currency>{{ purchase.formatted_amount() }}</span>
               {% if let Some(seller_display_name) = &purchase.seller_display_name -%}
                 <div class="mt-0.5 max-w-48 truncate text-xs font-normal text-stone-400">
                   Seller: {{ seller_display_name }}
@@ -78,42 +88,72 @@
             </td>
             <td class="hidden px-3 py-4 lg:table-cell xl:px-5">
               <div class="flex flex-wrap gap-1.5">
-                {{ badges::status_badge(label = purchase.status_label()) -}}
+                {{ badges::payment_status_badge(label = purchase.status_label()) -}}
                 {% if purchase.event_canceled -%}
                   {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
                 {% endif -%}
               </div>
             </td>
-            <td class="w-[112px] px-3 py-4 text-right xl:px-5">
-              <div class="flex items-center justify-end gap-2">
-                {% for credit_note in purchase.credit_notes -%}
-                  {% if credit_note.status == "issued" && credit_note.provider_credit_note_id.is_some() -%}
-                    <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/credit-notes/{{ credit_note.event_purchase_credit_note_id }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
-                       aria-label="Download credit note"
-                       title="Download credit note">
-                      <span class="svg-icon size-4 icon-download" aria-hidden="true"></span>
-                    </a>
-                  {% else -%}
-                    <span class="text-stone-400">Credit note {{ credit_note.status_label().to_lowercase() }}</span>
-                  {% endif -%}
-                {% endfor -%}
-
-                {% if purchase.provider_invoice_id.is_some() -%}
-                  <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/invoice"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
-                     aria-label="View invoice"
-                     title="View invoice">
-                    <span class="svg-icon size-4 icon-eye" aria-hidden="true"></span>
-                  </a>
-                {% else -%}
-                  <span class="text-stone-400">Invoice processing</span>
-                {% endif -%}
-              </div>
+            <td class="w-[72px] px-3 py-4 text-right xl:px-5">
+              <details data-actions-menu class="group relative inline-flex justify-end">
+                <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                         aria-label="Open document actions for {{ purchase.event_name }}"
+                         title="Open document actions">
+                  <span class="svg-icon size-4 icon-vertical-dots" aria-hidden="true"></span>
+                </summary>
+                <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                  <ul class="text-sm text-stone-700" role="menu">
+                    {% for credit_note in purchase.credit_notes -%}
+                      <li>
+                        {% if credit_note.status == "issued" && credit_note.provider_credit_note_id.is_some() -%}
+                          <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/credit-notes/{{ credit_note.event_purchase_credit_note_id }}"
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             role="menuitem"
+                             class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                            <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-600"
+                                  aria-hidden="true"></span>
+                            <span>Download credit note</span>
+                          </a>
+                        {% else -%}
+                          <button type="button"
+                                  role="menuitem"
+                                  disabled
+                                  aria-disabled="true"
+                                  class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400">
+                            <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-400"
+                                  aria-hidden="true"></span>
+                            <span>Credit note {{ credit_note.status_label().to_lowercase() }}</span>
+                          </button>
+                        {% endif -%}
+                      </li>
+                    {% endfor -%}
+                    <li>
+                      {% if purchase.provider_invoice_id.is_some() -%}
+                        <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/invoice"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           role="menuitem"
+                           class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-600"
+                                aria-hidden="true"></span>
+                          <span>View invoice</span>
+                        </a>
+                      {% else -%}
+                        <button type="button"
+                                role="menuitem"
+                                disabled
+                                aria-disabled="true"
+                                class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400">
+                          <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-400"
+                                aria-hidden="true"></span>
+                          <span>Invoice processing</span>
+                        </button>
+                      {% endif -%}
+                    </li>
+                  </ul>
+                </div>
+              </details>
             </td>
           </tr>
         {% endfor -%}
