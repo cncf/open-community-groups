@@ -2,6 +2,7 @@ import { expect, test } from "../../../fixtures.js";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  TEST_FINANCIAL_WORK_IDS,
   TEST_PAYMENT_EVENT_IDS,
   expectCurrentPaginationNavigation,
   expectTableColumnsAtViewport,
@@ -218,6 +219,103 @@ test.describe("group dashboard refunds", () => {
     ).toHaveCount(0);
     await expect(
       dashboardContent.locator("[data-refund-reject-open]"),
+    ).toHaveCount(0);
+  });
+
+  test("shows exhausted financial work without calling the payment provider", async ({
+    groupViewerPage,
+    organizerGroupPage,
+  }) => {
+    // Open every attention item so both deterministic recovery fixtures are shown.
+    const dashboardContent = await openRefundsDashboard(
+      organizerGroupPage,
+      "/dashboard/group?tab=refunds&view=attention&limit=20",
+    );
+    const recoverySection = dashboardContent.getByRole("region", {
+      name: "Financial work needs attention",
+    });
+    const applicationFeeCard = recoverySection.locator("article", {
+      hasText: "Application-fee refund",
+    });
+    const creditNoteCard = recoverySection.locator("article", {
+      hasText: "Credit note",
+    });
+
+    // Verify operator-facing failure details for both durable work types.
+    await expect(applicationFeeCard).toContainText("E2E Organizer Two");
+    await expect(applicationFeeCard).toContainText(/(?:US)?\$5\.00/u);
+    await expect(applicationFeeCard).toContainText(
+      "Application fee refund attempts exhausted",
+    );
+    await expect(creditNoteCard).toContainText("E2E Events Manager One");
+    await expect(creditNoteCard).toContainText(/(?:US)?\$50\.00/u);
+    await expect(creditNoteCard).toContainText(
+      "Credit note attempts exhausted",
+    );
+
+    // Verify the retry request contract through an intercepted application route.
+    await organizerGroupPage.route(
+      "**/dashboard/group/financial-work/retry",
+      (route) => route.fulfill({ status: 422 }),
+    );
+    const [retryResponse] = await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          new URL(response.url()).pathname ===
+            "/dashboard/group/financial-work/retry",
+      ),
+      creditNoteCard.getByRole("button", { name: "Retry operation" }).click(),
+    ]);
+    const retryData = new URLSearchParams(retryResponse.request().postData());
+    expect(retryData.get("kind")).toBe("credit-note");
+    expect(retryData.get("work_id")).toBe(
+      TEST_FINANCIAL_WORK_IDS.creditNote,
+    );
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Something went wrong requeueing this financial work.",
+    );
+    await organizerGroupPage.locator(".swal2-confirm").click();
+
+    // Verify manual recovery collects all evidence without submitting it.
+    await applicationFeeCard
+      .getByText("Complete outside OCG", { exact: true })
+      .click();
+    const recoveryForm = applicationFeeCard.locator(
+      'form[hx-put="/dashboard/group/financial-work/recovery"]',
+    );
+    await expect(recoveryForm.locator('input[name="kind"]')).toHaveValue(
+      "application-fee-adjustment",
+    );
+    await expect(recoveryForm.locator('input[name="work_id"]')).toHaveValue(
+      TEST_FINANCIAL_WORK_IDS.applicationFeeAdjustment,
+    );
+    await expect(
+      recoveryForm.locator('input[name="provider_object_id"]'),
+    ).toHaveAttribute("required", "");
+    await expect(
+      recoveryForm.locator('input[name="recovery_reference"]'),
+    ).toHaveAttribute("required", "");
+    await expect(
+      recoveryForm.locator('textarea[name="recovery_note"]'),
+    ).toHaveAttribute("required", "");
+
+    // Read-only viewers see the recovery details but cannot mutate them.
+    const viewerContent = await openRefundsDashboard(
+      groupViewerPage,
+      "/dashboard/group?tab=refunds&view=attention&limit=20",
+    );
+    const viewerRecoverySection = viewerContent.getByRole("region", {
+      name: "Financial work needs attention",
+    });
+    await expect(viewerRecoverySection).toContainText(
+      "Events write access is required to retry or complete this work.",
+    );
+    await expect(
+      viewerRecoverySection.getByRole("button", { name: "Retry operation" }),
+    ).toHaveCount(0);
+    await expect(
+      viewerRecoverySection.getByText("Complete outside OCG", { exact: true }),
     ).toHaveCount(0);
   });
 

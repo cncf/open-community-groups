@@ -14,14 +14,12 @@ import {
   waitForAttendanceState,
 } from "../../utils.js";
 import {
-  addDiscountCode,
   openEventUpdateFormByName,
   openPaymentsSection,
-  setDiscountCodeActive,
 } from "../../dashboard/group/events/helpers.js";
 
 test.describe("paid event discount checkout workflow", () => {
-  test("organizer creates a full discount that completes paid question checkout for free", async ({
+  test("a full discount completes paid question checkout for free", async ({
     member2Page,
     organizerGroupPage,
   }) => {
@@ -32,53 +30,19 @@ test.describe("paid event discount checkout workflow", () => {
 
     const discountCode = "FULLCOMP";
     const event = TEST_TICKETING_EVENTS.paidQuestions;
-    const saveEvent = async () => {
-      const [response] = await Promise.all([
-        organizerGroupPage.waitForResponse(
-          (candidateResponse) =>
-            candidateResponse.request().method() === "PUT" &&
-            candidateResponse
-              .url()
-              .includes(`/dashboard/group/events/${event.id}/update`),
-        ),
-        organizerGroupPage.locator("#update-event-button").click(),
-      ]);
-
-      expect(response.ok()).toBeTruthy();
-      await expect(
-        organizerGroupPage.locator("#dashboard-content"),
-      ).not.toHaveClass(/htmx-(?:request|settling)/);
-    };
     let attendanceCreated = false;
-    let discountConfigured = false;
 
     try {
-      // Prepare a 100-percent code on the dedicated paid questions event.
+      // Verify the dedicated event exposes its seeded provider-free discount.
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
       await openEventUpdateFormByName(organizerGroupPage, event.name, event.id);
       await openPaymentsSection(organizerGroupPage);
-      const existingDiscountRow = organizerGroupPage
+      const discountRow = organizerGroupPage
         .locator('#discount-codes-ui [data-ticketing-role="table-body"] tr')
         .filter({ hasText: discountCode });
-      if ((await existingDiscountRow.count()) > 0) {
-        if (
-          (await existingDiscountRow
-            .getByText("Active", { exact: true })
-            .count()) === 0
-        ) {
-          await setDiscountCodeActive(organizerGroupPage, discountCode, true);
-          await saveEvent();
-        }
-      } else {
-        await addDiscountCode(organizerGroupPage, {
-          code: discountCode,
-          kind: "percentage",
-          percentage: "100",
-          title: "Complimentary registration",
-        });
-        await saveEvent();
-      }
-      discountConfigured = true;
+      await expect(discountRow).toContainText("Complimentary registration");
+      await expect(discountRow.getByText("100% off", { exact: true }).first()).toBeVisible();
+      await expect(discountRow.getByText("Active", { exact: true }).first()).toBeVisible();
 
       // Select the paid ticket and redeem the configured code.
       await navigateToEvent(
@@ -146,24 +110,12 @@ test.describe("paid event discount checkout workflow", () => {
         "You have successfully registered for this event.",
       );
     } finally {
-      // Restore the reusable attendee and event configuration.
+      // Restore the reusable attendee configuration.
       if (attendanceCreated) {
         const cleanupResponse = await member2Page.request.delete(
           buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${event.id}/leave`),
         );
         expect(cleanupResponse.ok()).toBeTruthy();
-      }
-
-      if (discountConfigured) {
-        await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
-        await openEventUpdateFormByName(
-          organizerGroupPage,
-          event.name,
-          event.id,
-        );
-        await openPaymentsSection(organizerGroupPage);
-        await setDiscountCodeActive(organizerGroupPage, discountCode, false);
-        await saveEvent();
       }
     }
   });

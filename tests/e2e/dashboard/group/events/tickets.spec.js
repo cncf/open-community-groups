@@ -19,7 +19,6 @@ import {
   expectTableHeaders,
   navigateToPath,
   selectTimezone,
-  waitForActionResponse,
 } from "../../../utils.js";
 import {
   TEST_UPLOAD_ASSET_PATHS,
@@ -347,7 +346,7 @@ test.describe("group dashboard event Tickets tab", () => {
     await expect(generalAdmissionRow.locator("td").nth(3)).toBeVisible();
   });
 
-  test("ticket removal blocks the last tier and rejects tiers with purchases", async ({
+  test("ticket removal blocks the last tier and marks editable tiers for deletion", async ({
     organizerGroupPage,
   }) => {
     test.skip(
@@ -373,7 +372,7 @@ test.describe("group dashboard event Tickets tab", () => {
       "Every event needs at least one ticket type",
     );
 
-    // Removing a tier linked to a seeded checkout is rejected by the server.
+    // An editable tier can be marked for deletion without contacting the provider.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
@@ -385,21 +384,7 @@ test.describe("group dashboard event Tickets tab", () => {
       .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
       .filter({ hasText: "General admission" });
     await purchasedTierRow.getByTitle("Delete").click();
-    const response = await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.locator("#update-event-button").click(),
-      {
-        method: "PUT",
-        urlIncludes: `/dashboard/group/events/${TEST_PAYMENT_EVENT_IDS.draft}/update`,
-        status: 422,
-      },
-    );
-    expect(response.status()).toBe(422);
-    expect(await response.text()).toContain(
-      "ticket types with purchases cannot be removed",
-    );
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Something went wrong updating the event.",
-    );
+    await expect(purchasedTierRow).toHaveCount(0);
+    await expect(organizerGroupPage.locator("#update-event-button")).toBeEnabled();
   });
 });

@@ -3649,6 +3649,20 @@ values (
     null,
     null,
     false
+), (
+    '58555555-5555-5555-5555-555555555917',
+    true,
+    'FULLCOMP',
+    '55555555-5555-5555-5555-555555555917',
+    'percentage',
+    'Complimentary registration',
+    null,
+    100,
+    null,
+    null,
+    null,
+    null,
+    false
 );
 
 -- ============================================================================
@@ -3832,6 +3846,7 @@ insert into event_purchase (
     venue_snapshot,
     final_platform_fee_amount_minor,
     provider_charge_id,
+    provider_invoice_id,
     provider_total_minor,
     subtotal_excluding_tax_minor,
     tax_amount_minor
@@ -3857,7 +3872,7 @@ values (
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
     '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
-    0, 'ch_e2e_refund_processing', 5000, 5000, 0
+    0, 'ch_e2e_refund_processing', null, 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555527',
     5000,
@@ -3879,7 +3894,7 @@ values (
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
     '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
-    0, 'ch_e2e_refund_retryable', 5000, 5000, 0
+    0, 'ch_e2e_refund_retryable', null, 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555528',
     5000,
@@ -3901,7 +3916,7 @@ values (
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
     '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
-    0, 'ch_e2e_refund_finalized', 5000, 5000, 0
+    0, 'ch_e2e_refund_finalized', 'in_e2e_refund_finalized', 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555529',
     5000,
@@ -3923,7 +3938,7 @@ values (
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
     '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
-    0, 'ch_e2e_refund_rejection', 5000, 5000, 0
+    0, 'ch_e2e_refund_rejection', null, 5000, 5000, 0
 ), (
     '59555555-5555-5555-5555-555555555530',
     5000,
@@ -3945,7 +3960,96 @@ values (
     '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
     'inclusive', 'manual', 'professional-event-admission',
     '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
-    0, 'ch_e2e_refund_recovery_durable', 5000, 5000, 0
+    0, 'ch_e2e_refund_recovery_durable', null, 5000, 5000, 0
+);
+
+-- Durable document history includes past and canceled events independently of
+-- the attendee's current event list.
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    provider_object_account_id,
+    seller_snapshot,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_invoice_id,
+    provider_total_minor,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor
+)
+values (
+    '59555555-5555-5555-5555-555555555541',
+    2500,
+    now() - interval '6 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555520',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555520'
+        order by "order"
+        limit 1
+    ),
+    'stripe',
+    'cs_e2e_past_document',
+    'https://checkout.stripe.test/cs_e2e_past_document',
+    'pi_e2e_past_document',
+    'completed',
+    'General Admission',
+    '77777777-7777-7777-7777-777777777701',
+
+    'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
+    '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
+    'inclusive', 'manual', 'professional-event-admission',
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    0, 'ch_e2e_past_document', 'in_e2e_past_document', 2500, 2500, 0
+), (
+    '59555555-5555-5555-5555-555555555542',
+    3500,
+    now() - interval '2 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555531',
+    (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '55555555-5555-5555-5555-555555555531'
+        order by "order"
+        limit 1
+    ),
+    'stripe',
+    'cs_e2e_canceled_document',
+    'https://checkout.stripe.test/cs_e2e_canceled_document',
+    'pi_e2e_canceled_document',
+    'refund-recovery-pending',
+    'General Admission',
+    '77777777-7777-7777-7777-777777777701',
+
+    'direct-charge', 'acct_e2e_alpha', 'acct_e2e_alpha',
+    '{"connected_account_id":"acct_e2e_alpha","display_name":"E2E Alpha Fiscal Sponsor","provider":"stripe"}'::jsonb,
+    'inclusive', 'manual', 'professional-event-admission',
+    '{"address":"123 Payment Way","city":"New York","country_code":"US","name":"E2E Admission Hall","state":"NY","zip_code":"10001"}'::jsonb,
+    0, 'ch_e2e_canceled_document', null, 3500, 3500, 0
 );
 
 insert into event_purchase (
@@ -4509,6 +4613,126 @@ values (
     're_e2e_refund_recovery_durable',
     'provider-failed',
     true
+);
+
+-- Exhausted application-fee adjustment shown in the financial recovery queue.
+insert into event_purchase_application_fee_adjustment (
+    event_purchase_application_fee_adjustment_id,
+    amount_minor,
+    attempt_count,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    next_attempt_at,
+    status,
+    updated_at,
+
+    failure_message
+)
+values (
+    '63555555-5555-5555-5555-555555555526',
+    500,
+    10,
+    '59555555-5555-5555-5555-555555555526',
+    'event-purchase-application-fee-adjustment-e2e-recovery',
+    'purchase-refund',
+    now() + interval '100 years',
+    'failed',
+    now() - interval '20 days',
+
+    'Application fee refund attempts exhausted'
+);
+
+-- Credit note lifecycle states shown in the attendee purchase documents.
+insert into event_purchase_credit_note (
+    event_purchase_credit_note_id,
+    amount_minor,
+    attempt_count,
+    currency_code,
+    event_purchase_refund_id,
+    idempotency_key,
+    next_attempt_at,
+    payment_provider_id,
+    provider_object_account_id,
+    status,
+    tax_amount_minor,
+    updated_at,
+
+    completed_at,
+    provider_credit_note_id,
+    provider_hosted_url,
+    provider_pdf_url
+)
+values (
+    '62555555-5555-5555-5555-555555555526',
+    5000,
+    1,
+    'USD',
+    '61555555-5555-5555-5555-555555555526',
+    'event-purchase-credit-note-e2e-processing',
+    now() + interval '1 hour',
+    'stripe',
+    'acct_e2e_alpha',
+    'pending',
+    0,
+    now() - interval '1 hour',
+
+    null,
+    null,
+    null,
+    null
+), (
+    '62555555-5555-5555-5555-555555555528',
+    5000,
+    1,
+    'USD',
+    '61555555-5555-5555-5555-555555555528',
+    'event-purchase-credit-note-e2e-issued',
+    now() + interval '100 years',
+    'stripe',
+    'acct_e2e_alpha',
+    'issued',
+    0,
+    now() - interval '1 day',
+
+    now() - interval '1 day',
+    'cn_e2e_refund_finalized',
+    'https://documents.stripe.test/cn_e2e_refund_finalized',
+    'https://documents.stripe.test/cn_e2e_refund_finalized.pdf'
+);
+
+-- Exhausted credit note shown in the financial recovery queue.
+insert into event_purchase_credit_note (
+    event_purchase_credit_note_id,
+    amount_minor,
+    attempt_count,
+    currency_code,
+    event_purchase_refund_id,
+    idempotency_key,
+    next_attempt_at,
+    payment_provider_id,
+    provider_object_account_id,
+    status,
+    tax_amount_minor,
+    updated_at,
+
+    failure_message
+)
+values (
+    '62555555-5555-5555-5555-555555555527',
+    5000,
+    10,
+    'USD',
+    '61555555-5555-5555-5555-555555555527',
+    'event-purchase-credit-note-e2e-recovery',
+    now() + interval '100 years',
+    'stripe',
+    'acct_e2e_alpha',
+    'failed',
+    0,
+    now() - interval '21 days',
+
+    'Credit note attempts exhausted'
 );
 
 -- ============================================================================

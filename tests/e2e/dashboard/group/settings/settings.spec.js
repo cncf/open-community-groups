@@ -22,7 +22,7 @@ test.describe("group dashboard settings view", () => {
     }
 
     // Verify required controls, slug rules, and location fields.
-    await expect(organizerGroupPage.getByLabel("Name")).toHaveAttribute("required", "");
+    await expect(organizerGroupPage.locator("#name")).toHaveAttribute("required", "");
     await expect(organizerGroupPage.getByLabel("Pretty URL slug")).toHaveAttribute(
       "pattern",
       "(?!.*--)[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?",
@@ -203,11 +203,15 @@ test.describe("group dashboard settings view", () => {
       await expect(updateGroupButton).toHaveAttribute("title", "Your role cannot update group settings.");
     }
 
-    // Find the payment recipient input.
+    // Find the fiscal sponsor inputs.
+    const sellerDisplayNameInput = dashboardContent.locator(
+      "#payment_recipient_seller_display_name",
+    );
     const paymentRecipientInput = dashboardContent.locator("#payment_recipient_recipient_id");
 
-    // Clear the payment recipient when the field is present.
+    // Verify the complete fiscal sponsor configuration when payments are enabled.
     if ((await paymentRecipientInput.count()) > 0) {
+      await expect(sellerDisplayNameInput).toHaveValue("E2E Alpha Fiscal Sponsor");
       await expect(paymentRecipientInput).toHaveValue(TEST_PAYMENT_GROUP_RECIPIENT);
       return;
     }
@@ -216,24 +220,60 @@ test.describe("group dashboard settings view", () => {
     await expect(paymentRecipientInput).toHaveCount(0);
   });
 
-  test("organizer can set and clear the Stripe recipient", async ({ organizerGroupWithoutPaymentsPage }) => {
-    // Define the settings URL and payment field used by the scenario.
+  test("organizer can set and clear the fiscal sponsor", async ({ organizerGroupWithoutPaymentsPage }) => {
+    // Define the settings URL and fiscal sponsor fields used by the scenario.
     const settingsPath = "/dashboard/group?tab=settings";
+    const sellerDisplayNameInput = organizerGroupWithoutPaymentsPage.locator(
+      "#payment_recipient_seller_display_name",
+    );
     const paymentRecipientInput = organizerGroupWithoutPaymentsPage.locator(
       "#payment_recipient_recipient_id",
     );
+    const updatedSellerDisplayName = "  E2E Delta Fiscal Sponsor  ";
     const updatedRecipient = "  acct_e2e_delta  ";
 
     // Open the group settings page.
     await navigateToPath(organizerGroupWithoutPaymentsPage, settingsPath);
     test.skip((await paymentRecipientInput.count()) === 0, "Payments are disabled in this environment.");
 
-    // Verify the group starts without a Stripe recipient.
-    await expect(organizerGroupWithoutPaymentsPage.getByText("Payments", { exact: true })).toBeVisible();
+    // Verify the group starts without a fiscal sponsor.
+    await expect(
+      organizerGroupWithoutPaymentsPage.getByText("Fiscal Sponsor", { exact: true }),
+    ).toBeVisible();
+    await expect(sellerDisplayNameInput).toHaveValue("");
     await expect(paymentRecipientInput).toHaveValue("");
 
-    // Fill the form field.
+    // Reject either half of the fiscal sponsor configuration on its own.
+    await sellerDisplayNameInput.fill(updatedSellerDisplayName);
+    await waitForActionResponse(
+      organizerGroupWithoutPaymentsPage,
+      () => organizerGroupWithoutPaymentsPage.getByRole("button", { name: "Update Group" }).click(),
+      {
+        method: "PUT",
+        status: 422,
+        urlIncludes: "/dashboard/group/settings/update",
+      },
+    );
+    await organizerGroupWithoutPaymentsPage.locator(".swal2-confirm").click();
+    await navigateToPath(organizerGroupWithoutPaymentsPage, settingsPath);
     await paymentRecipientInput.fill(updatedRecipient);
+    await waitForActionResponse(
+      organizerGroupWithoutPaymentsPage,
+      () => organizerGroupWithoutPaymentsPage.getByRole("button", { name: "Update Group" }).click(),
+      {
+        method: "PUT",
+        status: 422,
+        urlIncludes: "/dashboard/group/settings/update",
+      },
+    );
+    await organizerGroupWithoutPaymentsPage.locator(".swal2-confirm").click();
+    await navigateToPath(organizerGroupWithoutPaymentsPage, settingsPath);
+
+    // Fill both fields that make the group ready to sell paid tickets.
+    await sellerDisplayNameInput.fill(updatedSellerDisplayName);
+    await paymentRecipientInput.fill(updatedRecipient);
+    await expect(sellerDisplayNameInput).toHaveValue(updatedSellerDisplayName);
+    await expect(paymentRecipientInput).toHaveValue(updatedRecipient);
 
     // Click Update Group.
     await waitForActionResponse(
@@ -245,10 +285,12 @@ test.describe("group dashboard settings view", () => {
       },
     );
 
-    // Assert the field value was updated.
+    // Assert both values were normalized and persisted.
+    await expect(sellerDisplayNameInput).toHaveValue("E2E Delta Fiscal Sponsor");
     await expect(paymentRecipientInput).toHaveValue("acct_e2e_delta");
 
-    // Clear the form field.
+    // Clear both fiscal sponsor fields.
+    await sellerDisplayNameInput.fill("");
     await paymentRecipientInput.fill("");
 
     // Click Update Group.
@@ -261,7 +303,8 @@ test.describe("group dashboard settings view", () => {
       },
     );
 
-    // Assert the field value was cleared.
+    // Assert the fiscal sponsor was cleared.
+    await expect(sellerDisplayNameInput).toHaveValue("");
     await expect(paymentRecipientInput).toHaveValue("");
   });
 });

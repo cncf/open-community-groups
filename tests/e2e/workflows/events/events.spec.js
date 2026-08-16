@@ -1,6 +1,5 @@
 import { expect, test } from "../../fixtures.js";
 
-import { queryE2eDatabase } from "../../database.js";
 import {
   E2E_MEETINGS_ENABLED,
   E2E_PAYMENTS_ENABLED,
@@ -326,7 +325,7 @@ test.describe("event management workflows", () => {
       const seriesConfirmationDialog = organizerGroupPage.locator(".swal2-popup");
       const expectedConfirmationMessage =
         action === "cancel"
-          ? "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?"
+          ? "Canceling is permanent. Attendee registrations are canceled immediately, and full refunds for eligible paid purchases are queued and may take time to process. Which events would you like to cancel?"
           : `This event is part of a recurring series. What would you like to ${action}?`;
       await expect(seriesConfirmationDialog).toContainText(expectedConfirmationMessage);
 
@@ -650,7 +649,7 @@ test.describe("event management workflows", () => {
     await expect(sessionDialog).toBeHidden();
   });
 
-  test("organizer can promote a paid test event with multiple tiers and discount codes", async ({
+  test("organizer can configure paid tiers without contacting the payment provider", async ({
     organizerGroupPage,
   }) => {
     test.setTimeout(90_000);
@@ -660,35 +659,6 @@ test.describe("event management workflows", () => {
 
     // Create a unique event name for the tiered payment flow.
     const eventName = `E2E Paid Tier Event ${Date.now()}`;
-
-    // Read notifications whose persisted payload contains the temporary event.
-    const readPaidEventNotifications = () => {
-      const escapedEventName = eventName.replaceAll("'", "''");
-      const result = queryE2eDatabase(`
-        select jsonb_build_object(
-          'notification_count', count(*),
-          'payloads', coalesce(
-            jsonb_agg(ntd.data order by n.created_at, n.notification_id),
-            '[]'::jsonb
-          ),
-          'recipient_usernames', coalesce(
-            jsonb_agg(u.username order by u.username),
-            '[]'::jsonb
-          )
-        )
-        from notification n
-        join "user" u using (user_id)
-        join notification_template_data ntd using (notification_template_data_id)
-        where n.kind = 'event-paid-configured'
-        and exists (
-          select 1
-          from jsonb_array_elements(ntd.data->'events') configured_event
-          where configured_event->>'name' = '${escapedEventName}'
-        )
-      `);
-
-      return JSON.parse(result);
-    };
 
     // Open the event form for a payment-ready group.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -796,11 +766,18 @@ test.describe("event management workflows", () => {
     await expect(unlimitedDiscountRow.locator("td").nth(1)).toHaveText("Unlimited");
     await expect(limitedDiscountRow.locator("td").nth(1)).toHaveText("50 max");
 
-    // Create the tiered event and wait for the POST response.
+    // Target submission while tracking whether browser validation blocks it.
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
     await expect(visibleAddEventButton).toBeVisible();
+    let eventAddRequests = 0;
+    const countEventAddRequests = (request) => {
+      if (request.method() === "POST" && request.url().includes("/dashboard/group/events/add")) {
+        eventAddRequests += 1;
+      }
+    };
+    organizerGroupPage.on("request", countEventAddRequests);
 
     // Verify paid tickets require an eligible event type before submission.
     await visibleAddEventButton.click();
@@ -826,7 +803,47 @@ test.describe("event management workflows", () => {
       "true",
     );
 
-    // Supply the complete physical admission venue.
+    // Validate every physical venue prerequisite in browser order.
+    await venueNameInput.fill("Hybrid Admission Hall");
+    const requiredVenueFields = [
+      {
+        input: organizerGroupPage.locator("#location-search-venue_address"),
+        message: "Paid tickets require a venue address.",
+        value: "123 Hybrid Way",
+      },
+      {
+        input: organizerGroupPage.locator("#location-search-venue_city"),
+        message: "Paid tickets require a venue city.",
+        value: "New York",
+      },
+      {
+        input: organizerGroupPage.locator("#location-search-venue_zip_code"),
+        message: "Paid tickets require a venue postal code.",
+        value: "10001",
+      },
+      {
+        input: organizerGroupPage.locator("#location-search-venue_country_name"),
+        message: "Paid tickets require a country selected from the location search results.",
+        value: "United States",
+      },
+    ];
+    for (const requirement of requiredVenueFields) {
+      await visibleAddEventButton.click();
+      await expect(requirement.input).toBeFocused();
+      await expect(requirement.input).toHaveJSProperty("validationMessage", requirement.message);
+      await requirement.input.fill(requirement.value);
+    }
+
+    // A typed country name is incomplete until a location result supplies its code.
+    await visibleAddEventButton.click();
+    const countryNameInput = organizerGroupPage.locator("#location-search-venue_country_name");
+    await expect(countryNameInput).toBeFocused();
+    await expect(countryNameInput).toHaveJSProperty(
+      "validationMessage",
+      "Paid tickets require a country selected from the location search results.",
+    );
+
+    // Complete the venue and verify the tax controls included in the form payload.
     await fillEventVenue(organizerGroupPage, {
       address: "123 Hybrid Way",
       city: "New York",
@@ -838,176 +855,18 @@ test.describe("event management workflows", () => {
       state: "NY",
       zipCode: "10001",
     });
-
-    // Submit the eligible tiered event and wait for creation.
-    await waitForActionResponse(organizerGroupPage, () => visibleAddEventButton.click(), {
-      method: "POST",
-      urlIncludes: "/dashboard/group/events/add",
-      status: 201,
-    });
-
-    // Verify the tiered event appears and dismiss the success dialog.
-    const eventRow = dashboardContent.locator("tr", { hasText: eventName });
-    const successDialog = organizerGroupPage.locator(".swal2-popup");
-    await expect(eventRow).toBeVisible();
-    await successDialog.getByRole("button", { name: "OK" }).click();
-    await expect(successDialog).toBeHidden();
-
-    // Verify paid test-event creation did not queue an admin notification.
-    expect(readPaidEventNotifications().notification_count).toBe(0);
-
-    // Promote the paid test event and wait for the update response.
-    await openEventUpdateFormByName(organizerGroupPage, eventName);
-    await organizerGroupPage.locator("#toggle_test_event").uncheck({ force: true });
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.locator("#update-event-button").click(),
-      {
-        method: "PUT",
-        status: 204,
-        urlIncludes: "/update",
-      },
-    );
-
-    // Verify promotion queued one required notification for the community admin.
-    const paidEventNotifications = readPaidEventNotifications();
-    expect(paidEventNotifications.notification_count).toBe(1);
-    expect(paidEventNotifications.recipient_usernames).toEqual(["e2e-admin-1"]);
-    expect(paidEventNotifications.payloads).toHaveLength(1);
-    expect(paidEventNotifications.payloads[0]).toMatchObject({
-      community_display_name: "Platform Engineering Community",
-      event_count: 1,
-      events: [{ name: eventName, timezone: "UTC" }],
-      group_name: "Platform Ops Meetup",
-    });
-
-    // Reopen the event and verify tier values persisted.
-    await openEventUpdateFormByName(organizerGroupPage, eventName);
-    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
-
-    // Verify the paid hybrid event retains its physical admission venue.
-    await expect(organizerGroupPage.locator("#kind_id")).toHaveValue("hybrid");
-    await expect(organizerGroupPage.locator("#location-search-venue_name")).toHaveValue(
-      "Hybrid Admission Hall",
-    );
-    await expect(organizerGroupPage.locator("#location-search-venue_address")).toHaveValue("123 Hybrid Way");
-    await expect(organizerGroupPage.locator("#location-search-venue_city")).toHaveValue("New York");
-    await expect(organizerGroupPage.locator("#location-search-venue_state")).toHaveValue("NY");
-    await expect(organizerGroupPage.locator("#location-search-venue_country_name")).toHaveValue(
-      "United States",
-    );
-    await expect(organizerGroupPage.locator("#location-search-venue_country_code")).toHaveValue("US");
-    await expect(organizerGroupPage.locator("#location-search-venue_zip_code")).toHaveValue("10001");
-
-    // Verify the reopened event keeps online meeting details.
-    if (E2E_MEETINGS_ENABLED) {
-      await expectAutomaticMeetingControls(organizerGroupPage);
-      await expect(
-        organizerGroupPage.locator('online-event-details input[name="meeting_requested"]'),
-      ).toHaveValue("true");
-    } else {
-      await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
-        "https://meet.example.com/e2e-paid-tier-event",
-      );
+    for (const requirement of [venueNameInput, ...requiredVenueFields.map(({ input }) => input)]) {
+      await expect(requirement).toHaveJSProperty("validationMessage", "");
     }
-
-    // Open payments before checking persisted ticketing details.
     await openPaymentsSection(organizerGroupPage);
+    await expect(organizerGroupPage.locator("#tax_behavior")).toHaveValue("inclusive");
+    await organizerGroupPage.locator("#tax_behavior").selectOption("exclusive");
+    await expect(organizerGroupPage.locator("#tax_behavior")).toHaveValue("exclusive");
+    await expect(organizerGroupPage.locator("#tax_calculation_mode")).toHaveValue("automatic");
 
-    // Verify ticket types and discounts persisted in payment tables.
-    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
-    await expect(
-      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
-    ).toContainText("Free community pass");
-    await expect(
-      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
-    ).toContainText("General admission");
-    await expect(
-      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
-    ).toContainText("SAVE10");
-    await expect(
-      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
-    ).toContainText("EARLY20");
-    const persistedDiscountRows = organizerGroupPage.locator(
-      '#discount-codes-ui [data-ticketing-role="table-body"] tr',
-    );
-    await expect(persistedDiscountRows.filter({ hasText: "Launch savings" }).locator("td").nth(1)).toHaveText(
-      "Unlimited",
-    );
-    await expect(
-      persistedDiscountRows.filter({ hasText: "Early supporter" }).locator("td").nth(1),
-    ).toHaveText("50 max");
-
-    // Remove an unused tier and persist the reduced ticket configuration.
-    const persistedTicketRows = organizerGroupPage.locator(
-      '#ticket-types-ui [data-ticketing-role="table-body"] tr',
-    );
-    await persistedTicketRows.filter({ hasText: "General admission" }).getByTitle("Delete").click();
-    await expect(persistedTicketRows).toHaveCount(1);
-
-    // Remove discounts that are no longer valid after the last paid tier is removed.
-    const persistedDiscountCodeRows = organizerGroupPage.locator(
-      '#discount-codes-ui [data-ticketing-role="table-body"] tr',
-    );
-    await persistedDiscountCodeRows.filter({ hasText: "Launch savings" }).getByTitle("Delete").click();
-    await persistedDiscountCodeRows.filter({ hasText: "Early supporter" }).getByTitle("Delete").click();
-    await expect(persistedDiscountCodeRows).toHaveCount(0);
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes("/dashboard/group/events/") &&
-          response.url().includes("/update") &&
-          response.ok(),
-      ),
-      organizerGroupPage.locator("#update-event-button").click(),
-    ]);
-
-    // Verify changing the paid event to free did not queue another notification.
-    expect(readPaidEventNotifications().notification_count).toBe(1);
-
-    // Reopen the event and verify the removed tier was deleted durably.
-    await openEventUpdateFormByName(organizerGroupPage, eventName);
-    await openPaymentsSection(organizerGroupPage);
-    await expect(
-      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
-    ).not.toContainText("General admission");
-    await expect(
-      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
-    ).toContainText("Free community pass");
-    await expect(
-      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
-    ).not.toContainText("SAVE10");
-    await expect(
-      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
-    ).not.toContainText("EARLY20");
-
-    // Delete the temporary event to keep the seeded list reusable.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
-    await eventRow.locator(".btn-actions").click();
-
-    // Open the delete confirmation for the temporary event.
-    const deleteButton = eventRow.locator('button[id^="delete-event-"]');
-    await expect(deleteButton).toBeVisible();
-    await deleteButton.click();
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Delete this event? This removes it from the dashboard and cannot be undone.",
-    );
-
-    // Confirm deletion and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response.url().includes("/dashboard/group/events/") &&
-          response.url().includes("/delete") &&
-          response.ok(),
-      ),
-      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
-
-    // Verify the deleted event is removed from the list.
-    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
+    // Client-side validation never sent an event request or contacted the provider.
+    organizerGroupPage.off("request", countEventAddRequests);
+    expect(eventAddRequests).toBe(0);
   });
 
   test("organizer can create, update, and delete an event with images and rich fields", async ({

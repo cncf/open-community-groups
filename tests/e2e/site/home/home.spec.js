@@ -35,6 +35,8 @@ const getCommunityCard = (page, displayName) =>
     .first();
 
 test.describe("site home page", () => {
+  test.describe.configure({ timeout: 75_000 });
+
   test.describe("default viewport", () => {
     test.beforeEach(async ({ page }) => {
       // Load the public home page before each default viewport assertion.

@@ -363,7 +363,7 @@ test.describe("group dashboard Events tab", () => {
     await expect(cancelButton).toBeVisible();
     await cancelButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Cancel this event? This cannot be undone. All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
+      "Cancel this event? This cannot be undone. All attendee registrations will be canceled immediately. Full refunds for eligible paid purchases will be queued and may take time to process.",
     );
 
     // Confirm cancellation and wait for the server response.
@@ -375,7 +375,7 @@ test.describe("group dashboard Events tab", () => {
           response.url().includes("/cancel") &&
           response.ok(),
       ),
-      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+      organizerGroupPage.getByRole("button", { name: "Cancel event" }).click(),
     ]);
 
     // Open past events after cancellation moves the event out of the upcoming list.

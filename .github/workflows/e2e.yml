@@ -171,7 +171,9 @@ jobs:
           payments:
             provider: stripe
             mode: test
+            connected_webhook_secret: whsec_connect_e2e
             secret_key: sk_test_e2e
+            ticket_tax_api_version: 2026-07-29.preview
             webhook_secret: whsec_e2e
           meetings:
             zoom:

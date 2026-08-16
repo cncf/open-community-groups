@@ -215,6 +215,18 @@ export const TEST_PAYMENT_EVENT_SLUGS = {
   refunds: "alpha-payments-refunds",
 };
 
+/** Exhausted financial work identifiers used by refund dashboard coverage. */
+export const TEST_FINANCIAL_WORK_IDS = {
+  applicationFeeAdjustment: "63555555-5555-5555-5555-555555555526",
+  creditNote: "62555555-5555-5555-5555-555555555527",
+};
+
+/** Seeded purchase document identifiers used by dashboard coverage. */
+export const TEST_PURCHASE_DOCUMENT_IDS = {
+  creditNote: "62555555-5555-5555-5555-555555555528",
+  purchase: "59555555-5555-5555-5555-555555555528",
+};
+
 /** Ticketing workflow events with isolated mutable state. */
 export const TEST_TICKETING_EVENTS = {
   invitationRequests: {
