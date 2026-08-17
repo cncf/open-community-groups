@@ -442,7 +442,8 @@ test.describe("event management workflows", () => {
     await expect(organizerGroupPage.locator("#location-search-venue_name")).toHaveValue("E2E Admission Hall");
     await expect(organizerGroupPage.locator("#location-search-venue_address")).toHaveValue("123 Payment Way");
     await expect(organizerGroupPage.locator("#location-search-venue_city")).toHaveValue("New York");
-    await expect(organizerGroupPage.locator("#location-search-venue_state")).toHaveValue("NY");
+    await expect(organizerGroupPage.locator("#location-search-venue_state_name")).toHaveValue("NY");
+    await expect(organizerGroupPage.locator("#location-search-venue_state_code")).toHaveValue("NY");
     await expect(organizerGroupPage.locator("#location-search-venue_country_name")).toHaveValue(
       "United States",
     );
@@ -451,9 +452,11 @@ test.describe("event management workflows", () => {
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Event details copied.");
     await organizerGroupPage.getByRole("button", { name: "OK" }).click();
 
-    // Copied payment configuration keeps currency, tiers, and discount codes.
+    // Copied payment configuration keeps currency, tax settings, tiers, and discounts.
     await openPaymentsSection(organizerGroupPage);
     await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
+    await expect(organizerGroupPage.locator("#tax_behavior")).toHaveValue("inclusive");
+    await expect(organizerGroupPage.locator("#tax_calculation_mode")).toHaveValue("automatic");
     await expect(
       organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
     ).toContainText("General admission");
@@ -822,9 +825,24 @@ test.describe("event management workflows", () => {
         value: "10001",
       },
       {
+        input: organizerGroupPage.locator("#location-search-venue_state_name"),
+        message: "Paid tickets require a state or province.",
+        value: "New York",
+      },
+      {
+        input: organizerGroupPage.locator("#location-search-venue_state_code"),
+        message: "Paid tickets require a state or province code to calculate taxes.",
+        value: "NY",
+      },
+      {
         input: organizerGroupPage.locator("#location-search-venue_country_name"),
-        message: "Paid tickets require a country selected from the location search results.",
+        message: "Paid tickets require a country.",
         value: "United States",
+      },
+      {
+        input: organizerGroupPage.locator("#location-search-venue_country_code"),
+        message: "Paid tickets require a country code to calculate taxes.",
+        value: "US",
       },
     ];
     for (const requirement of requiredVenueFields) {
@@ -833,15 +851,6 @@ test.describe("event management workflows", () => {
       await expect(requirement.input).toHaveJSProperty("validationMessage", requirement.message);
       await requirement.input.fill(requirement.value);
     }
-
-    // A typed country name is incomplete until a location result supplies its code.
-    await visibleAddEventButton.click();
-    const countryNameInput = organizerGroupPage.locator("#location-search-venue_country_name");
-    await expect(countryNameInput).toBeFocused();
-    await expect(countryNameInput).toHaveJSProperty(
-      "validationMessage",
-      "Paid tickets require a country selected from the location search results.",
-    );
 
     // Complete the venue and verify the tax controls included in the form payload.
     await fillEventVenue(organizerGroupPage, {
@@ -853,6 +862,7 @@ test.describe("event management workflows", () => {
       longitude: "-74.006",
       name: "Hybrid Admission Hall",
       state: "NY",
+      stateCode: "NY",
       zipCode: "10001",
     });
     for (const requirement of [venueNameInput, ...requiredVenueFields.map(({ input }) => input)]) {
@@ -930,6 +940,7 @@ test.describe("event management workflows", () => {
       venueLongitude: "2.1686",
       venueName: "Platform Hall",
       venueState: "Catalonia",
+      venueStateCode: "CT",
       venueZipCode: "08001",
       attendeeApprovalRequired: false,
       waitlistEnabled: true,
@@ -1000,6 +1011,7 @@ test.describe("event management workflows", () => {
       venueLongitude: "-3.7038",
       venueName: "Cloud Forum",
       venueState: "Community of Madrid",
+      venueStateCode: "MD",
       venueZipCode: "28001",
       attendeeApprovalRequired: true,
       waitlistEnabled: false,
@@ -1071,6 +1083,7 @@ test.describe("event management workflows", () => {
         longitude: values.venueLongitude,
         name: values.venueName,
         state: values.venueState,
+        stateCode: values.venueStateCode,
         zipCode: values.venueZipCode,
       });
       await organizerGroupPage.locator("#meeting_join_url").fill(values.meetingJoinUrl);
@@ -1231,8 +1244,11 @@ test.describe("event management workflows", () => {
     await expect(organizerGroupPage.locator("#location-search-venue_city")).toHaveValue(
       updatedValues.venueCity,
     );
-    await expect(organizerGroupPage.locator("#location-search-venue_state")).toHaveValue(
+    await expect(organizerGroupPage.locator("#location-search-venue_state_name")).toHaveValue(
       updatedValues.venueState,
+    );
+    await expect(organizerGroupPage.locator("#location-search-venue_state_code")).toHaveValue(
+      updatedValues.venueStateCode,
     );
     await expect(organizerGroupPage.locator("#location-search-venue_country_name")).toHaveValue(
       updatedValues.venueCountryName,

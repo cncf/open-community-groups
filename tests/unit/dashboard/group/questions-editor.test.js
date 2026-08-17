@@ -191,6 +191,18 @@ describe("questions-editor", () => {
     );
   });
 
+  it("uses a full-size secondary action for adding questions", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+    });
+    const addQuestionButton = [...element.querySelectorAll("button")].find(
+      (button) => button.textContent.trim() === "Add question",
+    );
+
+    expect(addQuestionButton.classList.contains("btn-secondary")).to.equal(true);
+    expect(addQuestionButton.classList.contains("btn-mini")).to.equal(false);
+  });
+
   it("edits selectable questions through the modal editor", async () => {
     // Mount an editor with a selectable question to edit.
     const element = await mountLitComponent("questions-editor", {

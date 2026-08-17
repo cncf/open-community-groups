@@ -714,7 +714,7 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Location search -#}
         <div class="col-span-full">
-          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state" state-code-field-name="venue_state_code" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}  {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}  {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}  {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}  {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %}  {% if let Some(venue_state_code) = &event.venue_state_code %}initial-state-code="{{ venue_state_code }}"{% endif %}  {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %}  {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %}  {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
+          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state_name" state-code-field-name="venue_state_code" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}  {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}  {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}  {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}  {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %}  {% if let Some(venue_state_code) = &event.venue_state_code %}initial-state-code="{{ venue_state_code }}"{% endif %}  {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %}  {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %}  {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
           </location-search-field>
         </div>
         {# End location search -#}
@@ -991,28 +991,28 @@
       {% endif -%}
 
       <div>
-        <div>
-          <div class="flex items-center justify-between gap-3">
-            <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+          <div class="flex items-center justify-end gap-3">
             <button id="add-ticket-type-button"
                     type="button"
-                    class="btn-primary-outline btn-mini whitespace-nowrap"
+                    class="btn-secondary whitespace-nowrap"
                     aria-label="Add ticket type"
                     {% if ticketing_read_only %}
                       disabled title="Ticket settings are currently read-only."
                     {% endif %}>Add ticket type</button>
           </div>
-          <p class="mt-1 text-sm/6 text-stone-500">
-            Use one ticket type per tier and add price windows for scheduled pricing.
-            Paid ticket prices require an in-person or hybrid event with a venue name,
-            address, city, postal code, and country.
-            {% if ticketing_free_only -%}
-              Ticket prices are fixed at 0 until payments are configured.
-            {% else -%}
-              Set the ticket amount to 0 to make a specific tier free.
-            {% endif -%}
-          </p>
         </div>
+        <p class="mt-1 text-sm/6 text-stone-500">
+          Use one ticket type per tier and add price windows for scheduled pricing.
+          Paid ticket prices require an in-person or hybrid event with a venue name,
+          address, city, postal code, and country.
+          {% if ticketing_free_only -%}
+            Ticket prices are fixed at 0 until payments are configured.
+          {% else -%}
+            Set the ticket amount to 0 to make a specific tier free.
+          {% endif -%}
+        </p>
         <div class="mt-10">{# djlint:off #}
           <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="{{ ticketing_read_only }}" {% if ticketing_free_only %}free-only{% endif %} ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
                   {# djlint:on #}</div>
@@ -1020,22 +1020,22 @@
 
       {% if payments_ready || event.is_paid_capable() -%}
         <div class="pb-12">
-          <div>
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
+            <div class="flex items-center justify-end gap-3">
               <button id="add-discount-code-button"
                       type="button"
-                      class="btn-primary-outline btn-mini whitespace-nowrap"
+                      class="btn-secondary whitespace-nowrap"
                       aria-label="Add discount code"
                       {% if ticketing_read_only %}
                         disabled title="Ticket settings are currently read-only."
                       {% endif %}>Add discount code</button>
             </div>
-            <p class="mt-1 text-sm/6 text-stone-500">
-              Discount codes apply to the event currency and can be limited by schedule, remaining
-              uses, or total redemptions.
-            </p>
           </div>
+          <p class="mt-1 text-sm/6 text-stone-500">
+            Discount codes apply to the event currency and can be limited by schedule, remaining
+            uses, or total redemptions.
+          </p>
           <div class="mt-10">{# djlint:off #}
             <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="{{ ticketing_read_only }}" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>
                     {# djlint:on #}</div>

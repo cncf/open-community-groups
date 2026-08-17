@@ -269,9 +269,7 @@ export class SessionsSection extends LitWrapper {
           <h3 class="text-lg font-semibold text-stone-900">${formatDayHeader(day)}</h3>
           <button
             type="button"
-            class="btn-primary-outline btn-mini ${buttonClass} ${
-              this.disabled ? "opacity-60 cursor-not-allowed" : ""
-            }"
+            class="btn-secondary ${buttonClass} ${this.disabled ? "opacity-60 cursor-not-allowed" : ""}"
             @click=${() => this._openAddModal(day)}
             ?disabled=${this.disabled}
           >
