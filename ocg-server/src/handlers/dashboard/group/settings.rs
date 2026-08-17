@@ -21,6 +21,8 @@ use crate::{
     types::{payments::PaymentConfigurationValidation, permissions::GroupPermission},
 };
 
+use super::events::{automatic_tax_handler_error, event_venue};
+
 #[cfg(test)]
 mod tests;
 
@@ -98,6 +100,18 @@ pub(crate) async fn update(
             payments_manager
                 .validate_fiscal_sponsor(recipient, require_automatic_tax)
                 .await?;
+            if require_automatic_tax {
+                let event_ids = db
+                    .list_group_automatic_tax_readiness_event_ids(community_id, group_id)
+                    .await?;
+                for event_id in event_ids {
+                    let event = db.get_event_full(community_id, group_id, event_id).await?;
+                    payments_manager
+                        .ensure_automatic_tax_readiness(recipient, &event_venue(&event))
+                        .await
+                        .map_err(automatic_tax_handler_error)?;
+                }
+            }
             payment_validation = Some(PaymentConfigurationValidation {
                 require_automatic_tax,
 

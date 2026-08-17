@@ -16,11 +16,11 @@ use uuid::Uuid;
 use crate::{
     config::PaymentsStripeConfig,
     services::payments::{
-        ApplicationFeeAdjustmentInput, CreateCheckoutSessionInput, CreditNoteInput,
-        FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
+        ApplicationFeeAdjustmentInput, AutomaticTaxReadinessError, CreateCheckoutSessionInput,
+        CreditNoteInput, FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
         FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
-        ListTaxRatesInput, PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentStatus,
-        ValidateTaxRatesInput,
+        ListTaxRatesInput, PaymentsWebhookEvent, PerformanceLocationInput, RefundPaymentInput,
+        RefundPaymentStatus, ValidateTaxRatesInput,
     },
     types::payments::{
         FiscalSponsorSeller, PaymentMode, PaymentProvider, TicketTaxBehavior,
@@ -34,47 +34,69 @@ use super::{
 };
 
 #[tokio::test]
-async fn automatic_tax_location_rejects_missing_state_code() {
-    // Setup an automatic-tax checkout without an ISO subdivision code
-    let provider = sample_stripe_provider();
-    let mut input = sample_checkout_session_input();
+async fn automatic_tax_location_omits_missing_state_code() {
+    // Capture the performance-location request for a country without a subdivision
+    let captured_body = Arc::new(Mutex::new(String::new()));
+    let request_body = Arc::clone(&captured_body);
+    let router = Router::new().route(
+        "/v1/tax/locations",
+        post(move |body: String| {
+            let request_body = Arc::clone(&request_body);
+            async move {
+                *request_body
+                    .lock()
+                    .expect("captured request body lock to be available") = body;
+                Json(json!({"id": "loc_created"}))
+            }
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+    let mut input = sample_performance_location_input();
+    input.venue.country_code = "PT".to_string();
     input.venue.state_code = None;
 
-    // Resolve the required Stripe performance location
-    let err = provider
+    // Create the location without inventing a subdivision
+    let readiness = provider
         .create_performance_location(&input, super::STRIPE_API_VERSION)
         .await
-        .expect_err("missing state code to fail before calling Stripe");
+        .expect("country without subdivision to create a location");
+    server.abort();
 
-    // Check the defensive provider boundary reports the missing code
-    assert!(format!("{err:#}").contains("automatic ticket tax requires a venue state code"));
+    // Check Stripe receives no empty state parameter
+    let form_fields: BTreeMap<String, String> = serde_urlencoded::from_str(
+        &captured_body
+            .lock()
+            .expect("captured request body lock to be available"),
+    )
+    .expect("captured request body to be valid form data");
+    assert_eq!(readiness.provider_tax_location_id, "loc_created");
+    assert_eq!(readiness.state_code, None);
+    assert!(!form_fields.contains_key("address[state]"));
 }
 
 #[tokio::test]
 async fn automatic_tax_location_reuses_matching_persisted_cache_entry() {
     // Setup a checkout whose location snapshot still matches its persisted cache
     let provider = sample_stripe_provider();
-    let mut input = sample_checkout_session_input();
-    let location_fingerprint = StripeProvider::provider_fingerprint(&[
-        &input.venue.address,
-        &input.venue.city,
-        &input.venue.country_code,
-        &input.venue.name,
-        input.venue.state_code.as_deref().expect("sample state code to exist"),
-        &input.venue.zip_code,
-    ]);
-    input.cached_performance_location_fingerprint = Some(location_fingerprint.clone());
+    let mut input = sample_performance_location_input();
+    input.venue.state_code = None;
+    let location_fingerprint =
+        crate::services::payments::provider::performance_location_fingerprint(&input.venue);
+    input.cached_fingerprint = Some(location_fingerprint.clone());
     input.cached_provider_tax_location_id = Some("loc_cached".to_string());
 
     // Resolve the provider performance location
-    let (location_id, returned_location_fingerprint) = provider
+    let readiness = provider
         .create_performance_location(&input, super::STRIPE_API_VERSION)
         .await
         .expect("matching performance location to be reused");
 
     // Check no replacement was needed and the durable fingerprint is preserved
-    assert_eq!(location_id, "loc_cached");
-    assert_eq!(returned_location_fingerprint, location_fingerprint);
+    assert!(readiness.cached);
+    assert_eq!(readiness.provider_tax_location_id, "loc_cached");
+    assert_eq!(readiness.fingerprint, location_fingerprint);
 }
 
 #[tokio::test]
@@ -97,10 +119,10 @@ async fn automatic_tax_location_sends_iso_country_and_state_codes() {
     let (api_base_url, server) = spawn_stripe_api(router).await;
     let mut provider = sample_stripe_provider();
     provider.api_base_url = api_base_url;
-    let input = sample_checkout_session_input();
+    let input = sample_performance_location_input();
 
     // Create the performance location through the provider boundary
-    let (location_id, _) = provider
+    let readiness = provider
         .create_performance_location(&input, super::STRIPE_API_VERSION)
         .await
         .expect("complete ISO codes to create a performance location");
@@ -113,7 +135,7 @@ async fn automatic_tax_location_sends_iso_country_and_state_codes() {
             .expect("captured request body lock to be available"),
     )
     .expect("captured request body to be valid form data");
-    assert_eq!(location_id, "loc_created");
+    assert_eq!(readiness.provider_tax_location_id, "loc_created");
     assert_eq!(
         form_fields.get("address[country]").map(String::as_str),
         Some("US")
@@ -123,6 +145,77 @@ async fn automatic_tax_location_sends_iso_country_and_state_codes() {
         Some("CA")
     );
     assert!(!form_fields.values().any(|value| value == "California"));
+}
+
+#[tokio::test]
+async fn automatic_tax_location_classifies_state_errors_only_from_exact_parameter() {
+    // Check a missing state is reported only when Stripe identifies address[state]
+    let missing = performance_location_error(
+        json!({"error": {"message": "State is required", "param": "address[state]"}}),
+        None,
+    )
+    .await;
+    assert!(matches!(
+        missing,
+        AutomaticTaxReadinessError::StateCodeRequired { country_code }
+            if country_code == "US"
+    ));
+
+    // Check a sent override is named when the same exact parameter is rejected
+    let invalid = performance_location_error(
+        json!({"error": {"message": "State is invalid", "param": "address[state]"}}),
+        Some("ZZ"),
+    )
+    .await;
+    assert!(matches!(
+        invalid,
+        AutomaticTaxReadinessError::StateCodeInvalid { country_code, state_code }
+            if country_code == "US" && state_code == "ZZ"
+    ));
+
+    // Check a generic message mentioning state cannot override the structured parameter
+    let generic = performance_location_error(
+        json!({"error": {"message": "State is required", "param": "address[line1]"}}),
+        None,
+    )
+    .await;
+    assert!(matches!(
+        generic,
+        AutomaticTaxReadinessError::InvalidAddress
+    ));
+}
+
+#[tokio::test]
+async fn automatic_tax_location_keeps_country_and_address_errors_distinct() {
+    // Check a rejected country remains distinct from a subdivision failure
+    let country = performance_location_error(
+        json!({"error": {"message": "Country is invalid", "param": "address[country]"}}),
+        None,
+    )
+    .await;
+    assert!(matches!(
+        country,
+        AutomaticTaxReadinessError::CountryInvalid { country_code }
+            if country_code == "US"
+    ));
+
+    // Check Stripe's documented unsupported-location response remains distinct
+    let unsupported = performance_location_error(
+        json!({"error": {
+            "message": super::STRIPE_TAX_UNSUPPORTED_COUNTRY_ERROR,
+            "param": "address[country]"
+        }}),
+        None,
+    )
+    .await;
+    assert!(matches!(
+        &unsupported,
+        AutomaticTaxReadinessError::UnsupportedCountry
+    ));
+    assert_eq!(
+        unsupported.to_string(),
+        "Stripe automatic tax is not supported for this venue country. Select Manual Stripe Tax Rates instead."
+    );
 }
 
 #[test]
@@ -1784,6 +1877,33 @@ fn verify_and_parse_webhook_validates_webhook_type() {
 
 // Helpers.
 
+/// Returns the classified error from a mocked Stripe performance-location response.
+async fn performance_location_error(
+    response: serde_json::Value,
+    state_code: Option<&str>,
+) -> AutomaticTaxReadinessError {
+    let router = Router::new().route(
+        "/v1/tax/locations",
+        post(move || {
+            let response = response.clone();
+            async move { (StatusCode::BAD_REQUEST, Json(response)) }
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+    let mut input = sample_performance_location_input();
+    input.venue.state_code = state_code.map(str::to_string);
+
+    let error = provider
+        .create_performance_location(&input, super::STRIPE_API_VERSION)
+        .await
+        .expect_err("mocked Stripe error to be classified");
+    server.abort();
+
+    error
+}
+
 /// Converts checkout session form fields into a map for assertions.
 fn checkout_session_form_fields_map(
     provider: &StripeProvider,
@@ -1793,6 +1913,19 @@ fn checkout_session_form_fields_map(
         .build_checkout_session_form_fields(input, Some("prod_ticket"))
         .into_iter()
         .collect()
+}
+
+/// Creates sample performance-location input.
+fn sample_performance_location_input() -> PerformanceLocationInput {
+    let checkout = sample_checkout_session_input();
+
+    PerformanceLocationInput {
+        connected_seller_id: checkout.seller.connected_account_id,
+        venue: checkout.venue,
+
+        cached_fingerprint: None,
+        cached_provider_tax_location_id: None,
+    }
 }
 
 /// Creates sample checkout session input.

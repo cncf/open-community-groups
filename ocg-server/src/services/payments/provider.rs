@@ -8,6 +8,7 @@ use axum::http::HeaderMap;
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
@@ -31,6 +32,12 @@ pub(crate) trait PaymentsProvider {
         &self,
         input: &CreateCheckoutSessionInput,
     ) -> Result<CheckoutSession>;
+
+    /// Creates or reuses an account-scoped automatic-tax performance location.
+    async fn ensure_performance_location(
+        &self,
+        input: &PerformanceLocationInput,
+    ) -> std::result::Result<AutomaticTaxReadiness, AutomaticTaxReadinessError>;
 
     /// Finds an existing provider refund for a purchase when retrying.
     async fn find_refund(&self, input: &FindRefundInput) -> Result<Option<RefundPaymentResult>>;
@@ -88,6 +95,120 @@ pub(crate) trait PaymentsProvider {
 
 /// Shared payments provider trait object.
 pub(crate) type DynPaymentsProvider = Arc<dyn PaymentsProvider + Send + Sync>;
+
+/// Successful automatic-tax performance-location readiness result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct AutomaticTaxReadiness {
+    /// Whether an existing matching performance location was reused.
+    pub cached: bool,
+    /// Fingerprint of the normalized venue sent to the provider.
+    pub fingerprint: String,
+    /// Provider performance-location identifier.
+    pub provider_tax_location_id: String,
+
+    /// ISO subdivision code sent to the provider, when available.
+    pub state_code: Option<String>,
+}
+
+/// Organizer-facing automatic-tax readiness failure.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum AutomaticTaxReadinessError {
+    /// Provider rejected the submitted country code.
+    #[error("the venue country code {country_code} is invalid")]
+    CountryInvalid {
+        /// Rejected ISO country code.
+        country_code: String,
+    },
+    /// Fiscal sponsor configuration that an organizer can correct.
+    #[error("{0}")]
+    FiscalSponsorNotReady(String),
+    /// Required physical venue fields are incomplete.
+    #[error("the venue address is incomplete")]
+    IncompleteVenue {
+        /// Form fields that need organizer attention.
+        fields: Vec<String>,
+    },
+    /// Provider rejected the submitted address for a non-state reason.
+    #[error("the venue address is invalid")]
+    InvalidAddress,
+    /// Provider rejected the submitted subdivision code.
+    #[error("the state code {state_code} is invalid for {country_code}")]
+    StateCodeInvalid {
+        /// ISO country code paired with the rejected subdivision.
+        country_code: String,
+        /// Rejected ISO subdivision suffix.
+        state_code: String,
+    },
+    /// Provider requires a subdivision code for the submitted country.
+    #[error("a state code is required for {country_code}")]
+    StateCodeRequired {
+        /// ISO country code requiring a subdivision.
+        country_code: String,
+    },
+    /// Provider does not support automatic tax at the submitted location.
+    #[error(
+        "Stripe automatic tax is not supported for this venue country. Select Manual Stripe Tax Rates instead."
+    )]
+    UnsupportedCountry,
+    /// Infrastructure or provider failure that an organizer cannot correct.
+    #[error(transparent)]
+    Unexpected(#[from] anyhow::Error),
+}
+
+impl AutomaticTaxReadinessError {
+    /// Returns the stable organizer-facing error code.
+    pub(crate) const fn code(&self) -> &'static str {
+        match self {
+            Self::CountryInvalid { .. } => "country_invalid",
+            Self::FiscalSponsorNotReady(_) => "fiscal_sponsor_not_ready",
+            Self::IncompleteVenue { .. } => "incomplete_venue",
+            Self::InvalidAddress => "invalid_address",
+            Self::StateCodeInvalid { .. } => "state_code_invalid",
+            Self::StateCodeRequired { .. } => "state_code_required",
+            Self::UnsupportedCountry => "unsupported_country",
+            Self::Unexpected(_) => "provider_unavailable",
+        }
+    }
+
+    /// Returns form field names associated with the failure.
+    pub(crate) fn fields(&self) -> Vec<String> {
+        match self {
+            Self::CountryInvalid { .. } | Self::UnsupportedCountry => {
+                vec!["venue_country_code".to_string()]
+            }
+            Self::IncompleteVenue { fields } => fields.clone(),
+            Self::InvalidAddress => vec![
+                "venue_address".to_string(),
+                "venue_city".to_string(),
+                "venue_zip_code".to_string(),
+                "venue_country_code".to_string(),
+            ],
+            Self::StateCodeInvalid { .. } | Self::StateCodeRequired { .. } => {
+                vec!["venue_state_code".to_string()]
+            }
+            Self::FiscalSponsorNotReady(_) | Self::Unexpected(_) => Vec::new(),
+        }
+    }
+
+    /// Returns whether an organizer can correct the failure in OCG.
+    pub(crate) const fn is_correctable(&self) -> bool {
+        !matches!(self, Self::Unexpected(_))
+    }
+}
+
+/// Provider input for resolving an automatic-tax performance location.
+#[derive(Clone, Debug)]
+pub(crate) struct PerformanceLocationInput {
+    /// Connected seller account that owns the performance location.
+    pub connected_seller_id: String,
+    /// Normalized physical venue sent to the provider.
+    pub venue: TicketVenue,
+
+    /// Fingerprint of a matching cached location, when available.
+    pub cached_fingerprint: Option<String>,
+    /// Provider identifier of a matching cached location, when available.
+    pub cached_provider_tax_location_id: Option<String>,
+}
 
 /// Request used to return part or all of an application fee to a seller.
 #[derive(Clone, Debug)]
@@ -477,4 +598,24 @@ pub(crate) fn build_payments_provider(cfg: Option<&PaymentsConfig>) -> Option<Dy
         }
         None => None,
     }
+}
+
+/// Builds the shared normalized venue fingerprint used by Rust and `PostgreSQL`.
+pub(crate) fn performance_location_fingerprint(venue: &TicketVenue) -> String {
+    let parts = [
+        venue.address.as_str(),
+        venue.city.as_str(),
+        venue.country_code.as_str(),
+        venue.name.as_str(),
+        venue.state_code.as_deref().unwrap_or_default(),
+        venue.zip_code.as_str(),
+    ];
+    let mut digest = Sha256::new();
+
+    for part in parts {
+        digest.update(part.as_bytes());
+        digest.update([0]);
+    }
+
+    hex::encode(digest.finalize())
 }

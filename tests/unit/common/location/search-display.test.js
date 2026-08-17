@@ -39,6 +39,9 @@ describe("location search display", () => {
     expect(getLocationLegendText("country", true)).to.equal("Country where the venue is located.");
     expect(getLocationLegendText("zip", false)).to.equal("Postal/zip code of the venue.");
     expect(getLocationLegendText("state", false)).to.equal("State, province, or region.");
+    expect(getLocationLegendText("stateCode", true)).to.equal(
+      "Subdivision code used in the address, such as CA or MA.",
+    );
     expect(getLocationLegendText("unknown", false)).to.equal("");
   });
 
@@ -100,6 +103,7 @@ describe("location search display", () => {
     expect(getLocationTextFieldValueKey("venueCity")).to.equal("_venueCityValue");
     expect(getLocationTextFieldValueKey("venueZipCode")).to.equal("_venueZipCodeValue");
     expect(getLocationTextFieldValueKey("state")).to.equal("_stateValue");
+    expect(getLocationTextFieldValueKey("stateCode")).to.equal("_stateCodeValue");
     expect(getLocationTextFieldValueKey("countryName")).to.equal("_countryNameValue");
     expect(getLocationTextFieldValueKey("unknown")).to.equal("");
   });
@@ -109,9 +113,11 @@ describe("location search display", () => {
     const fields = getLocationTextFieldDefinitions({
       venueNameFieldName: "venue_name",
       venueCityFieldName: "venue_city",
+      stateCodeFieldName: "venue_state_code",
       countryNameFieldName: "venue_country",
       venueNameValue: "Main Hall",
       venueCityValue: "Malaga",
+      stateCodeValue: "MA",
       countryNameValue: "Spain",
     });
 
@@ -119,11 +125,13 @@ describe("location search display", () => {
     expect(fields.map((field) => field.fieldName)).to.deep.equal([
       "venue_name",
       "venue_city",
+      "venue_state_code",
       "venue_country",
     ]);
     expect(fields.map((field) => field.handlerName)).to.deep.equal([
       "venueName",
       "venueCity",
+      "stateCode",
       "countryName",
     ]);
     expect(fields[0]).to.include({
@@ -137,6 +145,12 @@ describe("location search display", () => {
       value: "Malaga",
     });
     expect(fields[2]).to.include({
+      autocomplete: false,
+      label: "State code (optional)",
+      legend: "Subdivision code used in the address, such as CA or MA.",
+      value: "MA",
+    });
+    expect(fields[3]).to.include({
       autocomplete: false,
       legend: "Country where the venue is located.",
       value: "Spain",

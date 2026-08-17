@@ -345,6 +345,13 @@ pub(crate) trait DBDashboardGroup {
         filters: &AuditLogFilters,
     ) -> Result<AuditLogsOutput>;
 
+    /// Lists active published automatic-tax events that require sponsor readiness.
+    async fn list_group_automatic_tax_readiness_event_ids(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Vec<Uuid>>;
+
     /// Lists all events for a group for management.
     async fn list_group_events(
         &self,
@@ -1254,6 +1261,20 @@ where
         self.fetch_json_one(
             "select list_group_audit_logs($1::uuid, $2::jsonb)",
             &[&group_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_group_automatic_tax_readiness_event_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_group_automatic_tax_readiness_event_ids(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select list_group_automatic_tax_readiness_event_ids($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
         )
         .await
     }

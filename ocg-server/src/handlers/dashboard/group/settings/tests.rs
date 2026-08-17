@@ -15,7 +15,7 @@ use crate::{
     handlers::tests::*,
     services::{
         notifications::MockNotificationsManager,
-        payments::{FiscalSponsorReadinessError, MockPaymentsManager},
+        payments::{AutomaticTaxReadiness, FiscalSponsorReadinessError, MockPaymentsManager},
     },
     types::{
         group::GroupParentOption,
@@ -442,8 +442,10 @@ async fn test_update_invalid_body() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_update_binds_changed_sponsor_validation_to_locked_state() {
     let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -495,6 +497,14 @@ async fn test_update_binds_changed_sponsor_validation_to_locked_state() {
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(|_, _| Ok(true));
+    db.expect_list_group_automatic_tax_readiness_event_ids()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(vec![event_id]));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(sample_event_full(community_id, event_id, group_id)));
     db.expect_update_group()
         .times(1)
         .withf(move |uid, cid, gid, group| {
@@ -523,6 +533,20 @@ async fn test_update_binds_changed_sponsor_validation_to_locked_state() {
         })
         .times(1)
         .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager
+        .expect_ensure_automatic_tax_readiness()
+        .withf(|recipient, _| recipient.recipient_id == "acct_new")
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Ok(AutomaticTaxReadiness {
+                    cached: false,
+                    fingerprint: "fingerprint".to_string(),
+                    provider_tax_location_id: "loc_new".to_string(),
+                    state_code: None,
+                })
+            })
+        });
 
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .with_payments_manager(payments_manager)

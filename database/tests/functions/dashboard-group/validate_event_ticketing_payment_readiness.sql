@@ -254,8 +254,8 @@ select throws_ok(
     'Should reject a missing payment currency for paid-capable events'
 );
 
--- Should reject a missing state code for automatic ticket tax
-select throws_ok(
+-- Should accept a missing state code for automatic ticket tax
+select lives_ok(
     $$select validate_event_ticketing_payment_readiness(
         'stripe',
         true,
@@ -271,8 +271,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
-    'automatic ticket tax requires a venue state code',
-    'Should reject a missing state code for automatic ticket tax'
+    'Should accept a missing state code for automatic ticket tax'
 );
 
 -- Should reject a missing payment recipient for paid-capable events

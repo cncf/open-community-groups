@@ -37,6 +37,7 @@ describe("location-search-field", () => {
       venueCityFieldName: "venue_city",
       venueZipCodeFieldName: "venue_zip_code",
       stateFieldName: "venue_state",
+      stateCodeFieldName: "venue_state_code",
       countryNameFieldName: "venue_country",
       countryCodeFieldName: "venue_country_code",
       latitudeFieldName: "venue_latitude",
@@ -198,6 +199,8 @@ describe("location-search-field", () => {
         city: "Málaga",
         postcode: "29001",
         state: "Andalusia",
+        "ISO3166-2-lvl4": "ES-AN",
+        "ISO3166-2-lvl6": "ES-MA",
         country: "Spain",
         country_code: "es",
         name: "Málaga",
@@ -209,6 +212,7 @@ describe("location-search-field", () => {
     // The selected event carries the expected payload.
     expect(element._venueCityValue).to.equal("Málaga");
     expect(element._countryCodeValue).to.equal("ES");
+    expect(element._stateCodeValue).to.equal("MA");
     expect(element._latitudeValue).to.equal("36.7213");
     expect(document.getElementById("venue-city-field")?.value).to.equal("Málaga");
     expect(document.getElementById("venue-country-field")?.value).to.equal("Spain");
@@ -219,6 +223,7 @@ describe("location-search-field", () => {
         venueCity: "Málaga",
         venueZipCode: "29001",
         state: "Andalusia",
+        stateCode: "MA",
         country: "Spain",
         countryCode: "ES",
         latitude: 36.7213,
@@ -239,6 +244,7 @@ describe("location-search-field", () => {
       latitude: 36.7213,
       longitude: -4.4214,
       state: "Andalusia",
+      stateCode: "MA",
       venueAddress: "Av. de José Ortega y Gasset, 201",
       venueCity: "Málaga",
       venueName: "FYCMA",
@@ -251,11 +257,45 @@ describe("location-search-field", () => {
     expect(element.querySelector('[name="venue_address"]')?.value).to.equal("Av. de José Ortega y Gasset, 201");
     expect(element.querySelector('[name="venue_city"]')?.value).to.equal("Málaga");
     expect(element.querySelector('[name="venue_state"]')?.value).to.equal("Andalusia");
+    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal("MA");
     expect(element.querySelector('[name="venue_country"]')?.value).to.equal("Spain");
     expect(element.querySelector('[name="venue_country_code"]')?.value).to.equal("ES");
     expect(element.querySelector('[name="venue_zip_code"]')?.value).to.equal("29006");
     expect(element.querySelector('[name="venue_latitude"]')?.value).to.equal("36.7213");
     expect(element.querySelector('[name="venue_longitude"]')?.value).to.equal("-4.4214");
+  });
+
+  it("preserves manual state-code overrides until the country or location changes", async () => {
+    // Render a selected venue and manually correct its derived subdivision code.
+    const element = await renderField({
+      initialCountryName: "Spain",
+      initialStateCode: "MA",
+    });
+    const stateCodeInput = element.querySelector('[name="venue_state_code"]');
+    stateCodeInput.value = "ML";
+    stateCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(element._stateCodeValue).to.equal("ML");
+
+    // Editing the country invalidates the prior code.
+    const countryInput = element.querySelector('[name="venue_country"]');
+    countryInput.value = "Portugal";
+    countryInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await element.updateComplete;
+    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal("");
+
+    // Selecting another location replaces the code with its own best derivation.
+    element._selectLocation({
+      lat: "38.7223",
+      lon: "-9.1393",
+      display_name: "Lisbon, Portugal",
+      address: {
+        city: "Lisbon",
+        country: "Portugal",
+        country_code: "pt",
+        "ISO3166-2-lvl4": "PT-11",
+      },
+    });
+    expect(element._stateCodeValue).to.equal("11");
   });
 
   it("supports keyboard navigation and selects the highlighted result on enter", async () => {
@@ -364,6 +404,7 @@ describe("location-search-field", () => {
     // Seed the component state.
     element._venueNameValue = "Palacio de Ferias";
     element._venueCityValue = "Málaga";
+    element._stateCodeValue = "MA";
     element._latitudeValue = "36.7213";
     element._longitudeValue = "-4.4214";
     element._mapVisible = true;
@@ -384,6 +425,7 @@ describe("location-search-field", () => {
     // The field values, map instance, and clear event are all reset.
     expect(element._venueNameValue).to.equal("");
     expect(element._venueCityValue).to.equal("");
+    expect(element._stateCodeValue).to.equal("");
     expect(element._latitudeValue).to.equal("");
     expect(element._longitudeValue).to.equal("");
     expect(element._mapVisible).to.equal(false);

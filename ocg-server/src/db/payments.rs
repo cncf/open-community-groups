@@ -15,7 +15,7 @@ use crate::{
     services::payments::CheckoutSession,
     types::{
         event::EventEnrollmentReconciliationOutcome,
-        payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout},
+        payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout, TicketVenue},
         questionnaire::QuestionnaireAnswers,
     },
 };
@@ -137,6 +137,14 @@ pub(crate) trait DBPayments {
         &self,
         event_purchase_id: Uuid,
     ) -> Result<EventPurchaseSummary>;
+
+    /// Loads an account-scoped performance location for an exact venue fingerprint.
+    async fn get_payment_provider_tax_location(
+        &self,
+        payment_provider: PaymentProvider,
+        connected_seller_id: &str,
+        fingerprint: &str,
+    ) -> Result<Option<String>>;
 
     /// Resolves an attendee-owned invoice or credit note through provider scope.
     async fn get_user_purchase_document_context(
@@ -292,6 +300,16 @@ pub(crate) trait DBPayments {
 
     /// Releases stale claims left by interrupted refund workers.
     async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
+
+    /// Persists an account-scoped performance location for future reuse.
+    async fn upsert_payment_provider_tax_location(
+        &self,
+        payment_provider: PaymentProvider,
+        connected_seller_id: &str,
+        fingerprint: &str,
+        provider_tax_location_id: &str,
+        venue: &TicketVenue,
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -635,6 +653,31 @@ where
         self.fetch_json_one(
             "select prepare_event_checkout_get_purchase_summary($1::uuid)",
             &[&event_purchase_id],
+        )
+        .await
+    }
+
+    /// [`DBPayments::get_payment_provider_tax_location`].
+    #[instrument(skip(self), err)]
+    async fn get_payment_provider_tax_location(
+        &self,
+        payment_provider: PaymentProvider,
+        connected_seller_id: &str,
+        fingerprint: &str,
+    ) -> Result<Option<String>> {
+        self.fetch_scalar_opt(
+            "
+            select provider_tax_location_id
+            from payment_provider_tax_location
+            where payment_provider_id = $1::text
+            and connected_seller_id = $2::text
+            and fingerprint = $3::text
+            ",
+            &[
+                &payment_provider.to_string(),
+                &connected_seller_id,
+                &fingerprint,
+            ],
         )
         .await
     }
@@ -1031,6 +1074,37 @@ where
     async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32> {
         self.fetch_scalar_one("select requeue_stale_event_purchase_refund_claims()", &[])
             .await
+    }
+
+    /// [`DBPayments::upsert_payment_provider_tax_location`].
+    #[instrument(skip(self, venue), err)]
+    async fn upsert_payment_provider_tax_location(
+        &self,
+        payment_provider: PaymentProvider,
+        connected_seller_id: &str,
+        fingerprint: &str,
+        provider_tax_location_id: &str,
+        venue: &TicketVenue,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select upsert_payment_provider_tax_location(
+                $1::text,
+                $2::text,
+                $3::text,
+                $4::text,
+                $5::jsonb
+            )
+            ",
+            &[
+                &payment_provider.to_string(),
+                &connected_seller_id,
+                &fingerprint,
+                &provider_tax_location_id,
+                &Json(venue),
+            ],
+        )
+        .await
     }
 }
 

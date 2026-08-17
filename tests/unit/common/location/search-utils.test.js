@@ -5,6 +5,7 @@ import {
   deriveZoomFromFields,
   deriveZoomFromLocation,
   extractAddress,
+  extractStateCode,
   normalizeBoundingBox,
   parseCoordinate,
   shouldFitBoundsForResult,
@@ -35,6 +36,8 @@ describe("location search utils", () => {
         state: "Andalusia",
         country: "Spain",
         country_code: "es",
+        "ISO3166-2-lvl4": "ES-AN",
+        "ISO3166-2-lvl6": "ES-MA",
       },
     };
 
@@ -45,12 +48,31 @@ describe("location search utils", () => {
       venueCity: "Malaga",
       venueZipCode: "29015",
       state: "Andalusia",
+      stateCode: "MA",
       country: "Spain",
       countryCode: "ES",
       latitude: 36.7213,
       longitude: -4.4214,
       displayName: "Museum, Malaga, Spain",
     });
+  });
+
+  it("extracts the deepest matching subdivision code", () => {
+    // Matching country prefixes are ranked by their numeric Nominatim level.
+    expect(
+      extractStateCode(
+        {
+          "ISO3166-2-lvl4": "ES-AN",
+          "ISO3166-2-lvl6": "es-ma",
+        },
+        "ES",
+      ),
+    ).to.equal("MA");
+
+    // Single levels are accepted while missing and mismatched data stay empty.
+    expect(extractStateCode({ "ISO3166-2-lvl4": "US-CA" }, "US")).to.equal("CA");
+    expect(extractStateCode({ "ISO3166-2-lvl4": "PT-11" }, "ES")).to.equal("");
+    expect(extractStateCode({}, "ES")).to.equal("");
   });
 
   it("derives map zoom from search results and manual fields", () => {

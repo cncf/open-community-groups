@@ -227,6 +227,7 @@ describe("event-selector", () => {
         venue-city-field-name="venue_city"
         venue-zip-code-field-name="venue_zip_code"
         state-field-name="venue_state"
+        state-code-field-name="venue_state_code"
         country-name-field-name="venue_country_name"
         country-code-field-name="venue_country_code"
         latitude-field-name="latitude"
@@ -372,7 +373,8 @@ describe("event-selector", () => {
       venue_country_code: "ES",
       venue_country_name: "Spain",
       venue_name: "FYCMA",
-      venue_state: "Andalusia",
+      venue_state_code: "MA",
+      venue_state_name: "Andalusia",
       venue_zip_code: "29006",
       latitude: 36.7213,
       longitude: -4.4214,
@@ -445,6 +447,9 @@ describe("event-selector", () => {
     expect(
       document.getElementById("location-search-venue_state")?.value,
     ).to.equal("Andalusia");
+    expect(
+      document.getElementById("location-search-venue_state_code")?.value,
+    ).to.equal("MA");
     expect(
       document.getElementById("location-search-venue_zip_code")?.value,
     ).to.equal("29006");

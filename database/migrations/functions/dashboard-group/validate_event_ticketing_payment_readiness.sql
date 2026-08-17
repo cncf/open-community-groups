@@ -156,10 +156,6 @@ begin
 
     -- Require one internally consistent tax calculation path
     if v_tax_calculation_mode = 'automatic' then
-        -- Require the ISO subdivision code used by Stripe's performance location
-        if v_venue_snapshot->>'state_code' is null then
-            raise exception 'automatic ticket tax requires a venue state code';
-        end if;
         -- Reject stale manual Tax Rate selections in automatic mode
         if cardinality(v_manual_tax_rate_ids) > 0 then
             raise exception 'automatic ticket tax cannot include manual Tax Rates';

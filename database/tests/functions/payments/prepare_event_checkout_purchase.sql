@@ -255,7 +255,7 @@ insert into event (
     true,
     now(),
     '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', 'United States', 'Venue', 'OR', '97201'
+    '1 Main St', 'Portland', 'US', 'United States', 'Venue', null, '97201'
 ), (
     :'soldOutEventID',
     :'eventCategoryID',
@@ -990,7 +990,7 @@ select
             || convert_to('Portland', 'UTF8') || decode('00', 'hex')
             || convert_to('US', 'UTF8') || decode('00', 'hex')
             || convert_to('Venue', 'UTF8') || decode('00', 'hex')
-            || convert_to('OR', 'UTF8') || decode('00', 'hex')
+            || convert_to('', 'UTF8') || decode('00', 'hex')
             || convert_to('97201', 'UTF8') || decode('00', 'hex'),
             'sha256'
         ),
@@ -1003,7 +1003,7 @@ select
         "city": "Portland",
         "country_code": "US",
         "name": "Venue",
-        "state_code": "OR",
+        "state_code": null,
         "state_name": null,
         "zip_code": "97201"
     }'::jsonb;
@@ -1112,7 +1112,7 @@ select results_eq(
                 "city": "Portland",
                 "country_code": "US",
                 "name": "Venue",
-                "state_code": "OR",
+                "state_code": null,
                 "state_name": null,
                 "zip_code": "97201"
             }'::jsonb

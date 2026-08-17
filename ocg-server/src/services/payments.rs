@@ -23,11 +23,12 @@ pub(crate) use manager::{
     PgPaymentsManager, RejectRefundRequestInput, RequestRefundInput,
 };
 pub(crate) use provider::{
-    ApplicationFeeAdjustmentInput, CheckoutSession, CreateCheckoutSessionInput, CreditNoteInput,
-    DynPaymentsProvider, FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
+    ApplicationFeeAdjustmentInput, AutomaticTaxReadiness, AutomaticTaxReadinessError,
+    CheckoutSession, CreateCheckoutSessionInput, CreditNoteInput, DynPaymentsProvider,
+    FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
     FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
-    ListTaxRatesInput, PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentResult,
-    RefundPaymentStatus, ValidateTaxRatesInput, build_payments_provider,
+    ListTaxRatesInput, PaymentsWebhookEvent, PerformanceLocationInput, RefundPaymentInput,
+    RefundPaymentResult, RefundPaymentStatus, ValidateTaxRatesInput, build_payments_provider,
 };
 
 #[cfg(test)]

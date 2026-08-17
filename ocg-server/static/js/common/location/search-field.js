@@ -70,6 +70,7 @@ export class LocationSearchField extends LitWrapper {
    * @property {string} venueCityFieldId - ID of the venue city input field
    * @property {string} venueZipCodeFieldId - ID of the venue zip code input field
    * @property {string} stateFieldId - ID of the state/province input field
+   * @property {string} stateCodeFieldId - ID of the state code input field
    * @property {string} countryFieldId - ID of the country input field
    * @property {string} latitudeFieldId - ID of the latitude input field
    * @property {string} longitudeFieldId - ID of the longitude input field
@@ -78,6 +79,7 @@ export class LocationSearchField extends LitWrapper {
    * @property {string} venueCityFieldName - Input name for venue city field
    * @property {string} venueZipCodeFieldName - Input name for venue zip code field
    * @property {string} stateFieldName - Input name for the state/province field
+   * @property {string} stateCodeFieldName - Input name for the state code field
    * @property {string} countryNameFieldName - Input name for the country name field
    * @property {string} countryCodeFieldName - Input name for the country code field
    * @property {string} latitudeFieldName - Input name for latitude
@@ -87,6 +89,7 @@ export class LocationSearchField extends LitWrapper {
    * @property {string} initialVenueCity - Initial venue city value
    * @property {string} initialVenueZipCode - Initial venue zip code value
    * @property {string} initialState - Initial state/province value
+   * @property {string} initialStateCode - Initial state code value
    * @property {string} initialCountryName - Initial country name value
    * @property {string} initialCountryCode - Initial country code value
    * @property {boolean} _isSearching - Internal loading indicator state
@@ -102,6 +105,7 @@ export class LocationSearchField extends LitWrapper {
     venueCityFieldId: { type: String, attribute: "venue-city-field-id" },
     venueZipCodeFieldId: { type: String, attribute: "venue-zip-code-field-id" },
     stateFieldId: { type: String, attribute: "state-field-id" },
+    stateCodeFieldId: { type: String, attribute: "state-code-field-id" },
     countryFieldId: { type: String, attribute: "country-field-id" },
     latitudeFieldId: { type: String, attribute: "latitude-field-id" },
     longitudeFieldId: { type: String, attribute: "longitude-field-id" },
@@ -110,6 +114,7 @@ export class LocationSearchField extends LitWrapper {
     venueCityFieldName: { type: String, attribute: "venue-city-field-name" },
     venueZipCodeFieldName: { type: String, attribute: "venue-zip-code-field-name" },
     stateFieldName: { type: String, attribute: "state-field-name" },
+    stateCodeFieldName: { type: String, attribute: "state-code-field-name" },
     countryNameFieldName: { type: String, attribute: "country-name-field-name" },
     countryCodeFieldName: { type: String, attribute: "country-code-field-name" },
     latitudeFieldName: { type: String, attribute: "latitude-field-name" },
@@ -119,6 +124,7 @@ export class LocationSearchField extends LitWrapper {
     initialVenueCity: { type: String, attribute: "initial-venue-city" },
     initialVenueZipCode: { type: String, attribute: "initial-venue-zip-code" },
     initialState: { type: String, attribute: "initial-state" },
+    initialStateCode: { type: String, attribute: "initial-state-code" },
     initialCountryName: { type: String, attribute: "initial-country-name" },
     initialCountryCode: { type: String, attribute: "initial-country-code" },
     initialLatitude: { type: String, attribute: "initial-latitude" },
@@ -135,6 +141,7 @@ export class LocationSearchField extends LitWrapper {
     _venueCityValue: { type: String, state: true },
     _venueZipCodeValue: { type: String, state: true },
     _stateValue: { type: String, state: true },
+    _stateCodeValue: { type: String, state: true },
     _countryNameValue: { type: String, state: true },
     _countryCodeValue: { type: String, state: true },
     _showDropdown: { type: Boolean, state: true },
@@ -241,6 +248,7 @@ export class LocationSearchField extends LitWrapper {
       latitude: location.latitude ?? "",
       longitude: location.longitude ?? "",
       state: location.state || "",
+      stateCode: location.stateCode || "",
       venueAddress: location.venueAddress || "",
       venueCity: location.venueCity || "",
       venueName: location.venueName || "",
@@ -557,6 +565,10 @@ export class LocationSearchField extends LitWrapper {
    */
   _setLocationValueFromInput(valueKey, event) {
     this[valueKey] = event.target.value;
+
+    if (valueKey === "_countryNameValue") {
+      this._stateCodeValue = "";
+    }
   }
 
   /**
@@ -643,12 +655,14 @@ export class LocationSearchField extends LitWrapper {
       venueCityFieldName: this.venueCityFieldName,
       venueZipCodeFieldName: this.venueZipCodeFieldName,
       stateFieldName: this.stateFieldName,
+      stateCodeFieldName: this.stateCodeFieldName,
       countryNameFieldName: this.countryNameFieldName,
       venueNameValue: this._venueNameValue,
       venueAddressValue: this._venueAddressValue,
       venueCityValue: this._venueCityValue,
       venueZipCodeValue: this._venueZipCodeValue,
       stateValue: this._stateValue,
+      stateCodeValue: this._stateCodeValue,
       countryNameValue: this._countryNameValue,
     });
   }

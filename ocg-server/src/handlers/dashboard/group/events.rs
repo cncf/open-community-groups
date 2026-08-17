@@ -12,8 +12,8 @@ use axum::{
 };
 use chrono::Utc;
 use garde::Validate;
-use serde::Deserialize;
-use tracing::instrument;
+use serde::{Deserialize, Serialize};
+use tracing::{error, instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -32,16 +32,19 @@ use crate::{
             enqueue_event_series_canceled_notifications,
             enqueue_event_series_published_notifications,
         },
-        payments::DynPaymentsManager,
+        payments::{AutomaticTaxReadinessError, DynPaymentsManager},
     },
     templates::dashboard::group::{
         events::{self, Event, EventsListFilters, EventsTab},
         sponsors::GroupSponsorsFilters,
     },
     types::{
-        event::EventSummary,
+        event::{EventFull, EventSummary},
         pagination::{self, NavigationLinks},
-        payments::{PaymentConfigurationValidation, TicketTaxBehavior, TicketTaxCalculationMode},
+        payments::{
+            PaymentConfigurationValidation, TicketTaxBehavior, TicketTaxCalculationMode,
+            TicketVenue,
+        },
         permissions::GroupPermission,
     },
 };
@@ -232,6 +235,42 @@ pub(crate) async fn update_page(
 }
 
 // JSON handlers.
+
+/// Checks a saved event's venue with the configured automatic-tax provider.
+#[instrument(skip_all, err)]
+pub(crate) async fn automatic_tax_readiness(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    State(payments_manager): State<DynPaymentsManager>,
+    Path(event_id): Path<Uuid>,
+) -> Result<axum::response::Response, HandlerError> {
+    // Load only persisted event and sponsor data for this explicit check
+    let (event, payment_recipient) = tokio::try_join!(
+        db.get_event_full(community_id, group_id, event_id),
+        db.get_group_payment_recipient(community_id, group_id),
+    )?;
+    let Some(payment_recipient) = payment_recipient else {
+        return Ok(automatic_tax_error_response(
+            &AutomaticTaxReadinessError::FiscalSponsorNotReady(
+                "configure a fiscal sponsor before checking automatic tax".to_string(),
+            ),
+        ));
+    };
+
+    match payments_manager
+        .ensure_automatic_tax_readiness(&payment_recipient, &event_venue(&event))
+        .await
+    {
+        Ok(readiness) => Ok(Json(AutomaticTaxReadinessResponse {
+            cached: readiness.cached,
+            state_code: readiness.state_code,
+            status: "ready",
+        })
+        .into_response()),
+        Err(readiness_error) => Ok(automatic_tax_error_response(&readiness_error)),
+    }
+}
 
 /// Returns full event details in JSON format.
 #[instrument(skip_all, err)]
@@ -696,6 +735,28 @@ pub(crate) async fn update(
         bind_payment_validation(&mut event_json, &payment_validation)?;
     }
 
+    // Revalidate provider location readiness before changing a published automatic-tax event
+    if ticketing_configuration_changed
+        && event.tax_calculation_mode == TicketTaxCalculationMode::Automatic
+        && is_event_payload_paid_capable(&event_json)
+    {
+        let persisted_event = db.get_event_full(community_id, group_id, event_id).await?;
+        if persisted_event.published {
+            let payment_recipient = db
+                .get_group_payment_recipient(community_id, group_id)
+                .await?
+                .ok_or_else(|| {
+                HandlerError::Database(
+                    "configure a fiscal sponsor before updating this published event".to_string(),
+                )
+            })?;
+            payments_manager
+                .ensure_automatic_tax_readiness(&payment_recipient, &event_form_venue(&event))
+                .await
+                .map_err(automatic_tax_handler_error)?;
+        }
+    }
+
     // Persist the update and required notifications atomically
     db.as_ref()
         .transaction(|tx| {
@@ -751,6 +812,30 @@ pub(crate) async fn update(
 
 // Types.
 
+/// Organizer-correctable automatic-tax readiness response.
+#[derive(Debug, Serialize)]
+struct AutomaticTaxReadinessErrorResponse {
+    /// Stable machine-readable failure code.
+    code: &'static str,
+    /// Form fields associated with the failure.
+    fields: Vec<String>,
+    /// Organizer-facing explanation.
+    message: String,
+    /// Stable readiness status.
+    status: &'static str,
+}
+
+/// Successful automatic-tax readiness response.
+#[derive(Debug, Serialize)]
+struct AutomaticTaxReadinessResponse {
+    /// Whether an existing matching performance location was reused.
+    cached: bool,
+    /// ISO subdivision code sent to the provider, when available.
+    state_code: Option<String>,
+    /// Stable readiness status.
+    status: &'static str,
+}
+
 /// Query parameters accepted by cancel/delete actions.
 #[derive(Debug, Default, Deserialize)]
 struct EventActionQuery {
@@ -778,6 +863,41 @@ pub(crate) struct TaxRatesQuery {
 }
 
 // Helpers.
+
+/// Converts a readiness failure into the explicit JSON endpoint contract.
+fn automatic_tax_error_response(error: &AutomaticTaxReadinessError) -> axum::response::Response {
+    if error.is_correctable() {
+        let body = AutomaticTaxReadinessErrorResponse {
+            code: error.code(),
+            fields: error.fields(),
+            message: error.to_string(),
+            status: "not_ready",
+        };
+        return (StatusCode::UNPROCESSABLE_ENTITY, Json(body)).into_response();
+    }
+
+    error!(error = %error, "automatic-tax readiness provider failure");
+    (
+        StatusCode::BAD_GATEWAY,
+        Json(AutomaticTaxReadinessErrorResponse {
+            code: "provider_unavailable",
+            fields: Vec::new(),
+            message: "The automatic-tax provider is temporarily unavailable. Try again later."
+                .to_string(),
+            status: "not_ready",
+        }),
+    )
+        .into_response()
+}
+
+/// Converts readiness failures used by event mutations into handler responses.
+pub(super) fn automatic_tax_handler_error(error: AutomaticTaxReadinessError) -> HandlerError {
+    if error.is_correctable() {
+        HandlerError::Database(error.to_string())
+    } else {
+        HandlerError::Other(anyhow::Error::new(error))
+    }
+}
 
 /// Prepares the events list page and filters for the group dashboard.
 pub(crate) async fn prepare_list_page(
@@ -908,6 +1028,34 @@ async fn event_action_ids(
     }
 }
 
+/// Builds the normalized provider venue from a submitted dashboard event.
+fn event_form_venue(event: &Event) -> TicketVenue {
+    TicketVenue {
+        address: event.venue_address.clone().unwrap_or_default(),
+        city: event.venue_city.clone().unwrap_or_default(),
+        country_code: event.venue_country_code.clone().unwrap_or_default(),
+        name: event.venue_name.clone().unwrap_or_default(),
+        zip_code: event.venue_zip_code.clone().unwrap_or_default(),
+
+        state_code: event.venue_state_code.clone(),
+        state_name: event.venue_state_name.clone(),
+    }
+}
+
+/// Builds the normalized provider venue from a persisted event.
+pub(super) fn event_venue(event: &EventFull) -> TicketVenue {
+    TicketVenue {
+        address: event.venue_address.clone().unwrap_or_default(),
+        city: event.venue_city.clone().unwrap_or_default(),
+        country_code: event.venue_country_code.clone().unwrap_or_default(),
+        name: event.venue_name.clone().unwrap_or_default(),
+        zip_code: event.venue_zip_code.clone().unwrap_or_default(),
+
+        state_code: event.venue_state_code.clone(),
+        state_name: event.venue_state_name.clone(),
+    }
+}
+
 /// Returns whether a normalized event payload contains any positive ticket price.
 fn is_event_payload_paid_capable(event: &serde_json::Value) -> bool {
     event
@@ -1027,11 +1175,27 @@ async fn validate_publish_fiscal_sponsor(
         payments_manager
             .validate_fiscal_sponsor(recipient, require_automatic_tax)
             .await?;
+        for event in paid_events
+            .iter()
+            .filter(|event| event.tax_calculation_mode == TicketTaxCalculationMode::Automatic)
+        {
+            payments_manager
+                .ensure_automatic_tax_readiness(recipient, &event_venue(event))
+                .await
+                .map_err(automatic_tax_handler_error)?;
+        }
         for event in manual_events {
             payments_manager
                 .validate_tax_rates(recipient, &event.manual_tax_rate_ids, event.tax_behavior)
                 .await?;
         }
+    } else if paid_events
+        .iter()
+        .any(|event| event.tax_calculation_mode == TicketTaxCalculationMode::Automatic)
+    {
+        return Err(HandlerError::Database(
+            "configure a fiscal sponsor before publishing this automatic-tax event".to_string(),
+        ));
     } else if events.iter().any(|event| {
         event.tax_calculation_mode == TicketTaxCalculationMode::Manual
             && !event.manual_tax_rate_ids.is_empty()

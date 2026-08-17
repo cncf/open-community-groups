@@ -16,15 +16,18 @@ use crate::{
     services::notifications::DynNotificationsManager,
     types::payments::{
         GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
-        TicketTaxCalculationMode, TicketTaxRate,
+        TicketTaxCalculationMode, TicketTaxRate, TicketVenue,
     },
 };
 
 use super::{
-    CreateCheckoutSessionInput, DynPaymentsProvider, FinancialDocumentKind,
-    FiscalSponsorReadinessError, FiscalSponsorReadinessInput, GetFinancialDocumentInput,
-    ListTaxRatesInput, ValidateTaxRatesInput, notification_composer::PaymentsNotificationComposer,
-    provider::PaymentsWebhookEndpoint, webhook_reconciler::PaymentsWebhookReconciler,
+    AutomaticTaxReadiness, AutomaticTaxReadinessError, CreateCheckoutSessionInput,
+    DynPaymentsProvider, FinancialDocumentKind, FiscalSponsorReadinessError,
+    FiscalSponsorReadinessInput, GetFinancialDocumentInput, ListTaxRatesInput,
+    PerformanceLocationInput, ValidateTaxRatesInput,
+    notification_composer::PaymentsNotificationComposer,
+    provider::{PaymentsWebhookEndpoint, performance_location_fingerprint},
+    webhook_reconciler::PaymentsWebhookReconciler,
 };
 
 #[cfg(test)]
@@ -51,6 +54,13 @@ pub(crate) trait PaymentsManager {
 
     /// Returns the configured payments provider, when paid operations are enabled.
     fn configured_provider(&self) -> Option<PaymentProvider>;
+
+    /// Creates or reuses the automatic-tax performance location for a venue.
+    async fn ensure_automatic_tax_readiness(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        venue: &TicketVenue,
+    ) -> std::result::Result<AutomaticTaxReadiness, AutomaticTaxReadinessError>;
 
     /// Creates or reuses the provider checkout URL for a pending event purchase.
     async fn get_or_create_checkout_redirect_url(
@@ -176,6 +186,30 @@ impl PgPaymentsManager {
             .map_err(HandleWebhookError::Unexpected)
     }
 
+    /// Normalizes address codes and optional strings before provider use and caching.
+    fn normalized_venue(venue: &TicketVenue) -> TicketVenue {
+        TicketVenue {
+            address: venue.address.trim().to_string(),
+            city: venue.city.trim().to_string(),
+            country_code: venue.country_code.trim().to_ascii_uppercase(),
+            name: venue.name.trim().to_string(),
+            zip_code: venue.zip_code.trim().to_string(),
+
+            state_code: venue
+                .state_code
+                .as_deref()
+                .map(str::trim)
+                .filter(|state_code| !state_code.is_empty())
+                .map(str::to_ascii_uppercase),
+            state_name: venue
+                .state_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|state_name| !state_name.is_empty())
+                .map(str::to_string),
+        }
+    }
+
     /// Returns the configured payments provider when paid operations are available.
     fn payments_provider(&self) -> Result<&DynPaymentsProvider> {
         self.payments_provider
@@ -269,6 +303,103 @@ impl PaymentsManager for PgPaymentsManager {
         self.payments_provider
             .as_ref()
             .map(|payments_provider| payments_provider.provider())
+    }
+
+    /// [`PaymentsManager::ensure_automatic_tax_readiness`].
+    async fn ensure_automatic_tax_readiness(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        venue: &TicketVenue,
+    ) -> std::result::Result<AutomaticTaxReadiness, AutomaticTaxReadinessError> {
+        let payments_provider = self
+            .payments_provider()
+            .map_err(AutomaticTaxReadinessError::Unexpected)?;
+        if recipient.provider != payments_provider.provider() {
+            return Err(AutomaticTaxReadinessError::FiscalSponsorNotReady(
+                "fiscal sponsor seller is not configured for this provider".to_string(),
+            ));
+        }
+
+        // Reject incomplete local data before contacting the provider
+        let venue = Self::normalized_venue(venue);
+        let mut fields = Vec::new();
+        for (field, value) in [
+            ("venue_address", venue.address.as_str()),
+            ("venue_city", venue.city.as_str()),
+            ("venue_country_code", venue.country_code.as_str()),
+            ("venue_name", venue.name.as_str()),
+            ("venue_zip_code", venue.zip_code.as_str()),
+        ] {
+            if value.is_empty() {
+                fields.push(field.to_string());
+            }
+        }
+        if !fields.is_empty() {
+            return Err(AutomaticTaxReadinessError::IncompleteVenue { fields });
+        }
+        if venue.country_code.len() != 2
+            || !venue
+                .country_code
+                .chars()
+                .all(|character| character.is_ascii_alphabetic())
+        {
+            return Err(AutomaticTaxReadinessError::CountryInvalid {
+                country_code: venue.country_code,
+            });
+        }
+
+        // Require the sponsor's connected account and automatic-tax settings
+        payments_provider
+            .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+                connected_seller_id: recipient.recipient_id.clone(),
+                provider: recipient.provider,
+                require_automatic_tax: true,
+            })
+            .await
+            .map_err(|error| match error {
+                FiscalSponsorReadinessError::NotReady(message) => {
+                    AutomaticTaxReadinessError::FiscalSponsorNotReady(message)
+                }
+                FiscalSponsorReadinessError::Unexpected(error) => {
+                    AutomaticTaxReadinessError::Unexpected(error)
+                }
+            })?;
+
+        // Reuse the existing account-and-address cache when possible
+        let fingerprint = performance_location_fingerprint(&venue);
+        let cached_provider_tax_location_id = self
+            .db
+            .get_payment_provider_tax_location(
+                recipient.provider,
+                &recipient.recipient_id,
+                &fingerprint,
+            )
+            .await
+            .map_err(AutomaticTaxReadinessError::Unexpected)?;
+        let readiness = payments_provider
+            .ensure_performance_location(&PerformanceLocationInput {
+                connected_seller_id: recipient.recipient_id.clone(),
+                venue: venue.clone(),
+
+                cached_fingerprint: cached_provider_tax_location_id.as_ref().map(|_| fingerprint),
+                cached_provider_tax_location_id,
+            })
+            .await?;
+
+        if !readiness.cached {
+            self.db
+                .upsert_payment_provider_tax_location(
+                    recipient.provider,
+                    &recipient.recipient_id,
+                    &readiness.fingerprint,
+                    &readiness.provider_tax_location_id,
+                    &venue,
+                )
+                .await
+                .map_err(AutomaticTaxReadinessError::Unexpected)?;
+        }
+
+        Ok(readiness)
     }
 
     /// [`PaymentsManager::get_or_create_checkout_redirect_url`].

@@ -1,6 +1,7 @@
 import { initializeEventContributors } from "/static/js/dashboard/group/event-contributors.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
+import { initializeAutomaticTaxReadiness } from "/static/js/dashboard/event/automatic-tax-readiness.js";
 import "/static/js/dashboard/group/questions-editor.js";
 import {
   getElementById,
@@ -291,6 +292,7 @@ export const initializeEventAddPage = (root = document) => {
       controls,
       bindDisabledCfsToggle: true,
     });
+  initializeAutomaticTaxReadiness({ pageRoot, displayActiveSection });
 
   initializeRecurrenceFields({
     recurrenceAdditionalOccurrencesContainer,

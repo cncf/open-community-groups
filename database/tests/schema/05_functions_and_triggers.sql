@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(384);
+select plan(386);
 
 -- ============================================================================
 -- VARIABLES
@@ -303,6 +303,7 @@ select has_function('list_event_series_publishable_event_ids', array['uuid', 'uu
 select has_function('list_event_ticket_types', array['uuid']::name[]);
 select has_function('list_event_waitlist_ids', array['uuid', 'uuid']::name[]);
 select has_function('list_group_audit_logs', array['uuid', 'jsonb']::name[]);
+select has_function('list_group_automatic_tax_readiness_event_ids', array['uuid', 'uuid']::name[]);
 select has_function('list_group_categories', array['uuid']::name[]);
 select has_function('list_group_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members', array['uuid', 'jsonb']::name[]);
@@ -523,6 +524,7 @@ select has_function('update_user_details', array['uuid', 'jsonb']::name[]);
 select has_function('update_user_external_auth', array['uuid', 'jsonb']::name[]);
 select has_function('update_user_password', array['uuid', 'text']::name[]);
 select has_function('update_user_provider', array['uuid', 'jsonb']::name[]);
+select has_function('upsert_payment_provider_tax_location', array['text', 'text', 'text', 'text', 'jsonb']::name[]);
 select has_function('upsert_pending_registration_answers', array['uuid', 'uuid', 'jsonb', 'jsonb']::name[]);
 select has_function('user_has_community_permission', array['uuid', 'uuid', 'text']::name[]);
 select has_function('user_has_group_permission', array['uuid', 'uuid', 'uuid', 'text']::name[]);

@@ -608,6 +608,11 @@ mock! {
             group_id: Uuid,
             filters: &crate::templates::dashboard::audit::AuditLogFilters,
         ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
+        async fn list_group_automatic_tax_readiness_event_ids(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<Vec<Uuid>>;
         async fn list_group_events(
             &self,
             group_id: Uuid,
@@ -1270,6 +1275,12 @@ mock! {
             &self,
             event_purchase_id: Uuid,
         ) -> Result<crate::types::payments::EventPurchaseSummary>;
+        async fn get_payment_provider_tax_location(
+            &self,
+            payment_provider: crate::types::payments::PaymentProvider,
+            connected_seller_id: &str,
+            fingerprint: &str,
+        ) -> Result<Option<String>>;
         async fn get_user_purchase_document_context(
             &self,
             user_id: Uuid,
@@ -1385,6 +1396,14 @@ mock! {
         ) -> Result<i32>;
         async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32>;
         async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
+        async fn upsert_payment_provider_tax_location(
+            &self,
+            payment_provider: crate::types::payments::PaymentProvider,
+            connected_seller_id: &str,
+            fingerprint: &str,
+            provider_tax_location_id: &str,
+            venue: &crate::types::payments::TicketVenue,
+        ) -> Result<()>;
     }
 
     #[async_trait]

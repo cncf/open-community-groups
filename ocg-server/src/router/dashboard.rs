@@ -342,6 +342,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::attendees::reject_invitation_request),
         )
         .route(
+            "/events/{event_id}/automatic-tax/readiness",
+            post(dashboard::group::events::automatic_tax_readiness),
+        )
+        .route(
             "/events/{event_id}/cancel",
             put(dashboard::group::events::cancel),
         )

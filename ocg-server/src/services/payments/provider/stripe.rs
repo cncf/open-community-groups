@@ -23,12 +23,14 @@ use crate::{
 };
 
 use super::{
-    ApplicationFeeAdjustmentInput, ApplicationFeeAdjustmentResult, CheckoutFinancialContext,
-    CheckoutSession, CreateCheckoutSessionInput, CreditNoteInput, CreditNoteResult,
-    FinancialDocument, FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
+    ApplicationFeeAdjustmentInput, ApplicationFeeAdjustmentResult, AutomaticTaxReadiness,
+    AutomaticTaxReadinessError, CheckoutFinancialContext, CheckoutSession,
+    CreateCheckoutSessionInput, CreditNoteInput, CreditNoteResult, FinancialDocument,
+    FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
     FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
     ListTaxRatesInput, PaymentsProvider, PaymentsWebhookEndpoint, PaymentsWebhookEvent,
-    RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus, ValidateTaxRatesInput,
+    PerformanceLocationInput, RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus,
+    ValidateTaxRatesInput, performance_location_fingerprint,
 };
 
 #[cfg(test)]
@@ -45,6 +47,13 @@ const STRIPE_CHECKOUT_PAYMENT_METHOD_TYPES: [&str; 1] = ["card"];
 
 /// Maximum length accepted by Stripe for Product names.
 const STRIPE_PRODUCT_NAME_MAX_LEN: usize = 250;
+
+/// Stripe's stable generic invalid-tax-location message.
+const STRIPE_TAX_INVALID_ADDRESS_ERROR: &str =
+    "The address is not supported by Stripe Tax for a tax location. Please use a valid address.";
+
+/// Stripe's stable unsupported-tax-location message.
+const STRIPE_TAX_UNSUPPORTED_COUNTRY_ERROR: &str = "The address is not supported by Stripe Tax for a tax location. Please use a location that is supported by Stripe Tax.";
 
 /// Maximum accepted age for Stripe webhook signatures.
 const STRIPE_WEBHOOK_TOLERANCE_SECS: i64 = 300;
@@ -260,44 +269,36 @@ impl StripeProvider {
     /// Creates or reuses an account-scoped performance location.
     async fn create_performance_location(
         &self,
-        input: &CreateCheckoutSessionInput,
+        input: &PerformanceLocationInput,
         api_version: &str,
-    ) -> Result<(String, String)> {
-        // Require the ISO subdivision code expected by Stripe Tax
-        let state_code = input
-            .venue
-            .state_code
-            .as_deref()
-            .filter(|state_code| !state_code.trim().is_empty())
-            .context("automatic ticket tax requires a venue state code")?;
-
+    ) -> std::result::Result<AutomaticTaxReadiness, AutomaticTaxReadinessError> {
         // Fingerprint the complete venue snapshot used by Stripe Tax
-        let fingerprint = Self::provider_fingerprint(&[
-            &input.venue.address,
-            &input.venue.city,
-            &input.venue.country_code,
-            &input.venue.name,
-            state_code,
-            &input.venue.zip_code,
-        ]);
+        let fingerprint = performance_location_fingerprint(&input.venue);
 
         // Reuse the persisted location while its source snapshot still matches
-        if input.cached_performance_location_fingerprint.as_deref() == Some(fingerprint.as_str())
+        if input.cached_fingerprint.as_deref() == Some(fingerprint.as_str())
             && let Some(provider_tax_location_id) = input.cached_provider_tax_location_id.as_ref()
         {
-            return Ok((provider_tax_location_id.clone(), fingerprint));
+            return Ok(AutomaticTaxReadiness {
+                cached: true,
+                fingerprint,
+                provider_tax_location_id: provider_tax_location_id.clone(),
+                state_code: input.venue.state_code.clone(),
+            });
         }
 
         // Build the performance location request with ISO location codes
-        let form_fields = vec![
+        let mut form_fields = vec![
             ("address[city]", input.venue.city.as_str()),
             ("address[country]", input.venue.country_code.as_str()),
             ("address[line1]", input.venue.address.as_str()),
             ("address[postal_code]", input.venue.zip_code.as_str()),
-            ("address[state]", state_code),
             ("description", input.venue.name.as_str()),
             ("type", "performance"),
         ];
+        if let Some(state_code) = input.venue.state_code.as_deref() {
+            form_fields.push(("address[state]", state_code));
+        }
 
         // Create the immutable location with an account-and-address stable key
         let response = self
@@ -306,21 +307,27 @@ impl StripeProvider {
             .basic_auth(&self.cfg.secret_key, Some(""))
             .header("content-type", "application/x-www-form-urlencoded")
             .header("idempotency-key", format!("ocg-tax-location-{fingerprint}"))
-            .header("stripe-account", &input.seller.connected_account_id)
+            .header("stripe-account", &input.connected_seller_id)
             .header("stripe-version", api_version)
-            .body(serde_urlencoded::to_string(form_fields)?)
+            .body(
+                serde_urlencoded::to_string(form_fields)
+                    .context("error encoding Stripe performance location request")
+                    .map_err(AutomaticTaxReadinessError::Unexpected)?,
+            )
             .send()
             .await
-            .context("error creating Stripe performance location")?;
+            .context("error creating Stripe performance location")
+            .map_err(AutomaticTaxReadinessError::Unexpected)?;
 
         // Parse the created location identifier
-        let response = Self::parse_provider_response::<StripeIdResponse>(
-            response,
-            "performance location creation",
-        )
-        .await?;
+        let response = Self::parse_performance_location_response(response, input).await?;
 
-        Ok((response.id, fingerprint))
+        Ok(AutomaticTaxReadiness {
+            cached: false,
+            fingerprint,
+            provider_tax_location_id: response.id,
+            state_code: input.venue.state_code.clone(),
+        })
     }
 
     /// Creates or reuses an account-scoped ticket Product.
@@ -573,6 +580,57 @@ impl StripeProvider {
         Self::parse_provider_response(response, operation)
             .await
             .map_err(FiscalSponsorReadinessError::Unexpected)
+    }
+
+    /// Parses Stripe performance-location errors without exposing provider response bodies.
+    async fn parse_performance_location_response(
+        response: reqwest::Response,
+        input: &PerformanceLocationInput,
+    ) -> std::result::Result<StripeIdResponse, AutomaticTaxReadinessError> {
+        if response.status().is_success() {
+            return response
+                .json()
+                .await
+                .with_context(|| "error parsing Stripe performance location creation response")
+                .map_err(AutomaticTaxReadinessError::Unexpected);
+        }
+
+        // Only structured Stripe fields participate in organizer-correctable classification
+        let response = response
+            .json::<StripeErrorEnvelope>()
+            .await
+            .context("error parsing Stripe performance location error response")
+            .map_err(AutomaticTaxReadinessError::Unexpected)?;
+        let parameter = response.error.param.as_deref();
+
+        if parameter == Some("address[state]") {
+            return match input.venue.state_code.as_ref() {
+                Some(state_code) => Err(AutomaticTaxReadinessError::StateCodeInvalid {
+                    country_code: input.venue.country_code.clone(),
+                    state_code: state_code.clone(),
+                }),
+                None => Err(AutomaticTaxReadinessError::StateCodeRequired {
+                    country_code: input.venue.country_code.clone(),
+                }),
+            };
+        }
+        if response.error.message == STRIPE_TAX_UNSUPPORTED_COUNTRY_ERROR {
+            return Err(AutomaticTaxReadinessError::UnsupportedCountry);
+        }
+        if parameter == Some("address[country]") {
+            return Err(AutomaticTaxReadinessError::CountryInvalid {
+                country_code: input.venue.country_code.clone(),
+            });
+        }
+        if response.error.message == STRIPE_TAX_INVALID_ADDRESS_ERROR
+            || parameter.is_some_and(|parameter| parameter.starts_with("address["))
+        {
+            return Err(AutomaticTaxReadinessError::InvalidAddress);
+        }
+
+        Err(AutomaticTaxReadinessError::Unexpected(anyhow::anyhow!(
+            "Stripe performance location creation failed"
+        )))
     }
 
     /// Parses a successful Stripe response while preserving provider errors.
@@ -965,14 +1023,25 @@ impl PaymentsProvider for StripeProvider {
         ) = match input.tax_calculation_mode {
             TicketTaxCalculationMode::Automatic => {
                 let api_version = self.cfg.ticket_tax_api_version.as_str();
-                let (location_id, location_fingerprint) =
-                    self.create_performance_location(input, api_version).await?;
-                let (product_id, product_fingerprint) =
-                    self.create_tax_product(input, api_version, &location_id).await?;
+                let readiness = self
+                    .ensure_performance_location(&PerformanceLocationInput {
+                        connected_seller_id: input.seller.connected_account_id.clone(),
+                        venue: input.venue.clone(),
+
+                        cached_fingerprint: input.cached_performance_location_fingerprint.clone(),
+                        cached_provider_tax_location_id: input
+                            .cached_provider_tax_location_id
+                            .clone(),
+                    })
+                    .await
+                    .map_err(anyhow::Error::new)?;
+                let (product_id, product_fingerprint) = self
+                    .create_tax_product(input, api_version, &readiness.provider_tax_location_id)
+                    .await?;
 
                 (
-                    Some(location_id),
-                    Some(location_fingerprint),
+                    Some(readiness.provider_tax_location_id),
+                    Some(readiness.fingerprint),
                     Some(product_id),
                     Some(product_fingerprint),
                     api_version,
@@ -1041,6 +1110,16 @@ impl PaymentsProvider for StripeProvider {
             provider_tax_location_id,
             provider_tax_product_id,
         })
+    }
+
+    /// [`PaymentsProvider::ensure_performance_location`].
+    #[instrument(skip(self, input), err)]
+    async fn ensure_performance_location(
+        &self,
+        input: &PerformanceLocationInput,
+    ) -> std::result::Result<AutomaticTaxReadiness, AutomaticTaxReadinessError> {
+        self.create_performance_location(input, self.cfg.ticket_tax_api_version.as_str())
+            .await
     }
 
     /// [`PaymentsProvider::find_refund`].
@@ -1761,6 +1840,22 @@ struct StripeExpandedCharge {
 
     /// Application fee created for the direct charge.
     application_fee: Option<String>,
+}
+
+/// Minimal structured Stripe error envelope.
+#[derive(Debug, Deserialize)]
+struct StripeErrorEnvelope {
+    /// Structured error details.
+    error: StripeErrorResponse,
+}
+
+/// Stripe fields used to classify performance-location failures.
+#[derive(Debug, Deserialize)]
+struct StripeErrorResponse {
+    /// Human-readable provider message used for documented generic outcomes.
+    message: String,
+    /// Exact request parameter rejected by Stripe, when supplied.
+    param: Option<String>,
 }
 
 /// Account-scoped completed Checkout Session with authoritative amounts.

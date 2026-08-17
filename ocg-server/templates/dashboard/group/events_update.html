@@ -714,7 +714,7 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Location search -#}
         <div class="col-span-full">
-          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}  {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}  {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}  {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}  {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %}  {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %}  {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %}  {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
+          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state" state-code-field-name="venue_state_code" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}  {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}  {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}  {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}  {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %}  {% if let Some(venue_state_code) = &event.venue_state_code %}initial-state-code="{{ venue_state_code }}"{% endif %}  {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %}  {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %}  {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
           </location-search-field>
         </div>
         {# End location search -#}
@@ -933,6 +933,35 @@
                 {% endif -%}
               </div>
               <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
+            </div>
+
+            <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 p-4"
+                 data-automatic-tax-readiness
+                 data-saved="true"
+                 data-readiness-url="/dashboard/group/events/{{ event.event_id }}/automatic-tax/readiness">
+              <div class="form-label">Automatic tax readiness</div>
+              <p class="form-legend mt-1">Check the saved venue with the automatic-tax provider before publishing.</p>
+              <div class="mt-3 flex flex-wrap items-center gap-3">
+                <button type="button"
+                        class="btn-primary-outline btn-mini"
+                        data-automatic-tax-readiness-action="check"
+                        {% if event_read_only %}disabled{% endif %}>Check readiness</button>
+                <button type="button"
+                        class="btn-primary-outline btn-mini"
+                        data-automatic-tax-readiness-action="review-state"
+                        hidden>Review State code</button>
+              </div>
+              <p class="mt-3 text-sm/6 text-stone-600"
+                 data-automatic-tax-readiness-role="status"
+                 role="status"
+                 aria-live="polite"></p>
+              <a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 hx-boost="false"
+                 class="mt-2 inline-block text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                 data-automatic-tax-readiness-role="manual-tax-help"
+                 hidden>Learn how to configure manual tax</a>
             </div>
 
             <fieldset id="manual-tax-rates-fieldset"

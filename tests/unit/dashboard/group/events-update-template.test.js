@@ -217,6 +217,17 @@ describe("dashboard group event update template", () => {
     );
   });
 
+  it("links unsupported automatic-tax feedback to manual-tax guidance", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      'href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds" target="_blank" rel="noopener noreferrer" hx-boost="false"',
+    );
+    expect(template).to.include(
+      'data-automatic-tax-readiness-role="manual-tax-help" hidden>Learn how to configure manual tax</a>',
+    );
+  });
+
   it("keeps payment guidance only for read-only paid events", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(

@@ -367,7 +367,8 @@ begin
                     || convert_to(v_venue_snapshot->>'city', 'UTF8') || decode('00', 'hex')
                     || convert_to(v_venue_snapshot->>'country_code', 'UTF8') || decode('00', 'hex')
                     || convert_to(v_venue_snapshot->>'name', 'UTF8') || decode('00', 'hex')
-                    || convert_to(v_venue_snapshot->>'state_code', 'UTF8') || decode('00', 'hex')
+                    || convert_to(coalesce(v_venue_snapshot->>'state_code', ''), 'UTF8')
+                        || decode('00', 'hex')
                     || convert_to(v_venue_snapshot->>'zip_code', 'UTF8') || decode('00', 'hex'),
                     'sha256'
                 ),

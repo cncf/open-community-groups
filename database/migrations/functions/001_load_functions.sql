@@ -147,6 +147,7 @@
 {{ template "dashboard-group/get_event_summary_dashboard.sql" }} -- Dependency for list_group_events
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
+{{ template "dashboard-group/list_group_automatic_tax_readiness_event_ids.sql" }} -- Dependency for group_requires_automatic_tax_readiness
 {{ template "dashboard-group/group_requires_automatic_tax_readiness.sql" }}
 {{ template "dashboard-group/invite_event_attendee.sql" }}
 {{ template "dashboard-group/list_awarded_badges.sql" }}
@@ -327,6 +328,7 @@
 {{ template "payments/requeue_stale_event_purchase_application_fee_adjustment_claims.sql" }}
 {{ template "payments/requeue_stale_event_purchase_credit_note_claims.sql" }}
 {{ template "payments/requeue_stale_event_purchase_refund_claims.sql" }}
+{{ template "payments/upsert_payment_provider_tax_location.sql" }}
 
 {{ template "site/get_filters_options.sql" }}
 {{ template "site/get_site_home_stats.sql" }}

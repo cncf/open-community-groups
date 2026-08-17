@@ -22,7 +22,10 @@ use crate::{
     services::{
         meetings::MeetingProvider,
         notifications::{MockNotificationsManager, NotificationKind},
-        payments::{DynPaymentsManager, FiscalSponsorReadinessError, MockPaymentsManager},
+        payments::{
+            AutomaticTaxReadiness, AutomaticTaxReadinessError, DynPaymentsManager,
+            FiscalSponsorReadinessError, MockPaymentsManager,
+        },
     },
     templates::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
@@ -538,6 +541,148 @@ async fn test_update_page_success() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains(">Tickets</"));
     assert!(body.contains("free-only"));
+}
+
+#[tokio::test]
+async fn test_automatic_tax_readiness_uses_persisted_event_and_reports_cache() {
+    // Setup an authenticated event manager and persisted venue
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.venue_address = Some("1 Main St".to_string());
+    event.venue_city = Some("Málaga".to_string());
+    event.venue_country_code = Some("ES".to_string());
+    event.venue_name = Some("Venue".to_string());
+    event.venue_state_code = Some("MA".to_string());
+    event.venue_zip_code = Some("29006".to_string());
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+
+    // Return a matching provider location through the typed manager boundary
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_ensure_automatic_tax_readiness()
+        .withf(|recipient, venue| {
+            recipient.recipient_id == "acct_test"
+                && venue.country_code == "ES"
+                && venue.state_code.as_deref() == Some("MA")
+        })
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Ok(AutomaticTaxReadiness {
+                    cached: true,
+                    fingerprint: "fingerprint".to_string(),
+                    provider_tax_location_id: "loc_cached".to_string(),
+                    state_code: Some("MA".to_string()),
+                })
+            })
+        });
+
+    // Check the protected saved-event endpoint
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!(
+                    "/dashboard/group/events/{event_id}/automatic-tax/readiness"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let payload: serde_json::Value =
+        from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        payload,
+        json!({"status": "ready", "state_code": "MA", "cached": true})
+    );
+}
+
+#[tokio::test]
+async fn test_automatic_tax_readiness_returns_structured_state_error() {
+    // Setup a permitted saved-event request
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .returning(|_, _, _, permission| Ok(permission == GroupPermission::EventsWrite));
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(sample_event_full(community_id, event_id, group_id)));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_ensure_automatic_tax_readiness()
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Err(AutomaticTaxReadinessError::StateCodeRequired {
+                    country_code: "US".to_string(),
+                })
+            })
+        });
+
+    // Check the exact organizer-correctable response contract
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!(
+                    "/dashboard/group/events/{event_id}/automatic-tax/readiness"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let payload: serde_json::Value =
+        from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(payload["status"], "not_ready");
+    assert_eq!(payload["code"], "state_code_required");
+    assert_eq!(payload["fields"], json!(["venue_state_code"]));
 }
 
 #[tokio::test]
@@ -2796,6 +2941,70 @@ async fn test_publish_validation_rechecks_every_manual_tax_selection() {
 }
 
 #[tokio::test]
+async fn test_publish_validation_requires_automatic_tax_location_readiness() {
+    // Setup a paid automatic-tax event and its connected fiscal sponsor
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.payment_currency_code = Some("USD".to_string());
+    event.tax_calculation_mode = TicketTaxCalculationMode::Automatic;
+    event.ticket_types = Some(vec![EventTicketType {
+        event_ticket_type_id: Uuid::new_v4(),
+        order: 1,
+        price_windows: vec![EventTicketPriceWindow {
+            amount_minor: 2500,
+            ..Default::default()
+        }],
+        title: "General admission".to_string(),
+        ..Default::default()
+    }]);
+    let mut db = MockDB::new();
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+
+    // Reject the venue after sponsor readiness succeeds
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_validate_fiscal_sponsor()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager
+        .expect_ensure_automatic_tax_readiness()
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Err(AutomaticTaxReadinessError::StateCodeInvalid {
+                    country_code: "ES".to_string(),
+                    state_code: "ZZ".to_string(),
+                })
+            })
+        });
+    let payments_manager: DynPaymentsManager = Arc::new(payments_manager);
+
+    // Check publication stops before a database publish mutation is possible
+    let error = super::validate_publish_fiscal_sponsor(
+        &db,
+        &payments_manager,
+        community_id,
+        group_id,
+        &[event_id],
+    )
+    .await
+    .expect_err("invalid provider location to stop publication");
+
+    assert!(matches!(
+        error,
+        HandlerError::Database(message)
+            if message == "the state code ZZ is invalid for ES"
+    ));
+}
+
+#[tokio::test]
 async fn test_delete_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -3363,6 +3572,15 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| {
+            Ok(EventFull {
+                published: false,
+                ..sample_event_full(community_id, event_id, group_id)
+            })
+        });
 
     // Setup the ordered state transition and notification expectations
     let mut sequence = Sequence::new();
@@ -3518,6 +3736,74 @@ async fn test_update_invalid_ticketing_fields_returns_unprocessable_entity() {
 }
 
 #[tokio::test]
+async fn test_update_published_automatic_tax_event_stops_before_mutation_when_not_ready() {
+    // Setup a paid automatic-tax update for an already-published event
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .returning(|_, _, _, permission| Ok(permission == GroupPermission::EventsWrite));
+    db.expect_event_ticketing_configuration_changed()
+        .times(1)
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_payment_recipient()
+        .times(2)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+    let mut persisted_event = sample_event_full(community_id, event_id, group_id);
+    persisted_event.published = true;
+    db.expect_get_event_full()
+        .times(1)
+        .returning(move |_, _, _| Ok(persisted_event.clone()));
+    db.expect_begin().never();
+
+    // Allow sponsor validation but reject the proposed venue location
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_configured_provider()
+        .times(1)
+        .return_const(Some(PaymentProvider::Stripe));
+    payments_manager
+        .expect_validate_fiscal_sponsor()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager
+        .expect_ensure_automatic_tax_readiness()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Err(AutomaticTaxReadinessError::InvalidAddress) }));
+
+    // Submit the update and confirm no transaction begins
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/dashboard/group/events/{event_id}/update"))
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from(sample_paid_event_body()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "the venue address is invalid"
+    );
+}
+
+#[tokio::test]
 async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_entity() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -3564,28 +3850,14 @@ async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_payment_recipient()
-        .times(1)
+        .times(2)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(|_, _| Ok(None));
-    let mut tx = MockDB::new();
-    tx.expect_get_event_summary()
+    db.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(sample_event_summary(event_id, group_id)));
-    tx.expect_update_event()
-        .times(1)
-        .withf(move |uid, gid, eid, _, _, payment_provider| {
-            *uid == user_id
-                && *gid == group_id
-                && *eid == event_id
-                && *payment_provider == Some(PaymentProvider::Stripe)
-        })
-        .returning(|_, _, _, _, _, _| {
-            Err(anyhow::Error::new(HandlerError::Database(
-                "paid-capable events require a payment recipient".to_string(),
-            )))
-        });
-    expect_rolled_back_transaction(&mut db, tx);
+        .returning(move |_, _, _| Ok(sample_event_full(community_id, event_id, group_id)));
+    db.expect_begin().never();
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -3618,7 +3890,7 @@ async fn test_update_paid_event_without_payment_recipient_returns_unprocessable_
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "paid-capable events require a payment recipient",
+        "configure a fiscal sponsor before updating this published event",
     );
 }
 
@@ -3677,6 +3949,15 @@ async fn test_update_paid_notification_failure_rolls_back() {
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| {
+            Ok(EventFull {
+                published: false,
+                ..sample_event_full(community_id, event_id, group_id)
+            })
+        });
 
     // Setup a successful update followed by a required notification failure
     let mut tx = MockDB::new();

@@ -21,6 +21,7 @@ describe("location field config", () => {
         venueCityFieldId: "venue-city-id",
         venueZipCodeFieldId: "venue-zip-id",
         stateFieldId: "state-id",
+        stateCodeFieldId: "state-code-id",
         countryFieldId: "country-id",
         latitudeFieldId: "lat-id",
         longitudeFieldId: "lng-id",
@@ -29,6 +30,7 @@ describe("location field config", () => {
         venueCityFieldName: "venue_city",
         venueZipCodeFieldName: "venue_zip_code",
         stateFieldName: "venue_state",
+        stateCodeFieldName: "venue_state_code",
         countryNameFieldName: "venue_country",
         countryCodeFieldName: "venue_country_code",
         latitudeFieldName: "venue_latitude",
@@ -40,6 +42,7 @@ describe("location field config", () => {
       venueCityFieldId: "venue-city-id",
       venueZipCodeFieldId: "venue-zip-id",
       stateFieldId: "state-id",
+      stateCodeFieldId: "state-code-id",
       countryFieldId: "country-id",
       latitudeFieldId: "lat-id",
       longitudeFieldId: "lng-id",
@@ -48,6 +51,7 @@ describe("location field config", () => {
       venueCityFieldName: "venue_city",
       venueZipCodeFieldName: "venue_zip_code",
       stateFieldName: "venue_state",
+      stateCodeFieldName: "venue_state_code",
       countryNameFieldName: "venue_country",
       countryCodeFieldName: "venue_country_code",
       latitudeFieldName: "venue_latitude",
@@ -73,11 +77,18 @@ describe("location field config", () => {
         venueAddressFieldId: "",
         venueCityFieldId: "venue-city",
         stateFieldId: null,
+        stateCodeFieldId: "venue-state-code",
         countryFieldId: "venue-country",
         latitudeFieldId: undefined,
         longitudeFieldId: "venue-lng",
       }),
-    ).to.deep.equal(["venue-name", "venue-city", "venue-country", "venue-lng"]);
+    ).to.deep.equal([
+      "venue-name",
+      "venue-city",
+      "venue-state-code",
+      "venue-country",
+      "venue-lng",
+    ]);
   });
 
   it("builds internal value updates for configured fields", () => {
@@ -86,12 +97,14 @@ describe("location field config", () => {
       {
         venueNameFieldName: "venue_name",
         venueCityFieldName: "venue_city",
+        stateCodeFieldName: "venue_state_code",
         latitudeFieldName: "venue_latitude",
       },
       {
         venueName: "Main Hall",
         venueCity: "Málaga",
         venueAddress: "Hidden address",
+        stateCode: "MA",
         latitude: 36.7213,
         longitude: -4.4214,
       },
@@ -100,6 +113,7 @@ describe("location field config", () => {
     expect(updates).to.deep.equal({
       venueNameValue: "Main Hall",
       venueCityValue: "Málaga",
+      stateCodeValue: "MA",
       latitudeValue: "36.7213",
     });
   });
@@ -135,6 +149,7 @@ describe("location field config", () => {
       getInitialLocationValues({
         initialVenueName: "Main Hall",
         initialCountryName: "Spain",
+        initialStateCode: "MA",
         initialLatitude: "36.7213",
       }),
     ).to.deep.equal({
@@ -143,6 +158,7 @@ describe("location field config", () => {
       venueCityValue: "",
       venueZipCodeValue: "",
       stateValue: "",
+      stateCodeValue: "MA",
       countryNameValue: "Spain",
       countryCodeValue: "",
       latitudeValue: "36.7213",
@@ -156,6 +172,7 @@ describe("location field config", () => {
       venueCityValue: "",
       venueZipCodeValue: "",
       stateValue: "",
+      stateCodeValue: "",
       countryNameValue: "",
       countryCodeValue: "",
       latitudeValue: "",

@@ -16,10 +16,10 @@ use crate::{
     services::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::{
-            ApproveRefundRequestInput, CheckoutSession, CompleteRefundRecoveryInput,
-            DynPaymentsProvider, FinancialDocument, FinancialDocumentKind, HandleWebhookError,
-            MockPaymentsProvider, PaymentsManager, PaymentsWebhookEvent, PgPaymentsManager,
-            RejectRefundRequestInput, RequestRefundInput,
+            ApproveRefundRequestInput, AutomaticTaxReadiness, AutomaticTaxReadinessError,
+            CheckoutSession, CompleteRefundRecoveryInput, DynPaymentsProvider, FinancialDocument,
+            FinancialDocumentKind, HandleWebhookError, MockPaymentsProvider, PaymentsManager,
+            PaymentsWebhookEvent, PgPaymentsManager, RejectRefundRequestInput, RequestRefundInput,
         },
     },
     templates::notifications::EventRefundRequested,
@@ -1102,6 +1102,121 @@ async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_requirement()
         )
         .await
         .expect("provider readiness to be forwarded");
+}
+
+#[tokio::test]
+async fn ensure_automatic_tax_readiness_reuses_cached_location_without_state() {
+    // Setup a normalized venue and matching account-scoped cache entry
+    let recipient = GroupPaymentRecipient {
+        provider: PaymentProvider::Stripe,
+        recipient_id: "acct_sponsor".to_string(),
+        seller_display_name: "Sponsor".to_string(),
+    };
+    let venue = TicketVenue {
+        address: " 123 Example Street ".to_string(),
+        city: " Example City ".to_string(),
+        country_code: " pt ".to_string(),
+        name: " Example Venue ".to_string(),
+        zip_code: " 12345 ".to_string(),
+        state_code: None,
+        state_name: None,
+    };
+    let mut db = MockDB::new();
+    db.expect_get_payment_provider_tax_location()
+        .withf(|provider, seller, fingerprint| {
+            *provider == PaymentProvider::Stripe
+                && seller == "acct_sponsor"
+                && !fingerprint.is_empty()
+        })
+        .times(1)
+        .returning(|_, _, _| Ok(Some("loc_cached".to_string())));
+    db.expect_upsert_payment_provider_tax_location().never();
+
+    // Setup provider validation and cache reuse expectations
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    provider
+        .expect_validate_fiscal_sponsor()
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(()) }));
+    provider
+        .expect_ensure_performance_location()
+        .withf(|input| {
+            input.connected_seller_id == "acct_sponsor"
+                && input.venue.country_code == "PT"
+                && input.venue.state_code.is_none()
+                && input.cached_fingerprint.is_some()
+                && input.cached_provider_tax_location_id.as_deref() == Some("loc_cached")
+        })
+        .times(1)
+        .returning(|input| {
+            let fingerprint =
+                crate::services::payments::provider::performance_location_fingerprint(&input.venue);
+            Box::pin(async move {
+                Ok(AutomaticTaxReadiness {
+                    cached: true,
+                    fingerprint,
+                    provider_tax_location_id: "loc_cached".to_string(),
+                    state_code: None,
+                })
+            })
+        });
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(provider));
+
+    // Resolve readiness through the shared manager boundary
+    let readiness = manager
+        .ensure_automatic_tax_readiness(&recipient, &venue)
+        .await
+        .expect("matching cached location to be reused");
+
+    assert!(readiness.cached);
+    assert_eq!(readiness.provider_tax_location_id, "loc_cached");
+    assert_eq!(readiness.state_code, None);
+}
+
+#[tokio::test]
+async fn ensure_automatic_tax_readiness_reports_all_incomplete_venue_fields() {
+    // Setup a matching provider without allowing remote validation
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    provider.expect_validate_fiscal_sponsor().never();
+    provider.expect_ensure_performance_location().never();
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(provider),
+    );
+
+    // Check every required persisted venue field is returned for correction
+    let error = manager
+        .ensure_automatic_tax_readiness(
+            &GroupPaymentRecipient {
+                provider: PaymentProvider::Stripe,
+                recipient_id: "acct_sponsor".to_string(),
+                seller_display_name: "Sponsor".to_string(),
+            },
+            &TicketVenue::default(),
+        )
+        .await
+        .expect_err("empty venue to be rejected locally");
+
+    assert!(matches!(
+        error,
+        AutomaticTaxReadinessError::IncompleteVenue { fields }
+            if fields == [
+                "venue_address",
+                "venue_city",
+                "venue_country_code",
+                "venue_name",
+                "venue_zip_code",
+            ]
+    ));
 }
 
 // Helpers.
