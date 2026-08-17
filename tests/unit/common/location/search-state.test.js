@@ -73,7 +73,9 @@ describe("location search state", () => {
       placeholderText: "Search for a venue or address...",
       venueNameFieldId: "",
       venueNameFieldName: "",
+      stateCodeFieldName: "",
       initialVenueName: "",
+      initialStateCode: "",
       disabled: false,
     });
 
@@ -86,6 +88,7 @@ describe("location search state", () => {
       outsidePointerHandler: null,
       latitudeValue: "",
       longitudeValue: "",
+      stateCodeValue: "",
       mapVisible: false,
       searchError: null,
     });

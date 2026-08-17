@@ -23,9 +23,7 @@ describe("location search display", () => {
 
   it("builds stable ids for generated location inputs", () => {
     // Input ids include the component id when available.
-    expect(getLocationInputId("event-location", "venue_city")).to.equal(
-      "event-location-venue_city",
-    );
+    expect(getLocationInputId("event-location", "venue_city")).to.equal("event-location-venue_city");
     expect(getLocationInputId("", "venue_city")).to.equal("location-search-venue_city");
     expect(getLocationInputId("event-location", "")).to.equal("");
   });
@@ -33,9 +31,7 @@ describe("location search display", () => {
   it("returns venue-aware helper text", () => {
     // City and country helper text changes for venue contexts.
     expect(getLocationLegendText("city", true)).to.equal("City where the venue is located.");
-    expect(getLocationLegendText("city", false)).to.equal(
-      "Primary city where the group is located.",
-    );
+    expect(getLocationLegendText("city", false)).to.equal("Primary city where the group is located.");
     expect(getLocationLegendText("country", true)).to.equal("Country where the venue is located.");
     expect(getLocationLegendText("zip", false)).to.equal("Postal/zip code of the venue.");
     expect(getLocationLegendText("state", false)).to.equal("State, province, or region.");
@@ -64,12 +60,8 @@ describe("location search display", () => {
 
   it("detects dropdown and search button display states", () => {
     // Dropdown only renders after the user searches with enough text.
-    expect(shouldRenderLocationDropdown({ showDropdown: true, searchQuery: "Málaga" })).to.equal(
-      true,
-    );
-    expect(shouldRenderLocationDropdown({ showDropdown: true, searchQuery: "Má" })).to.equal(
-      false,
-    );
+    expect(shouldRenderLocationDropdown({ showDropdown: true, searchQuery: "Málaga" })).to.equal(true);
+    expect(shouldRenderLocationDropdown({ showDropdown: true, searchQuery: "Má" })).to.equal(false);
 
     // Search is disabled for disabled fields, short queries, or active requests.
     expect(
@@ -90,10 +82,22 @@ describe("location search display", () => {
 
   it("returns disabled input classes only when fields are disabled", () => {
     // Disabled classes are shared by generated location inputs.
-    expect(getLocationDisabledInputClasses(true)).to.equal(
-      "cursor-not-allowed bg-stone-100 text-stone-500",
-    );
+    expect(getLocationDisabledInputClasses(true)).to.equal("cursor-not-allowed bg-stone-100 text-stone-500");
     expect(getLocationDisabledInputClasses(false)).to.equal("");
+  });
+
+  it("places the address above the city and zip code row", () => {
+    const fields = getLocationTextFieldDefinitions({
+      venueAddressFieldName: "venue_address",
+      venueCityFieldName: "venue_city",
+      venueZipCodeFieldName: "venue_zip_code",
+    });
+
+    expect(fields.map((field) => field.className)).to.deep.equal([
+      "col-span-full",
+      "col-span-full lg:col-span-3",
+      "col-span-full lg:col-span-3",
+    ]);
   });
 
   it("returns value keys for generated text field handlers", () => {
@@ -105,6 +109,7 @@ describe("location search display", () => {
     expect(getLocationTextFieldValueKey("state")).to.equal("_stateValue");
     expect(getLocationTextFieldValueKey("stateCode")).to.equal("_stateCodeValue");
     expect(getLocationTextFieldValueKey("countryName")).to.equal("_countryNameValue");
+    expect(getLocationTextFieldValueKey("countryCode")).to.equal("_countryCodeValue");
     expect(getLocationTextFieldValueKey("unknown")).to.equal("");
   });
 
@@ -113,26 +118,34 @@ describe("location search display", () => {
     const fields = getLocationTextFieldDefinitions({
       venueNameFieldName: "venue_name",
       venueCityFieldName: "venue_city",
+      stateFieldName: "venue_state_name",
       stateCodeFieldName: "venue_state_code",
       countryNameFieldName: "venue_country",
+      countryCodeFieldName: "venue_country_code",
       venueNameValue: "Main Hall",
       venueCityValue: "Malaga",
+      stateValue: "Andalusia",
       stateCodeValue: "MA",
       countryNameValue: "Spain",
+      countryCodeValue: "ES",
     });
 
     // The definitions preserve render order and venue-aware helper text.
     expect(fields.map((field) => field.fieldName)).to.deep.equal([
       "venue_name",
       "venue_city",
-      "venue_state_code",
+      "venue_state_name",
       "venue_country",
+      "venue_state_code",
+      "venue_country_code",
     ]);
     expect(fields.map((field) => field.handlerName)).to.deep.equal([
       "venueName",
       "venueCity",
-      "stateCode",
+      "state",
       "countryName",
+      "stateCode",
+      "countryCode",
     ]);
     expect(fields[0]).to.include({
       label: "Venue Name",
@@ -146,14 +159,28 @@ describe("location search display", () => {
     });
     expect(fields[2]).to.include({
       autocomplete: false,
-      label: "State code (optional)",
-      legend: "Subdivision code used in the address, such as CA or MA.",
-      value: "MA",
+      className: "col-span-full lg:col-span-3 lg:col-start-1",
+      value: "Andalusia",
     });
     expect(fields[3]).to.include({
       autocomplete: false,
+      className: "col-span-full lg:col-span-3",
       legend: "Country where the venue is located.",
       value: "Spain",
+    });
+    expect(fields[4]).to.include({
+      autocomplete: false,
+      className: "col-span-full lg:col-span-3 lg:col-start-1",
+      label: "State/Province Code",
+      legend: "",
+      value: "MA",
+    });
+    expect(fields[5]).to.include({
+      autocomplete: false,
+      className: "col-span-full lg:col-span-3",
+      label: "Country Code",
+      legend: "",
+      value: "ES",
     });
   });
 });

@@ -34,9 +34,9 @@ describe("location search utils", () => {
         postcode: "29015",
         museum: "City Museum",
         state: "Andalusia",
+        "ISO3166-2-lvl4": "ES-AN",
         country: "Spain",
         country_code: "es",
-        "ISO3166-2-lvl4": "ES-AN",
         "ISO3166-2-lvl6": "ES-MA",
       },
     };

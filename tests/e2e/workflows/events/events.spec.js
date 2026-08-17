@@ -806,8 +806,14 @@ test.describe("event management workflows", () => {
       "true",
     );
 
-    // Validate every physical venue prerequisite in browser order.
+    // Keep subdivisions optional and validate every required venue field in browser order.
     await venueNameInput.fill("Hybrid Admission Hall");
+    const venueStateNameInput = organizerGroupPage.locator("#location-search-venue_state_name");
+    const venueStateCodeInput = organizerGroupPage.locator("#location-search-venue_state_code");
+    await expect(venueStateNameInput).toHaveJSProperty("required", false);
+    await expect(venueStateNameInput).toHaveJSProperty("validationMessage", "");
+    await expect(venueStateCodeInput).toHaveJSProperty("required", false);
+    await expect(venueStateCodeInput).toHaveJSProperty("validationMessage", "");
     const requiredVenueFields = [
       {
         input: organizerGroupPage.locator("#location-search-venue_address"),
@@ -823,16 +829,6 @@ test.describe("event management workflows", () => {
         input: organizerGroupPage.locator("#location-search-venue_zip_code"),
         message: "Paid tickets require a venue postal code.",
         value: "10001",
-      },
-      {
-        input: organizerGroupPage.locator("#location-search-venue_state_name"),
-        message: "Paid tickets require a state or province.",
-        value: "New York",
-      },
-      {
-        input: organizerGroupPage.locator("#location-search-venue_state_code"),
-        message: "Paid tickets require a state or province code to calculate taxes.",
-        value: "NY",
       },
       {
         input: organizerGroupPage.locator("#location-search-venue_country_name"),

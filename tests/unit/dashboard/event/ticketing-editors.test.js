@@ -121,6 +121,47 @@ describe("ticketing editors", () => {
     expect(uiRoot.hasConfiguredTicketTypes()).to.equal(true);
   });
 
+  it("keeps ticket and discount counts synchronized with editor rows", async () => {
+    const ticketCount = document.createElement("div");
+    ticketCount.id = "ticket-types-count";
+    const discountCount = document.createElement("div");
+    discountCount.id = "discount-codes-count";
+    document.body.append(ticketCount, discountCount);
+
+    const ticketTypesUiRoot = mountTicketTypesUi();
+    const discountCodesUiRoot = mountDiscountCodesUi();
+    await ticketTypesUiRoot.updateComplete;
+    await discountCodesUiRoot.updateComplete;
+
+    expect(ticketCount.textContent).to.equal("0 ticket types");
+    expect(discountCount.textContent).to.equal("0 discount codes");
+
+    ticketTypesUiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([{ title: "General admission", price_windows: [{ amount_minor: 0 }] }]),
+    );
+    discountCodesUiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([{ code: "WELCOME", kind: "percentage", percentage: 10, title: "Welcome" }]),
+    );
+    await ticketTypesUiRoot.updateComplete;
+    await discountCodesUiRoot.updateComplete;
+
+    expect(ticketCount.textContent).to.equal("1 ticket type");
+    expect(discountCount.textContent).to.equal("1 discount code");
+
+    discountCodesUiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        { code: "EARLY", kind: "percentage", percentage: 15, title: "Early bird" },
+        { code: "WELCOME", kind: "percentage", percentage: 10, title: "Welcome" },
+      ]),
+    );
+    await discountCodesUiRoot.updateComplete;
+
+    expect(discountCount.textContent).to.equal("2 discount codes");
+  });
+
   it("keeps seats and status in dedicated table cells on small layouts", async () => {
     // Prepare ui root for keeping seats and status in dedicated table cells.
     const uiRoot = mountTicketTypesUi();
@@ -653,8 +694,10 @@ describe("ticketing editors", () => {
       <input name="venue_address" />
       <input name="venue_city" />
       <input name="venue_zip_code" />
+      <input name="venue_state_name" />
+      <input name="venue_state_code" />
       <input name="venue_country_name" />
-      <input name="venue_country_code" type="hidden" />
+      <input name="venue_country_code" />
     `;
     document.body.append(eventFields);
 
@@ -678,7 +721,7 @@ describe("ticketing editors", () => {
     expect(kindInput.validationMessage).to.equal("Paid tickets require an in-person or hybrid event.");
     expect(document.querySelector('[name="venue_name"]').required).to.equal(false);
 
-    // An eligible event kind requires every server-backed venue value.
+    // An eligible event kind requires the backend's complete venue fields.
     kindInput.value = "hybrid";
     kindInput.dispatchEvent(new Event("change", { bubbles: true }));
     syncEventEnrollmentState();
@@ -687,8 +730,12 @@ describe("ticketing editors", () => {
     expect(document.querySelector('[name="venue_name"]').validationMessage).to.equal(
       "Paid tickets require a venue name.",
     );
-    expect(document.querySelector('[name="venue_country_name"]').validationMessage).to.equal(
-      "Paid tickets require a country selected from the location search results.",
+    expect(document.querySelector('[name="venue_state_name"]').required).to.equal(false);
+    expect(document.querySelector('[name="venue_state_name"]').validationMessage).to.equal("");
+    expect(document.querySelector('[name="venue_state_code"]').required).to.equal(false);
+    expect(document.querySelector('[name="venue_state_code"]').validationMessage).to.equal("");
+    expect(document.querySelector('[name="venue_country_code"]').validationMessage).to.equal(
+      "Paid tickets require a country code to calculate taxes.",
     );
 
     // Completing the venue clears every paid-ticket validation error.
@@ -704,7 +751,8 @@ describe("ticketing editors", () => {
     }
 
     expect(document.querySelector('[name="venue_name"]').checkValidity()).to.equal(true);
-    expect(document.querySelector('[name="venue_country_name"]').checkValidity()).to.equal(true);
+    expect(document.querySelector('[name="venue_state_code"]').checkValidity()).to.equal(true);
+    expect(document.querySelector('[name="venue_country_code"]').checkValidity()).to.equal(true);
   });
 
   it("allows ticketed approval and waitlist modes while keeping them mutually exclusive", async () => {

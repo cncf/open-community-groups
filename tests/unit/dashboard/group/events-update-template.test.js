@@ -1,9 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch(
-    "/ocg-server/templates/dashboard/group/events_update.html",
-  );
+  const response = await fetch("/ocg-server/templates/dashboard/group/events_update.html");
 
   expect(response.ok).to.equal(true);
 
@@ -23,9 +21,7 @@ describe("dashboard group event update template", () => {
       'class="group/event-page grid h-full min-h-full min-w-0 grow grid-rows-[auto_minmax(0,1fr)] gap-y-8 has-[#pending-changes-alert:not(.hidden)]:grid-rows-[auto_auto_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
     );
     expect(template).to.include('data-event-page="update"');
-    expect(template).to.include(
-      '<div id="event-preview-modal-root" class="contents"></div>',
-    );
+    expect(template).to.include('<div id="event-preview-modal-root" class="contents"></div>');
   });
 
   it("keeps the existing read-only copy when registration answers lock question editing", async () => {
@@ -33,9 +29,7 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the rendered registration question fields.
-    expect(template).to.include(
-      "{% if event.registration_questions_locked -%}",
-    );
+    expect(template).to.include("{% if event.registration_questions_locked -%}");
     expect(template).to.include(
       "Registration questions are read-only because attendees have submitted answers.",
     );
@@ -46,9 +40,7 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the online and session details components receive past-event state.
-    expect(template).to.include(
-      "{% if event.is_past() %}event-past{% endif %}",
-    );
+    expect(template).to.include("{% if event.is_past() %}event-past{% endif %}");
   });
 
   it("shows an event title header above update tabs and content", async () => {
@@ -65,33 +57,21 @@ describe("dashboard group event update template", () => {
     expect(template).to.include('class="min-w-0 flex-1"');
     expect(template).to.not.include("overflow-hidden");
     expect(template).to.include('class="col-span-full min-w-0 2xl:col-span-3"');
-    expect(template).to.include(
-      "{% if let Some(starts_at) = &event.starts_at -%}",
-    );
+    expect(template).to.include("{% if let Some(starts_at) = &event.starts_at -%}");
     expect(template).to.include(
       '{{ starts_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p") }}',
     );
     expect(template).to.include("{% if let Some(ends_at) = &event.ends_at -%}");
     expect(template).to.include('<span class="text-stone-400">-</span>');
-    expect(template).to.include(
-      '{{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}',
-    );
+    expect(template).to.include('{{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}');
     expect(template).to.include('class="mt-1 text-xs text-stone-500"');
-    expect(template).to.include(
-      'class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"',
-    );
+    expect(template).to.include('class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"');
     expect(template).to.include('id="event-preview-button"');
     expect(template).to.include('id="event-public-page-link"');
     expect(template).to.include('id="publish-event-button"');
-    expect(template).to.include(
-      'hx-put="/dashboard/group/events/{{ event.event_id }}/publish"',
-    );
-    expect(template).to.include(
-      'data-has-related-events="{{ event.has_related_events }}"',
-    );
-    expect(template).to.include(
-      'disabled title="This event is already published."',
-    );
+    expect(template).to.include('hx-put="/dashboard/group/events/{{ event.event_id }}/publish"');
+    expect(template).to.include('data-has-related-events="{{ event.has_related_events }}"');
+    expect(template).to.include('disabled title="This event is already published."');
     expect(template.indexOf("{% if event.canceled -%}")).to.be.lessThan(
       template.indexOf("{% else if event.published -%}"),
     );
@@ -107,16 +87,12 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       'Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}',
     );
-    expect(template).to.include(
-      '<div class="mt-1 text-xs text-stone-500">Date not set yet</div>',
-    );
+    expect(template).to.include('<div class="mt-1 text-xs text-stone-500">Date not set yet</div>');
     const eventTitleIndex = template.indexOf(
       '<div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
     );
     const canceledWarningIndex = template.indexOf("This event is canceled.");
-    const eventContentIndex = template.indexOf(
-      'class="col-span-full row-start-2 grid h-full content-start',
-    );
+    const eventContentIndex = template.indexOf('class="col-span-full row-start-2 grid h-full content-start');
 
     expect(canceledWarningIndex).to.be.greaterThan(eventTitleIndex);
     expect(eventContentIndex).to.be.greaterThan(canceledWarningIndex);
@@ -134,13 +110,9 @@ describe("dashboard group event update template", () => {
 
     expect(alertIndex).to.be.greaterThan(eventTitleIndex);
     expect(template).to.not.include("icon-clock");
-    expect(template).to.include(
-      'id="pending-changes-alert" class="col-span-full hidden min-w-0"',
-    );
+    expect(template).to.include('id="pending-changes-alert" class="col-span-full hidden min-w-0"');
     expect(template).to.include('class="min-w-0 flex-1 break-words text-sm/6"');
-    expect(template).to.include(
-      "btn-primary btn-mini h-7! w-24 text-nowrap ms-auto",
-    );
+    expect(template).to.include("btn-primary btn-mini h-7! w-24 text-nowrap ms-auto");
   });
 
   it("lazy-loads event review tabs from the desktop tab buttons", async () => {
@@ -153,21 +125,13 @@ describe("dashboard group event update template", () => {
       '<label for="update-event-section-select" class="form-label mb-2 lg:hidden">Section</label>',
     );
     expect(template).to.include('id="update-event-section-select"');
-    expect(template).to.include(
-      'class="select-primary w-full sm:w-sm xl:hidden"',
-    );
-    expect(template).to.include(
-      'class="hidden flex-col gap-1 font-medium xl:flex"',
-    );
-    expect(template).to.include(
-      'event_form::tab_option(section = "attendees", label = "Attendees")',
-    );
+    expect(template).to.include('class="select-primary w-full sm:w-sm xl:hidden"');
+    expect(template).to.include('class="hidden flex-col gap-1 font-medium xl:flex"');
+    expect(template).to.include('event_form::tab_option(section = "attendees", label = "Attendees")');
     expect(template).to.include(
       'event_form::tab_option(section = "invitation-requests", label = "Requests")',
     );
-    expect(template).to.include(
-      'event_form::tab_option(section = "waitlist", label = "Waitlist")',
-    );
+    expect(template).to.include('event_form::tab_option(section = "waitlist", label = "Waitlist")');
     expect(template).to.include(
       'hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content"',
     );
@@ -190,9 +154,7 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       'data-content="invitation-requests" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
-    expect(template).to.include(
-      'data-content="waitlist" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
-    );
+    expect(template).to.include('data-content="waitlist" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"');
     expect(template).to.include(
       'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0"',
     );
@@ -203,9 +165,7 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert payment recipient details are not shown in the ticket form.
-    expect(template).not.to.include(
-      "Paid ticket revenue is sent to Stripe recipient",
-    );
+    expect(template).not.to.include("Paid ticket revenue is sent to Stripe recipient");
     expect(template).not.to.include("{{ payment_recipient.recipient_id }}");
   });
 
@@ -228,6 +188,15 @@ describe("dashboard group event update template", () => {
     );
   });
 
+  it("restores state and country tax codes into the venue fields", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('state-field-name="venue_state_name"');
+    expect(template).to.include('state-code-field-name="venue_state_code"');
+    expect(template).to.include('initial-state-code="{{ venue_state_code }}"');
+    expect(template).to.include('country-code-field-name="venue_country_code"');
+    expect(template).to.include('initial-country-code="{{ venue_country_code }}"');
+  });
   it("keeps payment guidance only for read-only paid events", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
@@ -248,6 +217,7 @@ describe("dashboard group event update template", () => {
     expect(ticketForm).not.to.include(
       "Payments are not configured for this group, but free ticket tiers remain editable.",
     );
+    expect(ticketForm.match(/class="btn-secondary whitespace-nowrap"/gu)).to.have.length(2);
   });
 
   it("offers manual-tax and no-tax modes with event-level selections", async () => {
@@ -260,15 +230,9 @@ describe("dashboard group event update template", () => {
       "{% if self.uses_manual_ticket_tax() %}selected{% endif %}>Manual Stripe Tax Rates</option>",
     );
     expect(template).to.include('<option value="none"');
-    expect(template).to.include(
-      "{% if self.uses_no_ticket_tax() %}hidden{% endif %}",
-    );
-    expect(template).to.include(
-      "data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'",
-    );
-    expect(template).to.include(
-      'data-tax-rates-role="state" role="status" aria-live="polite"',
-    );
+    expect(template).to.include("{% if self.uses_no_ticket_tax() %}hidden{% endif %}");
+    expect(template).to.include("data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'");
+    expect(template).to.include('data-tax-rates-role="state" role="status" aria-live="polite"');
   });
 
   it("describes paid enrollment modes as mutually exclusive alternatives", async () => {
@@ -276,17 +240,11 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert paid approval and waitlist modes are described without stale restrictions.
-    expect(template).to.include(
-      "Paid ticket events can use invitation approval.",
-    );
+    expect(template).to.include("Paid ticket events can use invitation approval.");
     expect(template).to.include("including paid ticket events");
-    expect(template).to.include(
-      "Invitation approval and the waitlist cannot be enabled together.",
-    );
+    expect(template).to.include("Invitation approval and the waitlist cannot be enabled together.");
     expect(template).to.not.include("waitlist or paid tickets");
-    expect(template).to.not.include(
-      "Paid events disable waitlist automatically.",
-    );
+    expect(template).to.not.include("Paid events disable waitlist automatically.");
   });
 
   it("spaces ticket sections without separators", async () => {
@@ -319,9 +277,7 @@ describe("dashboard group event update template", () => {
       'class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8"',
     );
     expect(template).to.not.include("lg:border-b-0");
-    expect(template).to.include(
-      '<div class="min-w-0"> <div class="inert-form"',
-    );
+    expect(template).to.include('<div class="min-w-0"> <div class="inert-form"');
   });
 
   it("wires event and session contributor tables to shared badge awards", async () => {
@@ -345,9 +301,7 @@ describe("dashboard group event update template", () => {
       '<div class="mt-8"> <h3 class="form-label m-0">Session-level speakers</h3> <p class="mt-4 text-sm text-stone-500">',
     );
     expect(template).not.to.include(">Event Speakers<");
-    expect(template).not.to.include(
-      '<div class="mt-8 border-t border-stone-200 pt-8">',
-    );
+    expect(template).not.to.include('<div class="mt-8 border-t border-stone-200 pt-8">');
     expect(template).to.include(
       '<session-speakers-table id="session-speakers-table" sessions="{{ event.sessions|json }}" event-id="{{ event.event_id }}"',
     );

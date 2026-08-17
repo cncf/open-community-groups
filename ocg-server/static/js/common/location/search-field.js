@@ -79,7 +79,7 @@ export class LocationSearchField extends LitWrapper {
    * @property {string} venueCityFieldName - Input name for venue city field
    * @property {string} venueZipCodeFieldName - Input name for venue zip code field
    * @property {string} stateFieldName - Input name for the state/province field
-   * @property {string} stateCodeFieldName - Input name for the state code field
+   * @property {string} stateCodeFieldName - Input name for the state/province code field
    * @property {string} countryNameFieldName - Input name for the country name field
    * @property {string} countryCodeFieldName - Input name for the country code field
    * @property {string} latitudeFieldName - Input name for latitude
@@ -89,7 +89,7 @@ export class LocationSearchField extends LitWrapper {
    * @property {string} initialVenueCity - Initial venue city value
    * @property {string} initialVenueZipCode - Initial venue zip code value
    * @property {string} initialState - Initial state/province value
-   * @property {string} initialStateCode - Initial state code value
+   * @property {string} initialStateCode - Initial state/province code value
    * @property {string} initialCountryName - Initial country name value
    * @property {string} initialCountryCode - Initial country code value
    * @property {boolean} _isSearching - Internal loading indicator state
@@ -564,11 +564,17 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _setLocationValueFromInput(valueKey, event) {
-    this[valueKey] = event.target.value;
+    const value = event.target.value;
 
     if (valueKey === "_countryNameValue") {
+      this._countryCodeValue = "";
+      this._stateCodeValue = "";
+    } else if (valueKey === "_stateValue") {
       this._stateCodeValue = "";
     }
+
+    this[valueKey] =
+      valueKey === "_countryCodeValue" || valueKey === "_stateCodeValue" ? value.trim().toUpperCase() : value;
   }
 
   /**

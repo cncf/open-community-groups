@@ -24,7 +24,12 @@ const PAID_VENUE_FIELDS = [
   },
   {
     inputName: "venue_country_name",
-    message: "Paid tickets require a country selected from the location search results.",
+    message: "Paid tickets require a country.",
+    valueName: "venue_country_name",
+  },
+  {
+    inputName: "venue_country_code",
+    message: "Paid tickets require a country code to calculate taxes.",
     valueName: "venue_country_code",
   },
 ];

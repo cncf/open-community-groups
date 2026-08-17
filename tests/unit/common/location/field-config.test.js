@@ -29,7 +29,7 @@ describe("location field config", () => {
         venueAddressFieldName: "venue_address",
         venueCityFieldName: "venue_city",
         venueZipCodeFieldName: "venue_zip_code",
-        stateFieldName: "venue_state",
+        stateFieldName: "venue_state_name",
         stateCodeFieldName: "venue_state_code",
         countryNameFieldName: "venue_country",
         countryCodeFieldName: "venue_country_code",
@@ -50,7 +50,7 @@ describe("location field config", () => {
       venueAddressFieldName: "venue_address",
       venueCityFieldName: "venue_city",
       venueZipCodeFieldName: "venue_zip_code",
-      stateFieldName: "venue_state",
+      stateFieldName: "venue_state_name",
       stateCodeFieldName: "venue_state_code",
       countryNameFieldName: "venue_country",
       countryCodeFieldName: "venue_country_code",
@@ -63,9 +63,8 @@ describe("location field config", () => {
     // Any generated field name means the component should render internal fields.
     expect(hasInternalLocationFields({ venueNameFieldName: "venue_name" })).to.equal(true);
     expect(hasInternalLocationFields({ venueCityFieldName: "venue_city" })).to.equal(true);
-    expect(hasInternalLocationFields({ countryCodeFieldName: "venue_country_code" })).to.equal(
-      true,
-    );
+    expect(hasInternalLocationFields({ stateCodeFieldName: "venue_state_code" })).to.equal(true);
+    expect(hasInternalLocationFields({ countryCodeFieldName: "venue_country_code" })).to.equal(true);
     expect(hasInternalLocationFields({ latitudeFieldName: "venue_latitude" })).to.equal(false);
   });
 
@@ -82,13 +81,7 @@ describe("location field config", () => {
         latitudeFieldId: undefined,
         longitudeFieldId: "venue-lng",
       }),
-    ).to.deep.equal([
-      "venue-name",
-      "venue-city",
-      "venue-state-code",
-      "venue-country",
-      "venue-lng",
-    ]);
+    ).to.deep.equal(["venue-name", "venue-city", "venue-state-code", "venue-country", "venue-lng"]);
   });
 
   it("builds internal value updates for configured fields", () => {

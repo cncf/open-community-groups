@@ -123,7 +123,7 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
           @input=${(event) => onInput(field.handlerName, event)}
         />
       </div>
-      <p class="form-legend">${field.legend}</p>
+      ${field.legend ? html`<p class="form-legend">${field.legend}</p>` : ""}
     </div>
   `;
 };
@@ -134,16 +134,17 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
  * @returns {import('lit').TemplateResult}
  */
 export const renderLocationTextFields = (state) => {
-  const hiddenCountryCodeInput = state.countryCodeFieldName
-    ? html`
-        <input
-          type="hidden"
-          name="${state.countryCodeFieldName}"
-          id="${getLocationInputId(state.componentId, state.countryCodeFieldName)}"
-          .value=${state.countryCodeValue}
-        />
-      `
-    : "";
+  const hiddenCountryCodeInput =
+    state.countryCodeFieldName && !state.stateCodeFieldName
+      ? html`
+          <input
+            type="hidden"
+            name="${state.countryCodeFieldName}"
+            id="${getLocationInputId(state.componentId, state.countryCodeFieldName)}"
+            .value=${state.countryCodeValue}
+          />
+        `
+      : "";
   const disabledClasses = getLocationDisabledInputClasses(state.disabled);
   const textFields = getLocationTextFieldDefinitions(state);
   const getInputId = (inputName) => getLocationInputId(state.componentId, inputName);
@@ -160,6 +161,16 @@ export const renderLocationTextFields = (state) => {
           onInput: state.onInput,
         }),
       )}
+      ${
+        state.stateCodeFieldName && state.countryCodeFieldName
+          ? html`
+              <p class="form-legend col-span-full">
+                For events with paid tickets, state/province and country codes are required to calculate
+                taxes.
+              </p>
+            `
+          : ""
+      }
     </div>
   `;
 };

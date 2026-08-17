@@ -36,7 +36,7 @@ describe("location-search-field", () => {
       venueAddressFieldName: "venue_address",
       venueCityFieldName: "venue_city",
       venueZipCodeFieldName: "venue_zip_code",
-      stateFieldName: "venue_state",
+      stateFieldName: "venue_state_name",
       stateCodeFieldName: "venue_state_code",
       countryNameFieldName: "venue_country",
       countryCodeFieldName: "venue_country_code",
@@ -254,15 +254,47 @@ describe("location-search-field", () => {
 
     // Verify the generated form controls expose the complete submitted venue.
     expect(element.querySelector('[name="venue_name"]')?.value).to.equal("FYCMA");
-    expect(element.querySelector('[name="venue_address"]')?.value).to.equal("Av. de José Ortega y Gasset, 201");
+    expect(element.querySelector('[name="venue_address"]')?.value).to.equal(
+      "Av. de José Ortega y Gasset, 201",
+    );
     expect(element.querySelector('[name="venue_city"]')?.value).to.equal("Málaga");
-    expect(element.querySelector('[name="venue_state"]')?.value).to.equal("Andalusia");
+    expect(element.querySelector('[name="venue_state_name"]')?.value).to.equal("Andalusia");
     expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal("MA");
     expect(element.querySelector('[name="venue_country"]')?.value).to.equal("Spain");
     expect(element.querySelector('[name="venue_country_code"]')?.value).to.equal("ES");
     expect(element.querySelector('[name="venue_zip_code"]')?.value).to.equal("29006");
     expect(element.querySelector('[name="venue_latitude"]')?.value).to.equal("36.7213");
     expect(element.querySelector('[name="venue_longitude"]')?.value).to.equal("-4.4214");
+    expect(element.textContent.replace(/\s+/g, " ")).to.contain(
+      "For events with paid tickets, state/province and country codes are required to calculate taxes.",
+    );
+    expect(element.textContent).not.to.contain("ISO state or province code.");
+    expect(element.textContent).not.to.contain("ISO country code.");
+  });
+
+  it("clears selected codes when location names are edited manually", async () => {
+    // Render a selected venue with both tax location codes.
+    const element = await renderField();
+    element.setLocationFields({
+      country: "Spain",
+      countryCode: "ES",
+      state: "Andalusia",
+      stateCode: "AN",
+    });
+    await element.updateComplete;
+
+    // Edit the visible location names after the search selection.
+    const stateNameInput = element.querySelector('[name="venue_state_name"]');
+    const countryNameInput = element.querySelector('[name="venue_country"]');
+    stateNameInput.value = "Catalonia";
+    stateNameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    countryNameInput.value = "Portugal";
+    countryNameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await element.updateComplete;
+
+    // Manual name edits invalidate the previously selected codes.
+    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal("");
+    expect(element.querySelector('[name="venue_country_code"]')?.value).to.equal("");
   });
 
   it("preserves manual state-code overrides until the country or location changes", async () => {

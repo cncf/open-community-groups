@@ -22,10 +22,7 @@ export const TEST_UPLOAD_ASSET_PATHS = {
     __dirname,
     "../../../ocg-server/static/images/e2e/community-secondary-logo.svg",
   ),
-  badgeArtwork: path.resolve(
-    __dirname,
-    "../../../ocg-server/static/images/e2e/badges/host.png",
-  ),
+  badgeArtwork: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/badges/host.png"),
   banner: path.resolve(__dirname, "../../../ocg-server/static/images/e2e/community-primary-banner.svg"),
   bannerMobile: path.resolve(
     __dirname,
@@ -178,14 +175,10 @@ export const fillEventVenue = async (page, values) => {
   await page.locator("#location-search-venue_address").fill(values.address);
   await page.locator("#location-search-venue_city").fill(values.city);
   await page.locator("#location-search-venue_zip_code").fill(values.zipCode);
-  await page.locator("#location-search-venue_state").fill(values.state);
+  await page.locator("#location-search-venue_state_name").fill(values.state);
   await page.locator("#location-search-venue_country_name").fill(values.countryName);
-  await page.locator("#location-search-venue_country_code").evaluate((element, value) => {
-    const input = element;
-    input.value = value;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  }, values.countryCode);
+  await page.locator("#location-search-venue_state_code").fill(values.stateCode);
+  await page.locator("#location-search-venue_country_code").fill(values.countryCode);
   await page.locator("#location-search-latitude").fill(values.latitude);
   await page.locator("#location-search-longitude").fill(values.longitude);
 };
