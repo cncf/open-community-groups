@@ -31,7 +31,7 @@ use crate::{
     types::permissions::GroupPermission,
 };
 
-use super::{badges, events, logs, members, payments_ready, refunds, sponsors, team};
+use super::{badges, check_in, events, logs, members, payments_ready, refunds, sponsors, team};
 
 #[cfg(test)]
 mod tests;
@@ -55,24 +55,36 @@ pub(crate) async fn page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get selected tab from query
-    let tab: Tab = query
+    let requested_tab: Tab = query
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
     // Load dashboard context and payment readiness
     let payment_recipient = async {
-        if matches!(&tab, Tab::Refunds) {
+        if matches!(&requested_tab, Tab::Refunds) {
             db.get_group_payment_recipient(community_id, group_id).await
         } else {
             Ok(None)
         }
     };
-    let (can_manage_badges, groups_by_community, payment_recipient, site_settings) = tokio::try_join!(
+    let (
+        can_manage_badges,
+        can_manage_check_ins,
+        groups_by_community,
+        payment_recipient,
+        site_settings,
+    ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
             &user.user_id,
             GroupPermission::BadgesWrite
+        ),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::CheckInsWrite
         ),
         db.list_user_groups(&user.user_id),
         payment_recipient,
@@ -81,11 +93,20 @@ pub(crate) async fn page(
     let payments_ready = payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref());
 
     // Protect restricted dashboard tabs before preparing their content
-    if !can_manage_badges && matches!(&tab, Tab::Artwork | Tab::Awards | Tab::Badges) {
+    if !can_manage_badges && matches!(&requested_tab, Tab::Artwork | Tab::Awards | Tab::Badges) {
         return Err(HandlerError::Forbidden);
     }
-    // Prepare content for the selected tab
-    let content = match tab {
+
+    // Fall back internally so check-in users can recover their group selection
+    let is_check_in_fallback = !can_manage_check_ins && matches!(&requested_tab, Tab::CheckIn);
+    let effective_tab = if is_check_in_fallback {
+        Tab::default()
+    } else {
+        requested_tab
+    };
+
+    // Prepare content for the effective tab
+    let content = match effective_tab {
         Tab::Analytics => {
             let (stats, has_subgroups) = tokio::try_join!(
                 db.get_group_stats(community_id, group_id, false),
@@ -119,6 +140,7 @@ pub(crate) async fn page(
             .await?;
             Content::Badges(Box::new(template))
         }
+        Tab::CheckIn => Content::CheckIn(check_in::prepare_list_page(&db, group_id).await?),
         Tab::Events => {
             let (_, template) = events::prepare_list_page(
                 &db,
@@ -210,8 +232,10 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         can_manage_badges,
+        can_manage_check_ins,
         content,
         groups_by_community,
+        is_check_in_fallback,
         messages: messages.into_iter().collect(),
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),

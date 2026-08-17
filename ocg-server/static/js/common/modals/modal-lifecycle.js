@@ -13,7 +13,10 @@ const modalFocusOrigins = new WeakMap();
  */
 const getModalFocusTargets = (modal) =>
   Array.from(modal.querySelectorAll(MODAL_FOCUS_SELECTOR)).filter(
-    (target) => target instanceof HTMLElement && !target.closest('[hidden], [aria-hidden="true"], .hidden'),
+    (target) =>
+      target instanceof HTMLElement &&
+      target.tabIndex >= 0 &&
+      !target.closest('[hidden], [aria-hidden="true"], .hidden'),
   );
 
 /**
@@ -266,6 +269,10 @@ export const resetRestoredModalState = (root = document) => {
     root instanceof Element && root.matches("[data-modal-toggle]")
       ? [root, ...root.querySelectorAll("[data-modal-toggle]")]
       : [...(root.querySelectorAll?.("[data-modal-toggle]") || [])];
+  const restorableModals =
+    root instanceof Element && root.matches("[data-restorable-modal]")
+      ? [root, ...root.querySelectorAll("[data-restorable-modal]")]
+      : [...(root.querySelectorAll?.("[data-restorable-modal]") || [])];
 
   triggers.forEach((trigger) => {
     const modalId = trigger.dataset.modalToggle;
@@ -274,8 +281,12 @@ export const resetRestoredModalState = (root = document) => {
     }
 
     const modal = getElementById(document, modalId);
+    if (modal) restorableModals.push(modal);
+  });
+
+  new Set(restorableModals).forEach((modal) => {
     setElementHidden(modal, true);
-    modal?.setAttribute("aria-hidden", "true");
+    modal.setAttribute("aria-hidden", "true");
   });
 
   resetBodyScrollLock();

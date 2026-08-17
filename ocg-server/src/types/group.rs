@@ -275,6 +275,8 @@ pub struct GroupRegion {
 pub enum GroupRole {
     /// Full group administrator.
     Admin,
+    /// Group attendee check-in manager.
+    CheckInManager,
     /// Group event manager.
     EventsManager,
     /// Read-only group viewer.

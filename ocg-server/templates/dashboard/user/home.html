@@ -8,12 +8,30 @@
   <script type="module" src="/static/js/dashboard/confirm-actions.js"></script>
   <script type="module" src="/static/js/dashboard/user/account-settings.js"></script>
   <script type="module" src="/static/js/dashboard/user/badges.js"></script>
+  <script type="module" src="/static/js/dashboard/user/check-in.js"></script>
   <script type="module" src="/static/js/dashboard/user/events.js"></script>
   <script type="module" src="/static/js/dashboard/user/invitations.js"></script>
   <script type="module"
           src="/static/js/dashboard/user/session-proposals/actions.js"></script>
   <script type="module" src="/static/js/dashboard/user/submissions.js"></script>
 {% endblock scripts -%}
+
+{% block mobile_dashboard_view -%}
+  {% if !content.is_check_in() -%}
+    <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
+      <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
+        <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
+        <div class="mt-6">
+          {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = false, href = "/dashboard/user?tab=check-in", extra_styles = "bg-white md:hidden") -}}
+        </div>
+      </div>
+    </div>
+  {% endif -%}
+{% endblock mobile_dashboard_view -%}
+
+{% block dashboard_layout_classes -%}
+  {% if content.is_check_in() %}flex{% else %}hidden md:flex{% endif %}
+{% endblock dashboard_layout_classes -%}
 
 {% block menu -%}
   {% call dashboard::dashboard_menu_shell("User Dashboard") -%}
@@ -48,12 +66,12 @@
 {% block dashboard_main -%}
   <div id="dashboard-content"
        {% if !content.is_account() -%}
-         hx-get="/dashboard/user/{%- if content.is_badges() -%}badges{%- elif content.is_events() -%}events{%- elif content.is_groups() -%}groups{%- elif content.is_invitations() -%}invitations{%- elif content.is_logs() -%}logs{%- elif content.is_purchases() -%}purchases{%- elif content.is_session_proposals() -%}session-proposals{%- else -%}submissions{%- endif -%}"
+         hx-get="/dashboard/user/{%- if content.is_badges() -%}badges{%- elif content.is_check_in() -%}check-in{%- elif content.is_events() -%}events{%- elif content.is_groups() -%}groups{%- elif content.is_invitations() -%}invitations{%- elif content.is_logs() -%}logs{%- elif content.is_purchases() -%}purchases{%- elif content.is_session_proposals() -%}session-proposals{%- else -%}submissions{%- endif -%}"
        {% endif -%}
        hx-trigger="refresh-user-dashboard-content"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"
-       class="p-4 sm:p-6 lg:p-12">
+       class="min-h-[calc(100dvh-5rem)] p-4 sm:p-6 md:min-h-0 lg:p-12">
     {# Content -#}
     {{ content|safe }}
     {# End Content -#}

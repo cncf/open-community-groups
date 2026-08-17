@@ -392,6 +392,7 @@ select columns_are('event_attendee', array[
 
     'attendance_canceled_at',
     'attendance_canceled_by_user_id',
+    'check_in_code',
     'checked_in_at',
     'registration_answers'
 ]);

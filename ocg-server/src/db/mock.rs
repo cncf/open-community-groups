@@ -461,6 +461,21 @@ mock! {
             group_id: Uuid,
             event_ids: &[Uuid],
         ) -> Result<()>;
+        async fn check_in_attendee_by_code(
+            &self,
+            actor_user_id: Uuid,
+            check_in_code: Uuid,
+            community_id: Uuid,
+            event_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<crate::templates::dashboard::group::check_in::CheckInScanResult>;
+        async fn check_in_event(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<bool>;
         async fn delete_badge(
             &self,
             actor_user_id: Uuid,
@@ -613,6 +628,10 @@ mock! {
             community_id: Uuid,
             group_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_group_check_in_events(
+            &self,
+            group_id: Uuid,
+        ) -> Result<Vec<crate::templates::dashboard::group::check_in::GroupCheckInEvent>>;
         async fn list_group_events(
             &self,
             group_id: Uuid,
@@ -660,13 +679,6 @@ mock! {
             &self,
             group_id: Uuid,
             event_ids: &[Uuid],
-        ) -> Result<()>;
-        async fn manual_check_in_event(
-            &self,
-            actor_user_id: Uuid,
-            community_id: Uuid,
-            event_id: Uuid,
-            user_id: Uuid,
         ) -> Result<()>;
         async fn publish_event(
             &self,
@@ -818,6 +830,11 @@ mock! {
             user_id: Uuid,
             user_badge_id: Uuid,
         ) -> Result<Option<crate::types::badges::UserBadge>>;
+        async fn get_user_check_in_code(
+            &self,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<Option<Uuid>>;
         async fn list_session_proposal_levels(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::user::session_proposals::SessionProposalLevel>>;
@@ -835,6 +852,10 @@ mock! {
             user_id: Uuid,
             filters: &crate::templates::dashboard::user::submissions::CfsSubmissionsFilters,
         ) -> Result<crate::templates::dashboard::user::submissions::CfsSubmissionsOutput>;
+        async fn list_user_check_in_events(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<crate::templates::dashboard::user::check_in::UserCheckInEvent>>;
         async fn list_user_community_team_invitations(
             &self,
             user_id: Uuid,
@@ -958,13 +979,6 @@ mock! {
             registration_answers: Option<crate::types::questionnaire::QuestionnaireAnswers>,
             event_ticket_type_id: Option<Uuid>,
         ) -> Result<crate::db::event::AttendEventResult>;
-        async fn check_in_event(
-            &self,
-            community_id: Uuid,
-            event_id: Uuid,
-            user_id: Uuid,
-            bypass_window: bool,
-        ) -> Result<()>;
         async fn ensure_event_is_active(
             &self,
             community_id: Uuid,
@@ -992,11 +1006,6 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
-        async fn is_event_check_in_window_open(
-            &self,
-            community_id: Uuid,
-            event_id: Uuid,
-        ) -> Result<bool>;
         async fn leave_event(
             &self,
             community_id: Uuid,

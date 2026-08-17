@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) mod analytics;
 pub(crate) mod attendees;
 pub(crate) mod badges;
+pub(crate) mod check_in;
 pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod invitation_requests;

@@ -43,11 +43,44 @@ describe("group-selector", () => {
 
     // Read the selected group and deactivated warning state.
     const button = element.querySelector("#group-selector-button");
+    const list = element.querySelector("#group-selector-list");
+    const option = element.querySelector("#group-option-1");
+    const searchInput = element.querySelector("#group-search-input");
     const warning = element.querySelector(".text-orange-700");
 
-    // Verify renders the selected group and its deactivated warning.
+    // Verify the default ids and semantic option class remain unchanged.
     expect(button?.textContent).to.include("Platform Team");
+    expect(list).to.exist;
+    expect(option?.classList.contains("group-button")).to.equal(true);
+    expect(searchInput).to.exist;
     expect(warning?.textContent).to.include("This group has been deactivated");
+  });
+
+  it("namespaces DOM ids and focuses the prefixed search input", async () => {
+    // Render the selector with a mobile id prefix.
+    const element = await renderSelector({
+      groups: [
+        { group_id: "1", name: "Platform Team", active: true },
+        { group_id: "2", name: "Cloud Native", active: true },
+      ],
+      selectedGroupId: "1",
+    });
+    element.setAttribute("id-prefix", "mobile-group");
+    await element.updateComplete;
+
+    // Read the namespaced controls and open the selector.
+    const button = element.querySelector("#mobile-group-selector-button");
+    const list = element.querySelector("#mobile-group-selector-list");
+    const option = element.querySelector("#mobile-group-option-1");
+    const searchInput = element.querySelector("#mobile-group-search-input");
+    button.click();
+    await element.updateComplete;
+
+    // Verify every id is namespaced while the option class and focus behavior remain stable.
+    expect(element.querySelector("#group-selector-button")).to.equal(null);
+    expect(list).to.exist;
+    expect(option?.classList.contains("group-button")).to.equal(true);
+    expect(document.activeElement).to.equal(searchInput);
   });
 
   it("filters groups from the current query", async () => {

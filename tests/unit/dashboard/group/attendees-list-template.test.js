@@ -366,9 +366,7 @@ describe("dashboard group attendees list template", () => {
     // Verify offer deadlines appear from the status badge on hover and focus.
     expect(template).not.to.include("icon-info");
     expect(template).to.include("relative inline-flex cursor-help rounded-full");
-    expect(template).to.include(
-      "attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}",
-    );
+    expect(template).to.include("attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}");
     expect(template).to.include('aria-describedby="{{ attendee_offer_tooltip_id }}"');
     expect(template).to.include("dashboard::tooltip_panel(");
     expect(template).to.include('title = "Ticket offer"');
@@ -422,7 +420,7 @@ describe("dashboard group attendees list template", () => {
     );
   });
 
-  it("groups attendee QR, invite, and CSV downloads in the actions menu", async () => {
+  it("groups attendee invitations and CSV downloads in the actions menu", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const actionsMenu = sliceTemplateSection(
       template,
@@ -430,9 +428,7 @@ describe("dashboard group attendees list template", () => {
       "{# End header actions -#}",
     );
 
-    expect(actionsMenu).to.include('id="open-event-qr-code-modal"');
-    expect(actionsMenu).to.include("icon-qr-code");
-    expect(actionsMenu).to.include("Show check-in QR code");
+    expect(actionsMenu).not.to.include('id="open-event-qr-code-modal"');
     expect(actionsMenu).to.include('id="open-attendee-invitation-modal"');
     expect(actionsMenu).to.include("Invite attendee");
     expect(actionsMenu).to.include("border-t border-stone-100");
@@ -491,16 +487,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
-    expect(template).to.include(
-      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
-    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44"');
     expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"');
     expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"');
-    expect(template).to.include(
-      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"',
-    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"');
     expect(template).to.include(
       '<div class="mt-2 lg:hidden">{{ attendee_status(attendee, event, "mobile") -}}</div>',
     );

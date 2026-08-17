@@ -18,6 +18,7 @@ use crate::{
         group::{
             analytics::GroupDashboardStats,
             attendees::{AttendeesFilters, AttendeesOutput},
+            check_in::{CheckInScanResult, GroupCheckInEvent},
             events::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
@@ -157,6 +158,25 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_ids: &[Uuid],
     ) -> Result<()>;
+
+    /// Resolves and checks in an attendee by their event credential.
+    async fn check_in_attendee_by_code(
+        &self,
+        actor_user_id: Uuid,
+        check_in_code: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<CheckInScanResult>;
+
+    /// Checks in a confirmed attendee and returns whether the state changed.
+    async fn check_in_event(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool>;
 
     /// Deletes a badge definition while retaining credential history.
     async fn delete_badge(
@@ -352,6 +372,9 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
     ) -> Result<Vec<Uuid>>;
 
+    /// Lists current and upcoming events available to the group's scanner.
+    async fn list_group_check_in_events(&self, group_id: Uuid) -> Result<Vec<GroupCheckInEvent>>;
+
     /// Lists all events for a group for management.
     async fn list_group_events(
         &self,
@@ -409,15 +432,6 @@ pub(crate) trait DBDashboardGroup {
 
     /// Locks active event cancellation targets for the current transaction.
     async fn lock_events_for_cancellation(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()>;
-
-    /// Manually checks in an attendee for an event.
-    async fn manual_check_in_event(
-        &self,
-        actor_user_id: Uuid,
-        community_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()>;
 
     /// Publishes an event (sets published=true and records publication metadata).
     async fn publish_event(
@@ -819,6 +833,45 @@ where
         self.execute(
             "select cancel_event_series_events($1::uuid, $2::uuid, $3::uuid[])",
             &[&actor_user_id, &group_id, &event_ids],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::check_in_attendee_by_code`].
+    #[instrument(skip(self, check_in_code), err)]
+    async fn check_in_attendee_by_code(
+        &self,
+        actor_user_id: Uuid,
+        check_in_code: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<CheckInScanResult> {
+        self.fetch_json_one(
+            "select check_in_attendee_by_code($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid)",
+            &[
+                &actor_user_id,
+                &check_in_code,
+                &community_id,
+                &event_id,
+                &group_id,
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::check_in_event`].
+    #[instrument(skip(self), err)]
+    async fn check_in_event(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &community_id, &event_id, &user_id],
         )
         .await
     }
@@ -1279,6 +1332,13 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::list_group_check_in_events`].
+    #[instrument(skip(self), err)]
+    async fn list_group_check_in_events(&self, group_id: Uuid) -> Result<Vec<GroupCheckInEvent>> {
+        self.fetch_json_one("select list_group_check_in_events($1::uuid)", &[&group_id])
+            .await
+    }
+
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
     async fn list_group_events(
@@ -1437,22 +1497,6 @@ where
         self.execute(
             "select lock_events_for_cancellation($1::uuid, $2::uuid[])",
             &[&group_id, &event_ids],
-        )
-        .await
-    }
-
-    /// [`DBDashboardGroup::manual_check_in_event`]
-    #[instrument(skip(self), err)]
-    async fn manual_check_in_event(
-        &self,
-        actor_user_id: Uuid,
-        community_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()> {
-        self.execute(
-            "select manual_check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
-            &[&actor_user_id, &community_id, &event_id, &user_id],
         )
         .await
     }

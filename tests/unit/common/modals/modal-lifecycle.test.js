@@ -102,16 +102,20 @@ describe("modal lifecycle", () => {
     // Build an open modal with two keyboard focus targets.
     const modal = document.createElement("div");
     modal.innerHTML = `
+      <button type="button" tabindex="-1">Backdrop</button>
       <button type="button">First</button>
       <input type="hidden" />
       <button type="button">Last</button>
     `;
     document.body.append(modal);
-    const [firstButton, lastButton] = modal.querySelectorAll("button");
+    const [, firstButton, lastButton] = modal.querySelectorAll("button");
 
     // Tab from the final target wraps to the first target.
     lastButton.focus();
-    const forwardEvent = new KeyboardEvent("keydown", { cancelable: true, key: "Tab" });
+    const forwardEvent = new KeyboardEvent("keydown", {
+      cancelable: true,
+      key: "Tab",
+    });
     expect(trapModalFocus(forwardEvent, modal)).to.equal(true);
     expect(forwardEvent.defaultPrevented).to.equal(true);
     expect(document.activeElement).to.equal(firstButton);
@@ -147,6 +151,7 @@ describe("modal lifecycle", () => {
     root.innerHTML = `
       <button data-modal-toggle="details-modal">Close</button>
       <div id="details-modal" aria-hidden="false"></div>
+      <div id="custom-modal" data-restorable-modal aria-hidden="false"></div>
     `;
     root.dataset.modalToggle = "root-modal";
     document.body.append(root);
@@ -163,6 +168,26 @@ describe("modal lifecycle", () => {
     expect(document.getElementById("details-modal").classList.contains("hidden")).to.equal(true);
     expect(document.getElementById("details-modal").getAttribute("aria-hidden")).to.equal("true");
     expect(rootModal.classList.contains("hidden")).to.equal(true);
+    expect(document.getElementById("custom-modal").classList.contains("hidden")).to.equal(true);
+    expect(document.getElementById("custom-modal").getAttribute("aria-hidden")).to.equal("true");
+    expect(document.body.style.overflow).to.equal("");
+    expect(document.body.dataset.modalOpenCount).to.equal(undefined);
+  });
+
+  it("hides custom modals from a restored full page", () => {
+    // Build a custom modal captured while open in the browser history cache.
+    document.body.innerHTML = `
+      <div id="custom-modal" data-restorable-modal aria-hidden="false"></div>
+    `;
+    document.body.dataset.modalOpenCount = "1";
+    document.body.style.overflow = "hidden";
+
+    // Reset the full document as the persisted pageshow handler does.
+    resetRestoredModalState(document);
+
+    // The custom modal and page scroll state are both reset.
+    expect(document.getElementById("custom-modal").classList.contains("hidden")).to.equal(true);
+    expect(document.getElementById("custom-modal").getAttribute("aria-hidden")).to.equal("true");
     expect(document.body.style.overflow).to.equal("");
     expect(document.body.dataset.modalOpenCount).to.equal(undefined);
   });

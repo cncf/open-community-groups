@@ -47,7 +47,8 @@ organizations.
   Stripe Checkout for paid claims, and refund review
 - Recurring event creation with series-aware publish, unpublish, cancel, and
   delete actions
-- RSVP, attendance tracking, QR code check-in, and manual organizer check-in
+- RSVP, attendance tracking, personal attendee QR codes, continuous organizer
+  scanning, and manual check-in
 
 ### Meetings
 

@@ -22,7 +22,9 @@ use crate::{
     },
 };
 
-use super::{badges, events, groups, invitations, logs, purchases, session_proposals, submissions};
+use super::{
+    badges, check_in, events, groups, invitations, logs, purchases, session_proposals, submissions,
+};
 
 #[cfg(test)]
 mod tests;
@@ -60,6 +62,7 @@ pub(crate) async fn page(
             }))
         }
         Tab::Badges => Content::Badges(badges::prepare_list_page(&db, user.user_id).await?),
+        Tab::CheckIn => Content::CheckIn(check_in::prepare_list_page(&db, &user).await?),
         Tab::Events => {
             let (_, template) = events::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Events(template)

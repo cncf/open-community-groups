@@ -42,15 +42,6 @@ pub(crate) trait DBEvent {
         event_ticket_type_id: Option<Uuid>,
     ) -> Result<AttendEventResult>;
 
-    /// Marks an attendee as checked in for an event.
-    async fn check_in_event(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-        bypass_window: bool,
-    ) -> Result<()>;
-
     /// Ensures the event exists in the community and is active.
     async fn ensure_event_is_active(&self, community_id: Uuid, event_id: Uuid) -> Result<()>;
 
@@ -83,13 +74,6 @@ pub(crate) trait DBEvent {
         community_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventSummary>;
-
-    /// Checks if the check-in window is open for an event.
-    async fn is_event_check_in_window_open(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<bool>;
 
     /// Removes a user from an event and returns the leave outcome.
     async fn leave_event(
@@ -175,22 +159,6 @@ where
         Ok(AttendEventResult::Enrollment(enrollment_status))
     }
 
-    /// [`DBEvent::check_in_event`]
-    #[instrument(skip(self), err)]
-    async fn check_in_event(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-        bypass_window: bool,
-    ) -> Result<()> {
-        self.execute(
-            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::bool)",
-            &[&community_id, &event_id, &user_id, &bypass_window],
-        )
-        .await
-    }
-
     /// [`DBEvent::ensure_event_is_active`]
     #[instrument(skip(self), err)]
     async fn ensure_event_is_active(&self, community_id: Uuid, event_id: Uuid) -> Result<()> {
@@ -254,20 +222,6 @@ where
     ) -> Result<EventSummary> {
         self.fetch_json_one(
             "select get_event_summary_by_id($1::uuid, $2::uuid)",
-            &[&community_id, &event_id],
-        )
-        .await
-    }
-
-    /// [`DBEvent::is_event_check_in_window_open`]
-    #[instrument(skip(self), err)]
-    async fn is_event_check_in_window_open(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-    ) -> Result<bool> {
-        self.fetch_scalar_one(
-            "select is_event_check_in_window_open($1::uuid, $2::uuid)",
             &[&community_id, &event_id],
         )
         .await

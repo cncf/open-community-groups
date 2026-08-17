@@ -217,10 +217,6 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     let dashboard_read = Router::new()
         .route("/", get(dashboard::group::home::page))
         .route("/analytics", get(dashboard::group::analytics::page))
-        .route(
-            "/check-in/{event_id}/qr-code",
-            get(dashboard::group::attendees::generate_check_in_qr_code),
-        )
         .route("/events", get(dashboard::group::events::list_page))
         .route("/events/add", get(dashboard::group::events::add_page))
         .route(
@@ -309,6 +305,21 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             GroupPermission::BadgesWrite,
         ));
 
+    // Group check-in management endpoints
+    let check_ins_management = Router::new()
+        .route("/check-in", get(dashboard::group::check_in::list_page))
+        .route(
+            "/events/{event_id}/attendees/{user_id}/check-in",
+            post(dashboard::group::attendees::manual_check_in),
+        )
+        .route(
+            "/events/{event_id}/check-ins/scan",
+            post(dashboard::group::check_in::scan),
+        )
+        .route_layer(check_selected_group_permission(
+            GroupPermission::CheckInsWrite,
+        ));
+
     // Group events management endpoints
     let events_management = Router::new()
         .route(
@@ -324,10 +335,6 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/events/{event_id}/attendees/{user_id}/attendance",
             delete(dashboard::group::attendees::cancel_event_attendee_attendance),
-        )
-        .route(
-            "/events/{event_id}/attendees/{user_id}/check-in",
-            post(dashboard::group::attendees::manual_check_in),
         )
         .route(
             "/events/{event_id}/attendees/{user_id}/invitation-request/accept",
@@ -455,6 +462,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     Router::new()
         .merge(dashboard_read)
         .merge(badges_management)
+        .merge(check_ins_management)
         .merge(events_management)
         .merge(members_management)
         .merge(settings_management)
@@ -489,6 +497,11 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route(
             "/badges/{user_badge_id}/listing",
             put(dashboard::user::badges::update_listing),
+        )
+        .route("/check-in", get(dashboard::user::check_in::list_page))
+        .route(
+            "/check-in/{event_id}/qr-code",
+            get(dashboard::user::check_in::qr_code),
         )
         .route("/events", get(dashboard::user::events::list_page))
         .route(

@@ -6,6 +6,7 @@ use deadpool_postgres::{Config as DeadpoolDbConfig, Pool, Runtime};
 use tokio_postgres::{
     NoTls,
     error::{DbError, SqlState},
+    types::ToSql,
 };
 use uuid::Uuid;
 
@@ -46,6 +47,7 @@ use crate::{
                 attendees::{
                     AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
                 },
+                check_in::CheckInOutcome,
                 events::{Event as EventUpdate, EventsListFilters},
                 invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
                 members::GroupMembersFilters,
@@ -454,6 +456,180 @@ async fn db_contracts_cancel_event_attendee_attendance_queues_paid_refund_deseri
     assert_eq!(refund.event_purchase_id, paid_cancellation_purchase_id());
     assert_eq!(refund.kind, EventPurchaseRefundKind::AttendanceCancellation);
     assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_check_in_attendee_by_code_deserializes() -> Result<()> {
+    // Setup the contract database and already checked-in attendee credential
+    let db = contract_tests_db()?;
+
+    // Scan the credential through the Rust JSON contract
+    let result = db
+        .check_in_attendee_by_code(
+            organizer_id(),
+            check_in_code(),
+            community_id(),
+            event_id(),
+            group_id(),
+        )
+        .await?;
+
+    // Check duplicate outcome and attendee context deserialize completely
+    assert_eq!(result.attendee.username, "contract-attendee");
+    assert_eq!(result.attendee.name.as_deref(), Some("Contract Attendee"));
+    assert_eq!(
+        result.attendee.photo_url.as_deref(),
+        Some("https://example.com/attendee.png")
+    );
+    assert_eq!(
+        result.checked_in_at,
+        DateTime::parse_from_rfc3339("2099-05-20T17:30:00Z")?
+    );
+    assert_eq!(result.outcome, CheckInOutcome::AlreadyCheckedIn);
+    assert_eq!(result.ticket_title.as_deref(), Some("General Admission"));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_check_in_attendee_by_code_rejects_concurrently_revoked_code() -> Result<()> {
+    // Setup independent event-lock, scanner, and credential-rotation connections
+    let pool = contract_tests_pool()?;
+    let event_lock_client = pool.get().await?;
+    let scan_client = pool.get().await?;
+    let rotation_client = pool.get().await?;
+    event_lock_client.batch_execute("begin").await?;
+    event_lock_client
+        .query_one(
+            "select event_id from event where event_id = $1::uuid for update",
+            &[&event_id()],
+        )
+        .await?;
+
+    // Start an old-credential scan while event validation is blocked
+    let scan = tokio::spawn(async move {
+        scan_client
+            .query_one(
+                "select check_in_attendee_by_code($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid)",
+                &[
+                    &organizer_id(),
+                    &check_in_code(),
+                    &community_id(),
+                    &event_id(),
+                    &group_id(),
+                ],
+            )
+            .await
+    });
+
+    // Cancel and reconfirm attendance to rotate the credential before validation continues
+    rotation_client
+        .execute(
+            "update event_attendee set status = 'attendance-canceled' where event_id = $1::uuid and user_id = $2::uuid",
+            &[&event_id(), &attendee_id()],
+        )
+        .await?;
+    rotation_client
+        .execute(
+            "update event_attendee set status = 'confirmed' where event_id = $1::uuid and user_id = $2::uuid",
+            &[&event_id(), &attendee_id()],
+        )
+        .await?;
+    event_lock_client.batch_execute("commit").await?;
+    let scan_result = scan.await?;
+
+    // Restore the deterministic fixture credential before checking the scan failure
+    rotation_client
+        .execute(
+            "update event_attendee set check_in_code = $1::uuid where event_id = $2::uuid and user_id = $3::uuid",
+            &[&check_in_code(), &event_id(), &attendee_id()],
+        )
+        .await?;
+    let scan_err =
+        scan_result.expect_err("the revoked credential should not pass the attendee lock");
+    assert_eq!(
+        scan_err.as_db_error().map(DbError::message),
+        Some("check-in credential not found")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_check_in_event_serializes_concurrent_transitions() -> Result<()> {
+    // Seed one unchecked attendee and open two independent check-in connections
+    let pool = contract_tests_pool()?;
+    let setup_client = pool.get().await?;
+    let first_client = pool.get().await?;
+    let second_client = pool.get().await?;
+    let actor_user_id = organizer_id();
+    let attendee_user_id = cancellation_lock_attendee_id();
+    let check_in_community_id = community_id();
+    let check_in_event_id = cancellation_lock_event_id();
+    setup_client
+        .execute(
+            "insert into event_attendee (event_id, user_id, status) values ($1::uuid, $2::uuid, 'confirmed')",
+            &[&check_in_event_id, &attendee_user_id],
+        )
+        .await?;
+
+    // Race both organizer transitions against the same attendee row
+    let check_in_params: [&(dyn ToSql + Sync); 4] = [
+        &actor_user_id,
+        &check_in_community_id,
+        &check_in_event_id,
+        &attendee_user_id,
+    ];
+    let (first_result, second_result) = tokio::join!(
+        first_client.query_one(
+            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &check_in_params,
+        ),
+        second_client.query_one(
+            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &check_in_params,
+        ),
+    );
+    let state = setup_client
+        .query_one(
+            "select checked_in, checked_in_at from event_attendee where event_id = $1::uuid and user_id = $2::uuid",
+            &[&check_in_event_id, &attendee_user_id],
+        )
+        .await?;
+    let audit_count = setup_client
+        .query_one(
+            "select count(*) from audit_log where action = 'event_attendee_checked_in' and event_id = $1::uuid and resource_id = $2::uuid",
+            &[&check_in_event_id, &attendee_user_id],
+        )
+        .await?
+        .get::<_, i64>(0);
+
+    // Restore the shared cancellation-lock fixture before checking outcomes
+    setup_client
+        .execute(
+            "delete from audit_log where action = 'event_attendee_checked_in' and event_id = $1::uuid and resource_id = $2::uuid",
+            &[&check_in_event_id, &attendee_user_id],
+        )
+        .await?;
+    setup_client
+        .execute(
+            "delete from event_attendee where event_id = $1::uuid and user_id = $2::uuid",
+            &[&check_in_event_id, &attendee_user_id],
+        )
+        .await?;
+
+    // Check exactly one call transitioned, timestamped, and audited the attendee
+    let first_transition = first_result?.get::<_, bool>(0);
+    let second_transition = second_result?.get::<_, bool>(0);
+    assert_ne!(first_transition, second_transition);
+    assert!(state.get::<_, bool>(0));
+    assert!(state.get::<_, Option<DateTime<Utc>>>(1).is_some());
+    assert_eq!(audit_count, 1);
 
     Ok(())
 }
@@ -2077,6 +2253,41 @@ async fn db_contracts_list_group_categories_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_group_check_in_events_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture
+    let db = contract_tests_db()?;
+
+    // Load scanner cards through the Rust JSON contract
+    let events = db.list_group_check_in_events(group_id()).await?;
+
+    // Check the narrow event card fields deserialize completely
+    let event = events
+        .iter()
+        .find(|event| event.event_id == event_id())
+        .expect("future contract event to be available for check-in");
+    assert_eq!(event.event_id, event_id());
+    assert!(!event.in_progress);
+    assert_eq!(event.kind, EventKind::Hybrid);
+    assert_eq!(event.name, "Future Contract Event");
+    assert_eq!(
+        event.starts_at,
+        DateTime::parse_from_rfc3339("2099-05-20T17:00:00Z")?
+    );
+    assert_eq!(event.timezone.to_string(), "America/Los_Angeles");
+    assert_eq!(
+        event.logo_url.as_deref(),
+        Some("https://example.com/future-event-logo.png")
+    );
+    assert_eq!(
+        event.location.as_deref(),
+        Some("Contract Hall, San Francisco, California, United States")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_events_deserializes() -> Result<()> {
     // Setup database and pagination filters
     let db = contract_tests_db()?;
@@ -2268,9 +2479,11 @@ async fn db_contracts_list_group_roles_deserializes() -> Result<()> {
     let roles = db.list_group_roles().await?;
 
     // Check role ordering and display fields
-    assert_eq!(roles.len(), 3);
+    assert_eq!(roles.len(), 4);
     assert_eq!(roles[0].group_role_id, "admin");
     assert_eq!(roles[0].display_name, "Admin");
+    assert_eq!(roles[1].group_role_id, "check-in-manager");
+    assert_eq!(roles[1].display_name, "Check-In Manager");
 
     Ok(())
 }
@@ -2443,6 +2656,41 @@ async fn db_contracts_list_user_cfs_submissions_deserializes() -> Result<()> {
     // Check submission pagination totals
     assert_eq!(output.total, 1);
     assert_eq!(output.submissions.len(), 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_check_in_events_deserializes() -> Result<()> {
+    // Setup the contract database and attendee fixture
+    let db = contract_tests_db()?;
+
+    // Load attendee credential cards through the Rust JSON contract
+    let events = db.list_user_check_in_events(attendee_id()).await?;
+
+    // Check attendee state and ticket snapshot deserialize completely
+    assert_eq!(events.len(), 1);
+    let event = &events[0];
+    assert!(event.checked_in);
+    assert_eq!(event.event_id, event_id());
+    assert!(!event.in_progress);
+    assert_eq!(event.kind, EventKind::Hybrid);
+    assert_eq!(event.name, "Future Contract Event");
+    assert_eq!(
+        event.starts_at,
+        DateTime::parse_from_rfc3339("2099-05-20T17:00:00Z")?
+    );
+    assert_eq!(event.timezone.to_string(), "America/Los_Angeles");
+    assert_eq!(
+        event.logo_url.as_deref(),
+        Some("https://example.com/future-event-logo.png")
+    );
+    assert_eq!(
+        event.location.as_deref(),
+        Some("Contract Hall, San Francisco, California, United States")
+    );
+    assert_eq!(event.ticket_title.as_deref(), Some("General Admission"));
 
     Ok(())
 }
@@ -3517,6 +3765,7 @@ const CANCELLATION_LOCK_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c0e
 /// Event fixture used to verify cancellation lock ownership.
 const CANCELLATION_LOCK_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d6";
 const CFS_SUBMISSION_ID: &str = "00000000-0000-0000-0000-00000000c0c5";
+const CHECK_IN_CODE: &str = "00000000-0000-0000-0000-00000000c084";
 const CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e1";
 const CLAIM_GROUP_ID: &str = "00000000-0000-0000-0000-00000000c0a0";
 const CO_SPEAKER_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c2";
@@ -3792,6 +4041,11 @@ fn cancellation_lock_event_id() -> Uuid {
 /// Returns the call-for-speakers submission identifier used by the contract fixture.
 fn cfs_submission_id() -> Uuid {
     parse_uuid(CFS_SUBMISSION_ID)
+}
+
+/// Returns the attendee check-in code used by the contract fixture.
+fn check_in_code() -> Uuid {
+    parse_uuid(CHECK_IN_CODE)
 }
 
 /// Returns the checkout buyer identifier used by the contract fixture.

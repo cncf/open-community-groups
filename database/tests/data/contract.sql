@@ -886,6 +886,7 @@ insert into event_ticket_price_window (
 -- ============================================================================
 
 insert into event_attendee (
+    check_in_code,
     checked_in,
     checked_in_at,
     event_id,
@@ -893,6 +894,7 @@ insert into event_attendee (
     registration_answers,
     user_id
 ) values (
+    '00000000-0000-0000-0000-00000000c084',
     true,
     '2099-05-20 17:30:00+00',
     '00000000-0000-0000-0000-00000000c031',

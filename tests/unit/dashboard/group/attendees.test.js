@@ -214,7 +214,7 @@ describe("dashboard group attendees", () => {
           More
         </button>
         <div id="attendee-actions-menu" data-attendee-actions-dropdown class="hidden">
-          <button type="button">Show check-in QR code</button>
+          <button type="button">Invite attendee</button>
           <a href="/dashboard/group/events/event-42/attendees.csv" download>Download CSV</a>
         </div>
       </div>

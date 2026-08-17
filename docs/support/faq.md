@@ -5,7 +5,8 @@
 ## Is OCG Mobile Friendly?
 
 Public pages are usable on mobile, so you can discover groups and events from your phone. The
-dashboards, however, are currently desktop-only.
+user and group Check-In sections are also mobile-friendly. Other dashboard sections are currently
+desktop-only.
 
 ## Where Do I Submit a Speaker Proposal?
 
@@ -32,7 +33,8 @@ decision has been made, withdraw is no longer available.
 ## Can I Check In Without Confirmed Attendance?
 
 No. Check-in is limited to confirmed attendees, so you need a completed ticket
-before event-day check-in.
+before event-day check-in. Open [User Dashboard -> Check-In](/dashboard/user?tab=check-in ':ignore')
+and present your personal QR code to an organizer.
 
 ## What Happens If An Event Is Full?
 

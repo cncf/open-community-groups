@@ -7,12 +7,11 @@ use axum::{
     extract::{Path, RawQuery, State},
     http::{
         StatusCode,
-        header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE},
+        header::{CONTENT_DISPOSITION, CONTENT_TYPE},
     },
     response::{Html, IntoResponse, Response},
 };
 use garde::Validate;
-use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::instrument;
@@ -77,11 +76,25 @@ pub(crate) async fn list_page(
     Path(event_id): Path<Uuid>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary and attendees
+    // Parse and validate attendee filters
     let filters: AttendeesFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     filters.validate()?;
-    let (can_manage_events, event, registration_questions, search_attendees_results) = tokio::try_join!(
+
+    // Load permissions and attendee context concurrently
+    let (
+        can_manage_check_ins,
+        can_manage_events,
+        event,
+        registration_questions,
+        search_attendees_results,
+    ) = tokio::try_join!(
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::CheckInsWrite
+        ),
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -93,7 +106,7 @@ pub(crate) async fn list_page(
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
 
-    // Prepare template
+    // Prepare pagination and template context
     let navigation_links = NavigationLinks::from_filters(
         &filters,
         search_attendees_results.total,
@@ -113,6 +126,7 @@ pub(crate) async fn list_page(
         all_attendees_email_recipient_total: search_attendees_results
             .all_attendees_email_recipient_total,
         attendees: search_attendees_results.attendees,
+        can_manage_check_ins,
         can_manage_events,
         event,
         navigation_links,
@@ -129,6 +143,7 @@ pub(crate) async fn list_page(
         ts_query: filters.ts_query,
     };
 
+    // Render the attendee list
     Ok(Html(template.render()?))
 }
 
@@ -283,50 +298,6 @@ pub(crate) async fn cancel_event_attendee_attendance(
         .into_response())
 }
 
-/// Generates a QR code for event check-in.
-#[instrument(skip_all, err)]
-pub(crate) async fn generate_check_in_qr_code(
-    SelectedCommunityId(community_id): SelectedCommunityId,
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    State(server_cfg): State<HttpServerConfig>,
-    Path(event_id): Path<Uuid>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Get community name (cached) and ensure event belongs to selected group
-    let (community_name, _) = tokio::try_join!(
-        db.get_community_name_by_id(community_id),
-        db.get_event_summary(community_id, group_id, event_id)
-    )?;
-    let Some(community_name) = community_name else {
-        return Err(anyhow::anyhow!("community not found").into());
-    };
-
-    // Get base URL from configuration
-    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
-
-    // Construct check-in URL
-    let check_in_url = format!("{base_url}/{community_name}/check-in/{event_id}");
-
-    // Generate QR code
-    let code = qrcode::QrCode::new(check_in_url.as_bytes())
-        .map_err(|e| anyhow::anyhow!("Failed to generate QR code: {e}"))?;
-    let svg = code
-        .render()
-        .min_dimensions(500, 500)
-        .dark_color(svg::Color("#000000"))
-        .light_color(svg::Color("#ffffff"))
-        .build();
-
-    // Prepare response headers
-    let headers = [
-        (CACHE_CONTROL, "private, max-age=3600"),
-        (CONTENT_TYPE, "image/svg+xml"),
-    ];
-
-    // Return SVG response
-    Ok((StatusCode::OK, headers, svg))
-}
-
 /// Invites a user to attend an event.
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]
@@ -370,7 +341,7 @@ pub(crate) async fn invite_event_attendee(
     ))
 }
 
-/// Manually checks in a user for an event, bypassing the check-in window validation.
+/// Manually checks in a confirmed attendee for an event.
 #[instrument(skip_all, err)]
 pub(crate) async fn manual_check_in(
     CurrentUser(user): CurrentUser,
@@ -382,8 +353,8 @@ pub(crate) async fn manual_check_in(
     // Validate event belongs to the selected group
     db.get_event_summary(community_id, group_id, event_id).await?;
 
-    // Check-in with dashboard-specific auditing
-    db.manual_check_in_event(user.user_id, community_id, event_id, user_id)
+    // Check in with shared idempotent auditing
+    db.check_in_event(user.user_id, community_id, event_id, user_id)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)

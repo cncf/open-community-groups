@@ -5,7 +5,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE, COOKIE},
+        header::{CONTENT_DISPOSITION, CONTENT_TYPE, COOKIE},
     },
 };
 use axum_login::tower_sessions::session;
@@ -1023,91 +1023,6 @@ async fn test_download_csv_with_answers_success() {
 }
 
 #[tokio::test]
-async fn test_generate_check_in_qr_code_success() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-    let event = sample_event_summary(event_id, group_id);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_community_name_by_id()
-        .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(|_| Ok(Some("test".to_string())));
-    db.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event.clone()));
-
-    // Setup notifications manager mock (not used by this handler)
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let server_cfg = HttpServerConfig {
-        base_url: "https://test.example.com".to_string(),
-        ..Default::default()
-    };
-    let router = TestRouterBuilder::new(db, nm)
-        .with_server_cfg(server_cfg)
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/check-in/{event_id}/qr-code"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-    let svg_body = String::from_utf8(bytes.to_vec()).unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("image/svg+xml")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap().to_str().unwrap(),
-        "private, max-age=3600"
-    );
-    assert!(svg_body.contains("<svg"));
-    assert!(svg_body.contains("</svg>"));
-    // The QR code should be a valid SVG structure with rect elements for QR modules
-    assert!(svg_body.contains("<rect"));
-}
-
-#[tokio::test]
 async fn test_invite_event_attendee_returns_bad_request_when_target_conflicts() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1578,6 +1493,7 @@ async fn test_list_page_success() {
         Some(group_id),
     );
     let mut attendee = sample_attendee();
+    attendee.checked_in = false;
     attendee.manually_invited = true;
     let pending_questions_attendee_id = Uuid::new_v4();
     let mut pending_questions_attendee = sample_attendee();
@@ -1602,24 +1518,7 @@ async fn test_list_page_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_attendee_list_permissions(&mut db, community_id, group_id, user_id, false);
     db.expect_search_event_attendees()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -1657,21 +1556,16 @@ async fn test_list_page_success() {
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("name=\"subject\""));
-    assert!(body.contains("value=\"Test Group: Sample Event\""));
-    assert!(body.contains("data-notification-recipient-total=\"2\""));
-    assert!(body.contains("data-notification-scope=\"all\""));
     assert!(body.contains("id=\"attendees-enrollment-status\""));
     assert!(body.contains("name=\"status\"") && !body.contains("name=\"attendance\""));
-    assert!(
-        !body.contains(
-            "No attendees with verified email addresses and email notifications enabled."
-        )
-    );
-    assert!(body.contains(&format!(
-        "data-recipient-id=\"{pending_questions_attendee_id}\""
-    )));
+    assert!(body.contains(&pending_questions_attendee_id.to_string()));
     assert!(body.contains("Invited"));
+    assert!(body.contains("Check in attendee"));
+    assert!(!body.contains("Your role cannot manage check-in"));
+    let email_actions = body.find("id=\"attendee-email-actions-button\"").unwrap();
+    let management_container = body[..email_actions].rfind("<div class=").unwrap();
+    assert!(body[management_container..email_actions].contains("hidden"));
+    assert!(!body.contains("id=\"open-attendee-invitation-modal\""));
 }
 
 #[tokio::test]
@@ -1701,24 +1595,7 @@ async fn test_list_page_db_error() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_attendee_list_permissions(&mut db, community_id, group_id, user_id, true);
     db.expect_get_event_summary_dashboard()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -1924,6 +1801,15 @@ async fn test_list_page_with_pagination_params() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::CheckInsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -2007,24 +1893,7 @@ async fn test_list_page_with_search_query() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_attendee_list_permissions(&mut db, community_id, group_id, user_id, true);
     db.expect_search_event_attendees()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -2117,14 +1986,14 @@ async fn test_manual_check_in_success() {
             *cid == community_id
                 && *gid == group_id
                 && *uid == user_id
-                && permission == GroupPermission::EventsWrite
+                && permission == GroupPermission::CheckInsWrite
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_manual_check_in_event()
+    db.expect_check_in_event()
         .times(1)
         .withf(move |actor_uid, cid, eid, uid| {
             *actor_uid == user_id
@@ -2132,7 +2001,7 @@ async fn test_manual_check_in_success() {
                 && *eid == event_id
                 && *uid == target_user_id
         })
-        .returning(|_, _, _, _| Ok(()));
+        .returning(|_, _, _, _| Ok(true));
 
     // Setup notifications manager mock (not used by this handler)
     let nm = MockNotificationsManager::new();
@@ -3040,4 +2909,33 @@ async fn test_send_event_custom_notification_no_recipients() {
         String::from_utf8(bytes.to_vec()).unwrap(),
         "No attendees with verified email addresses and email notifications enabled."
     );
+}
+
+// Helpers.
+
+/// Configures attendee-list permission checks for the selected group.
+fn expect_attendee_list_permissions(
+    db: &mut MockDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    can_manage_events: bool,
+) {
+    for expected_permission in [
+        GroupPermission::CheckInsWrite,
+        GroupPermission::EventsWrite,
+        GroupPermission::Read,
+    ] {
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == expected_permission
+            })
+            .returning(move |_, _, _, _| {
+                Ok(expected_permission != GroupPermission::EventsWrite || can_manage_events)
+            });
+    }
 }

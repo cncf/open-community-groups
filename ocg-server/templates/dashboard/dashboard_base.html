@@ -12,25 +12,25 @@
 {% block header -%}
   {# Header -#}
   <div id="dashboard-header"
-       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5">
+       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5">
     {% include "common/header.html" -%}
   </div>
   {# End Header -#}
 {% endblock header -%}
 
 {% block main -%}
-  {# View for small devices -#}
-  <div class="fixed inset-0 z-10 md:hidden flex items-center justify-center bg-stone-100">
-    <div class="text-center bg-stone-100 border-4 border-primary-600 border-dashed rounded-lg text-2xl font-medium text-stone-800 p-10 m-10">
-      This dashboard is not optimized yet for mobile devices
+  {% block mobile_dashboard_view -%}
+    <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
+      <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
+        <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
+      </div>
     </div>
-  </div>
-  {# End view for small devices -#}
+  {% endblock mobile_dashboard_view -%}
 
   {# Main Content -#}
-  <div class="hidden md:flex">
+  <div class="{% block dashboard_layout_classes -%}hidden md:flex{% endblock dashboard_layout_classes -%}">
     {# Sticky menu -#}
-    <aside class="h-dvh sticky top-0 w-[225px] lg:w-[300px] shrink-0"
+    <aside class="hidden h-dvh w-[225px] shrink-0 md:sticky md:top-0 md:block lg:w-[300px]"
            role="navigation"
            aria-label="Dashboard navigation">
       <div class="flex flex-col justify-between py-5 pt-24 h-full">
@@ -55,7 +55,7 @@
     {# End sticky menu -#}
 
     <main id="dashboard-main-content"
-          class="min-w-0 flex-1 bg-white border border-stone-200 rounded-lg m-5 ms-0 mt-[6.25rem] relative"
+          class="relative mt-20 min-w-0 flex-1 rounded-lg border border-stone-200 bg-white md:m-5 md:ms-0 md:mt-[6.25rem]"
           role="main">
       {% block dashboard_main -%}
       {% endblock dashboard_main -%}

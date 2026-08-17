@@ -43,7 +43,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        event::{CfsModal, CheckInPage, Page},
+        event::{CfsModal, Page},
     },
     types::{
         event::{EventEnrollmentStatus, EventFull, EventSummary},
@@ -149,38 +149,6 @@ pub(crate) async fn cfs_modal(
         session_proposals,
         user,
         notice: None,
-    };
-
-    Ok(Html(template.render()?))
-}
-
-/// Handler that renders the check-in page.
-#[instrument(skip_all, err)]
-pub(crate) async fn check_in_page(
-    CurrentUser(user): CurrentUser,
-    auth_session: AuthSession,
-    State(db): State<DynDB>,
-    Path((_, event_id)): Path<(String, Uuid)>,
-    CommunityId(community_id): CommunityId,
-    uri: Uri,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Get site settings and event details
-    let ((event, site_settings), enrollment, check_in_window_open) = tokio::try_join!(
-        load_event_notification_context(db.as_ref(), community_id, event_id),
-        db.get_event_enrollment(community_id, event_id, user.user_id),
-        db.is_event_check_in_window_open(community_id, event_id),
-    )?;
-
-    // Prepare template
-    let template = CheckInPage {
-        check_in_window_open,
-        event,
-        page_id: PageId::CheckIn,
-        path: uri.path().to_string(),
-        site_settings,
-        user: User::from_session(auth_session).await?,
-        user_is_attendee: enrollment.status == EventEnrollmentStatus::Attendee,
-        user_is_checked_in: enrollment.is_checked_in,
     };
 
     Ok(Html(template.render()?))
@@ -433,20 +401,6 @@ pub(crate) async fn cancel_checkout(
             "status": enrollment.status,
         })),
     ))
-}
-
-/// Handler that marks the authenticated attendee as checked in.
-#[instrument(skip_all)]
-pub(crate) async fn check_in(
-    CurrentUser(user): CurrentUser,
-    State(db): State<DynDB>,
-    Path((_, event_id)): Path<(String, Uuid)>,
-    CommunityId(community_id): CommunityId,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Check in event (bypass_window = false for user self check-in)
-    db.check_in_event(community_id, event_id, user.user_id, false).await?;
-
-    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Handler that returns the current user's event enrollment state.

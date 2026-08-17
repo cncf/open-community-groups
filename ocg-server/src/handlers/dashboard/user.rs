@@ -1,6 +1,7 @@
 //! HTTP handlers for the user dashboard.
 
 pub(crate) mod badges;
+pub(crate) mod check_in;
 pub(crate) mod events;
 pub(crate) mod groups;
 pub(crate) mod home;

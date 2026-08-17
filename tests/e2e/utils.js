@@ -301,6 +301,7 @@ export const TEST_EVENT_SLUGS = {
 
 /** Pre-seeded user ids for state resets and dashboard assertions. */
 export const TEST_USER_IDS = {
+  checkInManager1: "77777777-7777-7777-7777-777777777715",
   communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
   member1: "77777777-7777-7777-7777-777777777705",
   member2: "77777777-7777-7777-7777-777777777706",
@@ -322,6 +323,10 @@ export const TEST_USER_CREDENTIALS = {
   pending2: { username: "e2e-pending-2", password: "Password123!" },
   groupsManager1: {
     username: "e2e-groups-manager-1",
+    password: "Password123!",
+  },
+  checkInManager1: {
+    username: "e2e-check-in-manager-1",
     password: "Password123!",
   },
   communityViewer1: {
