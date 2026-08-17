@@ -12,6 +12,7 @@ select plan(34);
 -- ============================================================================
 
 \set communityID '1c020000-0000-0000-0000-000000000001'
+\set eventAutomaticTaxID '1c020000-0000-0000-0000-00000000001c'
 \set eventCategoryID '1c020000-0000-0000-0000-000000000002'
 \set eventFreeID '1c020000-0000-0000-0000-000000000014'
 \set eventID '1c020000-0000-0000-0000-000000000003'
@@ -22,6 +23,7 @@ select plan(34);
 \set group5ID '1c020000-0000-0000-0000-000000000008'
 \set group6ID '1c020000-0000-0000-0000-000000000015'
 \set groupAdminID '1c020000-0000-0000-0000-000000000010'
+\set groupAutomaticTaxID '1c020000-0000-0000-0000-00000000001d'
 \set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
 \set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
@@ -31,9 +33,11 @@ select plan(34);
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
+\set priceWindowAutomaticTaxID '1c020000-0000-0000-0000-00000000001e'
 \set priceWindowFreeID '1c020000-0000-0000-0000-000000000017'
 \set priceWindowID '1c020000-0000-0000-0000-000000000016'
 \set priceWindowUnpublishedID '1c020000-0000-0000-0000-000000000018'
+\set ticketTypeAutomaticTaxID '1c020000-0000-0000-0000-00000000001f'
 \set ticketTypeFreeID '1c020000-0000-0000-0000-000000000019'
 \set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
 \set ticketTypeUnpublishedID '1c020000-0000-0000-0000-00000000000f'
@@ -352,6 +356,27 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
+-- Group with a published automatic-tax event for validation freshness checks
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+
+    description,
+    payment_recipient
+) values (
+    :'groupAutomaticTaxID'::uuid,
+    :'communityID'::uuid,
+    :'groupCategory1ID'::uuid,
+    'Group With Automatic Tax Event',
+    'automatic-tax-event-group',
+
+    'Automatic-tax validation freshness coverage',
+    '{"provider": "stripe", "recipient_id": "acct_automatic", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb
+);
+
 -- Published all-zero ticketed event used for payment recipient guards
 insert into event (
     description,
@@ -375,7 +400,34 @@ insert into event (
     'UTC'
 );
 
--- Ticket type for the published ticketed event
+-- Published automatic-tax event used to reject stale provider validation
+insert into event (
+    description,
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    tax_calculation_mode,
+    timezone
+) values (
+    'Published automatic-tax event for validation freshness checks',
+    :'eventAutomaticTaxID'::uuid,
+    :'eventCategoryID'::uuid,
+    'virtual',
+    :'groupAutomaticTaxID'::uuid,
+    'Automatic Tax Event',
+    'USD',
+    true,
+    'automatic-tax-event',
+    'automatic',
+    'UTC'
+);
+
+-- Ticket type for the published automatic-tax event
 insert into event_ticket_type (
     event_ticket_type_id,
     event_id,
@@ -383,11 +435,11 @@ insert into event_ticket_type (
     seats_total,
     title
 ) values (
-    :'ticketTypeID'::uuid,
-    :'eventID'::uuid,
+    :'ticketTypeAutomaticTaxID'::uuid,
+    :'eventAutomaticTaxID'::uuid,
     1,
     50,
-    'General admission'
+    'Automatic tax admission'
 );
 
 -- Ticket type for the published all-zero ticketed event
@@ -403,6 +455,21 @@ insert into event_ticket_type (
     1,
     50,
     'Free admission'
+);
+
+-- Ticket type for the published ticketed event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID'::uuid,
+    :'eventID'::uuid,
+    1,
+    50,
+    'General admission'
 );
 
 -- Unpublished ticketed event used for payment recipient guards
@@ -455,8 +522,9 @@ insert into event_ticket_price_window (
     amount_minor,
     event_ticket_type_id
 ) values
-    (:'priceWindowID', 2500, :'ticketTypeID'),
+    (:'priceWindowAutomaticTaxID', 2500, :'ticketTypeAutomaticTaxID'),
     (:'priceWindowFreeID', 0, :'ticketTypeFreeID'),
+    (:'priceWindowID', 2500, :'ticketTypeID'),
     (:'priceWindowUnpublishedID', 2500, :'ticketTypeUnpublishedID');
 
 -- ============================================================================
@@ -924,8 +992,7 @@ select throws_ok(
     'Should reject a sponsor change validated against stale recipient state'
 );
 
--- Should reject validation that missed a concurrently published automatic-tax event
-update event set published = true where event_id = :'eventUnpublishedID';
+-- Should reject validation that missed a published automatic-tax event
 select throws_ok(
     format(
         $$select update_group(
@@ -933,13 +1000,13 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         '{
-            "name": "Group With Unpublished Ticketed Event",
+            "name": "Group With Automatic Tax Event",
             "category_id": "%s",
-            "description": "Unpublished ticketed event coverage",
+            "description": "Automatic-tax validation freshness coverage",
             "_payment_validation": {
                 "expected_payment_recipient": {
                     "provider": "stripe",
-                    "recipient_id": "acct_456",
+                    "recipient_id": "acct_automatic",
                     "seller_display_name": "Existing Fiscal Sponsor"
                 },
                 "require_automatic_tax": false,
@@ -957,13 +1024,12 @@ select throws_ok(
         }'::jsonb
     )$$,
         :'communityID',
-        :'group5ID',
+        :'groupAutomaticTaxID',
         :'groupCategory1ID'
     ),
     'payment configuration changed during provider validation',
-    'Should reject validation that missed a concurrently published automatic-tax event'
+    'Should reject validation that missed a published automatic-tax event'
 );
-update event set published = false where event_id = :'eventUnpublishedID';
 
 -- Should reject a payment recipient without an attendee-visible seller name
 select throws_ok(

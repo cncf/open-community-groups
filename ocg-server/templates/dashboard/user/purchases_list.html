@@ -105,7 +105,7 @@
                   <ul class="text-sm text-stone-700" role="menu">
                     {% for credit_note in purchase.credit_notes -%}
                       <li>
-                        {% if credit_note.status == "issued" && credit_note.provider_credit_note_id.is_some() -%}
+                        {% if credit_note.status.as_str() == "issued" && credit_note.provider_credit_note_id.is_some() -%}
                           <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/credit-notes/{{ credit_note.event_purchase_credit_note_id }}"
                              target="_blank"
                              rel="noopener noreferrer"

@@ -58,13 +58,13 @@
 {% macro payment_status_badge(label, tone = "", extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
-  {% if label.to_string() == "Paid" -%}
+  {% if label.as_bytes() == "Paid".as_bytes() -%}
     <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800 {{ extra_styles_ }}">{{ label }}</span>
-  {% else if label.to_string() == "Refund requested" || label.to_string() == "Refund needs review" || label.to_string() == "Needs review" -%}
+  {% else if label.as_bytes() == "Refund requested".as_bytes() || label.as_bytes() == "Refund needs review".as_bytes() || label.as_bytes() == "Needs review".as_bytes() -%}
     <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800 {{ extra_styles_ }}">{{ label }}</span>
-  {% else if label.to_string() == "Refund rejected" || label.to_string() == "Rejected" || label.to_string() == "Failed" || label.to_string() == "Recovery required" || label.to_string() == "Needs retry" -%}
+  {% else if label.as_bytes() == "Refund rejected".as_bytes() || label.as_bytes() == "Rejected".as_bytes() || label.as_bytes() == "Failed".as_bytes() || label.as_bytes() == "Recovery required".as_bytes() || label.as_bytes() == "Needs retry".as_bytes() -%}
     <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800 {{ extra_styles_ }}">{{ label }}</span>
-  {% else if tone.to_string() == "danger" -%}
+  {% else if tone.as_bytes() == "danger".as_bytes() -%}
     <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800 {{ extra_styles_ }}">{{ label }}</span>
   {% else -%}
     <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700 {{ extra_styles_ }}">{{ label }}</span>

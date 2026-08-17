@@ -313,7 +313,7 @@ select results_eq(
 
 -- Test: event tax choices should have stable defaults and allowed values
 select col_not_null('event', 'manual_tax_rate_ids');
-select col_default_is('event', 'manual_tax_rate_ids', '''{}''::text[]');
+select col_default_is('event', 'manual_tax_rate_ids', array[]::text[]);
 select col_default_is('event', 'tax_behavior', 'inclusive');
 select col_default_is('event', 'tax_calculation_mode', 'automatic');
 select has_check('event', 'event_manual_tax_rate_ids_chk');

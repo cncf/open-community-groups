@@ -145,7 +145,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Install djlint
-        run: pip install djlint==1.43.1 click==8.4.2
+        run: pip install djlint==1.44.2 click==8.4.2
       - name: Run djlint
         run: |
           djlint \
