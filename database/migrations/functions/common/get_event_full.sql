@@ -17,6 +17,7 @@ returns json as $$
             'event_id', e.event_id,
             'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
             'kind', e.event_kind_id,
+            'manual_tax_rate_ids', e.manual_tax_rate_ids,
             'name', e.name,
             'published', e.published,
             'registration_questions', e.registration_questions,

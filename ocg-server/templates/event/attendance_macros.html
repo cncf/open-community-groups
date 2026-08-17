@@ -14,7 +14,7 @@
       <span class="pointer-events-none absolute -top-5 left-1/2 inline-flex max-md:hidden -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500"
             data-attendance-role="control-price-badge">
         <span data-localized-currency>{{ ticket_price_badge }}</span>
-        {% if event.tax_behavior == crate::types::payments::TicketTaxBehavior::Exclusive %}&nbsp;+ tax{% endif %}
+        {% if event.shows_additional_ticket_tax() %}&nbsp;+ tax{% endif %}
       </span>
     {% endif -%}
   {% endif -%}

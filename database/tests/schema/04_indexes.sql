@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(106);
+select plan(103);
 
 -- ============================================================================
 -- TESTS
@@ -298,23 +298,6 @@ select index_is_unique('event_purchase', 'event_purchase_provider_charge_id_idx'
 select index_is_unique('event_purchase', 'event_purchase_provider_checkout_session_idx');
 select index_is_unique('event_purchase', 'event_purchase_provider_invoice_id_idx');
 select index_is_unique('event_purchase', 'event_purchase_provider_payment_reference_idx');
-
--- Test: manual tax configuration indexes should match expected
-select indexes_are('event_manual_tax_configuration', array[
-    'event_manual_tax_configuration_pkey',
-    'event_manual_tax_configuration_event_id_active_idx',
-    'event_manual_tax_configuration_event_id_idx',
-    'event_manual_tax_configuration_event_version_key',
-    'event_manual_tax_configuration_id_behavior_key'
-]);
-select index_is_unique(
-    'event_manual_tax_configuration',
-    'event_manual_tax_configuration_event_id_active_idx'
-);
-select indexes_are('event_manual_tax_component', array[
-    'event_manual_tax_component_pkey',
-    'event_manual_tax_component_configuration_id_idx'
-]);
 
 -- Test: durable financial-work indexes should match expected
 select indexes_are('event_purchase_application_fee_adjustment', array[

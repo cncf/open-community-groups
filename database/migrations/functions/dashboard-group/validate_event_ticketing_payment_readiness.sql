@@ -13,7 +13,7 @@ declare
     v_existing_venue_country_code text;
     v_existing_venue_state_code text;
     v_existing_venue_state_name text;
-    v_manual_configuration_is_ready boolean := false;
+    v_manual_tax_rate_ids text[];
     v_tax_behavior text;
     v_tax_calculation_mode text;
     v_venue_snapshot jsonb;
@@ -84,6 +84,10 @@ begin
         end if;
 
         v_event_kind_id := p_event_payload->>'kind_id';
+        v_manual_tax_rate_ids := coalesce(
+            jsonb_text_array(p_event_payload->'manual_tax_rate_ids'),
+            '{}'::text[]
+        );
         v_tax_behavior := coalesce(nullif(p_event_payload->>'tax_behavior', ''), 'inclusive');
         v_tax_calculation_mode := coalesce(
             nullif(p_event_payload->>'tax_calculation_mode', ''),
@@ -112,6 +116,7 @@ begin
     elsif p_event_id is not null then
         select
             e.event_kind_id,
+            e.manual_tax_rate_ids,
             e.tax_behavior,
             e.tax_calculation_mode,
             jsonb_build_object(
@@ -125,6 +130,7 @@ begin
             )
         into
             v_event_kind_id,
+            v_manual_tax_rate_ids,
             v_tax_behavior,
             v_tax_calculation_mode,
             v_venue_snapshot
@@ -148,41 +154,37 @@ begin
         raise exception 'paid ticketing requires an in-person or hybrid event with a complete physical venue';
     end if;
 
-    -- Require one fully configured tax calculation path
+    -- Require one internally consistent tax calculation path
     if v_tax_calculation_mode = 'automatic' then
         -- Require the ISO subdivision code used by Stripe's performance location
         if v_venue_snapshot->>'state_code' is null then
             raise exception 'automatic ticket tax requires a venue state code';
         end if;
-    elsif v_tax_calculation_mode = 'manual' and p_event_id is not null then
-        select
-            count(*) = 1
-            and coalesce(bool_and(matching_configuration.has_components), false)
-        into v_manual_configuration_is_ready
-        from (
-            select exists (
-                select 1
-                from event_manual_tax_component emtco
-                where emtco.event_manual_tax_configuration_id =
-                    emtc.event_manual_tax_configuration_id
-                and emtco.percentage > 0
-                and emtco.provider_tax_rate_id is not null
-            ) as has_components
-            from event_manual_tax_configuration emtc
-            where emtc.event_id = p_event_id
-            and emtc.connected_seller_id = p_payment_recipient->>'recipient_id'
-            and emtc.currency_code = p_payment_currency_code
-            and emtc.tax_behavior = v_tax_behavior
-            and emtc.valid_from <= current_timestamp
-            and (emtc.valid_until is null or emtc.valid_until > current_timestamp)
-            and emtc.venue_snapshot = v_venue_snapshot
-        ) matching_configuration;
-
-        if not v_manual_configuration_is_ready then
-            raise exception 'manual ticket tax is not ready for this sponsor and venue';
+        -- Reject stale manual Tax Rate selections in automatic mode
+        if cardinality(v_manual_tax_rate_ids) > 0 then
+            raise exception 'automatic ticket tax cannot include manual Tax Rates';
         end if;
     elsif v_tax_calculation_mode = 'manual' then
-        raise exception 'manual ticket tax must be configured after the event is created';
+        -- Require a nonempty, unique set of usable Stripe identifiers
+        if cardinality(v_manual_tax_rate_ids) = 0
+           or array_position(v_manual_tax_rate_ids, null) is not null
+           or exists (
+                select 1
+                from unnest(v_manual_tax_rate_ids) as rate_id
+                where nullif(btrim(rate_id), '') is null
+                or rate_id <> btrim(rate_id)
+           )
+           or cardinality(v_manual_tax_rate_ids) <> (
+                select count(distinct rate_id)
+                from unnest(v_manual_tax_rate_ids) as rate_id
+           ) then
+            raise exception 'manual ticket tax requires at least one unique Stripe Tax Rate';
+        end if;
+    elsif v_tax_calculation_mode = 'none' then
+        -- Normalize no-tax events and reject stale manual Tax Rate selections
+        if v_tax_behavior <> 'inclusive' or cardinality(v_manual_tax_rate_ids) > 0 then
+            raise exception 'events that do not collect tax require inclusive display and no Tax Rates';
+        end if;
     else
         raise exception 'unsupported ticket tax calculation mode';
     end if;

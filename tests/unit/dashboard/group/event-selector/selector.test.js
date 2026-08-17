@@ -215,6 +215,12 @@ describe("event-selector", () => {
         <option value="inclusive" selected>Tax included in ticket price</option>
         <option value="exclusive">Tax added at Checkout</option>
       </select>
+      <select id="tax_calculation_mode">
+        <option value="automatic">Automatic</option>
+        <option value="manual">Manual rates</option>
+        <option value="none">No tax</option>
+      </select>
+      <fieldset id="manual-tax-rates-fieldset"></fieldset>
       <location-search-field
         venue-name-field-name="venue_name"
         venue-address-field-name="venue_address"
@@ -304,6 +310,12 @@ describe("event-selector", () => {
 
     // Render the selector that applies the copied event details.
     const element = await renderSelector();
+    let copiedRateIds = [];
+    document
+      .getElementById("manual-tax-rates-fieldset")
+      ?.addEventListener("tax-rate-selection-updated", (event) => {
+        copiedRateIds = event.detail.rateIds;
+      });
 
     // Copied event details populate the form.
     await element._applyEventDetails({
@@ -322,7 +334,9 @@ describe("event-selector", () => {
       meeting_join_url: "https://meet.example.com/cloud-native-malaga",
       meeting_recording_url: "https://video.example.com/old-recording",
       payment_currency_code: "EUR",
+      manual_tax_rate_ids: ["txr_state", "txr_local"],
       tax_behavior: "exclusive",
+      tax_calculation_mode: "manual",
       photos_urls: [" one.png ", "two.png"],
       tags: ["cloud", " malaga "],
       ticket_types: [
@@ -409,6 +423,10 @@ describe("event-selector", () => {
     expect(document.getElementById("tax_behavior")?.value).to.equal(
       "exclusive",
     );
+    expect(document.getElementById("tax_calculation_mode")?.value).to.equal(
+      "manual",
+    );
+    expect(copiedRateIds).to.deep.equal(["txr_state", "txr_local"]);
     expect(
       document.getElementById("location-search-venue_address")?.value,
     ).to.equal("Av. de José Ortega y Gasset, 201");

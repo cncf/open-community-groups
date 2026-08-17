@@ -15,15 +15,16 @@ use crate::{
     db::{DynDB, payments::CompleteEventPurchaseRefundRecoveryInput},
     services::notifications::DynNotificationsManager,
     types::payments::{
-        GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxCalculationMode,
+        GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
+        TicketTaxCalculationMode, TicketTaxRate,
     },
 };
 
 use super::{
     CreateCheckoutSessionInput, DynPaymentsProvider, FinancialDocumentKind,
     FiscalSponsorReadinessError, FiscalSponsorReadinessInput, GetFinancialDocumentInput,
-    notification_composer::PaymentsNotificationComposer, provider::PaymentsWebhookEndpoint,
-    webhook_reconciler::PaymentsWebhookReconciler,
+    ListTaxRatesInput, ValidateTaxRatesInput, notification_composer::PaymentsNotificationComposer,
+    provider::PaymentsWebhookEndpoint, webhook_reconciler::PaymentsWebhookReconciler,
 };
 
 #[cfg(test)]
@@ -66,6 +67,13 @@ pub(crate) trait PaymentsManager {
         event_purchase_credit_note_id: Option<Uuid>,
     ) -> Result<Option<String>>;
 
+    /// Lists active Tax Rates in the group's fiscal sponsor account.
+    async fn list_tax_rates(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        tax_behavior: TicketTaxBehavior,
+    ) -> Result<Vec<TicketTaxRate>>;
+
     /// Verifies and processes a connected-account webhook payload.
     async fn handle_connected_webhook(
         &self,
@@ -91,6 +99,14 @@ pub(crate) trait PaymentsManager {
         &self,
         recipient: &GroupPaymentRecipient,
         require_automatic_tax: bool,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError>;
+
+    /// Validates manual Tax Rates in the group's fiscal sponsor account.
+    async fn validate_tax_rates(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        manual_tax_rate_ids: &[String],
+        tax_behavior: TicketTaxBehavior,
     ) -> std::result::Result<(), FiscalSponsorReadinessError>;
 }
 
@@ -292,7 +308,7 @@ impl PaymentsManager for PgPaymentsManager {
                     .ok_or_else(|| anyhow::anyhow!("paid checkout is missing ticket tax code"))?
                     .clone(),
             ),
-            TicketTaxCalculationMode::Manual => None,
+            TicketTaxCalculationMode::Manual | TicketTaxCalculationMode::None => None,
         };
         let venue = prepared_checkout
             .venue
@@ -340,7 +356,7 @@ impl PaymentsManager for PgPaymentsManager {
                     .clone(),
                 discount_code: prepared_checkout.purchase.discount_code.clone(),
                 group_slug_pretty: prepared_checkout.group_slug_pretty.clone(),
-                manual_tax_components: prepared_checkout.manual_tax_components.clone(),
+                manual_tax_rate_ids: prepared_checkout.manual_tax_rate_ids.clone(),
                 tax_code,
             })
             .await?;
@@ -431,6 +447,25 @@ impl PaymentsManager for PgPaymentsManager {
             .await
     }
 
+    /// [`PaymentsManager::list_tax_rates`].
+    async fn list_tax_rates(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        tax_behavior: TicketTaxBehavior,
+    ) -> Result<Vec<TicketTaxRate>> {
+        let payments_provider = self.payments_provider()?;
+        if recipient.provider != payments_provider.provider() {
+            bail!("fiscal sponsor seller is not configured for this provider");
+        }
+
+        payments_provider
+            .list_tax_rates(&ListTaxRatesInput {
+                connected_seller_id: recipient.recipient_id.clone(),
+                tax_behavior,
+            })
+            .await
+    }
+
     /// [`PaymentsManager::reject_refund_request`].
     async fn reject_refund_request(&self, input: &RejectRefundRequestInput) -> Result<()> {
         // Normalize the attendee-visible reason once for persistence and delivery
@@ -494,6 +529,31 @@ impl PaymentsManager for PgPaymentsManager {
                 connected_seller_id: recipient.recipient_id.clone(),
                 provider: recipient.provider,
                 require_automatic_tax,
+            })
+            .await
+    }
+
+    /// [`PaymentsManager::validate_tax_rates`].
+    async fn validate_tax_rates(
+        &self,
+        recipient: &GroupPaymentRecipient,
+        manual_tax_rate_ids: &[String],
+        tax_behavior: TicketTaxBehavior,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError> {
+        let payments_provider = self
+            .payments_provider()
+            .map_err(FiscalSponsorReadinessError::Unexpected)?;
+        if recipient.provider != payments_provider.provider() {
+            return Err(FiscalSponsorReadinessError::NotReady(
+                "fiscal sponsor seller is not configured for this provider".to_string(),
+            ));
+        }
+
+        payments_provider
+            .validate_tax_rates(&ValidateTaxRatesInput {
+                connected_seller_id: recipient.recipient_id.clone(),
+                manual_tax_rate_ids: manual_tax_rate_ids.to_vec(),
+                tax_behavior,
             })
             .await
     }

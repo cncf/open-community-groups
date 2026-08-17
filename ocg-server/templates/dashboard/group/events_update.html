@@ -870,7 +870,7 @@
           {% endif -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
-            <div class="col-span-full 2xl:col-span-3">
+            <div class="col-span-full 2xl:col-span-2">
               <label for="payment_currency_code" class="form-label">
                 Event Currency
                 <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
@@ -890,13 +890,37 @@
               <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
             </div>
 
-            <div class="col-span-full 2xl:col-span-3">
+            <div class="col-span-full 2xl:col-span-2">
+              <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+              <div class="mt-2">
+                <select id="tax_calculation_mode"
+                        name="tax_calculation_mode"
+                        class="select-primary"
+                        {% if ticketing_read_only %}disabled{% endif %}>
+                  <option value="automatic"
+                          {% if !self.uses_manual_ticket_tax() && !self.uses_no_ticket_tax() %}selected{% endif %}>Automatic Stripe Tax</option>
+                  <option value="manual"
+                          {% if self.uses_manual_ticket_tax() %}selected{% endif %}>Manual Stripe Tax Rates</option>
+                  <option value="none" {% if self.uses_no_ticket_tax() %}selected{% endif %}>Do not collect tax</option>
+                </select>
+                {% if ticketing_read_only -%}
+                  <input type="hidden"
+                         name="tax_calculation_mode"
+                         value="{% if self.uses_manual_ticket_tax() %}manual{% else if self.uses_no_ticket_tax() %}none{% else %}automatic{% endif %}">
+                {% endif -%}
+              </div>
+              <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
+            </div>
+
+            <div class="col-span-full 2xl:col-span-2
+                        {% if self.uses_no_ticket_tax() %}hidden{% endif %}"
+                 data-tax-control="behavior">
               <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
               <div class="mt-2">
                 <select id="tax_behavior"
                         name="tax_behavior"
                         class="select-primary"
-                        {% if ticketing_read_only %}disabled{% endif %}>
+                        {% if ticketing_read_only || self.uses_no_ticket_tax() %}disabled{% endif %}>
                   <option value="inclusive"
                           {% if !self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax included in ticket price</option>
                   <option value="exclusive"
@@ -911,26 +935,28 @@
               <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
             </div>
 
-            <div class="col-span-full 2xl:col-span-3">
-              <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
-              <div class="mt-2">
-                <select id="tax_calculation_mode"
-                        name="tax_calculation_mode"
-                        class="select-primary"
-                        {% if ticketing_read_only %}disabled{% endif %}>
-                  <option value="automatic"
-                          {% if !self.uses_manual_ticket_tax() %}selected{% endif %}>Automatic Stripe Tax</option>
-                  <option value="manual"
-                          {% if self.uses_manual_ticket_tax() %}selected{% endif %}>Sponsor-approved fixed rates</option>
-                </select>
-                {% if ticketing_read_only -%}
-                  <input type="hidden"
-                         name="tax_calculation_mode"
-                         value="{% if self.uses_manual_ticket_tax() %}manual{% else %}automatic{% endif %}">
-                {% endif -%}
-              </div>
-              <p class="form-legend">Manual rates must match this fiscal sponsor, currency, venue, and tax display before they can be enabled.</p>
-            </div>
+            <fieldset id="manual-tax-rates-fieldset"
+                      class="col-span-full rounded-md border border-stone-200 bg-stone-50 p-4"
+                      data-disabled="{{ ticketing_read_only }}"
+                      data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'
+                      data-tax-rates-url="/dashboard/group/events/tax-rates"
+                      tabindex="-1"
+                      {% if !self.uses_manual_ticket_tax() %}hidden{% endif %}>
+              <legend class="form-label px-1">Manual Stripe Tax Rates</legend>
+              <p class="form-legend mt-0">
+                Select one or more active rates owned by this group's fiscal sponsor. The same rates apply to every paid ticket tier.
+              </p>
+              <p class="mt-3 text-sm/6 text-stone-600"
+                 data-tax-rates-role="state"
+                 role="status"
+                 aria-live="polite"></p>
+              <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"
+                   data-tax-rates-role="list"></div>
+              <button type="button"
+                      class="btn-primary-outline btn-mini mt-4"
+                      data-tax-rates-action="retry"
+                      hidden>Retry loading rates</button>
+            </fieldset>
           </div>
         </div>
       {% endif -%}

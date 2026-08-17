@@ -120,19 +120,29 @@ describe("dashboard group event add template", () => {
     );
   });
 
-  it("disables manual tax before the event exists", async () => {
-    // Load the event creation form before checking the tax mode states.
+  it("supports all event-wide tax modes during creation", async () => {
+    // Load the event creation form before checking the tax controls.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify automatic tax is selected while manual tax remains visible but unavailable.
+    // Verify manual rates and no-tax mode are available with accessible rate states.
     expect(template).to.include(
       '<option value="automatic" selected>Automatic Stripe Tax</option>',
     );
     expect(template).to.include(
-      '<option value="manual" disabled>Sponsor-approved fixed rates</option>',
+      '<option value="manual">Manual Stripe Tax Rates</option>',
     );
     expect(template).to.include(
-      "Manual fixed rates require an approved fiscal sponsor configuration after event creation.",
+      '<option value="none">Do not collect tax</option>',
+    );
+    expect(template).to.include('id="manual-tax-rates-fieldset"');
+    expect(template).to.include(
+      'data-tax-rates-url="/dashboard/group/events/tax-rates"',
+    );
+    expect(template).to.include(
+      'data-tax-rates-role="state" role="status" aria-live="polite"',
+    );
+    expect(template).to.include(
+      "The same rates apply to every paid ticket tier.",
     );
   });
 

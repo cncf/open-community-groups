@@ -358,26 +358,6 @@ pub struct GroupPaymentRecipient {
     pub seller_display_name: String,
 }
 
-/// Sponsor-approved fixed tax component snapshotted onto a purchase.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ManualTaxComponent {
-    /// Display label used by Stripe Checkout and invoices.
-    pub display_name: String,
-    /// Sponsor-supplied jurisdiction label.
-    pub jurisdiction: String,
-    /// Decimal percentage encoded without floating-point conversion.
-    pub percentage: String,
-    /// Connected-account Stripe Tax Rate identifier.
-    pub provider_tax_rate_id: String,
-    /// Sponsor-supplied tax type.
-    pub tax_type: String,
-
-    /// ISO country code when supplied by the sponsor.
-    pub country_code: Option<String>,
-    /// State or province when supplied by the sponsor.
-    pub state: Option<String>,
-}
-
 /// Provider validation bound to the payment configuration observed before mutation.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub(crate) struct PaymentConfigurationValidation {
@@ -386,6 +366,15 @@ pub(crate) struct PaymentConfigurationValidation {
 
     /// Payment recipient observed before taking the database mutation lock.
     pub expected_payment_recipient: Option<GroupPaymentRecipient>,
+    /// Manual Tax Rate identifiers validated for an event mutation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manual_tax_rate_ids: Option<Vec<String>>,
+    /// Tax inclusion behavior validated for an event mutation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tax_behavior: Option<TicketTaxBehavior>,
+    /// Tax calculation mode validated for an event mutation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tax_calculation_mode: Option<TicketTaxCalculationMode>,
     /// Payment recipient validated at the provider boundary.
     pub validated_payment_recipient: Option<GroupPaymentRecipient>,
 }
@@ -427,15 +416,15 @@ pub struct PreparedEventCheckout {
     pub event_starts_at: Option<DateTime<Utc>>,
     /// Admin-managed group slug used in attendee-facing routes.
     pub group_slug_pretty: Option<String>,
-    /// Fixed manual tax components selected for the purchase.
-    pub manual_tax_components: Option<Vec<ManualTaxComponent>>,
+    /// Manual Tax Rate identifiers selected for the purchase.
+    pub manual_tax_rate_ids: Option<Vec<String>>,
     /// Immutable connected fiscal-sponsor seller snapshot.
     pub seller: Option<FiscalSponsorSeller>,
     /// Ticket price tax inclusion behavior.
     pub tax_behavior: Option<TicketTaxBehavior>,
     /// Selected automatic or manual tax path.
     pub tax_calculation_mode: Option<TicketTaxCalculationMode>,
-    /// Fixed professional-event tax code used for automatic tax.
+    /// Professional-event tax code used for automatic tax.
     pub tax_code: Option<String>,
     /// Immutable physical venue used for tax calculation.
     pub venue: Option<TicketVenue>,
@@ -459,8 +448,34 @@ pub enum TicketTaxCalculationMode {
     /// Stripe Tax calculates tax from the performance location.
     #[default]
     Automatic,
-    /// Stripe applies sponsor-approved fixed venue Tax Rates.
+    /// Stripe applies the event's selected manual Tax Rates.
     Manual,
+    /// Checkout does not attach any tax calculation mechanism.
+    None,
+}
+
+impl TicketTaxCalculationMode {
+    /// Returns whether Checkout attaches an event tax mechanism.
+    pub const fn collects_tax(self) -> bool {
+        !matches!(self, Self::None)
+    }
+}
+
+/// Active Stripe Tax Rate available in a fiscal sponsor account.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub(crate) struct TicketTaxRate {
+    /// Customer-facing Tax Rate label.
+    pub display_name: String,
+    /// Connected-account Stripe Tax Rate identifier.
+    pub id: String,
+    /// Whether the rate is included in the configured ticket amount.
+    pub inclusive: bool,
+    /// Decimal Tax Rate percentage encoded without floating-point conversion.
+    pub percentage: String,
+
+    /// Jurisdiction configured on the Tax Rate.
+    pub jurisdiction: Option<String>,
 }
 
 /// Immutable physical venue snapshot used for ticket tax.

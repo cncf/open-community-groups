@@ -298,6 +298,9 @@ pub struct EventFull {
     pub kind: EventKind,
     /// URL to the event logo.
     pub logo_url: String,
+    /// Stripe Tax Rate identifiers selected for manual tax.
+    #[serde(default)]
+    pub manual_tax_rate_ids: Vec<String>,
     /// Event title.
     pub name: String,
     /// Event organizers snapshotted at creation time.
@@ -320,7 +323,7 @@ pub struct EventFull {
     pub sponsors: Vec<EventSponsor>,
     /// Whether ticket prices include tax or have tax added at Checkout.
     pub tax_behavior: TicketTaxBehavior,
-    /// Automatic Stripe Tax or sponsor-approved manual rates.
+    /// Automatic Stripe Tax, manual Stripe rates, or no tax collection.
     pub tax_calculation_mode: TicketTaxCalculationMode,
     /// Whether the event was created only for testing.
     #[serde(default)]
@@ -600,6 +603,12 @@ impl EventFull {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    /// Returns whether attendee prices require an additional-tax label.
+    pub fn shows_additional_ticket_tax(&self) -> bool {
+        self.tax_calculation_mode.collects_tax()
+            && self.tax_behavior == TicketTaxBehavior::Exclusive
     }
 
     /// Returns the sole active, public, free ticket type when the event is a simple RSVP.

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(52);
+select plan(54);
 
 -- ============================================================================
 -- VARIABLES
@@ -68,6 +68,7 @@ select plan(52);
 \set platformFeeUserID '79100000-0000-0000-0000-000000000071'
 \set limitedDiscountID '79100000-0000-0000-0000-000000000018'
 \set mainEventID '79100000-0000-0000-0000-000000000003'
+\set manualTaxUserID '79100000-0000-0000-0000-000000000074'
 \set priceUnavailableEventID '79100000-0000-0000-0000-000000000068'
 \set priceUnavailablePriceWindowID '79100000-0000-0000-0000-000000000069'
 \set priceUnavailableTicketTypeID '79100000-0000-0000-0000-00000000006a'
@@ -155,6 +156,7 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'queueUserID', 'hash-22', 'queue-user@example.com', true, 'queue-user'),
     (:'soldOutUserID', 'hash-8', 'soldout@example.com', true, 'soldout-user'),
     (:'inactiveUserID', 'hash-9', 'inactive@example.com', true, 'inactive-user'),
+    (:'manualTaxUserID', 'hash-31', 'manual-tax@example.com', true, 'manual-tax-user'),
     (:'redeemedUserID', 'hash-10', 'redeemed@example.com', true, 'redeemed-user'),
     (:'soldOutHolderUserID', 'hash-11', 'holder@example.com', true, 'holder-user'),
     (:'soldOutPendingUserID', 'hash-18', 'soldout-pending@example.com', true, 'soldout-pending-user'),
@@ -2184,6 +2186,45 @@ select results_eq(
     $$, :'cacheUserID'),
     $$ values ('loc_cached'::text, 'prod_cached'::text, true, true) $$,
     'Should return matching immutable account-scoped automatic-tax resources'
+);
+
+-- Switch the main event to manual tax after automatic-tax cache coverage
+update event
+set manual_tax_rate_ids = array['txr_state', 'txr_local']::text[],
+    tax_calculation_mode = 'manual'
+where event_id = :'mainEventID'::uuid;
+
+-- Should prepare a manual-tax purchase after the event mode changes
+select lives_ok(
+    format($$select prepare_event_checkout_purchase(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        null,
+        'stripe'
+    )$$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'manualTaxUserID'
+    ),
+    'Should prepare a manual-tax purchase after the event mode changes'
+);
+
+-- Should snapshot every event-level manual Tax Rate identifier
+select results_eq(
+    format($$
+        select
+            manual_tax_rate_ids,
+            tax_calculation_mode
+        from event_purchase
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        and status = 'pending'
+    $$, :'mainEventID', :'manualTaxUserID'),
+    $$ values (array['txr_state', 'txr_local']::text[], 'manual'::text) $$,
+    'Should snapshot every event-level manual Tax Rate identifier'
 );
 
 -- ============================================================================

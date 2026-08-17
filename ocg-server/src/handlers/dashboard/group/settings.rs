@@ -102,6 +102,9 @@ pub(crate) async fn update(
                 require_automatic_tax,
 
                 expected_payment_recipient: current_recipient,
+                manual_tax_rate_ids: None,
+                tax_behavior: None,
+                tax_calculation_mode: None,
                 validated_payment_recipient: Some(recipient.clone()),
             });
         }

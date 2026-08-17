@@ -2,13 +2,19 @@
 
 -- Record event tax choices used by future paid purchases.
 alter table event
+    add column manual_tax_rate_ids text[] default '{}' not null,
     add column tax_behavior text default 'inclusive' not null,
     add column tax_calculation_mode text default 'automatic' not null,
+    add constraint event_manual_tax_rate_ids_chk check (
+        tax_calculation_mode = 'manual'
+        or manual_tax_rate_ids = '{}'::text[]
+    ),
     add constraint event_tax_behavior_chk check (
         tax_behavior = any(array['exclusive', 'inclusive']::text[])
+        and (tax_calculation_mode <> 'none' or tax_behavior = 'inclusive')
     ),
     add constraint event_tax_calculation_mode_chk check (
-        tax_calculation_mode = any(array['automatic', 'manual']::text[])
+        tax_calculation_mode = any(array['automatic', 'manual', 'none']::text[])
     );
 
 -- Preserve the provisional fee while adding authoritative purchase amounts.
@@ -35,7 +41,7 @@ alter table event_purchase
     add column connected_seller_id text check (btrim(connected_seller_id) <> ''),
     add column final_platform_fee_amount_minor bigint,
     add column financially_reconciled_at timestamptz,
-    add column manual_tax_snapshot jsonb,
+    add column manual_tax_rate_ids text[],
     add column performance_location_fingerprint text check (
         btrim(performance_location_fingerprint) <> ''
     ),
@@ -111,6 +117,22 @@ alter table event_purchase
             and tax_amount_minor >= 0
         )
     ),
+    add constraint event_purchase_manual_tax_rate_ids_chk check (
+        manual_tax_rate_ids is null
+        or (
+            tax_calculation_mode = 'manual'
+            and cardinality(manual_tax_rate_ids) > 0
+        )
+        or (
+            tax_calculation_mode = any(array['automatic', 'none']::text[])
+            and manual_tax_rate_ids = '{}'::text[]
+        )
+    ),
+    add constraint event_purchase_no_tax_amount_chk check (
+        tax_calculation_mode <> 'none'
+        or tax_amount_minor is null
+        or tax_amount_minor = 0
+    ),
     add constraint event_purchase_provider_product_mode_chk check (
         tax_calculation_mode <> 'automatic'
         or charge_model <> 'direct-charge'
@@ -128,11 +150,14 @@ alter table event_purchase
     ),
     add constraint event_purchase_tax_behavior_chk check (
         tax_behavior is null
-        or tax_behavior = any(array['exclusive', 'inclusive']::text[])
+        or (
+            tax_behavior = any(array['exclusive', 'inclusive']::text[])
+            and (tax_calculation_mode <> 'none' or tax_behavior = 'inclusive')
+        )
     ),
     add constraint event_purchase_tax_calculation_mode_chk check (
         tax_calculation_mode is null
-        or tax_calculation_mode = any(array['automatic', 'manual']::text[])
+        or tax_calculation_mode = any(array['automatic', 'manual', 'none']::text[])
     );
 
 alter table event_purchase
@@ -188,126 +213,6 @@ create unique index event_purchase_provider_payment_reference_idx
         provider_payment_reference
     )
     where provider_payment_reference is not null;
-
--- Store immutable sponsor-approved manual venue tax configurations.
-create table event_manual_tax_configuration (
-    event_manual_tax_configuration_id uuid primary key default gen_random_uuid(),
-    approved_at timestamptz not null,
-    approved_by_user_id uuid not null references "user",
-    connected_seller_id text not null check (btrim(connected_seller_id) <> ''),
-    created_at timestamptz default current_timestamp not null,
-    currency_code text not null check (btrim(currency_code) <> ''),
-    event_id uuid not null references event,
-    evidence_reference text not null check (btrim(evidence_reference) <> ''),
-    tax_behavior text not null,
-    valid_from timestamptz default current_timestamp not null,
-    venue_snapshot jsonb not null,
-    version int not null check (version > 0),
-
-    valid_until timestamptz,
-
-    constraint event_manual_tax_configuration_event_version_key
-        unique (event_id, version),
-    constraint event_manual_tax_configuration_id_behavior_key
-        unique (event_manual_tax_configuration_id, tax_behavior),
-    constraint event_manual_tax_configuration_tax_behavior_chk check (
-        tax_behavior = any(array['exclusive', 'inclusive']::text[])
-    ),
-    constraint event_manual_tax_configuration_validity_chk check (
-        valid_until is null or valid_until > valid_from
-    ),
-    constraint event_manual_tax_configuration_venue_chk check (
-        nullif(btrim(venue_snapshot->>'address'), '') is not null
-        and nullif(btrim(venue_snapshot->>'city'), '') is not null
-        and nullif(btrim(venue_snapshot->>'country_code'), '') is not null
-        and nullif(btrim(venue_snapshot->>'name'), '') is not null
-        and nullif(btrim(venue_snapshot->>'zip_code'), '') is not null
-    )
-);
-
--- Store the jurisdictional rates that compose a manual tax configuration.
-create table event_manual_tax_component (
-    event_manual_tax_component_id uuid primary key default gen_random_uuid(),
-    created_at timestamptz default current_timestamp not null,
-    display_name text not null check (btrim(display_name) <> ''),
-    event_manual_tax_configuration_id uuid not null,
-    jurisdiction text not null check (btrim(jurisdiction) <> ''),
-    percentage numeric(8, 4) not null check (percentage > 0 and percentage <= 100),
-    provider_tax_rate_id text not null check (btrim(provider_tax_rate_id) <> ''),
-    tax_behavior text not null,
-    tax_type text not null check (btrim(tax_type) <> ''),
-
-    country_code text check (btrim(country_code) <> ''),
-    state text check (btrim(state) <> ''),
-
-    constraint event_manual_tax_component_configuration_behavior_fkey
-        foreign key (event_manual_tax_configuration_id, tax_behavior)
-            references event_manual_tax_configuration (
-                event_manual_tax_configuration_id,
-                tax_behavior
-            )
-);
-
-create index event_manual_tax_component_configuration_id_idx
-    on event_manual_tax_component (event_manual_tax_configuration_id);
-create unique index event_manual_tax_configuration_event_id_active_idx
-    on event_manual_tax_configuration (event_id)
-    where valid_until is null;
-create index event_manual_tax_configuration_event_id_idx
-    on event_manual_tax_configuration (event_id, valid_from, valid_until);
-
--- Prevent more than one manual-tax version from applying at any instant.
-create function check_event_manual_tax_configuration_validity()
-returns trigger as $$
-declare
-    v_event_id uuid;
-    v_valid_from timestamptz;
-    v_valid_until timestamptz;
-begin
-    -- Reload the settled row because this constraint trigger is deferred
-    select
-        emtc.event_id,
-        emtc.valid_from,
-        emtc.valid_until
-    into
-        v_event_id,
-        v_valid_from,
-        v_valid_until
-    from event_manual_tax_configuration emtc
-    where emtc.event_manual_tax_configuration_id =
-        new.event_manual_tax_configuration_id;
-
-    if not found then
-        return null;
-    end if;
-
-    -- Serialize validity checks so concurrent bounded versions cannot overlap
-    perform pg_advisory_xact_lock(
-        hashtext('event-manual-tax-configuration'),
-        hashtext(v_event_id::text)
-    );
-
-    if exists (
-        select 1
-        from event_manual_tax_configuration emtc
-        where emtc.event_id = v_event_id
-        and emtc.event_manual_tax_configuration_id <>
-            new.event_manual_tax_configuration_id
-        and tstzrange(emtc.valid_from, emtc.valid_until, '[)')
-            && tstzrange(v_valid_from, v_valid_until, '[)')
-    ) then
-        raise exception 'manual tax configuration validity periods cannot overlap for one event';
-    end if;
-
-    return null;
-end;
-$$ language plpgsql;
-
-create constraint trigger event_manual_tax_configuration_validity_check
-    after insert or update on event_manual_tax_configuration
-    deferrable initially deferred
-    for each row
-    execute function check_event_manual_tax_configuration_validity();
 
 -- Cache immutable provider resources by seller account and complete fingerprint.
 create table payment_provider_tax_location (

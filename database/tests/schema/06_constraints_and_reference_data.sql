@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(189);
+select plan(180);
 
 -- ============================================================================
 -- VARIABLES
@@ -312,8 +312,11 @@ select results_eq(
 );
 
 -- Test: event tax choices should have stable defaults and allowed values
+select col_not_null('event', 'manual_tax_rate_ids');
+select col_default_is('event', 'manual_tax_rate_ids', '''{}''::text[]');
 select col_default_is('event', 'tax_behavior', 'inclusive');
 select col_default_is('event', 'tax_calculation_mode', 'automatic');
+select has_check('event', 'event_manual_tax_rate_ids_chk');
 select has_check('event', 'event_tax_behavior_chk');
 select has_check('event', 'event_tax_calculation_mode_chk');
 
@@ -336,6 +339,8 @@ select has_check('event_purchase', 'event_purchase_charge_model_chk');
 select has_check('event_purchase', 'event_purchase_direct_charge_context_chk');
 select has_check('event_purchase', 'event_purchase_financial_amounts_chk');
 select has_check('event_purchase', 'event_purchase_completed_direct_charge_amounts_chk');
+select has_check('event_purchase', 'event_purchase_manual_tax_rate_ids_chk');
+select has_check('event_purchase', 'event_purchase_no_tax_amount_chk');
 select has_check('event_purchase', 'event_purchase_provider_product_mode_chk');
 select has_check('event_purchase', 'event_purchase_tax_behavior_chk');
 select has_check('event_purchase', 'event_purchase_tax_calculation_mode_chk');
@@ -355,30 +360,7 @@ select ok(
     'Event purchase provisional fee should stay within the ticket amount'
 );
 
--- Test: manual tax approval and cached provider resources should remain valid
-select col_has_check('event_manual_tax_configuration', 'connected_seller_id');
-select col_has_check('event_manual_tax_configuration', 'currency_code');
-select col_has_check('event_manual_tax_configuration', 'evidence_reference');
-select col_has_check('event_manual_tax_configuration', 'version');
-select has_check(
-    'event_manual_tax_configuration',
-    'event_manual_tax_configuration_tax_behavior_chk'
-);
-select has_check(
-    'event_manual_tax_configuration',
-    'event_manual_tax_configuration_validity_chk'
-);
-select has_check(
-    'event_manual_tax_configuration',
-    'event_manual_tax_configuration_venue_chk'
-);
-select col_has_check('event_manual_tax_component', 'country_code');
-select col_has_check('event_manual_tax_component', 'display_name');
-select col_has_check('event_manual_tax_component', 'jurisdiction');
-select col_has_check('event_manual_tax_component', 'percentage');
-select col_has_check('event_manual_tax_component', 'provider_tax_rate_id');
-select col_has_check('event_manual_tax_component', 'state');
-select col_has_check('event_manual_tax_component', 'tax_type');
+-- Test: cached provider resources should remain valid
 select col_has_check('payment_provider_tax_location', 'connected_seller_id');
 select col_has_check('payment_provider_tax_location', 'fingerprint');
 select col_has_check('payment_provider_tax_location', 'provider_tax_location_id');

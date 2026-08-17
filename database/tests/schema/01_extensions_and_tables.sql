@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(82);
+select plan(80);
 
 -- ============================================================================
 -- TESTS
@@ -47,8 +47,6 @@ select has_table('event_discount_code');
 select has_table('event_host');
 select has_table('event_invitation_request');
 select has_table('event_kind');
-select has_table('event_manual_tax_component');
-select has_table('event_manual_tax_configuration');
 select has_table('event_organizer');
 select has_table('event_purchase');
 select has_table('event_purchase_application_fee_adjustment');

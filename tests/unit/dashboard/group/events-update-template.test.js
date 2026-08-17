@@ -239,17 +239,24 @@ describe("dashboard group event update template", () => {
     );
   });
 
-  it("offers manual tax after event creation with its matching requirements", async () => {
-    // Load the event update form before checking post-creation tax modes.
+  it("offers manual-tax and no-tax modes with event-level selections", async () => {
+    // Load the event update form before checking tax mode state.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify manual tax is selectable and explains its snapshot requirements.
+    // Verify all modes and the server-rendered selection contract.
     expect(template).to.include('<option value="manual"');
     expect(template).to.include(
-      "{% if self.uses_manual_ticket_tax() %}selected{% endif %}>Sponsor-approved fixed rates</option>",
+      "{% if self.uses_manual_ticket_tax() %}selected{% endif %}>Manual Stripe Tax Rates</option>",
+    );
+    expect(template).to.include('<option value="none"');
+    expect(template).to.include(
+      "{% if self.uses_no_ticket_tax() %}hidden{% endif %}",
     );
     expect(template).to.include(
-      "Manual rates must match this fiscal sponsor, currency, venue, and tax display before they can be enabled.",
+      "data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'",
+    );
+    expect(template).to.include(
+      'data-tax-rates-role="state" role="status" aria-live="polite"',
     );
   });
 

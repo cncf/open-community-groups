@@ -93,9 +93,9 @@ When a group asks to enable paid events, the Stripe-side work is usually:
 5. Confirm charges are enabled, details are submitted, invoice business
    details are correct, and the sponsor can use the Stripe Dashboard.
 6. Confirm Stripe Tax is active for automatic tax, including the head-office
-   address and registrations applicable to the event locations. If automatic
-   tax is unavailable, record only fixed venue rates explicitly supplied or
-   approved by the sponsor.
+   address and registrations applicable to the event locations. If events use
+   manual tax, create and maintain those Tax Rate definitions in the fiscal
+   sponsor's connected Stripe account.
 
 Useful Stripe references for this step:
 
@@ -105,6 +105,7 @@ Useful Stripe references for this step:
 - [Manage connected accounts with the Dashboard](https://docs.stripe.com/connect/dashboard)
 - [Onboard your connected account](https://docs.stripe.com/connect/saas/tasks/onboard)
 - [Stripe Dashboard access](https://docs.stripe.com/connect/dashboard)
+- [Tax Rates API](https://docs.stripe.com/api/tax_rates)
 
 ## Step 1: Create or Open the Stripe Connected Account
 
@@ -158,6 +159,12 @@ Stripe:
 4. Before live sales, add the registrations that reflect where the fiscal
    sponsor is registered to collect tax and the jurisdictions applicable to
    its event locations.
+
+For manual tax, the sponsor owns the Tax Rate definitions in its connected
+Stripe account. Create active rates with the intended display name,
+jurisdiction, percentage, and inclusive or exclusive behavior. Event organizers
+then select the compatible rates in each event's `Tickets` tab. OCG does not
+copy or maintain the rate metadata.
 
 Tax for ticket sales is in public preview and requires API version
 `2026-03-25.preview` or later. The OCG deployment configuration pins the version
@@ -217,10 +224,11 @@ Positive ticket prices cannot be configured or published.
 Once the sponsor is saved, group administrators can configure positive prices
 only for eligible in-person or hybrid events with a complete physical venue.
 Every paid hybrid ticket includes physical admission. It may also include
-virtual access, but a virtual-only ticket must remain free. Choose inclusive or
-exclusive tax and use automatic tax whenever it is ready. A manual fallback
-must contain current, positive fixed rates approved by the sponsor for that
-exact venue, currency, and tax behavior; OCG never guesses a rate.
+virtual access, but a virtual-only ticket must remain free. In the event's
+`Tickets` tab, choose automatic Stripe Tax, one or more manual Tax Rates from
+the sponsor account, or no tax collection. Automatic and manual modes also
+choose inclusive or exclusive display. OCG revalidates manual selections against
+the connected account when the event is saved, published, and checked out.
 
 A positive final price uses sponsor-owned Stripe Checkout with required billing
 address, business tax-ID collection, and post-payment invoicing. An

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
@@ -20,7 +22,7 @@ use crate::{
     services::{
         meetings::MeetingProvider,
         notifications::{MockNotificationsManager, NotificationKind},
-        payments::{FiscalSponsorReadinessError, MockPaymentsManager},
+        payments::{DynPaymentsManager, FiscalSponsorReadinessError, MockPaymentsManager},
     },
     templates::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
@@ -31,7 +33,10 @@ use crate::{
     },
     types::{
         event::{EventFull, EventSummary, Speaker},
-        payments::{EventTicketPriceWindow, EventTicketType, PaymentMode, PaymentProvider},
+        payments::{
+            EventTicketPriceWindow, EventTicketType, PaymentMode, PaymentProvider,
+            TicketTaxBehavior, TicketTaxCalculationMode,
+        },
         permissions::GroupPermission,
     },
 };
@@ -2710,6 +2715,87 @@ async fn test_publish_speakers_only() {
 }
 
 #[tokio::test]
+async fn test_publish_validation_rechecks_every_manual_tax_selection() {
+    // Setup paid and free manual-tax events with separate rate selections
+    let community_id = Uuid::new_v4();
+    let free_event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let paid_event_id = Uuid::new_v4();
+    let mut paid_event = sample_event_full(community_id, paid_event_id, group_id);
+    paid_event.manual_tax_rate_ids = vec!["txr_state".to_string(), "txr_local".to_string()];
+    paid_event.payment_currency_code = Some("USD".to_string());
+    paid_event.tax_behavior = TicketTaxBehavior::Exclusive;
+    paid_event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
+    paid_event.ticket_types = Some(vec![EventTicketType {
+        event_ticket_type_id: Uuid::new_v4(),
+        order: 1,
+        price_windows: vec![EventTicketPriceWindow {
+            amount_minor: 2500,
+            ..Default::default()
+        }],
+        title: "General admission".to_string(),
+        ..Default::default()
+    }]);
+    let mut free_event = sample_event_full(community_id, free_event_id, group_id);
+    free_event.manual_tax_rate_ids = vec!["txr_free".to_string()];
+    free_event.tax_behavior = TicketTaxBehavior::Inclusive;
+    free_event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
+
+    // Return both events and their shared connected fiscal sponsor
+    let mut db = MockDB::new();
+    db.expect_get_event_full().times(2).returning(move |_, _, event_id| {
+        if event_id == paid_event_id {
+            Ok(paid_event.clone())
+        } else {
+            Ok(free_event.clone())
+        }
+    });
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+
+    // Revalidate sponsor readiness once and every event-level Tax Rate selection
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_validate_fiscal_sponsor()
+        .times(1)
+        .withf(|recipient, require_automatic_tax| {
+            recipient.recipient_id == "acct_test" && !require_automatic_tax
+        })
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager
+        .expect_validate_tax_rates()
+        .times(2)
+        .withf(|recipient, rate_ids, behavior| {
+            recipient.recipient_id == "acct_test"
+                && (rate_ids == ["txr_state", "txr_local"]
+                    && *behavior == TicketTaxBehavior::Exclusive
+                    || rate_ids == ["txr_free"] && *behavior == TicketTaxBehavior::Inclusive)
+        })
+        .returning(|_, _, _| Box::pin(async { Ok(()) }));
+    let payments_manager: DynPaymentsManager = Arc::new(payments_manager);
+
+    // Validate the full publish set and retain the paid mutation binding
+    let validation = super::validate_publish_fiscal_sponsor(
+        &db,
+        &payments_manager,
+        community_id,
+        group_id,
+        &[paid_event_id, free_event_id],
+    )
+    .await
+    .expect("manual Tax Rates to be ready")
+    .expect("paid publish validation binding to be returned");
+
+    assert!(!validation.require_automatic_tax);
+    assert_eq!(
+        validation.manual_tax_rate_ids,
+        Some(vec!["txr_state".to_string(), "txr_local".to_string()])
+    );
+}
+
+#[tokio::test]
 async fn test_delete_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -2985,6 +3071,128 @@ async fn test_unpublish_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
+    );
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_update_free_manual_event_without_tax_rates_skips_fiscal_sponsor_validation() {
+    // Setup a free manual-tax event submission with an explicit empty selection
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let before = sample_event_summary(event_id, group_id);
+    let after = before.clone();
+    let mut event_form = sample_event_form();
+    event_form.manual_tax_rate_ids_present = Some(true);
+    event_form.tax_calculation_mode = TicketTaxCalculationMode::Manual;
+    let body = serde_qs::to_string(&event_form).unwrap();
+
+    // Authorize the update and report that free ticketing needs no provider validation
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_event_ticketing_configuration_changed()
+        .times(1)
+        .withf(move |cid, gid, eid, event| {
+            *cid == community_id
+                && *gid == group_id
+                && *eid == event_id
+                && event["manual_tax_rate_ids"] == json!([])
+                && event["tax_calculation_mode"] == "manual"
+                && event.get("manual_tax_rate_ids_present").is_none()
+        })
+        .returning(|_, _, _, _| Ok(false));
+    db.expect_get_group_payment_recipient().never();
+
+    // Persist the explicit empty selection without a provider validation snapshot
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
+        .times(2)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning({
+            let mut first_call = true;
+            move |_, _, _| {
+                let result = if first_call {
+                    first_call = false;
+                    before.clone()
+                } else {
+                    after.clone()
+                };
+                Ok(result)
+            }
+        });
+    tx.expect_update_event()
+        .times(1)
+        .withf(move |uid, gid, eid, event, _, payment_provider| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && event["manual_tax_rate_ids"] == json!([])
+                && event["tax_calculation_mode"] == "manual"
+                && event.get("_payment_validation").is_none()
+                && event.get("manual_tax_rate_ids_present").is_none()
+                && *payment_provider == Some(PaymentProvider::Stripe)
+        })
+        .returning(|_, _, _, _, _, _| Ok(false));
+    expect_successful_transaction(&mut db, tx);
+
+    // Keep free empty selections independent of fiscal sponsor availability
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_configured_provider()
+        .times(1)
+        .return_const(Some(PaymentProvider::Stripe));
+    payments_manager.expect_validate_fiscal_sponsor().never();
+    payments_manager.expect_validate_tax_rates().never();
+
+    // Submit the free manual-tax update through the routed handler
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the update succeeds without sponsor validation
     assert_empty_hx_trigger_response(
         &parts,
         &bytes,

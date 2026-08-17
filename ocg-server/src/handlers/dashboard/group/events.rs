@@ -6,7 +6,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     Json,
-    extract::{Path, RawQuery, State},
+    extract::{Path, Query, RawQuery, State},
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
@@ -41,7 +41,7 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, NavigationLinks},
-        payments::{PaymentConfigurationValidation, TicketTaxCalculationMode},
+        payments::{PaymentConfigurationValidation, TicketTaxBehavior, TicketTaxCalculationMode},
         permissions::GroupPermission,
     },
 };
@@ -246,6 +246,34 @@ pub(crate) async fn details(
     Ok(Json(event).into_response())
 }
 
+/// Lists active fiscal-sponsor Stripe Tax Rates for an event tax behavior.
+#[instrument(skip_all, err)]
+pub(crate) async fn tax_rates(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    State(payments_manager): State<DynPaymentsManager>,
+    Query(query): Query<TaxRatesQuery>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load and validate the connected fiscal sponsor that owns the rates
+    let recipient = db
+        .get_group_payment_recipient(community_id, group_id)
+        .await?
+        .ok_or_else(|| {
+            HandlerError::Database(
+                "configure a fiscal sponsor before selecting Stripe Tax Rates".to_string(),
+            )
+        })?;
+    payments_manager.validate_fiscal_sponsor(&recipient, false).await?;
+
+    // Return active rates matching the requested inclusive or exclusive behavior
+    let rates = payments_manager
+        .list_tax_rates(&recipient, query.tax_behavior)
+        .await?;
+
+    Ok(Json(rates))
+}
+
 // Actions handlers.
 
 /// Adds a new event to the database.
@@ -264,16 +292,23 @@ pub(crate) async fn add(
     let payment_provider = payments_manager.configured_provider();
     let mut event_payload = build_event_payload(&event)?;
     let is_paid_capable = is_event_payload_paid_capable(&event_payload);
+    let has_manual_tax_selection = event.tax_calculation_mode == TicketTaxCalculationMode::Manual
+        && event
+            .manual_tax_rate_ids
+            .as_ref()
+            .is_some_and(|rate_ids| !rate_ids.is_empty());
 
     // Validate the group fiscal sponsor with the provider before persisting a
     // paid event, embedding the validated recipient in the payload so the
     // database can verify it did not change before committing
-    if payment_provider.is_some() && is_paid_capable {
+    if (payment_provider.is_some() && is_paid_capable) || has_manual_tax_selection {
         let payment_validation = validate_group_fiscal_sponsor(
             db.as_ref(),
             &payments_manager,
             community_id,
             group_id,
+            event.manual_tax_rate_ids.as_deref().unwrap_or_default(),
+            event.tax_behavior,
             event.tax_calculation_mode,
         )
         .await?;
@@ -642,12 +677,19 @@ pub(crate) async fn update(
     } else {
         false
     };
-    if ticketing_configuration_changed {
+    let has_manual_tax_selection = event.tax_calculation_mode == TicketTaxCalculationMode::Manual
+        && event
+            .manual_tax_rate_ids
+            .as_ref()
+            .is_some_and(|rate_ids| !rate_ids.is_empty());
+    if ticketing_configuration_changed || has_manual_tax_selection {
         let payment_validation = validate_group_fiscal_sponsor(
             db.as_ref(),
             &payments_manager,
             community_id,
             group_id,
+            event.manual_tax_rate_ids.as_deref().unwrap_or_default(),
+            event.tax_behavior,
             event.tax_calculation_mode,
         )
         .await?;
@@ -726,6 +768,13 @@ enum EventActionScope {
     /// Apply the action only to the selected event.
     #[default]
     This,
+}
+
+/// Query parameters accepted by the Tax Rate listing endpoint.
+#[derive(Debug, Deserialize)]
+pub(crate) struct TaxRatesQuery {
+    /// Inclusive or exclusive rate behavior requested by the event form.
+    tax_behavior: TicketTaxBehavior,
 }
 
 // Helpers.
@@ -892,9 +941,14 @@ async fn validate_group_fiscal_sponsor(
     payments_manager: &DynPaymentsManager,
     community_id: Uuid,
     group_id: Uuid,
+    manual_tax_rate_ids: &[String],
+    tax_behavior: TicketTaxBehavior,
     tax_calculation_mode: TicketTaxCalculationMode,
 ) -> Result<PaymentConfigurationValidation, HandlerError> {
+    // Load the current recipient before validating its provider configuration
     let payment_recipient = db.get_group_payment_recipient(community_id, group_id).await?;
+
+    // Validate sponsor readiness and any manual Tax Rate selection
     if let Some(recipient) = payment_recipient.as_ref() {
         payments_manager
             .validate_fiscal_sponsor(
@@ -902,12 +956,30 @@ async fn validate_group_fiscal_sponsor(
                 tax_calculation_mode == TicketTaxCalculationMode::Automatic,
             )
             .await?;
+
+        // Recheck manual rate ownership and display behavior
+        if tax_calculation_mode == TicketTaxCalculationMode::Manual {
+            payments_manager
+                .validate_tax_rates(recipient, manual_tax_rate_ids, tax_behavior)
+                .await?;
+        }
+    } else if tax_calculation_mode == TicketTaxCalculationMode::Manual
+        && !manual_tax_rate_ids.is_empty()
+    {
+        // Reject manual Tax Rate selections without a connected sponsor
+        return Err(HandlerError::Database(
+            "configure a fiscal sponsor before selecting Stripe Tax Rates".to_string(),
+        ));
     }
 
+    // Bind the validated configuration to the pending database mutation
     Ok(PaymentConfigurationValidation {
         require_automatic_tax: tax_calculation_mode == TicketTaxCalculationMode::Automatic,
 
         expected_payment_recipient: payment_recipient.clone(),
+        manual_tax_rate_ids: Some(manual_tax_rate_ids.to_vec()),
+        tax_behavior: Some(tax_behavior),
+        tax_calculation_mode: Some(tax_calculation_mode),
         validated_payment_recipient: payment_recipient,
     })
 }
@@ -920,33 +992,65 @@ async fn validate_publish_fiscal_sponsor(
     group_id: Uuid,
     event_ids: &[Uuid],
 ) -> Result<Option<PaymentConfigurationValidation>, HandlerError> {
-    let mut has_paid_event = false;
+    let mut events = Vec::new();
+    let mut paid_events = Vec::new();
     let mut require_automatic_tax = false;
+
+    // Load each event and aggregate the strongest paid sponsor readiness need
     for event_id in event_ids {
         let event = db.get_event_full(community_id, group_id, *event_id).await?;
         if event.is_paid_capable() {
-            has_paid_event = true;
             require_automatic_tax |=
                 event.tax_calculation_mode == TicketTaxCalculationMode::Automatic;
+            paid_events.push(event.clone());
         }
+        events.push(event);
     }
 
-    if has_paid_event {
-        let tax_calculation_mode = if require_automatic_tax {
-            TicketTaxCalculationMode::Automatic
-        } else {
-            TicketTaxCalculationMode::Manual
-        };
-        return validate_group_fiscal_sponsor(
-            db,
-            payments_manager,
-            community_id,
-            group_id,
-            tax_calculation_mode,
-        )
-        .await
-        .map(Some);
+    // Select manual-tax events whose rates must be revalidated
+    let manual_events = events
+        .iter()
+        .filter(|event| {
+            event.tax_calculation_mode == TicketTaxCalculationMode::Manual
+                && (event.is_paid_capable() || !event.manual_tax_rate_ids.is_empty())
+        })
+        .collect::<Vec<_>>();
+
+    // Skip provider validation when the publish set has no applicable tax state
+    if paid_events.is_empty() && manual_events.is_empty() {
+        return Ok(None);
     }
 
-    Ok(None)
+    // Validate the sponsor once, then recheck every applicable manual selection
+    let payment_recipient = db.get_group_payment_recipient(community_id, group_id).await?;
+    if let Some(recipient) = payment_recipient.as_ref() {
+        payments_manager
+            .validate_fiscal_sponsor(recipient, require_automatic_tax)
+            .await?;
+        for event in manual_events {
+            payments_manager
+                .validate_tax_rates(recipient, &event.manual_tax_rate_ids, event.tax_behavior)
+                .await?;
+        }
+    } else if events.iter().any(|event| {
+        event.tax_calculation_mode == TicketTaxCalculationMode::Manual
+            && !event.manual_tax_rate_ids.is_empty()
+    }) {
+        return Err(HandlerError::Database(
+            "configure a fiscal sponsor before selecting Stripe Tax Rates".to_string(),
+        ));
+    }
+
+    let Some(first_event) = paid_events.first() else {
+        return Ok(None);
+    };
+    Ok(Some(PaymentConfigurationValidation {
+        require_automatic_tax,
+
+        expected_payment_recipient: payment_recipient.clone(),
+        manual_tax_rate_ids: Some(first_event.manual_tax_rate_ids.clone()),
+        tax_behavior: Some(first_event.tax_behavior),
+        tax_calculation_mode: Some(first_event.tax_calculation_mode),
+        validated_payment_recipient: payment_recipient,
+    }))
 }

@@ -43,8 +43,7 @@ declare
     v_group_slug text;
     v_group_slug_pretty text;
     v_hold_expires_at timestamptz := current_timestamp + interval '15 minutes';
-    v_manual_tax_configuration_ids uuid[];
-    v_manual_tax_snapshot jsonb;
+    v_manual_tax_rate_ids text[];
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_provisional_platform_fee_amount_minor bigint;
     v_purchase_id uuid;
@@ -82,6 +81,7 @@ begin
     select
         c.display_name,
         c.name,
+        e.manual_tax_rate_ids,
         e.name,
         e.registration_ends_at,
         e.registration_questions,
@@ -107,6 +107,7 @@ begin
     into
         v_community_display_name,
         v_community_name,
+        v_manual_tax_rate_ids,
         v_event_name,
         v_event_registration_ends_at,
         v_registration_questions,
@@ -166,6 +167,7 @@ begin
 
         -- Honor the immutable pricing snapshot for previously priced offers
         if v_admission_offer_snapshot_amount_minor is not null then
+            -- Reject attempts to replace the snapshotted discount code
             if v_normalized_discount_code is not null
                and upper(nullif(btrim(v_admission_offer_snapshot_discount_code), ''))
                    is distinct from v_normalized_discount_code then
@@ -208,7 +210,9 @@ begin
         p_admission_offer_id
     );
 
+    -- Return completed or selection-compatible purchases without replacing them
     if found then
+        -- Reuse terminal purchases or pending purchases with the same selection
         if v_existing_purchase_status <> 'pending'
            or v_existing_purchase_matches_selection then
             -- Refresh questionnaire answers before returning a reused pending checkout
@@ -251,13 +255,16 @@ begin
     end if;
 
     -- Resolve pricing without rolling back queue reconciliation on sold-out conflicts
+    -- Use the immutable admission-offer pricing snapshot when available
     if v_admission_offer_snapshot_amount_minor is not null then
         v_currency_code := v_admission_offer_snapshot_currency_code;
         v_discount_amount_minor := v_admission_offer_snapshot_discount_amount_minor;
         v_event_discount_code_id := v_admission_offer_snapshot_event_discount_code_id;
         v_final_amount_minor := v_admission_offer_snapshot_amount_minor;
         v_ticket_title := v_admission_offer_snapshot_ticket_title;
+    -- Resolve current ticket pricing when the offer has no immutable snapshot
     else
+        -- Translate live pricing outcomes into stable checkout conflicts
         begin
             select
                 discount_amount_minor,
@@ -277,20 +284,27 @@ begin
                 p_admission_offer_id
             );
         exception
+            -- Translate expected pricing failures into stable conflict results
             when raise_exception then
+                -- Report admission offers that became unavailable
                 if sqlerrm = 'admission offer is no longer available' then
                     return jsonb_build_object('conflict', 'admission-offer-unavailable');
+                -- Report ticket types without an active price
                 elsif sqlerrm = 'ticket type does not have an active price window' then
                     return jsonb_build_object('conflict', 'ticket-type-price-unavailable');
+                -- Report inactive ticket types
                 elsif sqlerrm = 'ticket type is not active' then
                     return jsonb_build_object('conflict', 'ticket-type-inactive');
+                -- Report ticket types unavailable through direct checkout
                 elsif sqlerrm in (
                     'ticket type is not available for direct checkout',
                     'ticket type not found'
                 ) then
                     return jsonb_build_object('conflict', 'ticket-type-unavailable');
+                -- Report exhausted ticket inventory
                 elsif sqlerrm = 'ticket type is sold out' then
                     return jsonb_build_object('conflict', 'ticket-type-sold-out');
+                -- Preserve queued-user priority over direct checkout
                 elsif sqlerrm = 'ticket type has queued users' then
                     return jsonb_build_object('conflict', 'ticket-type-sold-out');
                 end if;
@@ -301,6 +315,7 @@ begin
 
     -- Require payment configuration only when the final amount needs a provider
     if v_final_amount_minor > 0 then
+        -- Translate readiness failures into a stable checkout conflict
         begin
             perform validate_event_ticketing_payment_readiness(
                 p_configured_provider,
@@ -310,24 +325,28 @@ begin
                 p_event_id
             );
         exception
+            -- Hide provider-readiness details behind the stable checkout conflict
             when raise_exception then
                 return jsonb_build_object('conflict', 'payment-setup-unavailable');
         end;
         perform validate_payment_amount(v_currency_code, v_final_amount_minor);
+    -- Retain the configured currency for discounted-to-zero purchases
     elsif v_discount_amount_minor > 0 then
         -- Discounted-to-zero purchases retain the event currency snapshot
         if v_currency_code is null then
             return jsonb_build_object('conflict', 'payment-setup-unavailable');
         end if;
 
+        -- Validate the retained currency independently of provider readiness
         begin
             perform validate_payment_currency_code(v_currency_code);
         exception
+            -- Hide unsupported currency details behind the stable checkout conflict
             when raise_exception then
                 return jsonb_build_object('conflict', 'payment-setup-unavailable');
         end;
+    -- Remove payment configuration from intrinsically free purchases
     else
-        -- Intrinsic zero-price purchases do not depend on event payment setup
         v_currency_code := null;
         v_recipient := null;
     end if;
@@ -362,6 +381,7 @@ begin
             and pptl.connected_seller_id = v_recipient->>'recipient_id'
             and pptl.fingerprint = v_cached_performance_location_fingerprint;
 
+            -- Reuse a cached ticket product for the resolved performance location
             if v_cached_provider_tax_location_id is not null then
                 v_cached_product_fingerprint := encode(
                     digest(
@@ -379,47 +399,6 @@ begin
                 where pptp.payment_provider_id = p_configured_provider
                 and pptp.connected_seller_id = v_recipient->>'recipient_id'
                 and pptp.fingerprint = v_cached_product_fingerprint;
-            end if;
-        end if;
-
-        if v_tax_calculation_mode = 'manual' then
-            select array_agg(
-                emtcf.event_manual_tax_configuration_id
-                order by emtcf.event_manual_tax_configuration_id
-            )
-            into v_manual_tax_configuration_ids
-            from event_manual_tax_configuration emtcf
-            where emtcf.event_id = p_event_id
-            and emtcf.connected_seller_id = v_recipient->>'recipient_id'
-            and emtcf.currency_code = v_currency_code
-            and emtcf.tax_behavior = v_tax_behavior
-            and emtcf.valid_from <= current_timestamp
-            and (emtcf.valid_until is null or emtcf.valid_until > current_timestamp)
-            and emtcf.venue_snapshot = v_venue_snapshot;
-
-            if coalesce(cardinality(v_manual_tax_configuration_ids), 0) <> 1 then
-                return jsonb_build_object('conflict', 'payment-setup-unavailable');
-            end if;
-
-            select jsonb_agg(
-                jsonb_build_object(
-                    'country_code', emtc.country_code,
-                    'display_name', emtc.display_name,
-                    'jurisdiction', emtc.jurisdiction,
-                    'percentage', emtc.percentage::text,
-                    'provider_tax_rate_id', emtc.provider_tax_rate_id,
-                    'state', emtc.state,
-                    'tax_type', emtc.tax_type
-                )
-                order by emtc.event_manual_tax_component_id
-            )
-            into v_manual_tax_snapshot
-            from event_manual_tax_component emtc
-            where emtc.event_manual_tax_configuration_id =
-                v_manual_tax_configuration_ids[1];
-
-            if v_manual_tax_snapshot is null then
-                return jsonb_build_object('conflict', 'payment-setup-unavailable');
             end if;
         end if;
     end if;
@@ -449,6 +428,7 @@ begin
         where admission_offer_id = p_admission_offer_id
         and status in ('checkout_pending', 'pending');
 
+        -- Reject offers that became unavailable before reservation
         if not found then
             return jsonb_build_object('conflict', 'admission-offer-unavailable');
         end if;
@@ -484,7 +464,7 @@ begin
         event_id,
         event_ticket_type_id,
         hold_expires_at,
-        manual_tax_snapshot,
+        manual_tax_rate_ids,
         payment_provider_id,
         platform_fee_bps,
         provider_object_account_id,
@@ -501,8 +481,16 @@ begin
     ) values (
         p_admission_offer_id,
         v_final_amount_minor,
-        case when v_final_amount_minor > 0 then 'direct-charge' else 'ocg-free' end,
-        case when v_final_amount_minor > 0 then v_recipient->>'recipient_id' end,
+        case
+            -- Use connected-account direct charges for paid purchases
+            when v_final_amount_minor > 0 then 'direct-charge'
+            -- Complete free purchases inside OCG
+            else 'ocg-free'
+        end,
+        case
+            -- Snapshot the connected seller for paid purchases
+            when v_final_amount_minor > 0 then v_recipient->>'recipient_id'
+        end,
         v_currency_code,
         v_discount_amount_minor,
         v_normalized_discount_code,
@@ -510,23 +498,45 @@ begin
         p_event_id,
         p_event_ticket_type_id,
         v_hold_expires_at,
-        v_manual_tax_snapshot,
-        case when v_final_amount_minor > 0 then p_configured_provider end,
-        p_platform_fee_bps,
-        case when v_final_amount_minor > 0 then v_recipient->>'recipient_id' end,
         case
+            -- Snapshot manual Tax Rate identifiers for paid purchases
+            when v_final_amount_minor > 0 then v_manual_tax_rate_ids
+        end,
+        case
+            -- Snapshot the payment provider for paid purchases
+            when v_final_amount_minor > 0 then p_configured_provider
+        end,
+        p_platform_fee_bps,
+        case
+            -- Bind provider objects to the connected seller for paid purchases
+            when v_final_amount_minor > 0 then v_recipient->>'recipient_id'
+        end,
+        case
+            -- Classify automatic-tax purchases as professional event admission
             when v_final_amount_minor > 0 and v_tax_calculation_mode = 'automatic'
                 then 'txcd_50013001'
         end,
         v_provisional_platform_fee_amount_minor,
         v_seller_snapshot,
         'pending',
-        case when v_final_amount_minor > 0 then v_tax_behavior end,
-        case when v_final_amount_minor > 0 then v_tax_calculation_mode end,
-        case when v_final_amount_minor > 0 then 'professional-event-admission' end,
+        case
+            -- Snapshot the tax display behavior for paid purchases
+            when v_final_amount_minor > 0 then v_tax_behavior
+        end,
+        case
+            -- Snapshot the tax calculation mode for paid purchases
+            when v_final_amount_minor > 0 then v_tax_calculation_mode
+        end,
+        case
+            -- Snapshot the admission tax classification for paid purchases
+            when v_final_amount_minor > 0 then 'professional-event-admission'
+        end,
         v_ticket_title,
         p_user_id,
-        case when v_final_amount_minor > 0 then v_venue_snapshot end
+        case
+            -- Snapshot the taxable venue for paid purchases
+            when v_final_amount_minor > 0 then v_venue_snapshot
+        end
     )
     returning event_purchase_id into v_purchase_id;
 

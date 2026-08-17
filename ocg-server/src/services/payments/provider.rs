@@ -13,8 +13,8 @@ use uuid::Uuid;
 use crate::{
     config::PaymentsConfig,
     types::payments::{
-        FiscalSponsorSeller, ManualTaxComponent, PaymentProvider, TicketTaxBehavior,
-        TicketTaxCalculationMode, TicketVenue,
+        FiscalSponsorSeller, PaymentProvider, TicketTaxBehavior, TicketTaxCalculationMode,
+        TicketTaxRate, TicketVenue,
     },
 };
 
@@ -47,6 +47,9 @@ pub(crate) trait PaymentsProvider {
         input: &GetFinancialDocumentInput,
     ) -> Result<FinancialDocument>;
 
+    /// Lists active Tax Rates in a connected fiscal sponsor account.
+    async fn list_tax_rates(&self, input: &ListTaxRatesInput) -> Result<Vec<TicketTaxRate>>;
+
     /// Returns the configured provider.
     fn provider(&self) -> PaymentProvider;
 
@@ -66,6 +69,12 @@ pub(crate) trait PaymentsProvider {
     async fn validate_fiscal_sponsor(
         &self,
         input: &FiscalSponsorReadinessInput,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError>;
+
+    /// Validates selected active Tax Rates in a connected fiscal sponsor account.
+    async fn validate_tax_rates(
+        &self,
+        input: &ValidateTaxRatesInput,
     ) -> std::result::Result<(), FiscalSponsorReadinessError>;
 
     /// Verifies and parses a webhook payload.
@@ -194,9 +203,9 @@ pub(crate) struct CreateCheckoutSessionInput {
     pub discount_code: Option<String>,
     /// Admin-managed group slug used in return URLs.
     pub group_slug_pretty: Option<String>,
-    /// Sponsor-approved fixed Tax Rates for manual mode.
-    pub manual_tax_components: Option<Vec<ManualTaxComponent>>,
-    /// Fixed event ticket tax code used by automatic tax.
+    /// Manual Tax Rate identifiers selected for Checkout.
+    pub manual_tax_rate_ids: Option<Vec<String>>,
+    /// Event ticket tax code used by automatic tax.
     pub tax_code: Option<String>,
 }
 
@@ -323,6 +332,15 @@ pub(crate) struct GetFinancialDocumentInput {
     pub provider_document_id: String,
 }
 
+/// Request used to list active connected-account Tax Rates.
+#[derive(Clone, Debug)]
+pub(crate) struct ListTaxRatesInput {
+    /// Connected account that owns the Tax Rates.
+    pub connected_seller_id: String,
+    /// Inclusive or exclusive rates to return.
+    pub tax_behavior: TicketTaxBehavior,
+}
+
 /// Stripe webhook endpoint scope used to select the signing secret.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum PaymentsWebhookEndpoint {
@@ -438,6 +456,17 @@ pub(crate) enum RefundPaymentStatus {
     Pending,
     /// Provider refund completed successfully.
     Succeeded,
+}
+
+/// Request used to validate selected connected-account Tax Rates.
+#[derive(Clone, Debug)]
+pub(crate) struct ValidateTaxRatesInput {
+    /// Connected account that owns the Tax Rates.
+    pub connected_seller_id: String,
+    /// Tax Rate identifiers selected by the event.
+    pub manual_tax_rate_ids: Vec<String>,
+    /// Inclusive or exclusive behavior required by the event.
+    pub tax_behavior: TicketTaxBehavior,
 }
 
 /// Builds a payments provider from configuration.

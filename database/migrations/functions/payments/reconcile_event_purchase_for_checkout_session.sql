@@ -224,6 +224,18 @@ begin
         raise exception 'direct-charge checkout is missing authoritative amounts';
     end if;
 
+    -- Enforce the zero-tax contract for events that do not collect tax
+    if v_tax_amount_minor <> 0
+       and exists (
+            select 1
+            from event_purchase ep
+            where ep.event_purchase_id = v_purchase_id
+            and ep.tax_calculation_mode = 'none'
+       ) then
+        raise exception 'no-tax checkout must have zero tax';
+    end if;
+
+    -- Validate authoritative amounts against the snapshotted display behavior
     if exists (
         select 1
         from event_purchase ep

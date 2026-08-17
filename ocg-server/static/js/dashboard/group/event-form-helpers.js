@@ -187,6 +187,31 @@ const setPaymentCurrencyCode = (paymentCurrencyCode) => {
 };
 
 /**
+ * Sets event tax mode, display behavior, and selected manual rates together.
+ * @param {object} details Event details payload
+ */
+const setTicketTaxConfiguration = (details) => {
+  const behaviorSelect = getElementById(document, "tax_behavior");
+  const modeSelect = getElementById(document, "tax_calculation_mode");
+  const fieldset = getElementById(document, "manual-tax-rates-fieldset");
+  const mode = toOptionalString(details?.tax_calculation_mode) || "automatic";
+  const behavior = mode === "none" ? "inclusive" : toOptionalString(details?.tax_behavior) || "inclusive";
+  const rateIds = sanitizeStringArray(details?.manual_tax_rate_ids);
+
+  if (behaviorSelect) {
+    behaviorSelect.value = behavior;
+  }
+  if (modeSelect) {
+    modeSelect.value = mode;
+  }
+  fieldset?.dispatchEvent(
+    new CustomEvent("tax-rate-selection-updated", {
+      detail: { rateIds },
+    }),
+  );
+};
+
+/**
  * Removes copied ticket price window dates from ticketing payload.
  * @param {*} ticketTypes Ticket types payload
  * @returns {Array<object>} Ticket types without copied price window dates
@@ -490,6 +515,7 @@ export {
   setSessions,
   setSponsors,
   setTags,
+  setTicketTaxConfiguration,
   setTicketTypes,
   setWaitlistEnabled,
   updateMarkdownContent,

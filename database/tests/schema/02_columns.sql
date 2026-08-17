@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(84);
+select plan(82);
 
 -- ============================================================================
 -- TESTS
@@ -308,6 +308,7 @@ select columns_are('event', array[
     'location',
     'logo_url',
     'luma_url',
+    'manual_tax_rate_ids',
     'meeting_error',
     'meeting_hosts',
     'meeting_in_sync',
@@ -451,40 +452,6 @@ select columns_are('event_kind', array[
     'display_name'
 ]);
 
--- Test: manual event tax columns should match expected
-select columns_are('event_manual_tax_configuration', array[
-    'event_manual_tax_configuration_id',
-    'approved_at',
-    'approved_by_user_id',
-    'connected_seller_id',
-    'created_at',
-    'currency_code',
-    'event_id',
-    'evidence_reference',
-    'tax_behavior',
-    'valid_from',
-    'venue_snapshot',
-    'version',
-
-    'valid_until'
-]);
-
--- Test: event_manual_tax_component columns should match expected
-select columns_are('event_manual_tax_component', array[
-    'event_manual_tax_component_id',
-    'created_at',
-    'display_name',
-    'event_manual_tax_configuration_id',
-    'jurisdiction',
-    'percentage',
-    'provider_tax_rate_id',
-    'tax_behavior',
-    'tax_type',
-
-    'country_code',
-    'state'
-]);
-
 -- Test: event_organizer columns should match expected
 select columns_are('event_organizer', array[
     'event_id',
@@ -524,7 +491,7 @@ select columns_are('event_purchase', array[
     'connected_seller_id',
     'final_platform_fee_amount_minor',
     'financially_reconciled_at',
-    'manual_tax_snapshot',
+    'manual_tax_rate_ids',
     'performance_location_fingerprint',
     'provider_application_fee_id',
     'provider_charge_id',

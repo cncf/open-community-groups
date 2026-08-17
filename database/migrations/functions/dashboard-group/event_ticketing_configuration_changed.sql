@@ -130,9 +130,23 @@ begin
 
     -- Compare tax policy inputs
     v_tax_configuration_changed :=
-        coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
+        case
+            when p_event ? 'manual_tax_rate_ids'
+            then coalesce(p_event->'manual_tax_rate_ids', '[]'::jsonb)
+            else coalesce(p_event_before->'manual_tax_rate_ids', '[]'::jsonb)
+        end
+            is distinct from coalesce(p_event_before->'manual_tax_rate_ids', '[]'::jsonb)
+        or case
+            when p_event ? 'tax_behavior'
+            then coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
+            else coalesce(nullif(p_event_before->>'tax_behavior', ''), 'inclusive')
+        end
             is distinct from coalesce(p_event_before->>'tax_behavior', 'inclusive')
-        or coalesce(nullif(p_event->>'tax_calculation_mode', ''), 'automatic')
+        or case
+            when p_event ? 'tax_calculation_mode'
+            then coalesce(nullif(p_event->>'tax_calculation_mode', ''), 'automatic')
+            else coalesce(nullif(p_event_before->>'tax_calculation_mode', ''), 'automatic')
+        end
             is distinct from coalesce(
                 p_event_before->>'tax_calculation_mode',
                 'automatic'

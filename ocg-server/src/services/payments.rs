@@ -26,8 +26,8 @@ pub(crate) use provider::{
     ApplicationFeeAdjustmentInput, CheckoutSession, CreateCheckoutSessionInput, CreditNoteInput,
     DynPaymentsProvider, FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
     FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
-    PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus,
-    build_payments_provider,
+    ListTaxRatesInput, PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentResult,
+    RefundPaymentStatus, ValidateTaxRatesInput, build_payments_provider,
 };
 
 #[cfg(test)]

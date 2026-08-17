@@ -1034,6 +1034,7 @@ select is(
         "registration_questions_locked": false,
         "starts_at": 1718438400,
         "tags": ["technology", "conference", "workshops"],
+        "manual_tax_rate_ids": [],
         "tax_behavior": "inclusive",
         "tax_calculation_mode": "automatic",
         "venue_address": "123 Main St",

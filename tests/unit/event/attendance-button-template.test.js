@@ -119,11 +119,10 @@ describe("event attendance button template", () => {
     );
 
     // Exclusive events disclose the additional tax before redirecting to Stripe.
-    const exclusiveTaxGuard =
-      "event.tax_behavior == crate::types::payments::TicketTaxBehavior::Exclusive";
-    expect(template).to.include(exclusiveTaxGuard);
+    const additionalTaxGuard = "event.shows_additional_ticket_tax()";
+    expect(template).to.include(additionalTaxGuard);
     expect(template).to.include("Tax is added at checkout.");
-    expect(macros).to.include(exclusiveTaxGuard);
+    expect(macros).to.include(additionalTaxGuard);
     expect(macros).to.include(
       "<span data-localized-currency>{{ ticket_price_badge }}</span>",
     );

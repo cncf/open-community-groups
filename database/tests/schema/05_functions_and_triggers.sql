@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(388);
+select plan(384);
 
 -- ============================================================================
 -- VARIABLES
@@ -560,7 +560,6 @@ select has_function('check_admission_offer_lifecycle', '{}'::name[]);
 select has_function('check_event_attendee_waitlist', '{}'::name[]);
 select has_function('check_event_category_community', '{}'::name[]);
 select has_function('check_event_has_ticket_type', '{}'::name[]);
-select has_function('check_event_manual_tax_configuration_validity', '{}'::name[]);
 select has_function('check_event_sponsor_group', '{}'::name[]);
 select has_function('check_event_ticketing_consistency', '{}'::name[]);
 select has_function('check_event_purchase_admission_offer', '{}'::name[]);
@@ -585,10 +584,6 @@ select has_trigger('event', 'event_category_community_check');
 select has_trigger('event', 'event_has_ticket_type_on_event');
 select has_trigger('event', 'event_ticketing_consistency_on_event');
 select has_trigger('event_discount_code', 'event_ticketing_consistency_on_event_discount_code');
-select has_trigger(
-    'event_manual_tax_configuration',
-    'event_manual_tax_configuration_validity_check'
-);
 select has_trigger('event_sponsor', 'event_sponsor_group_check');
 select has_trigger(
     'event_ticket_price_window',
@@ -609,122 +604,6 @@ select has_trigger('session', 'session_cfs_submission_approved_check');
 select has_trigger('session', 'session_within_event_bounds_check');
 select has_trigger('user_badge', 'prevent_user_badge_revocation_reversal');
 select has_trigger('user', 'revoke_user_badges_on_user_delete');
-
--- Test: manual tax versions should never overlap for one event
-insert into event_manual_tax_configuration (
-    approved_at,
-    approved_by_user_id,
-    connected_seller_id,
-    currency_code,
-    event_id,
-    evidence_reference,
-    tax_behavior,
-    valid_from,
-    valid_until,
-    venue_snapshot,
-    version
-) values (
-    '2026-01-01 00:00:00+00',
-    :'userID',
-    'acct_schema_test',
-    'USD',
-    :'eventID',
-    'approval-1',
-    'inclusive',
-    '2026-01-01 00:00:00+00',
-    '2026-02-01 00:00:00+00',
-    '{
-      "address": "123 Main Street",
-      "city": "Portland",
-      "country_code": "US",
-      "name": "Community Hall",
-      "state_code": "OR",
-      "state_name": "Oregon",
-      "zip_code": "97201"
-    }'::jsonb,
-    1
-);
-
-set constraints event_manual_tax_configuration_validity_check immediate;
-
-select throws_ok(
-    format($$
-        insert into event_manual_tax_configuration (
-            approved_at,
-            approved_by_user_id,
-            connected_seller_id,
-            currency_code,
-            event_id,
-            evidence_reference,
-            tax_behavior,
-            valid_from,
-            valid_until,
-            venue_snapshot,
-            version
-        ) values (
-            '2026-01-15 00:00:00+00',
-            %L,
-            'acct_schema_test',
-            'USD',
-            %L,
-            'overlap',
-            'inclusive',
-            '2026-01-15 00:00:00+00',
-            '2026-01-20 00:00:00+00',
-            '{
-              "address": "123 Main Street",
-              "city": "Portland",
-              "country_code": "US",
-              "name": "Community Hall",
-              "state_code": "OR",
-              "state_name": "Oregon",
-              "zip_code": "97201"
-            }'::jsonb,
-            2
-        )
-    $$, :'userID', :'eventID'),
-    'manual tax configuration validity periods cannot overlap for one event',
-    'Overlapping manual tax versions should be rejected'
-);
-
-select lives_ok(
-    format($$
-        insert into event_manual_tax_configuration (
-            approved_at,
-            approved_by_user_id,
-            connected_seller_id,
-            currency_code,
-            event_id,
-            evidence_reference,
-            tax_behavior,
-            valid_from,
-            valid_until,
-            venue_snapshot,
-            version
-        ) values (
-            '2026-02-01 00:00:00+00',
-            %L,
-            'acct_schema_test',
-            'USD',
-            %L,
-            'adjacent',
-            'inclusive',
-            '2026-02-01 00:00:00+00',
-            '2026-03-01 00:00:00+00',
-            '{
-              "address": "123 Main Street",
-              "city": "Portland",
-              "country_code": "US",
-              "name": "Community Hall",
-              "state_code": "OR",
-              "state_name": "Oregon",
-              "zip_code": "97201"
-            }'::jsonb,
-            2
-        )
-    $$, :'userID', :'eventID'),
-    'Adjacent manual tax versions should be accepted'
-);
 
 -- Test: event ticketing consistency triggers should enforce the ticketing shape
 -- Check the deferred constraint triggers at the end of each statement

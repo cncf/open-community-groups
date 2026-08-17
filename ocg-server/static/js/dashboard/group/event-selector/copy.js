@@ -12,6 +12,7 @@ import {
   setSessions,
   setSponsors,
   setTags,
+  setTicketTaxConfiguration,
   setTicketTypes,
   setWaitlistEnabled,
   updateMarkdownContent,
@@ -109,7 +110,7 @@ export const applyCopiedEventDetails = async (details) => {
   setGalleryImages(details.photos_urls);
   setTags(details.tags);
   setPaymentCurrencyCode(details.payment_currency_code);
-  setSelectValue("tax_behavior", details.tax_behavior);
+  setTicketTaxConfiguration(details);
   await setTicketTypes(details.ticket_types);
   setDiscountCodes(details.discount_codes);
   setWaitlistEnabled(details.waitlist_enabled === true);

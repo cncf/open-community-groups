@@ -40,8 +40,8 @@ You need:
 - Active Stripe Tax settings, a head-office address, and applicable tax
   registrations for each fiscal sponsor that uses automatic tax.
 - A Tax for ticket sales public-preview API version of `2026-03-25.preview` or
-  later. A sponsor-approved fixed Tax Rate configuration is required instead
-  when manual tax is used.
+  later. Manual-tax events instead select active Tax Rates owned by the fiscal
+  sponsor's connected account.
 
 Useful Stripe references:
 
@@ -297,17 +297,20 @@ attendees to Stripe Checkout for paid tickets.
 
 Every positive-total purchase is a direct charge in the snapshotted fiscal
 sponsor account. OCG requires an in-person or hybrid event with a complete
-physical venue, a ready sponsor, and either automatic ticket tax or an approved
-manual fixed-rate configuration. Virtual events remain free-only. Every paid
+physical venue and a ready sponsor. Each event uses automatic ticket tax,
+manual Tax Rates from the sponsor's connected account, or no tax collection.
+Virtual events remain free-only. Every paid
 hybrid ticket includes physical admission; it may also include virtual access,
 but cannot be virtual-only.
 
 Checkout requires the billing address, enables business tax-ID collection and
 post-payment invoices, and uses `txcd_50013001` for automatic professional-event
 admission. This classification covers in-person tickets and hybrid tickets that
-include physical admission. Tax behavior is inclusive by default and may be set
-to exclusive. Manual rates must be supplied or approved by the fiscal sponsor;
-OCG never guesses a rate or silently substitutes zero tax.
+include physical admission. An event chooses automatic Stripe Tax, manual Stripe
+Tax Rates, or no tax collection. Automatic and manual modes may be inclusive
+or exclusive. Manual rates are selected from active definitions in
+the fiscal sponsor's connected account and are revalidated before Checkout.
+No-tax Checkout attaches no tax mechanism and must reconcile to zero tax.
 
 Intrinsically free tickets complete locally without a currency, provider
 session, webhook, or connected account. A positive base price reduced to zero
@@ -457,8 +460,8 @@ card payments only when OCG creates Stripe Checkout sessions.
 2. Decide whether this OCG environment uses Stripe `test` or `live` mode.
 3. Copy the matching Stripe secret key.
 4. Confirm a Tax for ticket sales public-preview API version of
-   `2026-03-25.preview` or later and prepare an approved manual fixed-rate
-   configuration for events that do not use automatic tax.
+   `2026-03-25.preview` or later. Create active Tax Rate definitions in each
+   connected account that will use manual tax.
 5. Create the platform webhook at
    `https://{YOUR_OCG_BASE_URL}/webhooks/payments` and the Connect destination
    at `https://{YOUR_OCG_BASE_URL}/webhooks/payments/connected`.
@@ -536,8 +539,9 @@ Check that:
 - The event is in-person or hybrid with a complete physical venue and currency.
 - Every paid hybrid ticket includes physical admission and is not virtual-only.
 - Automatic Stripe Tax is active with a head-office address, applicable
-  registrations, and a supported public-preview API version, or the event has
-  a current sponsor-approved manual rate configuration.
+  registrations, and a supported public-preview API version; the event selects
+  active compatible Tax Rates from the sponsor account; or the event explicitly
+  uses no tax collection.
 
 If only free tickets are needed, remove positive current and future price
 windows and leave the event currency and discount codes empty.

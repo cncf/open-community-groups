@@ -5,6 +5,7 @@ import {
   clearSessionDateBoundsValidity,
 } from "/static/js/common/form-validation.js";
 import { initializeEventEnrollmentState } from "/static/js/dashboard/event/ticketing.js";
+import { initializeManualTaxRates } from "/static/js/dashboard/event/manual-tax-rates.js";
 import {
   clearVenueFields,
   confirmVenueDataDeletion,
@@ -64,6 +65,7 @@ export const initializeSharedEventPageControls = ({
     pageRoot,
     queryOne,
   });
+  initializeManualTaxRates(pageRoot);
 
   const syncEventEnrollmentState = initializeCommonEventPageToggles({
     pageRoot,

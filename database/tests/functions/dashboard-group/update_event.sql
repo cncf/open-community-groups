@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(37);
+select plan(39);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,6 +22,7 @@ select plan(37);
 \set eventFreeToPaidID '3a390000-0000-0000-0000-000000000023'
 \set eventFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000026'
 \set eventFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000027'
+\set eventManualTaxID '3a390000-0000-0000-0000-000000000041'
 \set eventPaidToFreeID '3a390000-0000-0000-0000-000000000024'
 \set eventPaidToFreePriceWindowID '3a390000-0000-0000-0000-000000000028'
 \set eventPaidToFreeTicketTypeID '3a390000-0000-0000-0000-000000000029'
@@ -194,6 +195,33 @@ insert into event (
 
     'USD',
     true
+);
+
+-- Free manual-tax event with a selection that can be explicitly cleared
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    manual_tax_rate_ids,
+    name,
+    slug,
+    tax_behavior,
+    tax_calculation_mode,
+    timezone
+) values (
+    :'eventManualTaxID',
+    'Free manual-tax event used for selection clearing checks',
+    :'category1ID',
+    'virtual',
+    :'group1ID',
+    array['txr_state']::text[],
+    'Manual Tax Selection',
+    'manual-tax-selection',
+    'inclusive',
+    'manual',
+    'UTC'
 );
 
 -- Existing ISO fields exercise updates from the deferred legacy form.
@@ -556,6 +584,7 @@ select is(
         "speakers": [],
         "sponsors": [],
         "test_event": false,
+        "manual_tax_rate_ids": [],
         "tax_behavior": "inclusive",
         "tax_calculation_mode": "automatic",
         "timezone": "America/Los_Angeles",
@@ -610,6 +639,38 @@ select results_eq(
         )
     $$,
     'Should create the expected audit row'
+);
+
+-- Should clear explicitly submitted manual Tax Rate selections on a free event
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventManualTaxID'::uuid,
+        '{
+            "category_id": "3a390000-0000-0000-0000-000000000001",
+            "description": "Free manual-tax event used for selection clearing checks",
+            "kind_id": "virtual",
+            "manual_tax_rate_ids": [],
+            "name": "Manual Tax Selection",
+            "tax_behavior": "inclusive",
+            "tax_calculation_mode": "manual",
+            "timezone": "UTC"
+        }'::jsonb
+    ),
+    false,
+    'Should clear explicitly submitted manual Tax Rate selections on a free event'
+);
+
+-- Should persist the cleared manual Tax Rate selection
+select is(
+    (
+        select e.manual_tax_rate_ids
+        from event e
+        where e.event_id = :'eventManualTaxID'::uuid
+    ),
+    '{}'::text[],
+    'Should persist the cleared manual Tax Rate selection'
 );
 
 -- Should report a paid notification transition for an invitation-only tier
@@ -1143,6 +1204,7 @@ select is(
         "has_related_events": false,
         "has_ticket_purchases": false,
         "tags": ["updated", "event", "tags"],
+        "manual_tax_rate_ids": [],
         "tax_behavior": "inclusive",
         "tax_calculation_mode": "automatic",
         "venue_address": "456 New St",

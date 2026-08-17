@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(12);
 
 -- ============================================================================
 -- SEED DATA
@@ -97,6 +97,36 @@ select ok(
         '{"kind_id":"in-person","tax_behavior":"inclusive","tax_calculation_mode":"manual"}'::jsonb
     ),
     'Should detect changed tax calculation mode'
+);
+
+-- Should detect changed manual Tax Rate selections
+select ok(
+    event_ticketing_configuration_changed(
+        (select payload from test_event_before),
+        '{"kind_id":"in-person","manual_tax_rate_ids":["txr_state"],"tax_behavior":"inclusive","tax_calculation_mode":"manual"}'::jsonb
+    ),
+    'Should detect changed manual Tax Rate selections'
+);
+
+-- Should preserve manual Tax Rate selections omitted from a partial payload
+select is(
+    event_ticketing_configuration_changed(
+        (
+            select payload || '{
+                "manual_tax_rate_ids": ["txr_state"],
+                "tax_calculation_mode": "manual"
+            }'::jsonb
+            from test_event_before
+        ),
+        (
+            select
+                (payload - 'kind' - 'manual_tax_rate_ids')
+                || '{"kind_id":"in-person","tax_calculation_mode":"manual"}'::jsonb
+            from test_event_before
+        )
+    ),
+    false,
+    'Should preserve manual Tax Rate selections omitted from a partial payload'
 );
 
 -- Should detect changed venue data

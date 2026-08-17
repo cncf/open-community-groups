@@ -24,6 +24,7 @@ declare
     v_has_waitlist_entries boolean;
     v_is_paid_capable boolean;
     v_is_test_event boolean;
+    v_manual_tax_rate_ids text[];
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
     v_payment_currency_code text;
@@ -32,6 +33,8 @@ declare
     v_registration_ends_at timestamptz;
     v_registration_questions jsonb;
     v_registration_starts_at timestamptz;
+    v_tax_behavior text;
+    v_tax_calculation_mode text;
     v_ticket_capacity int;
     v_ticketing_configuration_changed boolean;
     v_ticket_types jsonb;
@@ -52,6 +55,7 @@ begin
     and g.deleted = false
     for update;
 
+    -- Reject missing or inactive groups before loading the event
     if not found then
         raise exception 'event not found or inactive';
     end if;
@@ -66,6 +70,7 @@ begin
     and e.canceled = false
     for update of e;
 
+    -- Reject missing or inactive events before resolving the update
     if v_event_before is null then
         raise exception 'event not found or inactive';
     end if;
@@ -79,21 +84,50 @@ begin
 
     -- Resolve ticketing values and the effective event capacity
     v_discount_codes := case
+        -- Use explicitly submitted discount codes
         when p_event ? 'discount_codes'
         then nullif(p_event->'discount_codes', 'null'::jsonb)
+        -- Preserve discount codes omitted from a partial payload
         else v_event_before->'discount_codes'
     end;
     v_ticket_types := case
+        -- Use explicitly submitted ticket types
         when p_event ? 'ticket_types'
         then nullif(p_event->'ticket_types', 'null'::jsonb)
+        -- Preserve ticket types omitted from a partial payload
         else v_event_before->'ticket_types'
     end;
     v_is_paid_capable := is_event_ticketing_payload_paid_capable(v_ticket_types);
+    v_manual_tax_rate_ids := case
+        -- Use explicitly submitted manual Tax Rate selections
+        when p_event ? 'manual_tax_rate_ids'
+        then coalesce(jsonb_text_array(p_event->'manual_tax_rate_ids'), '{}'::text[])
+        -- Preserve manual Tax Rate selections omitted from a partial payload
+        else coalesce(jsonb_text_array(v_event_before->'manual_tax_rate_ids'), '{}'::text[])
+    end;
     v_ticket_capacity := get_event_ticket_capacity(v_ticket_types);
+    v_tax_calculation_mode := case
+        -- Use the explicitly submitted tax calculation mode
+        when p_event ? 'tax_calculation_mode'
+        then coalesce(nullif(p_event->>'tax_calculation_mode', ''), 'automatic')
+        -- Preserve the tax calculation mode omitted from a partial payload
+        else coalesce(nullif(v_event_before->>'tax_calculation_mode', ''), 'automatic')
+    end;
+    v_tax_behavior := case
+        -- Normalize events that do not collect tax
+        when v_tax_calculation_mode = 'none' then 'inclusive'
+        -- Use the explicitly submitted tax display behavior
+        when p_event ? 'tax_behavior'
+        then coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
+        -- Preserve the tax display behavior omitted from a partial payload
+        else coalesce(nullif(v_event_before->>'tax_behavior', ''), 'inclusive')
+    end;
     v_effective_capacity := v_ticket_capacity;
     v_payment_currency_code := case
+        -- Use the explicitly submitted payment currency
         when p_event ? 'payment_currency_code'
         then nullif(p_event->>'payment_currency_code', '')
+        -- Preserve the payment currency omitted from a partial payload
         else nullif(v_event_before->>'payment_currency_code', '')
     end;
     v_was_paid_capable := is_event_ticketing_payload_paid_capable(v_event_before->'ticket_types');
@@ -128,25 +162,40 @@ begin
                ) = 'automatic'
                and not (v_payment_validation->>'require_automatic_tax')::boolean
            )
+           or (
+               v_tax_calculation_mode = 'manual'
+               and (
+                   v_payment_validation->'manual_tax_rate_ids'
+                       is distinct from to_jsonb(v_manual_tax_rate_ids)
+                   or v_payment_validation->>'tax_behavior' is distinct from
+                       v_tax_behavior
+                   or v_payment_validation->>'tax_calculation_mode' <> 'manual'
+               )
+           )
        ) then
         raise exception 'payment configuration changed during provider validation';
     end if;
 
     -- Resolve registration question defaults
     v_registration_questions := case
+        -- Use explicitly submitted registration questions
         when p_event ? 'registration_questions'
         then coalesce(p_event->'registration_questions', '[]'::jsonb)
+        -- Preserve registration questions omitted from a partial payload
         else coalesce(v_event_before->'registration_questions', '[]'::jsonb)
     end;
 
     -- Validate registration questions and prevent changing definitions with live user state
     perform validate_questionnaire_questions_payload(v_registration_questions);
 
+    -- Protect submitted questionnaire answers and active checkout holds
     if v_registration_questions <> coalesce(v_event_before->'registration_questions', '[]'::jsonb) then
+        -- Reject changes after attendees submit answers
         if questionnaire_answers_exist_for_event(p_event_id) then
             raise exception 'registration questions cannot be changed after attendees have submitted answers';
         end if;
 
+        -- Reject changes while pending purchases hold questionnaire state
         if exists (
             select 1
             from event_purchase ep
@@ -205,18 +254,22 @@ begin
     );
 
     -- Parse event timestamps once for validation and row updates
+    -- Resolve the submitted event end time
     if p_event->>'ends_at' is not null then
         v_new_ends_at := (p_event->>'ends_at')::timestamp at time zone v_timezone;
     end if;
 
+    -- Resolve the submitted event start time
     if p_event->>'starts_at' is not null then
         v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
     end if;
 
+    -- Resolve the submitted registration end time
     if p_event->>'registration_ends_at' is not null then
         v_registration_ends_at := (p_event->>'registration_ends_at')::timestamp at time zone v_timezone;
     end if;
 
+    -- Resolve the submitted registration start time
     if p_event->>'registration_starts_at' is not null then
         v_registration_starts_at := (p_event->>'registration_starts_at')::timestamp at time zone v_timezone;
     end if;
@@ -256,6 +309,7 @@ begin
         event_reminder_enabled = v_event_reminder_enabled,
         -- Mark reminder as evaluated when update moves start time inside the 24-hour window
         event_reminder_evaluated_for_starts_at = case
+            -- Record the newly eligible reminder schedule
             when v_event_reminder_enabled = true
                  and event_reminder_sent_at is null
                  and starts_at is distinct from v_new_starts_at
@@ -268,16 +322,20 @@ begin
                  and v_new_starts_at > current_timestamp
                  and v_new_starts_at <= current_timestamp + interval '24 hours'
             then v_new_starts_at
+            -- Preserve the prior reminder evaluation schedule
             else event_reminder_evaluated_for_starts_at
         end,
         location = v_event_location,
         logo_url = nullif(p_event->>'logo_url', ''),
         luma_url = nullif(p_event->>'luma_url', ''),
+        manual_tax_rate_ids = v_manual_tax_rate_ids,
         meeting_hosts = v_event_meeting_hosts,
         meeting_in_sync = case
+            -- Preserve pending meeting deletion work
             when (v_event_before->>'meeting_in_sync')::boolean = false
                  and (p_event->>'meeting_requested')::boolean is distinct from false
             then false
+            -- Recompute meeting synchronization for other updates
             else is_event_meeting_in_sync(v_event_before, p_event)
         end,
         meeting_join_instructions = nullif(p_event->>'meeting_join_instructions', ''),
@@ -299,11 +357,8 @@ begin
         registration_starts_at = v_registration_starts_at,
         starts_at = v_new_starts_at,
         tags = v_event_tags,
-        tax_behavior = coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive'),
-        tax_calculation_mode = coalesce(
-            nullif(p_event->>'tax_calculation_mode', ''),
-            'automatic'
-        ),
+        tax_behavior = v_tax_behavior,
+        tax_calculation_mode = v_tax_calculation_mode,
         venue_address = nullif(btrim(p_event->>'venue_address'), ''),
         venue_city = nullif(btrim(p_event->>'venue_city'), ''),
         venue_country_code = upper(nullif(btrim(p_event->>'venue_country_code'), '')),

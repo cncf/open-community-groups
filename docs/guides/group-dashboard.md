@@ -147,6 +147,9 @@ group settings. The legal name is shown to attendees as the seller on purchase a
 
 OCG expects a Stripe connected account identifier in the `acct_...` format.
 The dashboard does not create or onboard the Stripe account for you.
+The fiscal sponsor owns Tax Rate definitions in that Stripe account. Event
+organizers select compatible rates per event in the `Tickets` tab; group
+settings do not copy or manage the definitions.
 
 For the full Stripe-side setup, including connected-account onboarding and
 payout details, follow [Payments Setup](payments-setup.md).
@@ -245,6 +248,9 @@ Starting from [Add Event](/dashboard/group/events/add ':ignore') gives organizer
 tabbed sections that map directly to delivery needs. The `Tickets` tab supports
 free-only configuration without Stripe, paid configuration when the group is
 payment-ready, and a read-only explanation when positive prices cannot be used.
+It also contains event currency, ticket-tax mode, inclusive or exclusive tax
+display, and the event-wide manual Stripe Tax Rate selector when that mode is
+chosen.
 
 Enrollment-aware event operations also include:
 

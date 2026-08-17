@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(43);
+select plan(45);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,6 +29,8 @@ select plan(43);
 \set linkedLatePurchaseID '79000000-0000-0000-0000-00000000003e'
 \set linkedPurchaseID '79000000-0000-0000-0000-000000000039'
 \set linkedUserID '79000000-0000-0000-0000-00000000003a'
+\set noTaxPurchaseID '79000000-0000-0000-0000-000000000119'
+\set noTaxUserID '79000000-0000-0000-0000-000000000120'
 \set dueOfferID '79000000-0000-0000-0000-00000000003b'
 \set duePurchaseID '79000000-0000-0000-0000-00000000003c'
 \set dueUserID '79000000-0000-0000-0000-00000000003d'
@@ -119,6 +121,7 @@ values
     (:'user10ID', 'hash-10', 'user10@example.com', true, 'buyer-10'),
     (:'dueUserID', 'hash-due', 'due@example.com', true, 'due-buyer'),
     (:'linkedUserID', 'hash-linked', 'linked@example.com', true, 'linked-buyer'),
+    (:'noTaxUserID', 'hash-no-tax', 'no-tax@example.com', true, 'no-tax-buyer'),
     (:'raceQueueUserID', 'hash-race-queue', 'race-queue@example.com', true, 'race-queue'),
     (:'raceUserID', 'hash-race', 'race@example.com', true, 'race-buyer');
 
@@ -612,6 +615,53 @@ from (values (
     user_id
 );
 
+-- Pending checkout for an event that explicitly does not collect tax
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    manual_tax_rate_ids,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    seller_snapshot,
+    status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    2500,
+    'direct-charge',
+    'acct_complete',
+    'USD',
+    0,
+    :'activeEventID',
+    :'noTaxPurchaseID',
+    :'activeTicketTypeID',
+    now() + interval '15 minutes',
+    '{}'::text[],
+    'stripe',
+    'cs_no_tax',
+    'acct_complete',
+    '{"connected_account_id":"acct_complete","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    'pending',
+    'inclusive',
+    'none',
+    'professional-event-admission',
+    'General admission',
+    :'noTaxUserID',
+    '{}'::jsonb
+);
+
 -- Expired provider checkout whose payment must reserve the only race-event seat
 insert into event_purchase (
     amount_minor,
@@ -959,6 +1009,31 @@ select is(
     )::jsonb,
     '{"outcome":"noop"}'::jsonb,
     'Should return noop when there is no matching checkout session'
+);
+
+-- Should reject provider tax for a no-tax purchase
+select throws_ok(
+    $$select reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_no_tax', 'pi_no_tax',
+        'ch_no_tax', 2625, 125, null
+    )$$,
+    'no-tax checkout must have zero tax',
+    'Should reject provider tax for a no-tax purchase'
+);
+
+-- Should complete a no-tax purchase when the provider reports zero tax
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe', 'acct_complete', 'cs_no_tax', 'pi_no_tax',
+        'ch_no_tax', 2500, 0, null
+    )::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'activeEventID'::uuid,
+        'outcome', 'completed',
+        'user_id', :'noTaxUserID'::uuid
+    ),
+    'Should complete a no-tax purchase when the provider reports zero tax'
 );
 
 -- Should reserve capacity before reconciling a late paid checkout

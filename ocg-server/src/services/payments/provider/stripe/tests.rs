@@ -19,17 +19,18 @@ use crate::{
         ApplicationFeeAdjustmentInput, CreateCheckoutSessionInput, CreditNoteInput,
         FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
         FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
-        PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentStatus,
+        ListTaxRatesInput, PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentStatus,
+        ValidateTaxRatesInput,
     },
     types::payments::{
-        FiscalSponsorSeller, ManualTaxComponent, PaymentMode, PaymentProvider, TicketTaxBehavior,
+        FiscalSponsorSeller, PaymentMode, PaymentProvider, TicketTaxBehavior,
         TicketTaxCalculationMode, TicketVenue,
     },
 };
 
 use super::{
     PaymentsProvider, PaymentsWebhookEndpoint, StripeListedRefund, StripeProvider,
-    StripeTaxProductResponse, StripeTaxProductTaxDetailsResponse, StripeTaxRateResponse,
+    StripeTaxProductResponse, StripeTaxProductTaxDetailsResponse,
 };
 
 #[tokio::test]
@@ -476,7 +477,7 @@ fn build_refund_form_fields_only_refunds_the_direct_charge() {
 async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() {
     // Setup a manual-tax checkout and a Stripe-shaped connected-account API
     let mut input = sample_checkout_session_input();
-    input.manual_tax_components = Some(vec![sample_manual_tax_component()]);
+    input.manual_tax_rate_ids = Some(vec!["txr_state".to_string(), "txr_local".to_string()]);
     input.tax_calculation_mode = TicketTaxCalculationMode::Manual;
     input.tax_code = None;
     let purchase_id = input.purchase_id;
@@ -486,17 +487,30 @@ async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() 
             get(|| async { Json(sample_stripe_account_response()) }),
         )
         .route(
-            "/v1/tax_rates/txr_test",
-            get(|| async {
+            "/v1/tax_rates",
+            get(|headers: HeaderMap, uri: Uri| async move {
+                assert_eq!(headers["stripe-account"], "acct_test_123");
+                assert_eq!(uri.query(), Some("active=true&inclusive=true&limit=100"));
                 Json(json!({
-                    "active": true,
-                    "country": "US",
-                    "display_name": "Sales tax",
-                    "inclusive": true,
-                    "jurisdiction": "California",
-                    "percentage": 8.875,
-                    "state": "CA",
-                    "tax_type": "sales_tax"
+                    "data": [
+                        {
+                            "active": true,
+                            "display_name": "Sales tax",
+                            "id": "txr_state",
+                            "inclusive": true,
+                            "jurisdiction": "California",
+                            "percentage": 8.875
+                        },
+                        {
+                            "active": true,
+                            "display_name": "District tax",
+                            "id": "txr_local",
+                            "inclusive": true,
+                            "jurisdiction": "Example District",
+                            "percentage": 1.25
+                        }
+                    ],
+                    "has_more": false
                 }))
             }),
         )
@@ -519,7 +533,11 @@ async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() 
                 );
                 assert_eq!(
                     form.get("line_items[0][tax_rates][0]"),
-                    Some(&"txr_test".to_string())
+                    Some(&"txr_state".to_string())
+                );
+                assert_eq!(
+                    form.get("line_items[0][tax_rates][1]"),
+                    Some(&"txr_local".to_string())
                 );
                 assert!(!form.keys().any(|key| key.starts_with("transfer_data")));
 
@@ -544,6 +562,49 @@ async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() 
     assert_eq!(session.provider_object_account_id, "acct_test_123");
     assert_eq!(session.provider_session_id, "cs_test_123");
     assert_eq!(session.redirect_url, "https://checkout.stripe.test/session");
+}
+
+#[tokio::test]
+async fn create_checkout_session_omits_tax_fields_for_no_tax_mode() {
+    // Setup a no-tax checkout and a connected-account API
+    let mut input = sample_checkout_session_input();
+    input.manual_tax_rate_ids = Some(Vec::new());
+    input.tax_calculation_mode = TicketTaxCalculationMode::None;
+    input.tax_code = None;
+    let router = Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/checkout/sessions",
+            post(|headers: HeaderMap, body: String| async move {
+                assert_eq!(headers["stripe-account"], "acct_test_123");
+                let form: BTreeMap<String, String> =
+                    serde_urlencoded::from_str(&body).expect("checkout form to parse");
+                assert!(!form.contains_key("automatic_tax[enabled]"));
+                assert!(!form.keys().any(|key| key.contains("[tax_rates]")));
+                assert!(form.contains_key("line_items[0][price_data][product_data][name]"));
+
+                Json(json!({
+                    "id": "cs_no_tax",
+                    "url": "https://checkout.stripe.test/no-tax"
+                }))
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Create the session without attaching a tax mechanism
+    let session = provider
+        .create_checkout_session(&input)
+        .await
+        .expect("no-tax Checkout Session to be created");
+    server.abort();
+
+    // Check the connected-account session is returned normally
+    assert_eq!(session.provider_session_id, "cs_no_tax");
 }
 
 #[test]
@@ -735,75 +796,115 @@ async fn get_financial_document_scopes_invoice_retrieval_to_its_connected_accoun
     );
 }
 
-#[test]
-fn manual_tax_rate_accepts_decimal_equivalent_complete_snapshot() {
-    // Setup a provider Tax Rate whose decimal scale differs from the snapshot
-    let component = sample_manual_tax_component();
-    let rate = sample_stripe_tax_rate();
+#[tokio::test]
+async fn list_tax_rates_scopes_filters_and_paginates() {
+    // Setup two provider pages with defensive inactive and incompatible entries
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|headers: HeaderMap, uri: Uri| async move {
+            assert_eq!(headers["stripe-account"], "acct_test_123");
+            assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
+            let query = uri.query().expect("Tax Rate query to be present");
+            assert!(query.contains("active=true"));
+            assert!(query.contains("inclusive=false"));
+            assert!(query.contains("limit=100"));
 
-    // Compare every provider field with the approved manual-tax snapshot
-    let matches =
-        StripeProvider::manual_tax_rate_matches(&component, &rate, TicketTaxBehavior::Inclusive)
-            .expect("valid decimal percentages to compare");
-
-    // Check equivalent decimal values and the complete snapshot are accepted
-    assert!(matches);
-}
-
-#[test]
-fn manual_tax_rate_rejects_each_changed_provider_field() {
-    // Setup provider mutations covering every revalidated Tax Rate field
-    let component = sample_manual_tax_component();
-    let mut rates = Vec::new();
-    let mut rate = sample_stripe_tax_rate();
-    rate.active = false;
-    rates.push((rate, TicketTaxBehavior::Inclusive));
-    let mut rate = sample_stripe_tax_rate();
-    rate.country = Some("CA".to_string());
-    rates.push((rate, TicketTaxBehavior::Inclusive));
-    let mut rate = sample_stripe_tax_rate();
-    rate.display_name = "Different tax".to_string();
-    rates.push((rate, TicketTaxBehavior::Inclusive));
-    rates.push((sample_stripe_tax_rate(), TicketTaxBehavior::Exclusive));
-    let mut rate = sample_stripe_tax_rate();
-    rate.jurisdiction = Some("Nevada".to_string());
-    rates.push((rate, TicketTaxBehavior::Inclusive));
-    let mut rate = sample_stripe_tax_rate();
-    rate.percentage =
-        serde_json::Number::from_f64(9.0).expect("sample percentage to be representable");
-    rates.push((rate, TicketTaxBehavior::Inclusive));
-    let mut rate = sample_stripe_tax_rate();
-    rate.state = Some("NY".to_string());
-    rates.push((rate, TicketTaxBehavior::Inclusive));
-    let mut rate = sample_stripe_tax_rate();
-    rate.tax_type = Some("vat".to_string());
-    rates.push((rate, TicketTaxBehavior::Inclusive));
-
-    for (rate, tax_behavior) in rates {
-        // Compare each changed provider response with the approved snapshot
-        let matches = StripeProvider::manual_tax_rate_matches(&component, &rate, tax_behavior)
-            .expect("valid decimal percentages to compare");
-        assert!(!matches);
-    }
-}
-
-#[test]
-fn manual_tax_rate_rejects_invalid_snapshot_percentage() {
-    // Setup an approved snapshot with an invalid decimal percentage
-    let mut component = sample_manual_tax_component();
-    component.percentage = "not-a-decimal".to_string();
-    let rate = sample_stripe_tax_rate();
-
-    // Compare the invalid snapshot with the provider Tax Rate
-    let err =
-        StripeProvider::manual_tax_rate_matches(&component, &rate, TicketTaxBehavior::Inclusive)
-            .expect_err("invalid snapshot percentage to fail closed");
-
-    // Check the persisted data error remains distinguishable from provider drift
-    assert_eq!(
-        err.to_string(),
-        "manual tax snapshot contains an invalid percentage"
+            if query.contains("starting_after=txr_inclusive") {
+                Json(json!({
+                    "data": [{
+                        "active": true,
+                        "display_name": "District tax",
+                        "id": "txr_second",
+                        "inclusive": false,
+                        "jurisdiction": null,
+                        "percentage": 1.25
+                    }],
+                    "has_more": false
+                }))
+            } else {
+                Json(json!({
+                    "data": [
+                        {
+                            "active": true,
+                            "display_name": "Sales tax",
+                            "id": "txr_first",
+                            "inclusive": false,
+                            "jurisdiction": "California",
+                            "percentage": 8.875
+                        },
+                        {
+                            "active": false,
+                            "display_name": "Inactive",
+                            "id": "txr_inactive",
+                            "inclusive": false,
+                            "jurisdiction": null,
+                            "percentage": 2
+                        },
+                        {
+                            "active": true,
+                            "display_name": "Inclusive",
+                            "id": "txr_inclusive",
+                            "inclusive": true,
+                            "jurisdiction": null,
+                            "percentage": 3
+                        }
+                    ],
+                    "has_more": true
+                }))
+            }
+        }),
     );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // List account-owned rates compatible with exclusive ticket prices
+    let rates = provider
+        .list_tax_rates(&ListTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            tax_behavior: TicketTaxBehavior::Exclusive,
+        })
+        .await
+        .expect("compatible Tax Rates to be listed");
+    server.abort();
+
+    // Check pagination order and provider metadata are preserved
+    assert_eq!(
+        rates.iter().map(|rate| rate.id.as_str()).collect::<Vec<_>>(),
+        vec!["txr_first", "txr_second"]
+    );
+    assert_eq!(rates[0].jurisdiction.as_deref(), Some("California"));
+    assert_eq!(rates[0].percentage, "8.875");
+}
+
+#[tokio::test]
+async fn list_tax_rates_propagates_provider_errors() {
+    // Setup a provider failure from the connected-account Tax Rate endpoint
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|| async {
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({"error": {"message": "temporarily unavailable"}})),
+            )
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // List the connected account's rates while Stripe is unavailable
+    let err = provider
+        .list_tax_rates(&ListTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            tax_behavior: TicketTaxBehavior::Inclusive,
+        })
+        .await
+        .expect_err("provider failure to be returned");
+    server.abort();
+
+    // Check the listing error preserves the provider response context
+    assert!(err.to_string().contains("temporarily unavailable"));
 }
 
 #[tokio::test]
@@ -1235,6 +1336,32 @@ async fn validate_fiscal_sponsor_treats_provider_outage_as_unexpected() {
 
     // Preserve infrastructure failures as internal errors
     assert!(matches!(err, FiscalSponsorReadinessError::Unexpected(_)));
+}
+
+#[tokio::test]
+async fn validate_tax_rates_rejects_missing_or_incompatible_ids() {
+    // Setup an account whose active compatible list does not contain the selection
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|| async { Json(json!({"data": [], "has_more": false})) }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Revalidate the selected identifier against that connected account
+    let err = provider
+        .validate_tax_rates(&ValidateTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            manual_tax_rate_ids: vec!["txr_missing".to_string()],
+            tax_behavior: TicketTaxBehavior::Inclusive,
+        })
+        .await
+        .expect_err("missing Tax Rate to be rejected");
+    server.abort();
+
+    // Check provider drift remains an organizer-actionable readiness failure
+    assert!(matches!(err, FiscalSponsorReadinessError::NotReady(_)));
 }
 
 #[test]
@@ -1709,7 +1836,7 @@ fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
         cached_provider_tax_product_id: None,
         discount_code: Some("EARLYBIRD".to_string()),
         group_slug_pretty: Some("pretty-group".to_string()),
-        manual_tax_components: None,
+        manual_tax_rate_ids: None,
         tax_code: Some("txcd_50013001".to_string()),
     }
 }
@@ -1734,19 +1861,6 @@ fn sample_listed_refund(purchase_id: Uuid, id: &str, status: &str) -> StripeList
         status: status.to_string(),
 
         metadata: BTreeMap::from([("event_purchase_id".to_string(), purchase_id.to_string())]),
-    }
-}
-
-/// Creates a complete approved manual-tax component.
-fn sample_manual_tax_component() -> ManualTaxComponent {
-    ManualTaxComponent {
-        country_code: Some("US".to_string()),
-        display_name: "Sales tax".to_string(),
-        jurisdiction: "California".to_string(),
-        percentage: "8.8750".to_string(),
-        provider_tax_rate_id: "txr_test".to_string(),
-        state: Some("CA".to_string()),
-        tax_type: "sales_tax".to_string(),
     }
 }
 
@@ -1810,21 +1924,6 @@ fn sample_stripe_tax_product() -> StripeTaxProductResponse {
             performance_location: Some("loc_cached".to_string()),
             tax_code: Some("txcd_50013001".to_string()),
         }),
-    }
-}
-
-/// Creates a complete manual Tax Rate response.
-fn sample_stripe_tax_rate() -> StripeTaxRateResponse {
-    StripeTaxRateResponse {
-        active: true,
-        country: Some("US".to_string()),
-        display_name: "Sales tax".to_string(),
-        inclusive: true,
-        jurisdiction: Some("California".to_string()),
-        percentage: serde_json::Number::from_f64(8.875)
-            .expect("sample percentage to be representable"),
-        state: Some("CA".to_string()),
-        tax_type: Some("sales_tax".to_string()),
     }
 }
 

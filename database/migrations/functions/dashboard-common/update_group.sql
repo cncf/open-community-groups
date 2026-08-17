@@ -144,26 +144,41 @@ begin
         raise exception 'paid-capable events require a payment recipient';
     end if;
 
-    -- Reject sponsor replacements that invalidate active manual-tax events
-    if v_payment_recipient_changed and v_new_payment_recipient is not null then
-        perform validate_event_ticketing_payment_readiness(
-            v_new_payment_recipient->>'provider',
-            true,
-            e.payment_currency_code,
-            v_new_payment_recipient,
-            e.event_id
-        )
-        from event e
-        where e.group_id = p_group_id
-        and e.canceled = false
-        and e.deleted = false
-        and e.published = true
-        and e.tax_calculation_mode = 'manual'
-        and is_event_paid_capable(e.event_id)
-        and (
-            coalesce(e.ends_at, e.starts_at) is null
-            or coalesce(e.ends_at, e.starts_at) > current_timestamp
-        );
+    -- Block account replacement while published manual-tax sales remain active
+    if v_provider_account_changed
+       and v_previous_payment_recipient is not null
+       and exists (
+            select 1
+            from event e
+            where e.group_id = p_group_id
+            and e.canceled = false
+            and e.deleted = false
+            and e.published = true
+            and e.tax_calculation_mode = 'manual'
+            and is_event_paid_capable(e.event_id)
+            and (
+                coalesce(e.ends_at, e.starts_at) is null
+                or coalesce(e.ends_at, e.starts_at) > current_timestamp
+            )
+       ) then
+        raise exception 'fiscal sponsor cannot be replaced while published manual-tax events are upcoming';
+    end if;
+
+    -- Require draft manual-tax events to reselect rates in the new account
+    if v_payment_recipient_changed
+       and (
+           coalesce(v_previous_payment_recipient->>'provider', '') is distinct from
+               coalesce(v_new_payment_recipient->>'provider', '')
+           or coalesce(v_previous_payment_recipient->>'recipient_id', '') is distinct from
+               coalesce(v_new_payment_recipient->>'recipient_id', '')
+       ) then
+        update event
+        set manual_tax_rate_ids = '{}'::text[]
+        where group_id = p_group_id
+        and canceled = false
+        and deleted = false
+        and published = false
+        and tax_calculation_mode = 'manual';
     end if;
 
     -- Update the group fields from the payload

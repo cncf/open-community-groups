@@ -18,7 +18,7 @@ returns jsonb as $$
             'completed_at', extract(epoch from ep.completed_at)::bigint,
             'discount_code', ep.discount_code,
             'hold_expires_at', extract(epoch from ep.hold_expires_at)::bigint,
-            'manual_tax_components', ep.manual_tax_snapshot,
+            'manual_tax_rate_ids', ep.manual_tax_rate_ids,
             'provider_checkout_url', ep.provider_checkout_url,
             'provider_object_account_id', ep.provider_object_account_id,
             'provider_payment_reference', ep.provider_payment_reference,

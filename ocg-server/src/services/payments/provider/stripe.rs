@@ -1,6 +1,6 @@
 //! Stripe-backed payments provider implementation.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
@@ -17,8 +17,7 @@ use uuid::Uuid;
 use crate::{
     config::PaymentsStripeConfig,
     types::payments::{
-        ManualTaxComponent, PaymentMode, PaymentProvider, TicketTaxBehavior,
-        TicketTaxCalculationMode,
+        PaymentMode, PaymentProvider, TicketTaxBehavior, TicketTaxCalculationMode, TicketTaxRate,
     },
     util::base_url_without_trailing_slash,
 };
@@ -28,8 +27,8 @@ use super::{
     CheckoutSession, CreateCheckoutSessionInput, CreditNoteInput, CreditNoteResult,
     FinancialDocument, FinancialDocumentKind, FindRefundInput, FiscalSponsorReadinessError,
     FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
-    PaymentsProvider, PaymentsWebhookEndpoint, PaymentsWebhookEvent, RefundPaymentInput,
-    RefundPaymentResult, RefundPaymentStatus,
+    ListTaxRatesInput, PaymentsProvider, PaymentsWebhookEndpoint, PaymentsWebhookEvent,
+    RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus, ValidateTaxRatesInput,
 };
 
 #[cfg(test)]
@@ -105,48 +104,6 @@ impl StripeProvider {
                 input.provider_payment_reference.clone(),
             ),
         ])
-    }
-
-    /// Canonicalizes a plain or exponential decimal without floating-point conversion.
-    fn canonical_decimal(value: &str) -> Option<(bool, String, i64)> {
-        // Separate the sign, coefficient, and optional exponent
-        let value = value.trim();
-        let (negative, unsigned) =
-            value.strip_prefix('-').map_or((false, value), |value| (true, value));
-        let unsigned = unsigned.strip_prefix('+').unwrap_or(unsigned);
-        let mut exponent_parts = unsigned.split(['e', 'E']);
-        let coefficient = exponent_parts.next()?;
-        let exponent = exponent_parts.next().map_or(Some(0), |value| value.parse().ok())?;
-        if exponent_parts.next().is_some() {
-            return None;
-        }
-
-        // Validate and separate the coefficient digits around the decimal point
-        let mut coefficient_parts = coefficient.split('.');
-        let integer = coefficient_parts.next()?;
-        let fraction = coefficient_parts.next().unwrap_or_default();
-        if coefficient_parts.next().is_some()
-            || (integer.is_empty() && fraction.is_empty())
-            || !integer.bytes().all(|byte| byte.is_ascii_digit())
-            || !fraction.bytes().all(|byte| byte.is_ascii_digit())
-        {
-            return None;
-        }
-
-        // Collapse every zero representation into one canonical value
-        let mut digits = format!("{integer}{fraction}").trim_start_matches('0').to_string();
-        if digits.is_empty() {
-            return Some((false, "0".to_string(), 0));
-        }
-
-        // Remove insignificant trailing zeros while preserving the decimal value
-        let mut scale = i64::try_from(fraction.len()).ok()? - exponent;
-        while digits.ends_with('0') {
-            digits.pop();
-            scale -= 1;
-        }
-
-        Some((negative, digits, scale))
     }
 
     /// Builds Checkout fields for the ticket price and redirect contract.
@@ -256,7 +213,7 @@ impl StripeProvider {
         form_fields
     }
 
-    /// Builds Checkout tax fields for automatic or approved manual calculation.
+    /// Builds Checkout tax fields for automatic or manual-rate calculation.
     fn checkout_tax_form_fields(
         input: &CreateCheckoutSessionInput,
         provider_tax_product_id: Option<&str>,
@@ -275,8 +232,8 @@ impl StripeProvider {
             "line_items[0][price_data][product_data][name]".to_string(),
             Self::truncate(&input.ticket_title, STRIPE_PRODUCT_NAME_MAX_LEN),
         )];
-        for (index, component) in input
-            .manual_tax_components
+        for (index, tax_rate_id) in input
+            .manual_tax_rate_ids
             .as_deref()
             .unwrap_or_default()
             .iter()
@@ -284,7 +241,7 @@ impl StripeProvider {
         {
             form_fields.push((
                 format!("line_items[0][tax_rates][{index}]"),
-                component.provider_tax_rate_id.clone(),
+                tax_rate_id.clone(),
             ));
         }
         form_fields
@@ -509,27 +466,6 @@ impl StripeProvider {
     /// Returns whether a Stripe refund status cannot complete later.
     fn is_terminal_failure_status(status: &str) -> bool {
         matches!(status, "canceled" | "failed")
-    }
-
-    /// Returns whether a Tax Rate still matches every approved snapshot field.
-    fn manual_tax_rate_matches(
-        component: &ManualTaxComponent,
-        rate: &StripeTaxRateResponse,
-        tax_behavior: TicketTaxBehavior,
-    ) -> Result<bool> {
-        let expected_percentage = Self::canonical_decimal(&component.percentage)
-            .context("manual tax snapshot contains an invalid percentage")?;
-        let provider_percentage = Self::canonical_decimal(&rate.percentage.to_string())
-            .context("Stripe Tax Rate contains an invalid percentage")?;
-
-        Ok(rate.active
-            && rate.country.as_deref() == component.country_code.as_deref()
-            && rate.display_name == component.display_name
-            && rate.inclusive == (tax_behavior == TicketTaxBehavior::Inclusive)
-            && rate.jurisdiction.as_deref() == Some(component.jurisdiction.as_str())
-            && provider_percentage == expected_percentage
-            && rate.state.as_deref() == component.state.as_deref()
-            && rate.tax_type.as_deref() == Some(component.tax_type.as_str()))
     }
 
     /// Normalizes a currency code for Stripe requests.
@@ -947,39 +883,20 @@ impl StripeProvider {
         Ok(())
     }
 
-    /// Retrieves and validates every sponsor-approved manual Tax Rate.
+    /// Retrieves and validates every selected manual Tax Rate.
     async fn validate_manual_tax_rates(&self, input: &CreateCheckoutSessionInput) -> Result<()> {
-        let components = input
-            .manual_tax_components
+        let manual_tax_rate_ids = input
+            .manual_tax_rate_ids
             .as_deref()
-            .filter(|components| !components.is_empty())
-            .context("manual tax requires at least one approved Tax Rate")?;
+            .context("manual tax requires at least one Tax Rate")?;
 
-        for component in components {
-            // Recheck immutable rate state in the seller account before Checkout
-            let response = self
-                .client
-                .get(format!(
-                    "{}/tax_rates/{}",
-                    self.api_base_url(),
-                    component.provider_tax_rate_id
-                ))
-                .basic_auth(&self.cfg.secret_key, Some(""))
-                .header("stripe-account", &input.seller.connected_account_id)
-                .header("stripe-version", STRIPE_API_VERSION)
-                .send()
-                .await
-                .context("error retrieving Stripe Tax Rate")?;
-            let rate = Self::parse_provider_response::<StripeTaxRateResponse>(
-                response,
-                "Tax Rate retrieval",
-            )
-            .await?;
-
-            if !Self::manual_tax_rate_matches(component, &rate, input.tax_behavior)? {
-                bail!("manual Stripe Tax Rate no longer matches its approved snapshot");
-            }
-        }
+        // Recheck rate ownership, activity, and behavior immediately before Checkout
+        self.validate_tax_rates(&ValidateTaxRatesInput {
+            connected_seller_id: input.seller.connected_account_id.clone(),
+            manual_tax_rate_ids: manual_tax_rate_ids.to_vec(),
+            tax_behavior: input.tax_behavior,
+        })
+        .await?;
 
         Ok(())
     }
@@ -1063,6 +980,17 @@ impl PaymentsProvider for StripeProvider {
             }
             TicketTaxCalculationMode::Manual => {
                 self.validate_manual_tax_rates(input).await?;
+                (None, None, None, None, STRIPE_API_VERSION)
+            }
+            TicketTaxCalculationMode::None => {
+                // Ensure a no-tax purchase cannot carry a stale manual selection
+                if input
+                    .manual_tax_rate_ids
+                    .as_ref()
+                    .is_some_and(|rate_ids| !rate_ids.is_empty())
+                {
+                    bail!("no-tax checkout cannot include Stripe Tax Rates");
+                }
                 (None, None, None, None, STRIPE_API_VERSION)
             }
         };
@@ -1241,6 +1169,78 @@ impl PaymentsProvider for StripeProvider {
                 })
             }
         }
+    }
+
+    /// [`PaymentsProvider::list_tax_rates`].
+    async fn list_tax_rates(&self, input: &ListTaxRatesInput) -> Result<Vec<TicketTaxRate>> {
+        let mut rates = Vec::new();
+        let mut starting_after: Option<String> = None;
+
+        loop {
+            // Request one account-scoped page with provider-side behavior filtering
+            let mut query = vec![
+                ("active", "true".to_string()),
+                (
+                    "inclusive",
+                    (input.tax_behavior == TicketTaxBehavior::Inclusive).to_string(),
+                ),
+                ("limit", "100".to_string()),
+            ];
+            if let Some(starting_after) = starting_after.as_ref() {
+                query.push(("starting_after", starting_after.clone()));
+            }
+            let response = self
+                .client
+                .get(format!(
+                    "{}/tax_rates?{}",
+                    self.api_base_url(),
+                    serde_urlencoded::to_string(&query)?
+                ))
+                .basic_auth(&self.cfg.secret_key, Some(""))
+                .header("stripe-account", &input.connected_seller_id)
+                .header("stripe-version", STRIPE_API_VERSION)
+                .send()
+                .await
+                .context("error listing fiscal sponsor Stripe Tax Rates")?;
+            let page = Self::parse_provider_response::<StripeTaxRateListResponse>(
+                response,
+                "Tax Rate listing",
+            )
+            .await?;
+
+            // Preserve only active rates matching the requested display behavior
+            rates.extend(
+                page.data
+                    .iter()
+                    .filter(|rate| {
+                        rate.active
+                            && rate.inclusive
+                                == (input.tax_behavior == TicketTaxBehavior::Inclusive)
+                    })
+                    .map(|rate| TicketTaxRate {
+                        display_name: rate.display_name.clone(),
+                        id: rate.id.clone(),
+                        inclusive: rate.inclusive,
+                        percentage: rate.percentage.to_string(),
+
+                        jurisdiction: rate.jurisdiction.clone(),
+                    }),
+            );
+
+            // Continue from the final provider identifier until pagination completes
+            if !page.has_more {
+                break;
+            }
+            starting_after = Some(
+                page.data
+                    .last()
+                    .context("Stripe Tax Rate page is empty while has_more is true")?
+                    .id
+                    .clone(),
+            );
+        }
+
+        Ok(rates)
     }
 
     /// [`PaymentsProvider::provider`].
@@ -1509,6 +1509,52 @@ impl PaymentsProvider for StripeProvider {
         }
 
         self.validate_connected_seller(input).await
+    }
+
+    /// [`PaymentsProvider::validate_tax_rates`].
+    async fn validate_tax_rates(
+        &self,
+        input: &ValidateTaxRatesInput,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError> {
+        // Reject empty or duplicate selections before contacting Stripe
+        let selected_ids = input
+            .manual_tax_rate_ids
+            .iter()
+            .map(String::as_str)
+            .collect::<BTreeSet<_>>();
+        if selected_ids.is_empty()
+            || selected_ids.len() != input.manual_tax_rate_ids.len()
+            || selected_ids.iter().any(|id| id.is_empty() || *id != id.trim())
+        {
+            return Err(FiscalSponsorReadinessError::NotReady(
+                "manual ticket tax requires at least one unique Stripe Tax Rate".to_string(),
+            ));
+        }
+
+        // Load active compatible rates from the selected connected account
+        let available_ids = self
+            .list_tax_rates(&ListTaxRatesInput {
+                connected_seller_id: input.connected_seller_id.clone(),
+                tax_behavior: input.tax_behavior,
+            })
+            .await
+            .map_err(FiscalSponsorReadinessError::Unexpected)?
+            .into_iter()
+            .map(|rate| rate.id)
+            .collect::<BTreeSet<_>>();
+
+        // Require every selected identifier to remain available in that account
+        if !selected_ids
+            .iter()
+            .all(|selected_id| available_ids.contains(*selected_id))
+        {
+            return Err(FiscalSponsorReadinessError::NotReady(
+                "manual Stripe Tax Rates must be active in the fiscal sponsor account and match the ticket tax display"
+                    .to_string(),
+            ));
+        }
+
+        Ok(())
     }
 
     /// [`PaymentsProvider::verify_and_parse_webhook`].
@@ -1820,6 +1866,15 @@ struct StripeTaxProductTaxDetailsResponse {
     tax_code: Option<String>,
 }
 
+/// Paginated Stripe Tax Rate listing response.
+#[derive(Debug, Deserialize)]
+struct StripeTaxRateListResponse {
+    /// Active Tax Rates in this page.
+    data: Vec<StripeTaxRateResponse>,
+    /// Whether another page is available.
+    has_more: bool,
+}
+
 /// Minimal Tax Rate fields revalidated before manual-tax Checkout.
 #[derive(Debug, Deserialize)]
 struct StripeTaxRateResponse {
@@ -1827,19 +1882,15 @@ struct StripeTaxRateResponse {
     active: bool,
     /// Customer-facing Tax Rate label.
     display_name: String,
+    /// Connected-account Tax Rate identifier.
+    id: String,
     /// Whether the rate is included in the configured line-item amount.
     inclusive: bool,
     /// Decimal Tax Rate percentage.
     percentage: serde_json::Number,
 
-    /// ISO country code configured on the Tax Rate.
-    country: Option<String>,
     /// Jurisdiction configured on the Tax Rate.
     jurisdiction: Option<String>,
-    /// State or province configured on the Tax Rate.
-    state: Option<String>,
-    /// Stripe tax-type classification.
-    tax_type: Option<String>,
 }
 
 /// Minimal Stripe Tax settings response used for automatic-tax readiness.

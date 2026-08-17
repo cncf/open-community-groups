@@ -52,14 +52,14 @@ discounted-to-zero purchases do not produce Stripe invoices.
 
 Paid ticketing supports in-person and hybrid events with a complete physical
 venue. The event also needs a currency, compatible fiscal-sponsor connected
-account, and either automatic Stripe Tax readiness or a current
-sponsor-approved manual fixed-rate configuration. Virtual events remain
-free-only. Every paid hybrid ticket includes physical admission; it may also
-include virtual access, but cannot be virtual-only.
+account, and an event-wide tax mode: automatic Stripe Tax, active compatible
+manual Tax Rates from the sponsor account, or no tax collection. Virtual events
+remain free-only. Every paid hybrid ticket includes physical admission; it may
+also include virtual access, but cannot be virtual-only.
 
 Tax is inclusive by default, so the displayed ticket price includes tax. An
-organizer may select exclusive tax, which adds tax at Checkout. OCG never
-guesses a manual rate or substitutes zero tax when tax setup is missing.
+organizer may select exclusive tax, which adds tax at Checkout. No-tax events
+hide the display choice and never show `+ tax`.
 
 ## Why Is Registration Disabled?
 

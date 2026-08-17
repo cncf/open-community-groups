@@ -199,6 +199,10 @@
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Fiscal Sponsor", description = "Configure the legal seller for this group's paid events.") -}}
 
+    <p class="mt-4 max-w-3xl text-sm/6 text-stone-600">
+      The fiscal sponsor owns Tax Rate definitions in Stripe. Event organizers select the applicable active rates in each event's Tickets tab.
+    </p>
+
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       <input type="hidden" name="payment_recipient[provider]" value="stripe">
 

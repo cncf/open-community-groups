@@ -149,9 +149,14 @@ impl UpdatePage {
         self.event.tax_behavior == TicketTaxBehavior::Exclusive
     }
 
-    /// Returns true when the event uses sponsor-approved fixed tax rates.
+    /// Returns true when the event uses manual Stripe Tax Rates.
     pub(crate) fn uses_manual_ticket_tax(&self) -> bool {
         self.event.tax_calculation_mode == TicketTaxCalculationMode::Manual
+    }
+
+    /// Returns true when the event does not collect ticket tax.
+    pub(crate) fn uses_no_ticket_tax(&self) -> bool {
+        self.event.tax_calculation_mode == TicketTaxCalculationMode::None
     }
 }
 
@@ -309,6 +314,13 @@ pub(crate) struct Event {
     /// Luma URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub luma_url: Option<String>,
+    /// Stripe Tax Rate identifiers selected for manual tax.
+    #[serde(default)]
+    #[garde(custom(trimmed_non_empty_vec))]
+    pub manual_tax_rate_ids: Option<Vec<String>>,
+    /// Whether the manual Tax Rate selection was submitted.
+    #[garde(skip)]
+    pub manual_tax_rate_ids_present: Option<bool>,
     /// Meeting hosts to synchronize with provider (email addresses).
     #[garde(custom(email_vec))]
     pub meeting_hosts: Option<Vec<String>>,
@@ -377,7 +389,7 @@ pub(crate) struct Event {
     #[serde(default)]
     #[garde(skip)]
     pub tax_behavior: TicketTaxBehavior,
-    /// Automatic Stripe Tax or sponsor-approved manual rates.
+    /// Automatic Stripe Tax, manual Stripe rates, or no tax collection.
     #[serde(default)]
     #[garde(skip)]
     pub tax_calculation_mode: TicketTaxCalculationMode,
@@ -428,6 +440,19 @@ impl Event {
             _ => Map::new(),
         };
 
+        // Normalize tax fields that do not apply to the selected mode
+        if self.tax_calculation_mode != TicketTaxCalculationMode::Manual
+            || (self.manual_tax_rate_ids_present.is_some() && self.manual_tax_rate_ids.is_none())
+        {
+            payload.insert("manual_tax_rate_ids".to_string(), Value::Array(Vec::new()));
+        }
+        if self.tax_calculation_mode == TicketTaxCalculationMode::None {
+            payload.insert(
+                "tax_behavior".to_string(),
+                serde_json::to_value(TicketTaxBehavior::Inclusive)?,
+            );
+        }
+
         // Assign identifiers to discount codes that do not have one yet
         let mut discount_codes = self.discount_codes.clone();
         if let Some(discount_codes) = discount_codes.as_mut() {
@@ -443,6 +468,7 @@ impl Event {
         // Remove ticketing fields so they can be reinserted from submitted inputs
         payload.remove("discount_codes");
         payload.remove("discount_codes_present");
+        payload.remove("manual_tax_rate_ids_present");
         payload.remove("recurrence_additional_occurrences");
         payload.remove("recurrence_pattern");
         payload.remove("registration_questions");
@@ -766,7 +792,9 @@ pub(crate) struct TicketType {
 mod tests {
     use serde_json::Value;
 
-    use crate::types::payments::{EventDiscountType, EventTicketTypeAvailability};
+    use crate::types::payments::{
+        EventDiscountType, EventTicketTypeAvailability, TicketTaxBehavior, TicketTaxCalculationMode,
+    };
 
     use super::{DiscountCode, Event, TicketPriceWindow, TicketType};
 
@@ -810,6 +838,37 @@ registration_questions[0][options][0][label]=Vegetarian",
     }
 
     #[test]
+    fn event_deserialization_tracks_empty_manual_tax_rate_selection() {
+        let event: Event = serde_qs::from_str(
+            "\
+category_id=00000000-0000-0000-0000-000000000001&\
+description=Event%20description&\
+kind_id=virtual&\
+manual_tax_rate_ids_present=true&\
+name=Sample%20Event&\
+tax_calculation_mode=manual&\
+timezone=UTC",
+        )
+        .unwrap();
+
+        assert!(event.manual_tax_rate_ids.is_none());
+        assert_eq!(event.manual_tax_rate_ids_present, Some(true));
+        assert_eq!(event.tax_calculation_mode, TicketTaxCalculationMode::Manual);
+    }
+
+    #[test]
+    fn to_db_payload_clears_submitted_empty_manual_tax_rate_selection() {
+        let mut event = sample_event();
+        event.manual_tax_rate_ids_present = Some(true);
+        event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert_eq!(payload["manual_tax_rate_ids"], serde_json::json!([]));
+        assert!(payload.get("manual_tax_rate_ids_present").is_none());
+    }
+
+    #[test]
     fn to_db_payload_keeps_optional_section_keys_omitted_when_form_omits_inputs() {
         let payload = sample_event().to_db_payload().unwrap();
 
@@ -821,6 +880,50 @@ registration_questions[0][options][0][label]=Vegetarian",
         assert!(payload.get("discount_codes").is_none());
         assert!(payload.get("registration_questions").is_none());
         assert!(payload.get("ticket_types").is_none());
+    }
+
+    #[test]
+    fn to_db_payload_keeps_manual_tax_rate_ids() {
+        let mut event = sample_event();
+        event.manual_tax_rate_ids = Some(vec!["txr_state".to_string(), "txr_local".to_string()]);
+        event.manual_tax_rate_ids_present = Some(true);
+        event.tax_behavior = TicketTaxBehavior::Exclusive;
+        event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert_eq!(
+            payload["manual_tax_rate_ids"],
+            serde_json::json!(["txr_state", "txr_local"])
+        );
+        assert!(payload.get("manual_tax_rate_ids_present").is_none());
+        assert_eq!(payload["tax_behavior"], "exclusive");
+        assert_eq!(payload["tax_calculation_mode"], "manual");
+    }
+
+    #[test]
+    fn to_db_payload_keeps_omitted_manual_tax_rate_selection_absent() {
+        let mut event = sample_event();
+        event.tax_calculation_mode = TicketTaxCalculationMode::Manual;
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert!(payload.get("manual_tax_rate_ids").is_none());
+        assert!(payload.get("manual_tax_rate_ids_present").is_none());
+    }
+
+    #[test]
+    fn to_db_payload_normalizes_no_tax_configuration() {
+        let mut event = sample_event();
+        event.manual_tax_rate_ids = Some(vec!["txr_stale".to_string()]);
+        event.tax_behavior = TicketTaxBehavior::Exclusive;
+        event.tax_calculation_mode = TicketTaxCalculationMode::None;
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert_eq!(payload["manual_tax_rate_ids"], serde_json::json!([]));
+        assert_eq!(payload["tax_behavior"], "inclusive");
+        assert_eq!(payload["tax_calculation_mode"], "none");
     }
 
     #[test]

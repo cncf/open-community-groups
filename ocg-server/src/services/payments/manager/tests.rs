@@ -350,7 +350,7 @@ async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
 
 #[tokio::test]
 async fn get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code() {
-    // Setup a manual-tax checkout whose fixed rates do not use a Product tax code
+    // Setup a manual-tax checkout whose rates do not use a Product tax code
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
@@ -367,6 +367,7 @@ async fn get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code(
         None,
         recipient,
     );
+    prepared_checkout.manual_tax_rate_ids = Some(vec!["txr_test".to_string()]);
     prepared_checkout.tax_calculation_mode = Some(TicketTaxCalculationMode::Manual);
     prepared_checkout.tax_code = None;
 
@@ -394,6 +395,10 @@ async fn get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code(
         .expect_create_checkout_session()
         .withf(|input| {
             input.tax_calculation_mode == TicketTaxCalculationMode::Manual
+                && matches!(
+                    input.manual_tax_rate_ids.as_deref(),
+                    Some([rate_id]) if rate_id == "txr_test"
+                )
                 && input.tax_code.is_none()
         })
         .times(1)

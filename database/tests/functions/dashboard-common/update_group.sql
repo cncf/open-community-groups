@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(33);
+select plan(34);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,7 +28,6 @@ select plan(33);
 \set groupID '1c020000-0000-0000-0000-00000000000c'
 \set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
 \set inactiveParentedGroupID '1c020000-0000-0000-0000-00000000001b'
-\set manualTaxConfigurationID '1c020000-0000-0000-0000-00000000001c'
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
@@ -294,6 +293,7 @@ insert into event (
     event_category_id,
     event_kind_id,
     group_id,
+    manual_tax_rate_ids,
     name,
     payment_currency_code,
     published,
@@ -314,6 +314,7 @@ insert into event (
     :'eventCategoryID'::uuid,
     'in-person',
     :'group4ID'::uuid,
+    array['txr_update_group']::text[],
     'Ticketed Group Event',
     'USD',
     true,
@@ -328,57 +329,6 @@ insert into event (
     'OR',
     'Oregon',
     '97201'
-);
-
--- Manual-tax approval that is valid only for the initial sponsor
-insert into event_manual_tax_configuration (
-    approved_at,
-    approved_by_user_id,
-    connected_seller_id,
-    currency_code,
-    event_id,
-    event_manual_tax_configuration_id,
-    evidence_reference,
-    tax_behavior,
-    venue_snapshot,
-    version
-) values (
-    current_timestamp,
-    :'groupAdminID',
-    'acct_123',
-    'USD',
-    :'eventID',
-    :'manualTaxConfigurationID',
-    'approval-update-group-test',
-    'inclusive',
-    '{
-        "address": "123 Main St",
-        "city": "Portland",
-        "country_code": "US",
-        "name": "Community Hall",
-        "state_code": "OR",
-        "state_name": "Oregon",
-        "zip_code": "97201"
-    }'::jsonb,
-    1
-);
-
-insert into event_manual_tax_component (
-    display_name,
-    event_manual_tax_configuration_id,
-    jurisdiction,
-    percentage,
-    provider_tax_rate_id,
-    tax_behavior,
-    tax_type
-) values (
-    'Oregon admissions tax',
-    :'manualTaxConfigurationID',
-    'Oregon',
-    1.0000,
-    'txr_update_group',
-    'inclusive',
-    'sales_tax'
 );
 
 -- Group with a published all-zero ticketed event
@@ -462,10 +412,12 @@ insert into event (
     event_category_id,
     event_kind_id,
     group_id,
+    manual_tax_rate_ids,
     name,
     payment_currency_code,
     published,
     slug,
+    tax_calculation_mode,
     timezone
 ) values (
     'Unpublished ticketed event for payment recipient validation',
@@ -473,10 +425,12 @@ insert into event (
     :'eventCategoryID'::uuid,
     'virtual',
     :'group5ID'::uuid,
+    array['txr_draft']::text[],
     'Draft Ticketed Group Event',
     'USD',
     false,
     'draft-ticketed-group-event',
+    'manual',
     'UTC'
 );
 
@@ -927,7 +881,7 @@ select throws_ok(
         :'group4ID',
         :'groupCategory1ID'
     ),
-    'manual ticket tax is not ready for this sponsor and venue',
+    'fiscal sponsor cannot be replaced while published manual-tax events are upcoming',
     'Should reject a sponsor swap that invalidates active manual-tax events'
 );
 
@@ -1163,6 +1117,13 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
     null::jsonb,
     'Should clear the stored payment recipient when only unpublished ticketed events exist'
+);
+
+-- Should clear draft manual-tax selections after the sponsor changes
+select is(
+    (select manual_tax_rate_ids from event where event_id = :'eventUnpublishedID'::uuid),
+    '{}'::text[],
+    'Should require draft manual-tax events to reselect rates after a sponsor change'
 );
 
 -- Should update parent when the actor can manage the selected parent

@@ -147,7 +147,7 @@
               {% else -%}
                 Choose a ticket tier to continue.
               {% endif -%}
-              {% if event.tax_behavior == crate::types::payments::TicketTaxBehavior::Exclusive -%}
+              {% if event.shows_additional_ticket_tax() -%}
                 <span class="mt-1 block font-medium text-stone-700">Tax is added at checkout.</span>
               {% endif -%}
             </p>

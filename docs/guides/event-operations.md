@@ -313,13 +313,23 @@ include virtual access, but cannot be virtual-only. While any active or future
 positive price exists, OCG rejects venue, event-kind, currency, sponsor, or tax
 changes that would make Checkout ineligible.
 
-Each paid event selects inclusive tax, the default, or exclusive tax. Automatic
-Stripe Tax uses the professional-event admission classification for in-person
-tickets and hybrid tickets that include physical admission. If automatic tax
-is unavailable, a platform administrator must record current positive fixed
-rates supplied or approved by the fiscal sponsor for that exact venue,
-currency, and tax behavior. OCG never guesses a tax rate or silently treats a
-missing configuration as zero tax.
+Each event selects one ticket-tax mode in the `Tickets` tab: automatic Stripe
+Tax, manual Stripe Tax Rates, or no tax collection. Automatic Stripe Tax uses
+the professional-event admission classification for in-person tickets and
+hybrid tickets that include physical admission. Manual-tax events select one
+or more active Tax Rates owned by the fiscal sponsor's connected Stripe
+account; the selected rates must all match the event's inclusive or exclusive
+tax display. Paid manual-tax events require at least one selection. No-tax
+events hide the tax display control, never show `+ tax`, and require Stripe to
+return zero tax during payment reconciliation.
+
+Stripe remains authoritative for Tax Rate names, percentages, jurisdictions,
+activity, and inclusive/exclusive behavior. OCG stores the selected identifiers
+on the event, snapshots those identifiers when a paid purchase starts, and
+stores the authoritative subtotal, aggregate tax, and total returned after
+Checkout. Replacing a fiscal sponsor is blocked while an upcoming published
+paid manual-tax event exists. Draft manual-tax events must reselect rates after
+the sponsor changes.
 
 Ticket and discount data model:
 
