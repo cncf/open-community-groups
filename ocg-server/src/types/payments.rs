@@ -3,6 +3,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 /// ISO currency codes displayed without fractional units.
@@ -498,6 +499,92 @@ pub struct TicketVenue {
     pub state_name: Option<String>,
 }
 
+/// Required field in a physical ticket venue.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum TicketVenueField {
+    /// Street address field.
+    Address,
+    /// City field.
+    City,
+    /// ISO country code field.
+    CountryCode,
+    /// Venue display name field.
+    Name,
+    /// Postal code field.
+    ZipCode,
+}
+
+impl TicketVenue {
+    /// Returns whether the country code has a valid ISO code shape.
+    pub(crate) fn has_valid_country_code(&self) -> bool {
+        self.country_code.len() == 2
+            && self
+                .country_code
+                .chars()
+                .all(|character| character.is_ascii_alphabetic())
+    }
+
+    /// Returns the required venue fields whose values are blank.
+    pub(crate) fn missing_required_fields(&self) -> Vec<TicketVenueField> {
+        [
+            (TicketVenueField::Address, self.address.as_str()),
+            (TicketVenueField::City, self.city.as_str()),
+            (TicketVenueField::CountryCode, self.country_code.as_str()),
+            (TicketVenueField::Name, self.name.as_str()),
+            (TicketVenueField::ZipCode, self.zip_code.as_str()),
+        ]
+        .into_iter()
+        .filter_map(|(field, value)| value.trim().is_empty().then_some(field))
+        .collect()
+    }
+
+    /// Normalizes address codes and optional strings before provider use and caching.
+    pub(crate) fn normalized(&self) -> Self {
+        Self {
+            address: self.address.trim().to_string(),
+            city: self.city.trim().to_string(),
+            country_code: self.country_code.trim().to_ascii_uppercase(),
+            name: self.name.trim().to_string(),
+            zip_code: self.zip_code.trim().to_string(),
+
+            state_code: self
+                .state_code
+                .as_deref()
+                .map(str::trim)
+                .filter(|state_code| !state_code.is_empty())
+                .map(str::to_ascii_uppercase),
+            state_name: self
+                .state_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|state_name| !state_name.is_empty())
+                .map(str::to_string),
+        }
+    }
+
+    /// Builds the venue fingerprint shared by Rust and `PostgreSQL`.
+    pub(crate) fn performance_location_fingerprint(&self) -> String {
+        // Collect fields in the exact order used by PostgreSQL
+        let parts = [
+            self.address.as_str(),
+            self.city.as_str(),
+            self.country_code.as_str(),
+            self.name.as_str(),
+            self.state_code.as_deref().unwrap_or_default(),
+            self.zip_code.as_str(),
+        ];
+        let mut digest = Sha256::new();
+
+        // Separate fields so adjacent values cannot produce an ambiguous fingerprint
+        for part in parts {
+            digest.update(part.as_bytes());
+            digest.update([0]);
+        }
+
+        hex::encode(digest.finalize())
+    }
+}
+
 // Helpers.
 
 /// Formats a price in minor units using a currency code.
@@ -528,7 +615,7 @@ fn uses_zero_decimal_minor_units(currency_code: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::format_amount_minor;
+    use super::{TicketVenue, TicketVenueField, format_amount_minor};
 
     #[test]
     fn format_amount_minor_formats_two_decimal_currencies() {
@@ -548,5 +635,122 @@ mod tests {
     #[test]
     fn format_amount_minor_preserves_negative_amounts() {
         assert_eq!(format_amount_minor(-250, "usd"), "USD -2.50");
+    }
+
+    #[test]
+    fn test_ticket_venue_country_code_validation_checks_iso_shape() {
+        // Setup a valid two-letter country code
+        let mut venue = TicketVenue {
+            country_code: "PT".to_string(),
+            ..TicketVenue::default()
+        };
+
+        // Check valid, long, and non-alphabetic country codes
+        assert!(venue.has_valid_country_code());
+
+        venue.country_code = "PRT".to_string();
+        assert!(!venue.has_valid_country_code());
+
+        venue.country_code = "P1".to_string();
+        assert!(!venue.has_valid_country_code());
+    }
+
+    #[test]
+    fn test_ticket_venue_fingerprint_treats_missing_state_as_empty() {
+        // Setup equivalent venues with absent and empty state codes
+        let venue = TicketVenue {
+            address: "1 Main St".to_string(),
+            city: "Portland".to_string(),
+            country_code: "US".to_string(),
+            name: "Venue".to_string(),
+            zip_code: "97201".to_string(),
+
+            state_code: None,
+            state_name: None,
+        };
+        let venue_with_empty_state = TicketVenue {
+            state_code: Some(String::new()),
+            ..venue.clone()
+        };
+
+        // Check the digest matches the shared PostgreSQL algorithm
+        assert_eq!(
+            venue.performance_location_fingerprint(),
+            "b5b9cb58e4b43c71a197fbcd6eefc5bf7e609c48b78a3272858b25f170d62d35"
+        );
+        assert_eq!(
+            venue.performance_location_fingerprint(),
+            venue_with_empty_state.performance_location_fingerprint()
+        );
+    }
+
+    #[test]
+    fn test_ticket_venue_missing_required_fields_reports_blank_values() {
+        // Setup a venue with blank and populated required fields
+        let venue = TicketVenue {
+            address: " ".to_string(),
+            city: "Portland".to_string(),
+            country_code: String::new(),
+            name: "\t".to_string(),
+            zip_code: "97201".to_string(),
+
+            state_code: None,
+            state_name: None,
+        };
+
+        // Check only blank fields are reported in venue field order
+        assert_eq!(
+            venue.missing_required_fields(),
+            [
+                TicketVenueField::Address,
+                TicketVenueField::CountryCode,
+                TicketVenueField::Name,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ticket_venue_normalized_cleans_address_values() {
+        // Setup a venue with whitespace and lowercase location codes
+        let venue = TicketVenue {
+            address: " 1 Main St ".to_string(),
+            city: " Portland ".to_string(),
+            country_code: " us ".to_string(),
+            name: " Venue ".to_string(),
+            zip_code: " 97201 ".to_string(),
+
+            state_code: Some(" or ".to_string()),
+            state_name: Some(" Oregon ".to_string()),
+        };
+
+        // Check required and optional location values are normalized
+        assert_eq!(
+            venue.normalized(),
+            TicketVenue {
+                address: "1 Main St".to_string(),
+                city: "Portland".to_string(),
+                country_code: "US".to_string(),
+                name: "Venue".to_string(),
+                zip_code: "97201".to_string(),
+
+                state_code: Some("OR".to_string()),
+                state_name: Some("Oregon".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_ticket_venue_normalized_omits_blank_optional_values() {
+        // Setup optional location fields containing only whitespace
+        let venue = TicketVenue {
+            state_code: Some(" ".to_string()),
+            state_name: Some("\t".to_string()),
+            ..TicketVenue::default()
+        };
+        let normalized = venue.normalized();
+
+        // Check blank optional values are represented as absent
+        assert_eq!(normalized.state_code, None);
+        assert_eq!(normalized.state_name, None);
     }
 }

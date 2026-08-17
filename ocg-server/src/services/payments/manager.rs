@@ -16,7 +16,7 @@ use crate::{
     services::notifications::DynNotificationsManager,
     types::payments::{
         GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
-        TicketTaxCalculationMode, TicketTaxRate, TicketVenue,
+        TicketTaxCalculationMode, TicketTaxRate, TicketVenue, TicketVenueField,
     },
 };
 
@@ -25,8 +25,7 @@ use super::{
     DynPaymentsProvider, FinancialDocumentKind, FiscalSponsorReadinessError,
     FiscalSponsorReadinessInput, GetFinancialDocumentInput, ListTaxRatesInput,
     PerformanceLocationInput, ValidateTaxRatesInput,
-    notification_composer::PaymentsNotificationComposer,
-    provider::{PaymentsWebhookEndpoint, performance_location_fingerprint},
+    notification_composer::PaymentsNotificationComposer, provider::PaymentsWebhookEndpoint,
     webhook_reconciler::PaymentsWebhookReconciler,
 };
 
@@ -186,30 +185,6 @@ impl PgPaymentsManager {
             .map_err(HandleWebhookError::Unexpected)
     }
 
-    /// Normalizes address codes and optional strings before provider use and caching.
-    fn normalized_venue(venue: &TicketVenue) -> TicketVenue {
-        TicketVenue {
-            address: venue.address.trim().to_string(),
-            city: venue.city.trim().to_string(),
-            country_code: venue.country_code.trim().to_ascii_uppercase(),
-            name: venue.name.trim().to_string(),
-            zip_code: venue.zip_code.trim().to_string(),
-
-            state_code: venue
-                .state_code
-                .as_deref()
-                .map(str::trim)
-                .filter(|state_code| !state_code.is_empty())
-                .map(str::to_ascii_uppercase),
-            state_name: venue
-                .state_name
-                .as_deref()
-                .map(str::trim)
-                .filter(|state_name| !state_name.is_empty())
-                .map(str::to_string),
-        }
-    }
-
     /// Returns the configured payments provider when paid operations are available.
     fn payments_provider(&self) -> Result<&DynPaymentsProvider> {
         self.payments_provider
@@ -311,6 +286,7 @@ impl PaymentsManager for PgPaymentsManager {
         recipient: &GroupPaymentRecipient,
         venue: &TicketVenue,
     ) -> std::result::Result<AutomaticTaxReadiness, AutomaticTaxReadinessError> {
+        // Resolve and validate the configured provider
         let payments_provider = self
             .payments_provider()
             .map_err(AutomaticTaxReadinessError::Unexpected)?;
@@ -320,29 +296,26 @@ impl PaymentsManager for PgPaymentsManager {
             ));
         }
 
-        // Reject incomplete local data before contacting the provider
-        let venue = Self::normalized_venue(venue);
-        let mut fields = Vec::new();
-        for (field, value) in [
-            ("venue_address", venue.address.as_str()),
-            ("venue_city", venue.city.as_str()),
-            ("venue_country_code", venue.country_code.as_str()),
-            ("venue_name", venue.name.as_str()),
-            ("venue_zip_code", venue.zip_code.as_str()),
-        ] {
-            if value.is_empty() {
-                fields.push(field.to_string());
-            }
-        }
+        // Normalize and reject invalid local venue data before provider calls
+        let venue = venue.normalized();
+        let fields = venue
+            .missing_required_fields()
+            .into_iter()
+            .map(|field| {
+                match field {
+                    TicketVenueField::Address => "venue_address",
+                    TicketVenueField::City => "venue_city",
+                    TicketVenueField::CountryCode => "venue_country_code",
+                    TicketVenueField::Name => "venue_name",
+                    TicketVenueField::ZipCode => "venue_zip_code",
+                }
+                .to_string()
+            })
+            .collect::<Vec<_>>();
         if !fields.is_empty() {
             return Err(AutomaticTaxReadinessError::IncompleteVenue { fields });
         }
-        if venue.country_code.len() != 2
-            || !venue
-                .country_code
-                .chars()
-                .all(|character| character.is_ascii_alphabetic())
-        {
+        if !venue.has_valid_country_code() {
             return Err(AutomaticTaxReadinessError::CountryInvalid {
                 country_code: venue.country_code,
             });
@@ -365,8 +338,8 @@ impl PaymentsManager for PgPaymentsManager {
                 }
             })?;
 
-        // Reuse the existing account-and-address cache when possible
-        let fingerprint = performance_location_fingerprint(&venue);
+        // Load a matching account-and-address cache entry when available
+        let fingerprint = venue.performance_location_fingerprint();
         let cached_provider_tax_location_id = self
             .db
             .get_payment_provider_tax_location(
@@ -376,6 +349,8 @@ impl PaymentsManager for PgPaymentsManager {
             )
             .await
             .map_err(AutomaticTaxReadinessError::Unexpected)?;
+
+        // Create or reuse the provider performance location
         let readiness = payments_provider
             .ensure_performance_location(&PerformanceLocationInput {
                 connected_seller_id: recipient.recipient_id.clone(),
@@ -386,6 +361,7 @@ impl PaymentsManager for PgPaymentsManager {
             })
             .await?;
 
+        // Persist newly created provider locations for later reuse
         if !readiness.cached {
             self.db
                 .upsert_payment_provider_tax_location(

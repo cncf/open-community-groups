@@ -8,7 +8,6 @@ use axum::http::HeaderMap;
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
@@ -598,24 +597,4 @@ pub(crate) fn build_payments_provider(cfg: Option<&PaymentsConfig>) -> Option<Dy
         }
         None => None,
     }
-}
-
-/// Builds the shared normalized venue fingerprint used by Rust and `PostgreSQL`.
-pub(crate) fn performance_location_fingerprint(venue: &TicketVenue) -> String {
-    let parts = [
-        venue.address.as_str(),
-        venue.city.as_str(),
-        venue.country_code.as_str(),
-        venue.name.as_str(),
-        venue.state_code.as_deref().unwrap_or_default(),
-        venue.zip_code.as_str(),
-    ];
-    let mut digest = Sha256::new();
-
-    for part in parts {
-        digest.update(part.as_bytes());
-        digest.update([0]);
-    }
-
-    hex::encode(digest.finalize())
 }

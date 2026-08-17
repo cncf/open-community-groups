@@ -82,8 +82,7 @@ async fn automatic_tax_location_reuses_matching_persisted_cache_entry() {
     let provider = sample_stripe_provider();
     let mut input = sample_performance_location_input();
     input.venue.state_code = None;
-    let location_fingerprint =
-        crate::services::payments::provider::performance_location_fingerprint(&input.venue);
+    let location_fingerprint = input.venue.performance_location_fingerprint();
     input.cached_fingerprint = Some(location_fingerprint.clone());
     input.cached_provider_tax_location_id = Some("loc_cached".to_string());
 

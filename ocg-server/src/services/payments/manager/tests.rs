@@ -1153,8 +1153,7 @@ async fn ensure_automatic_tax_readiness_reuses_cached_location_without_state() {
         })
         .times(1)
         .returning(|input| {
-            let fingerprint =
-                crate::services::payments::provider::performance_location_fingerprint(&input.venue);
+            let fingerprint = input.venue.performance_location_fingerprint();
             Box::pin(async move {
                 Ok(AutomaticTaxReadiness {
                     cached: true,

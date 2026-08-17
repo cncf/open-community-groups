@@ -30,7 +30,7 @@ use super::{
     FiscalSponsorReadinessInput, GetCheckoutFinancialContextInput, GetFinancialDocumentInput,
     ListTaxRatesInput, PaymentsProvider, PaymentsWebhookEndpoint, PaymentsWebhookEvent,
     PerformanceLocationInput, RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus,
-    ValidateTaxRatesInput, performance_location_fingerprint,
+    ValidateTaxRatesInput,
 };
 
 #[cfg(test)]
@@ -273,7 +273,7 @@ impl StripeProvider {
         api_version: &str,
     ) -> std::result::Result<AutomaticTaxReadiness, AutomaticTaxReadinessError> {
         // Fingerprint the complete venue snapshot used by Stripe Tax
-        let fingerprint = performance_location_fingerprint(&input.venue);
+        let fingerprint = input.venue.performance_location_fingerprint();
 
         // Reuse the persisted location while its source snapshot still matches
         if input.cached_fingerprint.as_deref() == Some(fingerprint.as_str())
