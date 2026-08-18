@@ -234,22 +234,22 @@ test.describe("group dashboard refunds", () => {
     const recoverySection = dashboardContent.getByRole("region", {
       name: "Financial work needs attention",
     });
-    const applicationFeeCard = recoverySection.locator("article", {
+    const applicationFeeWork = recoverySection.locator("tbody", {
       hasText: "Application-fee refund",
     });
-    const creditNoteCard = recoverySection.locator("article", {
+    const creditNoteWork = recoverySection.locator("tbody", {
       hasText: "Credit note",
     });
 
     // Verify operator-facing failure details for both durable work types.
-    await expect(applicationFeeCard).toContainText("E2E Organizer Two");
-    await expect(applicationFeeCard).toContainText(/(?:US)?\$5\.00/u);
-    await expect(applicationFeeCard).toContainText(
+    await expect(applicationFeeWork).toContainText("E2E Organizer Two");
+    await expect(applicationFeeWork).toContainText(/(?:US)?\$5\.00/u);
+    await expect(applicationFeeWork).toContainText(
       "Application fee refund attempts exhausted",
     );
-    await expect(creditNoteCard).toContainText("E2E Events Manager One");
-    await expect(creditNoteCard).toContainText(/(?:US)?\$50\.00/u);
-    await expect(creditNoteCard).toContainText(
+    await expect(creditNoteWork).toContainText("E2E Events Manager One");
+    await expect(creditNoteWork).toContainText(/(?:US)?\$50\.00/u);
+    await expect(creditNoteWork).toContainText(
       "Credit note attempts exhausted",
     );
 
@@ -265,7 +265,7 @@ test.describe("group dashboard refunds", () => {
           new URL(response.url()).pathname ===
             "/dashboard/group/financial-work/retry",
       ),
-      creditNoteCard.getByRole("button", { name: "Retry operation" }).click(),
+      creditNoteWork.getByRole("button", { name: "Retry operation" }).click(),
     ]);
     const retryData = new URLSearchParams(retryResponse.request().postData());
     expect(retryData.get("kind")).toBe("credit-note");
@@ -278,10 +278,10 @@ test.describe("group dashboard refunds", () => {
     await organizerGroupPage.locator(".swal2-confirm").click();
 
     // Verify manual recovery collects all evidence without submitting it.
-    await applicationFeeCard
+    await applicationFeeWork
       .getByText("Complete outside OCG", { exact: true })
       .click();
-    const recoveryForm = applicationFeeCard.locator(
+    const recoveryForm = applicationFeeWork.locator(
       'form[hx-put="/dashboard/group/financial-work/recovery"]',
     );
     await expect(recoveryForm.locator('input[name="kind"]')).toHaveValue(

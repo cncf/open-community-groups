@@ -12,6 +12,7 @@ import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 
+const FINANCIAL_RECOVERY_MODAL_ID = "financial-recovery-modal";
 const RECOVERY_MODAL_ID = "refund-recovery-modal";
 const REFUND_FILTER_FORM_SELECTOR = "#refund-filters";
 const REFUND_FOCUS_TARGET_DATA_KEY = "refundFocusAfterSwap";
@@ -50,6 +51,16 @@ export const initializeRefundRecovery = (root) => {
   }
 
   root.addEventListener("click", (event) => {
+    const financialRecoveryTrigger = closestElementWithinRoot(
+      event.target,
+      "[data-financial-recovery-open]",
+      root,
+    );
+    if (financialRecoveryTrigger instanceof HTMLElement) {
+      openFinancialRecoveryModal(root, financialRecoveryTrigger);
+      return;
+    }
+
     const openTrigger = closestElementWithinRoot(event.target, "[data-refund-recovery-open]", root);
     if (openTrigger instanceof HTMLElement) {
       openRecoveryModal(root, openTrigger);
@@ -76,11 +87,22 @@ export const initializeRefundRecovery = (root) => {
     );
     if (closeTrigger) {
       setRefundModalVisible(root, RECOVERY_MODAL_ID, false);
+      return;
+    }
+
+    const financialRecoveryCloseTrigger = closestElementWithinRoot(
+      event.target,
+      "#close-financial-recovery-modal, #cancel-financial-recovery-modal, #overlay-financial-recovery-modal",
+      root,
+    );
+    if (financialRecoveryCloseTrigger) {
+      setRefundModalVisible(root, FINANCIAL_RECOVERY_MODAL_ID, false);
     }
   });
 
   root.addEventListener("keydown", (event) => {
     if (isEscapeEvent(event)) {
+      setRefundModalVisible(root, FINANCIAL_RECOVERY_MODAL_ID, false);
       setRefundModalVisible(root, RECOVERY_MODAL_ID, false);
       REFUND_REVIEW_CONFIGS.forEach((config) => {
         setRefundModalVisible(root, config.modalId, false);
@@ -101,6 +123,11 @@ export const initializeRefundRecovery = (root) => {
 
   root.addEventListener("htmx:afterRequest", (event) => {
     const requestSucceeded = isSuccessfulXHRStatus(event.detail?.xhr?.status);
+    if (event.target === getElementById(root, "financial-recovery-form") && requestSucceeded) {
+      root.dataset[REFUND_FOCUS_TARGET_DATA_KEY] = REFUND_SEARCH_ID;
+      setRefundModalVisible(root, FINANCIAL_RECOVERY_MODAL_ID, false);
+    }
+
     if (event.target === getElementById(root, "refund-recovery-form") && requestSucceeded) {
       root.dataset[REFUND_FOCUS_TARGET_DATA_KEY] = REFUND_SEARCH_ID;
       setRefundModalVisible(root, RECOVERY_MODAL_ID, false);
@@ -221,6 +248,47 @@ const normalizeRefundReviewNote = (root, event) => {
       delete parameterSet.review_note;
     }
   });
+};
+
+/**
+ * Populates and opens the modal for exhausted financial work.
+ * @param {Element} root Refunds list root.
+ * @param {HTMLElement} trigger Financial recovery action button.
+ * @returns {void}
+ */
+const openFinancialRecoveryModal = (root, trigger) => {
+  const form = getElementById(root, "financial-recovery-form");
+  form?.reset();
+
+  const attendee = getElementById(root, "financial-recovery-attendee");
+  const event = getElementById(root, "financial-recovery-event");
+  const kind = getElementById(root, "financial-recovery-kind");
+  const operation = getElementById(root, "financial-recovery-operation");
+  const providerLabel = getElementById(root, "financial-recovery-provider-label-text");
+  const workId = getElementById(root, "financial-recovery-work-id");
+
+  if (attendee) {
+    attendee.textContent = trigger.dataset.financialRecoveryAttendee || "-";
+  }
+  if (event) {
+    event.textContent = trigger.dataset.financialRecoveryEvent || "-";
+  }
+  if (kind instanceof HTMLInputElement) {
+    kind.value = trigger.dataset.financialRecoveryKind || "";
+  }
+  if (operation) {
+    operation.textContent = trigger.dataset.financialRecoveryOperation || "-";
+  }
+  if (providerLabel) {
+    providerLabel.textContent = trigger.dataset.financialRecoveryProviderLabel || "Provider object ID";
+  }
+  if (workId instanceof HTMLInputElement) {
+    workId.value = trigger.dataset.financialRecoveryWorkId || "";
+  }
+
+  const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");
+  const focusOrigin = actionsMenuSummary instanceof HTMLElement ? actionsMenuSummary : trigger;
+  setRefundModalVisible(root, FINANCIAL_RECOVERY_MODAL_ID, true, focusOrigin);
 };
 
 /**

@@ -46,6 +46,18 @@ describe("dashboard group refunds", () => {
           </button>
           <button
             type="button"
+            data-financial-recovery-open
+            data-financial-recovery-kind="application-fee-adjustment"
+            data-financial-recovery-work-id="work-123"
+            data-financial-recovery-operation="Application-fee refund"
+            data-financial-recovery-attendee="Alice"
+            data-financial-recovery-event="Community meetup"
+            data-financial-recovery-provider-label="Stripe application-fee refund ID"
+          >
+            Complete outside OCG
+          </button>
+          <button
+            type="button"
             data-refund-recovery-open
             data-event-purchase-id="purchase-123"
             data-refund-attendee="Alice"
@@ -74,6 +86,21 @@ describe("dashboard group refunds", () => {
             <div id="refund-reject-reason"></div>
             <textarea id="refund-review-note" name="review_note" autofocus></textarea>
             <button id="cancel-refund-reject-modal" type="button">Cancel</button>
+          </form>
+        </div>
+        <div id="financial-recovery-modal" class="hidden" aria-hidden="true">
+          <button id="close-financial-recovery-modal" type="button">Close</button>
+          <div id="overlay-financial-recovery-modal"></div>
+          <form id="financial-recovery-form">
+            <input id="financial-recovery-kind" name="kind" />
+            <input id="financial-recovery-work-id" name="work_id" />
+            <input id="financial-recovery-provider-object" name="provider_object_id" />
+            <input id="financial-recovery-reference" name="recovery_reference" />
+            <div id="financial-recovery-operation"></div>
+            <div id="financial-recovery-attendee"></div>
+            <div id="financial-recovery-event"></div>
+            <div id="financial-recovery-provider-label-text"></div>
+            <button id="cancel-financial-recovery-modal" type="button">Cancel</button>
           </form>
         </div>
         <div id="refund-recovery-modal" class="hidden" aria-hidden="true">
@@ -182,9 +209,7 @@ describe("dashboard group refunds", () => {
 
     // Open the rejection modal and verify the empty reason state.
     rejectTrigger.click();
-    expect(document.getElementById("refund-reject-reason")?.textContent).to.equal(
-      "No reason provided.",
-    );
+    expect(document.getElementById("refund-reject-reason")?.textContent).to.equal("No reason provided.");
   });
 
   it("omits a blank rejection note and trims a provided note", () => {
@@ -244,6 +269,50 @@ describe("dashboard group refunds", () => {
     root.innerHTML = '<input id="refund-search" type="search" />';
     dispatchHtmxAfterSwap(root);
     expect(document.activeElement).to.equal(document.getElementById("refund-search"));
+  });
+
+  it("populates and opens the modal for exhausted financial work", () => {
+    // Render an exhausted operation with stale recovery data.
+    renderRecoveryFixture();
+    document.getElementById("financial-recovery-provider-object").value = "stale";
+
+    // Open the external completion form from the financial actions menu.
+    document.querySelector("[data-financial-recovery-open]")?.click();
+
+    // Verify the selected operation populates the modal and resets its fields.
+    expect(document.getElementById("financial-recovery-modal")?.classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("financial-recovery-kind")?.value).to.equal("application-fee-adjustment");
+    expect(document.getElementById("financial-recovery-work-id")?.value).to.equal("work-123");
+    expect(document.getElementById("financial-recovery-operation")?.textContent).to.equal(
+      "Application-fee refund",
+    );
+    expect(document.getElementById("financial-recovery-attendee")?.textContent).to.equal("Alice");
+    expect(document.getElementById("financial-recovery-event")?.textContent).to.equal("Community meetup");
+    expect(document.getElementById("financial-recovery-provider-label-text")?.textContent).to.equal(
+      "Stripe application-fee refund ID",
+    );
+    expect(document.getElementById("financial-recovery-provider-object")?.value).to.equal("");
+    expect(document.querySelector("[data-actions-menu]")?.open).to.equal(false);
+    expect(document.activeElement).to.equal(document.getElementById("close-financial-recovery-modal"));
+  });
+
+  it("keeps financial recovery work on failure and closes after success", () => {
+    // Open the exhausted financial recovery form with entered evidence.
+    renderRecoveryFixture();
+    document.querySelector("[data-financial-recovery-open]")?.click();
+    const form = document.getElementById("financial-recovery-form");
+    const modal = document.getElementById("financial-recovery-modal");
+    const providerObject = document.getElementById("financial-recovery-provider-object");
+    providerObject.value = "fr_123";
+
+    // Preserve recoverable form work after a failed request.
+    dispatchHtmxAfterRequest(form, { status: 422 });
+    expect(modal?.classList.contains("hidden")).to.equal(false);
+    expect(providerObject.value).to.equal("fr_123");
+
+    // Close the modal after successful completion.
+    dispatchHtmxAfterRequest(form, { status: 204 });
+    expect(modal?.classList.contains("hidden")).to.equal(true);
   });
 
   it("populates and opens the modal for the selected recovery", () => {

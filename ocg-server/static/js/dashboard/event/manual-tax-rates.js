@@ -1,4 +1,6 @@
 import { getElementById } from "/static/js/common/dom.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
+import "/static/js/common/svg-spinner.js";
 
 const MANUAL_MODE = "manual";
 const PRESENCE_FIELD_NAME = "manual_tax_rate_ids_present";
@@ -11,15 +13,25 @@ const RATE_FIELD_NAME = "manual_tax_rate_ids[]";
  */
 export const initializeManualTaxRates = (root = document) => {
   const fieldset = getElementById(root, "manual-tax-rates-fieldset");
-  const list = fieldset?.querySelector('[data-tax-rates-role="list"]');
+  const select = fieldset?.querySelector('[data-tax-rates-role="select"]');
   const retryButton = fieldset?.querySelector('[data-tax-rates-action="retry"]');
+  const retryLabel = fieldset?.querySelector('[data-tax-rates-role="retry-label"]');
+  const retryLoading = fieldset?.querySelector('[data-tax-rates-role="retry-loading"]');
   const state = fieldset?.querySelector('[data-tax-rates-role="state"]');
   const taxBehaviorField = getElementById(root, "tax_behavior");
-  const taxBehaviorWrapper = root.querySelector('[data-tax-control="behavior"]');
   const taxModeField = getElementById(root, "tax_calculation_mode");
   const ticketTypesEditor = getElementById(root, "ticket-types-ui");
 
-  if (!fieldset || !list || !retryButton || !state || !taxBehaviorField || !taxModeField) {
+  if (
+    !fieldset ||
+    !select ||
+    !retryButton ||
+    !retryLabel ||
+    !retryLoading ||
+    !state ||
+    !taxBehaviorField ||
+    !taxModeField
+  ) {
     return () => {};
   }
 
@@ -46,27 +58,30 @@ export const initializeManualTaxRates = (root = document) => {
   const syncValidity = () => {
     const hasPositivePrices = ticketTypesEditor?.hasConfiguredPositivePrices?.() === true;
     const requiresSelection = taxModeField.value === MANUAL_MODE && hasPositivePrices;
-    const hasSelection = list.querySelector(`input[name="${RATE_FIELD_NAME}"]:checked`) !== null;
+    const hasSelection = select.value !== "";
+    select.name = hasSelection ? RATE_FIELD_NAME : "";
     taxModeField.setCustomValidity(
       requiresSelection && (!hasSelection || unavailableSelection)
-        ? "Select at least one available Stripe Tax Rate for paid tickets."
+        ? "Select an available Stripe Tax Rate for paid tickets."
         : "",
     );
   };
 
-  const loadRates = async () => {
+  const loadRates = async ({ showRetryLoading = false } = {}) => {
     const behavior = taxBehaviorField.value;
     abortController?.abort();
     abortController = new AbortController();
-    renderStatus({ retryButton, state }, "loading", behavior);
-    list.replaceChildren();
+    renderStatus({ retryButton, select, state }, "loading", behavior);
+    if (showRetryLoading) {
+      setRetryLoading({ retryButton, retryLabel, retryLoading }, true);
+    }
     syncValidity();
 
     try {
       // Load every active compatible rate from the current fiscal sponsor
       const url = new URL(fieldset.dataset.taxRatesUrl, window.location.origin);
       url.searchParams.set("tax_behavior", behavior);
-      const response = await fetch(url, {
+      const response = await ocgFetch(url, {
         headers: { Accept: "application/json" },
         signal: abortController.signal,
       });
@@ -84,29 +99,36 @@ export const initializeManualTaxRates = (root = document) => {
       }
 
       loadedBehavior = behavior;
+      const disabled = fieldset.dataset.disabled === "true";
       unavailableSelection = renderRates({
         behavior,
-        disabled: fieldset.dataset.disabled === "true",
-        list,
+        disabled,
         rates,
+        select,
         selectedRateIds,
       });
-      if (fieldset.dataset.disabled !== "true") {
+      if (!disabled) {
         initialHiddenInputs.splice(0).forEach((input) => input.remove());
       }
-      renderStatus(
-        { retryButton, state },
-        unavailableSelection ? "unavailable" : rates.length === 0 ? "empty" : "ready",
-        behavior,
-        rates.length,
-      );
+      const status = disabled
+        ? "read-only"
+        : unavailableSelection
+          ? "unavailable"
+          : rates.length === 0
+            ? "empty"
+            : "ready";
+      renderStatus({ retryButton, select, state }, status, behavior);
       syncValidity();
     } catch (error) {
       if (error.name === "AbortError") {
         return;
       }
-      renderStatus({ retryButton, state }, "error", behavior);
+      renderStatus({ retryButton, select, state }, "error", behavior);
       syncValidity();
+    } finally {
+      if (showRetryLoading) {
+        setRetryLoading({ retryButton, retryLabel, retryLoading }, false);
+      }
     }
   };
 
@@ -115,11 +137,7 @@ export const initializeManualTaxRates = (root = document) => {
     const isManual = mode === MANUAL_MODE;
     const hasTax = mode !== "none";
 
-    taxBehaviorWrapper?.classList.toggle("hidden", !hasTax);
     taxBehaviorField.disabled = !hasTax || fieldset.dataset.disabled === "true";
-    if (!hasTax) {
-      taxBehaviorField.value = "inclusive";
-    }
     fieldset.hidden = !isManual;
 
     if (!isManual) {
@@ -127,7 +145,8 @@ export const initializeManualTaxRates = (root = document) => {
       loadedBehavior = null;
       selectedRateIds.clear();
       initialHiddenInputs.splice(0).forEach((input) => input.remove());
-      list.replaceChildren();
+      select.replaceChildren();
+      select.disabled = true;
       unavailableSelection = false;
       syncValidity();
       return;
@@ -147,22 +166,22 @@ export const initializeManualTaxRates = (root = document) => {
   taxModeField.addEventListener("change", () => syncTaxControls());
   taxBehaviorField.addEventListener("change", () => syncTaxControls({ behaviorChanged: true }));
   ticketTypesEditor?.addEventListener("ticket-types-changed", syncValidity);
-  list.addEventListener("change", (event) => {
-    if (event.target?.matches(`input[name="${RATE_FIELD_NAME}"]`)) {
-      unavailableSelection = false;
-      syncValidity();
-    }
+  select.addEventListener("change", () => {
+    unavailableSelection = false;
+    renderStatus({ retryButton, select, state }, "ready", taxBehaviorField.value);
+    syncValidity();
   });
   retryButton.addEventListener("click", () => {
     loadedBehavior = null;
-    void loadRates();
+    void loadRates({ showRetryLoading: true });
   });
   fieldset.addEventListener("tax-rate-selection-updated", (event) => {
     selectedRateIds.clear();
-    for (const rateId of event.detail?.rateIds || []) {
-      if (typeof rateId === "string" && rateId.trim() !== "") {
-        selectedRateIds.add(rateId);
-      }
+    const selectedRateId = Array.isArray(event.detail?.rateIds)
+      ? event.detail.rateIds.find((rateId) => typeof rateId === "string" && rateId.trim() !== "")
+      : undefined;
+    if (selectedRateId) {
+      selectedRateIds.add(selectedRateId);
     }
     initialHiddenInputs.splice(0).forEach((input) => input.remove());
     for (const rateId of selectedRateIds) {
@@ -197,69 +216,103 @@ const parseSelectedRateIds = (value) => {
 };
 
 /**
- * Renders active Tax Rate checkboxes and reports missing prior selections.
+ * Renders active Tax Rate options and reports missing prior selections.
  * @param {Object} config Render configuration.
  * @returns {boolean} Whether a previously selected rate is unavailable.
  */
-const renderRates = ({ behavior, disabled, list, rates, selectedRateIds }) => {
+const renderRates = ({ behavior, disabled, rates, select, selectedRateIds }) => {
   const availableIds = new Set();
   const fragment = document.createDocumentFragment();
+  const selectedRateId = selectedRateIds.values().next().value;
+  const placeholder = document.createElement("option");
+  placeholder.selected = true;
+  placeholder.value = "";
+  placeholder.textContent = "Select a Stripe Tax Rate";
+  fragment.append(placeholder);
 
   for (const rate of rates) {
     if (!rate || typeof rate.id !== "string") {
       continue;
     }
     availableIds.add(rate.id);
-    const label = document.createElement("label");
-    label.className = "flex items-start gap-3 rounded-md border border-stone-200 bg-white p-4";
-
-    const checkbox = document.createElement("input");
-    checkbox.className = "checkbox-primary mt-1";
-    checkbox.type = "checkbox";
-    checkbox.name = RATE_FIELD_NAME;
-    checkbox.value = rate.id;
-    checkbox.checked = selectedRateIds.has(rate.id);
-    checkbox.disabled = disabled;
-
-    const description = document.createElement("span");
-    description.className = "min-w-0 text-sm/6 text-stone-600";
-    const title = document.createElement("span");
-    title.className = "block font-medium text-stone-900";
-    title.textContent = `${rate.display_name || "Tax Rate"} — ${rate.percentage}%`;
-    const detail = document.createElement("span");
-    detail.className = "block";
-    detail.textContent = `${rate.jurisdiction || "Jurisdiction not specified"} · Tax ${
-      behavior === "inclusive" ? "included in the ticket price" : "added at Checkout"
-    }`;
-    description.append(title, detail);
-    label.append(checkbox, description);
-    fragment.append(label);
+    const option = document.createElement("option");
+    option.value = rate.id;
+    option.selected = rate.id === selectedRateId;
+    if (option.selected) {
+      placeholder.selected = false;
+    }
+    option.textContent = `${rate.display_name || "Tax Rate"} — ${rate.percentage}% · ${
+      rate.jurisdiction || "Jurisdiction not specified"
+    } · Tax ${behavior === "inclusive" ? "included in the ticket price" : "added at Checkout"}`;
+    fragment.append(option);
   }
 
-  list.replaceChildren(fragment);
+  select.replaceChildren(fragment);
+  select.disabled = disabled;
   return Array.from(selectedRateIds).some((id) => !availableIds.has(id));
 };
 
 /**
- * Renders the accessible loading, empty, error, ready, or unavailable state.
+ * Shows a non-selectable status inside the Tax Rate selector.
+ * @param {HTMLSelectElement} select Tax Rate selector.
+ * @param {string} message Status message.
+ */
+const renderSelectMessage = (select, message) => {
+  const option = document.createElement("option");
+  option.disabled = true;
+  option.selected = true;
+  option.value = "";
+  option.textContent = message;
+  select.replaceChildren(option);
+  select.disabled = true;
+};
+
+/**
+ * Renders the Tax Rate loading, empty, error, ready, unavailable, or read-only state.
  * @param {Object} elements State elements.
  * @param {string} status Current state.
  * @param {string} behavior Requested tax behavior.
- * @param {number} [count=0] Available rate count.
  */
-const renderStatus = ({ retryButton, state }, status, behavior, count = 0) => {
+const renderStatus = ({ retryButton, select, state }, status, behavior) => {
   retryButton.hidden = status !== "error";
-  state.classList.toggle("text-red-700", status === "error" || status === "unavailable");
+  retryButton.title = status === "error" ? "Retry the request before saving paid manual-tax tickets." : "";
+  const showUnavailable = status === "unavailable";
+  const showReadOnly = status === "read-only";
+  state.hidden = !showUnavailable && !showReadOnly;
+  state.classList.toggle("text-red-700", showUnavailable);
+  state.classList.toggle("text-stone-600", showReadOnly);
 
   const behaviorLabel = behavior === "inclusive" ? "inclusive" : "exclusive";
   const messages = {
-    empty: `No active ${behaviorLabel} Tax Rates are available. Create rates in the fiscal sponsor's Stripe account, then retry.`,
+    empty: `No active ${behaviorLabel} Tax Rates are available.`,
     error:
       "Stripe Tax Rates are unavailable right now. Retry the request before saving paid manual-tax tickets.",
     loading: `Loading active ${behaviorLabel} Stripe Tax Rates…`,
-    ready: `${count} active ${behaviorLabel} Stripe Tax Rate${count === 1 ? "" : "s"} available.`,
+    "read-only": "Manual Tax Rate selection is currently read-only.",
     unavailable:
-      "One or more previously selected Tax Rates are inactive, missing, or belong to another account. Select available rates before saving.",
+      "A previously selected Tax Rate is inactive, missing, or belongs to another account. Select an available rate before saving.",
   };
-  state.textContent = messages[status] || "";
+  state.textContent = state.hidden ? "" : messages[status];
+
+  if (status === "loading" || status === "empty" || status === "error") {
+    renderSelectMessage(
+      select,
+      status === "error" ? "Stripe Tax Rates are unavailable right now." : messages[status],
+    );
+  }
+};
+
+/**
+ * Synchronizes the Retry button's pending state.
+ * @param {Object} elements Retry button elements.
+ * @param {boolean} loading Whether a retry request is pending.
+ */
+const setRetryLoading = ({ retryButton, retryLabel, retryLoading }, loading) => {
+  retryButton.disabled = loading;
+  retryButton.toggleAttribute("aria-busy", loading);
+  retryLabel.hidden = loading;
+  retryLoading.hidden = !loading;
+  if (loading) {
+    retryButton.hidden = false;
+  }
 };

@@ -890,7 +890,7 @@
               <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
             </div>
 
-            <div class="col-span-full 2xl:col-span-2">
+            <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
               <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
               <div class="mt-2">
                 <select id="tax_calculation_mode"
@@ -964,45 +964,69 @@
                  hidden>Learn how to configure manual tax</a>
             </div>
 
-            <fieldset id="manual-tax-rates-fieldset"
-                      class="col-span-full rounded-md border border-stone-200 bg-stone-50 p-4"
-                      data-disabled="{{ ticketing_read_only }}"
-                      data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'
-                      data-tax-rates-url="/dashboard/group/events/tax-rates"
-                      tabindex="-1"
-                      {% if !self.uses_manual_ticket_tax() %}hidden{% endif %}>
-              <legend class="form-label px-1">Manual Stripe Tax Rates</legend>
-              <p class="form-legend mt-0">
-                Select one or more active rates owned by this group's fiscal sponsor. The same rates apply to every paid ticket tier.
+            <div id="manual-tax-rates-fieldset"
+                 class="col-span-full max-w-3xl"
+                 data-disabled="{{ ticketing_read_only }}"
+                 data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'
+                 data-tax-rates-url="/dashboard/group/events/tax-rates"
+                 tabindex="-1"
+                 {% if !self.uses_manual_ticket_tax() %}hidden{% endif %}>
+              <div class="form-label">
+                <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
+                <span class="group/manual-tax-info relative inline-flex align-super">
+                  <button type="button"
+                          class="inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                          aria-label="About Manual Stripe Tax Rates"
+                          aria-describedby="manual-tax-rates-info">
+                    <span class="svg-icon size-3 icon-question-mark bg-stone-500"
+                          aria-hidden="true"></span>
+                  </button>
+                  {% call dashboard::tooltip_panel(
+                    id = "manual-tax-rates-info",
+                    title = "Stripe Tax Rates",
+                    visibility_classes = "group-hover/manual-tax-info:visible group-hover/manual-tax-info:opacity-100 group-focus-within/manual-tax-info:visible group-focus-within/manual-tax-info:opacity-100",
+                    width_classes = "w-72"
+                  ) -%}
+                  <span class="block text-stone-900">Create Tax Rates in the fiscal sponsor's Stripe account.</span>
+                  {% endcall -%}
+                </span>
+              </div>
+              <div class="mt-2 flex items-end gap-3">
+                <select id="manual-tax-rates"
+                        name="manual_tax_rate_ids[]"
+                        class="select-primary flex-1"
+                        data-tax-rates-role="select"
+                        aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>
+                <button type="button"
+                        class="btn-primary-outline inline-flex min-w-28 shrink-0 items-center justify-center whitespace-nowrap"
+                        data-tax-rates-action="retry"
+                        aria-label="Retry loading Stripe Tax Rates"
+                        hidden>
+                  <span data-tax-rates-role="retry-label">Retry</span>
+                  <span class="inline-flex items-center"
+                        data-tax-rates-role="retry-loading"
+                        hidden>
+                    <svg-spinner size="size-4" label="Loading Stripe Tax Rates">
+                    </svg-spinner>
+                  </span>
+                </button>
+              </div>
+              <p id="manual-tax-rates-help" class="form-legend">
+                Select an active rate owned by this group's fiscal sponsor. The same rate applies to every paid ticket tier.
               </p>
-              <p class="mt-3 text-sm/6 text-stone-600"
+              <p id="manual-tax-rates-state"
+                 class="mt-2 text-sm/6"
                  data-tax-rates-role="state"
                  role="status"
-                 aria-live="polite"></p>
-              <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"
-                   data-tax-rates-role="list"></div>
-              <button type="button"
-                      class="btn-primary-outline btn-mini mt-4"
-                      data-tax-rates-action="retry"
-                      hidden>Retry loading rates</button>
-            </fieldset>
+                 aria-live="polite"
+                 hidden></p>
+            </div>
           </div>
         </div>
       {% endif -%}
 
       <div>
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
-          <div class="flex items-center justify-end gap-3">
-            <button id="add-ticket-type-button"
-                    type="button"
-                    class="btn-secondary whitespace-nowrap"
-                    aria-label="Add ticket type"
-                    {% if ticketing_read_only %}
-                      disabled title="Ticket settings are currently read-only."
-                    {% endif %}>Add ticket type</button>
-          </div>
-        </div>
+        <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
         <p class="mt-1 text-sm/6 text-stone-500">
           Use one ticket type per tier and add price windows for scheduled pricing.
           Paid ticket prices require an in-person or hybrid event with a venue name,
@@ -1013,32 +1037,69 @@
             Set the ticket amount to 0 to make a specific tier free.
           {% endif -%}
         </p>
-        <div class="mt-10">{# djlint:off #}
-          <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="{{ ticketing_read_only }}" {% if ticketing_free_only %}free-only{% endif %} ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
-                  {# djlint:on #}</div>
+        <div class="mt-10">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div id="ticket-types-count"
+                 class="text-sm font-semibold text-stone-700"
+                 aria-live="polite"
+                 aria-atomic="true">
+              {% if let Some(ticket_types) = &event.ticket_types -%}
+                {{ ticket_types.len() }} ticket type{% if ticket_types.len() != 1 %}s{% endif %}
+              {% else -%}
+                0 ticket types
+              {% endif -%}
+            </div>
+            <button id="add-ticket-type-button"
+                    type="button"
+                    class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                    aria-label="Add ticket type"
+                    {% if ticketing_read_only %}
+                      disabled title="Ticket settings are currently read-only."
+                    {% endif %}>
+              <div class="svg-icon size-4 icon-add-circle"></div>
+              Add ticket type
+            </button>
+          </div>
+          {# djlint:off #}
+          <ticket-types-editor id="ticket-types-ui" class="mt-5 block space-y-4" data-disabled="{{ ticketing_read_only }}" {% if ticketing_free_only %}free-only{% endif %} ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
+          {# djlint:on #}
+        </div>
       </div>
 
       {% if payments_ready || event.is_paid_capable() -%}
         <div class="pb-12">
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
-            <div class="flex items-center justify-end gap-3">
-              <button id="add-discount-code-button"
-                      type="button"
-                      class="btn-secondary whitespace-nowrap"
-                      aria-label="Add discount code"
-                      {% if ticketing_read_only %}
-                        disabled title="Ticket settings are currently read-only."
-                      {% endif %}>Add discount code</button>
-            </div>
-          </div>
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
           <p class="mt-1 text-sm/6 text-stone-500">
             Discount codes apply to the event currency and can be limited by schedule, remaining
             uses, or total redemptions.
           </p>
-          <div class="mt-10">{# djlint:off #}
-            <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="{{ ticketing_read_only }}" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>
-                    {# djlint:on #}</div>
+          <div class="mt-10">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div id="discount-codes-count"
+                   class="text-sm font-semibold text-stone-700"
+                   aria-live="polite"
+                   aria-atomic="true">
+                {% if let Some(discount_codes) = &event.discount_codes -%}
+                  {{ discount_codes.len() }} discount code{% if discount_codes.len() != 1 %}s{% endif %}
+                {% else -%}
+                  0 discount codes
+                {% endif -%}
+              </div>
+              <button id="add-discount-code-button"
+                      type="button"
+                      class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                      aria-label="Add discount code"
+                      {% if ticketing_read_only %}
+                        disabled title="Ticket settings are currently read-only."
+                      {% endif %}>
+                <div class="svg-icon size-4 icon-add-circle"></div>
+                Add discount code
+              </button>
+            </div>
+            {# djlint:off #}
+            <discount-codes-editor id="discount-codes-ui" class="mt-5 block space-y-4" data-disabled="{{ ticketing_read_only }}" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>
+            {# djlint:on #}
+          </div>
         </div>
       {% endif -%}
     </div>

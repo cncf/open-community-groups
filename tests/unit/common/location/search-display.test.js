@@ -35,9 +35,6 @@ describe("location search display", () => {
     expect(getLocationLegendText("country", true)).to.equal("Country where the venue is located.");
     expect(getLocationLegendText("zip", false)).to.equal("Postal/zip code of the venue.");
     expect(getLocationLegendText("state", false)).to.equal("State, province, or region.");
-    expect(getLocationLegendText("stateCode", true)).to.equal(
-      "Subdivision code used in the address, such as CA or MA.",
-    );
     expect(getLocationLegendText("unknown", false)).to.equal("");
   });
 

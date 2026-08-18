@@ -18,6 +18,119 @@
 </p>
 {# End refunds header -#}
 
+{% if !financial_recoveries.is_empty() -%}
+  {# Exhausted financial work -#}
+  <div class="mt-5 mb-10 overflow-x-auto">
+    <table class="table-auto w-full min-w-[64rem] text-xs lg:text-sm text-left text-stone-500"
+           aria-label="Financial work needing attention">
+      <caption class="border-b border-amber-200 bg-amber-50 px-3 py-3 text-left text-amber-900 xl:px-5">
+        <span class="block text-sm font-semibold">Financial work needs attention</span>
+        <span class="mt-1 block text-xs normal-case leading-5">
+          Automatic retries are exhausted. Retry the operation or record work completed directly in Stripe.
+        </span>
+      </caption>
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 py-3 xl:px-5">Attendee</th>
+          <th scope="col" class="px-3 py-3 xl:px-5">Event</th>
+          <th scope="col" class="px-3 py-3 xl:px-5">Amount</th>
+          <th scope="col" class="px-3 py-3 xl:px-5">Operation</th>
+          <th scope="col" class="px-3 py-3 xl:px-5">Status</th>
+          <th scope="col" class="w-[72px] px-3 py-3 text-right xl:px-5">
+            <span class="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for recovery in financial_recoveries -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-top"
+              data-financial-work-kind="{{ recovery.kind }}">
+            <td class="px-3 py-4 xl:px-5">
+              <div class="font-medium text-stone-900">{{ recovery.name.as_deref() |assigned_or(recovery.username) }}</div>
+              <div class="mt-0.5 text-xs text-stone-600">{{ recovery.email }}</div>
+            </td>
+            <td class="px-3 py-4 font-medium text-stone-900 xl:px-5">{{ recovery.event_name }}</td>
+            <td class="px-3 py-4 font-medium text-stone-900 xl:px-5"
+                data-localized-currency>{{ recovery.formatted_amount() }}</td>
+            <td class="px-3 py-4 text-stone-900 xl:px-5">{{ recovery.operation }}</td>
+            <td class="px-3 py-4 xl:px-5">
+              {% let failure_tooltip_id -%}financial-failure-{{ recovery.work_id }}{%- endlet %}
+            <span class="group/financial-failure relative inline-flex">
+              <button type="button"
+                      class="relative inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                      aria-label="View last failure for {{ recovery.operation }}"
+                      aria-describedby="{{ failure_tooltip_id }}">
+                <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">
+                  Needs retry ({{ recovery.attempt_count }} attempt{% if recovery.attempt_count != 1 %}s{% endif %})
+                </span>
+                <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-500"
+                      aria-hidden="true"></span>
+              </button>
+              {% call dashboard::tooltip_panel(
+                id = failure_tooltip_id,
+                title = "Last failure",
+                visibility_classes = "group-hover/financial-failure:visible group-hover/financial-failure:opacity-100 group-focus-within/financial-failure:visible group-focus-within/financial-failure:opacity-100",
+                width_classes = "w-80"
+              ) -%}
+              <span class="block text-stone-900">{{ recovery.failure_message }}</span>
+              {% endcall -%}
+            </span>
+          </td>
+          <td class="w-[72px] px-3 py-4 text-right xl:px-5">
+            {% if can_manage_events -%}
+              <details data-actions-menu class="group relative inline-flex justify-end">
+                <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                         aria-label="Open financial recovery actions for {{ recovery.operation }}"
+                         title="Open financial recovery actions">
+                  <span class="svg-icon size-4 icon-vertical-dots" aria-hidden="true"></span>
+                </summary>
+                <div class="dropdown absolute end-0 top-8 z-10 w-[230px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                  <ul class="text-sm text-stone-700">
+                    <li>
+                      <form hx-put="/dashboard/group/financial-work/retry"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt="find button[type='submit']"
+                            data-htmx-response
+                            data-success-message="Financial work requeued."
+                            data-error-message="Something went wrong requeueing this financial work. Please try again later.">
+                        <input type="hidden" name="kind" value="{{ recovery.kind }}">
+                        <input type="hidden" name="work_id" value="{{ recovery.work_id }}">
+                        <button type="submit"
+                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <span class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"
+                                aria-hidden="true"></span>
+                          <span>Retry operation</span>
+                        </button>
+                      </form>
+                    </li>
+                    <li>
+                      <button type="button"
+                              data-financial-recovery-open
+                              data-financial-recovery-kind="{{ recovery.kind }}"
+                              data-financial-recovery-work-id="{{ recovery.work_id }}"
+                              data-financial-recovery-operation="{{ recovery.operation }}"
+                              data-financial-recovery-attendee="{{ recovery.name.as_deref() |assigned_or(recovery.username) }}"
+                              data-financial-recovery-event="{{ recovery.event_name }}"
+                              data-financial-recovery-provider-label="{{ recovery.kind.provider_object_label() }}"
+                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                        <span class="svg-icon size-4 icon-pencil shrink-0 bg-stone-600"
+                              aria-hidden="true"></span>
+                        <span>Complete outside OCG</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </details>
+            {% endif -%}
+          </td>
+        </tr>
+{% endfor -%}
+</tbody>
+</table>
+</div>
+{# End exhausted financial work -#}
+{% endif -%}
+
 {# Refund filters -#}
 <form id="refund-filters"
       class="my-5 flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between"
@@ -95,138 +208,6 @@
   </div>
 </form>
 {# End refund filters -#}
-
-{% if !financial_recoveries.is_empty() -%}
-  {# Exhausted financial work -#}
-  <section class="mb-8 rounded-xl border border-red-200 bg-red-50/40 p-4 sm:p-5"
-           aria-labelledby="financial-recovery-heading">
-    <div class="max-w-3xl">
-      <h2 id="financial-recovery-heading"
-          class="text-base font-semibold text-stone-900">Financial work needs attention</h2>
-      <p class="mt-1 text-sm leading-6 text-stone-600">
-        Automatic retries are exhausted. Retry the operation or record work completed directly in Stripe.
-      </p>
-    </div>
-    <div class="mt-4 grid gap-4">
-      {% for recovery in financial_recoveries -%}
-        <article class="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <h3 class="font-semibold text-stone-900">{{ recovery.operation }}</h3>
-                <span class="custom-badge border-red-300 bg-red-50 px-2.5 py-0.5 text-red-700">Needs retry</span>
-              </div>
-              <dl class="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
-                <div>
-                  <dt class="text-stone-500">Attendee</dt>
-                  <dd class="mt-1 font-medium text-stone-900">
-                    {{ recovery.name.as_deref() |assigned_or(recovery.username) }}
-                  </dd>
-                  <dd class="mt-0.5 text-xs text-stone-600">
-                    {{ recovery.email }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-stone-500">Event</dt>
-                  <dd class="mt-1 font-medium text-stone-900">
-                    {{ recovery.event_name }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-stone-500">Amount</dt>
-                  <dd class="mt-1 font-medium text-stone-900" data-localized-currency>
-                    {{ recovery.formatted_amount() }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-stone-500">Attempts</dt>
-                  <dd class="mt-1 font-medium text-stone-900">
-                    {{ recovery.attempt_count }}
-                  </dd>
-                </div>
-              </dl>
-              <div class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
-                <span class="font-semibold">Last failure:</span> {{ recovery.failure_message }}
-              </div>
-            </div>
-            {% if can_manage_events -%}
-              <form hx-put="/dashboard/group/financial-work/retry"
-                    hx-indicator="#dashboard-spinner"
-                    hx-disabled-elt="find button[type='submit']"
-                    data-htmx-response
-                    data-success-message="Financial work requeued."
-                    data-error-message="Something went wrong requeueing this financial work. Please try again later.">
-                <input type="hidden" name="kind" value="{{ recovery.kind }}">
-                <input type="hidden" name="work_id" value="{{ recovery.work_id }}">
-                <button type="submit" class="btn-primary-outline whitespace-nowrap">Retry operation</button>
-              </form>
-            {% endif -%}
-          </div>
-          {% if can_manage_events -%}
-            <details class="mt-4 border-t border-stone-200 pt-4">
-              <summary class="w-fit cursor-pointer text-sm font-semibold text-primary-700 hover:text-primary-800">
-                Complete outside OCG
-              </summary>
-              <form class="mt-4 max-w-2xl"
-                    hx-put="/dashboard/group/financial-work/recovery"
-                    hx-indicator="#dashboard-spinner"
-                    hx-disabled-elt="find button[type='submit']"
-                    data-htmx-response
-                    data-success-message="Financial recovery completed."
-                    data-error-message="Something went wrong completing this financial recovery. Please try again later.">
-                <input type="hidden" name="kind" value="{{ recovery.kind }}">
-                <input type="hidden" name="work_id" value="{{ recovery.work_id }}">
-                {% let provider_object_id -%}financial-provider-object-{{ recovery.work_id }}{%- endlet %}
-              <div>
-                <label for="{{ provider_object_id }}" class="form-label">
-                  {{ recovery.kind.provider_object_label() }} <span class="asterisk">*</span>
-                </label>
-                <input id="{{ provider_object_id }}"
-                       class="input-primary mt-2"
-                       type="text"
-                       name="provider_object_id"
-                       required
-                       maxlength="{{ crate::validation::MAX_LEN_M }}"
-                       autocomplete="off">
-              </div>
-              {% let recovery_reference_id -%}financial-recovery-reference-{{ recovery.work_id }}{%- endlet %}
-            <div class="mt-4">
-              <label for="{{ recovery_reference_id }}" class="form-label">
-                External recovery reference <span class="asterisk">*</span>
-              </label>
-              <input id="{{ recovery_reference_id }}"
-                     class="input-primary mt-2"
-                     type="text"
-                     name="recovery_reference"
-                     required
-                     maxlength="{{ crate::validation::MAX_LEN_M }}"
-                     autocomplete="off">
-            </div>
-            {% let recovery_note_id -%}financial-recovery-note-{{ recovery.work_id }}{%- endlet %}
-          <div class="mt-4">
-            <label for="{{ recovery_note_id }}" class="form-label">
-              Evidence reviewed <span class="asterisk">*</span>
-            </label>
-            <textarea id="{{ recovery_note_id }}"
-                      class="input-primary mt-2 min-h-28"
-                      name="recovery_note"
-                      required
-                      maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
-          </div>
-          <button type="submit" class="btn-primary mt-4">Complete recovery</button>
-        </form>
-      </details>
-    {% else -%}
-      <p class="mt-4 border-t border-stone-200 pt-4 text-sm text-stone-600">
-        Events write access is required to retry or complete this work.
-      </p>
-    {% endif -%}
-  </article>
-{% endfor -%}
-</div>
-</section>
-{# End exhausted financial work -#}
-{% endif -%}
 
 <div class="mb-3 text-sm text-stone-600">
   {{ pagination::range_display(offset = offset.unwrap_or(0) , count = refunds.len() + financial_recoveries.len(), total = total, label = "operation") }}
@@ -351,127 +332,166 @@
                   {% endcall -%}
                 </span>
               </div>
-              <div class="mt-1 text-xs text-stone-600">{{ refund.kind_label() }}</div>
               <div class="mt-2 xl:hidden">
-                {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
-                {% if let Some(attempt_count) = refund.attempt_count -%}
-                  {% if *attempt_count > 0 && refund.can_retry() -%}
-                    <div class="mt-1 text-xs text-stone-600">
-                      {{ attempt_count }} attempt{% if *attempt_count != 1 %}s{% endif %}
-                    </div>
-                  {% endif -%}
+                {% let attempt_count = refund.attempt_count.unwrap_or(0) -%}
+                {% let attempts_tooltip_id -%}refund-attempts-mobile-{{ refund.event_purchase_id }}{%- endlet %}
+              <span class="relative inline-flex">
+                {% if attempt_count > 0 && refund.can_retry() -%}
+                  <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">
+                    {{ refund.status.label() }} ({{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %})
+                  </span>
+                {% else -%}
+                  {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
                 {% endif -%}
-              </div>
-            </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                <span class="group/refund-attempts-mobile absolute -end-1 -top-1 inline-flex
+                             {% if attempt_count <= 0 || !refund.can_retry() %}hidden{% endif %}">
+                  <button type="button"
+                          class="-m-1 inline-flex cursor-help rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                          aria-label="View refund retry attempts"
+                          aria-describedby="{{ attempts_tooltip_id }}">
+                    <span class="size-2.5 rounded-full border-2 border-white bg-red-500"
+                          aria-hidden="true"></span>
+                  </button>
+                  {% call dashboard::tooltip_panel(
+                    id = attempts_tooltip_id,
+                    title = "Retry attempts",
+                    visibility_classes = "group-hover/refund-attempts-mobile:visible group-hover/refund-attempts-mobile:opacity-100 group-focus-within/refund-attempts-mobile:visible group-focus-within/refund-attempts-mobile:opacity-100"
+                  ) -%}
+                  <span class="block text-stone-900">{{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %}</span>
+                  {% endcall -%}
+                </span>
+              </span>
+            </div>
+          </td>
+          <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+            {% let attempt_count = refund.attempt_count.unwrap_or(0) -%}
+            {% let attempts_tooltip_id -%}refund-attempts-{{ refund.event_purchase_id }}{%- endlet %}
+          <span class="relative inline-flex">
+            {% if attempt_count > 0 && refund.can_retry() -%}
+              <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">
+                {{ refund.status.label() }} ({{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %})
+              </span>
+            {% else -%}
               {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
-              {% if let Some(attempt_count) = refund.attempt_count -%}
-                {% if *attempt_count > 0 && refund.can_retry() -%}
-                  <div class="mt-2 text-xs text-stone-600">
-                    {{ attempt_count }} attempt{% if *attempt_count != 1 %}s{% endif %}
-                  </div>
-                {% endif -%}
-              {% endif -%}
-            </td>
-            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
-              <div class="text-stone-900">{{ refund.updated_at.format("%b %d, %Y") }}</div>
-              <div class="mt-1 text-xs text-stone-600">{{ refund.updated_at.format("%H:%M UTC") }}</div>
-            </td>
-            <td class="px-1 sm:px-3 xl:px-5 py-4 w-12 xl:w-[72px] text-right">
-              {% if (can_manage_events && (refund.can_approve() || refund.can_reject() || refund.can_retry())) || refund.can_recover() -%}
-                <details data-actions-menu class="group relative">
-                  <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
-                           aria-label="Open refund actions for {{ refund.name.as_deref() |assigned_or(refund.username) }}"
-                           title="Open refund actions">
-                    <div class="svg-icon size-4 icon-vertical-dots"></div>
-                  </summary>
-                  <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
-                    <ul class="text-sm text-stone-700">
-                      {% if refund.can_approve() -%}
-                        <li>
-                          <button type="button"
-                                  data-refund-approve-open
-                                  data-refund-approve-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/approve"
-                                  data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
-                                  data-refund-event="{{ refund.event_name }}"
-                                  data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
-                                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                            <div class="svg-icon size-4 icon-check shrink-0 bg-stone-600"></div>
-                            <span>Approve refund</span>
-                          </button>
-                        </li>
-                      {% endif -%}
-                      {% if refund.can_reject() -%}
-                        <li>
-                          <button type="button"
-                                  data-refund-reject-open
-                                  data-refund-reject-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/reject"
-                                  data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
-                                  data-refund-event="{{ refund.event_name }}"
-                                  data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
-                                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                            <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
-                            <span>Reject refund</span>
-                          </button>
-                        </li>
-                      {% endif -%}
-                      {% if refund.can_retry() -%}
-                        <li>
-                          <button type="button"
-                                  hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/retry"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-disabled-elt="this"
-                                  data-htmx-response
-                                  data-success-message="Refund requeued."
-                                  data-error-message="Something went wrong requeueing this refund. Please try again later."
-                                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                            <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
-                            <span>Retry refund</span>
-                          </button>
-                        </li>
-                      {% endif -%}
-                      {% if refund.can_recover() -%}
-                        <li>
-                          {% if can_manage_events -%}
-                            <button type="button"
-                                    data-refund-recovery-open
-                                    data-event-purchase-id="{{ refund.event_purchase_id }}"
-                                    data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
-                                    data-refund-event="{{ refund.event_name }}"
-                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                              <div class="svg-icon size-4 icon-check shrink-0 bg-stone-600"></div>
-                              <span>Complete recovery</span>
-                            </button>
-                          {% else -%}
-                            {% let recovery_tooltip_id -%}refund-recovery-requirement-{{ refund.event_purchase_id }}{%- endlet %}
-                          <span class="group/recovery-tooltip relative block cursor-not-allowed"
-                                tabindex="0"
-                                aria-describedby="{{ recovery_tooltip_id }}">
-                            <button type="button"
-                                    disabled
-                                    aria-disabled="true"
-                                    class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400 opacity-60">
-                              <div class="svg-icon size-4 icon-check shrink-0 bg-stone-400"></div>
-                              <span>Complete recovery</span>
-                            </button>
-                            {% call dashboard::tooltip_panel(
-                              id = recovery_tooltip_id,
-                              title = "Recovery unavailable",
-                              visibility_classes = "group-hover/recovery-tooltip:visible group-hover/recovery-tooltip:opacity-100 group-focus/recovery-tooltip:visible group-focus/recovery-tooltip:opacity-100",
-                              alignment_classes = "end-1"
-                            ) -%}
-                            <span class="block text-stone-900">Events write access is required to complete refund recovery.</span>
-                            {% endcall -%}
-                          </span>
-                      {% endif -%}
+            {% endif -%}
+            <span class="group/refund-attempts absolute -end-1 -top-1 inline-flex
+                         {% if attempt_count <= 0 || !refund.can_retry() %}hidden{% endif %}">
+              <button type="button"
+                      class="-m-1 inline-flex cursor-help rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                      aria-label="View refund retry attempts"
+                      aria-describedby="{{ attempts_tooltip_id }}">
+                <span class="size-2.5 rounded-full border-2 border-white bg-red-500"
+                      aria-hidden="true"></span>
+              </button>
+              {% call dashboard::tooltip_panel(
+                id = attempts_tooltip_id,
+                title = "Retry attempts",
+                visibility_classes = "group-hover/refund-attempts:visible group-hover/refund-attempts:opacity-100 group-focus-within/refund-attempts:visible group-focus-within/refund-attempts:opacity-100"
+              ) -%}
+              <span class="block text-stone-900">{{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %}</span>
+              {% endcall -%}
+            </span>
+          </span>
+        </td>
+        <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+          <div class="text-stone-900">{{ refund.updated_at.format("%b %d, %Y") }}</div>
+          <div class="mt-1 text-xs text-stone-600">{{ refund.updated_at.format("%H:%M UTC") }}</div>
+        </td>
+        <td class="px-1 sm:px-3 xl:px-5 py-4 w-12 xl:w-[72px] text-right">
+          {% if (can_manage_events && (refund.can_approve() || refund.can_reject() || refund.can_retry())) || refund.can_recover() -%}
+            <details data-actions-menu class="group relative">
+              <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                       aria-label="Open refund actions for {{ refund.name.as_deref() |assigned_or(refund.username) }}"
+                       title="Open refund actions">
+                <div class="svg-icon size-4 icon-vertical-dots"></div>
+              </summary>
+              <div class="dropdown absolute end-0 top-8 z-10 w-[210px] rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                <ul class="text-sm text-stone-700">
+                  {% if refund.can_approve() -%}
+                    <li>
+                      <button type="button"
+                              data-refund-approve-open
+                              data-refund-approve-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/approve"
+                              data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
+                              data-refund-event="{{ refund.event_name }}"
+                              data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
+                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                        <div class="svg-icon size-4 icon-check shrink-0 bg-stone-600"></div>
+                        <span>Approve refund</span>
+                      </button>
                     </li>
-              {% endif -%}
-            </ul>
-          </div>
-          </details>
-        {% endif -%}
-      </td>
-    </tr>
+                  {% endif -%}
+                  {% if refund.can_reject() -%}
+                    <li>
+                      <button type="button"
+                              data-refund-reject-open
+                              data-refund-reject-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/reject"
+                              data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
+                              data-refund-event="{{ refund.event_name }}"
+                              data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
+                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                        <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
+                        <span>Reject refund</span>
+                      </button>
+                    </li>
+                  {% endif -%}
+                  {% if refund.can_retry() -%}
+                    <li>
+                      <button type="button"
+                              hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/retry"
+                              hx-indicator="#dashboard-spinner"
+                              hx-disabled-elt="this"
+                              data-htmx-response
+                              data-success-message="Refund requeued."
+                              data-error-message="Something went wrong requeueing this refund. Please try again later."
+                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                        <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-600"></div>
+                        <span>Retry refund</span>
+                      </button>
+                    </li>
+                  {% endif -%}
+                  {% if refund.can_recover() -%}
+                    <li>
+                      {% if can_manage_events -%}
+                        <button type="button"
+                                data-refund-recovery-open
+                                data-event-purchase-id="{{ refund.event_purchase_id }}"
+                                data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
+                                data-refund-event="{{ refund.event_name }}"
+                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <div class="svg-icon size-4 icon-check shrink-0 bg-stone-600"></div>
+                          <span>Complete recovery</span>
+                        </button>
+                      {% else -%}
+                        {% let recovery_tooltip_id -%}refund-recovery-requirement-{{ refund.event_purchase_id }}{%- endlet %}
+                      <span class="group/recovery-tooltip relative block cursor-not-allowed"
+                            tabindex="0"
+                            aria-describedby="{{ recovery_tooltip_id }}">
+                        <button type="button"
+                                disabled
+                                aria-disabled="true"
+                                class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400 opacity-60">
+                          <div class="svg-icon size-4 icon-check shrink-0 bg-stone-400"></div>
+                          <span>Complete recovery</span>
+                        </button>
+                        {% call dashboard::tooltip_panel(
+                          id = recovery_tooltip_id,
+                          title = "Recovery unavailable",
+                          visibility_classes = "group-hover/recovery-tooltip:visible group-hover/recovery-tooltip:opacity-100 group-focus/recovery-tooltip:visible group-focus/recovery-tooltip:opacity-100",
+                          alignment_classes = "end-1"
+                        ) -%}
+                        <span class="block text-stone-900">Events write access is required to complete refund recovery.</span>
+                        {% endcall -%}
+                      </span>
+                  {% endif -%}
+                </li>
+          {% endif -%}
+        </ul>
+      </div>
+    </details>
+  {% endif -%}
+</td>
+</tr>
 {% endfor -%}
 {% endif -%}
 </tbody>
@@ -487,6 +507,106 @@
 {# End pagination -#}
 
 {% if can_manage_events -%}
+  {% if !financial_recoveries.is_empty() -%}
+    {# Financial recovery modal -#}
+    <div id="financial-recovery-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-hidden="true"
+         aria-labelledby="financial-recovery-modal-title"
+         aria-describedby="financial-recovery-modal-description"
+         class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+      <div id="overlay-financial-recovery-modal"
+           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+      <div class="modal-panel p-4 max-w-2xl">
+        <div class="modal-card rounded-lg">
+          {{ dashboard::modal_header(title_id = "financial-recovery-modal-title",
+            title = "Complete outside OCG",
+            close_id = "close-financial-recovery-modal") -}}
+          <form id="financial-recovery-form"
+                hx-put="/dashboard/group/financial-work/recovery"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="find button[type='submit']"
+                data-htmx-response
+                data-success-message="Financial recovery completed."
+                data-error-message="Something went wrong completing this financial recovery. Please try again later.">
+            <div class="modal-body p-4 md:px-6 md:py-5">
+              <input id="financial-recovery-kind" type="hidden" name="kind">
+              <input id="financial-recovery-work-id" type="hidden" name="work_id">
+              <p id="financial-recovery-modal-description"
+                 class="text-sm leading-6 text-stone-600">
+                Record the provider operation completed outside OCG and the evidence you reviewed.
+              </p>
+              <dl class="mt-5 grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt class="text-stone-500">Operation</dt>
+                  <dd id="financial-recovery-operation"
+                      class="mt-1 font-medium text-stone-900">
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-stone-500">Attendee</dt>
+                  <dd id="financial-recovery-attendee"
+                      class="mt-1 font-medium text-stone-900">
+                  </dd>
+                </div>
+                <div class="sm:col-span-2">
+                  <dt class="text-stone-500">Event</dt>
+                  <dd id="financial-recovery-event" class="mt-1 font-medium text-stone-900">
+                  </dd>
+                </div>
+              </dl>
+              <div class="mt-5">
+                <label id="financial-recovery-provider-label"
+                       for="financial-recovery-provider-object"
+                       class="form-label">
+                  <span id="financial-recovery-provider-label-text">Provider object ID</span>
+                  <span class="asterisk">*</span>
+                </label>
+                <input id="financial-recovery-provider-object"
+                       class="input-primary mt-2"
+                       type="text"
+                       name="provider_object_id"
+                       required
+                       maxlength="{{ crate::validation::MAX_LEN_M }}"
+                       autocomplete="off">
+              </div>
+              <div class="mt-5">
+                <label for="financial-recovery-reference" class="form-label">
+                  External recovery reference <span class="asterisk">*</span>
+                </label>
+                <input id="financial-recovery-reference"
+                       class="input-primary mt-2"
+                       type="text"
+                       name="recovery_reference"
+                       required
+                       maxlength="{{ crate::validation::MAX_LEN_M }}"
+                       autocomplete="off">
+              </div>
+              <div class="mt-5">
+                <label for="financial-recovery-note" class="form-label">
+                  Evidence reviewed <span class="asterisk">*</span>
+                </label>
+                <textarea id="financial-recovery-note"
+                          class="input-primary mt-2 min-h-28"
+                          name="recovery_note"
+                          required
+                          maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
+              </div>
+            </div>
+            <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+              <button id="cancel-financial-recovery-modal"
+                      type="button"
+                      class="btn-primary-outline">Cancel</button>
+              <button type="submit" class="btn-primary">Complete recovery</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {# End financial recovery modal -#}
+  {% endif -%}
+
   {# Refund approval modal -#}
   {{ dashboard::refund_review_modal(id_prefix = "refund-approve",
     title_id = "refund-approve-modal-title",

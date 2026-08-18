@@ -77,6 +77,20 @@ export class TicketingEditorBase extends LitWrapper {
   }
 
   /**
+   * Keeps the external row count synchronized with the rendered editor rows.
+   * @returns {void}
+   */
+  updated() {
+    const countElement = getElementById(this._resolveDocument(), this._countElementId);
+    if (!countElement) {
+      return;
+    }
+
+    const label = this._rows.length === 1 ? this._countLabel : this._countLabelPlural;
+    countElement.textContent = `${this._rows.length} ${label}`;
+  }
+
+  /**
    * Removes shared listeners and restores body scrolling when detached.
    */
   disconnectedCallback() {

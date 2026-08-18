@@ -19,7 +19,7 @@ export const getLocationInputId = (componentId, inputName) => {
 
 /**
  * Gets helper text for a generated location input.
- * @param {"city" | "zip" | "state" | "stateCode" | "country"} kind Location input kind.
+ * @param {"city" | "zip" | "state" | "country"} kind Location input kind.
  * @param {boolean} isVenue Whether the fields describe a venue location.
  * @returns {string}
  */
@@ -32,9 +32,6 @@ export const getLocationLegendText = (kind, isVenue) => {
   }
   if (kind === "state") {
     return "State, province, or region.";
-  }
-  if (kind === "stateCode") {
-    return "Subdivision code used in the address, such as CA or MA.";
   }
   if (kind === "country") {
     return isVenue ? "Country where the venue is located." : "Country where the group is located.";

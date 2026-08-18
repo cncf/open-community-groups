@@ -50,6 +50,7 @@ describe("badge macros template", () => {
     expect(paymentStatusBadge).to.include("border-amber-800 bg-amber-100");
     expect(paymentStatusBadge).to.include('label.as_bytes() == "Refund rejected".as_bytes()');
     expect(paymentStatusBadge).to.include("border-red-800 bg-red-100");
+    expect(paymentStatusBadge).to.include('tone.as_bytes() == "danger".as_bytes()');
     expect(paymentStatusBadge).to.include("border-stone-500 bg-stone-100");
     expect(paymentStatusBadge).not.to.include("blue");
   });
