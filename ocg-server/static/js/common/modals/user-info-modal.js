@@ -10,6 +10,7 @@ import {
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
+import { resolveUrl } from "/static/js/common/url-utils.js";
 import "/static/js/common/media/logo-image.js";
 
 /**
@@ -141,52 +142,38 @@ export class UserInfoModal extends LitWrapper {
   _getSocialLinks() {
     if (!this._userData) return [];
 
-    const links = [];
-
-    if (this._userData.websiteUrl) {
-      links.push({
-        url: this._userData.websiteUrl,
+    return [
+      {
+        url: resolveUrl(this._userData.websiteUrl),
         icon: "website",
         label: "Website",
-      });
-    }
-    if (this._userData.linkedinUrl) {
-      links.push({
-        url: this._userData.linkedinUrl,
+      },
+      {
+        url: resolveUrl(this._userData.linkedinUrl),
         icon: "linkedin",
         label: "LinkedIn",
-      });
-    }
-    if (this._userData.blueskyUrl) {
-      links.push({
-        url: this._userData.blueskyUrl,
+      },
+      {
+        url: resolveUrl(this._userData.blueskyUrl),
         icon: "bluesky",
         label: "Bluesky",
-      });
-    }
-    if (this._userData.twitterUrl) {
-      links.push({
-        url: this._userData.twitterUrl,
+      },
+      {
+        url: resolveUrl(this._userData.twitterUrl),
         icon: "twitter",
         label: "Twitter",
-      });
-    }
-    if (this._userData.facebookUrl) {
-      links.push({
-        url: this._userData.facebookUrl,
+      },
+      {
+        url: resolveUrl(this._userData.facebookUrl),
         icon: "facebook",
         label: "Facebook",
-      });
-    }
-    if (this._userData.githubUrl) {
-      links.push({
-        url: this._userData.githubUrl,
+      },
+      {
+        url: resolveUrl(this._userData.githubUrl),
         icon: "github",
         label: "GitHub",
-      });
-    }
-
-    return links;
+      },
+    ].filter((link) => link.url);
   }
 
   _hasProfileDetails(bio, socialLinks) {

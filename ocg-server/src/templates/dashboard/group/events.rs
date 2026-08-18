@@ -31,7 +31,7 @@ use crate::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE,
         MAX_PAGINATION_LIMIT, MAX_RECURRING_ADDITIONAL_OCCURRENCES, email_vec, image_url_opt,
         trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec,
-        valid_latitude, valid_longitude,
+        valid_latitude, valid_longitude, web_url_opt,
     },
 };
 
@@ -312,7 +312,7 @@ pub(crate) struct Event {
     #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
     /// Luma URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub luma_url: Option<String>,
     /// Stripe Tax Rate identifiers selected for manual tax.
     #[serde(default)]
@@ -328,7 +328,7 @@ pub(crate) struct Event {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub meeting_join_url: Option<String>,
     /// Desired meeting provider.
     #[serde(rename = "meeting_provider_id")]
@@ -341,13 +341,13 @@ pub(crate) struct Event {
     #[garde(skip)]
     pub meeting_recording_requested: Option<bool>,
     /// Organizer-managed final recording URL for meeting.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub meeting_recording_url: Option<String>,
     /// Whether a meeting has been requested for the event.
     #[garde(skip)]
     pub meeting_requested: Option<bool>,
     /// Meetup.com URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub meetup_url: Option<String>,
     /// Currency used for ticket purchases.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -702,7 +702,7 @@ pub(crate) struct Session {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub meeting_join_url: Option<String>,
     /// Desired meeting provider.
     #[serde(rename = "meeting_provider_id")]
@@ -712,7 +712,7 @@ pub(crate) struct Session {
     #[garde(skip)]
     pub meeting_recording_published: Option<bool>,
     /// Organizer-managed final recording URL for meeting.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub meeting_recording_url: Option<String>,
     /// Whether a meeting has been requested for the session.
     #[garde(skip)]

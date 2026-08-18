@@ -182,8 +182,9 @@ server:
   cookie:
     secure: false
 
-  # Disable referer checks on image endpoints
-  disableRefererChecks: false
+  # Allow ordinary stored images to be embedded by other origins. Purge image
+  # caches after changing this value because responses are immutable.
+  allowImageHotlinking: false
 
   # Login options enabled
   login:

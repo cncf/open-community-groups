@@ -82,7 +82,7 @@
             {# Website -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[180px] max-w-[240px]">
               {% if let Some(website) = &sponsor.website_url -%}
-                <a href="{{ website }}"
+                <a href="{{ website|safe_href }}"
                    target="_blank"
                    rel="noopener"
                    class="block max-w-full truncate text-primary-600 hover:underline">{{ website }}</a>

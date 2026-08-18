@@ -367,7 +367,7 @@
     {% if let Some(meeting_join_url) = &event.meeting_join_url %}
       <a id="join-meeting-btn-{{ attendance_instance }}"
          data-attendance-role="join-meeting-btn"
-         href="{{ meeting_join_url }}"
+         href="{{ meeting_join_url|safe_href }}"
          data-join-link
          target="_blank"
          rel="noopener noreferrer"
@@ -407,7 +407,7 @@
         {% if let Some(meeting_join_url) = &event.meeting_join_url %}
           <a id="join-meeting-menu-btn-{{ attendance_instance }}"
              data-attendance-role="join-meeting-menu-btn"
-             href="{{ meeting_join_url }}"
+             href="{{ meeting_join_url|safe_href }}"
              data-join-link-menu
              target="_blank"
              rel="noopener noreferrer"

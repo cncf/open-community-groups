@@ -7,13 +7,14 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::dashboard,
+    templates::{dashboard, filters},
     types::{
         group::GroupSponsor,
         pagination::{self, Pagination, ToRawQuery},
     },
     validation::{
         MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_PAGINATION_LIMIT, image_url, trimmed_non_empty,
+        web_url_opt,
     },
 };
 
@@ -103,6 +104,6 @@ pub(crate) struct Sponsor {
     pub name: String,
 
     /// Sponsor website URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
 }

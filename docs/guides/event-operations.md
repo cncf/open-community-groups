@@ -615,6 +615,8 @@ For submitter-side perspective, see [User Dashboard Guide](user-dashboard.md).
 
 Automatic meetings are configured in `Date and Venue -> Online event details`.
 You can either use your own manual meeting link or let OCG create/manage a meeting automatically.
+Manual meeting, recording, and event social links must be absolute HTTP or
+HTTPS URLs. Other URL schemes and protocol-relative URLs are rejected.
 
 How automatic mode works:
 

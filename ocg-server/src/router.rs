@@ -15,8 +15,8 @@ use axum::{
     Router,
     extract::{FromRef, Request, State as AxumState},
     http::{
-        HeaderName, HeaderValue, StatusCode, Uri,
-        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, VARY},
+        HeaderName, HeaderValue, Method, StatusCode, Uri,
+        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, ORIGIN, REFERER, VARY},
     },
     middleware::{self, Next},
     response::{IntoResponse, Redirect},
@@ -27,7 +27,7 @@ use axum_messages::MessagesManagerLayer;
 use rust_embed::Embed;
 use tower::ServiceBuilder;
 use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
-use tracing::instrument;
+use tracing::{error, instrument};
 
 use crate::{
     activity_tracker::DynActivityTracker,
@@ -36,7 +36,8 @@ use crate::{
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
-        badges, community, event, group, images, meetings, payments, site,
+        badges, community, event, group, images, meetings, payments,
+        request_headers_match_site_origin, site,
     },
     services::{
         badges::BadgesManager, images::DynImageStorage, notifications::DynNotificationsManager,
@@ -342,9 +343,13 @@ pub(crate) async fn setup(
     }
 
     router = router
-        .route("/log-out", get(auth::log_out))
+        .route("/log-out", post(auth::log_out))
         .route("/section/user-menu", get(auth::user_menu_section))
-        .route("/sign-up", get(auth::sign_up_page));
+        .route("/sign-up", get(auth::sign_up_page))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            enforce_browser_same_origin,
+        ));
 
     // Setup Zoom webhook route if enabled in configuration
     if zoom_enabled {
@@ -447,6 +452,65 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 }
 
 // Middleware.
+
+/// Rejects unsafe browser requests without trustworthy same-origin evidence.
+async fn enforce_browser_same_origin(
+    AxumState(server_cfg): AxumState<HttpServerConfig>,
+    request: Request,
+    next: Next,
+) -> axum::response::Response {
+    // Allow methods that cannot mutate application state
+    if matches!(
+        *request.method(),
+        Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE
+    ) {
+        return next.run(request).await;
+    }
+
+    // Reject explicit cross-site browser requests
+    let fetch_site = request
+        .headers()
+        .get("sec-fetch-site")
+        .map(|value| value.to_str().ok());
+    if fetch_site
+        .flatten()
+        .is_some_and(|value| value.eq_ignore_ascii_case("cross-site"))
+    {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    // Apply Fetch Metadata policy when origin headers are absent
+    let has_explicit_origin =
+        request.headers().contains_key(ORIGIN) || request.headers().contains_key(REFERER);
+    if !has_explicit_origin {
+        let allowed = match fetch_site {
+            None => true,
+            Some(Some(value)) if value.eq_ignore_ascii_case("same-origin") => true,
+            Some(_) => false,
+        };
+        return if allowed {
+            next.run(request).await
+        } else {
+            StatusCode::FORBIDDEN.into_response()
+        };
+    }
+
+    // Compare explicit browser origin evidence with the configured site
+    let origin_matches = match request_headers_match_site_origin(&server_cfg, request.headers()) {
+        Ok(origin_matches) => origin_matches,
+        Err(err) => {
+            error!(error = %err, "error checking request origin");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    // Require explicit origin evidence to match the configured site
+    if origin_matches {
+        next.run(request).await
+    } else {
+        StatusCode::FORBIDDEN.into_response()
+    }
+}
 
 /// Returns whether a request header has the string value `true`.
 fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {

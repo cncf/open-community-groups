@@ -34,7 +34,7 @@
 {% endif -%}
 {% if let Some(extra_links) = &group.extra_links -%}
   {% for (name, url) in extra_links -%}
-    <a href="{{ url }}"
+    <a href="{{ url|safe_href }}"
        target="_blank"
        rel="noopener noreferrer"
        class="group btn-secondary-anchor p-1.5 size-[40px] sm:size-[30px] flex items-center justify-center"

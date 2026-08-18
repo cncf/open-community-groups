@@ -818,6 +818,7 @@ async fn get_checkout_financial_context_reads_authoritative_connected_account_am
                         "id": "ch_test_123"
                     }
                 },
+                "payment_status": "paid",
                 "total_details": {"amount_tax": 250}
             }))
         }),
@@ -845,6 +846,43 @@ async fn get_checkout_financial_context_reads_authoritative_connected_account_am
     assert_eq!(context.provider_payment_reference, "pi_test_123");
     assert_eq!(context.provider_total_minor, 2750);
     assert_eq!(context.tax_amount_minor, 250);
+}
+
+#[tokio::test]
+async fn get_checkout_financial_context_rejects_unpaid_session() {
+    // Setup an unpaid Checkout Session response
+    let router = Router::new().route(
+        "/v1/checkout/sessions/cs_test_unpaid",
+        get(|| async {
+            Json(json!({
+                "amount_total": 2750,
+                "payment_intent": {
+                    "id": "pi_test_unpaid",
+                    "latest_charge": null
+                },
+                "payment_status": "unpaid",
+                "total_details": {"amount_tax": 250}
+            }))
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Retrieve the financial context from the unpaid session
+    let error = provider
+        .get_checkout_financial_context(&GetCheckoutFinancialContextInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            provider_session_id: "cs_test_unpaid".to_string(),
+        })
+        .await
+        .expect_err("unpaid Checkout Session to be rejected");
+
+    // Stop the provider fixture after the request completes
+    server.abort();
+
+    // Check the unpaid provider state is rejected
+    assert!(error.to_string().contains("not paid"));
 }
 
 #[tokio::test]

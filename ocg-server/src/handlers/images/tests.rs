@@ -52,9 +52,25 @@ fn test_is_svg_accepts_valid_svg_with_data_image_url() {
 }
 
 #[test]
-fn test_is_svg_rejects_data_url_without_image_prefix() {
+fn test_is_svg_rejects_data_non_image_url() {
     let svg = br#"<svg xmlns="http://www.w3.org/2000/svg">
         <image href="data:text/html,<script>alert('xss')</script>" />
+    </svg>"#;
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
+fn test_is_svg_rejects_data_png_url_on_link() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg">
+        <a href="data:image/png;base64,iVBORw0KGgoAAAANS=">click</a>
+    </svg>"#;
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
+fn test_is_svg_rejects_data_svg_image_url() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg">
+        <image href="data:image/svg+xml,&lt;svg onload='alert(1)'/&gt;" />
     </svg>"#;
     assert!(!is_svg(svg, "svg"));
 }
@@ -63,6 +79,14 @@ fn test_is_svg_rejects_data_url_without_image_prefix() {
 fn test_is_svg_rejects_foreign_object_element() {
     let svg = br#"<svg xmlns="http://www.w3.org/2000/svg">
         <foreignObject><body/></foreignObject>
+    </svg>"#;
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
+fn test_is_svg_rejects_javascript_character_reference_url() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg">
+        <a href="jav&#x61;script:alert('xss')">click</a>
     </svg>"#;
     assert!(!is_svg(svg, "svg"));
 }
@@ -84,6 +108,14 @@ fn test_is_svg_rejects_javascript_url_in_xlink_href() {
 }
 
 #[test]
+fn test_is_svg_rejects_javascript_url_with_whitespace() {
+    let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\">\n\
+        <a href=\"java\x09script:alert('xss')\">click</a>\n\
+    </svg>";
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
 fn test_is_svg_rejects_malformed_xml() {
     let malformed = b"<svg xmlns=\"http://www.w3.org/2000/svg\"><unclosed";
     assert!(!is_svg(malformed, "svg"));
@@ -92,6 +124,38 @@ fn test_is_svg_rejects_malformed_xml() {
 #[test]
 fn test_is_svg_rejects_missing_namespace() {
     let svg = b"<svg><circle cx=\"50\" cy=\"50\" r=\"40\"/></svg>";
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
+fn test_is_svg_rejects_namespaced_event_handler() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:x="http://www.w3.org/2000/svg">
+        <circle x:onload="alert('xss')" />
+    </svg>"#;
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
+fn test_is_svg_rejects_namespaced_foreign_object_element() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:x="http://www.w3.org/2000/svg">
+        <x:foreignObject><body/></x:foreignObject>
+    </svg>"#;
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
+fn test_is_svg_rejects_namespaced_href() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:x="http://www.w3.org/2000/svg">
+        <a x:href="javascript:alert('xss')">click</a>
+    </svg>"#;
+    assert!(!is_svg(svg, "svg"));
+}
+
+#[test]
+fn test_is_svg_rejects_namespaced_script_element() {
+    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:x="http://www.w3.org/2000/svg">
+        <x:script>alert('xss')</x:script>
+    </svg>"#;
     assert!(!is_svg(svg, "svg"));
 }
 
@@ -132,34 +196,54 @@ fn test_is_svg_rejects_script_element() {
 }
 
 #[tokio::test]
-async fn test_serve_allows_missing_referer_when_checks_disabled() {
+async fn test_serve_allows_cross_origin_referer_when_hotlinking_enabled() {
     // Setup mocks
     let mut storage = MockImageStorage::new();
     storage
         .expect_get()
         .times(1)
         .withf(|file_name| file_name == "foo.png")
-        .returning(|_| Box::pin(async { Ok(None) }));
+        .returning(|_| {
+            Box::pin(async {
+                Ok(Some(Image {
+                    bytes: PNG_BYTES.to_vec(),
+                    content_type: "image/png".to_string(),
+                }))
+            })
+        });
     let image_storage: DynImageStorage = Arc::new(storage);
 
-    // Setup router and send request without referer
+    // Setup router and send a cross-origin request
     let mut state = test_state_with_server_cfg(
         Arc::new(MockDB::new()),
         Arc::clone(&image_storage),
         Arc::new(MockNotificationsManager::new()),
         &sample_tracking_server_cfg(),
     );
-    state.server_cfg.disable_referer_checks = true;
+    state.server_cfg.allow_image_hotlinking = true;
     let router = Router::new()
         .route("/images/{file_name}", get(serve))
         .with_state(state);
     let response = router
-        .oneshot(Request::builder().uri("/images/foo.png").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/images/foo.png")
+                .header(REFERER, "https://other.test/page")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get(CROSS_ORIGIN_RESOURCE_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some(RESOURCE_POLICY_CROSS_ORIGIN)
+    );
 }
 
 #[tokio::test]
@@ -208,6 +292,13 @@ async fn test_serve_badge_returns_referenced_image_without_referer() {
     assert_eq!(
         response.headers().get(CACHE_CONTROL).unwrap(),
         CACHE_CONTROL_IMMUTABLE
+    );
+    assert_eq!(
+        response
+            .headers()
+            .get(CROSS_ORIGIN_RESOURCE_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some(RESOURCE_POLICY_CROSS_ORIGIN)
     );
 }
 
@@ -327,6 +418,13 @@ async fn test_serve_open_graph_returns_referenced_image_without_referer() {
             .and_then(|value| value.to_str().ok()),
         Some(CACHE_CONTROL_IMMUTABLE)
     );
+    assert_eq!(
+        response
+            .headers()
+            .get(CROSS_ORIGIN_RESOURCE_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some(RESOURCE_POLICY_CROSS_ORIGIN)
+    );
     let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     assert_eq!(bytes.as_ref(), PNG_BYTES);
 }
@@ -409,12 +507,81 @@ async fn test_serve_returns_bytes_with_headers() {
     assert_eq!(
         response
             .headers()
+            .get(CROSS_ORIGIN_RESOURCE_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some(RESOURCE_POLICY_SAME_ORIGIN)
+    );
+    assert_eq!(
+        response
+            .headers()
             .get(CONTENT_TYPE)
             .and_then(|value| value.to_str().ok()),
         Some("image/png")
     );
+    assert_eq!(
+        response
+            .headers()
+            .get(X_CONTENT_TYPE_OPTIONS)
+            .and_then(|value| value.to_str().ok()),
+        Some("nosniff")
+    );
     let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     assert_eq!(bytes.as_ref(), PNG_BYTES);
+}
+
+#[tokio::test]
+async fn test_serve_returns_isolated_svg() {
+    // Setup mocks
+    let svg_bytes = br#"<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>"#;
+    let mut storage = MockImageStorage::new();
+    storage
+        .expect_get()
+        .times(1)
+        .withf(|file_name| file_name == "foo.svg")
+        .returning(move |_| {
+            let image = Image {
+                bytes: svg_bytes.to_vec(),
+                content_type: "image/svg+xml".to_string(),
+            };
+            Box::pin(async move { Ok(Some(image)) })
+        });
+
+    // Setup router and send request
+    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
+        test_state_with_server_cfg(
+            Arc::new(MockDB::new()),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ),
+    );
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/images/foo.svg")
+                .header(REFERER, "https://example.test/images/foo.svg")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check SVGs are isolated from the application origin
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get(CONTENT_SECURITY_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some("sandbox")
+    );
+    assert_eq!(
+        response
+            .headers()
+            .get(X_CONTENT_TYPE_OPTIONS)
+            .and_then(|value| value.to_str().ok()),
+        Some("nosniff")
+    );
 }
 
 #[tokio::test]
@@ -526,81 +693,7 @@ async fn test_upload_accepts_exact_open_graph_dimensions() {
 }
 
 #[tokio::test]
-async fn test_upload_allows_missing_referer_when_checks_disabled() {
-    // Setup identifiers and data structures
-    let expected_hash = compute_hash(PNG_BYTES);
-    let expected_file_name = format!("{expected_hash}.png");
-    let boundary = "X-BOUNDARY";
-    let body = build_multipart_body(boundary, PNG_BYTES);
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-
-    // Setup image storage mock
-    let expected_file_name_for_mock = expected_file_name.clone();
-    let mut storage = MockImageStorage::new();
-    storage
-        .expect_save()
-        .times(1)
-        .withf(move |image| {
-            image.file_name == expected_file_name_for_mock
-                && image.content_type == "image/png"
-                && image.bytes == PNG_BYTES
-                && image.user_id == user_id
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Setup router with referer checks disabled
-    let server_cfg = HttpServerConfig {
-        base_url: "https://example.test".to_string(),
-        disable_referer_checks: true,
-        ..HttpServerConfig::default()
-    };
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_image_storage(storage)
-        .with_server_cfg(server_cfg)
-        .build()
-        .await;
-
-    // Send request without referer
-    let request = Request::builder()
-        .method("POST")
-        .uri("/images")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .header(
-            CONTENT_TYPE,
-            format!("multipart/form-data; boundary={boundary}"),
-        )
-        .body(Body::from(body))
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    let value: Value = serde_json::from_slice(&bytes).unwrap();
-
-    // Check response matches expectations
-    assert_eq!(status, StatusCode::CREATED);
-    assert_eq!(
-        value.get("url"),
-        Some(&Value::String(format!("/images/{expected_file_name}")))
-    );
-}
-
-#[tokio::test]
-async fn test_upload_rejects_missing_referer() {
+async fn test_upload_rejects_missing_referer_when_hotlinking_allowed() {
     // Setup identifiers and data structures
     let boundary = "X-BOUNDARY";
     let body = build_multipart_body(boundary, PNG_BYTES);
@@ -624,7 +717,63 @@ async fn test_upload_rejects_missing_referer() {
     let mut storage = MockImageStorage::new();
     storage.expect_save().never();
 
-    // Setup router with referer checks enabled
+    // Setup router with image hotlinking allowed
+    let server_cfg = HttpServerConfig {
+        base_url: "https://example.test".to_string(),
+
+        allow_image_hotlinking: true,
+        ..HttpServerConfig::default()
+    };
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_image_storage(storage)
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+
+    // Send request without referer
+    let request = Request::builder()
+        .method("POST")
+        .uri("/images")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+
+    // Check hotlinking does not relax upload origin enforcement
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_upload_rejects_missing_referer_when_hotlinking_disabled() {
+    // Setup identifiers and data structures
+    let boundary = "X-BOUNDARY";
+    let body = build_multipart_body(boundary, PNG_BYTES);
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+
+    // Setup image storage mock
+    let mut storage = MockImageStorage::new();
+    storage.expect_save().never();
+
+    // Setup router with image hotlinking disabled
     let server_cfg = HttpServerConfig {
         base_url: "https://example.test".to_string(),
         ..HttpServerConfig::default()

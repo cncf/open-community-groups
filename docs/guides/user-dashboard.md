@@ -145,6 +145,9 @@ You can maintain:
 - Social links: website, LinkedIn, Bluesky, X, Facebook, GitHub.
 - Notification preferences.
 
+Enter social links as absolute HTTP or HTTPS URLs. Other URL schemes and
+protocol-relative URLs are rejected.
+
 Field requirements and limits are shown inline in the dashboard forms while you edit.
 
 Notification preferences deserve a note: `Receive optional notifications` controls broader

@@ -14,6 +14,7 @@ import {
 } from "/static/js/common/meeting-recording.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
+import { resolveUrl } from "/static/js/common/url-utils.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/multiple-inputs.js";
 
@@ -952,11 +953,11 @@ export class OnlineEventDetails extends LitWrapper {
   _renderMeetingStatus() {
     const hasMeetingError = Boolean(this.meetingError);
     const isMeetingSynced = this.meetingInSync && !hasMeetingError;
+    const meetingJoinUrl = resolveUrl(this.meetingJoinUrl);
     const shouldShowPending = this._mode === "automatic" && this._createMeeting && !isMeetingSynced;
-    const hasMeetingDetails =
-      isMeetingSynced || this.meetingPassword || this.meetingError || this.meetingJoinUrl;
+    const hasMeetingDetails = isMeetingSynced || this.meetingPassword || this.meetingError || meetingJoinUrl;
     const showPendingMessage =
-      !isMeetingSynced && !this.meetingJoinUrl && !this.meetingPassword && !this.meetingError;
+      !isMeetingSynced && !meetingJoinUrl && !this.meetingPassword && !this.meetingError;
 
     if (!shouldShowPending && !hasMeetingDetails) {
       return html``;
@@ -997,16 +998,16 @@ export class OnlineEventDetails extends LitWrapper {
             : ""
         }
         ${
-          this.meetingJoinUrl
+          meetingJoinUrl
             ? html`
                 <div class="text-sm text-stone-700 wrap-break-word">
                   <span class="font-medium">Join link:</span>
                   <a
-                    href="${this.meetingJoinUrl}"
+                    href="${meetingJoinUrl}"
                     class="text-primary-500 hover:text-primary-600 wrap-break-word"
                     target="_blank"
                     rel="noopener noreferrer"
-                    >${this.meetingJoinUrl}</a
+                    >${meetingJoinUrl}</a
                   >
                 </div>
               `

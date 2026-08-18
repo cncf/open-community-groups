@@ -18,7 +18,7 @@ use password_auth::verify_password;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Deserialize;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -65,9 +65,6 @@ const LF_SSO_IDENTITY_CONFLICT_MESSAGE: &str =
 
 /// URL for the log in page.
 pub(crate) const LOG_IN_URL: &str = "/log-in";
-
-/// URL for the log out page.
-pub(crate) const LOG_OUT_URL: &str = "/log-out";
 
 /// Key used to store the next URL in the session.
 pub(crate) const NEXT_URL_KEY: &str = "next_url";
@@ -427,6 +424,7 @@ pub(crate) async fn update_user_details(
 /// Handler that updates the user's password.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_user_password(
+    mut auth_session: AuthSession,
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     ValidatedForm(mut input): ValidatedForm<templates::auth::UserPassword>,
@@ -447,7 +445,12 @@ pub(crate) async fn update_user_password(
     input.new_password = password_auth::generate_hash(&input.new_password);
     db.update_user_password(&user.user_id, &input.new_password).await?;
 
-    Ok(Redirect::to(LOG_OUT_URL).into_response())
+    // Best-effort invalidate the current session after changing credentials
+    if let Err(err) = auth_session.logout().await {
+        warn!(error = %err, "failed to delete current session after password change");
+    }
+
+    Ok(Redirect::to(LOG_IN_URL).into_response())
 }
 
 /// Handler that verifies the user's email.

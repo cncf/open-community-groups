@@ -16,7 +16,7 @@ use crate::{
     validation::{
         MAX_LEN_BIO, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_TIMEZONE,
         MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt,
-        trimmed_non_empty_tag_vec,
+        trimmed_non_empty_tag_vec, web_url_opt,
     },
 };
 
@@ -138,7 +138,7 @@ pub(crate) struct UserDetails {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_BIO))]
     pub bio: Option<String>,
     /// User's Bluesky URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub bluesky_url: Option<String>,
     /// User's city.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -150,16 +150,16 @@ pub(crate) struct UserDetails {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub country: Option<String>,
     /// User's Facebook URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
     /// User's GitHub URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub github_url: Option<String>,
     /// User's interests.
     #[garde(custom(trimmed_non_empty_tag_vec))]
     pub interests: Option<Vec<String>>,
     /// User's `LinkedIn` URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
     /// User's photo URL.
     #[garde(custom(image_url_opt))]
@@ -171,10 +171,10 @@ pub(crate) struct UserDetails {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub title: Option<String>,
     /// User's Twitter URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub twitter_url: Option<String>,
     /// User's website URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
 }
 

@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
-    http::{HeaderValue, StatusCode, Uri, header::LOCATION},
+    http::{HeaderValue, Method, StatusCode, Uri, header::LOCATION},
 };
 use tower::ServiceExt;
 
@@ -10,6 +10,126 @@ use crate::{
 };
 
 use super::*;
+
+#[tokio::test]
+async fn test_browser_same_origin_middleware_enforces_browser_signals() {
+    // Setup a mutation route protected by the browser-origin middleware
+    let server_cfg = HttpServerConfig {
+        base_url: "https://example.test".to_string(),
+        ..Default::default()
+    };
+    let router = Router::new()
+        .route(
+            "/",
+            get(|| async { StatusCode::NO_CONTENT }).post(|| async { StatusCode::NO_CONTENT }),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            server_cfg,
+            enforce_browser_same_origin,
+        ));
+
+    // Define safe methods and trusted or untrusted browser signals
+    let cases = [
+        (Method::POST, None, None, StatusCode::NO_CONTENT),
+        (
+            Method::POST,
+            Some("same-origin"),
+            None,
+            StatusCode::NO_CONTENT,
+        ),
+        (
+            Method::POST,
+            Some("cross-site"),
+            Some("https://example.test"),
+            StatusCode::FORBIDDEN,
+        ),
+        (Method::POST, Some("same-site"), None, StatusCode::FORBIDDEN),
+        (
+            Method::POST,
+            None,
+            Some("https://attacker.test"),
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            Method::POST,
+            None,
+            Some("https://example.test"),
+            StatusCode::NO_CONTENT,
+        ),
+        (
+            Method::GET,
+            Some("cross-site"),
+            None,
+            StatusCode::NO_CONTENT,
+        ),
+    ];
+
+    // Send each request and check the middleware decision
+    for (method, fetch_site, origin, expected_status) in cases {
+        let mut request = Request::builder().method(method).uri("/");
+        if let Some(fetch_site) = fetch_site {
+            request = request.header("Sec-Fetch-Site", fetch_site);
+        }
+        if let Some(origin) = origin {
+            request = request.header("Origin", origin);
+        }
+
+        let response = router
+            .clone()
+            .oneshot(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected_status);
+    }
+}
+
+#[tokio::test]
+async fn test_browser_same_origin_route_layer_excludes_later_webhook_routes() {
+    // Setup protected browser and unprotected webhook routes
+    let server_cfg = HttpServerConfig {
+        base_url: "https://example.test".to_string(),
+        ..Default::default()
+    };
+    let router = Router::new()
+        .route(
+            "/browser-mutation",
+            post(|| async { StatusCode::NO_CONTENT }),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            server_cfg,
+            enforce_browser_same_origin,
+        ))
+        .route("/webhook", post(|| async { StatusCode::NO_CONTENT }));
+
+    // Send cross-site requests to both route groups
+    let browser_response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/browser-mutation")
+                .header("Sec-Fetch-Site", "cross-site")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let webhook_response = router
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/webhook")
+                .header("Sec-Fetch-Site", "cross-site")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check only the browser mutation route is protected
+    assert_eq!(browser_response.status(), StatusCode::FORBIDDEN);
+    assert_eq!(webhook_response.status(), StatusCode::NO_CONTENT);
+}
 
 #[tokio::test]
 async fn test_current_commit_htmx_request_runs_handler() {
@@ -196,6 +316,29 @@ async fn test_health_check_returns_ok() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_log_out_route_rejects_get() {
+    // Setup the application router
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Send an unsupported GET request
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/log-out")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check the router rejects the method
+    assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
 }
 
 #[tokio::test]

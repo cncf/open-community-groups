@@ -10,19 +10,6 @@ ignore = [
     # Keep this ignored until the upstream OIDC stack can move off this branch.
     "RUSTSEC-2023-0071",
 
-    # `rand 0.8.5` remains pinned by upstream dependencies including `oauth2`,
-    # `openidconnect`, `tower-sessions`, and `minify-html` support crates.
-    # We updated the patchable `rand 0.9.x` and `0.10.x` lines already, but this
-    # older branch cannot be cleared from the lockfile without broader upgrades.
-    "RUSTSEC-2026-0097",
-
-    # The AWS S3 client path still resolves through `aws-smithy-http-client`
-    # with `rustls 0.21.x`, which requires `rustls-webpki 0.101.7`.
-    # We updated the patchable `rustls-webpki 0.103.x` line already, but these
-    # advisories remain until the AWS dependency chain moves to a newer rustls.
-    "RUSTSEC-2026-0098",
-    "RUSTSEC-2026-0099",
-
     # `parcel_sourcemap` (via `minify-html`/`lightningcss`) pins `rkyv 0.7.x`,
     # and RustSec lists no fixed 0.7 release (fix requires 0.8.17). The
     # vulnerable Rc/Arc code path is behind the `rc` feature, which this

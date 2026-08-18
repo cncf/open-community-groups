@@ -141,7 +141,7 @@
 {# Used by public event/group sponsor sections and dashboard event previews. -#}
 {% macro sponsor_badge(name, logo_url, website_url, level = "", with_level = false) -%}
   {% if let Some(website_url) = &website_url -%}
-    <a href="{{ website_url }}"
+    <a href="{{ website_url|safe_href }}"
        target="_blank"
        rel="noopener noreferrer"
        class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full transition-all hover:border-primary-300 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">

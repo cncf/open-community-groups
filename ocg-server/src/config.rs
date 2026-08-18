@@ -396,8 +396,6 @@ pub(crate) struct HttpServerConfig {
     pub addr: String,
     /// Base URL for the server.
     pub base_url: String,
-    /// Disable referer header validation for image endpoints.
-    pub disable_referer_checks: bool,
     /// Login options configuration.
     pub login: LoginOptions,
     /// `OAuth2` providers configuration.
@@ -405,6 +403,9 @@ pub(crate) struct HttpServerConfig {
     /// OIDC providers configuration.
     pub oidc: OidcConfig,
 
+    /// Allows ordinary stored images to be embedded by other origins.
+    #[serde(default)]
+    pub allow_image_hotlinking: bool,
     /// Badge credential signing and verification configuration required at startup.
     pub badges: Option<BadgesConfig>,
     /// Optional cookie configuration.
@@ -751,6 +752,34 @@ mod tests {
     }
 
     #[test]
+    fn test_http_server_config_defaults_image_hotlinking_to_false() {
+        let cfg: HttpServerConfig =
+            serde_json::from_value(sample_http_server_config_value()).unwrap();
+
+        assert!(!cfg.allow_image_hotlinking);
+    }
+
+    #[test]
+    fn test_http_server_config_ignores_removed_referer_setting() {
+        let mut value = sample_http_server_config_value();
+        value["disable_referer_checks"] = serde_json::Value::Bool(true);
+
+        let cfg: HttpServerConfig = serde_json::from_value(value).unwrap();
+
+        assert!(!cfg.allow_image_hotlinking);
+    }
+
+    #[test]
+    fn test_http_server_config_uses_image_hotlinking_setting() {
+        let mut value = sample_http_server_config_value();
+        value["allow_image_hotlinking"] = serde_json::Value::Bool(true);
+
+        let cfg: HttpServerConfig = serde_json::from_value(value).unwrap();
+
+        assert!(cfg.allow_image_hotlinking);
+    }
+
+    #[test]
     fn test_payments_config_accepts_maximum_platform_fee_bps() {
         // Setup a Stripe configuration with the maximum platform fee
         let Some(PaymentsConfig::Stripe(mut cfg)) = sample_config().payments else {
@@ -922,7 +951,6 @@ mod tests {
             server: HttpServerConfig {
                 addr: "127.0.0.1:9000".to_string(),
                 base_url: "https://app.example.test".to_string(),
-                disable_referer_checks: false,
                 login: LoginOptions {
                     email: true,
                     github: true,
@@ -930,6 +958,8 @@ mod tests {
                 },
                 oauth2,
                 oidc,
+
+                allow_image_hotlinking: false,
                 badges: Some(BadgesConfig {
                     signing_key: BadgeSigningKeyConfig {
                         key_id: "config-test".to_string(),
@@ -975,6 +1005,20 @@ mod tests {
 
             tls: None,
         }
+    }
+
+    fn sample_http_server_config_value() -> serde_json::Value {
+        serde_json::json!({
+            "addr": "127.0.0.1:9000",
+            "base_url": "https://example.test",
+            "login": {
+                "email": false,
+                "github": false,
+                "linuxfoundation": false,
+            },
+            "oauth2": {},
+            "oidc": {},
+        })
     }
 
     fn sensitive_values() -> [&'static str; 11] {

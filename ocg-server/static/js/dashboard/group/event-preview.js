@@ -11,6 +11,7 @@ import {
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { setTrustedHtml } from "/static/js/common/trusted-html.js";
+import { resolveUrl } from "/static/js/common/url-utils.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/modals/images-gallery.js";
 import "/static/js/common/users/user-chip.js";
@@ -346,7 +347,7 @@ const updateEventPreviewTestBadge = (modalRoot, pageRoot) => {
 const collectEventPreviewSocialLinks = (pageRoot) =>
   EVENT_PREVIEW_SOCIAL_LINKS.map((link) => ({
     ...link,
-    url: toOptionalString(pageRoot.querySelector?.(`[name="${link.fieldName}"]`)?.value),
+    url: resolveUrl(toOptionalString(pageRoot.querySelector?.(`[name="${link.fieldName}"]`)?.value)),
   })).filter((link) => link.url);
 
 /**

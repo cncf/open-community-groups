@@ -200,7 +200,7 @@ jobs:
             base_url: http://127.0.0.1:9001
             cookie:
               secure: false
-            disable_referer_checks: false
+            allow_image_hotlinking: false
             login:
               email: true
               github: false

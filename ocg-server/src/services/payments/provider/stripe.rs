@@ -1165,6 +1165,7 @@ impl PaymentsProvider for StripeProvider {
         &self,
         input: &GetCheckoutFinancialContextInput,
     ) -> Result<CheckoutFinancialContext> {
+        // Retrieve the expanded Checkout Session from the connected account
         let query = serde_urlencoded::to_string([("expand[]", "payment_intent.latest_charge")])?;
         let api_version = self.cfg.ticket_tax_api_version.as_str();
         let response = self
@@ -1185,11 +1186,22 @@ impl PaymentsProvider for StripeProvider {
             "Checkout Session retrieval",
         )
         .await?;
+
+        // Require the provider to report a completed payment
+        if checkout.payment_status != "paid" {
+            bail!(
+                "Stripe Checkout Session is not paid (status: {})",
+                checkout.payment_status
+            );
+        }
+
+        // Extract the authoritative Charge created for the payment
         let charge = checkout
             .payment_intent
             .latest_charge
             .context("Stripe Checkout PaymentIntent is missing its Charge")?;
 
+        // Build the financial context used for local reconciliation
         Ok(CheckoutFinancialContext {
             provider_application_fee_id: charge.application_fee,
             provider_charge_id: charge.id,
@@ -1865,6 +1877,8 @@ struct StripeExpandedCheckoutSessionResponse {
     amount_total: i64,
     /// Expanded `PaymentIntent` and Charge.
     payment_intent: StripeExpandedPaymentIntent,
+    /// Current payment state for the Checkout Session.
+    payment_status: String,
     /// Authoritative total breakdown.
     total_details: StripeCheckoutTotalDetails,
 }

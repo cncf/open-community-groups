@@ -98,6 +98,9 @@ Advertisement settings are community-wide. When a banner image is configured, OC
 public community page and as a floating banner on public group and event pages for that community.
 The optional banner link URL makes the banner clickable.
 
+Enter social, advertisement, and additional links as absolute HTTP or HTTPS
+URLs. Other URL schemes and protocol-relative URLs are rejected.
+
 Field requirements, character limits, and list limits are shown inline in the settings UI.
 
 ![Community settings area](../screenshots/dashboard-community-settings.png)
