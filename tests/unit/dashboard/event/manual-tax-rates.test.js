@@ -196,6 +196,58 @@ describe("manual Stripe Tax Rates", () => {
     ).to.have.length(0);
   });
 
+  it("ignores responses superseded by a newer tax behavior", async () => {
+    const controls = mountControls({ mode: "manual" });
+    let resolveExclusiveRates;
+    let resolveInclusiveRates;
+    fetchMock = mockFetch({
+      impl: (url) =>
+        new Promise((resolve) => {
+          if (String(url).includes("tax_behavior=exclusive")) {
+            resolveExclusiveRates = resolve;
+          } else {
+            resolveInclusiveRates = resolve;
+          }
+        }),
+    });
+    initializeManualTaxRates(document);
+
+    controls.behavior.value = "exclusive";
+    controls.behavior.dispatchEvent(new Event("change", { bubbles: true }));
+    resolveExclusiveRates(
+      rateResponse([
+        {
+          display_name: "Exclusive rate",
+          id: "txr_exclusive",
+          inclusive: false,
+          jurisdiction: "California",
+          percentage: "5",
+        },
+      ]),
+    );
+    await waitForMicrotask();
+
+    expect(controls.select.value).to.equal("");
+    expect(controls.select.textContent).to.include("Exclusive rate");
+
+    resolveInclusiveRates(
+      rateResponse([
+        {
+          display_name: "Inclusive rate",
+          id: "txr_inclusive",
+          inclusive: true,
+          jurisdiction: "California",
+          percentage: "8.875",
+        },
+      ]),
+    );
+    await waitForMicrotask();
+
+    expect(controls.behavior.value).to.equal("exclusive");
+    expect(controls.select.textContent).to.include("Exclusive rate");
+    expect(controls.select.textContent).not.to.include("Inclusive rate");
+  });
+
   it("keeps only the first configured rate in the standard selector", async () => {
     const controls = mountControls({
       mode: "manual",

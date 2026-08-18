@@ -234,6 +234,11 @@ export const TEST_TICKETING_EVENTS = {
     name: "Invitation Request Lifecycle Lab",
     slug: "alpha-invitation-request-lifecycle",
   },
+  manualTaxUnavailable: {
+    id: "55555555-5555-5555-5555-555555555921",
+    name: "Unavailable Manual Tax Rate Lab",
+    slug: "alpha-manual-tax-unavailable",
+  },
   migratedCapacity: {
     id: "55555555-5555-5555-5555-555555555919",
     name: "Migrated Unlimited Capacity Event",

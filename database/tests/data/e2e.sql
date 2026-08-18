@@ -977,6 +977,30 @@ insert into event (
     false
 );
 
+-- Manual-tax fixture whose saved provider rate is no longer available.
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, payment_currency_code, published, starts_at, ends_at,
+    waitlist_enabled, tax_behavior, tax_calculation_mode, manual_tax_rate_ids
+) values (
+    '55555555-5555-5555-5555-555555555921',
+    'Unavailable Manual Tax Rate Lab',
+    'alpha-manual-tax-unavailable',
+    'Manual-tax event used to verify unavailable saved provider rates.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    false,
+    now() + interval '92 days',
+    now() + interval '92 days 2 hours',
+    false,
+    'inclusive',
+    'manual',
+    array['txr_e2e_unavailable']::text[]
+);
+
 -- Registration window fixtures for Playwright coverage.
 insert into event (
     event_id, name, slug, description, description_short, timezone,
@@ -2814,6 +2838,15 @@ values (
     1,
     'Refunded conference pass',
     'Paid tier whose prior purchase has been fully refunded.'
+), (
+    '56555555-5555-5555-5555-555555555921',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555921',
+    1,
+    20,
+    'Manual tax pass',
+    'Paid tier used for unavailable manual Tax Rate coverage.'
 );
 
 -- Every other event uses one free General Admission tier
@@ -3537,6 +3570,12 @@ values (
     '57555555-5555-5555-5555-555555555920',
     3000,
     '56555555-5555-5555-5555-555555555920',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555921',
+    2500,
+    '56555555-5555-5555-5555-555555555921',
     null,
     null
 );

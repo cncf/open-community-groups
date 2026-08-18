@@ -266,6 +266,135 @@ test.describe("group dashboard event Tickets tab", () => {
     ).toBeVisible();
   });
 
+  test("organizer replaces a saved manual tax rate that is no longer available", async ({
+    organizerGroupPage,
+  }) => {
+    // Skip provider-backed tax coverage when payments are disabled.
+    test.skip(
+      !E2E_PAYMENTS_ENABLED,
+      "Payments are disabled in this environment.",
+    );
+
+    // Return one active rate while omitting the event's saved provider rate.
+    await organizerGroupPage.route(
+      "**/dashboard/group/events/tax-rates**",
+      (route) =>
+        route.fulfill({
+          body: JSON.stringify([
+            {
+              display_name: "E2E replacement rate",
+              id: "txr_e2e_replacement",
+              inclusive: true,
+              jurisdiction: "United States",
+              percentage: "7.25",
+            },
+          ]),
+          contentType: "application/json",
+          status: 200,
+        }),
+    );
+
+    // Open the event whose saved manual rate is absent from the provider response.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const taxRatesResponsePromise = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.url().includes("/dashboard/group/events/tax-rates") &&
+        response.ok(),
+    );
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_TICKETING_EVENTS.manualTaxUnavailable.name,
+      TEST_TICKETING_EVENTS.manualTaxUnavailable.id,
+    );
+    const taxRatesResponse = await taxRatesResponsePromise;
+    await openPaymentsSection(organizerGroupPage);
+
+    // Verify the unavailable saved selection is explicit and can be replaced.
+    const manualTaxFieldset = organizerGroupPage.locator(
+      "#manual-tax-rates-fieldset",
+    );
+    const manualTaxRateSelect = organizerGroupPage.getByLabel(
+      "Manual Stripe Tax Rates",
+      { exact: true },
+    );
+    const unavailableRateMessage = manualTaxFieldset.getByRole("status");
+    const taxCalculationMode = organizerGroupPage.locator(
+      "#tax_calculation_mode",
+    );
+    await expect(taxCalculationMode).toHaveValue("manual");
+    expect(
+      new URL(taxRatesResponse.url()).searchParams.get("tax_behavior"),
+    ).toBe("inclusive");
+    await expect(manualTaxFieldset).toHaveAttribute(
+      "data-selected-rate-ids",
+      '["txr_e2e_unavailable"]',
+    );
+    await expect(manualTaxRateSelect).toHaveValue("");
+    await expect(manualTaxRateSelect).toBeEnabled();
+    await expect(unavailableRateMessage).toBeVisible();
+    await expect(unavailableRateMessage).toContainText(
+      "A previously selected Tax Rate is inactive, missing, or belongs to another account.",
+    );
+
+    // Expose the save action and verify paid tickets reject the stale selection.
+    const eventName = organizerGroupPage.locator("#name");
+    await eventName.fill(`${await eventName.inputValue()} updated`);
+    const updateEventButton = organizerGroupPage.locator(
+      "#update-event-button",
+    );
+    await expect(updateEventButton).toBeVisible();
+    await expect(taxCalculationMode).toHaveJSProperty(
+      "validationMessage",
+      "Select an available Stripe Tax Rate for paid tickets.",
+    );
+
+    let interceptedUpdateRequest = null;
+    await organizerGroupPage.route(
+      `**/dashboard/group/events/${TEST_TICKETING_EVENTS.manualTaxUnavailable.id}/update`,
+      async (route) => {
+        if (route.request().method() !== "PUT") {
+          await route.continue();
+          return;
+        }
+        interceptedUpdateRequest = route.request();
+        await route.fulfill({ status: 204 });
+      },
+    );
+    await updateEventButton.click();
+    expect(interceptedUpdateRequest).toBeNull();
+
+    // Select the provider replacement and verify the submitted form contract.
+    await manualTaxRateSelect.selectOption("txr_e2e_replacement");
+    await expect(manualTaxRateSelect).toHaveValue("txr_e2e_replacement");
+    await expect(manualTaxRateSelect).toHaveAttribute(
+      "name",
+      "manual_tax_rate_ids[]",
+    );
+    await expect(unavailableRateMessage).toBeHidden();
+    await expect(taxCalculationMode).toHaveJSProperty(
+      "validationMessage",
+      "",
+    );
+
+    const [updateRequest] = await Promise.all([
+      organizerGroupPage.waitForRequest(
+        (request) =>
+          request.method() === "PUT" &&
+          request.url().includes(
+            `/dashboard/group/events/${TEST_TICKETING_EVENTS.manualTaxUnavailable.id}/update`,
+          ),
+      ),
+      updateEventButton.click(),
+    ]);
+    const submittedForm = new URLSearchParams(updateRequest.postData() ?? "");
+    expect(submittedForm.get("manual_tax_rate_ids_present")).toBe("true");
+    expect(submittedForm.getAll("manual_tax_rate_ids[]")).toEqual([
+      "txr_e2e_replacement",
+    ]);
+    expect(submittedForm.get("tax_behavior")).toBe("inclusive");
+    expect(submittedForm.get("tax_calculation_mode")).toBe("manual");
+  });
+
   test("ticketing tables expose every column at their responsive breakpoint", async ({
     organizerGroupPage,
   }) => {
