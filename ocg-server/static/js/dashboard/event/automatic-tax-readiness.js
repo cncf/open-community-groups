@@ -14,6 +14,12 @@ const RELEVANT_FIELD_NAMES = new Set([
   "venue_zip_code",
 ]);
 const STATE_ERROR_CODES = new Set(["state_code_required", "state_code_invalid"]);
+const STATUS_STATE_CLASSES = {
+  checking: ["border-stone-300", "bg-stone-50", "text-stone-700"],
+  ready: ["border-green-800", "bg-green-100", "text-green-800"],
+  warning: ["border-amber-600", "bg-amber-50", "text-amber-900"],
+};
+const STATUS_STYLE_CLASSES = Object.values(STATUS_STATE_CLASSES).flat();
 
 /**
  * Initializes the saved-event automatic-tax readiness control.
@@ -25,20 +31,41 @@ const STATE_ERROR_CODES = new Set(["state_code_required", "state_code_invalid"])
 export const initializeAutomaticTaxReadiness = ({ pageRoot, displayActiveSection }) => {
   const panel = pageRoot.querySelector("[data-automatic-tax-readiness]");
   const taxModeField = pageRoot.querySelector('[name="tax_calculation_mode"]');
-  if (!panel || !taxModeField || !markDatasetReady(panel, "automaticTaxReadinessReady")) {
+  const checkButton = pageRoot.querySelector('[data-automatic-tax-readiness-action="check"]');
+  const readinessControl = panel || checkButton;
+  if (
+    !readinessControl ||
+    !taxModeField ||
+    !markDatasetReady(readinessControl, "automaticTaxReadinessReady")
+  ) {
     return;
   }
 
-  const checkButton = panel.querySelector('[data-automatic-tax-readiness-action="check"]');
-  const manualTaxHelp = panel.querySelector('[data-automatic-tax-readiness-role="manual-tax-help"]');
-  const reviewStateButton = panel.querySelector('[data-automatic-tax-readiness-action="review-state"]');
-  const status = panel.querySelector('[data-automatic-tax-readiness-role="status"]');
-  const saved = panel.dataset.saved === "true";
+  const manualTaxHelp = panel?.querySelector('[data-automatic-tax-readiness-role="manual-tax-help"]');
+  const reviewStateButton = panel?.querySelector('[data-automatic-tax-readiness-action="review-state"]');
+  const status = panel?.querySelector('[data-automatic-tax-readiness-role="status"]');
+  const saved = panel?.dataset.saved === "true";
   const permanentlyDisabled = checkButton?.disabled === true;
   let stale = false;
 
   const syncVisibility = () => {
-    setElementHidden(panel, taxModeField.value !== AUTOMATIC_MODE);
+    const automaticModeSelected = taxModeField.value === AUTOMATIC_MODE;
+    setElementHidden(checkButton, !automaticModeSelected);
+    setElementHidden(panel, !automaticModeSelected || (saved && !status?.textContent.trim()));
+  };
+
+  const setStatus = (message, state) => {
+    if (!status) {
+      return;
+    }
+
+    status.textContent = message;
+    if (saved) {
+      panel.classList.remove(...STATUS_STYLE_CLASSES);
+      panel.classList.add(...STATUS_STATE_CLASSES[state]);
+      panel.dataset.readinessState = state;
+    }
+    syncVisibility();
   };
 
   const markStale = () => {
@@ -57,10 +84,10 @@ export const initializeAutomaticTaxReadiness = ({ pageRoot, displayActiveSection
     if (reviewStateButton) {
       reviewStateButton.hidden = true;
     }
-    if (status) {
-      status.textContent =
-        "Automatic tax readiness is based on saved data. Save these changes before checking again.";
-    }
+    setStatus(
+      "Automatic tax readiness is based on saved data. Save these changes before checking again.",
+      "warning",
+    );
   };
 
   const relevantFieldChanged = (event) => {
@@ -88,15 +115,19 @@ export const initializeAutomaticTaxReadiness = ({ pageRoot, displayActiveSection
   });
 
   checkButton?.addEventListener("click", async () => {
-    if (stale || permanentlyDisabled || !panel.dataset.readinessUrl) {
+    if (stale || permanentlyDisabled || !panel?.dataset.readinessUrl) {
       return;
     }
 
     checkButton.disabled = true;
     checkButton.setAttribute("aria-busy", "true");
-    manualTaxHelp.hidden = true;
-    reviewStateButton.hidden = true;
-    status.textContent = "Checking the saved venue for automatic tax readiness…";
+    if (manualTaxHelp) {
+      manualTaxHelp.hidden = true;
+    }
+    if (reviewStateButton) {
+      reviewStateButton.hidden = true;
+    }
+    setStatus("Checking the saved venue for automatic tax readiness…", "checking");
 
     try {
       const response = await ocgFetch(panel.dataset.readinessUrl, {
@@ -109,20 +140,28 @@ export const initializeAutomaticTaxReadiness = ({ pageRoot, displayActiveSection
       if (response.ok && result.status === "ready") {
         const stateDetail = result.state_code ? ` using state code ${result.state_code}` : "";
         const cacheDetail = result.cached ? " A matching saved provider location was reused." : "";
-        status.textContent = `Automatic tax is ready for this venue${stateDetail}.${cacheDetail}`;
+        setStatus(`Automatic tax is ready for this venue${stateDetail}.${cacheDetail}`, "ready");
         return;
       }
 
-      status.textContent =
+      setStatus(
         typeof result.message === "string" && result.message
           ? result.message
-          : "Automatic tax readiness could not be confirmed. Try again later.";
-      manualTaxHelp.hidden = result.code !== MANUAL_TAX_REQUIRED_CODE;
-      reviewStateButton.hidden =
-        !STATE_ERROR_CODES.has(result.code) || !result.fields?.includes("venue_state_code");
+          : "Automatic tax readiness could not be confirmed. Try again later.",
+        "warning",
+      );
+      if (manualTaxHelp) {
+        manualTaxHelp.hidden = result.code !== MANUAL_TAX_REQUIRED_CODE;
+      }
+      if (reviewStateButton) {
+        reviewStateButton.hidden =
+          !STATE_ERROR_CODES.has(result.code) || !result.fields?.includes("venue_state_code");
+      }
     } catch {
-      status.textContent = "Automatic tax readiness could not be confirmed. Try again later.";
-      manualTaxHelp.hidden = true;
+      setStatus("Automatic tax readiness could not be confirmed. Try again later.", "warning");
+      if (manualTaxHelp) {
+        manualTaxHelp.hidden = true;
+      }
     } finally {
       checkButton.disabled = permanentlyDisabled || stale;
       checkButton.removeAttribute("aria-busy");

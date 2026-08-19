@@ -228,6 +228,21 @@ describe("dashboard group event update template", () => {
     );
   });
 
+  it("renders automatic-tax readiness as an outline action beside the tax label", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      '<div class="flex flex-wrap items-center gap-2"> <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label> <button type="button" class="btn-primary-outline btn-mini"',
+    );
+    expect(template).to.include(
+      'data-automatic-tax-readiness-action="check" title="Check the saved venue with the automatic-tax provider"',
+    );
+    expect(template).to.include("Check readiness</button>");
+    expect(template).to.include(
+      '<div class="col-span-full hidden rounded-md border px-4 py-3" data-automatic-tax-readiness',
+    );
+  });
+
   it("restores state and country tax codes into the venue fields", async () => {
     const template = normalizeWhitespace(await loadTemplate());
 
@@ -322,7 +337,7 @@ describe("dashboard group event update template", () => {
       template.indexOf('id="manual-tax-rates"'),
     );
     expect(template).to.include(
-      'class="col-span-full 2xl:col-span-2 2xl:col-start-1"> <label for="tax_calculation_mode"',
+      'class="col-span-full 2xl:col-span-2 2xl:col-start-1"> <div class="flex flex-wrap items-center gap-2"> <label for="tax_calculation_mode"',
     );
   });
 

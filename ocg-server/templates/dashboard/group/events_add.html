@@ -720,7 +720,15 @@
                 </div>
 
                 <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
-                  <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+                    <button type="button"
+                            class="btn-primary-outline btn-mini"
+                            data-automatic-tax-readiness-action="check"
+                            aria-label="Save the event before checking whether its venue is ready for automatic tax."
+                            title="Save the event before checking whether its venue is ready for automatic tax."
+                            disabled>Check readiness</button>
+                  </div>
                   <div class="mt-2">
                     <select id="tax_calculation_mode"
                             name="tax_calculation_mode"
@@ -742,15 +750,6 @@
                     </select>
                   </div>
                   <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
-                </div>
-
-                <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 p-4"
-                     data-automatic-tax-readiness
-                     data-saved="false">
-                  <div class="form-label">Automatic tax readiness</div>
-                  <p class="form-legend mt-1" data-automatic-tax-readiness-role="status">
-                    Save the event before checking whether its venue is ready for automatic tax.
-                  </p>
                 </div>
 
                 <div id="manual-tax-rates-fieldset"
@@ -827,16 +826,11 @@
               {% endif -%}
             </p>
             <div class="mt-10">
-              <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div id="ticket-types-count"
-                     class="text-sm font-semibold text-stone-700"
-                     aria-live="polite"
-                     aria-atomic="true">1 ticket type</div>
+              <div class="flex justify-end">
                 <button id="add-ticket-type-button"
                         type="button"
-                        class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                        class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
                         aria-label="Add ticket type">
-                  <div class="svg-icon size-4 icon-add-circle"></div>
                   Add ticket type
                 </button>
               </div>
@@ -852,16 +846,11 @@
                 uses, or total redemptions.
               </p>
               <div class="mt-10">
-                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div id="discount-codes-count"
-                       class="text-sm font-semibold text-stone-700"
-                       aria-live="polite"
-                       aria-atomic="true">0 discount codes</div>
+                <div class="flex justify-end">
                   <button id="add-discount-code-button"
                           type="button"
-                          class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                          class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
                           aria-label="Add discount code">
-                    <div class="svg-icon size-4 icon-add-circle"></div>
                     Add discount code
                   </button>
                 </div>

@@ -21,12 +21,13 @@ const mountReadiness = ({ saved = true } = {}) => {
       </select>
       <input name="venue_address" value="123 Example Street">
       <location-search-field></location-search-field>
+      ${saved ? '<button type="button" data-automatic-tax-readiness-action="check">Check readiness</button>' : ""}
       <section
+        class="${saved ? "hidden" : ""}"
         data-automatic-tax-readiness
         data-saved="${saved}"
         ${saved ? 'data-readiness-url="/dashboard/group/events/event-id/automatic-tax/readiness"' : ""}
       >
-        ${saved ? '<button type="button" data-automatic-tax-readiness-action="check">Check readiness</button>' : ""}
         ${saved ? '<button type="button" data-automatic-tax-readiness-action="review-state" hidden>Review State code</button>' : ""}
         <p data-automatic-tax-readiness-role="status" role="status" aria-live="polite">
           ${saved ? "" : "Save the event before checking readiness."}
@@ -71,6 +72,10 @@ describe("automatic tax readiness", () => {
     initializeAutomaticTaxReadiness({ pageRoot: document.body, displayActiveSection: () => {} });
 
     controls.check.click();
+    expect(controls.check.textContent).to.equal("Check readiness");
+    expect(controls.panel.classList.contains("border-stone-300")).to.equal(true);
+    expect(controls.panel.classList.contains("bg-stone-50")).to.equal(true);
+    expect(controls.panel.classList.contains("text-stone-700")).to.equal(true);
     await waitForMicrotask();
 
     expect(fetchMock.calls).to.have.length(1);
@@ -79,6 +84,10 @@ describe("automatic tax readiness", () => {
     expect(controls.status.textContent).to.include("state code MA");
     expect(controls.status.textContent).to.include("reused");
     expect(controls.check.disabled).to.equal(false);
+    expect(controls.check.textContent).to.equal("Check readiness");
+    expect(controls.panel.classList.contains("hidden")).to.equal(false);
+    expect(controls.panel.classList.contains("border-green-800")).to.equal(true);
+    expect(controls.panel.classList.contains("bg-green-100")).to.equal(true);
   });
 
   it("marks readiness stale after a relevant unsaved change", async () => {
@@ -95,6 +104,7 @@ describe("automatic tax readiness", () => {
     await waitForMicrotask();
 
     expect(controls.check.disabled).to.equal(true);
+    expect(controls.check.textContent).to.equal("Check readiness");
     expect(controls.status.textContent).to.include("Save these changes");
     expect(fetchMock.calls).to.have.length(0);
   });
@@ -121,6 +131,7 @@ describe("automatic tax readiness", () => {
     controls.check.click();
     await waitForMicrotask();
     expect(controls.review.hidden).to.equal(false);
+    expect(controls.check.textContent).to.equal("Check readiness");
     expect(controls.status.textContent).to.equal("The state code ZZ is invalid for ES.");
 
     controls.review.click();
@@ -154,6 +165,27 @@ describe("automatic tax readiness", () => {
       "/docs#/guides/event-operations?id=tickets-discounts-and-refunds",
     );
     expect(controls.review.hidden).to.equal(true);
+  });
+
+  it("uses warning feedback when readiness cannot be confirmed", async () => {
+    const controls = mountReadiness();
+    fetchMock = mockFetch({
+      impl: async () => {
+        throw new Error("Provider unavailable");
+      },
+    });
+    initializeAutomaticTaxReadiness({ pageRoot: document.body, displayActiveSection: () => {} });
+
+    controls.check.click();
+    await waitForMicrotask();
+
+    expect(controls.status.textContent).to.equal(
+      "Automatic tax readiness could not be confirmed. Try again later.",
+    );
+    expect(controls.panel.classList.contains("border-amber-600")).to.equal(true);
+    expect(controls.panel.classList.contains("bg-amber-50")).to.equal(true);
+    expect(controls.panel.classList.contains("text-amber-900")).to.equal(true);
+    expect(controls.check.disabled).to.equal(false);
   });
 
   it("hides the control outside automatic mode and keeps add-page guidance", () => {

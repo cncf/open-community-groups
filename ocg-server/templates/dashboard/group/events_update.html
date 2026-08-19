@@ -891,7 +891,15 @@
             </div>
 
             <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
-              <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+              <div class="flex flex-wrap items-center gap-2">
+                <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+                <button type="button"
+                        class="btn-primary-outline btn-mini"
+                        aria-describedby="automatic-tax-readiness-status"
+                        data-automatic-tax-readiness-action="check"
+                        title="Check the saved venue with the automatic-tax provider"
+                        {% if event_read_only %}disabled{% endif %}>Check readiness</button>
+              </div>
               <div class="mt-2">
                 <select id="tax_calculation_mode"
                         name="tax_calculation_mode"
@@ -935,31 +943,24 @@
               <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
             </div>
 
-            <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 p-4"
+            <div class="col-span-full hidden rounded-md border px-4 py-3"
                  data-automatic-tax-readiness
                  data-saved="true"
                  data-readiness-url="/dashboard/group/events/{{ event.event_id }}/automatic-tax/readiness">
-              <div class="form-label">Automatic tax readiness</div>
-              <p class="form-legend mt-1">Check the saved venue with the automatic-tax provider before publishing.</p>
-              <div class="mt-3 flex flex-wrap items-center gap-3">
-                <button type="button"
-                        class="btn-primary-outline btn-mini"
-                        data-automatic-tax-readiness-action="check"
-                        {% if event_read_only %}disabled{% endif %}>Check readiness</button>
-                <button type="button"
-                        class="btn-primary-outline btn-mini"
-                        data-automatic-tax-readiness-action="review-state"
-                        hidden>Review State code</button>
-              </div>
-              <p class="mt-3 text-sm/6 text-stone-600"
+              <p id="automatic-tax-readiness-status"
+                 class="text-sm/6"
                  data-automatic-tax-readiness-role="status"
                  role="status"
                  aria-live="polite"></p>
+              <button type="button"
+                      class="btn-primary-outline btn-mini mt-3 me-3"
+                      data-automatic-tax-readiness-action="review-state"
+                      hidden>Review State code</button>
               <a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds"
                  target="_blank"
                  rel="noopener noreferrer"
                  hx-boost="false"
-                 class="mt-2 inline-block text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                 class="mt-3 inline-block text-sm font-medium text-primary-700 hover:text-primary-800 hover:underline"
                  data-automatic-tax-readiness-role="manual-tax-help"
                  hidden>Learn how to configure manual tax</a>
             </div>

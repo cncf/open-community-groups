@@ -225,6 +225,7 @@ const renderRates = ({ behavior, disabled, rates, select, selectedRateIds }) => 
   const fragment = document.createDocumentFragment();
   const selectedRateId = selectedRateIds.values().next().value;
   const placeholder = document.createElement("option");
+  placeholder.disabled = true;
   placeholder.selected = true;
   placeholder.value = "";
   placeholder.textContent = "Select a Stripe Tax Rate";
