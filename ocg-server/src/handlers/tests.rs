@@ -688,7 +688,8 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
         venue_country_code: Some("US".to_string()),
         venue_country_name: Some("United States".to_string()),
         venue_name: Some("Main Venue".to_string()),
-        venue_state: Some("CA".to_string()),
+        venue_state_code: Some("CA".to_string()),
+        venue_state_name: Some("California".to_string()),
         waitlist_count: 0,
         waitlist_enabled: false,
         ..Default::default()
@@ -779,7 +780,8 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         venue_country_code: Some("US".to_string()),
         venue_country_name: Some("United States".to_string()),
         venue_name: Some("Sample Venue".to_string()),
-        venue_state: Some("MA".to_string()),
+        venue_state_code: Some("MA".to_string()),
+        venue_state_name: Some("Massachusetts".to_string()),
         waitlist_count: 0,
         waitlist_enabled: false,
         zip_code: Some("02101".to_string()),
@@ -944,6 +946,7 @@ pub(crate) fn sample_group_payment_recipient() -> GroupPaymentRecipient {
     GroupPaymentRecipient {
         provider: PaymentProvider::Stripe,
         recipient_id: "acct_test".to_string(),
+        seller_display_name: "Test Fiscal Sponsor".to_string(),
     }
 }
 
@@ -1107,9 +1110,10 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
 /// Sample Stripe payments configuration used in handler tests.
 pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
     PaymentsConfig::Stripe(PaymentsStripeConfig {
+        connected_webhook_secret: "whsec_connect_test".to_string(),
         mode: PaymentMode::Test,
-        publishable_key: "pk_test".to_string(),
         secret_key: "sk_test".to_string(),
+        ticket_tax_api_version: "2026-07-29.preview".to_string(),
         webhook_secret: "whsec_test".to_string(),
 
         platform_fee_bps: 0,
@@ -1151,7 +1155,7 @@ pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurch
         discount_amount_minor: 0,
         event_purchase_id: Uuid::new_v4(),
         event_ticket_type_id: Uuid::new_v4(),
-        platform_fee_amount_minor: 0,
+        provisional_platform_fee_amount_minor: 0,
         status,
         ticket_title: "General admission".to_string(),
 
@@ -1162,6 +1166,7 @@ pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurch
         provider_payment_reference: None,
         provider_session_id: None,
         refunded_at: None,
+        ..EventPurchaseSummary::default()
     }
 }
 
@@ -1586,7 +1591,17 @@ impl TestRouterBuilder {
         let nm: DynNotificationsManager = Arc::new(self.nm);
         let mut server_cfg = self.server_cfg.unwrap_or_default();
         server_cfg.badges.get_or_insert_with(|| TEST_BADGES_CONFIG.clone());
-        let payments_manager = self.payments_manager.unwrap_or_default();
+        let configured_provider = self.payments_cfg.as_ref().map(PaymentsConfig::provider);
+        let payments_manager = self.payments_manager.unwrap_or_else(|| {
+            let mut payments_manager = MockPaymentsManager::new();
+            payments_manager
+                .expect_configured_provider()
+                .return_const(configured_provider);
+            payments_manager
+                .expect_validate_fiscal_sponsor()
+                .returning(|_, _| Box::pin(async { Ok(()) }));
+            payments_manager
+        });
         let payments_manager = Arc::new(payments_manager) as DynPaymentsManager;
 
         router::setup(

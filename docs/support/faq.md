@@ -43,9 +43,23 @@ The offer must be claimed before its deadline.
 
 ## Do Free Tickets Need Stripe?
 
-No. Events whose ticket prices are all zero work without server payment configuration, a
-group payment recipient, or event currency. Stripe is required only when a
-configured or claim-time final price may be positive.
+No. Events whose ticket prices are all zero work without server payment
+configuration, a fiscal sponsor, or event currency. Stripe is required only
+when a configured or claim-time final price may be positive. Free and
+discounted-to-zero purchases do not produce Stripe invoices.
+
+## Why Can I Not Add A Paid Price To My Event?
+
+Paid ticketing supports in-person and hybrid events with a complete physical
+venue. The event also needs a currency, compatible fiscal-sponsor connected
+account, and an event-wide tax mode: automatic Stripe Tax, active compatible
+manual Tax Rates from the sponsor account, or no tax collection. Virtual events
+remain free-only. Every paid hybrid ticket includes physical admission; it may
+also include virtual access, but cannot be virtual-only.
+
+Tax is inclusive by default, so the displayed ticket price includes tax. An
+organizer may select exclusive tax, which adds tax at Checkout. No-tax events
+hide the display choice and never show `+ tax`.
 
 ## Why Is Registration Disabled?
 
@@ -88,12 +102,34 @@ A few rules apply:
   manual recovery is recorded.
 - Free ticket attendees can still leave the event normally.
 
+The fiscal sponsor funds refunds from its connected Stripe account. If the
+sponsor has insufficient funds, the refund remains pending and visible to
+organizers in the group dashboard `Refunds` tab. OCG does not send a dedicated
+administrator notification or advance platform funds. After a successful
+refund, Stripe issues a linked credit note and OCG returns its remaining
+application fee to the sponsor.
+
 Before payment is complete, attendees can use `Cancel checkout` from the public event page to
 release the ticket hold and choose a different ticket or discount code.
 
 Free attendance releases capacity immediately when canceled. Paid capacity
 remains allocated while a refund is pending and is released after provider
 refund finalization or recorded manual recovery.
+
+## Where Can I Find My Invoice Or Credit Note?
+
+Open [User Dashboard -> Purchases & documents](/dashboard/user?tab=purchases
+':ignore'). It contains paid-ticket history for upcoming, past, and canceled
+events. Available invoices and issued credit notes open in a new tab. Free and
+discounted-to-zero tickets have no Stripe invoice.
+
+## Does A Payment Dispute Cancel Attendance?
+
+No. OCG does not subscribe to or process connected-account dispute events. The
+fiscal sponsor monitors and handles them entirely in Stripe, including any
+application-fee, tax, or document action. OCG sends no dispute notifications
+and does not change attendance automatically. Organizers use the normal
+attendance controls if a separate attendance decision is needed.
 
 ## Can I Use Automatic Meeting Creation on In-Person Events?
 

@@ -29,6 +29,9 @@ test.describe("user dashboard navigation", () => {
       member1Page.locator('a[hx-get="/dashboard/user?tab=invitations"]'),
     ).toContainText("Invitations");
     await expect(
+      member1Page.locator('a[hx-get="/dashboard/user?tab=purchases"]'),
+    ).toContainText("Purchases");
+    await expect(
       member1Page.locator('a[hx-get="/dashboard/user?tab=session-proposals"]'),
     ).toContainText("Session proposals");
     await expect(

@@ -26,13 +26,15 @@ pub(crate) struct ListPage {
     pub can_manage_events: bool,
     /// Events available in the event filter.
     pub events: Vec<RefundEvent>,
+    /// Exhausted financial work requiring an operator decision.
+    pub financial_recoveries: Vec<GroupFinancialRecovery>,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
     /// Partial URL used to refresh the current refunds view.
     pub refresh_url: String,
     /// List of refunds matching the current filters.
     pub refunds: Vec<GroupRefund>,
-    /// Total number of matching refunds.
+    /// Total number of matching refund and financial-recovery operations.
     pub total: usize,
     /// Selected refund view.
     pub view: RefundsView,
@@ -57,6 +59,62 @@ impl ListPage {
 }
 
 // Types.
+
+/// Durable financial-work kinds that support operator recovery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum FinancialRecoveryKind {
+    /// Application-fee refund or tax correction.
+    ApplicationFeeAdjustment,
+    /// Customer credit-note creation.
+    CreditNote,
+}
+
+impl FinancialRecoveryKind {
+    /// Returns the label for the provider object captured during recovery.
+    pub(crate) fn provider_object_label(self) -> &'static str {
+        match self {
+            Self::ApplicationFeeAdjustment => "Stripe application-fee refund ID",
+            Self::CreditNote => "Stripe credit note ID",
+        }
+    }
+}
+
+/// Exhausted application-fee or credit-note work shown to group operators.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupFinancialRecovery {
+    /// Provider operation amount in minor units.
+    pub amount_minor: i64,
+    /// Number of provider attempts made.
+    pub attempt_count: i32,
+    /// Operation currency code.
+    pub currency_code: String,
+    /// Attendee email address.
+    pub email: String,
+    /// Event name.
+    pub event_name: String,
+    /// Last provider failure message.
+    pub failure_message: String,
+    /// Durable financial-work kind.
+    pub kind: FinancialRecoveryKind,
+    /// User-facing operation label.
+    pub operation: String,
+    /// Attendee username.
+    pub username: String,
+    /// Durable work-item identifier.
+    pub work_id: Uuid,
+
+    /// Attendee name.
+    pub name: Option<String>,
+}
+
+impl GroupFinancialRecovery {
+    /// Formats the provider operation amount for display.
+    pub(crate) fn formatted_amount(&self) -> String {
+        format_amount_minor(self.amount_minor, &self.currency_code)
+    }
+}
 
 /// Refund row shown in the group dashboard.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,9 +297,11 @@ crate::impl_pagination_and_raw_query!(RefundsFilters, limit, offset);
 pub(crate) struct RefundsOutput {
     /// Events available in the event filter.
     pub events: Vec<RefundEvent>,
+    /// Exhausted financial work matching the current filters.
+    pub financial_recoveries: Vec<GroupFinancialRecovery>,
     /// Refunds matching the current filters.
     pub refunds: Vec<GroupRefund>,
-    /// Total number of matching refunds.
+    /// Total number of matching refund and financial-recovery operations.
     pub total: usize,
 }
 

@@ -144,7 +144,22 @@ insert into event_purchase (
     provider_payment_reference,
     status,
     ticket_title,
-    user_id
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     2500,
     'USD',
@@ -155,7 +170,11 @@ insert into event_purchase (
     'pi_worker',
     'refund-requested',
     'General admission',
-    :'buyerID'
+    :'buyerID',
+    'direct-charge', 'acct_refunds', 0, 'ch_worker', 'cs_worker',
+    'acct_refunds', 2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 ), (
     2500,
     'USD',
@@ -166,7 +185,11 @@ insert into event_purchase (
     'pi_rejected_then_canceled',
     'refund-requested',
     'General admission',
-    :'rejectedBuyerID'
+    :'rejectedBuyerID',
+    'direct-charge', 'acct_refunds', 0, 'ch_worker_rejected', 'cs_worker_rejected',
+    'acct_refunds', 2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
 -- Pending attendee refund request approved by the worker lifecycle

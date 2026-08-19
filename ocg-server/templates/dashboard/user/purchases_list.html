@@ -1,0 +1,168 @@
+{% import "macros/badges.html" as badges -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{# Dashboard User Purchase Documents List -#}
+{{ dashboard::page_title(title = "Purchases & documents", docs_href = "/docs#/guides/user-dashboard?id=purchases-and-financial-documents",
+  description = "Invoices and credit notes for your paid tickets, including past and canceled events.") -}}
+
+<div class="my-5 flex items-end justify-between">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0), count = purchases.len(), total = total, label = "purchase") }}
+  </div>
+</div>
+
+<div class="relative overflow-x-auto lg:overflow-x-visible">
+  <table class="w-full table-auto text-left text-xs text-stone-500 lg:text-sm">
+    <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+      <tr>
+        <th scope="col" class="px-3 py-3 xl:px-5">Event</th>
+        <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Purchased</th>
+        <th scope="col" class="px-3 py-3 xl:px-5">Amount</th>
+        <th scope="col" class="hidden px-3 py-3 lg:table-cell xl:px-5">Status</th>
+        <th scope="col" class="w-[72px] px-3 py-3 text-right xl:px-5">
+          <span class="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if purchases.is_empty() -%}
+        {# Empty state -#}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-20 text-center lg:hidden" colspan="3">
+            {% include "dashboard/placeholders/user_purchases_table.html" -%}
+          </td>
+          <td class="hidden px-8 py-20 text-center lg:table-cell xl:hidden"
+              colspan="4">{% include "dashboard/placeholders/user_purchases_table.html" -%}</td>
+          <td class="hidden px-8 py-20 text-center xl:table-cell" colspan="5">
+            {% include "dashboard/placeholders/user_purchases_table.html" -%}
+          </td>
+        </tr>
+        {# End empty state -#}
+      {% else -%}
+        {% for purchase in purchases -%}
+          <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+            <th scope="row"
+                class="min-w-[180px] px-3 py-4 font-medium text-stone-900 xl:px-5">
+              <a href="/{{ purchase.community_name }}/group/{{ purchase.public_group_slug() }}/event/{{ purchase.event_slug }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="block max-w-xs truncate hover:underline">{{ purchase.event_name }}</a>
+              <div class="mt-0.5 truncate text-xs font-normal text-stone-400">
+                {{ purchase.group_name }} · {{ purchase.ticket_title }}
+              </div>
+              <div class="mt-0.5 text-xs font-normal text-stone-500 xl:hidden">
+                Purchased
+                {% if let Some(completed_at) = purchase.completed_at -%}
+                  {{ completed_at.format("%b %d, %Y at %H:%M UTC") }}
+                {% else -%}
+                  {{ purchase.created_at.format("%b %d, %Y at %H:%M UTC") }}
+                {% endif -%}
+              </div>
+              <div class="mt-1 flex flex-wrap gap-1.5 lg:hidden">
+                {{ badges::payment_status_badge(label = purchase.status_label()) -}}
+                {% if purchase.event_canceled -%}
+                  {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
+                {% endif -%}
+              </div>
+            </th>
+            <td class="hidden whitespace-nowrap px-3 py-4 xl:table-cell xl:px-5">
+              {% if let Some(completed_at) = purchase.completed_at -%}
+                {{ completed_at.format("%b %d, %Y") }}
+              {% else -%}
+                {{ purchase.created_at.format("%b %d, %Y") }}
+              {% endif -%}
+              {% if let Some(event_starts_at) = purchase.event_starts_at -%}
+                <div class="mt-0.5 text-xs text-stone-400">
+                  Event {{ event_starts_at.with_timezone(purchase.event_timezone).format("%b %d, %Y") }}
+                </div>
+              {% endif -%}
+            </td>
+            <td class="whitespace-nowrap px-3 py-4 font-medium text-stone-800 xl:px-5">
+              <span data-localized-currency>{{ purchase.formatted_amount() }}</span>
+              {% if let Some(seller_display_name) = &purchase.seller_display_name -%}
+                <div class="mt-0.5 max-w-48 truncate text-xs font-normal text-stone-400">
+                  Seller: {{ seller_display_name }}
+                </div>
+              {% endif -%}
+            </td>
+            <td class="hidden px-3 py-4 lg:table-cell xl:px-5">
+              <div class="flex flex-wrap gap-1.5">
+                {{ badges::payment_status_badge(label = purchase.status_label()) -}}
+                {% if purchase.event_canceled -%}
+                  {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
+                {% endif -%}
+              </div>
+            </td>
+            <td class="w-[72px] px-3 py-4 text-right xl:px-5">
+              <details data-actions-menu class="group relative inline-flex justify-end">
+                <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                         aria-label="Open document actions for {{ purchase.event_name }}"
+                         title="Open document actions">
+                  <span class="svg-icon size-4 icon-vertical-dots" aria-hidden="true"></span>
+                </summary>
+                <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                  <ul class="text-sm text-stone-700" role="menu">
+                    {% for credit_note in purchase.credit_notes -%}
+                      <li>
+                        {% if credit_note.status.as_str() == "issued" && credit_note.provider_credit_note_id.is_some() -%}
+                          <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/credit-notes/{{ credit_note.event_purchase_credit_note_id }}"
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             role="menuitem"
+                             class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                            <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-600"
+                                  aria-hidden="true"></span>
+                            <span>Download credit note</span>
+                          </a>
+                        {% else -%}
+                          <button type="button"
+                                  role="menuitem"
+                                  disabled
+                                  aria-disabled="true"
+                                  class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400">
+                            <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-400"
+                                  aria-hidden="true"></span>
+                            <span>Credit note {{ credit_note.status_label().to_lowercase() }}</span>
+                          </button>
+                        {% endif -%}
+                      </li>
+                    {% endfor -%}
+                    <li>
+                      {% if purchase.provider_invoice_id.is_some() -%}
+                        <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/invoice"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           role="menuitem"
+                           class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-600"
+                                aria-hidden="true"></span>
+                          <span>View invoice</span>
+                        </a>
+                      {% else -%}
+                        <button type="button"
+                                role="menuitem"
+                                disabled
+                                aria-disabled="true"
+                                class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400">
+                          <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-400"
+                                aria-hidden="true"></span>
+                          <span>Invoice processing</span>
+                        </button>
+                      {% endif -%}
+                    </li>
+                  </ul>
+                </div>
+              </details>
+            </td>
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+
+{% if total > purchases.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End Dashboard User Purchase Documents List -#}

@@ -34,4 +34,24 @@ describe("badge macros template", () => {
       "{% if with_border %}border-yellow-800{% else %}border-transparent{% endif %}",
     );
   });
+
+  it("uses semantic payment colors without blue states", async () => {
+    // Load and isolate the shared payment badge before checking its palette.
+    const template = normalizeWhitespace(await loadTemplate());
+    const paymentStatusBadge = template.slice(
+      template.indexOf("{% macro payment_status_badge"),
+      template.indexOf("{% endmacro payment_status_badge"),
+    );
+
+    // Verify terminal, active, and neutral payment states use semantic colors.
+    expect(paymentStatusBadge).to.include('label.as_bytes() == "Paid".as_bytes()');
+    expect(paymentStatusBadge).to.include("border-green-800 bg-green-100");
+    expect(paymentStatusBadge).to.include('label.as_bytes() == "Refund requested".as_bytes()');
+    expect(paymentStatusBadge).to.include("border-amber-800 bg-amber-100");
+    expect(paymentStatusBadge).to.include('label.as_bytes() == "Refund rejected".as_bytes()');
+    expect(paymentStatusBadge).to.include("border-red-800 bg-red-100");
+    expect(paymentStatusBadge).to.include('tone.as_bytes() == "danger".as_bytes()');
+    expect(paymentStatusBadge).to.include("border-stone-500 bg-stone-100");
+    expect(paymentStatusBadge).not.to.include("blue");
+  });
 });

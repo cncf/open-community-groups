@@ -1,3 +1,5 @@
+-- Tests expiring previous event checkout holds.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -70,7 +72,11 @@ values (
     :'groupCategoryID',
     'Expire Replaced Group',
     'expire-replaced-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_expire_replaced')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_expire_replaced',
+        'seller_display_name', 'Expire Replaced Fiscal Sponsor'
+    )
 );
 
 -- Event
@@ -167,7 +173,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'purchaseID',
-    2000,
+    0,
     'USD',
     500,
     'SAVE5',

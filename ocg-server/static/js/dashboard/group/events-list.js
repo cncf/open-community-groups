@@ -228,6 +228,7 @@ const handleScopedActionClick = async (button) => {
     const confirmed = await confirmAction({
       message: button.dataset.singleMessage,
       confirmText: button.dataset.confirmText,
+      cancelText: button.dataset.cancelText,
     });
     if (!confirmed) {
       return;

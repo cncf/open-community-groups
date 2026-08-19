@@ -83,8 +83,10 @@ export const getLocationDisabledInputClasses = (disabled) =>
  */
 export const getLocationTextFieldValueKey = (handlerName) => {
   const valueKeys = {
+    countryCode: "_countryCodeValue",
     countryName: "_countryNameValue",
     state: "_stateValue",
+    stateCode: "_stateCodeValue",
     venueAddress: "_venueAddressValue",
     venueCity: "_venueCityValue",
     venueName: "_venueNameValue",
@@ -110,7 +112,7 @@ export const getLocationTextFieldDefinitions = (state) => {
       value: state.venueNameValue,
     },
     {
-      className: "col-span-full lg:col-span-4",
+      className: "col-span-full",
       fieldName: state.venueAddressFieldName,
       handlerName: "venueAddress",
       label: "Address",
@@ -119,7 +121,7 @@ export const getLocationTextFieldDefinitions = (state) => {
     },
     {
       autocomplete: false,
-      className: "col-span-full lg:col-span-2",
+      className: "col-span-full lg:col-span-3",
       fieldName: state.venueCityFieldName,
       handlerName: "venueCity",
       label: "City",
@@ -127,7 +129,7 @@ export const getLocationTextFieldDefinitions = (state) => {
       value: state.venueCityValue,
     },
     {
-      className: "col-span-full lg:col-span-2",
+      className: "col-span-full lg:col-span-3",
       fieldName: state.venueZipCodeFieldName,
       handlerName: "venueZipCode",
       label: "Zip Code",
@@ -136,7 +138,7 @@ export const getLocationTextFieldDefinitions = (state) => {
     },
     {
       autocomplete: false,
-      className: "col-span-full lg:col-span-2",
+      className: "col-span-full lg:col-span-3 lg:col-start-1",
       fieldName: state.stateFieldName,
       handlerName: "state",
       label: "State/Province",
@@ -145,12 +147,31 @@ export const getLocationTextFieldDefinitions = (state) => {
     },
     {
       autocomplete: false,
-      className: "col-span-full lg:col-span-2",
+      className: "col-span-full lg:col-span-3",
       fieldName: state.countryNameFieldName,
       handlerName: "countryName",
       label: "Country",
       legend: getLocationLegendText("country", isVenue),
       value: state.countryNameValue,
+    },
+    {
+      autocomplete: false,
+      className: "col-span-full lg:col-span-3 lg:col-start-1",
+      fieldName: state.stateCodeFieldName,
+      handlerName: "stateCode",
+      label: "State/Province Code",
+      legend: "State or province code used to calculate taxes.",
+      value: state.stateCodeValue,
+    },
+    {
+      autocomplete: false,
+      className: "col-span-full lg:col-span-3",
+      fieldName: state.stateCodeFieldName ? state.countryCodeFieldName : "",
+      handlerName: "countryCode",
+      label: "Country Code",
+      legend: "Country code used to calculate taxes.",
+      requiredForPaidTickets: true,
+      value: state.countryCodeValue,
     },
   ];
 

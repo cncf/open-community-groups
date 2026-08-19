@@ -33,7 +33,7 @@ use crate::{
         payments::{
             DBPayments, EventPurchaseRefundKind, EventPurchaseRefundStatus,
             PrepareEventCheckoutPurchaseInput, PrepareEventCheckoutPurchaseResult,
-            ReconcileEventPurchaseResult,
+            ReconcileEventPurchaseForCheckoutSessionInput, ReconcileEventPurchaseResult,
         },
         site::DBSite,
     },
@@ -49,7 +49,7 @@ use crate::{
                 events::{Event as EventUpdate, EventsListFilters},
                 invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
                 members::GroupMembersFilters,
-                refunds::{GroupRefundStatus, RefundsFilters, RefundsView},
+                refunds::{FinancialRecoveryKind, GroupRefundStatus, RefundsFilters, RefundsView},
                 sponsors::GroupSponsorsFilters,
                 submissions::CfsSubmissionsFilters as GroupCfsSubmissionsFilters,
                 team::GroupTeamFilters,
@@ -58,6 +58,7 @@ use crate::{
             user::{
                 events::{UserEventRole, UserEventsFilters},
                 groups::UserGroupsFilters,
+                purchases::PurchaseDocumentsFilters,
                 session_proposals::SessionProposalsFilters,
                 submissions::CfsSubmissionsFilters as UserCfsSubmissionsFilters,
             },
@@ -473,7 +474,6 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
     assert_eq!(refund.community_id, community_id());
     assert_eq!(refund.event_id, paid_event_id());
     assert_eq!(refund.event_purchase_id, refund_approve_purchase_id());
-    assert_eq!(refund.platform_fee_amount_minor, 250);
     assert_eq!(refund.status, EventPurchaseRefundStatus::Processing);
     assert!(refund.provider_refunded_at.is_some());
 
@@ -483,6 +483,85 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
         refund.claim_id.context("refund claim id should be present")?,
         serde_json::json!({"scenario": "contract"}),
         Some(PaymentProvider::Stripe),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_claim_event_purchase_application_fee_adjustment_deserializes() -> Result<()> {
+    // Setup the contract database and claim the pending adjustment fixture
+    let db = contract_tests_db()?;
+    let adjustment = db
+        .claim_event_purchase_application_fee_adjustment(PaymentProvider::Stripe)
+        .await?
+        .context("contract application-fee adjustment should be claimable")?;
+
+    // Check the complete provider request context deserializes
+    assert_eq!(adjustment.amount_minor, 25);
+    assert_eq!(adjustment.connected_seller_id, "acct_contract_documents");
+    assert_eq!(
+        adjustment.event_purchase_application_fee_adjustment_id,
+        document_adjustment_id()
+    );
+    assert_eq!(adjustment.event_purchase_id, document_purchase_id());
+    assert_eq!(
+        adjustment.idempotency_key,
+        "event-purchase-application-fee-adjustment-contract-documents"
+    );
+    assert_eq!(adjustment.kind, "purchase-refund");
+    assert_eq!(
+        adjustment.provider_application_fee_id,
+        "fee_contract_documents"
+    );
+
+    // Complete the claim so it cannot interfere with later worker contracts
+    db.record_event_purchase_application_fee_adjustment_succeeded(
+        adjustment.event_purchase_application_fee_adjustment_id,
+        adjustment.claim_id,
+        "fr_contract_documents".to_string(),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_claim_event_purchase_credit_note_deserializes() -> Result<()> {
+    // Setup the contract database and claim the pending credit-note fixture
+    let db = contract_tests_db()?;
+    let credit_note = db
+        .claim_event_purchase_credit_note(PaymentProvider::Stripe)
+        .await?
+        .context("contract credit note should be claimable")?;
+
+    // Check the complete provider request context deserializes
+    assert_eq!(credit_note.amount_minor, 2500);
+    assert_eq!(credit_note.connected_seller_id, "acct_contract_documents");
+    assert_eq!(
+        credit_note.event_purchase_credit_note_id,
+        document_credit_note_id()
+    );
+    assert_eq!(credit_note.event_purchase_id, document_purchase_id());
+    assert_eq!(credit_note.event_purchase_refund_id, document_refund_id());
+    assert_eq!(
+        credit_note.idempotency_key,
+        "event-purchase-credit-note-contract-documents"
+    );
+    assert_eq!(credit_note.provider_invoice_id, "in_contract_documents");
+    assert_eq!(credit_note.provider_refund_id, "re_contract_documents");
+    assert_eq!(credit_note.tax_amount_minor, 0);
+
+    // Issue the document so later attendee contracts cover the provider fields
+    db.record_event_purchase_credit_note_succeeded(
+        credit_note.event_purchase_credit_note_id,
+        credit_note.claim_id,
+        "cn_contract_documents".to_string(),
+        Some("https://invoice.stripe.test/cn/contract-documents".to_string()),
+        Some("https://invoice.stripe.test/cn/contract-documents.pdf".to_string()),
     )
     .await?;
 
@@ -868,11 +947,13 @@ async fn db_contracts_get_event_enrollment_deserializes() -> Result<()> {
             status_pending_payment_user_id(),
         )
         .await?;
+    let enrollment_json = serde_json::to_value(&enrollment)?;
 
-    // Check attendee enrollment and check-in state
+    // Check attendee enrollment omits purchase-document routing
     assert_eq!(enrollment.status, EventEnrollmentStatus::Attendee);
     assert!(enrollment.is_checked_in);
     assert!(enrollment.manually_invited);
+    assert!(enrollment_json.get("provider_invoice_url").is_none());
 
     // Check owned ticket offers expose their exact offer and tier identifiers
     assert_eq!(
@@ -1090,9 +1171,27 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
     assert_eq!(summary.event_purchase_id, summary_purchase_id());
     assert_eq!(summary.event_ticket_type_id, paid_ticket_type_id());
     assert!(summary.hold_expires_at.is_some());
-    assert_eq!(summary.platform_fee_amount_minor, 250);
+    assert_eq!(summary.provisional_platform_fee_amount_minor, 250);
     assert_eq!(summary.status, EventPurchaseStatus::Pending);
     assert_eq!(summary.ticket_title, "Contract Paid Ticket");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_user_purchase_document_context_deserializes() -> Result<()> {
+    // Setup the contract database and resolve the attendee-owned invoice
+    let db = contract_tests_db()?;
+    let context = db
+        .get_user_purchase_document_context(free_buyer_id(), document_purchase_id(), None)
+        .await?
+        .context("contract invoice context should exist")?;
+
+    // Check immutable provider scope and document ownership deserialize
+    assert_eq!(context.connected_seller_id, "acct_contract_documents");
+    assert_eq!(context.payment_provider, PaymentProvider::Stripe);
+    assert_eq!(context.provider_document_id, "in_contract_documents");
 
     Ok(())
 }
@@ -1352,7 +1451,11 @@ async fn db_contracts_get_group_payment_recipient_deserializes() -> Result<()> {
 
     // Check provider and recipient identifiers
     assert_eq!(payment_recipient.provider, PaymentProvider::Stripe);
-    assert_eq!(payment_recipient.recipient_id, "acct_contract_group");
+    assert_eq!(payment_recipient.recipient_id, "acct_contract");
+    assert_eq!(
+        payment_recipient.seller_display_name,
+        "Contract Fiscal Sponsor"
+    );
 
     Ok(())
 }
@@ -2050,7 +2153,28 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
         })
     );
     assert_eq!(output.refunds.len(), 1);
-    assert_eq!(output.total, 1);
+    assert_eq!(output.total, 2);
+
+    // Check the application-fee recovery JSON contract
+    assert_eq!(output.financial_recoveries.len(), 1);
+    let recovery = &output.financial_recoveries[0];
+    assert_eq!(recovery.amount_minor, 25);
+    assert_eq!(recovery.attempt_count, 10);
+    assert_eq!(recovery.currency_code, "USD");
+    assert_eq!(recovery.email, "buyer-refund-reject.contract@example.com");
+    assert_eq!(recovery.event_name, "Contract Paid Event");
+    assert_eq!(recovery.failure_message, "Contract application-fee failure");
+    assert_eq!(
+        recovery.kind,
+        FinancialRecoveryKind::ApplicationFeeAdjustment
+    );
+    assert_eq!(recovery.operation, "Application-fee refund");
+    assert_eq!(recovery.username, "contract-buyer-refund-reject");
+    assert_eq!(recovery.work_id, financial_recovery_adjustment_id());
+    assert_eq!(
+        recovery.name.as_deref(),
+        Some("Contract Buyer Refund Reject")
+    );
 
     // Check required refund row fields
     let refund = &output.refunds[0];
@@ -2078,6 +2202,32 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
         Some("Cannot attend anymore")
     );
     assert_eq!(refund.review_note, None);
+
+    // Load and check the credit-note recovery JSON contract independently
+    let credit_note_filters = RefundsFilters {
+        view: RefundsView::Attention,
+        event_id: Some(paid_event_id()),
+        limit: Some(10),
+        offset: Some(0),
+        ts_query: Some("buyer-refund-approve.contract@example.com".to_string()),
+    };
+    let credit_note_output = db.list_group_refunds(group_id(), &credit_note_filters).await?;
+    assert_eq!(credit_note_output.financial_recoveries.len(), 1);
+    let recovery = &credit_note_output.financial_recoveries[0];
+    assert_eq!(recovery.amount_minor, 2500);
+    assert_eq!(recovery.attempt_count, 10);
+    assert_eq!(recovery.currency_code, "USD");
+    assert_eq!(recovery.email, "buyer-refund-approve.contract@example.com");
+    assert_eq!(recovery.event_name, "Contract Paid Event");
+    assert_eq!(recovery.failure_message, "Contract credit-note failure");
+    assert_eq!(recovery.kind, FinancialRecoveryKind::CreditNote);
+    assert_eq!(recovery.operation, "Credit note");
+    assert_eq!(recovery.username, "contract-buyer-refund-approve");
+    assert_eq!(recovery.work_id, financial_recovery_credit_note_id());
+    assert_eq!(
+        recovery.name.as_deref(),
+        Some("Contract Buyer Refund Approve")
+    );
 
     Ok(())
 }
@@ -2492,6 +2642,42 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_purchase_documents_deserializes() -> Result<()> {
+    // Setup the contract database and attendee document filters
+    let db = contract_tests_db()?;
+    let filters = PurchaseDocumentsFilters {
+        limit: Some(10),
+        offset: Some(0),
+    };
+
+    // Load invoice and credit-note history through the production wrapper
+    let output = db.list_user_purchase_documents(free_buyer_id(), &filters).await?;
+
+    // Check the purchase and nested credit-note JSON contracts
+    assert_eq!(output.total, 1);
+    assert_eq!(output.purchases.len(), 1);
+    let purchase = &output.purchases[0];
+    assert_eq!(purchase.amount_minor, 2500);
+    assert_eq!(purchase.event_purchase_id, document_purchase_id());
+    assert_eq!(
+        purchase.provider_invoice_id.as_deref(),
+        Some("in_contract_documents")
+    );
+    assert_eq!(
+        purchase.seller_display_name.as_deref(),
+        Some("Contract Document Sponsor")
+    );
+    assert_eq!(purchase.credit_notes.len(), 1);
+    assert_eq!(
+        purchase.credit_notes[0].event_purchase_credit_note_id,
+        document_credit_note_id()
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_dashboard_groups_deserializes() -> Result<()> {
     // Setup the contract database and group filters
     let db = contract_tests_db()?;
@@ -2733,25 +2919,33 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
     assert_eq!(checkout.event_id, paid_event_id());
     assert_eq!(checkout.event_slug, "contract-paid-event");
     assert_eq!(checkout.group_slug, "contract-group");
+    assert_eq!(
+        checkout.venue.as_ref().and_then(|venue| venue.state_code.as_deref()),
+        Some("CA")
+    );
+    assert_eq!(
+        checkout.venue.as_ref().and_then(|venue| venue.state_name.as_deref()),
+        Some("California")
+    );
     assert_eq!(checkout.purchase.amount_minor, 2500);
     assert_eq!(
         checkout.purchase.event_ticket_type_id,
         paid_ticket_type_id()
     );
     assert!(checkout.purchase.hold_expires_at.is_some());
-    assert_eq!(checkout.purchase.platform_fee_amount_minor, 62);
+    assert_eq!(checkout.purchase.provisional_platform_fee_amount_minor, 62);
     assert_eq!(checkout.purchase.status, EventPurchaseStatus::Pending);
     assert_eq!(checkout.purchase.ticket_title, "Contract Paid Ticket");
     assert_eq!(
-        checkout.recipient.as_ref().map(|recipient| recipient.provider),
+        checkout.seller.as_ref().map(|seller| seller.provider),
         Some(PaymentProvider::Stripe)
     );
     assert_eq!(
         checkout
-            .recipient
+            .seller
             .as_ref()
-            .map(|recipient| recipient.recipient_id.as_str()),
-        Some("acct_contract_group")
+            .map(|seller| seller.connected_account_id.as_str()),
+        Some("acct_contract")
     );
 
     Ok(())
@@ -2795,9 +2989,17 @@ async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes
     // Reconcile the provider checkout through the Rust contract
     let result = db
         .reconcile_event_purchase_for_checkout_session(
-            PaymentProvider::Stripe,
-            "cs_contract_reconcile",
-            Some("pi_contract_reconcile".to_string()),
+            &ReconcileEventPurchaseForCheckoutSessionInput {
+                payment_provider: PaymentProvider::Stripe,
+                provider_charge_id: "ch_contract_reconcile".to_string(),
+                provider_object_account_id: "acct_contract".to_string(),
+                provider_payment_reference: "pi_contract_reconcile".to_string(),
+                provider_session_id: "cs_contract_reconcile".to_string(),
+                provider_total_minor: 2_500,
+                tax_amount_minor: 0,
+
+                provider_application_fee_id: None,
+            },
         )
         .await?;
 
@@ -3319,10 +3521,16 @@ const CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e1";
 const CLAIM_GROUP_ID: &str = "00000000-0000-0000-0000-00000000c0a0";
 const CO_SPEAKER_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c2";
 const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
+const DOCUMENT_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c11d";
+const DOCUMENT_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-00000000c11e";
+const DOCUMENT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c11b";
+const DOCUMENT_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c11c";
 const EVENT_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c013";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
 const EXTERNAL_LOOKUP_ID: &str = "00000000-0000-0000-0000-00000000c046";
 const EXTERNAL_UPDATE_ID: &str = "00000000-0000-0000-0000-00000000c047";
+const FINANCIAL_RECOVERY_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c119";
+const FINANCIAL_RECOVERY_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-00000000c11a";
 const FREE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e4";
 const FREE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f3";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
@@ -3546,6 +3754,26 @@ fn contract_badge_snapshot() -> BadgeSnapshot {
     }
 }
 
+/// Returns the pending application-fee adjustment used by worker contracts.
+fn document_adjustment_id() -> Uuid {
+    parse_uuid(DOCUMENT_ADJUSTMENT_ID)
+}
+
+/// Returns the credit note used by worker and attendee document contracts.
+fn document_credit_note_id() -> Uuid {
+    parse_uuid(DOCUMENT_CREDIT_NOTE_ID)
+}
+
+/// Returns the provider-backed purchase used by attendee document contracts.
+fn document_purchase_id() -> Uuid {
+    parse_uuid(DOCUMENT_PURCHASE_ID)
+}
+
+/// Returns the provider refund used by credit-note worker contracts.
+fn document_refund_id() -> Uuid {
+    parse_uuid(DOCUMENT_REFUND_ID)
+}
+
 /// Returns the event cancellation target identifier used by the contract fixture.
 fn cancelee_id() -> Uuid {
     parse_uuid(CANCELEE_ID)
@@ -3643,6 +3871,16 @@ fn external_lookup_id() -> Uuid {
 /// Returns the external identity update identifier used by the contract fixture.
 fn external_update_id() -> Uuid {
     parse_uuid(EXTERNAL_UPDATE_ID)
+}
+
+/// Returns the exhausted application-fee recovery work identifier.
+fn financial_recovery_adjustment_id() -> Uuid {
+    parse_uuid(FINANCIAL_RECOVERY_ADJUSTMENT_ID)
+}
+
+/// Returns the exhausted credit-note recovery work identifier.
+fn financial_recovery_credit_note_id() -> Uuid {
+    parse_uuid(FINANCIAL_RECOVERY_CREDIT_NOTE_ID)
 }
 
 /// Returns the free checkout buyer identifier used by the contract fixture.

@@ -1,0 +1,9 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# User Purchases Table Placeholder -#}
+{% call dashboard::empty_state("No paid-ticket documents yet", title_margin = "mb-4", wrapper_class = "mx-auto max-w-md") -%}
+<p class="text-sm text-stone-700 lg:text-md">
+  Invoices appear here after a paid checkout. Free tickets do not create invoices.
+</p>
+{% endcall -%}
+{# End user purchases table placeholder -#}

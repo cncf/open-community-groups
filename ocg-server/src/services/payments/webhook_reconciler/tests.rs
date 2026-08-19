@@ -16,7 +16,8 @@ use crate::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::{
             PaymentsWebhookEvent, RefundPaymentResult, RefundPaymentStatus,
-            notification_composer::PaymentsNotificationComposer, provider::MockPaymentsProvider,
+            notification_composer::PaymentsNotificationComposer,
+            provider::{CheckoutFinancialContext, MockPaymentsProvider},
         },
     },
     types::{
@@ -29,6 +30,39 @@ use crate::{
 use super::PaymentsWebhookReconciler;
 
 #[tokio::test]
+async fn handle_webhook_event_attaches_application_fee_to_direct_charge() {
+    // Setup a platform fee created after its connected-account charge
+    let mut db = MockDB::new();
+    db.expect_attach_application_fee_to_event_purchase()
+        .withf(|provider, account_id, charge_id, fee_id, amount| {
+            *provider == PaymentProvider::Stripe
+                && account_id == "acct_test_123"
+                && charge_id == "ch_test_123"
+                && fee_id == "fee_test_123"
+                && *amount == 62
+        })
+        .times(1)
+        .returning(|_, _, _, _, _| Ok(()));
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+
+    // Reconcile the asynchronously created platform object
+    sample_reconciler(db, MockNotificationsManager::new(), provider)
+        .handle_webhook_event(PaymentsWebhookEvent::ApplicationFeeCreated {
+            amount_minor: 62,
+            connected_account_id: "acct_test_123".to_string(),
+            is_live: false,
+            provider_application_fee_id: "fee_test_123".to_string(),
+            provider_charge_id: "ch_test_123".to_string(),
+        })
+        .await
+        .expect("application fee to attach");
+}
+
+#[tokio::test]
 async fn handle_webhook_event_completes_checkout_and_enqueues_notification() {
     // Setup a checkout completion and its notification context
     let community_id = Uuid::new_v4();
@@ -39,13 +73,18 @@ async fn handle_webhook_event_completes_checkout_and_enqueues_notification() {
     // Setup checkout reconciliation and notification context expectations
     let mut db = MockDB::new();
     db.expect_reconcile_event_purchase_for_checkout_session()
-        .withf(|provider, session_id, payment_reference| {
-            *provider == PaymentProvider::Stripe
-                && session_id == "cs_test_123"
-                && payment_reference.as_deref() == Some("pi_test_123")
+        .withf(|input| {
+            input.payment_provider == PaymentProvider::Stripe
+                && input.provider_object_account_id == "acct_test_123"
+                && input.provider_session_id == "cs_test_123"
+                && input.provider_payment_reference == "pi_test_123"
+                && input.provider_charge_id == "ch_test_123"
+                && input.provider_total_minor == 2_500
+                && input.tax_amount_minor == 0
+                && input.provider_application_fee_id.as_deref() == Some("fee_test_123")
         })
         .times(1)
-        .returning(move |_, _, _| {
+        .returning(move |_| {
             Ok(ReconcileEventPurchaseResult::Completed(
                 CompletedEventPurchase {
                     community_id,
@@ -77,6 +116,7 @@ async fn handle_webhook_event_completes_checkout_and_enqueues_notification() {
     // Guard the worker-owned provider refund methods
     let mut provider = MockPaymentsProvider::new();
     guard_provider_refund_calls(&mut provider);
+    expect_checkout_financial_context(&mut provider, "cs_test_123");
     provider
         .expect_provider()
         .times(1)
@@ -86,8 +126,9 @@ async fn handle_webhook_event_completes_checkout_and_enqueues_notification() {
     let reconciler = sample_reconciler(db, notifications_manager, provider);
     let result = reconciler
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
+            connected_account_id: "acct_test_123".to_string(),
+            is_live: false,
             provider_session_id: "cs_test_123".to_string(),
-            provider_payment_reference: Some("pi_test_123".to_string()),
         })
         .await;
 
@@ -96,15 +137,71 @@ async fn handle_webhook_event_completes_checkout_and_enqueues_notification() {
 }
 
 #[tokio::test]
+async fn handle_webhook_event_completes_checkout_before_application_fee_created() {
+    // Setup checkout financial context whose direct-charge fee is still asynchronous
+    let mut db = MockDB::new();
+    db.expect_reconcile_event_purchase_for_checkout_session()
+        .withf(|input| {
+            input.payment_provider == PaymentProvider::Stripe
+                && input.provider_object_account_id == "acct_test_123"
+                && input.provider_session_id == "cs_async_fee"
+                && input.provider_payment_reference == "pi_test_123"
+                && input.provider_charge_id == "ch_test_123"
+                && input.provider_total_minor == 2_500
+                && input.tax_amount_minor == 0
+                && input.provider_application_fee_id.is_none()
+        })
+        .times(1)
+        .returning(|_| Ok(ReconcileEventPurchaseResult::Noop));
+    let mut provider = MockPaymentsProvider::new();
+    guard_provider_refund_calls(&mut provider);
+    provider
+        .expect_get_checkout_financial_context()
+        .withf(|input| {
+            input.connected_seller_id == "acct_test_123"
+                && input.provider_session_id == "cs_async_fee"
+        })
+        .times(1)
+        .returning(|_| {
+            Box::pin(async {
+                Ok(CheckoutFinancialContext {
+                    provider_charge_id: "ch_test_123".to_string(),
+                    provider_payment_reference: "pi_test_123".to_string(),
+                    provider_total_minor: 2_500,
+                    tax_amount_minor: 0,
+
+                    provider_application_fee_id: None,
+                })
+            })
+        });
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+
+    // Reconcile checkout without blocking fulfillment on fee creation timing
+    sample_reconciler(db, MockNotificationsManager::new(), provider)
+        .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
+            connected_account_id: "acct_test_123".to_string(),
+            is_live: false,
+            provider_session_id: "cs_async_fee".to_string(),
+        })
+        .await
+        .expect("checkout without an application fee ID to reconcile");
+}
+
+#[tokio::test]
 async fn handle_webhook_event_expires_checkout_session() {
     // Setup checkout expiration persistence
     let mut db = MockDB::new();
     db.expect_expire_event_purchase_for_checkout_session()
-        .withf(|provider, session_id| {
-            *provider == PaymentProvider::Stripe && session_id == "cs_expired_123"
+        .withf(|provider, account_id, session_id| {
+            *provider == PaymentProvider::Stripe
+                && account_id == "acct_test_123"
+                && session_id == "cs_expired_123"
         })
         .times(1)
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _| Ok(()));
 
     // Guard the worker-owned provider refund methods
     let mut provider = MockPaymentsProvider::new();
@@ -118,6 +215,8 @@ async fn handle_webhook_event_expires_checkout_session() {
     let reconciler = sample_reconciler(db, MockNotificationsManager::new(), provider);
     let result = reconciler
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutExpired {
+            connected_account_id: "acct_test_123".to_string(),
+            is_live: false,
             provider_session_id: "cs_expired_123".to_string(),
         })
         .await;
@@ -318,19 +417,25 @@ async fn handle_webhook_event_queues_unfulfillable_checkout_without_provider_cal
     // Setup checkout reconciliation that durably queued a refund
     let mut db = MockDB::new();
     db.expect_reconcile_event_purchase_for_checkout_session()
-        .withf(|provider, session_id, payment_reference| {
-            *provider == PaymentProvider::Stripe
-                && session_id == "cs_unfulfillable_123"
-                && payment_reference.as_deref() == Some("pi_test_123")
+        .withf(|input| {
+            input.payment_provider == PaymentProvider::Stripe
+                && input.provider_object_account_id == "acct_test_123"
+                && input.provider_session_id == "cs_unfulfillable_123"
+                && input.provider_payment_reference == "pi_test_123"
+                && input.provider_charge_id == "ch_test_123"
+                && input.provider_total_minor == 2_500
+                && input.tax_amount_minor == 0
+                && input.provider_application_fee_id.as_deref() == Some("fee_test_123")
         })
         .times(1)
-        .returning(|_, _, _| Ok(ReconcileEventPurchaseResult::RefundQueued));
+        .returning(|_| Ok(ReconcileEventPurchaseResult::RefundQueued));
 
     // Guard notifications and worker-owned provider refund methods
     let mut notifications_manager = MockNotificationsManager::new();
     notifications_manager.expect_enqueue().never();
     let mut provider = MockPaymentsProvider::new();
     guard_provider_refund_calls(&mut provider);
+    expect_checkout_financial_context(&mut provider, "cs_unfulfillable_123");
     provider
         .expect_provider()
         .times(1)
@@ -340,8 +445,9 @@ async fn handle_webhook_event_queues_unfulfillable_checkout_without_provider_cal
     let reconciler = sample_reconciler(db, notifications_manager, provider);
     let result = reconciler
         .handle_webhook_event(PaymentsWebhookEvent::CheckoutCompleted {
+            connected_account_id: "acct_test_123".to_string(),
+            is_live: false,
             provider_session_id: "cs_unfulfillable_123".to_string(),
-            provider_payment_reference: Some("pi_test_123".to_string()),
         })
         .await;
 
@@ -535,6 +641,30 @@ fn guard_provider_refund_calls(provider: &mut MockPaymentsProvider) {
     provider.expect_refund_payment().never();
 }
 
+/// Configures the authoritative provider lookup used by checkout webhooks.
+fn expect_checkout_financial_context(
+    provider: &mut MockPaymentsProvider,
+    session_id: &'static str,
+) {
+    provider
+        .expect_get_checkout_financial_context()
+        .withf(move |input| {
+            input.connected_seller_id == "acct_test_123" && input.provider_session_id == session_id
+        })
+        .times(1)
+        .returning(|_| {
+            Box::pin(async {
+                Ok(CheckoutFinancialContext {
+                    provider_application_fee_id: Some("fee_test_123".to_string()),
+                    provider_charge_id: "ch_test_123".to_string(),
+                    provider_payment_reference: "pi_test_123".to_string(),
+                    provider_total_minor: 2_500,
+                    tax_amount_minor: 0,
+                })
+            })
+        });
+}
+
 /// Creates an event summary for webhook notification tests.
 fn sample_event_summary(event_id: Uuid) -> EventSummary {
     EventSummary {
@@ -585,7 +715,8 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         venue_country_code: None,
         venue_country_name: None,
         venue_name: None,
-        venue_state: None,
+        venue_state_code: None,
+        venue_state_name: None,
         zip_code: None,
     }
 }
@@ -601,6 +732,7 @@ fn sample_purchase() -> EventPurchaseSummary {
         ticket_title: "General admission".to_string(),
 
         provider_payment_reference: Some("pi_test_123".to_string()),
+        provider_object_account_id: Some("acct_test_123".to_string()),
         ..EventPurchaseSummary::default()
     }
 }
@@ -648,7 +780,9 @@ fn sample_refund() -> EventPurchaseRefund {
 fn sample_refund_event(status: RefundPaymentStatus) -> PaymentsWebhookEvent {
     PaymentsWebhookEvent::RefundUpdated {
         amount_minor: 2_500,
+        connected_account_id: "acct_test_123".to_string(),
         currency_code: "usd".to_string(),
+        is_live: false,
         provider_payment_reference: "pi_test_123".to_string(),
         provider_refund_id: "re_test_123".to_string(),
         purchase_id: Uuid::from_u128(1),

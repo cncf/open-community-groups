@@ -1,4 +1,5 @@
 {% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/question_answers.html" as question_answers -%}
 {% import "event/attendance_macros.html" as attendance -%}
 {# Attend button section -#}
@@ -145,6 +146,9 @@
                 Choose the ticket tier you would like the organizers to review.
               {% else -%}
                 Choose a ticket tier to continue.
+              {% endif -%}
+              {% if event.shows_additional_ticket_tax() -%}
+                <span class="mt-1 block font-medium text-stone-700">Tax is added at checkout.</span>
               {% endif -%}
             </p>
           </div>
@@ -432,27 +436,44 @@
   {% endif -%}
   {# End actions menu -#}
 
-  {# Refund request button -#}
+  {# Refund request button and rejection reason -#}
+  {% let refund_rejection_tooltip_id -%}refund-rejection-reason-{{ attendance_instance }}{%- endlet %}
+<span class="group/refund-reason relative inline-flex">
   <button id="refund-btn-{{ attendance_instance }}"
           data-attendance-role="refund-btn"
           type="button"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
     {{ attendance::control_content(label = "Request refund", icon_class = "icon-refund") -}}
   </button>
-  {# End refund request button -#}
+  <button type="button"
+          data-attendance-role="refund-rejection-trigger"
+          class="hidden absolute -end-1 -top-1 z-10 size-3 rounded-full border-2 border-white bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          aria-label="View refund rejection reason"
+          aria-describedby="{{ refund_rejection_tooltip_id }}"></button>
+  <span data-attendance-role="refund-rejection-tooltip"
+        class="hidden contents">
+    {% call dashboard::tooltip_panel(
+      id = refund_rejection_tooltip_id,
+      title = "Refund request",
+      visibility_classes = "group-hover/refund-reason:visible group-hover/refund-reason:opacity-100 group-focus-within/refund-reason:visible group-focus-within/refund-reason:opacity-100"
+    ) -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Reason</span>
+      <span data-attendance-role="refund-rejection-reason"
+            class="hidden mt-0.5 whitespace-pre-wrap break-words text-stone-900"></span>
+    </span>
+    {% endcall -%}
+  </span>
+</span>
+{# End refund request button and rejection reason -#}
 
-  {# Refund rejection reason -#}
-  <p data-attendance-role="refund-rejection-reason"
-     class="hidden basis-full whitespace-pre-wrap break-words text-sm text-red-800"></p>
-  {# End refund rejection reason -#}
-
-  {# Attendance checker -#}
-  <div id="attendance-checker-{{ attendance_instance }}"
-       data-attendance-role="attendance-checker"
-       class="hidden"
-       hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"
-       hx-trigger="load, attendance-changed from:body"
-       hx-swap="none ignoreTitle:true"></div>
-  {# End attendance checker -#}
+{# Attendance checker -#}
+<div id="attendance-checker-{{ attendance_instance }}"
+     data-attendance-role="attendance-checker"
+     class="hidden"
+     hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"
+     hx-trigger="load, attendance-changed from:body"
+     hx-swap="none ignoreTitle:true"></div>
+{# End attendance checker -#}
 </div>
 {# End attend button section -#}

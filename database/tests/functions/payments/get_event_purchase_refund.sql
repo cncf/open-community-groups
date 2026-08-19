@@ -1,3 +1,5 @@
+-- Tests retrieving event purchase refunds.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -125,7 +127,23 @@ insert into event_purchase (
     user_id,
 
     provider_payment_reference,
-    refunded_at
+    refunded_at,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     :'purchaseID',
     2500,
@@ -138,7 +156,11 @@ insert into event_purchase (
     :'userID',
 
     'pi_recovery_123',
-    current_timestamp
+    current_timestamp,
+    'direct-charge', 'acct_refunds', 0, 'stripe', 'ch_get_recovery',
+    'cs_get_recovery', 'acct_refunds', 2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
 -- Purchase currently owned by a refund worker claim
@@ -153,7 +175,22 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     2500,
     'USD',
@@ -165,7 +202,11 @@ insert into event_purchase (
     :'userID',
 
     'stripe',
-    'pi_claimed_123'
+    'pi_claimed_123',
+    'direct-charge', 'acct_refunds', 0, 'ch_get_claimed', 'cs_get_claimed',
+    'acct_refunds', 2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
 -- Durable refund preserving the completed local finalization

@@ -96,11 +96,12 @@ meetings:
 
 # Payments provider configuration (a single provider can be enabled at a time)
 payments:
+  connectedWebhookSecret: ""
   enabled: false
   provider: stripe
   mode: test
-  publishableKey: ""
   secretKey: ""
+  ticketTaxApiVersion: ""
   webhookSecret: ""
   platformFeeBps: 0
 

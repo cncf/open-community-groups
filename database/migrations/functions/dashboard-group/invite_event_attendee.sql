@@ -252,7 +252,8 @@ begin
         p_configured_provider,
         v_ticket_current_price > 0,
         v_payment_currency_code,
-        v_payment_recipient
+        v_payment_recipient,
+        p_event_id
     );
 
     -- Reject attendee and offer states that should not be invited again

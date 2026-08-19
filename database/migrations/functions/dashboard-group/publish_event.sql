@@ -3,7 +3,8 @@ create or replace function publish_event(
     p_actor_user_id uuid,
     p_group_id uuid,
     p_event_id uuid,
-    p_configured_provider text
+    p_configured_provider text,
+    p_payment_validation jsonb default null
 )
 returns void as $$
 declare
@@ -13,6 +14,7 @@ declare
     v_payment_recipient jsonb;
     v_published boolean;
     v_starts_at timestamptz;
+    v_tax_calculation_mode text;
 begin
     -- Lock the group payment state before the event so recipient changes and
     -- publication cannot invalidate each other
@@ -36,11 +38,13 @@ begin
         e.published,
         e.payment_currency_code,
         e.starts_at,
+        e.tax_calculation_mode,
         is_event_paid_capable(e.event_id)
     into
         v_published,
         v_payment_currency_code,
         v_starts_at,
+        v_tax_calculation_mode,
         v_paid_capable
     from event e
     where event_id = p_event_id
@@ -58,12 +62,37 @@ begin
         return;
     end if;
 
+    -- Bind provider validation to the recipient protected by the group lock
+    if p_configured_provider is not null
+       and v_paid_capable
+       and (
+           p_payment_validation is null
+           or not (p_payment_validation ? 'expected_payment_recipient')
+           or not (p_payment_validation ? 'validated_payment_recipient')
+           or not (p_payment_validation ? 'require_automatic_tax')
+           or v_payment_recipient is distinct from nullif(
+               p_payment_validation->'expected_payment_recipient',
+               'null'::jsonb
+           )
+           or v_payment_recipient is distinct from nullif(
+               p_payment_validation->'validated_payment_recipient',
+               'null'::jsonb
+           )
+           or (
+               v_tax_calculation_mode = 'automatic'
+               and not (p_payment_validation->>'require_automatic_tax')::boolean
+           )
+       ) then
+        raise exception 'payment configuration changed during provider validation';
+    end if;
+
     -- Require checkout-critical payment configuration only for paid-capable events
     perform validate_event_ticketing_payment_readiness(
         p_configured_provider,
         v_paid_capable,
         v_payment_currency_code,
-        v_payment_recipient
+        v_payment_recipient,
+        p_event_id
     );
 
     -- Check that the event has a start date

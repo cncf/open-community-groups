@@ -1,13 +1,11 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/common/location/search-field.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/group/event-selector/selector.js";
 import { resetDom, mockScrollTo } from "/tests/unit/test-utils/dom.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("event-selector", () => {
@@ -69,9 +67,13 @@ describe("event-selector", () => {
     expect(requestCalls).to.have.length(2);
     expect(requestCalls[0]).to.include({ sortDirection: "asc", query: "" });
     expect(requestCalls[1]).to.include({ sortDirection: "desc", query: "" });
-    expect(
-      element._primaryResults.map((event) => event.event_id),
-    ).to.deep.equal(["future-3", "today-1", "future-1", "past-1", "past-2"]);
+    expect(element._primaryResults.map((event) => event.event_id)).to.deep.equal([
+      "future-3",
+      "today-1",
+      "future-1",
+      "past-1",
+      "past-2",
+    ]);
     expect(element._results).to.deep.equal(element._primaryResults);
     expect(element._hasFetched).to.equal(true);
   });
@@ -90,10 +92,7 @@ describe("event-selector", () => {
     await element._fetchEvents();
 
     // Search results are deduplicated by event id.
-    expect(element._results.map((event) => event.event_id)).to.deep.equal([
-      "event-1",
-      "event-2",
-    ]);
+    expect(element._results.map((event) => event.event_id)).to.deep.equal(["event-1", "event-2"]);
   });
 
   it("updates active navigation and closes the dropdown on escape", async () => {
@@ -210,10 +209,28 @@ describe("event-selector", () => {
         <option value="">Select currency</option>
         <option value="EUR">EUR</option>
       </select>
-      <input id="venue_name" />
-      <input id="venue_address" />
-      <input id="venue_city" />
-      <input id="venue_zip_code" />
+      <select id="tax_behavior">
+        <option value="inclusive" selected>Tax included in ticket price</option>
+        <option value="exclusive">Tax added at Checkout</option>
+      </select>
+      <select id="tax_calculation_mode">
+        <option value="automatic">Automatic</option>
+        <option value="manual">Manual rates</option>
+        <option value="none">No tax</option>
+      </select>
+      <fieldset id="manual-tax-rates-fieldset"></fieldset>
+      <location-search-field
+        venue-name-field-name="venue_name"
+        venue-address-field-name="venue_address"
+        venue-city-field-name="venue_city"
+        venue-zip-code-field-name="venue_zip_code"
+        state-field-name="venue_state_name"
+        state-code-field-name="venue_state_code"
+        country-name-field-name="venue_country_name"
+        country-code-field-name="venue_country_code"
+        latitude-field-name="latitude"
+        longitude-field-name="longitude"
+      ></location-search-field>
       <textarea id="meeting_join_instructions">filled</textarea>
       <input id="meeting_join_url" value="filled" />
       <input id="meeting_recording_url" value="filled" />
@@ -232,9 +249,7 @@ describe("event-selector", () => {
     `;
 
     // Wire the gallery field so copied photos can be observed.
-    const gallery = document.querySelector(
-      'gallery-field[field-name="photos_urls"]',
-    );
+    const gallery = document.querySelector('gallery-field[field-name="photos_urls"]');
     gallery._setImages = (images) => {
       gallery.images = images;
     };
@@ -244,9 +259,7 @@ describe("event-selector", () => {
     tags.requestUpdate = () => {};
 
     // Stub host updates while copied hosts are applied.
-    const hosts = document.querySelector(
-      'user-search-selector[field-name="hosts"]',
-    );
+    const hosts = document.querySelector('user-search-selector[field-name="hosts"]');
     hosts.requestUpdate = () => {};
 
     // Stub sponsor updates while copied sponsors are applied.
@@ -270,9 +283,7 @@ describe("event-selector", () => {
     });
 
     // Stub timezone dispatch while copied timezone data is applied.
-    const timezoneSelector = document.querySelector(
-      "timezone-selector[name='timezone']",
-    );
+    const timezoneSelector = document.querySelector("timezone-selector[name='timezone']");
     timezoneSelector.dispatchEvent = () => true;
 
     // Track how copied meeting details reset manual fields.
@@ -292,6 +303,12 @@ describe("event-selector", () => {
 
     // Render the selector that applies the copied event details.
     const element = await renderSelector();
+    let copiedRateIds = [];
+    document
+      .getElementById("manual-tax-rates-fieldset")
+      ?.addEventListener("tax-rate-selection-updated", (event) => {
+        copiedRateIds = event.detail.rateIds;
+      });
 
     // Copied event details populate the form.
     await element._applyEventDetails({
@@ -310,6 +327,9 @@ describe("event-selector", () => {
       meeting_join_url: "https://meet.example.com/cloud-native-malaga",
       meeting_recording_url: "https://video.example.com/old-recording",
       payment_currency_code: "EUR",
+      manual_tax_rate_ids: ["txr_state", "txr_local"],
+      tax_behavior: "exclusive",
+      tax_calculation_mode: "manual",
       photos_urls: [" one.png ", "two.png"],
       tags: ["cloud", " malaga "],
       ticket_types: [
@@ -340,139 +360,115 @@ describe("event-selector", () => {
         },
       ],
       timezone: "Europe/Madrid",
-      venue_name: "FYCMA",
       venue_address: "Av. de José Ortega y Gasset, 201",
       venue_city: "Málaga",
+      venue_country_code: "ES",
+      venue_country_name: "Spain",
+      venue_name: "FYCMA",
+      venue_state_code: "MA",
+      venue_state_name: "Andalusia",
       venue_zip_code: "29006",
+      latitude: 36.7213,
+      longitude: -4.4214,
       hosts: [{ user: { user_id: "1", username: "alice" } }],
       sponsors: [{ name: "ACME", level: 2 }],
     });
 
     // Wait for the component to finish rendering.
+    const locationSearchField = document.querySelector("location-search-field");
+    await locationSearchField.updateComplete;
     await ticketTypesEditor.updateComplete;
     await discountCodesEditor.updateComplete;
 
     // Copied event details populate the form and reset meeting state.
-    expect(document.getElementById("name")?.value).to.equal(
-      "Cloud Native Málaga (copy)",
-    );
+    expect(document.getElementById("name")?.value).to.equal("Cloud Native Málaga (copy)");
     expect(document.getElementById("category_id")?.value).to.equal("10");
     expect(document.getElementById("kind_id")?.value).to.equal("workshop");
-    expect(
-      document.querySelector('image-field[name="logo_url"]')?.value,
-    ).to.equal("https://example.com/logo.png");
-    expect(
-      document.querySelector('image-field[name="banner_url"]')?.value,
-    ).to.equal("https://example.com/banner.png");
-    expect(
-      document.querySelector('image-field[name="banner_mobile_url"]')?.value,
-    ).to.equal("https://example.com/banner-mobile.png");
-    expect(document.getElementById("description_short")?.value).to.equal(
-      "Short description",
+    expect(document.querySelector('image-field[name="logo_url"]')?.value).to.equal(
+      "https://example.com/logo.png",
     );
+    expect(document.querySelector('image-field[name="banner_url"]')?.value).to.equal(
+      "https://example.com/banner.png",
+    );
+    expect(document.querySelector('image-field[name="banner_mobile_url"]')?.value).to.equal(
+      "https://example.com/banner-mobile.png",
+    );
+    expect(document.getElementById("description_short")?.value).to.equal("Short description");
     expect(editorTextarea.value).to.equal("Long description");
-    expect(
-      document.getElementById("toggle_event_reminder_enabled")?.checked,
-    ).to.equal(true);
-    expect(document.getElementById("event_reminder_enabled")?.value).to.equal(
-      "true",
+    expect(document.getElementById("toggle_event_reminder_enabled")?.checked).to.equal(true);
+    expect(document.getElementById("event_reminder_enabled")?.value).to.equal("true");
+    expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
+    expect(document.getElementById("luma_url")?.value).to.equal("https://luma.com/cloud-native-malaga");
+    expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
+    expect(document.getElementById("tax_behavior")?.value).to.equal("exclusive");
+    expect(document.getElementById("tax_calculation_mode")?.value).to.equal("manual");
+    expect(copiedRateIds).to.deep.equal(["txr_state", "txr_local"]);
+    expect(document.getElementById("location-search-venue_address")?.value).to.equal(
+      "Av. de José Ortega y Gasset, 201",
     );
-    expect(document.getElementById("meetup_url")?.value).to.equal(
-      "https://meetup.com/cloud-native-malaga",
+    expect(document.getElementById("location-search-venue_city")?.value).to.equal("Málaga");
+    expect(document.getElementById("location-search-venue_country_code")?.value).to.equal("ES");
+    expect(document.getElementById("location-search-venue_country_name")?.value).to.equal("Spain");
+    expect(document.getElementById("location-search-venue_name")?.value).to.equal("FYCMA");
+    expect(document.getElementById("location-search-venue_state_name")?.value).to.equal("Andalusia");
+    expect(document.getElementById("location-search-venue_state_code")?.value).to.equal("MA");
+    expect(document.getElementById("location-search-venue_zip_code")?.value).to.equal("29006");
+    expect(document.getElementById("meeting_join_instructions")?.value).to.equal(
+      "Use your registration name when joining.",
     );
-    expect(document.getElementById("luma_url")?.value).to.equal(
-      "https://luma.com/cloud-native-malaga",
-    );
-    expect(document.getElementById("payment_currency_code")?.value).to.equal(
-      "EUR",
-    );
-    expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
-    expect(
-      document.getElementById("meeting_join_instructions")?.value,
-    ).to.equal("Use your registration name when joining.");
     expect(document.getElementById("meeting_join_url")?.value).to.equal(
       "https://meet.example.com/cloud-native-malaga",
     );
-    expect(document.getElementById("meeting_recording_url")?.value).to.equal(
-      "",
-    );
+    expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
     expect(manualMeetingDetails).to.deep.equal({
       meeting_join_instructions: "Use your registration name when joining.",
       meeting_join_url: "https://meet.example.com/cloud-native-malaga",
     });
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal(
+      "General admission",
+    );
     expect(
-      ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')
-        ?.value,
-    ).to.equal("General admission");
-    expect(
-      ticketTypesEditor.querySelector(
-        'input[name="ticket_types[0][price_windows][0][starts_at]"]',
-      ),
+      ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]'),
     ).to.equal(null);
     expect(
-      ticketTypesEditor.querySelector(
-        'input[name="ticket_types[0][price_windows][0][ends_at]"]',
-      ),
+      ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][ends_at]"]'),
     ).to.equal(null);
-    expect(
-      ticketTypesEditor.querySelector(
-        'input[name="ticket_types[0][event_ticket_type_id]"]',
-      ),
-    ).to.equal(null);
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][event_ticket_type_id]"]')).to.equal(
+      null,
+    );
     expect(
       ticketTypesEditor.querySelector(
         'input[name="ticket_types[0][price_windows][0][event_ticket_price_window_id]"]',
       ),
     ).to.equal(null);
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][code]"]')?.value).to.equal(
+      "EARLY20",
+    );
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][available]"]')?.value).to.equal(
+      "12",
+    );
     expect(
-      discountCodesEditor.querySelector('input[name="discount_codes[0][code]"]')
-        ?.value,
-    ).to.equal("EARLY20");
-    expect(
-      discountCodesEditor.querySelector(
-        'input[name="discount_codes[0][available]"]',
-      )?.value,
-    ).to.equal("12");
-    expect(
-      discountCodesEditor.querySelector(
-        'input[name="discount_codes[0][available_override_active]"]',
-      )?.value,
+      discountCodesEditor.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
     ).to.equal("true");
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][starts_at]"]')).to.equal(null);
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][ends_at]"]')).to.equal(null);
     expect(
-      discountCodesEditor.querySelector(
-        'input[name="discount_codes[0][starts_at]"]',
-      ),
-    ).to.equal(null);
-    expect(
-      discountCodesEditor.querySelector(
-        'input[name="discount_codes[0][ends_at]"]',
-      ),
-    ).to.equal(null);
-    expect(
-      discountCodesEditor.querySelector(
-        'input[name="discount_codes[0][event_discount_code_id]"]',
-      ),
+      discountCodesEditor.querySelector('input[name="discount_codes[0][event_discount_code_id]"]'),
     ).to.equal(null);
     expect(gallery.images).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "cloud" },
       { id: 1, value: "malaga" },
     ]);
-    expect(hosts.selectedUsers).to.deep.equal([
-      { user_id: "1", username: "alice" },
-    ]);
-    expect(sponsors.selectedSponsors).to.deep.equal([
-      { name: "ACME", level: "2" },
-    ]);
+    expect(hosts.selectedUsers).to.deep.equal([{ user_id: "1", username: "alice" }]);
+    expect(sponsors.selectedSponsors).to.deep.equal([{ name: "ACME", level: "2" }]);
     expect(sessionsSection.sessions).to.deep.equal([]);
     expect(timezoneSelector.value).to.equal("Europe/Madrid");
     expect(resetCalls).to.equal(1);
 
     // Update the input before asserting it applies copied event details into the form.
-    document.getElementById("meeting_join_instructions").value =
-      "stale instructions";
-    document.getElementById("meeting_join_url").value =
-      "https://stale.example.com";
+    document.getElementById("meeting_join_instructions").value = "stale instructions";
+    document.getElementById("meeting_join_url").value = "https://stale.example.com";
     manualMeetingDetails = null;
 
     // The copied event details remain in the form.
@@ -491,9 +487,7 @@ describe("event-selector", () => {
     });
 
     // Reapplying copied details keeps the form and meeting state in sync.
-    expect(
-      document.getElementById("meeting_join_instructions")?.value,
-    ).to.equal("");
+    expect(document.getElementById("meeting_join_instructions")?.value).to.equal("");
     expect(document.getElementById("meeting_join_url")?.value).to.equal("");
     expect(manualMeetingDetails).to.equal(null);
     expect(resetCalls).to.equal(2);

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(196);
+select plan(207);
 
 -- ============================================================================
 -- TESTS
@@ -43,6 +43,8 @@ select has_pk('event_host');
 select has_pk('event_kind');
 select has_pk('event_organizer');
 select has_pk('event_purchase');
+select has_pk('event_purchase_application_fee_adjustment');
+select has_pk('event_purchase_credit_note');
 select has_pk('event_purchase_refund');
 select has_pk('event_refund_request');
 select has_pk('event_ticket_price_window');
@@ -73,6 +75,8 @@ select has_pk('notification_attachment');
 select has_pk('notification_kind');
 select has_pk('notification_template_data');
 select has_pk('payment_provider');
+select has_pk('payment_provider_tax_location');
+select has_pk('payment_provider_tax_product');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
@@ -141,6 +145,19 @@ select col_is_fk('event_purchase', 'event_id', 'event');
 select col_is_fk('event_purchase', 'payment_provider_id', 'payment_provider');
 select col_is_fk('event_purchase', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_purchase', 'user_id', 'user');
+select col_is_fk(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_id',
+    'event_purchase'
+);
+select col_is_fk(
+    'event_purchase_application_fee_adjustment',
+    'recovery_completed_by_user_id',
+    'user'
+);
+select col_is_fk('event_purchase_credit_note', 'event_purchase_refund_id', 'event_purchase_refund');
+select col_is_fk('event_purchase_credit_note', 'payment_provider_id', 'payment_provider');
+select col_is_fk('event_purchase_credit_note', 'recovery_completed_by_user_id', 'user');
 select col_is_fk('event_purchase_refund', 'event_purchase_id', 'event_purchase');
 select col_is_fk('event_purchase_refund', 'event_refund_request_id', 'event_refund_request');
 select col_is_fk('event_purchase_refund', 'initiated_by_user_id', 'user');
@@ -188,6 +205,8 @@ select col_is_fk('notification', 'notification_template_data_id', 'notification_
 select col_is_fk('notification', 'user_id', 'user');
 select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
 select col_is_fk('notification_attachment', 'notification_id', 'notification');
+select col_is_fk('payment_provider_tax_location', 'payment_provider_id', 'payment_provider');
+select col_is_fk('payment_provider_tax_product', 'payment_provider_id', 'payment_provider');
 select col_is_fk('region', 'community_id', 'community');
 select col_is_fk('session', 'event_id', 'event');
 select col_is_fk('session', 'cfs_submission_id', 'cfs_submission');

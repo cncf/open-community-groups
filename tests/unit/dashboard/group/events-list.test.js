@@ -15,6 +15,7 @@ const scopedActionMarkup = ({ hasRelatedEvents = false } = {}) => `
     data-current-scope-text="Only this event"
     data-series-scope-text="All in series"
     data-confirm-text="Yes"
+    data-cancel-text="No"
     data-series-message="Publish this series?"
     data-single-message="Publish this event?"
     data-success-message="Published event"
@@ -46,7 +47,9 @@ const mountEventsList = ({ hasRelatedEvents = false } = {}) => {
 };
 
 const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/group/events_list.html");
+  const response = await fetch(
+    "/ocg-server/templates/dashboard/group/events_list.html",
+  );
 
   expect(response.ok).to.equal(true);
 
@@ -65,14 +68,22 @@ describe("events list page", () => {
     // Load the events list template before checking destructive action copy.
     const template = await loadTemplate();
 
-    // Verify cancellation and unpublish warnings explain their effects.
+    // Verify warnings and action labels make each destructive choice explicit.
     expect(template).to.include(
       "Unpublish this event? Existing attendees and ticket purchases will be retained.",
     );
     expect(template).to.include(
-      "All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
+      "All attendee registrations will be canceled immediately. Full refunds for eligible paid purchases will be queued and may take time to process.",
     );
-    expect(template).to.include('data-series-scope-text="Non-completed events in series"');
+    expect(template).to.include(
+      'data-confirm-text="{% if action == "cancel" %}Cancel event{% else %}Yes{% endif %}"',
+    );
+    expect(template).to.include(
+      'data-cancel-text="{% if action == "cancel" %}Keep event{% else %}No{% endif %}"',
+    );
+    expect(template).to.include(
+      'data-series-scope-text="Non-completed events in series"',
+    );
   });
 
   it("disables deletion when the event is not eligible", async () => {
@@ -90,9 +101,13 @@ describe("events list page", () => {
     const template = await loadTemplate();
 
     // Both upcoming and past actions expose their label, target, and collapsed state.
-    expect(template.match(/aria-label="Open actions for \{\{ event\.name \}\}"/g)).to.have.length(2);
     expect(
-      template.match(/aria-controls="dropdown-actions-\{\{ event\.event_id \}\}"/g),
+      template.match(/aria-label="Open actions for \{\{ event\.name \}\}"/g),
+    ).to.have.length(2);
+    expect(
+      template.match(
+        /aria-controls="dropdown-actions-\{\{ event\.event_id \}\}"/g,
+      ),
     ).to.have.length(2);
     expect(template.match(/aria-expanded="false"/g)).to.have.length(2);
     expect(template).to.not.include("dropdownDefaultButton");
@@ -150,7 +165,9 @@ describe("events list page", () => {
     root.querySelector(".btn-actions").dispatchEvent(clickEvent);
 
     expect(clickEvent.defaultPrevented).to.equal(true);
-    expect(root.querySelector(".dropdown").classList.contains("hidden")).to.equal(false);
+    expect(
+      root.querySelector(".dropdown").classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("restores disclosure focus when Escape closes an actions dropdown", () => {
@@ -163,7 +180,9 @@ describe("events list page", () => {
     dropdown.querySelector("button").focus();
 
     // Escape closes the dropdown, synchronizes state, and restores focus.
-    document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+    );
     expect(dropdown.classList.contains("hidden")).to.equal(true);
     expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
     expect(document.activeElement).to.equal(actionsButton);
@@ -190,11 +209,13 @@ describe("events list page", () => {
     // Check the unavailable controls and recovery guidance are synchronized.
     expect(root.querySelector("select").disabled).to.equal(true);
     expect(root.querySelector("button").disabled).to.equal(true);
-    expect(root.querySelector("p").classList.contains("hidden")).to.equal(false);
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(
+      false,
+    );
   });
 
   it("confirms a single-event action and rewrites the HTMX request path", async () => {
-    // Prepare root for confirming a single-event action and rewrites the HTMX.
+    // Render a single-event action and confirm it through the shared dialog.
     const root = mountEventsList();
     initializeEventsListPage(root);
 
@@ -203,20 +224,25 @@ describe("events list page", () => {
     button.click();
     await waitForMicrotask();
 
-    // Verify confirms a single-event action and rewrites the HTMX request path.
+    // Verify the dialog copy and confirmation event use the single-event scope.
     expect(env.current.swal.calls[0].text).to.equal("Publish this event?");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([[button, "confirmed"]]);
+    expect(env.current.swal.calls[0].cancelButtonText).to.equal("No");
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      [button, "confirmed"],
+    ]);
     expect(button.dataset.requestScope).to.equal("this");
 
-    // Prepare config event for confirming a single-event action and rewrites.
+    // Apply the selected scope to the outgoing HTMX request.
     const configEvent = new CustomEvent("htmx:configRequest", {
       bubbles: true,
       detail: { path: "/original" },
     });
     button.dispatchEvent(configEvent);
 
-    // Verify confirms a single-event action and rewrites the HTMX request path.
-    expect(configEvent.detail.path).to.equal("/dashboard/group/events/123/publish");
+    // Verify the request targets only the selected event.
+    expect(configEvent.detail.path).to.equal(
+      "/dashboard/group/events/123/publish",
+    );
   });
 
   it("confirms a series action and reports the scoped response message", async () => {
@@ -232,7 +258,9 @@ describe("events list page", () => {
 
     // Verify confirms a series action and reports the scoped response message.
     expect(env.current.swal.calls[0].text).to.equal("Publish this series?");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([[button, "confirmed"]]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      [button, "confirmed"],
+    ]);
 
     // Prepare config event for confirming a series action and reports the scoped.
     const configEvent = new CustomEvent("htmx:configRequest", {
@@ -242,7 +270,9 @@ describe("events list page", () => {
     button.dispatchEvent(configEvent);
 
     // Verify confirms a series action and reports the scoped response message.
-    expect(configEvent.detail.path).to.equal("/dashboard/group/events/123/publish?scope=series");
+    expect(configEvent.detail.path).to.equal(
+      "/dashboard/group/events/123/publish?scope=series",
+    );
 
     // Dispatch the successful series action response.
     button.dispatchEvent(
@@ -313,7 +343,9 @@ describe("events list page", () => {
 
     // Verify the actions dropdown is initialized from the declarative root.
     document.querySelector(".btn-actions").click();
-    expect(document.querySelector(".dropdown").classList.contains("hidden")).to.equal(false);
+    expect(
+      document.querySelector(".dropdown").classList.contains("hidden"),
+    ).to.equal(false);
 
     // Dispatch the failed invitation action response.
     document.querySelector("[data-invitation-request-action]").dispatchEvent(
@@ -333,7 +365,10 @@ describe("events list page", () => {
   it("does not close unrelated dropdowns when initialized on the document", () => {
     // Prepare root for does not close unrelated dropdowns when initialized.
     const root = mountEventsList();
-    document.body.insertAdjacentHTML("beforeend", '<div id="user-dropdown" class="dropdown"></div>');
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div id="user-dropdown" class="dropdown"></div>',
+    );
     initializeEventsListPage(document);
 
     // Keep a reference to the button actions element.

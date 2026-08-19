@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(32);
 
 -- ============================================================================
 -- VARIABLES
@@ -24,6 +24,7 @@ select plan(29);
 \set event23ID '3a3c0000-0000-0000-0000-000000000012'
 \set event24ID '3a3c0000-0000-0000-0000-000000000013'
 \set eventOverCapacityID '3a3c0000-0000-0000-0000-000000000014'
+\set eventPaidTransitionID '3a3c0000-0000-0000-0000-000000000068'
 \set eventQuestionsAnsweredID '3a3c0000-0000-0000-0000-000000000015'
 \set eventQuestionsHoldID '3a3c0000-0000-0000-0000-000000000056'
 \set eventQuestionsID '3a3c0000-0000-0000-0000-000000000016'
@@ -40,6 +41,8 @@ select plan(29);
 \set questionsHoldTicketTypeID '3a3c0000-0000-0000-0000-000000000058'
 \set questionsHoldUserID '3a3c0000-0000-0000-0000-000000000057'
 \set questionsOrganizerUserID '3a3c0000-0000-0000-0000-000000000024'
+\set paidTransitionPriceWindowID '3a3c0000-0000-0000-0000-00000000006a'
+\set paidTransitionTicketTypeID '3a3c0000-0000-0000-0000-000000000069'
 \set ticketQueuePriceWindowID '3a3c0000-0000-0000-0000-000000000065'
 \set ticketQueuePurchaseID '3a3c0000-0000-0000-0000-000000000066'
 \set ticketQueueTicketTypeID '3a3c0000-0000-0000-0000-000000000067'
@@ -132,7 +135,7 @@ insert into "group" (
     'abc1234',
     'A test group',
     '3a3c0000-0000-0000-0000-000000000030',
-    '{"provider": "stripe", "recipient_id": "acct_update_ticketing"}'::jsonb
+    '{"provider": "stripe", "recipient_id": "acct_update_ticketing", "seller_display_name": "Update Ticketing Fiscal Sponsor"}'::jsonb
 );
 
 -- Group for registration-question update tests
@@ -149,7 +152,7 @@ insert into "group" (
     :'questionsCategoryID',
     'Update Questions Group',
     'update-questions-group',
-    '{"provider": "stripe", "recipient_id": "acct_update_questions"}'::jsonb
+    '{"provider": "stripe", "recipient_id": "acct_update_questions", "seller_display_name": "Questions Fiscal Sponsor"}'::jsonb
 );
 
 -- Events used to update and lock registration questions
@@ -527,7 +530,15 @@ insert into event (
     event_category_id,
     event_kind_id,
     capacity,
-    payment_currency_code
+    payment_currency_code,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_country_name,
+    venue_name,
+    venue_state_code,
+    venue_state_name,
+    venue_zip_code
 ) values (
     :'event19ID',
     :'group1ID',
@@ -536,9 +547,17 @@ insert into event (
     'Event seeded for ticketing preservation tests',
     'UTC',
     :'category1ID',
-    'virtual',
+    'in-person',
     10,
-    'USD'
+    'USD',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'United States',
+    'Community Hall',
+    'CA',
+    'California',
+    '94105'
 );
 
 -- Paid event used for purchased ticketing guard checks
@@ -589,6 +608,47 @@ insert into event (
     'USD'
 );
 
+-- Paid in-person event used for event-kind transition checks
+insert into event (
+    capacity,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    slug,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_country_name,
+    venue_name,
+    venue_state_code,
+    venue_state_name,
+    venue_zip_code
+) values (
+    10,
+    'Paid event used for event-kind transition checks',
+    :'category1ID',
+    :'eventPaidTransitionID',
+    'in-person',
+    :'group1ID',
+    'Paid Transition Event',
+    'USD',
+    'paid-transition-event',
+    'UTC',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'United States',
+    'Community Hall',
+    'CA',
+    'California',
+    '94105'
+);
+
 -- Published ticketed event used to verify tier capacity reconciliation
 insert into event (
     capacity,
@@ -620,6 +680,33 @@ insert into event (
     current_timestamp + interval '1 day',
     'UTC',
     true
+);
+
+-- Paid tier used for event-kind transition checks
+insert into event_ticket_type (
+    active,
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    true,
+    :'eventPaidTransitionID',
+    :'paidTransitionTicketTypeID',
+    1,
+    10,
+    'Hybrid admission'
+);
+
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    2500,
+    :'paidTransitionPriceWindowID',
+    :'paidTransitionTicketTypeID'
 );
 
 -- Ticket type initially owned by the primary ticketed event
@@ -861,7 +948,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    2500,
+    0,
     'USD',
     'PROTECT5',
     '3a3c0000-0000-0000-0000-000000000040'::uuid,
@@ -883,7 +970,7 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    2500,
+    0,
     'USD',
     :'eventTicketQueueID',
     :'ticketQueuePurchaseID',
@@ -906,7 +993,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'questionsHoldPurchaseID',
-    2500,
+    0,
     'USD',
     :'eventQuestionsHoldID',
     :'questionsHoldTicketTypeID',
@@ -1053,12 +1140,50 @@ limit 1;
 -- Test-only overloads keep existing calls focused while supplying server payment configuration.
 create function update_event_with_payments(uuid, uuid, uuid, jsonb)
 returns void as $$
-    select update_event($1, $2, $3, $4, null, 'stripe');
+    select update_event(
+        $1,
+        $2,
+        $3,
+        case
+            when $4 ? '_payment_validation' then $4
+            else $4 || jsonb_build_object(
+                '_payment_validation',
+                jsonb_build_object(
+                    'expected_payment_recipient', g.payment_recipient,
+                    'require_automatic_tax', true,
+                    'validated_payment_recipient', g.payment_recipient
+                )
+            )
+        end,
+        null,
+        'stripe'
+    )
+    from "group" g
+    where g.group_id = $2;
 $$ language sql;
 
 create function update_event_with_payments(uuid, uuid, uuid, jsonb, jsonb)
 returns void as $$
-    select update_event($1, $2, $3, $4, $5, 'stripe');
+    select update_event(
+        $1,
+        $2,
+        $3,
+        case
+            when $4 ? '_payment_validation' then $4
+            else $4 || jsonb_build_object(
+                '_payment_validation',
+                jsonb_build_object(
+                    'expected_payment_recipient', g.payment_recipient,
+                    'require_automatic_tax', true,
+                    'validated_payment_recipient', g.payment_recipient
+                )
+            )
+        end,
+        $5,
+        'stripe'
+    )
+    from "group" g
+    where g.group_id = $2;
 $$ language sql;
 
 -- ============================================================================
@@ -1076,8 +1201,15 @@ select lives_ok(
             "description": "Event seeded for ticketing preservation tests",
             "timezone": "UTC",
             "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
-            "meeting_requested": false
+            "kind_id": "in-person",
+            "meeting_requested": false,
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
+            "venue_zip_code": "94105"
         }'::jsonb
     )$$,
     'Should preserve ticketing fields when payload omits payment controls'
@@ -1135,8 +1267,123 @@ select is(
     'Should preserve derived capacity when payload omits payment controls'
 );
 
--- Should allow unrelated edits after payment setup is lost
+-- Should allow an in-person paid event to become hybrid
 select lives_ok(
+    $$select update_event_with_payments(
+        null::uuid,
+        '3a3c0000-0000-0000-0000-000000000018'::uuid,
+        '3a3c0000-0000-0000-0000-000000000068'::uuid,
+        '{
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_ticketing",
+                    "seller_display_name": "Update Ticketing Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_ticketing",
+                    "seller_display_name": "Update Ticketing Fiscal Sponsor"
+                }
+            },
+            "name": "Paid Hybrid Event",
+            "description": "Event seeded for ticketing preservation tests",
+            "timezone": "UTC",
+            "category_id": "3a3c0000-0000-0000-0000-000000000001",
+            "kind_id": "hybrid",
+            "meeting_requested": false,
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_country_name": "United States",
+            "venue_name": "Community Hall",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
+            "venue_zip_code": "94105"
+        }'::jsonb
+    )$$,
+    'Should allow an in-person paid event to become hybrid'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'amount_minor', etpw.amount_minor,
+            'event_kind_id', e.event_kind_id,
+            'payment_currency_code', e.payment_currency_code,
+            'venue_address', e.venue_address,
+            'venue_city', e.venue_city,
+            'venue_country_code', e.venue_country_code,
+            'venue_country_name', e.venue_country_name,
+            'venue_name', e.venue_name,
+            'venue_state_code', e.venue_state_code,
+            'venue_state_name', e.venue_state_name,
+            'venue_zip_code', e.venue_zip_code
+        )
+        from event e
+        join event_ticket_type ett using (event_id)
+        join event_ticket_price_window etpw using (event_ticket_type_id)
+        where e.event_id = :'eventPaidTransitionID'::uuid
+    ),
+    '{
+        "amount_minor": 2500,
+        "event_kind_id": "hybrid",
+        "payment_currency_code": "USD",
+        "venue_address": "123 Main St",
+        "venue_city": "San Francisco",
+        "venue_country_code": "US",
+        "venue_country_name": "United States",
+        "venue_name": "Community Hall",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
+        "venue_zip_code": "94105"
+    }'::jsonb,
+    'Should persist paid hybrid ticketing and its complete physical venue'
+);
+
+-- Should reject changing a paid hybrid event to virtual
+select throws_ok(
+    $$select update_event_with_payments(
+        null::uuid,
+        '3a3c0000-0000-0000-0000-000000000018'::uuid,
+        '3a3c0000-0000-0000-0000-000000000068'::uuid,
+        '{
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_ticketing",
+                    "seller_display_name": "Update Ticketing Fiscal Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_update_ticketing",
+                    "seller_display_name": "Update Ticketing Fiscal Sponsor"
+                }
+            },
+            "name": "Paid Virtual Event",
+            "description": "Event seeded for ticketing preservation tests",
+            "timezone": "UTC",
+            "category_id": "3a3c0000-0000-0000-0000-000000000001",
+            "kind_id": "virtual",
+            "meeting_requested": false,
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_country_name": "United States",
+            "venue_name": "Community Hall",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
+            "venue_zip_code": "94105"
+        }'::jsonb
+    )$$,
+    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
+    'Should reject changing a paid hybrid event to virtual'
+);
+
+-- Should reject unrelated edits after payment setup is lost
+select throws_ok(
     $$
         select update_event(
             null::uuid,
@@ -1182,7 +1429,8 @@ select lives_ok(
             null
         )
     $$,
-    'Should allow unrelated edits after payment setup is lost'
+    'payments are not configured on this server',
+    'Should reject unrelated edits after payment setup is lost'
 );
 
 -- Should reject removing every ticket type
@@ -1216,7 +1464,7 @@ select throws_ok(
             "description": "Event seeded for ticketing preservation tests",
             "timezone": "UTC",
             "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
+            "kind_id": "in-person",
             "payment_currency_code": "USD",
             "ticket_types": [
                 {
@@ -1392,7 +1640,7 @@ select lives_ok(
             "description": "Event used for admission-tier payload validation checks",
             "timezone": "UTC",
             "category_id": "3a3c0000-0000-0000-0000-000000000001",
-            "kind_id": "virtual",
+            "kind_id": "in-person",
             "payment_currency_code": "USD",
             "ticket_types": [
                 {
@@ -1409,6 +1657,13 @@ select lives_ok(
                     "title": "General"
                 }
             ],
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_state_code": "CA",
+            "venue_state_name": "California",
+            "venue_zip_code": "94105",
             "waitlist_enabled": true
         }'::jsonb
     )$$,
@@ -1602,7 +1857,7 @@ select lives_ok(
                 "description": "Published event for ticket queue capacity checks",
                 "timezone": "UTC",
                 "category_id": "%s",
-                "kind_id": "virtual",
+                "kind_id": "in-person",
                 "payment_currency_code": "USD",
                 "starts_at": "2030-02-17T10:00:00",
                 "ticket_types": [
@@ -1620,7 +1875,14 @@ select lives_ok(
                         "seats_total": 2,
                         "title": "Queue General"
                     }
-                ]
+                ],
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_name": "Community Hall",
+                "venue_state_code": "CA",
+                "venue_state_name": "California",
+                "venue_zip_code": "94105"
             }',
             :'category1ID',
             :'ticketQueueTicketTypeID',
@@ -1732,7 +1994,7 @@ select lives_ok(
         '3a3c0000-0000-0000-0000-000000000024'::uuid,
         '3a3c0000-0000-0000-0000-000000000023'::uuid,
         '3a3c0000-0000-0000-0000-000000000056'::uuid,
-        '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z"}'::jsonb
+        '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "venue_address": "123 Main St", "venue_city": "San Francisco", "venue_country_code": "US", "venue_name": "Community Hall", "venue_state_code": "CA", "venue_state_name": "California", "venue_zip_code": "94105"}'::jsonb
     )$$,
     'Should allow unrelated event edits while checkout holds are active'
 );

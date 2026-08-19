@@ -273,20 +273,6 @@ insert into event_purchase (
         :'attendeeID'
     ),
     (
-        null,
-        500,
-        null,
-        'USD',
-        :'eventID',
-        :'pendingPaymentID',
-        :'ticketTypeID',
-        '2099-01-01 09:00:00+00',
-        'https://example.test/checkout/resume',
-        'pending',
-        'General admission',
-        :'pendingPaymentUserID'
-    ),
-    (
         :'refundOfferID',
         0,
         '2026-01-02 11:00:00+00',
@@ -328,6 +314,51 @@ insert into event_purchase (
         'General admission',
         :'rejectedRefundUserID'
     );
+
+-- Seed a pending direct-charge checkout.
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
+    status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot,
+
+    provider_checkout_url
+) values (
+    :'pendingPaymentID',
+    500,
+    'direct-charge',
+    'acct_event_enrollment_test',
+    'USD',
+    :'eventID',
+    :'ticketTypeID',
+    '2099-01-01 09:00:00+00',
+    'stripe',
+    'acct_event_enrollment_test',
+    '{}'::jsonb,
+    'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'pendingPaymentUserID',
+    '{}'::jsonb,
+
+    'https://example.test/checkout/resume'
+);
 
 -- Seed a pending refund review for a confirmed attendee.
 insert into event_refund_request (
@@ -442,7 +473,7 @@ select is(
 -- Should suppress offers already linked to a refunding purchase
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'refundOfferUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": 0, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
     'Should suppress offers already linked to a refunding purchase'
 );
 

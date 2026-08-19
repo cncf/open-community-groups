@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(111);
+select plan(180);
 
 -- ============================================================================
 -- VARIABLES
@@ -311,17 +311,133 @@ select results_eq(
     'Event purchase statuses should match expected values'
 );
 
--- Test: event purchase platform fee should stay within the purchase amount
-select col_not_null('event_purchase', 'platform_fee_amount_minor');
-select col_default_is('event_purchase', 'platform_fee_amount_minor', '0');
+-- Test: event tax choices should have stable defaults and allowed values
+select col_not_null('event', 'manual_tax_rate_ids');
+select col_default_is('event', 'manual_tax_rate_ids', array[]::text[]);
+select col_default_is('event', 'tax_behavior', 'inclusive');
+select col_default_is('event', 'tax_calculation_mode', 'automatic');
+select has_check('event', 'event_manual_tax_rate_ids_chk');
+select has_check('event', 'event_tax_behavior_chk');
+select has_check('event', 'event_tax_calculation_mode_chk');
+
+-- Test: purchase charge-model and financial snapshots should remain consistent
+select col_default_is('event_purchase', 'charge_model', 'ocg-free');
+select col_has_check('event_purchase', 'connected_seller_id');
+select col_has_check('event_purchase', 'performance_location_fingerprint');
+select col_has_check('event_purchase', 'platform_fee_bps');
+select col_has_check('event_purchase', 'provider_application_fee_id');
+select col_has_check('event_purchase', 'provider_charge_id');
+select col_has_check('event_purchase', 'provider_invoice_hosted_url');
+select col_has_check('event_purchase', 'provider_invoice_id');
+select col_has_check('event_purchase', 'provider_invoice_pdf_url');
+select col_has_check('event_purchase', 'provider_object_account_id');
+select col_has_check('event_purchase', 'provider_product_fingerprint');
+select col_has_check('event_purchase', 'provider_tax_code');
+select col_has_check('event_purchase', 'provider_tax_location_id');
+select col_has_check('event_purchase', 'provider_tax_product_id');
+select has_check('event_purchase', 'event_purchase_charge_model_chk');
+select has_check('event_purchase', 'event_purchase_direct_charge_context_chk');
+select has_check('event_purchase', 'event_purchase_financial_amounts_chk');
+select has_check('event_purchase', 'event_purchase_completed_direct_charge_amounts_chk');
+select has_check('event_purchase', 'event_purchase_manual_tax_rate_ids_chk');
+select has_check('event_purchase', 'event_purchase_no_tax_amount_chk');
+select has_check('event_purchase', 'event_purchase_provider_product_mode_chk');
+select has_check('event_purchase', 'event_purchase_tax_behavior_chk');
+select has_check('event_purchase', 'event_purchase_tax_calculation_mode_chk');
+
+-- Test: event purchase provisional fee should stay within the ticket amount
+select col_not_null('event_purchase', 'provisional_platform_fee_amount_minor');
+select col_default_is('event_purchase', 'provisional_platform_fee_amount_minor', '0');
 select ok(
     (
-        select pg_get_constraintdef(oid) like '%platform_fee_amount_minor >= 0%'
-            and pg_get_constraintdef(oid) like '%platform_fee_amount_minor <= amount_minor%'
+        select pg_get_constraintdef(oid)
+                like '%provisional_platform_fee_amount_minor >= 0%'
+            and pg_get_constraintdef(oid)
+                like '%provisional_platform_fee_amount_minor <= amount_minor%'
         from pg_constraint
-        where conname = 'event_purchase_platform_fee_amount_minor_chk'
+        where conname = 'event_purchase_provisional_platform_fee_amount_minor_chk'
     ),
-    'Event purchase platform fee should stay within the purchase amount'
+    'Event purchase provisional fee should stay within the ticket amount'
+);
+
+-- Test: cached provider resources should remain valid
+select col_has_check('payment_provider_tax_location', 'connected_seller_id');
+select col_has_check('payment_provider_tax_location', 'fingerprint');
+select col_has_check('payment_provider_tax_location', 'provider_tax_location_id');
+select col_has_check('payment_provider_tax_product', 'connected_seller_id');
+select col_has_check('payment_provider_tax_product', 'fingerprint');
+select col_has_check('payment_provider_tax_product', 'provider_tax_location_id');
+select col_has_check('payment_provider_tax_product', 'provider_tax_product_id');
+select col_has_check('payment_provider_tax_product', 'tax_code');
+select col_has_check('payment_provider_tax_product', 'title');
+
+-- Test: durable financial work should constrain its lifecycles
+select col_has_check('event_purchase_application_fee_adjustment', 'amount_minor');
+select col_has_check('event_purchase_application_fee_adjustment', 'attempt_count');
+select col_has_check('event_purchase_application_fee_adjustment', 'failure_message');
+select col_has_check('event_purchase_application_fee_adjustment', 'idempotency_key');
+select col_has_check(
+    'event_purchase_application_fee_adjustment',
+    'provider_application_fee_refund_id'
+);
+select col_has_check('event_purchase_application_fee_adjustment', 'recovery_note');
+select col_has_check('event_purchase_application_fee_adjustment', 'recovery_reference');
+select has_check(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_application_fee_adjustment_claim_chk'
+);
+select has_check(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_application_fee_adjustment_kind_chk'
+);
+select has_check(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_application_fee_adjustment_recovery_chk'
+);
+select has_check(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_application_fee_adjustment_status_chk'
+);
+select has_check(
+    'event_purchase_application_fee_adjustment',
+    'event_purchase_application_fee_adjustment_terminal_chk'
+);
+select ok(
+    (
+        select pg_get_constraintdef(oid) like '%status = ''completed''%'
+            and pg_get_constraintdef(oid) like '%completed_at IS NOT NULL%'
+            and pg_get_constraintdef(oid)
+                like '%provider_application_fee_refund_id IS NOT NULL%'
+        from pg_constraint
+        where conname = 'event_purchase_application_fee_adjustment_terminal_chk'
+    ),
+    'Completed application-fee adjustments should require provider evidence'
+);
+select has_check('event_purchase_credit_note', 'event_purchase_credit_note_claim_chk');
+select col_has_check('event_purchase_credit_note', 'amount_minor');
+select col_has_check('event_purchase_credit_note', 'attempt_count');
+select col_has_check('event_purchase_credit_note', 'currency_code');
+select col_has_check('event_purchase_credit_note', 'failure_message');
+select col_has_check('event_purchase_credit_note', 'idempotency_key');
+select col_has_check('event_purchase_credit_note', 'provider_credit_note_id');
+select col_has_check('event_purchase_credit_note', 'provider_hosted_url');
+select col_has_check('event_purchase_credit_note', 'provider_object_account_id');
+select col_has_check('event_purchase_credit_note', 'provider_pdf_url');
+select col_has_check('event_purchase_credit_note', 'recovery_note');
+select col_has_check('event_purchase_credit_note', 'recovery_reference');
+select col_has_check('event_purchase_credit_note', 'tax_amount_minor');
+select has_check('event_purchase_credit_note', 'event_purchase_credit_note_recovery_chk');
+select has_check('event_purchase_credit_note', 'event_purchase_credit_note_status_chk');
+select has_check('event_purchase_credit_note', 'event_purchase_credit_note_terminal_chk');
+select ok(
+    (
+        select pg_get_constraintdef(oid) like '%status = ''issued''%'
+            and pg_get_constraintdef(oid) like '%completed_at IS NOT NULL%'
+            and pg_get_constraintdef(oid) like '%provider_credit_note_id IS NOT NULL%'
+        from pg_constraint
+        where conname = 'event_purchase_credit_note_terminal_chk'
+    ),
+    'Issued credit notes should require provider evidence'
 );
 
 -- Test: event purchase refund kinds should match expected values

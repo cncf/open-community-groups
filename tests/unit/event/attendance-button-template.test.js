@@ -1,6 +1,8 @@
 import { expect } from "@open-wc/testing";
 
-const loadTemplate = async (path = "/ocg-server/templates/event/attend_button.html") => {
+const loadTemplate = async (
+  path = "/ocg-server/templates/event/attend_button.html",
+) => {
   const response = await fetch(path);
 
   expect(response.ok).to.equal(true);
@@ -15,7 +17,9 @@ describe("event attendance button template", () => {
     // Load the hidden checker that refreshes the current user's event state.
     const template = normalizeWhitespace(await loadTemplate());
 
-    expect(template).to.include('hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"');
+    expect(template).to.include(
+      'hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"',
+    );
     expect(template).to.include('hx-swap="none ignoreTitle:true"');
   });
 
@@ -42,6 +46,15 @@ describe("event attendance button template", () => {
     );
   });
 
+  it("does not expose purchase documents in the public event actions", async () => {
+    // Load the public event actions menu.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Purchase documents remain exclusive to the authenticated user dashboard.
+    expect(template).to.not.include('data-attendance-role="invoice-link"');
+    expect(template).to.not.include("View invoice");
+  });
+
   it("keeps price-ineligible approval tickets disabled in cached markup", async () => {
     // Load the cached ticket controls used when availability refresh fails.
     const template = normalizeWhitespace(await loadTemplate());
@@ -51,9 +64,13 @@ describe("event attendance button template", () => {
     expect(template).to.include(
       "ticket_type_selectable = !event.canceled && ticket_type.active && ticket_type.current_price.is_some()",
     );
-    expect(template).to.include("{% if !ticket_type_selectable %}disabled{% endif %}");
+    expect(template).to.include(
+      "{% if !ticket_type_selectable %}disabled{% endif %}",
+    );
     expect(template).to.include('data-attendance-role="ticket-type-indicator"');
-    expect(template).to.include('data-attendance-role="ticket-type-description"');
+    expect(template).to.include(
+      'data-attendance-role="ticket-type-description"',
+    );
     expect(template).to.include("group-has-[input:focus-visible]:ring-2");
   });
 
@@ -81,12 +98,34 @@ describe("event attendance button template", () => {
   it("shares initial control content and floating badge typography", async () => {
     // Load the primary control template and its attendance macros.
     const template = await loadTemplate();
-    const macros = await loadTemplate("/ocg-server/templates/event/attendance_macros.html");
+    const macros = await loadTemplate(
+      "/ocg-server/templates/event/attendance_macros.html",
+    );
 
     // Signed-in and signed-out controls use one macro and the same badge size.
-    expect(template.match(/attendance::initial_control_content/g)).to.have.length(2);
+    expect(
+      template.match(/attendance::initial_control_content/g),
+    ).to.have.length(2);
     expect(template).to.include("font-semibold uppercase text-green-800");
     expect(macros).to.include("text-[11px]");
     expect(macros).to.not.include("text-[12px]");
+  });
+
+  it("discloses when ticket prices exclude tax", async () => {
+    // Load the public ticket picker and its floating price-label macro.
+    const template = normalizeWhitespace(await loadTemplate());
+    const macros = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/event/attendance_macros.html"),
+    );
+
+    // Exclusive events disclose the additional tax before redirecting to Stripe.
+    const additionalTaxGuard = "event.shows_additional_ticket_tax()";
+    expect(template).to.include(additionalTaxGuard);
+    expect(template).to.include("Tax is added at checkout.");
+    expect(macros).to.include(additionalTaxGuard);
+    expect(macros).to.include(
+      "<span data-localized-currency>{{ ticket_price_badge }}</span>",
+    );
+    expect(macros).to.include("+ tax");
   });
 });

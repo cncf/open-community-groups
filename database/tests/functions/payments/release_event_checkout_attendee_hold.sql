@@ -103,7 +103,11 @@ values (
     :'groupCategoryID',
     'Release Attendee Hold Group',
     'release-attendee-hold-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_release_attendee_hold')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_release_attendee_hold',
+        'seller_display_name', 'Release Hold Fiscal Sponsor'
+    )
 );
 
 -- Events
@@ -175,7 +179,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'activePurchaseID',
-    2500,
+    0,
     'USD',
     0,
     :'eventID',
@@ -186,7 +190,7 @@ insert into event_purchase (
     :'activeUserID'
 ), (
     :'completedPurchaseID',
-    2500,
+    0,
     'USD',
     0,
     :'eventID',

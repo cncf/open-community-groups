@@ -17,7 +17,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
   - [Access and Context](#access-and-context)
   - [Roles and Permissions](#roles-and-permissions)
   - [Settings: Group Identity](#settings-group-identity)
-  - [Payments: Group Recipient Setup](#payments-group-recipient-setup)
+  - [Payments: Fiscal Sponsor Setup](#payments-fiscal-sponsor-setup)
   - [Team: Organizer Capacity](#team-organizer-capacity)
   - [Analytics: Delivery Health](#analytics-delivery-health)
   - [Members: Communication](#members-communication)
@@ -135,30 +135,37 @@ the parent/child links connected to that group.
 
 ![Group settings area](../screenshots/dashboard-group-settings.png)
 
-## Payments: Group Recipient Setup
+## Payments: Fiscal Sponsor Setup
 
 Every event uses ticket inventory. Payment setup is unnecessary when every
 configured ticket price is zero. Positive pricing requires server-side Stripe configuration
-and a group payment recipient in `Settings`.
+and a fiscal-sponsor connected account in `Settings`.
 
 To set up the group side, open [Settings](/dashboard/group?tab=settings ':ignore'), enter the
-group's Stripe connected account ID in the payments section, and save the group settings.
+fiscal sponsor's legal name and Stripe connected account ID in the payments section, and save the
+group settings. The legal name is shown to attendees as the seller on purchase and refund records.
 
 OCG expects a Stripe connected account identifier in the `acct_...` format.
 The dashboard does not create or onboard the Stripe account for you.
+The fiscal sponsor owns Tax Rate definitions in that Stripe account. Event
+organizers select compatible rates per event in the `Tickets` tab; group
+settings do not copy or manage the definitions.
 
 For the full Stripe-side setup, including connected-account onboarding and
 payout details, follow [Payments Setup](payments-setup.md).
 
-If the group leaves the payment recipient blank, organizers can run events with
+If the group leaves both fiscal sponsor fields blank, organizers can run events with
 free ticket types. A ticket type with any positive current or future price
-window makes the event paid-capable and requires the recipient.
+window makes the event paid-capable and requires the sponsor plus eligible
+in-person or hybrid event, complete physical venue, and tax setup. Every paid
+hybrid ticket includes physical admission; it may also include virtual access,
+but cannot be virtual-only.
 
 If the deployment has no payment provider, the event editor still shows the
 `Tickets` tab for free configuration. Positive prices remain unavailable,
-and group settings do not show a Stripe recipient field.
+and group settings do not show a Stripe fiscal-sponsor field.
 
-Permission-wise, configuring the group payment recipient requires settings write access, while
+Permission-wise, configuring the fiscal sponsor requires settings write access, while
 creating paid events and approving/rejecting refund requests require events write access.
 Organizers with read access can still view attendee refund status in `Event -> Attendees`.
 
@@ -241,6 +248,9 @@ Starting from [Add Event](/dashboard/group/events/add ':ignore') gives organizer
 tabbed sections that map directly to delivery needs. The `Tickets` tab supports
 free-only configuration without Stripe, paid configuration when the group is
 payment-ready, and a read-only explanation when positive prices cannot be used.
+It also contains event currency, ticket-tax mode, inclusive or exclusive tax
+display, and the event-wide manual Stripe Tax Rate selector when that mode is
+chosen.
 
 Enrollment-aware event operations also include:
 
@@ -325,12 +335,13 @@ For badge setup, eligibility rules, award flows, and revocation, follow the
 ## Refunds: Operational Queue
 
 `Refunds` brings the selected group's attendee requests, automatic refunds, and
-provider processing into one operational list. It includes checkout-only refunds
-that may not have a corresponding attendee row, as well as completed and rejected
-history.
+related provider processing into one operational view. It includes checkout-only
+refunds that may not have a corresponding attendee row, as well as completed and
+rejected history.
 
-The tab is available when the server has a payments provider configured and the
-group has a payment recipient for that provider.
+The tab remains available when the current payment setup is unavailable so
+organizers can review historical refunds and recovery records. Restore the
+payment provider and fiscal sponsor before retrying provider operations.
 
 Use the views to focus the list:
 
@@ -348,6 +359,13 @@ refund for a confirmed paid attendee by selecting `Cancel attendance and refund`
 recovery, then OCG cancels it and reconciles the released capacity. Read-only
 roles can inspect every state but cannot use those actions.
 
+The `Financial work needs attention` panel appears when automatic attempts for
+an application-fee refund, tax fee correction, or credit note are exhausted.
+An organizer with events write access can start another bounded retry cycle or
+record work completed directly in Stripe. External completion requires the
+Stripe object ID, an external reference, and a note describing the evidence
+reviewed. OCG stores that evidence and adds the completion to the audit log.
+
 Rejecting a request requires a reason. The modal identifies it as attendee-visible because the
 same reason appears in the attendee's email, `My Events`, and the public event page. Approval notes
 remain optional and are kept for organizer review.
@@ -362,7 +380,8 @@ recovery in the audit log.
 
 The event `Attendees` tab shows refund status and the applicable request-review
 and retry actions for attendees in that event. Recovery completion is available
-only from the group-wide `Refunds` tab. Both views address the underlying
+only from the group-wide `Refunds` tab. Related application-fee and credit-note
+recovery is also available only there. Both views address the underlying
 purchase directly, so historical purchases and checkout-only refunds do not
 depend on a current attendance row.
 

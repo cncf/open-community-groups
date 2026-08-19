@@ -1,9 +1,11 @@
+-- Tests group-scoped audit log actions and filters.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,6 +25,8 @@ select plan(7);
 \set audit10ID '3a1f0000-0000-0000-0000-000000000111'
 \set audit11ID '3a1f0000-0000-0000-0000-000000000112'
 \set audit12ID '3a1f0000-0000-0000-0000-000000000113'
+\set audit13ID '3a1f0000-0000-0000-0000-000000000114'
+\set audit14ID '3a1f0000-0000-0000-0000-000000000115'
 \set communityID '3a1f0000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a1f0000-0000-0000-0000-000000000022'
 \set eventID '3a1f0000-0000-0000-0000-000000000051'
@@ -257,6 +261,30 @@ insert into audit_log (
         'event'
     ),
     (
+        :'audit13ID',
+        'event_application_fee_adjustment_recovery_completed',
+        :'actor1ID',
+        'alice',
+        :'communityID',
+        '2024-03-07 10:00:00+00',
+        '{"recovery_reference": "fee-case-123"}',
+        :'groupID',
+        :'eventID',
+        'event'
+    ),
+    (
+        :'audit14ID',
+        'event_credit_note_recovery_completed',
+        :'actor2ID',
+        'bob',
+        :'communityID',
+        '2024-03-08 10:00:00+00',
+        '{"recovery_reference": "credit-case-456"}',
+        :'groupID',
+        :'eventID',
+        'event'
+    ),
+    (
         :'wildcardAuditID',
         'group_updated',
         :'wildcardActorID',
@@ -282,6 +310,26 @@ select is(
     jsonb_build_object(
         'logs',
         '[
+            {
+                "action": "event_credit_note_recovery_completed",
+                "actor_username": "bob",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000115",
+                "created_at": 1709892000,
+                "details": {"recovery_reference": "credit-case-456"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000051",
+                "resource_name": "Recovery Event",
+                "resource_type": "event"
+            },
+            {
+                "action": "event_application_fee_adjustment_recovery_completed",
+                "actor_username": "alice",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000114",
+                "created_at": 1709805600,
+                "details": {"recovery_reference": "fee-case-123"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000051",
+                "resource_name": "Recovery Event",
+                "resource_type": "event"
+            },
             {
                 "action": "event_refund_recovery_completed",
                 "actor_username": "alice",
@@ -394,7 +442,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        11
+        13
     ),
     'Should return only group dashboard actions for the selected group'
 );
@@ -423,6 +471,26 @@ select is(
         1
     ),
     'Should filter group audit logs by refund recovery completion'
+);
+
+-- Should filter group audit logs by application-fee recovery completion
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"action": "event_application_fee_adjustment_recovery_completed", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb#>>'{logs,0,action}',
+    'event_application_fee_adjustment_recovery_completed',
+    'Should filter group audit logs by application-fee recovery completion'
+);
+
+-- Should filter group audit logs by credit-note recovery completion
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"action": "event_credit_note_recovery_completed", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb#>>'{logs,0,action}',
+    'event_credit_note_recovery_completed',
+    'Should filter group audit logs by credit-note recovery completion'
 );
 
 -- Should filter group audit logs by actor and action
@@ -524,7 +592,7 @@ select is(
         :'groupID'::uuid,
         '{"limit": 1, "offset": 0, "sort": "resource-asc"}'::jsonb
     )::jsonb#>>'{logs,0,action}',
-    'event_refund_recovery_completed',
+    'event_credit_note_recovery_completed',
     'Should default unsupported group audit sort values to created descending'
 );
 

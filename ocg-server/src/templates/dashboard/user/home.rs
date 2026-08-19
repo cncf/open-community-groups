@@ -10,7 +10,9 @@ use crate::{
         auth::{self, User},
         dashboard::{
             audit,
-            user::{badges, events, groups, invitations, session_proposals, submissions},
+            user::{
+                badges, events, groups, invitations, purchases, session_proposals, submissions,
+            },
         },
         filters,
         helpers::user_initials,
@@ -51,6 +53,8 @@ pub(crate) enum Content {
     Invitations(invitations::ListPage),
     /// Audit logs page.
     Logs(audit::ListPage),
+    /// Paid-ticket invoices and credit notes.
+    Purchases(purchases::ListPage),
     /// Session proposals page.
     SessionProposals(session_proposals::ListPage),
     /// Submissions page.
@@ -88,6 +92,11 @@ impl Content {
         matches!(self, Content::Logs(_))
     }
 
+    /// Check if the content is the purchase documents page.
+    fn is_purchases(&self) -> bool {
+        matches!(self, Content::Purchases(_))
+    }
+
     /// Check if the content is the session proposals page.
     fn is_session_proposals(&self) -> bool {
         matches!(self, Content::SessionProposals(_))
@@ -108,6 +117,7 @@ impl std::fmt::Display for Content {
             Content::Groups(template) => write!(f, "{}", template.render()?),
             Content::Invitations(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
+            Content::Purchases(template) => write!(f, "{}", template.render()?),
             Content::SessionProposals(template) => write!(f, "{}", template.render()?),
             Content::Submissions(template) => write!(f, "{}", template.render()?),
         }
@@ -134,6 +144,8 @@ pub(crate) enum Tab {
     Invitations,
     /// Audit logs tab.
     Logs,
+    /// Paid-ticket purchase documents tab.
+    Purchases,
     /// Session proposals tab.
     SessionProposals,
     /// Submissions tab.

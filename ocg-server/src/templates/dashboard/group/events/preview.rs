@@ -330,8 +330,10 @@ pub(crate) struct Input {
     pub venue_country_name: Option<String>,
     /// Venue name.
     pub venue_name: Option<String>,
-    /// Venue state or province.
-    pub venue_state: Option<String>,
+    /// Venue state or province code.
+    pub venue_state_code: Option<String>,
+    /// Venue state or province name.
+    pub venue_state_name: Option<String>,
     /// Venue zip code.
     pub venue_zip_code: Option<String>,
 }
@@ -524,7 +526,10 @@ fn build_location(input: &Input) -> Option<String> {
         input.venue_name.clone(),
         input.venue_address.clone(),
         input.venue_city.clone(),
-        input.venue_state.clone(),
+        input
+            .venue_state_name
+            .clone()
+            .or_else(|| input.venue_state_code.clone()),
         country,
         input.venue_zip_code.clone(),
     ];

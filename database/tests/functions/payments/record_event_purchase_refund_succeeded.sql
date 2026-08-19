@@ -1,3 +1,5 @@
+-- Tests recording successful event purchase refunds.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -172,7 +174,25 @@ insert into event_purchase (
     event_ticket_type_id,
     status,
     ticket_title,
-    user_id
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    provisional_platform_fee_amount_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     :'claimedPurchaseID',
     2500,
@@ -181,7 +201,12 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'refund-pending',
     'General admission',
-    :'claimedUserID'
+    :'claimedUserID',
+    'direct-charge', 'acct_refunds', 0, 'stripe', 'ch_succeeded_claimed',
+    'cs_succeeded_claimed', 'acct_refunds', 'pi_succeeded_claimed', 2500,
+    0,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 ), (
     :'finalizedPurchaseID',
     2500,
@@ -190,7 +215,12 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'refund-recovery-pending',
     'General admission',
-    :'finalizedUserID'
+    :'finalizedUserID',
+    'direct-charge', 'acct_refunds', 0, 'stripe', 'ch_succeeded_finalized',
+    'cs_succeeded_finalized', 'acct_refunds', 'pi_succeeded_finalized', 2500,
+    0,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 ), (
     :'invalidPurchaseID',
     2500,
@@ -199,7 +229,12 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'completed',
     'General admission',
-    :'invalidUserID'
+    :'invalidUserID',
+    'direct-charge', 'acct_refunds', 0, 'stripe', 'ch_succeeded_invalid',
+    'cs_succeeded_invalid', 'acct_refunds', 'pi_succeeded_invalid', 2500,
+    0,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 ), (
     :'terminalPurchaseID',
     2500,
@@ -208,7 +243,12 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'refund-pending',
     'General admission',
-    :'terminalUserID'
+    :'terminalUserID',
+    'direct-charge', 'acct_refunds', 0, 'stripe', 'ch_succeeded_terminal',
+    'cs_succeeded_terminal', 'acct_refunds', 'pi_succeeded_terminal', 2500,
+    0,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 ), (
     :'purchaseID',
     2500,
@@ -217,7 +257,12 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'refund-requested',
     'General admission',
-    :'userID'
+    :'userID',
+    'direct-charge', 'acct_refunds', 100, 'stripe', 'ch_succeeded_requested',
+    'cs_succeeded_requested', 'acct_refunds', 'pi_succeeded_requested', 2500,
+    100,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
 -- Refund request

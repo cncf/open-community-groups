@@ -1,3 +1,5 @@
+-- Tests releasing event discount code availability.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -63,7 +65,11 @@ values (
     :'groupCategoryID',
     'Release Discount Group',
     'release-discount-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_release_discount')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_release_discount',
+        'seller_display_name', 'Release Discount Fiscal Sponsor'
+    )
 );
 
 -- Event

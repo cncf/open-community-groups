@@ -6,5 +6,6 @@ pub(crate) mod groups;
 pub(crate) mod home;
 pub(crate) mod invitations;
 pub(crate) mod logs;
+pub(crate) mod purchases;
 pub(crate) mod session_proposals;
 pub(crate) mod submissions;

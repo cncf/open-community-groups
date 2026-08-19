@@ -107,7 +107,16 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
 
   return html`
     <div class="${field.className}">
-      <label for="${inputId}" class="form-label">${field.label}</label>
+      <label for="${inputId}" class="form-label">
+        ${field.label}
+        ${
+          field.requiredForPaidTickets
+            ? html`<span class="asterisk">
+                * <sup class="text-xs font-normal">(required for paid tickets)</sup>
+              </span>`
+            : ""
+        }
+      </label>
       <div class="mt-2">
         <input
           type="text"
@@ -123,7 +132,7 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
           @input=${(event) => onInput(field.handlerName, event)}
         />
       </div>
-      <p class="form-legend">${field.legend}</p>
+      ${field.legend ? html`<p class="form-legend">${field.legend}</p>` : ""}
     </div>
   `;
 };
@@ -134,16 +143,17 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
  * @returns {import('lit').TemplateResult}
  */
 export const renderLocationTextFields = (state) => {
-  const hiddenCountryCodeInput = state.countryCodeFieldName
-    ? html`
-        <input
-          type="hidden"
-          name="${state.countryCodeFieldName}"
-          id="${getLocationInputId(state.componentId, state.countryCodeFieldName)}"
-          .value=${state.countryCodeValue}
-        />
-      `
-    : "";
+  const hiddenCountryCodeInput =
+    state.countryCodeFieldName && !state.stateCodeFieldName
+      ? html`
+          <input
+            type="hidden"
+            name="${state.countryCodeFieldName}"
+            id="${getLocationInputId(state.componentId, state.countryCodeFieldName)}"
+            .value=${state.countryCodeValue}
+          />
+        `
+      : "";
   const disabledClasses = getLocationDisabledInputClasses(state.disabled);
   const textFields = getLocationTextFieldDefinitions(state);
   const getInputId = (inputName) => getLocationInputId(state.componentId, inputName);

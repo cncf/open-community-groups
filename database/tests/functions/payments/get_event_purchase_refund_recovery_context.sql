@@ -145,7 +145,22 @@ insert into event_purchase (
 
     payment_provider_id,
     provider_payment_reference,
-    refunded_at
+    refunded_at,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     :'finalizedPurchaseID',
     2500,
@@ -158,7 +173,11 @@ insert into event_purchase (
 
     'stripe',
     'pi_refund_recovery_context_finalized',
-    '2024-02-01 10:00:00+00'
+    '2024-02-01 10:00:00+00',
+    'direct-charge', 'acct_refunds', 0, 'ch_context_finalized',
+    'cs_context_finalized', 'acct_refunds', 2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 ), (
     :'pendingPurchaseID',
     2500,
@@ -171,7 +190,11 @@ insert into event_purchase (
 
     'stripe',
     'pi_refund_recovery_context_pending',
-    null
+    null,
+    'direct-charge', 'acct_refunds', 0, 'ch_context_pending',
+    'cs_context_pending', 'acct_refunds', 2500,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
 -- Provider failures before and after local finalization

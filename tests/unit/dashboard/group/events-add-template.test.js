@@ -96,6 +96,66 @@ describe("dashboard group event add template", () => {
     );
   });
 
+  it("explains the event and venue requirements for paid tickets", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      "Paid ticket prices require an in-person or hybrid event with a venue name, address, city, postal code, and country.",
+    );
+  });
+
+  it("submits state and country tax codes from the venue fields", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('state-field-name="venue_state_name"');
+    expect(template).to.include('state-code-field-name="venue_state_code"');
+    expect(template).to.include('country-code-field-name="venue_country_code"');
+  });
+
+  it("supports all event-wide tax modes during creation", async () => {
+    // Load the event creation form before checking the tax controls.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify manual rates and no-tax mode are available with accessible rate states.
+    expect(template).to.include('<option value="automatic" selected>Automatic Stripe Tax</option>');
+    expect(template).to.include('<option value="manual">Manual Stripe Tax Rates</option>');
+    expect(template).to.include('<option value="none">Do not collect tax</option>');
+    expect(template).to.include('id="manual-tax-rates-fieldset"');
+    expect(template).to.include('class="col-span-full max-w-3xl"');
+    expect(template).to.include('data-tax-rates-url="/dashboard/group/events/tax-rates"');
+    expect(template).to.include('<div class="form-label"> <label for="manual-tax-rates">');
+    expect(template).to.include('name="manual_tax_rate_ids[]" class="select-primary flex-1"');
+    expect(template).to.include('data-tax-rates-role="select"');
+    expect(template).to.include('aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>');
+    expect(template).to.include('data-tax-rates-role="state" role="status" aria-live="polite"');
+    expect(template).to.include(
+      'id="manual-tax-rates-state" class="mt-2 rounded-md border px-4 py-3 text-sm/6"',
+    );
+    expect(template).to.include('data-tax-rates-role="retry-loading" hidden');
+    expect(template).to.include('<svg-spinner size="size-4" label="Loading Stripe Tax Rates">');
+    expect(template).not.to.include("<span>Loading...</span>");
+    expect(template).to.include('aria-label="About Manual Stripe Tax Rates"');
+    expect(template).to.include('class="svg-icon size-3 icon-question-mark bg-stone-500"');
+    expect(template).to.include('class="group/manual-tax-info relative inline-flex align-super"');
+    expect(template).to.include("Create Tax Rates in the fiscal sponsor's Stripe account.");
+    expect(template).to.include("group-hover/manual-tax-info:visible");
+    expect(template).to.include("group-focus-within/manual-tax-info:visible");
+    expect(template).to.include("The same rate applies to every paid ticket tier.");
+    expect(template.indexOf('id="manual-tax-rates-help"')).to.be.greaterThan(
+      template.indexOf('id="manual-tax-rates"'),
+    );
+    expect(template).to.include(
+      'class="col-span-full 2xl:col-span-2 2xl:col-start-1"> <div class="flex flex-wrap items-center gap-2"> <label for="tax_calculation_mode"',
+    );
+    expect(template).to.include(
+      'class="btn-primary-outline btn-mini" data-automatic-tax-readiness-action="check"',
+    );
+    expect(template).to.include(
+      'aria-label="Save the event before checking whether its venue is ready for automatic tax." title="Save the event before checking whether its venue is ready for automatic tax." disabled>Check readiness</button>',
+    );
+    expect(template).not.to.include("Automatic tax readiness</div>");
+  });
+
   it("does not expose payment recipient details", async () => {
     // Load the event add template before checking payment recipient copy.
     const template = normalizeWhitespace(await loadTemplate());
@@ -116,6 +176,12 @@ describe("dashboard group event add template", () => {
       '{% if payments_ready -%} <div> {{ dashboard::form_title(title = "Tickets"',
     );
     expect(ticketForm).to.include(">Ticket Types</div>");
+    expect(
+      ticketForm.match(/class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"/gu),
+    ).to.have.length(2);
+    expect(ticketForm).not.to.include("icon-add-circle");
+    expect(ticketForm).not.to.include('id="ticket-types-count"');
+    expect(ticketForm).not.to.include('id="discount-codes-count"');
     expect(ticketForm).not.to.include("Payments are not configured for this group");
     expect(ticketForm).not.to.include(
       'class="mt-8 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-stone-600"',

@@ -169,6 +169,54 @@ describe("dashboard group event update template", () => {
     expect(template).not.to.include("{{ payment_recipient.recipient_id }}");
   });
 
+  it("explains the event and venue requirements for paid tickets", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      "Paid ticket prices require an in-person or hybrid event with a venue name, address, city, postal code, and country.",
+    );
+  });
+
+  it("links unsupported automatic-tax feedback to manual-tax guidance", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      'href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds" target="_blank" rel="noopener noreferrer" hx-boost="false"',
+    );
+    expect(template).to.include(
+      'data-automatic-tax-readiness-role="manual-tax-help" hidden>Learn how to configure manual tax</a>',
+    );
+  });
+
+  it("renders automatic-tax readiness as an outline action beside the tax label", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      '<div class="flex flex-wrap items-center gap-2"> <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label> <button type="button" class="btn-primary-outline btn-mini"',
+    );
+    expect(template).to.include(
+      'data-automatic-tax-readiness-action="check" title="Check the saved venue with the automatic-tax provider"',
+    );
+    expect(template).to.include('aria-describedby="automatic-tax-readiness-status"');
+    expect(template).to.include("{% if event_read_only %}disabled{% endif %}>Check readiness</button>");
+    expect(template).to.include("Check readiness</button>");
+    expect(template).to.include(
+      '<div class="col-span-full hidden rounded-md border px-4 py-3" data-automatic-tax-readiness',
+    );
+    expect(template).to.include(
+      'id="automatic-tax-readiness-status" class="text-sm/6" data-automatic-tax-readiness-role="status" role="status" aria-live="polite"',
+    );
+  });
+
+  it("restores state and country tax codes into the venue fields", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('state-field-name="venue_state_name"');
+    expect(template).to.include('state-code-field-name="venue_state_code"');
+    expect(template).to.include('initial-state-code="{{ venue_state_code }}"');
+    expect(template).to.include('country-code-field-name="venue_country_code"');
+    expect(template).to.include('initial-country-code="{{ venue_country_code }}"');
+  });
   it("keeps payment guidance only for read-only paid events", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
@@ -188,6 +236,54 @@ describe("dashboard group event update template", () => {
     );
     expect(ticketForm).not.to.include(
       "Payments are not configured for this group, but free ticket tiers remain editable.",
+    );
+    expect(
+      ticketForm.match(/class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"/gu),
+    ).to.have.length(2);
+    expect(ticketForm).not.to.include("icon-add-circle");
+    expect(ticketForm).not.to.include('id="ticket-types-count"');
+    expect(ticketForm).not.to.include('id="discount-codes-count"');
+  });
+
+  it("offers manual-tax and no-tax modes with event-level selections", async () => {
+    // Load the event update form before checking tax mode state.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify all modes and the server-rendered selection contract.
+    expect(template).to.include('<option value="manual"');
+    expect(template).to.include(
+      "{% if self.uses_manual_ticket_tax() %}selected{% endif %}>Manual Stripe Tax Rates</option>",
+    );
+    expect(template).to.include('<option value="none"');
+    expect(template).to.include('<div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">');
+    expect(template).to.include(
+      "{% if ticketing_read_only || self.uses_no_ticket_tax() %}disabled{% endif %}",
+    );
+    expect(template).to.include("data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'");
+    expect(template).to.include('class="col-span-full max-w-3xl"');
+    expect(template).to.include('<div class="form-label"> <label for="manual-tax-rates">');
+    expect(template).to.include('name="manual_tax_rate_ids[]" class="select-primary flex-1"');
+    expect(template).to.include('data-tax-rates-role="select"');
+    expect(template).to.include('aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>');
+    expect(template).to.include('data-tax-rates-role="state" role="status" aria-live="polite"');
+    expect(template).to.include(
+      'id="manual-tax-rates-state" class="mt-2 rounded-md border px-4 py-3 text-sm/6"',
+    );
+    expect(template).to.include('data-tax-rates-role="retry-loading" hidden');
+    expect(template).to.include('<svg-spinner size="size-4" label="Loading Stripe Tax Rates">');
+    expect(template).not.to.include("<span>Loading...</span>");
+    expect(template).to.include('aria-label="About Manual Stripe Tax Rates"');
+    expect(template).to.include('class="svg-icon size-3 icon-question-mark bg-stone-500"');
+    expect(template).to.include('class="group/manual-tax-info relative inline-flex align-super"');
+    expect(template).to.include("Create Tax Rates in the fiscal sponsor's Stripe account.");
+    expect(template).to.include("group-hover/manual-tax-info:visible");
+    expect(template).to.include("group-focus-within/manual-tax-info:visible");
+    expect(template).to.include("The same rate applies to every paid ticket tier.");
+    expect(template.indexOf('id="manual-tax-rates-help"')).to.be.greaterThan(
+      template.indexOf('id="manual-tax-rates"'),
+    );
+    expect(template).to.include(
+      'class="col-span-full 2xl:col-span-2 2xl:col-start-1"> <div class="flex flex-wrap items-center gap-2"> <label for="tax_calculation_mode"',
     );
   });
 

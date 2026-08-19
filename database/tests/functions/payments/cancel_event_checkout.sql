@@ -93,7 +93,11 @@ values (
     :'groupCategoryID',
     'Cancel Checkout Group',
     'cancel-checkout-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_cancel_checkout')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_cancel_checkout',
+        'seller_display_name', 'Cancel Checkout Fiscal Sponsor'
+    )
 );
 
 -- Event
@@ -178,6 +182,8 @@ insert into event_discount_code (
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     discount_amount_minor,
     discount_code,
@@ -188,12 +194,20 @@ insert into event_purchase (
     payment_provider_id,
     provider_checkout_session_id,
     provider_checkout_url,
+    provider_object_account_id,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values (
     :'pendingPurchaseID',
     2000,
+    'direct-charge',
+    'acct_cancel',
     'USD',
     500,
     'SAVE5',
@@ -204,9 +218,15 @@ insert into event_purchase (
     'stripe',
     'cs_cancel_checkout',
     'https://checkout.stripe.test/cs_cancel_checkout',
+    'acct_cancel',
+    '{"connected_account_id":"acct_cancel","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'userID'
+    :'userID',
+    '{}'::jsonb
 );
 
 -- Pending attendee row with registration answers created during checkout

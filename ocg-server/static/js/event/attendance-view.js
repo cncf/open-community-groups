@@ -873,15 +873,25 @@ const renderControl = (control, state = {}) => {
  */
 const renderRefundRejectionReason = (container, response) => {
   const reason = getAttendanceControl(container, "refund-rejection-reason");
+  const trigger = getAttendanceControl(container, "refund-rejection-trigger");
+  const tooltip = getAttendanceControl(container, "refund-rejection-tooltip");
   const reasonText =
     typeof response.refund_rejection_reason === "string" ? response.refund_rejection_reason.trim() : "";
 
-  if (!(reason instanceof HTMLElement) || response.refund_request_status !== "rejected" || !reasonText) {
+  if (
+    !(reason instanceof HTMLElement) ||
+    !(trigger instanceof HTMLButtonElement) ||
+    !(tooltip instanceof HTMLElement) ||
+    response.refund_request_status !== "rejected" ||
+    !reasonText
+  ) {
     return;
   }
 
-  reason.textContent = `Reason: ${reasonText}`;
+  reason.textContent = reasonText;
   setElementHidden(reason, false);
+  setElementHidden(trigger, false);
+  setElementHidden(tooltip, false);
 };
 
 /**
@@ -900,6 +910,8 @@ const resetPrimaryControls = (container) => {
     refundButton,
   } = getPrimaryControls(container);
   const refundRejectionReason = getAttendanceControl(container, "refund-rejection-reason");
+  const refundRejectionTrigger = getAttendanceControl(container, "refund-rejection-trigger");
+  const refundRejectionTooltip = getAttendanceControl(container, "refund-rejection-tooltip");
 
   setElementHidden(actionsMenu, false);
   hideControl(loadingButton);
@@ -913,6 +925,8 @@ const resetPrimaryControls = (container) => {
     refundRejectionReason.textContent = "";
     setElementHidden(refundRejectionReason, true);
   }
+  setElementHidden(refundRejectionTrigger, true);
+  setElementHidden(refundRejectionTooltip, true);
   setControlPriceBadgesHidden(container, false);
 
   if (attendButton instanceof HTMLButtonElement) {

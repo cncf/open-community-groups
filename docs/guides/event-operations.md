@@ -132,6 +132,9 @@ These are the ticketing rules to keep in mind:
   offer.
 - Positive prices require server payment configuration, a matching group
   recipient, and event currency.
+- Every paid hybrid ticket must include physical admission. Its description may
+  also promise virtual access, but it must not describe a paid tier as
+  virtual-only.
 
 Deployments upgrading legacy RSVP events automatically create a free, public
 `General Admission` tier when an event has no ticket inventory. Existing finite
@@ -303,6 +306,31 @@ Public ticket flow:
 6. Attendance is created immediately for free tickets, or after the payment provider confirms
    payment for paid tickets.
 
+Paid ticketing is available only for in-person or hybrid events with a complete
+physical venue and a configured fiscal sponsor. Virtual events remain
+free-only. Every paid hybrid ticket includes physical admission; it may also
+include virtual access, but cannot be virtual-only. While any active or future
+positive price exists, OCG rejects venue, event-kind, currency, sponsor, or tax
+changes that would make Checkout ineligible.
+
+Each event selects one ticket-tax mode in the `Tickets` tab: automatic Stripe
+Tax, manual Stripe Tax Rates, or no tax collection. Automatic Stripe Tax uses
+the professional-event admission classification for in-person tickets and
+hybrid tickets that include physical admission. Manual-tax events select one
+or more active Tax Rates owned by the fiscal sponsor's connected Stripe
+account; the selected rates must all match the event's inclusive or exclusive
+tax display. Paid manual-tax events require at least one selection. No-tax
+events hide the tax display control, never show `+ tax`, and require Stripe to
+return zero tax during payment reconciliation.
+
+Stripe remains authoritative for Tax Rate names, percentages, jurisdictions,
+activity, and inclusive/exclusive behavior. OCG stores the selected identifiers
+on the event, snapshots those identifiers when a paid purchase starts, and
+stores the authoritative subtotal, aggregate tax, and total returned after
+Checkout. Replacing a fiscal sponsor is blocked while an upcoming published
+paid manual-tax event exists. Draft manual-tax events must reselect rates after
+the sponsor changes.
+
 Ticket and discount data model:
 
 - Ticket types are event-level, can be mixed free and paid, and can be public
@@ -326,6 +354,14 @@ requires a reason; the attendee sees the same reason in their notification, on t
 and in `My Events`. Approval notes remain optional and organizer-only. Both dashboard views show
 refund progress until the refund completes or needs intervention.
 
+The fiscal sponsor funds the full refund from its connected account. If Stripe
+reports insufficient sponsor funds, OCG leaves the refund pending and visible
+in the group dashboard `Refunds` tab. OCG does not send a dedicated
+administrator notification or advance platform money. A successful refund
+returns the remaining application fee to the sponsor and creates a credit note
+linked to the same customer refund. Partial customer refunds are not
+supported.
+
 Canceling the whole event is another way a refund begins. OCG immediately cancels active attendance,
 completes free-ticket refunds locally, and queues every paid ticket for a full provider refund.
 The event remains canceled even if a provider attempt later needs retry or manual recovery.
@@ -343,6 +379,13 @@ remains allocated through refund-requested, provider-pending, and recovery
 states, then releases after successful finalization or recorded manual
 recovery. Reconciliation then allocates available inventory to the oldest
 eligible queue entry.
+
+OCG does not subscribe to or process connected-account dispute events. The
+fiscal sponsor monitors and handles disputes entirely in Stripe, including
+evidence, balances, and any application-fee, invoice, or tax action. OCG sends
+no dispute notifications and does not change attendance automatically;
+organizers use the normal attendance controls for any separate attendance
+decision.
 
 ### Attendance, Invitation, and Waitlist Operations
 

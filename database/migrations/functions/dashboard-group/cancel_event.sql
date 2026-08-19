@@ -111,7 +111,7 @@ begin
         status
     )
     select
-        ep.amount_minor,
+        ep.provider_total_minor,
         ep.currency_code,
         ep.event_purchase_id,
         err.event_refund_request_id,

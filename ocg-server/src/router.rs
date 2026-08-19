@@ -357,7 +357,10 @@ pub(crate) async fn setup(
 
     // Setup the payments webhook route if enabled in configuration
     if payments_enabled {
-        router = router.route("/webhooks/payments", post(payments::webhook));
+        router = router.route("/webhooks/payments", post(payments::webhook)).route(
+            "/webhooks/payments/connected",
+            post(payments::connected_webhook),
+        );
     }
 
     router = router

@@ -22,7 +22,11 @@ returns json as $$
         -- Select every purchase that has entered a refund workflow
         base_refunds as (
             select
-                ep.amount_minor,
+                coalesce(
+                    epr.amount_minor,
+                    ep.provider_total_minor,
+                    ep.amount_minor
+                ) as amount_minor,
                 coalesce(epr.created_at, err.created_at, ep.updated_at) as created_at_sort,
                 ep.currency_code,
                 u.email,
@@ -101,6 +105,70 @@ returns json as $$
                 )
             )
         ),
+        -- Select exhausted fee and document work requiring operator action
+        base_financial_recoveries as (
+            select
+                epafa.amount_minor,
+                epafa.attempt_count,
+                ep.currency_code,
+                u.email,
+                e.event_id,
+                e.name as event_name,
+                ep.event_purchase_id,
+                coalesce(
+                    epafa.failure_message,
+                    'Provider operation failed without details'
+                ) as failure_message,
+                'application-fee-adjustment'::text as kind,
+                u.name,
+                case epafa.kind
+                    when 'purchase-refund' then 'Application-fee refund'
+                    when 'tax-reconciliation' then 'Tax fee correction'
+                end as operation,
+                ep.ticket_title,
+                epafa.updated_at,
+                u.user_id,
+                u.username,
+                epafa.event_purchase_application_fee_adjustment_id as work_id
+            from event_purchase_application_fee_adjustment epafa
+            join event_purchase ep using (event_purchase_id)
+            join event e using (event_id)
+            join "user" u using (user_id)
+            where e.group_id = p_group_id
+            and epafa.status = 'failed'
+            and epafa.attempt_count >= 10
+
+            union all
+
+            select
+                epcn.amount_minor,
+                epcn.attempt_count,
+                epcn.currency_code,
+                u.email,
+                e.event_id,
+                e.name as event_name,
+                ep.event_purchase_id,
+                coalesce(
+                    epcn.failure_message,
+                    'Provider operation failed without details'
+                ) as failure_message,
+                'credit-note'::text as kind,
+                u.name,
+                'Credit note'::text as operation,
+                ep.ticket_title,
+                epcn.updated_at,
+                u.user_id,
+                u.username,
+                epcn.event_purchase_credit_note_id as work_id
+            from event_purchase_credit_note epcn
+            join event_purchase_refund epr using (event_purchase_refund_id)
+            join event_purchase ep using (event_purchase_id)
+            join event e using (event_id)
+            join "user" u using (user_id)
+            where e.group_id = p_group_id
+            and epcn.status = 'failed'
+            and epcn.attempt_count >= 10
+        ),
         -- Apply the selected operational, event, and text filters
         filtered_refunds as (
             select br.*
@@ -141,34 +209,103 @@ returns json as $$
                 )
             )
         ),
-        -- Select the requested page
-        refunds as (
+        -- Apply the shared event, search, and operational view filters
+        filtered_financial_recoveries as (
+            select bfr.*
+            from base_financial_recoveries bfr
+            cross join filters f
+            where f.view_value <> 'completed'
+            and (
+                f.event_id_value is null
+                or bfr.event_id = f.event_id_value
+            )
+            and (
+                f.ts_query_value is null
+                or concat_ws(
+                    ' ',
+                    bfr.email,
+                    bfr.event_name,
+                    bfr.name,
+                    bfr.operation,
+                    bfr.ticket_title,
+                    bfr.username
+                ) ilike '%' || escape_ilike_pattern(f.ts_query_value) || '%'
+            )
+        ),
+        -- Combine refund and financial-recovery work into one bounded page
+        operational_items as (
             select
-                amount_minor,
-                extract(epoch from created_at_sort)::bigint as created_at,
-                currency_code,
-                email,
-                event_id,
-                event_name,
-                event_purchase_id,
-                status,
-                ticket_title,
-                extract(epoch from updated_at_sort)::bigint as updated_at,
-                user_id,
-                username,
+                fr.event_purchase_id as item_id,
+                'refund'::text as item_type,
+                fr.updated_at_sort as updated_at
+            from filtered_refunds fr
 
-                attempt_count,
-                failure_message,
-                kind,
-                name,
-                photo_url,
-                provider_refund_id,
-                requested_reason,
-                review_note
-            from filtered_refunds
-            order by updated_at_sort desc, event_purchase_id desc
+            union all
+
+            select
+                ffr.work_id as item_id,
+                'financial-recovery'::text as item_type,
+                ffr.updated_at
+            from filtered_financial_recoveries ffr
+        ),
+        paged_operational_items as (
+            select item_id, item_type, updated_at
+            from operational_items
+            order by updated_at desc, item_type, item_id desc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
+        ),
+        -- Select refund rows represented on the requested operational page
+        refunds as (
+            select
+                fr.amount_minor,
+                extract(epoch from fr.created_at_sort)::bigint as created_at,
+                fr.currency_code,
+                fr.email,
+                fr.event_id,
+                fr.event_name,
+                fr.event_purchase_id,
+                fr.status,
+                fr.ticket_title,
+                extract(epoch from fr.updated_at_sort)::bigint as updated_at,
+                fr.user_id,
+                fr.username,
+
+                fr.attempt_count,
+                fr.failure_message,
+                fr.kind,
+                fr.name,
+                fr.photo_url,
+                fr.provider_refund_id,
+                fr.requested_reason,
+                fr.review_note
+            from filtered_refunds fr
+            join paged_operational_items poi
+                on poi.item_id = fr.event_purchase_id
+                and poi.item_type = 'refund'
+            order by fr.updated_at_sort desc, fr.event_purchase_id desc
+        ),
+        -- Select recovery rows represented on the requested operational page
+        financial_recoveries as (
+            select
+                ffr.amount_minor,
+                ffr.attempt_count,
+                ffr.currency_code,
+                ffr.email,
+                ffr.event_name,
+                ffr.failure_message,
+                ffr.kind,
+                ffr.operation,
+                ffr.username,
+                ffr.work_id,
+
+                ffr.name,
+                ffr.updated_at as updated_at_sort
+            from filtered_financial_recoveries ffr
+            join paged_operational_items poi
+                on poi.item_id = ffr.work_id
+                and poi.item_type = 'financial-recovery'
+            order by ffr.updated_at desc, ffr.work_id desc
         ),
         -- List events represented in the group's refund history
         events as (
@@ -176,12 +313,20 @@ returns json as $$
                 event_id,
                 event_name as name
             from base_refunds
+
+            union
+
+            select distinct
+                event_id,
+                event_name as name
+            from base_financial_recoveries
+
             order by name asc, event_id asc
         ),
         -- Count matching rows before pagination
         totals as (
             select count(*)::int as total
-            from filtered_refunds
+            from operational_items
         ),
         -- Render event options and refund rows as JSON
         events_json as (
@@ -190,6 +335,28 @@ returns json as $$
                 '[]'::json
             ) as events
             from events
+        ),
+        financial_recoveries_json as (
+            select coalesce(
+                json_agg(
+                    json_build_object(
+                        'amount_minor', amount_minor,
+                        'attempt_count', attempt_count,
+                        'currency_code', currency_code,
+                        'email', email,
+                        'event_name', event_name,
+                        'failure_message', failure_message,
+                        'kind', kind,
+                        'operation', operation,
+                        'username', username,
+                        'work_id', work_id,
+                        'name', name
+                    )
+                    order by updated_at_sort desc, work_id desc
+                ),
+                '[]'::json
+            ) as financial_recoveries
+            from financial_recoveries
         ),
         refunds_json as (
             select coalesce(
@@ -204,8 +371,9 @@ returns json as $$
     -- Build the final payload
     select json_build_object(
         'events', events_json.events,
+        'financial_recoveries', financial_recoveries_json.financial_recoveries,
         'refunds', refunds_json.refunds,
         'total', totals.total
     )
-    from events_json, refunds_json, totals;
+    from events_json, financial_recoveries_json, refunds_json, totals;
 $$ language sql;

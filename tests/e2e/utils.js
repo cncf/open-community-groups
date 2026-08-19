@@ -215,12 +215,29 @@ export const TEST_PAYMENT_EVENT_SLUGS = {
   refunds: "alpha-payments-refunds",
 };
 
+/** Exhausted financial work identifiers used by refund dashboard coverage. */
+export const TEST_FINANCIAL_WORK_IDS = {
+  applicationFeeAdjustment: "63555555-5555-5555-5555-555555555526",
+  creditNote: "62555555-5555-5555-5555-555555555527",
+};
+
+/** Seeded purchase document identifiers used by dashboard coverage. */
+export const TEST_PURCHASE_DOCUMENT_IDS = {
+  creditNote: "62555555-5555-5555-5555-555555555528",
+  purchase: "59555555-5555-5555-5555-555555555528",
+};
+
 /** Ticketing workflow events with isolated mutable state. */
 export const TEST_TICKETING_EVENTS = {
   invitationRequests: {
     id: "55555555-5555-5555-5555-555555555914",
     name: "Invitation Request Lifecycle Lab",
     slug: "alpha-invitation-request-lifecycle",
+  },
+  manualTaxUnavailable: {
+    id: "55555555-5555-5555-5555-555555555921",
+    name: "Unavailable Manual Tax Rate Lab",
+    slug: "alpha-manual-tax-unavailable",
   },
   migratedCapacity: {
     id: "55555555-5555-5555-5555-555555555919",
@@ -323,8 +340,8 @@ export const TEST_USER_CREDENTIALS = {
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
 const LOGIN_NAVIGATION_TIMEOUT_MS = 5_000;
 const LOGIN_RETRY_ATTEMPTS = 3;
-const NAVIGATION_ATTEMPT_TIMEOUT_MS = 5_000;
-const NAVIGATION_RETRY_ATTEMPTS = 10;
+const NAVIGATION_ATTEMPT_TIMEOUT_MS = 15_000;
+const NAVIGATION_RETRY_ATTEMPTS = 4;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
 
 const buildUrl = (path) => new URL(path, BASE_URL).toString();

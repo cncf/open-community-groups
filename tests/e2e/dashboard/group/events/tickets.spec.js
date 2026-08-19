@@ -19,7 +19,6 @@ import {
   expectTableHeaders,
   navigateToPath,
   selectTimezone,
-  waitForActionResponse,
 } from "../../../utils.js";
 import {
   TEST_UPLOAD_ASSET_PATHS,
@@ -267,6 +266,163 @@ test.describe("group dashboard event Tickets tab", () => {
     ).toBeVisible();
   });
 
+  test("organizer replaces a saved manual tax rate that is no longer available", async ({
+    organizerGroupPage,
+  }) => {
+    // Skip provider-backed tax coverage when payments are disabled.
+    test.skip(
+      !E2E_PAYMENTS_ENABLED,
+      "Payments are disabled in this environment.",
+    );
+
+    // Return one active rate while omitting the event's saved provider rate.
+    await organizerGroupPage.route(
+      "**/dashboard/group/events/tax-rates**",
+      (route) =>
+        route.fulfill({
+          body: JSON.stringify([
+            {
+              display_name: "E2E replacement rate",
+              id: "txr_e2e_replacement",
+              inclusive: true,
+              jurisdiction: "United States",
+              percentage: "7.25",
+            },
+          ]),
+          contentType: "application/json",
+          status: 200,
+        }),
+    );
+
+    // Open the event whose saved manual rate is absent from the provider response.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const taxRatesResponsePromise = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.url().includes("/dashboard/group/events/tax-rates") &&
+        response.ok(),
+    );
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_TICKETING_EVENTS.manualTaxUnavailable.name,
+      TEST_TICKETING_EVENTS.manualTaxUnavailable.id,
+    );
+    const taxRatesResponse = await taxRatesResponsePromise;
+    await openPaymentsSection(organizerGroupPage);
+
+    // Verify the unavailable saved selection is explicit and can be replaced.
+    const manualTaxFieldset = organizerGroupPage.locator(
+      "#manual-tax-rates-fieldset",
+    );
+    const manualTaxRateSelect = organizerGroupPage.getByLabel(
+      "Manual Stripe Tax Rates",
+      { exact: true },
+    );
+    const unavailableRateMessage = manualTaxFieldset.getByRole("status");
+    const taxCalculationMode = organizerGroupPage.locator(
+      "#tax_calculation_mode",
+    );
+    await expect(taxCalculationMode).toHaveValue("manual");
+    expect(
+      new URL(taxRatesResponse.url()).searchParams.get("tax_behavior"),
+    ).toBe("inclusive");
+    await expect(manualTaxFieldset).toHaveAttribute(
+      "data-selected-rate-ids",
+      '["txr_e2e_unavailable"]',
+    );
+    await expect(manualTaxRateSelect).toHaveValue("");
+    await expect(manualTaxRateSelect).toBeEnabled();
+    await expect(unavailableRateMessage).toBeVisible();
+    await expect(unavailableRateMessage).toContainText(
+      "A previously selected Tax Rate is inactive, missing, or belongs to another account.",
+    );
+
+    // Complete the paid-event location requirements before testing the stale rate.
+    await openDetailsSection(organizerGroupPage);
+    const eventKind = organizerGroupPage.locator("#kind_id");
+    await expect(eventKind).toHaveJSProperty(
+      "validationMessage",
+      "Paid tickets require an in-person or hybrid event.",
+    );
+    await eventKind.selectOption("hybrid");
+    await expect(eventKind).toHaveValue("hybrid");
+    await expect(eventKind).toHaveJSProperty("validationMessage", "");
+    await organizerGroupPage
+      .locator('button[data-section="date-venue"]')
+      .click({ force: true });
+    await fillEventVenue(organizerGroupPage, {
+      address: "123 Tax Rate Way",
+      city: "New York",
+      countryCode: "US",
+      countryName: "United States",
+      latitude: "40.7128",
+      longitude: "-74.006",
+      name: "Tax Rate Hall",
+      state: "New York",
+      stateCode: "NY",
+      zipCode: "10001",
+    });
+
+    // Expose the save action and verify paid tickets reject the stale selection.
+    await openDetailsSection(organizerGroupPage);
+    const eventName = organizerGroupPage.locator("#name");
+    await eventName.fill(`${await eventName.inputValue()} updated`);
+    await openPaymentsSection(organizerGroupPage);
+    const updateEventButton = organizerGroupPage.locator(
+      "#update-event-button",
+    );
+    await expect(updateEventButton).toBeVisible();
+    await expect(taxCalculationMode).toHaveJSProperty(
+      "validationMessage",
+      "Select an available Stripe Tax Rate for paid tickets.",
+    );
+
+    let interceptedUpdateRequest = null;
+    await organizerGroupPage.route(
+      `**/dashboard/group/events/${TEST_TICKETING_EVENTS.manualTaxUnavailable.id}/update`,
+      async (route) => {
+        if (route.request().method() !== "PUT") {
+          await route.continue();
+          return;
+        }
+        interceptedUpdateRequest = route.request();
+        await route.fulfill({ status: 204 });
+      },
+    );
+    await updateEventButton.click();
+    expect(interceptedUpdateRequest).toBeNull();
+
+    // Select the provider replacement and verify the submitted form contract.
+    await openPaymentsSection(organizerGroupPage);
+    await manualTaxRateSelect.selectOption("txr_e2e_replacement");
+    await expect(manualTaxRateSelect).toHaveValue("txr_e2e_replacement");
+    await expect(manualTaxRateSelect).toHaveAttribute(
+      "name",
+      "manual_tax_rate_ids[]",
+    );
+    await expect(unavailableRateMessage).toBeHidden();
+    await expect(taxCalculationMode).toHaveJSProperty("validationMessage", "");
+
+    const [updateRequest] = await Promise.all([
+      organizerGroupPage.waitForRequest(
+        (request) =>
+          request.method() === "PUT" &&
+          request
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_TICKETING_EVENTS.manualTaxUnavailable.id}/update`,
+            ),
+      ),
+      updateEventButton.click(),
+    ]);
+    const submittedForm = new URLSearchParams(updateRequest.postData() ?? "");
+    expect(submittedForm.get("manual_tax_rate_ids_present")).toBe("true");
+    expect(submittedForm.getAll("manual_tax_rate_ids[]")).toEqual([
+      "txr_e2e_replacement",
+    ]);
+    expect(submittedForm.get("tax_behavior")).toBe("inclusive");
+    expect(submittedForm.get("tax_calculation_mode")).toBe("manual");
+  });
+
   test("ticketing tables expose every column at their responsive breakpoint", async ({
     organizerGroupPage,
   }) => {
@@ -347,7 +503,7 @@ test.describe("group dashboard event Tickets tab", () => {
     await expect(generalAdmissionRow.locator("td").nth(3)).toBeVisible();
   });
 
-  test("ticket removal blocks the last tier and rejects tiers with purchases", async ({
+  test("ticket removal blocks the last tier and marks editable tiers for deletion", async ({
     organizerGroupPage,
   }) => {
     test.skip(
@@ -373,7 +529,7 @@ test.describe("group dashboard event Tickets tab", () => {
       "Every event needs at least one ticket type",
     );
 
-    // Removing a tier linked to a seeded checkout is rejected by the server.
+    // An editable tier can be marked for deletion without contacting the provider.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
@@ -385,21 +541,9 @@ test.describe("group dashboard event Tickets tab", () => {
       .locator('#ticket-types-ui [data-ticketing-role="table-body"] tr')
       .filter({ hasText: "General admission" });
     await purchasedTierRow.getByTitle("Delete").click();
-    const response = await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.locator("#update-event-button").click(),
-      {
-        method: "PUT",
-        urlIncludes: `/dashboard/group/events/${TEST_PAYMENT_EVENT_IDS.draft}/update`,
-        status: 422,
-      },
-    );
-    expect(response.status()).toBe(422);
-    expect(await response.text()).toContain(
-      "ticket types with purchases cannot be removed",
-    );
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Something went wrong updating the event.",
-    );
+    await expect(purchasedTierRow).toHaveCount(0);
+    await expect(
+      organizerGroupPage.locator("#update-event-button"),
+    ).toBeEnabled();
   });
 });

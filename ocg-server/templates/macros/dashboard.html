@@ -102,7 +102,7 @@
 
 {# Menu item -#}
 {# Used by dashboard side menus for user, community, and group navigation. -#}
-{% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0 ) -%}
+{% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0, compact_name = "" ) -%}
   {% if is_active -%}
     <div class="relative bg-white border border-stone-200 px-3 rounded-lg {{ extra_styles }}">
       <a hx-get="{{ href }}"
@@ -113,7 +113,14 @@
          aria-current="page">
         <div class="flex items-center">
           <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-primary-500"></div>
-          <div class="text-sm/8 ms-3">{{ name }}</div>
+          <div class="text-sm/8 ms-3">
+            {% if compact_name.is_empty() -%}
+              {{ name }}
+            {% else -%}
+              <span class="xl:hidden">{{ compact_name }}</span>
+              <span class="hidden xl:inline">{{ name }}</span>
+            {% endif -%}
+          </div>
         </div>
         {% if items_count + 0 > 0 -%}
           <div class="text-[0.65rem]/4 font-bold text-primary-500 border border-primary-500 bg-white rounded-full px-2 pt-px ms-3">
@@ -132,7 +139,14 @@
               aria-label="{{ name }} - Coming soon">
         <div class="flex items-center opacity-50">
           <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-stone-500"></div>
-          <div class="text-sm/8 ms-3 text-stone-500">{{ name }}</div>
+          <div class="text-sm/8 ms-3 text-stone-500">
+            {% if compact_name.is_empty() -%}
+              {{ name }}
+            {% else -%}
+              <span class="xl:hidden">{{ compact_name }}</span>
+              <span class="hidden xl:inline">{{ name }}</span>
+            {% endif -%}
+          </div>
         </div>
       </button>
     {% else -%}
@@ -144,7 +158,14 @@
            class="flex items-center justify-between cursor-pointer">
           <div class="flex items-center">
             <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-primary-500"></div>
-            <div class="text-sm/8 ms-3">{{ name }}</div>
+            <div class="text-sm/8 ms-3">
+              {% if compact_name.is_empty() -%}
+                {{ name }}
+              {% else -%}
+                <span class="xl:hidden">{{ compact_name }}</span>
+                <span class="hidden xl:inline">{{ name }}</span>
+              {% endif -%}
+            </div>
           </div>
           {% if items_count + 0 > 0 -%}
             <div class="text-[0.65rem]/4 font-bold text-primary-500 border border-primary-500 bg-white rounded-full px-2 pt-px ms-3">

@@ -224,6 +224,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route("/events", get(dashboard::group::events::list_page))
         .route("/events/add", get(dashboard::group::events::add_page))
         .route(
+            "/events/tax-rates",
+            get(dashboard::group::events::tax_rates),
+        )
+        .route(
             "/events/{event_id}/attendees",
             get(dashboard::group::attendees::list_page),
         )
@@ -338,6 +342,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::attendees::reject_invitation_request),
         )
         .route(
+            "/events/{event_id}/automatic-tax/readiness",
+            post(dashboard::group::events::automatic_tax_readiness),
+        )
+        .route(
             "/events/{event_id}/cancel",
             put(dashboard::group::events::cancel),
         )
@@ -360,6 +368,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/events/{event_id}/update",
             put(dashboard::group::events::update),
+        )
+        .route(
+            "/financial-work/recovery",
+            put(dashboard::group::refunds::complete_financial_recovery),
+        )
+        .route(
+            "/financial-work/retry",
+            put(dashboard::group::refunds::retry_financial_recovery),
         )
         .route(
             "/notifications/{event_id}",
@@ -510,6 +526,15 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             put(dashboard::user::invitations::reject_group_team_invitation),
         )
         .route("/logs", get(dashboard::user::logs::list_page))
+        .route("/purchases", get(dashboard::user::purchases::list_page))
+        .route(
+            "/purchases/{event_purchase_id}/credit-notes/{event_purchase_credit_note_id}",
+            get(dashboard::user::purchases::credit_note_document),
+        )
+        .route(
+            "/purchases/{event_purchase_id}/invoice",
+            get(dashboard::user::purchases::invoice_document),
+        )
         .route(
             "/session-proposals",
             get(dashboard::user::session_proposals::list_page)

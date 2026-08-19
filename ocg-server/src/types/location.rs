@@ -27,7 +27,9 @@ pub(crate) fn build_location(parts: &LocationParts, max_len: usize) -> Option<St
     push(parts.name);
     push(parts.address);
     push(parts.city);
-    push(parts.state);
+    if !push(parts.state_name) {
+        push(parts.state_code);
+    }
     if !push(parts.country_name) {
         push(parts.country_code);
     }
@@ -54,8 +56,10 @@ pub(crate) struct LocationParts<'a> {
     country_name: Option<&'a str>,
     /// Location name (e.g., "Community Center", "Conference Hall").
     name: Option<&'a str>,
-    /// State or province.
-    state: Option<&'a str>,
+    /// ISO state or province code.
+    state_code: Option<&'a str>,
+    /// Full state or province name.
+    state_name: Option<&'a str>,
 }
 
 impl<'a> LocationParts<'a> {
@@ -94,9 +98,15 @@ impl<'a> LocationParts<'a> {
         self
     }
 
-    /// Sets the state or province.
-    pub(crate) fn state(mut self, state: Option<&'a str>) -> Self {
-        self.state = state;
+    /// Sets the ISO state or province code.
+    pub(crate) fn state_code(mut self, state_code: Option<&'a str>) -> Self {
+        self.state_code = state_code;
+        self
+    }
+
+    /// Sets the full state or province name.
+    pub(crate) fn state_name(mut self, state_name: Option<&'a str>) -> Self {
+        self.state_name = state_name;
         self
     }
 }
@@ -111,18 +121,23 @@ mod tests {
         let city = "San Francisco".to_string();
         let country_name = "United States".to_string();
         let name = "Convention Center".to_string();
-        let state = "CA".to_string();
+        let state_code = "CA".to_string();
+        let state_name = "California".to_string();
 
         let parts = LocationParts::new()
             .address(Some(address.as_str()))
             .city(Some(city.as_str()))
             .country_name(Some(country_name.as_str()))
             .name(Some(name.as_str()))
-            .state(Some(state.as_str()));
+            .state_code(Some(state_code.as_str()))
+            .state_name(Some(state_name.as_str()));
 
         assert_eq!(
             build_location(&parts, 100),
-            Some("Convention Center, 123 Main St, San Francisco, CA, United States".to_string())
+            Some(
+                "Convention Center, 123 Main St, San Francisco, California, United States"
+                    .to_string()
+            )
         );
     }
 
@@ -130,17 +145,29 @@ mod tests {
     fn test_build_location_city_state_country() {
         let city = "Boston".to_string();
         let country_name = "United States".to_string();
-        let state = "MA".to_string();
+        let state_name = "Massachusetts".to_string();
 
         let parts = LocationParts::new()
             .city(Some(city.as_str()))
             .country_name(Some(country_name.as_str()))
-            .state(Some(state.as_str()));
+            .state_name(Some(state_name.as_str()));
 
         assert_eq!(
             build_location(&parts, 100),
-            Some("Boston, MA, United States".to_string())
+            Some("Boston, Massachusetts, United States".to_string())
         );
+    }
+
+    #[test]
+    fn test_build_location_state_code_fallback() {
+        let city = "Boston".to_string();
+        let state_code = "MA".to_string();
+
+        let parts = LocationParts::new()
+            .city(Some(city.as_str()))
+            .state_code(Some(state_code.as_str()));
+
+        assert_eq!(build_location(&parts, 100), Some("Boston, MA".to_string()));
     }
 
     #[test]

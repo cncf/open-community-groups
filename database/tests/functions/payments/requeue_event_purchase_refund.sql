@@ -117,13 +117,28 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values
-    (2500, 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'failedUserID', 'stripe', 'pi_failed'),
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'pendingUserID', 'stripe', 'pi_pending'),
-    (2500, 'USD', :'eventID', :'scopePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'scopeUserID', 'stripe', 'pi_scope'),
-    (2500, 'USD', :'eventID', :'terminalPurchaseID', :'ticketTypeID', 'refund-recovery-pending', 'General admission', :'terminalUserID', 'stripe', 'pi_terminal'),
-    (2500, 'USD', :'eventID', :'underBudgetPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'underBudgetUserID', 'stripe', 'pi_under_budget');
+    (2500, 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'failedUserID', 'stripe', 'pi_failed', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_failed', 'cs_requeue_failed', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'pendingUserID', 'stripe', 'pi_pending', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_pending', 'cs_requeue_pending', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'scopePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'scopeUserID', 'stripe', 'pi_scope', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_scope', 'cs_requeue_scope', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'terminalPurchaseID', :'ticketTypeID', 'refund-recovery-pending', 'General admission', :'terminalUserID', 'stripe', 'pi_terminal', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_terminal', 'cs_requeue_terminal', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'underBudgetPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'underBudgetUserID', 'stripe', 'pi_under_budget', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_under', 'cs_requeue_under', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb);
 
 -- Refund rows covering both retryable statuses and every rejection guard
 insert into event_purchase_refund (

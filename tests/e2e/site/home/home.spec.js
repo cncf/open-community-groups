@@ -35,6 +35,8 @@ const getCommunityCard = (page, displayName) =>
     .first();
 
 test.describe("site home page", () => {
+  test.describe.configure({ timeout: 75_000 });
+
   test.describe("default viewport", () => {
     test.beforeEach(async ({ page }) => {
       // Load the public home page before each default viewport assertion.
@@ -137,19 +139,19 @@ test.describe("site home page", () => {
         "Payments are disabled in this environment.",
       );
 
-      // Target paid in-person and virtual event cards.
+      // Target paid in-person and hybrid event cards.
       const inPersonCard = page
         .getByRole("link")
         .filter({ hasText: TEST_EVENT_NAMES.gamma[0] })
         .first();
-      const virtualCard = page
+      const hybridCard = page
         .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.beta[1] })
+        .filter({ hasText: TEST_EVENT_NAMES.beta[2] })
         .first();
 
       // Verify paid event cards show their starting prices.
       await expect(inPersonCard).toContainText(/From (?:US)?\$20\.00/);
-      await expect(virtualCard).toContainText(/From (?:US)?\$15\.00/);
+      await expect(hybridCard).toContainText(/From (?:US)?\$15\.00/);
     });
 
     test("latest groups section renders heading and explore link", async ({

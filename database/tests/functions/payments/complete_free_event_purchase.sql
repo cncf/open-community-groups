@@ -345,17 +345,6 @@ insert into event_purchase (
     :'user2ID',
     null
 ), (
-    :'paidPurchaseID',
-    2500,
-    'USD',
-    :'eventID',
-    :'eventTicketTypeID',
-    now() + interval '10 minutes',
-    'pending',
-    'General admission',
-    :'user3ID',
-    null
-), (
     :'completedPurchaseID',
     0,
     'USD',
@@ -401,6 +390,47 @@ insert into event_purchase (
     :'reactivationOfferID'
 );
 
+-- Paid direct charge used to verify the free-completion boundary
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    connected_seller_id,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
+    status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    2500,
+    'direct-charge',
+    'acct_free_boundary',
+    'USD',
+    :'eventID',
+    :'paidPurchaseID',
+    :'eventTicketTypeID',
+    now() + interval '10 minutes',
+    'stripe',
+    'acct_free_boundary',
+    '{"connected_account_id":"acct_free_boundary","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'user3ID',
+    '{}'::jsonb
+);
+
 -- Refunded paid purchase whose terminal provider failure requires recovery
 insert into event_purchase (
     event_purchase_id,
@@ -408,18 +438,51 @@ insert into event_purchase (
     currency_code,
     event_id,
     event_ticket_type_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
     status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot,
+
+    charge_model,
+    connected_seller_id
 ) values (
     :'recoveryPurchaseID',
     2500,
     'USD',
     :'eventID',
     :'eventTicketTypeID',
+    0,
+    'stripe',
+    'ch_free_recovery',
+    'cs_free_recovery',
+    'acct_free_boundary',
+    'pi_free_recovery',
+    2500,
+    '{"connected_account_id":"acct_free_boundary","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'refund-recovery-pending',
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'user7ID'
+    :'user7ID',
+    '{}'::jsonb,
+    'direct-charge',
+    'acct_free_boundary'
 );
 
 -- Pending free replacement created before the original refund failed

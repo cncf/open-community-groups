@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(40);
+select plan(42);
 
 -- ============================================================================
 -- VARIABLES
@@ -75,7 +75,7 @@ insert into "group" (
     'abc1234',
     'A study group focused on Kubernetes best practices and implementation',
     :'groupCategoryID',
-    '{"provider": "stripe", "recipient_id": "acct_add_event"}'::jsonb
+    '{"provider": "stripe", "recipient_id": "acct_add_event", "seller_display_name": "Add Event Fiscal Sponsor"}'::jsonb
 );
 
 -- Group Sponsors
@@ -101,6 +101,49 @@ values
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject event creation validated against a stale sponsor
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_stale",
+                    "seller_display_name": "Stale Sponsor"
+                },
+                "require_automatic_tax": true,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_stale",
+                    "seller_display_name": "Stale Sponsor"
+                }
+            },
+            "tax_calculation_mode": "automatic",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "event_ticket_type_id": "3a020000-0000-0000-0000-000000000094",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 2500,
+                            "event_ticket_price_window_id": "3a020000-0000-0000-0000-000000000095"
+                        }
+                    ],
+                    "seats_total": 10,
+                    "title": "General"
+                }
+            ]
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    )$$,
+    'payment configuration changed during provider validation',
+    'Should reject event creation validated against a stale sponsor'
+);
 
 -- Should create event with minimal required fields and return expected structure
 select ok(
@@ -134,6 +177,9 @@ select ok(
         "sponsors": [],
         "sessions": {},
         "test_event": false,
+        "manual_tax_rate_ids": [],
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "automatic",
         "timezone": "America/New_York",
         "attendee_approval_required": false,
         "meeting_recording_published": false,
@@ -263,13 +309,14 @@ with new_event as (
             "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
             "tags": ["technology", "conference", "networking"],
             "test_event": true,
-            "venue_address": "123 Main St",
-            "venue_city": "San Francisco",
-            "venue_country_code": "US",
-            "venue_country_name": "United States",
-            "venue_name": "Tech Center",
-            "venue_state": "CA",
-            "venue_zip_code": "94105",
+            "venue_address": " 123 Main St ",
+            "venue_city": " San Francisco ",
+            "venue_country_code": " US ",
+            "venue_country_name": " United States ",
+            "venue_name": " Tech Center ",
+            "venue_state_code": " ca ",
+            "venue_state": " California ",
+            "venue_zip_code": " 94105 ",
             "hosts": ["3a020000-0000-0000-0000-000000000020", "3a020000-0000-0000-0000-000000000021"],
             "speakers": [
                 {"user_id": "3a020000-0000-0000-0000-000000000021", "featured": true},
@@ -357,12 +404,16 @@ select ok(
         "registration_questions": [],
         "registration_questions_locked": false,
         "tags": ["technology", "conference", "networking"],
+        "manual_tax_rate_ids": [],
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "automatic",
         "venue_address": "123 Main St",
         "venue_city": "San Francisco",
         "venue_country_code": "US",
         "venue_country_name": "United States",
         "venue_name": "Tech Center",
-        "venue_state": "CA",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
         "venue_zip_code": "94105",
         "waitlist_count": 0,
         "waitlist_enabled": false,
@@ -703,7 +754,6 @@ select throws_ok(
             "capacity": 10,
             "meeting_requested": true,
             "meeting_provider_id": "zoom",
-            "payment_currency_code": "USD",
             "starts_at": "2030-03-01T10:00:00",
             "ends_at": "2030-03-01T11:00:00",
             "ticket_types": [
@@ -713,7 +763,7 @@ select throws_ok(
                     "order": 1,
                     "price_windows": [
                         {
-                            "amount_minor": 2500,
+                            "amount_minor": 0,
                             "event_ticket_price_window_id": "3a020000-0000-0000-0000-000000000093"
                         }
                     ],
@@ -727,6 +777,94 @@ select throws_ok(
     )$$,
     'event capacity (150) exceeds maximum participants allowed (100)',
     'Should reject ticket-derived capacity above the meeting provider limit'
+);
+
+-- Should create a paid-capable hybrid event with a complete physical venue
+select add_event(
+    null::uuid,
+    '3a020000-0000-0000-0000-000000000002'::uuid,
+    '{
+        "_payment_validation": {
+            "expected_payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_add_event",
+                "seller_display_name": "Add Event Fiscal Sponsor"
+            },
+            "require_automatic_tax": true,
+            "validated_payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_add_event",
+                "seller_display_name": "Add Event Fiscal Sponsor"
+            }
+        },
+        "name": "Paid Hybrid Event",
+        "description": "Test",
+        "timezone": "UTC",
+        "category_id": "3a020000-0000-0000-0000-000000000011",
+        "kind_id": "hybrid",
+        "payment_currency_code": "USD",
+        "ticket_types": [
+            {
+                "active": true,
+                "event_ticket_type_id": "3a020000-0000-0000-0000-000000000097",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2500,
+                        "event_ticket_price_window_id": "3a020000-0000-0000-0000-000000000098"
+                    }
+                ],
+                "seats_total": 25,
+                "title": "Hybrid admission"
+            }
+        ],
+        "venue_address": "123 Main St",
+        "venue_city": "San Francisco",
+        "venue_country_code": "US",
+        "venue_country_name": "United States",
+        "venue_name": "Community Hall",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
+        "venue_zip_code": "94105"
+    }'::jsonb,
+    null::jsonb,
+    'stripe'
+) as "paidHybridEventID" \gset
+
+select is(
+    (
+        select jsonb_build_object(
+            'amount_minor', etpw.amount_minor,
+            'event_kind_id', e.event_kind_id,
+            'payment_currency_code', e.payment_currency_code,
+            'venue_address', e.venue_address,
+            'venue_city', e.venue_city,
+            'venue_country_code', e.venue_country_code,
+            'venue_country_name', e.venue_country_name,
+            'venue_name', e.venue_name,
+            'venue_state_code', e.venue_state_code,
+            'venue_state_name', e.venue_state_name,
+            'venue_zip_code', e.venue_zip_code
+        )
+        from event e
+        join event_ticket_type ett using (event_id)
+        join event_ticket_price_window etpw using (event_ticket_type_id)
+        where e.event_id = :'paidHybridEventID'::uuid
+    ),
+    '{
+        "amount_minor": 2500,
+        "event_kind_id": "hybrid",
+        "payment_currency_code": "USD",
+        "venue_address": "123 Main St",
+        "venue_city": "San Francisco",
+        "venue_country_code": "US",
+        "venue_country_name": "United States",
+        "venue_name": "Community Hall",
+        "venue_state_code": "CA",
+        "venue_state_name": "California",
+        "venue_zip_code": "94105"
+    }'::jsonb,
+    'Should persist paid hybrid ticketing and its complete physical venue'
 );
 
 -- Should create an all-zero ticketed event without payment configuration

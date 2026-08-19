@@ -44,7 +44,7 @@ use crate::{
             EventSummary, SessionKindSummary as SessionKind,
         },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
-        payments::{GroupPaymentRecipient, PaymentProvider},
+        payments::{GroupPaymentRecipient, PaymentConfigurationValidation, PaymentProvider},
     },
 };
 
@@ -204,6 +204,15 @@ pub(crate) trait DBDashboardGroup {
         user_id: Uuid,
     ) -> Result<()>;
 
+    /// Reports whether an event mutation changes paid-ticket readiness fields.
+    async fn event_ticketing_configuration_changed(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event: &serde_json::Value,
+    ) -> Result<bool>;
+
     /// Gets submission notification data.
     async fn get_cfs_submission_notification_data(
         &self,
@@ -240,6 +249,13 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         include_subgroups: bool,
     ) -> Result<GroupDashboardStats>;
+
+    /// Reports whether current paid events require automatic tax from a new sponsor.
+    async fn group_requires_automatic_tax_readiness(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<bool>;
 
     /// Creates an organizer-created event invitation.
     async fn invite_event_attendee(
@@ -329,6 +345,13 @@ pub(crate) trait DBDashboardGroup {
         filters: &AuditLogFilters,
     ) -> Result<AuditLogsOutput>;
 
+    /// Lists active published automatic-tax events that require sponsor readiness.
+    async fn list_group_automatic_tax_readiness_event_ids(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Vec<Uuid>>;
+
     /// Lists all events for a group for management.
     async fn list_group_events(
         &self,
@@ -403,6 +426,7 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
         payment_provider: Option<PaymentProvider>,
+        payment_validation: Option<PaymentConfigurationValidation>,
     ) -> Result<()>;
 
     /// Publishes event series events atomically.
@@ -412,6 +436,7 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_ids: &[Uuid],
         payment_provider: Option<PaymentProvider>,
+        payment_validation: Option<PaymentConfigurationValidation>,
     ) -> Result<()>;
 
     /// Rejects a pending event invitation request.
@@ -890,6 +915,22 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::event_ticketing_configuration_changed`]
+    #[instrument(skip(self, event), err)]
+    async fn event_ticketing_configuration_changed(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        event: &serde_json::Value,
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select event_ticketing_configuration_changed(get_event_full($1::uuid, $2::uuid, $3::uuid)::jsonb, $4::jsonb)::boolean",
+            &[&community_id, &group_id, &event_id, &Json(event)],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::get_cfs_submission_notification_data`]
     #[instrument(skip(self), err)]
     async fn get_cfs_submission_notification_data(
@@ -987,6 +1028,20 @@ where
 
         let db = self.client().await?;
         inner(db, community_id, group_id, include_subgroups).await
+    }
+
+    /// [`DBDashboardGroup::group_requires_automatic_tax_readiness`]
+    #[instrument(skip(self), err)]
+    async fn group_requires_automatic_tax_readiness(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select group_requires_automatic_tax_readiness($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::invite_event_attendee`]
@@ -1210,6 +1265,20 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::list_group_automatic_tax_readiness_event_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_group_automatic_tax_readiness_event_ids(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select list_group_automatic_tax_readiness_event_ids($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
     async fn list_group_events(
@@ -1396,14 +1465,16 @@ where
         group_id: Uuid,
         event_id: Uuid,
         payment_provider: Option<PaymentProvider>,
+        payment_validation: Option<PaymentConfigurationValidation>,
     ) -> Result<()> {
         self.execute(
-            "select publish_event($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            "select publish_event($1::uuid, $2::uuid, $3::uuid, $4::text, $5::jsonb)",
             &[
                 &actor_user_id,
                 &group_id,
                 &event_id,
                 &payment_provider.map(|provider| provider.to_string()),
+                &payment_validation.as_ref().map(Json),
             ],
         )
         .await
@@ -1417,14 +1488,16 @@ where
         group_id: Uuid,
         event_ids: &[Uuid],
         payment_provider: Option<PaymentProvider>,
+        payment_validation: Option<PaymentConfigurationValidation>,
     ) -> Result<()> {
         self.execute(
-            "select publish_event_series_events($1::uuid, $2::uuid, $3::uuid[], $4::text)",
+            "select publish_event_series_events($1::uuid, $2::uuid, $3::uuid[], $4::text, $5::jsonb)",
             &[
                 &actor_user_id,
                 &group_id,
                 &event_ids,
                 &payment_provider.map(|provider| provider.to_string()),
+                &payment_validation.as_ref().map(Json),
             ],
         )
         .await

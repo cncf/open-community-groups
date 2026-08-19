@@ -19,7 +19,7 @@ const renderQuestionsEditor = (editor) => html`
         </div>
         <button
           type="button"
-          class="btn-primary-outline btn-mini inline-flex items-center justify-center gap-2"
+          class="btn-secondary inline-flex items-center justify-center gap-2"
           ?disabled=${editor.disabled}
           @click=${() => editor._addQuestion()}
         >

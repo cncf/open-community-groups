@@ -73,7 +73,9 @@ describe("location search state", () => {
       placeholderText: "Search for a venue or address...",
       venueNameFieldId: "",
       venueNameFieldName: "",
+      stateCodeFieldName: "",
       initialVenueName: "",
+      initialStateCode: "",
       disabled: false,
     });
 
@@ -86,6 +88,7 @@ describe("location search state", () => {
       outsidePointerHandler: null,
       latitudeValue: "",
       longitudeValue: "",
+      stateCodeValue: "",
       mapVisible: false,
       searchError: null,
     });
@@ -100,6 +103,7 @@ describe("location search state", () => {
         initialVenueCity: "Malaga",
         initialVenueZipCode: "29001",
         initialState: "Andalusia",
+        initialStateCode: "MA",
         initialCountryName: "Spain",
         initialCountryCode: "ES",
         initialLatitude: "36.7213",
@@ -112,6 +116,7 @@ describe("location search state", () => {
       initialVenueCity: "Malaga",
       initialVenueZipCode: "29001",
       initialState: "Andalusia",
+      initialStateCode: "MA",
       initialCountryName: "Spain",
       initialCountryCode: "ES",
       initialLatitude: "36.7213",

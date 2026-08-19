@@ -11,11 +11,20 @@ declare
     v_discount_codes jsonb := nullif(p_event->'discount_codes', 'null'::jsonb);
     v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
     v_event_id uuid;
+    v_manual_tax_rate_ids text[] := coalesce(
+        jsonb_text_array(p_event->'manual_tax_rate_ids'),
+        '{}'::text[]
+    );
     v_max_retries int := 10;
     v_payment_currency_code text := nullif(p_event->>'payment_currency_code', '');
     v_payment_recipient jsonb;
+    v_payment_validation jsonb := p_event->'_payment_validation';
     v_retries int := 0;
     v_slug text;
+    v_tax_calculation_mode text := coalesce(
+        nullif(p_event->>'tax_calculation_mode', ''),
+        'automatic'
+    );
     v_ticket_types jsonb := coalesce(
         nullif(p_event->'ticket_types', 'null'::jsonb),
         jsonb_build_array(jsonb_build_object(
@@ -42,6 +51,43 @@ begin
     where g.group_id = p_group_id
     for update of g;
 
+    -- Bind provider validation to the recipient protected by the group lock
+    if p_configured_provider is not null
+       and is_event_ticketing_payload_paid_capable(v_ticket_types)
+       and (
+           v_payment_validation is null
+           or not (v_payment_validation ? 'expected_payment_recipient')
+           or not (v_payment_validation ? 'validated_payment_recipient')
+           or not (v_payment_validation ? 'require_automatic_tax')
+           or v_payment_recipient is distinct from nullif(
+               v_payment_validation->'expected_payment_recipient',
+               'null'::jsonb
+           )
+           or v_payment_recipient is distinct from nullif(
+               v_payment_validation->'validated_payment_recipient',
+               'null'::jsonb
+           )
+           or (
+               coalesce(
+                   nullif(p_event->>'tax_calculation_mode', ''),
+                   'automatic'
+               ) = 'automatic'
+               and not (v_payment_validation->>'require_automatic_tax')::boolean
+           )
+           or (
+               v_tax_calculation_mode = 'manual'
+               and (
+                   v_payment_validation->'manual_tax_rate_ids'
+                       is distinct from to_jsonb(v_manual_tax_rate_ids)
+                   or v_payment_validation->>'tax_behavior' is distinct from
+                       coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
+                   or v_payment_validation->>'tax_calculation_mode' <> 'manual'
+               )
+           )
+       ) then
+        raise exception 'payment configuration changed during provider validation';
+    end if;
+
     -- Validate enrollment and ticketing payload rules
     perform validate_event_enrollment_payload(
         v_event_attendee_approval_required,
@@ -53,7 +99,10 @@ begin
         v_discount_codes,
         v_payment_currency_code,
         v_payment_recipient,
-        v_ticket_types
+        v_ticket_types,
+        true,
+        null,
+        p_event
     );
 
     -- Validate add-specific event and session date rules
@@ -97,6 +146,7 @@ begin
                 location,
                 logo_url,
                 luma_url,
+                manual_tax_rate_ids,
                 meeting_hosts,
                 meeting_in_sync,
                 meeting_join_instructions,
@@ -114,12 +164,15 @@ begin
                 registration_starts_at,
                 starts_at,
                 tags,
+                tax_behavior,
+                tax_calculation_mode,
                 venue_address,
                 venue_city,
                 venue_country_code,
                 venue_country_name,
                 venue_name,
-                venue_state,
+                venue_state_code,
+                venue_state_name,
                 venue_zip_code,
                 waitlist_enabled
             ) values (
@@ -147,6 +200,7 @@ begin
                 jsonb_geography_point(p_event),
                 nullif(p_event->>'logo_url', ''),
                 nullif(p_event->>'luma_url', ''),
+                v_manual_tax_rate_ids,
                 jsonb_text_array(p_event->'meeting_hosts'),
                 case
                     when (p_event->>'meeting_requested')::boolean = true then false
@@ -167,13 +221,19 @@ begin
                 (p_event->>'registration_starts_at')::timestamp at time zone (p_event->>'timezone'),
                 (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
                 jsonb_text_array(p_event->'tags'),
-                nullif(p_event->>'venue_address', ''),
-                nullif(p_event->>'venue_city', ''),
-                nullif(p_event->>'venue_country_code', ''),
-                nullif(p_event->>'venue_country_name', ''),
-                nullif(p_event->>'venue_name', ''),
-                nullif(p_event->>'venue_state', ''),
-                nullif(p_event->>'venue_zip_code', ''),
+                case
+                    when v_tax_calculation_mode = 'none' then 'inclusive'
+                    else coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
+                end,
+                v_tax_calculation_mode,
+                nullif(btrim(p_event->>'venue_address'), ''),
+                nullif(btrim(p_event->>'venue_city'), ''),
+                upper(nullif(btrim(p_event->>'venue_country_code'), '')),
+                nullif(btrim(p_event->>'venue_country_name'), ''),
+                nullif(btrim(p_event->>'venue_name'), ''),
+                upper(nullif(btrim(p_event->>'venue_state_code'), '')),
+                nullif(btrim(coalesce(p_event->>'venue_state_name', p_event->>'venue_state')), ''),
+                nullif(btrim(p_event->>'venue_zip_code'), ''),
                 coalesce((p_event->>'waitlist_enabled')::boolean, false)
             )
             returning event_id into v_event_id;

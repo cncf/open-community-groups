@@ -238,7 +238,8 @@ begin
         p_configured_provider,
         v_target_price > 0,
         v_payment_currency_code,
-        v_payment_recipient
+        v_payment_recipient,
+        p_event_id
     );
 
     -- Bound the offer lifetime by the applicable registration or event deadline

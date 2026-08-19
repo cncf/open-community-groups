@@ -17,10 +17,13 @@ returns json as $$
             'event_id', e.event_id,
             'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
             'kind', e.event_kind_id,
+            'manual_tax_rate_ids', e.manual_tax_rate_ids,
             'name', e.name,
             'published', e.published,
             'registration_questions', e.registration_questions,
             'slug', e.slug,
+            'tax_behavior', e.tax_behavior,
+            'tax_calculation_mode', e.tax_calculation_mode,
             'test_event', e.test_event,
             'timezone', e.timezone
         )
@@ -98,7 +101,8 @@ returns json as $$
             'venue_country_code', e.venue_country_code,
             'venue_country_name', e.venue_country_name,
             'venue_name', e.venue_name,
-            'venue_state', e.venue_state,
+            'venue_state_code', e.venue_state_code,
+            'venue_state_name', e.venue_state_name,
             'venue_zip_code', e.venue_zip_code,
             'waitlist_count', coalesce(ew.waitlist_count, 0),
             'waitlist_enabled', e.waitlist_enabled

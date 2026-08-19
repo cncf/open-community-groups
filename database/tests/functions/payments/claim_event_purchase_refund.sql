@@ -106,25 +106,77 @@ values (:'eventID', :'ticketTypeID', 1, 100, 'General admission');
 -- Purchases backing due, excluded, and provider-complete refund rows
 insert into event_purchase (
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     event_id,
     event_purchase_id,
     event_ticket_type_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    provisional_platform_fee_amount_minor,
+    seller_snapshot,
     status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
     user_id,
-
+    venue_snapshot
+)
+select
+    2500,
+    'direct-charge',
+    fixtures.connected_seller_id,
+    'USD',
+    :'eventID',
+    fixtures.event_purchase_id,
+    :'ticketTypeID',
+    fixtures.platform_fee_amount_minor,
+    fixtures.payment_provider_id,
+    'ch_' || fixtures.provider_payment_reference,
+    'cs_' || fixtures.provider_payment_reference,
+    fixtures.connected_seller_id,
+    fixtures.provider_payment_reference,
+    2500,
+    fixtures.platform_fee_amount_minor,
+    jsonb_build_object(
+        'connected_account_id', fixtures.connected_seller_id,
+        'display_name', 'Fiscal Sponsor',
+        'provider', fixtures.payment_provider_id
+    ),
+    fixtures.status,
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'General admission',
+    :'userID',
+    '{"address":"1 Main St","city":"Portland","country_code":"US","name":"Venue","state_code":"OR","state_name":"Oregon","zip_code":"97201"}'::jsonb
+from (values
+    (:'exhaustedPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_stripe', 0::bigint, 'pi_exhausted'),
+    (:'failedPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_stripe', 0::bigint, 'pi_failed'),
+    (:'futurePurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_stripe', 0::bigint, 'pi_future'),
+    (:'otherProviderPurchaseID'::uuid, 'refund-pending', 'other-provider', 'acct_other', 0::bigint, 'pi_other'),
+    (:'pendingPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_stripe', 0::bigint, 'pi_pending'),
+    (:'succeededPurchaseID'::uuid, 'refund-pending', 'stripe', 'acct_stripe', 250::bigint, 'pi_succeeded'),
+    (:'terminalPurchaseID'::uuid, 'refund-recovery-pending', 'stripe', 'acct_stripe', 0::bigint, 'pi_terminal')
+) as fixtures (
+    event_purchase_id,
+    status,
     payment_provider_id,
+    connected_seller_id,
     platform_fee_amount_minor,
     provider_payment_reference
-) values
-    (2500, 'USD', :'eventID', :'exhaustedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_exhausted'),
-    (2500, 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_failed'),
-    (2500, 'USD', :'eventID', :'futurePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_future'),
-    (2500, 'USD', :'eventID', :'otherProviderPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'other-provider', 0, 'pi_other'),
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 0, 'pi_pending'),
-    (2500, 'USD', :'eventID', :'succeededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 250, 'pi_succeeded'),
-    (2500, 'USD', :'eventID', :'terminalPurchaseID', :'ticketTypeID', 'refund-recovery-pending', 'General admission', :'userID', 'stripe', 0, 'pi_terminal');
+);
 
 -- Refund rows covering priority, retry, scheduling, exhaustion, and provider scoping
 insert into event_purchase_refund (
@@ -165,7 +217,6 @@ select results_eq(
             result->>'event_id',
             result->>'event_purchase_refund_id',
             (result->>'attempt_count')::int,
-            (result->>'platform_fee_amount_minor')::bigint,
             result->>'provider_payment_reference',
             result->>'provider_refund_id',
             result->>'status'
@@ -176,7 +227,6 @@ select results_eq(
         %L::text,
         %L::text,
         4,
-        250::bigint,
         'pi_succeeded'::text,
         're_succeeded'::text,
         'processing'::text
@@ -201,11 +251,10 @@ select results_eq(
         select
             result->>'event_purchase_refund_id',
             (result->>'attempt_count')::int,
-            (result->>'platform_fee_amount_minor')::bigint,
             result->>'status'
         from (select claim_event_purchase_refund('stripe')::jsonb as result) claimed
     $$,
-    format($$ values (%L::text, 1, 0::bigint, 'processing'::text) $$, :'pendingRefundID'),
+    format($$ values (%L::text, 1, 'processing'::text) $$, :'pendingRefundID'),
     'Should claim due pending work and increment its attempt count'
 );
 

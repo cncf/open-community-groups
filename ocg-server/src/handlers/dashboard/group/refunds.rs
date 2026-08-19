@@ -13,23 +13,22 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    config::PaymentsConfig,
-    db::DynDB,
+    db::{DynDB, payments::CompleteEventPurchaseFinancialRecoveryInput},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager},
-    templates::dashboard::group::refunds::{self, RefundsFilters, RefundsView, RefundsViewOption},
+    templates::dashboard::group::refunds::{
+        self, FinancialRecoveryKind, RefundsFilters, RefundsView, RefundsViewOption,
+    },
     types::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
     validation::{MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, trimmed_non_empty},
 };
-
-use super::payments_ready;
 
 #[cfg(test)]
 mod tests;
@@ -47,19 +46,8 @@ pub(crate) async fn list_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(payments_cfg): State<Option<PaymentsConfig>>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Require payments configured for the selected group and server
-    let payment_recipient = if payments_cfg.is_some() {
-        db.get_group_payment_recipient(community_id, group_id).await?
-    } else {
-        None
-    };
-    if !payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()) {
-        return Err(HandlerError::Forbidden);
-    }
-
     // Prepare list page content
     let (filters, template) = prepare_list_page(
         &db,
@@ -78,6 +66,43 @@ pub(crate) async fn list_page(
 }
 
 // Actions handlers.
+
+/// Completes exhausted financial work resolved outside OCG.
+#[instrument(skip_all, err)]
+pub(crate) async fn complete_financial_recovery(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    ValidatedForm(input): ValidatedForm<FinancialRecoveryInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Compose the durable recovery evidence
+    let recovery = CompleteEventPurchaseFinancialRecoveryInput {
+        actor_user_id: user.user_id,
+        group_id,
+        provider_object_id: input.provider_object_id,
+        recovery_note: input.recovery_note,
+        recovery_reference: input.recovery_reference,
+        work_id: input.work_id,
+    };
+
+    // Complete the selected provider operation
+    match input.kind {
+        FinancialRecoveryKind::ApplicationFeeAdjustment => {
+            db.complete_event_purchase_application_fee_adjustment_recovery(&recovery)
+                .await?;
+        }
+        FinancialRecoveryKind::CreditNote => {
+            db.complete_event_purchase_credit_note_recovery(&recovery).await?;
+        }
+    }
+
+    // Refresh the operator's current refund view
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-refunds")],
+    )
+        .into_response())
+}
 
 /// Completes an externally resolved terminal provider refund.
 #[instrument(skip_all, err)]
@@ -104,6 +129,32 @@ pub(crate) async fn complete_refund_recovery(
             "HX-Trigger",
             "refresh-event-attendees, refresh-group-refunds",
         )],
+    )
+        .into_response())
+}
+
+/// Requeues exhausted financial work for another bounded attempt cycle.
+#[instrument(skip_all, err)]
+pub(crate) async fn retry_financial_recovery(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    ValidatedForm(input): ValidatedForm<FinancialRetryInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Requeue the selected provider operation
+    match input.kind {
+        FinancialRecoveryKind::ApplicationFeeAdjustment => {
+            db.requeue_event_purchase_application_fee_adjustment(group_id, input.work_id)
+                .await?;
+        }
+        FinancialRecoveryKind::CreditNote => {
+            db.requeue_event_purchase_credit_note(group_id, input.work_id).await?;
+        }
+    }
+
+    // Refresh the operator's current refund view
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-refunds")],
     )
         .into_response())
 }
@@ -149,6 +200,7 @@ pub(crate) async fn prepare_list_page(
     let template = refunds::ListPage {
         can_manage_events,
         events: results.events,
+        financial_recoveries: results.financial_recoveries,
         navigation_links,
         refresh_url,
         refunds: results.refunds,
@@ -165,6 +217,37 @@ pub(crate) async fn prepare_list_page(
 }
 
 // Types.
+
+/// Form data for completing exhausted financial work outside OCG.
+#[derive(Debug, Deserialize, Serialize, Validate)]
+pub(crate) struct FinancialRecoveryInput {
+    /// Durable kind used to select the recovery function.
+    #[garde(skip)]
+    pub kind: FinancialRecoveryKind,
+    /// Provider object created outside OCG.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    pub provider_object_id: String,
+    /// Evidence reviewed before completing recovery.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub recovery_note: String,
+    /// Reference for the external operation.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    pub recovery_reference: String,
+    /// Durable work-item identifier.
+    #[garde(skip)]
+    pub work_id: Uuid,
+}
+
+/// Form data for requeueing exhausted financial work.
+#[derive(Debug, Deserialize, Serialize, Validate)]
+pub(crate) struct FinancialRetryInput {
+    /// Durable kind used to select the retry function.
+    #[garde(skip)]
+    pub kind: FinancialRecoveryKind,
+    /// Durable work-item identifier.
+    #[garde(skip)]
+    pub work_id: Uuid,
+}
 
 /// Form data for completing an externally resolved refund.
 #[derive(Debug, Deserialize, Serialize, Validate)]

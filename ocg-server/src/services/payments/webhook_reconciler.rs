@@ -7,11 +7,14 @@ use uuid::Uuid;
 use crate::{
     db::{
         DynDB,
-        payments::{EventPurchaseRefund, EventPurchaseRefundStatus, ReconcileEventPurchaseResult},
+        payments::{
+            EventPurchaseRefund, EventPurchaseRefundStatus,
+            ReconcileEventPurchaseForCheckoutSessionInput, ReconcileEventPurchaseResult,
+        },
     },
     services::payments::{
-        DynPaymentsProvider, FindRefundInput, PaymentsWebhookEvent, RefundPaymentResult,
-        RefundPaymentStatus,
+        DynPaymentsProvider, FindRefundInput, GetCheckoutFinancialContextInput,
+        PaymentsWebhookEvent, RefundPaymentResult, RefundPaymentStatus,
         notification_composer::PaymentsNotificationComposer,
         refund_recorder::{RecordedProviderRefund, persist_provider_refund_result},
     },
@@ -52,43 +55,128 @@ impl PaymentsWebhookReconciler {
         webhook_event: PaymentsWebhookEvent,
     ) -> Result<()> {
         match webhook_event {
-            PaymentsWebhookEvent::CheckoutCompleted {
-                provider_session_id,
-                provider_payment_reference,
+            PaymentsWebhookEvent::ApplicationFeeCreated {
+                amount_minor,
+                connected_account_id,
+                is_live: _,
+                provider_application_fee_id,
+                provider_charge_id,
             } => {
-                self.handle_completed_checkout(provider_payment_reference, &provider_session_id)
+                self.attach_application_fee(
+                    amount_minor,
+                    &connected_account_id,
+                    &provider_application_fee_id,
+                    &provider_charge_id,
+                )
+                .await
+            }
+            PaymentsWebhookEvent::CheckoutCompleted {
+                connected_account_id,
+                is_live: _,
+                provider_session_id,
+            } => {
+                self.handle_completed_checkout(connected_account_id, &provider_session_id)
                     .await
             }
             PaymentsWebhookEvent::CheckoutExpired {
+                connected_account_id,
+                is_live: _,
                 provider_session_id,
-            } => self.expire_checkout_session(&provider_session_id).await,
+            } => {
+                self.expire_checkout_session(connected_account_id, &provider_session_id)
+                    .await
+            }
+            PaymentsWebhookEvent::InvoicePaid {
+                connected_account_id,
+                hosted_url,
+                is_live: _,
+                pdf_url,
+                provider_invoice_id,
+                purchase_id,
+            } => {
+                self.attach_invoice(
+                    &connected_account_id,
+                    &hosted_url,
+                    pdf_url,
+                    &provider_invoice_id,
+                    purchase_id,
+                )
+                .await
+            }
             PaymentsWebhookEvent::Noop => Ok(()),
             PaymentsWebhookEvent::RefundUpdated {
                 amount_minor,
+                connected_account_id,
                 currency_code,
+                is_live: _,
                 provider_payment_reference,
                 provider_refund_id,
                 purchase_id,
                 status,
             } => {
-                self.handle_refund_updated(
+                self.handle_refund_updated(&RefundUpdatedInput {
                     amount_minor,
-                    &currency_code,
-                    &provider_payment_reference,
-                    &provider_refund_id,
+                    connected_account_id,
+                    currency_code,
+                    provider_payment_reference,
+                    provider_refund_id,
                     purchase_id,
                     status,
-                )
+                })
                 .await
             }
         }
     }
 
+    /// Attaches a platform application fee through its immutable direct-charge scope.
+    async fn attach_application_fee(
+        &self,
+        amount_minor: i64,
+        connected_account_id: &str,
+        provider_application_fee_id: &str,
+        provider_charge_id: &str,
+    ) -> Result<()> {
+        self.db
+            .attach_application_fee_to_event_purchase(
+                self.payments_provider.provider(),
+                connected_account_id,
+                provider_charge_id,
+                provider_application_fee_id,
+                amount_minor,
+            )
+            .await
+    }
+
+    /// Attaches a connected-account invoice to its purchase.
+    async fn attach_invoice(
+        &self,
+        connected_account_id: &str,
+        hosted_url: &str,
+        pdf_url: Option<String>,
+        provider_invoice_id: &str,
+        purchase_id: Uuid,
+    ) -> Result<()> {
+        self.db
+            .attach_invoice_to_event_purchase(
+                purchase_id,
+                connected_account_id,
+                provider_invoice_id,
+                hosted_url,
+                pdf_url,
+            )
+            .await
+    }
+
     /// Expires the local purchase hold for a checkout session reported as expired.
-    async fn expire_checkout_session(&self, provider_session_id: &str) -> Result<()> {
+    async fn expire_checkout_session(
+        &self,
+        provider_object_account_id: String,
+        provider_session_id: &str,
+    ) -> Result<()> {
         self.db
             .expire_event_purchase_for_checkout_session(
                 self.payments_provider.provider(),
+                provider_object_account_id,
                 provider_session_id,
             )
             .await
@@ -101,16 +189,33 @@ impl PaymentsWebhookReconciler {
     /// Reconciles a completed checkout session with local purchase state.
     async fn handle_completed_checkout(
         &self,
-        provider_payment_reference: Option<String>,
+        provider_object_account_id: String,
         provider_session_id: &str,
     ) -> Result<()> {
+        // Retrieve authoritative amounts and provider references in the seller account
+        let financial_context = self
+            .payments_provider
+            .get_checkout_financial_context(&GetCheckoutFinancialContextInput {
+                connected_seller_id: provider_object_account_id.clone(),
+                provider_session_id: provider_session_id.to_string(),
+            })
+            .await?;
+
         // Reconcile the provider checkout session with the current local purchase state
         match self
             .db
             .reconcile_event_purchase_for_checkout_session(
-                self.payments_provider.provider(),
-                provider_session_id,
-                provider_payment_reference,
+                &ReconcileEventPurchaseForCheckoutSessionInput {
+                    payment_provider: self.payments_provider.provider(),
+                    provider_charge_id: financial_context.provider_charge_id,
+                    provider_object_account_id,
+                    provider_payment_reference: financial_context.provider_payment_reference,
+                    provider_session_id: provider_session_id.to_string(),
+                    provider_total_minor: financial_context.provider_total_minor,
+                    tax_amount_minor: financial_context.tax_amount_minor,
+
+                    provider_application_fee_id: financial_context.provider_application_fee_id,
+                },
             )
             .await
         {
@@ -132,23 +237,16 @@ impl PaymentsWebhookReconciler {
     }
 
     /// Reconciles a provider refund lifecycle event with its durable local record.
-    async fn handle_refund_updated(
-        &self,
-        amount_minor: i64,
-        currency_code: &str,
-        provider_payment_reference: &str,
-        provider_refund_id: &str,
-        purchase_id: Uuid,
-        status: RefundPaymentStatus,
-    ) -> Result<()> {
+    async fn handle_refund_updated(&self, input: &RefundUpdatedInput) -> Result<()> {
         // Load the purchase and validated durable refund owning this provider event
-        let purchase = self.db.get_event_purchase_summary(purchase_id).await?;
+        let purchase = self.db.get_event_purchase_summary(input.purchase_id).await?;
+        Self::validate_provider_account(&purchase, &input.connected_account_id)?;
         let refund = self
             .load_validated_refund_for_event(
                 &purchase,
-                amount_minor,
-                currency_code,
-                provider_payment_reference,
+                input.amount_minor,
+                &input.currency_code,
+                &input.provider_payment_reference,
             )
             .await?;
         // Validate the signed refund belongs to the expected provider operation
@@ -156,17 +254,17 @@ impl PaymentsWebhookReconciler {
             &purchase,
             &refund,
             self.payments_provider.provider(),
-            amount_minor,
-            currency_code,
-            provider_payment_reference,
-            provider_refund_id,
+            input.amount_minor,
+            &input.currency_code,
+            &input.provider_payment_reference,
+            &input.provider_refund_id,
         )?;
         if !is_current_attempt {
             return Ok(());
         }
 
         // Ignore non-terminal updates after the provider attempt is pinned as failed
-        if status != RefundPaymentStatus::Failed
+        if input.status != RefundPaymentStatus::Failed
             && refund.status == EventPurchaseRefundStatus::ProviderFailed
             && refund.terminal_failure
         {
@@ -174,7 +272,7 @@ impl PaymentsWebhookReconciler {
         }
 
         // Preserve completed outcomes unless Stripe explicitly reports a later failure
-        if status != RefundPaymentStatus::Failed
+        if input.status != RefundPaymentStatus::Failed
             && matches!(
                 refund.status,
                 EventPurchaseRefundStatus::Finalized | EventPurchaseRefundStatus::ProviderSucceeded
@@ -186,15 +284,17 @@ impl PaymentsWebhookReconciler {
         // Refresh unpinned success before trusting a potentially out-of-order webhook
         let status = self
             .refresh_unpinned_success_status(
+                &purchase,
                 &refund,
-                provider_payment_reference,
-                provider_refund_id,
-                status,
+                &input.provider_payment_reference,
+                &input.provider_refund_id,
+                input.status,
             )
             .await?;
 
         // Persist and reconcile the validated provider lifecycle transition
-        self.reconcile_refund_status(refund, provider_refund_id, status).await
+        self.reconcile_refund_status(refund, &input.provider_refund_id, status)
+            .await
     }
 
     /// Loads or creates the durable refund record for a webhook purchase.
@@ -262,6 +362,7 @@ impl PaymentsWebhookReconciler {
     /// Refreshes current provider state before accepting an unpinned success event.
     async fn refresh_unpinned_success_status(
         &self,
+        purchase: &EventPurchaseSummary,
         refund: &EventPurchaseRefund,
         provider_payment_reference: &str,
         provider_refund_id: &str,
@@ -276,6 +377,9 @@ impl PaymentsWebhookReconciler {
             .payments_provider
             .find_refund(&FindRefundInput {
                 amount_minor: refund.amount_minor,
+                connected_seller_id: purchase.provider_object_account_id.clone().ok_or_else(
+                    || anyhow::anyhow!("purchase is missing connected seller account"),
+                )?,
                 provider_payment_reference: provider_payment_reference.to_string(),
                 purchase_id: refund.event_purchase_id,
 
@@ -289,6 +393,21 @@ impl PaymentsWebhookReconciler {
         }
 
         Ok(provider_refund.status)
+    }
+
+    /// Validates that a connected event belongs to the purchase's provider account.
+    fn validate_provider_account(
+        purchase: &EventPurchaseSummary,
+        connected_account_id: &str,
+    ) -> Result<()> {
+        let expected_account_id = purchase.provider_object_account_id.as_deref();
+        if expected_account_id != Some(connected_account_id) {
+            return Err(anyhow::anyhow!(
+                "webhook connected account does not match purchase"
+            ));
+        }
+
+        Ok(())
     }
 
     /// Validates a refund webhook against its purchase and durable provider attempt.
@@ -336,7 +455,7 @@ impl PaymentsWebhookReconciler {
         provider_payment_reference: &str,
     ) -> Result<()> {
         // Validate the signed financial fields against the persisted purchase
-        if purchase.amount_minor != amount_minor {
+        if purchase.provider_total_minor.unwrap_or(purchase.amount_minor) != amount_minor {
             return Err(anyhow::anyhow!(
                 "refund webhook amount does not match purchase"
             ));
@@ -358,4 +477,22 @@ impl PaymentsWebhookReconciler {
 
         Ok(())
     }
+}
+
+/// Normalized provider refund event fields used across validation phases.
+struct RefundUpdatedInput {
+    /// Refund amount reported by the provider.
+    amount_minor: i64,
+    /// Connected account that owns the refund.
+    connected_account_id: String,
+    /// Refund currency reported by the provider.
+    currency_code: String,
+    /// `PaymentIntent` associated with the refund.
+    provider_payment_reference: String,
+    /// Provider refund identifier.
+    provider_refund_id: String,
+    /// Purchase identifier carried in provider metadata.
+    purchase_id: Uuid,
+    /// Current provider refund lifecycle status.
+    status: RefundPaymentStatus,
 }

@@ -708,6 +708,7 @@ input:placeholder-shown {
 .icon-image { --icon-url: url('/static/images/icons/image.svg'); }
 .icon-info { --icon-url: url('/static/images/icons/info.svg'); }
 .icon-in-person { --icon-url: url('/static/images/icons/in_person.svg'); }
+.icon-invoice { --icon-url: url('/static/images/icons/invoice.svg'); }
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }
 .icon-lines { --icon-url: url('/static/images/icons/lines.svg'); }
@@ -748,6 +749,7 @@ input:placeholder-shown {
 .icon-reddit { --icon-url: url('/static/images/icons/reddit.svg'); }
 .icon-refresh { --icon-url: url('/static/images/icons/refresh.svg'); }
 .icon-refund { --icon-url: url('/static/images/icons/refund.svg'); }
+.icon-refund-download { --icon-url: url('/static/images/icons/refund_download.svg'); }
 .icon-request-invitation { --icon-url: url('/static/images/icons/request_invitation.svg'); }
 .icon-search { --icon-url: url('/static/images/icons/search.svg'); }
 .icon-share { --icon-url: url('/static/images/icons/share.svg'); }

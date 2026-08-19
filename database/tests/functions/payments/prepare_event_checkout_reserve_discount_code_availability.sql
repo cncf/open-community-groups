@@ -1,3 +1,5 @@
+-- Tests reserving event checkout discount code availability.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -63,7 +65,11 @@ values (
     :'groupCategoryID',
     'Reserve Discount Group',
     'reserve-discount-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_reserve_discount')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_reserve_discount',
+        'seller_display_name', 'Reserve Discount Fiscal Sponsor'
+    )
 );
 
 -- Event

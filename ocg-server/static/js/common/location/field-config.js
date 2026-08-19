@@ -9,6 +9,7 @@ export const getLocationFieldConfig = (component) => ({
   venueCityFieldId: component.venueCityFieldId,
   venueZipCodeFieldId: component.venueZipCodeFieldId,
   stateFieldId: component.stateFieldId,
+  stateCodeFieldId: component.stateCodeFieldId,
   countryFieldId: component.countryFieldId,
   latitudeFieldId: component.latitudeFieldId,
   longitudeFieldId: component.longitudeFieldId,
@@ -17,6 +18,7 @@ export const getLocationFieldConfig = (component) => ({
   venueCityFieldName: component.venueCityFieldName,
   venueZipCodeFieldName: component.venueZipCodeFieldName,
   stateFieldName: component.stateFieldName,
+  stateCodeFieldName: component.stateCodeFieldName,
   countryNameFieldName: component.countryNameFieldName,
   countryCodeFieldName: component.countryCodeFieldName,
   latitudeFieldName: component.latitudeFieldName,
@@ -35,6 +37,7 @@ export const hasInternalLocationFields = (fields) =>
     fields.venueCityFieldName ||
     fields.venueZipCodeFieldName ||
     fields.stateFieldName ||
+    fields.stateCodeFieldName ||
     fields.countryNameFieldName ||
     fields.countryCodeFieldName,
   );
@@ -51,6 +54,7 @@ export const getExternalLocationFieldIds = (fields) =>
     fields.venueCityFieldId,
     fields.venueZipCodeFieldId,
     fields.stateFieldId,
+    fields.stateCodeFieldId,
     fields.countryFieldId,
     fields.latitudeFieldId,
     fields.longitudeFieldId,
@@ -69,6 +73,7 @@ export const getInternalLocationValueUpdates = (fields, location) => {
   if (fields.venueCityFieldName) updates.venueCityValue = location.venueCity || "";
   if (fields.venueZipCodeFieldName) updates.venueZipCodeValue = location.venueZipCode || "";
   if (fields.stateFieldName) updates.stateValue = location.state || "";
+  if (fields.stateCodeFieldName) updates.stateCodeValue = location.stateCode || "";
   if (fields.countryNameFieldName) updates.countryNameValue = location.country || "";
   if (fields.countryCodeFieldName) updates.countryCodeValue = location.countryCode || "";
   if (fields.latitudeFieldName || fields.latitudeFieldId) {
@@ -93,6 +98,7 @@ export const getExternalLocationFieldUpdates = (fields, location) =>
     { fieldId: fields.venueCityFieldId, value: location.venueCity },
     { fieldId: fields.venueZipCodeFieldId, value: location.venueZipCode },
     { fieldId: fields.stateFieldId, value: location.state },
+    { fieldId: fields.stateCodeFieldId, value: location.stateCode },
     { fieldId: fields.countryFieldId, value: location.country },
     { fieldId: fields.latitudeFieldId, value: String(location.latitude) },
     { fieldId: fields.longitudeFieldId, value: String(location.longitude) },
@@ -109,6 +115,7 @@ export const getInitialLocationValues = (values) => ({
   venueCityValue: values.initialVenueCity || "",
   venueZipCodeValue: values.initialVenueZipCode || "",
   stateValue: values.initialState || "",
+  stateCodeValue: values.initialStateCode || "",
   countryNameValue: values.initialCountryName || "",
   countryCodeValue: values.initialCountryCode || "",
   latitudeValue: values.initialLatitude || "",
@@ -125,6 +132,7 @@ export const getEmptyLocationValues = () => ({
   venueCityValue: "",
   venueZipCodeValue: "",
   stateValue: "",
+  stateCodeValue: "",
   countryNameValue: "",
   countryCodeValue: "",
   latitudeValue: "",

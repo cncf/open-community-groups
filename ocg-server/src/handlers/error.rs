@@ -7,7 +7,7 @@ use axum::{
 };
 use tokio_postgres::error::SqlState;
 
-use crate::types::search::FilterError;
+use crate::{services::payments::FiscalSponsorReadinessError, types::search::FilterError};
 
 #[cfg(test)]
 mod tests;
@@ -93,6 +93,15 @@ impl From<FilterError> for HandlerError {
         match err {
             FilterError::Parse(e) => HandlerError::Deserialization(e.to_string()),
             FilterError::Validation(report) => HandlerError::Validation(report),
+        }
+    }
+}
+
+impl From<FiscalSponsorReadinessError> for HandlerError {
+    fn from(err: FiscalSponsorReadinessError) -> Self {
+        match err {
+            FiscalSponsorReadinessError::NotReady(message) => HandlerError::Database(message),
+            FiscalSponsorReadinessError::Unexpected(err) => HandlerError::Other(err),
         }
     }
 }

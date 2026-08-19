@@ -3,6 +3,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 /// ISO currency codes displayed without fractional units.
@@ -177,8 +178,8 @@ pub struct EventPurchaseSummary {
     pub event_purchase_id: Uuid,
     /// Ticket type identifier.
     pub event_ticket_type_id: Uuid,
-    /// Platform fee deducted from the group's proceeds, in minor units.
-    pub platform_fee_amount_minor: i64,
+    /// Provisional platform fee requested at Checkout creation, in minor units.
+    pub provisional_platform_fee_amount_minor: i64,
     /// Purchase status.
     pub status: EventPurchaseStatus,
     /// Ticket type title snapshot.
@@ -196,10 +197,14 @@ pub struct EventPurchaseSummary {
     pub hold_expires_at: Option<DateTime<Utc>>,
     /// Provider checkout URL for resuming the payment.
     pub provider_checkout_url: Option<String>,
+    /// Connected account that owns provider objects for direct charges.
+    pub provider_object_account_id: Option<String>,
     /// Provider payment reference used to manage the completed payment.
     pub provider_payment_reference: Option<String>,
     /// Provider purchase session identifier.
     pub provider_session_id: Option<String>,
+    /// Authoritative total paid to the provider, in minor units.
+    pub provider_total_minor: Option<i64>,
     /// When the purchase was refunded.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub refunded_at: Option<DateTime<Utc>>,
@@ -331,6 +336,17 @@ pub enum EventTicketTypeAvailability {
     Public,
 }
 
+/// Immutable fiscal-sponsor seller snapshot used by a purchase.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct FiscalSponsorSeller {
+    /// Connected account that owns the provider objects.
+    pub connected_account_id: String,
+    /// Seller name displayed for operational context.
+    pub display_name: String,
+    /// Payments provider that owns the seller account.
+    pub provider: PaymentProvider,
+}
+
 /// Group-level payout recipient details.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -339,28 +355,234 @@ pub struct GroupPaymentRecipient {
     pub provider: PaymentProvider,
     /// Provider recipient identifier.
     pub recipient_id: String,
+    /// Legal seller name displayed to attendees.
+    pub seller_display_name: String,
+}
+
+/// Provider validation bound to the payment configuration observed before mutation.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct PaymentConfigurationValidation {
+    /// Whether the provider validation included automatic-tax readiness.
+    pub require_automatic_tax: bool,
+
+    /// Payment recipient observed before taking the database mutation lock.
+    pub expected_payment_recipient: Option<GroupPaymentRecipient>,
+    /// Manual Tax Rate identifiers validated for an event mutation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manual_tax_rate_ids: Option<Vec<String>>,
+    /// Tax inclusion behavior validated for an event mutation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tax_behavior: Option<TicketTaxBehavior>,
+    /// Tax calculation mode validated for an event mutation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tax_calculation_mode: Option<TicketTaxCalculationMode>,
+    /// Payment recipient validated at the provider boundary.
+    pub validated_payment_recipient: Option<GroupPaymentRecipient>,
 }
 
 /// Checkout data returned after preparing an attendee purchase.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PreparedEventCheckout {
+    /// Community display name used in invoice context.
+    pub community_display_name: String,
     /// Community slug used in attendee-facing routes.
     pub community_name: String,
     /// Event identifier.
     pub event_id: Uuid,
+    /// Event display name used in invoice context.
+    pub event_name: String,
     /// Event slug used in attendee-facing routes.
     pub event_slug: String,
+    /// Event time zone used to format invoice context.
+    pub event_timezone: String,
+    /// Group display name used in invoice context.
+    pub group_name: String,
     /// Generated group slug used in attendee-facing routes.
     pub group_slug: String,
     /// Prepared purchase summary for the attendee.
     #[serde(flatten)]
     pub purchase: EventPurchaseSummary,
 
+    /// Fingerprint for a reusable sponsor-scoped performance location.
+    pub cached_performance_location_fingerprint: Option<String>,
+    /// Fingerprint for a reusable sponsor-scoped ticket Product.
+    pub cached_product_fingerprint: Option<String>,
+    /// Reusable provider performance location identifier.
+    pub cached_provider_tax_location_id: Option<String>,
+    /// Reusable provider ticket Product identifier.
+    pub cached_provider_tax_product_id: Option<String>,
+    /// Event start time used in invoice context.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub event_starts_at: Option<DateTime<Utc>>,
     /// Admin-managed group slug used in attendee-facing routes.
     pub group_slug_pretty: Option<String>,
-    /// Recipient account configured for the event's group.
-    pub recipient: Option<GroupPaymentRecipient>,
+    /// Manual Tax Rate identifiers selected for the purchase.
+    pub manual_tax_rate_ids: Option<Vec<String>>,
+    /// Immutable connected fiscal-sponsor seller snapshot.
+    pub seller: Option<FiscalSponsorSeller>,
+    /// Ticket price tax inclusion behavior.
+    pub tax_behavior: Option<TicketTaxBehavior>,
+    /// Selected automatic or manual tax path.
+    pub tax_calculation_mode: Option<TicketTaxCalculationMode>,
+    /// Professional-event tax code used for automatic tax.
+    pub tax_code: Option<String>,
+    /// Immutable physical venue used for tax calculation.
+    pub venue: Option<TicketVenue>,
+}
+
+/// Tax inclusion behavior selected for an event ticket.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TicketTaxBehavior {
+    /// Tax is added to the configured ticket price.
+    Exclusive,
+    /// Tax is included in the configured ticket price.
+    #[default]
+    Inclusive,
+}
+
+/// Tax calculation path selected for an event ticket.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TicketTaxCalculationMode {
+    /// Stripe Tax calculates tax from the performance location.
+    #[default]
+    Automatic,
+    /// Stripe applies the event's selected manual Tax Rates.
+    Manual,
+    /// Checkout does not attach any tax calculation mechanism.
+    None,
+}
+
+impl TicketTaxCalculationMode {
+    /// Returns whether Checkout attaches an event tax mechanism.
+    pub const fn collects_tax(self) -> bool {
+        !matches!(self, Self::None)
+    }
+}
+
+/// Active Stripe Tax Rate available in a fiscal sponsor account.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub(crate) struct TicketTaxRate {
+    /// Customer-facing Tax Rate label.
+    pub display_name: String,
+    /// Connected-account Stripe Tax Rate identifier.
+    pub id: String,
+    /// Whether the rate is included in the configured ticket amount.
+    pub inclusive: bool,
+    /// Decimal Tax Rate percentage encoded without floating-point conversion.
+    pub percentage: String,
+
+    /// Jurisdiction configured on the Tax Rate.
+    pub jurisdiction: Option<String>,
+}
+
+/// Immutable physical venue snapshot used for ticket tax.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TicketVenue {
+    /// Street address of the venue.
+    pub address: String,
+    /// City containing the venue.
+    pub city: String,
+    /// ISO country code of the venue.
+    pub country_code: String,
+    /// Venue display name.
+    pub name: String,
+    /// Postal code of the venue.
+    pub zip_code: String,
+
+    /// ISO state or province code containing the venue.
+    pub state_code: Option<String>,
+    /// Full state or province name containing the venue.
+    pub state_name: Option<String>,
+}
+
+/// Required field in a physical ticket venue.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum TicketVenueField {
+    /// Street address field.
+    Address,
+    /// City field.
+    City,
+    /// ISO country code field.
+    CountryCode,
+    /// Venue display name field.
+    Name,
+    /// Postal code field.
+    ZipCode,
+}
+
+impl TicketVenue {
+    /// Returns whether the country code has a valid ISO code shape.
+    pub(crate) fn has_valid_country_code(&self) -> bool {
+        self.country_code.len() == 2
+            && self
+                .country_code
+                .chars()
+                .all(|character| character.is_ascii_alphabetic())
+    }
+
+    /// Returns the required venue fields whose values are blank.
+    pub(crate) fn missing_required_fields(&self) -> Vec<TicketVenueField> {
+        [
+            (TicketVenueField::Address, self.address.as_str()),
+            (TicketVenueField::City, self.city.as_str()),
+            (TicketVenueField::CountryCode, self.country_code.as_str()),
+            (TicketVenueField::Name, self.name.as_str()),
+            (TicketVenueField::ZipCode, self.zip_code.as_str()),
+        ]
+        .into_iter()
+        .filter_map(|(field, value)| value.trim().is_empty().then_some(field))
+        .collect()
+    }
+
+    /// Normalizes address codes and optional strings before provider use and caching.
+    pub(crate) fn normalized(&self) -> Self {
+        Self {
+            address: self.address.trim().to_string(),
+            city: self.city.trim().to_string(),
+            country_code: self.country_code.trim().to_ascii_uppercase(),
+            name: self.name.trim().to_string(),
+            zip_code: self.zip_code.trim().to_string(),
+
+            state_code: self
+                .state_code
+                .as_deref()
+                .map(str::trim)
+                .filter(|state_code| !state_code.is_empty())
+                .map(str::to_ascii_uppercase),
+            state_name: self
+                .state_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|state_name| !state_name.is_empty())
+                .map(str::to_string),
+        }
+    }
+
+    /// Builds the venue fingerprint shared by Rust and `PostgreSQL`.
+    pub(crate) fn performance_location_fingerprint(&self) -> String {
+        // Collect fields in the exact order used by PostgreSQL
+        let parts = [
+            self.address.as_str(),
+            self.city.as_str(),
+            self.country_code.as_str(),
+            self.name.as_str(),
+            self.state_code.as_deref().unwrap_or_default(),
+            self.zip_code.as_str(),
+        ];
+        let mut digest = Sha256::new();
+
+        // Separate fields so adjacent values cannot produce an ambiguous fingerprint
+        for part in parts {
+            digest.update(part.as_bytes());
+            digest.update([0]);
+        }
+
+        hex::encode(digest.finalize())
+    }
 }
 
 // Helpers.
@@ -393,7 +615,7 @@ fn uses_zero_decimal_minor_units(currency_code: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::format_amount_minor;
+    use super::{TicketVenue, TicketVenueField, format_amount_minor};
 
     #[test]
     fn format_amount_minor_formats_two_decimal_currencies() {
@@ -413,5 +635,122 @@ mod tests {
     #[test]
     fn format_amount_minor_preserves_negative_amounts() {
         assert_eq!(format_amount_minor(-250, "usd"), "USD -2.50");
+    }
+
+    #[test]
+    fn test_ticket_venue_country_code_validation_checks_iso_shape() {
+        // Setup a valid two-letter country code
+        let mut venue = TicketVenue {
+            country_code: "PT".to_string(),
+            ..TicketVenue::default()
+        };
+
+        // Check valid, long, and non-alphabetic country codes
+        assert!(venue.has_valid_country_code());
+
+        venue.country_code = "PRT".to_string();
+        assert!(!venue.has_valid_country_code());
+
+        venue.country_code = "P1".to_string();
+        assert!(!venue.has_valid_country_code());
+    }
+
+    #[test]
+    fn test_ticket_venue_fingerprint_treats_missing_state_as_empty() {
+        // Setup equivalent venues with absent and empty state codes
+        let venue = TicketVenue {
+            address: "1 Main St".to_string(),
+            city: "Portland".to_string(),
+            country_code: "US".to_string(),
+            name: "Venue".to_string(),
+            zip_code: "97201".to_string(),
+
+            state_code: None,
+            state_name: None,
+        };
+        let venue_with_empty_state = TicketVenue {
+            state_code: Some(String::new()),
+            ..venue.clone()
+        };
+
+        // Check the digest matches the shared PostgreSQL algorithm
+        assert_eq!(
+            venue.performance_location_fingerprint(),
+            "b5b9cb58e4b43c71a197fbcd6eefc5bf7e609c48b78a3272858b25f170d62d35"
+        );
+        assert_eq!(
+            venue.performance_location_fingerprint(),
+            venue_with_empty_state.performance_location_fingerprint()
+        );
+    }
+
+    #[test]
+    fn test_ticket_venue_missing_required_fields_reports_blank_values() {
+        // Setup a venue with blank and populated required fields
+        let venue = TicketVenue {
+            address: " ".to_string(),
+            city: "Portland".to_string(),
+            country_code: String::new(),
+            name: "\t".to_string(),
+            zip_code: "97201".to_string(),
+
+            state_code: None,
+            state_name: None,
+        };
+
+        // Check only blank fields are reported in venue field order
+        assert_eq!(
+            venue.missing_required_fields(),
+            [
+                TicketVenueField::Address,
+                TicketVenueField::CountryCode,
+                TicketVenueField::Name,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ticket_venue_normalized_cleans_address_values() {
+        // Setup a venue with whitespace and lowercase location codes
+        let venue = TicketVenue {
+            address: " 1 Main St ".to_string(),
+            city: " Portland ".to_string(),
+            country_code: " us ".to_string(),
+            name: " Venue ".to_string(),
+            zip_code: " 97201 ".to_string(),
+
+            state_code: Some(" or ".to_string()),
+            state_name: Some(" Oregon ".to_string()),
+        };
+
+        // Check required and optional location values are normalized
+        assert_eq!(
+            venue.normalized(),
+            TicketVenue {
+                address: "1 Main St".to_string(),
+                city: "Portland".to_string(),
+                country_code: "US".to_string(),
+                name: "Venue".to_string(),
+                zip_code: "97201".to_string(),
+
+                state_code: Some("OR".to_string()),
+                state_name: Some("Oregon".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_ticket_venue_normalized_omits_blank_optional_values() {
+        // Setup optional location fields containing only whitespace
+        let venue = TicketVenue {
+            state_code: Some(" ".to_string()),
+            state_name: Some("\t".to_string()),
+            ..TicketVenue::default()
+        };
+        let normalized = venue.normalized();
+
+        // Check blank optional values are represented as absent
+        assert_eq!(normalized.state_code, None);
+        assert_eq!(normalized.state_name, None);
     }
 }

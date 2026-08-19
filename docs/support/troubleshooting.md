@@ -95,7 +95,7 @@ For every event also verify:
 3. Each ticket type has at least one complete price window.
 4. Free-only ticketing has no event currency or discount codes.
 5. Paid-capable ticketing has an event currency, server payment provider, and
-   group payment recipient.
+   fiscal-sponsor connected account.
 6. Any configured discount codes are complete. Discount codes are optional.
 
 ## Ticket Claim Is Unavailable or Fails
@@ -113,7 +113,9 @@ complete, check:
    the hold expires or the ticket is refunded.
 5. The event has not been canceled.
 6. A positive final price has current server payment configuration and a group
-   payment recipient.
+   fiscal-sponsor connected account, eligible in-person or hybrid event with a
+   complete physical venue, and valid tax setup. A paid hybrid ticket includes
+   physical admission and is not virtual-only.
 7. An offer claim uses the exact tier assigned to that offer and occurs before
    its deadline.
 

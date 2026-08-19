@@ -520,7 +520,7 @@ insert into "group" (
     ST_SetSRID(ST_MakePoint(-122.4194, 37.7749), 4326),
     'https://example.com/group-logo.png',
     'Contract Group',
-    '{"provider":"stripe","recipient_id":"acct_contract_group"}'::jsonb,
+    '{"provider":"stripe","recipient_id":"acct_contract","seller_display_name":"Contract Fiscal Sponsor"}'::jsonb,
     array['https://example.com/group-photo.png'],
     '00000000-0000-0000-0000-00000000c011',
     'contract-group',
@@ -669,7 +669,8 @@ insert into event (
     venue_country_code,
     venue_country_name,
     venue_name,
-    venue_state,
+    venue_state_code,
+    venue_state_name,
     venue_zip_code,
     waitlist_enabled
 ) values
@@ -705,6 +706,7 @@ insert into event (
         'United States',
         'Contract Hall',
         'CA',
+        'California',
         '94105',
         true
     ),
@@ -734,6 +736,7 @@ insert into event (
         '2000-05-20 17:00:00+00',
         array['rust', 'contract'],
         'UTC',
+        null,
         null,
         null,
         null,
@@ -1081,14 +1084,21 @@ insert into event (
     slug,
     starts_at,
     test_event,
-    timezone
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_state_code,
+    venue_state_name,
+    venue_zip_code
 ) values (
     100,
     'A paid event used by Rust database contract tests',
     '2099-07-01 11:00:00+00',
     '00000000-0000-0000-0000-00000000c013',
     '00000000-0000-0000-0000-00000000c0d0',
-    'virtual',
+    'in-person',
     '00000000-0000-0000-0000-00000000c021',
     'Contract Paid Event',
     'USD',
@@ -1096,7 +1106,14 @@ insert into event (
     'contract-paid-event',
     '2099-07-01 10:00:00+00',
     true,
-    'UTC'
+    'UTC',
+    '123 Contract Street',
+    'San Francisco',
+    'US',
+    'Contract Venue',
+    'CA',
+    'California',
+    '94105'
 );
 
 insert into event_ticket_type (
@@ -1194,7 +1211,7 @@ insert into event_purchase (
     event_id,
     event_purchase_id,
     event_ticket_type_id,
-    platform_fee_amount_minor,
+    provisional_platform_fee_amount_minor,
     status,
     ticket_title,
     user_id,
@@ -1202,7 +1219,20 @@ insert into event_purchase (
     hold_expires_at,
     payment_provider_id,
     provider_checkout_session_id,
-    provider_payment_reference
+    provider_payment_reference,
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values
     (
         2500,
@@ -1218,7 +1248,20 @@ insert into event_purchase (
         '2099-01-01 00:00:00+00',
         null,
         null,
-        null
+        null,
+        'direct-charge',
+        'acct_contract',
+        null,
+        null,
+        'acct_contract',
+        null,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        null,
+        null,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         2500,
@@ -1234,7 +1277,20 @@ insert into event_purchase (
         '2099-01-01 00:00:00+00',
         'stripe',
         'cs_contract_reconcile',
-        null
+        null,
+        'direct-charge',
+        'acct_contract',
+        null,
+        null,
+        'acct_contract',
+        null,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        null,
+        null,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         0,
@@ -1248,6 +1304,19 @@ insert into event_purchase (
         '00000000-0000-0000-0000-00000000c0e4',
         null,
         '2099-01-01 00:00:00+00',
+        null,
+        null,
+        null,
+        'ocg-free',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null,
         null,
         null
@@ -1266,7 +1335,20 @@ insert into event_purchase (
         null,
         'stripe',
         'cs_contract_refund_begin',
-        'pi_contract_refund_begin'
+        'pi_contract_refund_begin',
+        'direct-charge',
+        'acct_contract',
+        0,
+        'ch_contract_refund_begin',
+        'acct_contract',
+        2500,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        2500,
+        0,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         2500,
@@ -1282,7 +1364,20 @@ insert into event_purchase (
         null,
         'stripe',
         'cs_contract_refund_approve',
-        'pi_contract_refund_approve'
+        'pi_contract_refund_approve',
+        'direct-charge',
+        'acct_contract',
+        250,
+        'ch_contract_refund_approve',
+        'acct_contract',
+        2500,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        2500,
+        0,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         2500,
@@ -1298,7 +1393,20 @@ insert into event_purchase (
         null,
         'stripe',
         'cs_contract_refund_reject',
-        'pi_contract_refund_reject'
+        'pi_contract_refund_reject',
+        'direct-charge',
+        'acct_contract',
+        0,
+        'ch_contract_refund_reject',
+        'acct_contract',
+        2500,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        2500,
+        0,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         2500,
@@ -1314,7 +1422,20 @@ insert into event_purchase (
         null,
         'stripe',
         'cs_contract_refund_rejected',
-        'pi_contract_refund_rejected'
+        'pi_contract_refund_rejected',
+        'direct-charge',
+        'acct_contract',
+        0,
+        'ch_contract_refund_rejected',
+        'acct_contract',
+        2500,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        2500,
+        0,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         2500,
@@ -1330,7 +1451,20 @@ insert into event_purchase (
         null,
         'stripe',
         'cs_contract_paid_cancellation',
-        'pi_contract_paid_cancellation'
+        'pi_contract_paid_cancellation',
+        'direct-charge',
+        'acct_contract',
+        0,
+        'ch_contract_paid_cancellation',
+        'acct_contract',
+        2500,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        2500,
+        0,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         2500,
@@ -1346,7 +1480,20 @@ insert into event_purchase (
         null,
         'stripe',
         'cs_contract_refund_lifecycle',
-        'pi_contract_refund_lifecycle'
+        'pi_contract_refund_lifecycle',
+        'direct-charge',
+        'acct_contract',
+        0,
+        'ch_contract_refund_lifecycle',
+        'acct_contract',
+        2500,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        2500,
+        0,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     ),
     (
         2500,
@@ -1362,7 +1509,20 @@ insert into event_purchase (
         null,
         'stripe',
         'cs_contract_refund_recovery',
-        'pi_contract_refund_recovery'
+        'pi_contract_refund_recovery',
+        'direct-charge',
+        'acct_contract',
+        0,
+        'ch_contract_refund_recovery',
+        'acct_contract',
+        2500,
+        '{"display_name":"Contract Sponsor"}'::jsonb,
+        2500,
+        0,
+        'inclusive',
+        'manual',
+        'professional-event-admission',
+        '{}'::jsonb
     );
 
 insert into event_purchase (
@@ -1378,7 +1538,20 @@ insert into event_purchase (
     provider_payment_reference,
     status,
     ticket_title,
-    user_id
+    user_id,
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     '00000000-0000-0000-0000-00000000c103',
     2500,
@@ -1392,7 +1565,20 @@ insert into event_purchase (
     'pi_contract_refund_offer',
     'refund-pending',
     'Contract Paid Ticket',
-    '00000000-0000-0000-0000-00000000c101'
+    '00000000-0000-0000-0000-00000000c101',
+    'direct-charge',
+    'acct_contract',
+    0,
+    'ch_contract_refund_offer',
+    'acct_contract',
+    2500,
+    '{"display_name":"Contract Sponsor"}'::jsonb,
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
 );
 
 insert into event_refund_request (
@@ -1503,6 +1689,181 @@ insert into event_purchase_refund (
         null,
         null
     );
+
+-- Exhausted application-fee adjustment used by dashboard recovery contracts
+insert into event_purchase_application_fee_adjustment (
+    amount_minor,
+    attempt_count,
+    event_purchase_application_fee_adjustment_id,
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    status,
+    updated_at
+) values (
+    25,
+    10,
+    '00000000-0000-0000-0000-00000000c119',
+    '00000000-0000-0000-0000-00000000c0f8',
+    'Contract application-fee failure',
+    'contract-financial-recovery-adjustment',
+    'purchase-refund',
+    'failed',
+    '2024-02-03 10:00:00+00'
+);
+
+-- Exhausted credit note used by dashboard recovery contracts
+insert into event_purchase_credit_note (
+    amount_minor,
+    attempt_count,
+    currency_code,
+    event_purchase_credit_note_id,
+    event_purchase_refund_id,
+    failure_message,
+    idempotency_key,
+    payment_provider_id,
+    provider_object_account_id,
+    status,
+    tax_amount_minor,
+    updated_at
+) values (
+    2500,
+    10,
+    'USD',
+    '00000000-0000-0000-0000-00000000c11a',
+    '00000000-0000-0000-0000-00000000c0fa',
+    'Contract credit-note failure',
+    'contract-financial-recovery-credit-note',
+    'stripe',
+    'acct_contract',
+    'failed',
+    0,
+    '2024-02-04 10:00:00+00'
+);
+
+-- Provider-backed purchase dedicated to worker and attendee document contracts
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    connected_seller_id,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    final_platform_fee_amount_minor,
+    payment_provider_id,
+    provisional_platform_fee_amount_minor,
+    provider_application_fee_id,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_invoice_hosted_url,
+    provider_invoice_id,
+    provider_invoice_pdf_url,
+    provider_object_account_id,
+    provider_payment_reference,
+    provider_total_minor,
+    seller_snapshot,
+    status,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    ticket_title,
+    user_id,
+    venue_snapshot
+) values (
+    2500,
+    'direct-charge',
+    '2024-02-01 10:00:00+00',
+    'acct_contract_documents',
+    'USD',
+    '00000000-0000-0000-0000-00000000c0d0',
+    '00000000-0000-0000-0000-00000000c11b',
+    '00000000-0000-0000-0000-00000000c0d1',
+    250,
+    'stripe',
+    250,
+    'fee_contract_documents',
+    'ch_contract_documents',
+    'cs_contract_documents',
+    'https://invoice.stripe.test/i/contract-documents',
+    'in_contract_documents',
+    'https://invoice.stripe.test/i/contract-documents.pdf',
+    'acct_contract_documents',
+    'pi_contract_documents',
+    2500,
+    '{"display_name":"Contract Document Sponsor"}'::jsonb,
+    'refund-pending',
+    2500,
+    0,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    'Contract Document Ticket',
+    '00000000-0000-0000-0000-00000000c0e4',
+    '{}'::jsonb
+);
+
+insert into event_purchase_refund (
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    provider_refund_id,
+    provider_refunded_at,
+    status
+) values (
+    2500,
+    'USD',
+    '00000000-0000-0000-0000-00000000c11b',
+    '00000000-0000-0000-0000-00000000c11c',
+    'event-purchase-refund-contract-documents',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    're_contract_documents',
+    '2024-02-02 10:00:00+00',
+    'provider-succeeded'
+);
+
+insert into event_purchase_application_fee_adjustment (
+    amount_minor,
+    event_purchase_application_fee_adjustment_id,
+    event_purchase_id,
+    idempotency_key,
+    kind
+) values (
+    25,
+    '00000000-0000-0000-0000-00000000c11d',
+    '00000000-0000-0000-0000-00000000c11b',
+    'event-purchase-application-fee-adjustment-contract-documents',
+    'purchase-refund'
+);
+
+insert into event_purchase_credit_note (
+    amount_minor,
+    currency_code,
+    event_purchase_credit_note_id,
+    event_purchase_refund_id,
+    idempotency_key,
+    payment_provider_id,
+    provider_object_account_id,
+    tax_amount_minor
+) values (
+    2500,
+    'USD',
+    '00000000-0000-0000-0000-00000000c11e',
+    '00000000-0000-0000-0000-00000000c11c',
+    'event-purchase-credit-note-contract-documents',
+    'stripe',
+    'acct_contract_documents',
+    0
+);
 
 -- ============================================================================
 -- EVENT MUTATIONS
@@ -1944,7 +2305,15 @@ insert into event_purchase (
     provider_checkout_url,
     status,
     ticket_title,
-    user_id
+    user_id,
+    charge_model,
+    connected_seller_id,
+    provider_object_account_id,
+    seller_snapshot,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     2500,
     'USD',
@@ -1956,7 +2325,15 @@ insert into event_purchase (
     'https://example.test/checkout/status-pending',
     'pending',
     'Status Admission',
-    '00000000-0000-0000-0000-00000000c10c'
+    '00000000-0000-0000-0000-00000000c10c',
+    'direct-charge',
+    'acct_contract',
+    'acct_contract',
+    '{"display_name":"Contract Sponsor"}'::jsonb,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
 );
 
 -- Terminal organizer offers returned through attendee search status encodings
@@ -2438,7 +2815,7 @@ insert into audit_log (
     '00000000-0000-0000-0000-00000000c091',
     '00000000-0000-0000-0000-00000000c001',
     '2024-01-09 10:00:00+00',
-    '{"recipient_id":"acct_contract_group"}'::jsonb,
+    '{"recipient_id":"acct_contract"}'::jsonb,
     '00000000-0000-0000-0000-00000000c021',
     '00000000-0000-0000-0000-00000000c021',
     'group'

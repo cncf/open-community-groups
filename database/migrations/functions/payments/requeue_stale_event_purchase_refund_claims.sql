@@ -10,12 +10,19 @@ begin
         claim_id = null,
         claimed_at = null,
         failure_message = case
-            when provider_refunded_at is null then 'refund worker claim expired'
-            else null
+            -- Preserve provider diagnostics when the outcome remains unknown
+            when provider_refunded_at is null then coalesce(
+                failure_message,
+                'refund worker claim expired'
+            )
+            -- Retain any context recorded alongside a provider success
+            else failure_message
         end,
         next_attempt_at = current_timestamp,
         status = case
+            -- Resume provider reconciliation after an abandoned unknown outcome
             when provider_refunded_at is null then 'provider-failed'
+            -- Resume local finalization after a persisted provider success
             else 'provider-succeeded'
         end,
         terminal_failure = false,

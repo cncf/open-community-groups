@@ -1,3 +1,5 @@
+-- Tests expiring stale event checkout holds.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -107,7 +109,11 @@ values (
     :'groupCategoryID',
     'Expire Stale Group',
     'expire-stale-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_expire_stale')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_expire_stale',
+        'seller_display_name', 'Expire Stale Fiscal Sponsor'
+    )
 );
 
 -- Events
@@ -224,7 +230,7 @@ insert into event_purchase (
     user_id
 ) values (
     :'stalePurchaseAID',
-    2000,
+    0,
     'USD',
     500,
     'SAVE5',
@@ -237,7 +243,7 @@ insert into event_purchase (
     :'user1ID'
 ), (
     :'stalePurchaseBID',
-    2000,
+    0,
     'USD',
     500,
     'SAVE5',
@@ -250,7 +256,7 @@ insert into event_purchase (
     :'user2ID'
 ), (
     :'activePurchaseID',
-    2000,
+    0,
     'USD',
     500,
     'SAVE5',
@@ -263,7 +269,7 @@ insert into event_purchase (
     :'user3ID'
 ), (
     :'otherEventPurchaseID',
-    2500,
+    0,
     'USD',
     0,
     null,

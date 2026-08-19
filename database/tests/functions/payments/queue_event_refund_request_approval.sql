@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -124,14 +124,69 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
-) values
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.amount_minor,
+    fixtures.currency_code,
+    fixtures.event_id::uuid,
+    fixtures.event_purchase_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+    fixtures.payment_provider_id,
+    fixtures.provider_payment_reference,
+
+    case when fixtures.amount_minor > 0 then 'direct-charge' else 'ocg-free' end,
+    case when fixtures.amount_minor > 0 then 'acct_refunds' end,
+    case when fixtures.amount_minor > 0 then 0 end,
+    case when fixtures.amount_minor > 0 then 'ch_' || fixtures.event_purchase_id end,
+    case when fixtures.amount_minor > 0 then 'cs_' || fixtures.event_purchase_id end,
+    case when fixtures.amount_minor > 0 then 'acct_refunds' end,
+    case when fixtures.amount_minor > 0 then fixtures.amount_minor end,
+    case when fixtures.amount_minor > 0 then
+        '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb
+    end,
+    case when fixtures.amount_minor > 0 then fixtures.amount_minor end,
+    case when fixtures.amount_minor > 0 then 0 end,
+    case when fixtures.amount_minor > 0 then 'inclusive' end,
+    case when fixtures.amount_minor > 0 then 'manual' end,
+    case when fixtures.amount_minor > 0 then 'professional-event-admission' end,
+    case when fixtures.amount_minor > 0 then '{}'::jsonb end
+from (values
     (2500, 'USD', :'eventID', :'blankPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'blankUserID', 'stripe', 'pi_blank'),
     (2500, 'USD', :'eventID', :'conflictPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'conflictUserID', 'stripe', 'pi_conflict'),
     (0, 'USD', :'eventID', :'freePurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'freeUserID', null, null),
     (2500, 'USD', :'eventID', :'happyPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'happyUserID', 'stripe', 'pi_happy'),
-    (2500, 'USD', :'eventID', :'missingRequestPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'missingRequestUserID', 'stripe', 'pi_missing_request'),
-    (2500, 'USD', :'eventID', :'noReferencePurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'noReferenceUserID', 'stripe', null);
+    (2500, 'USD', :'eventID', :'missingRequestPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'missingRequestUserID', 'stripe', 'pi_missing_request')
+) as fixtures (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+    payment_provider_id,
+    provider_payment_reference
+);
 
 -- Refund requests covering successful, blank-note, conflicting, free, and missing-reference states
 insert into event_refund_request (
@@ -143,8 +198,7 @@ insert into event_refund_request (
     (:'blankPurchaseID', :'blankRequestID', :'blankUserID', 'pending'),
     (:'conflictPurchaseID', :'conflictRequestID', :'conflictUserID', 'pending'),
     (:'freePurchaseID', :'freeRequestID', :'freeUserID', 'pending'),
-    (:'happyPurchaseID', :'happyRequestID', :'happyUserID', 'pending'),
-    (:'noReferencePurchaseID', :'noReferenceRequestID', :'noReferenceUserID', 'pending');
+    (:'happyPurchaseID', :'happyRequestID', :'happyUserID', 'pending');
 
 -- Existing cancellation refund that conflicts with attendee-request approval
 insert into event_purchase_refund (
@@ -282,16 +336,6 @@ select throws_ok(
     ),
     'paid purchase is not ready for refund',
     'Should reject a free purchase'
-);
-
--- Should reject a paid purchase without a provider payment reference
-select throws_ok(
-    format(
-        $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
-        :'actorID', :'groupID', :'noReferencePurchaseID'
-    ),
-    'paid purchase is not ready for refund',
-    'Should reject a paid purchase without a provider payment reference'
 );
 
 -- Should reject a purchase without a refund request

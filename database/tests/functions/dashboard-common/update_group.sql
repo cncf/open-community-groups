@@ -5,13 +5,14 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(34);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '1c020000-0000-0000-0000-000000000001'
+\set eventAutomaticTaxID '1c020000-0000-0000-0000-00000000001c'
 \set eventCategoryID '1c020000-0000-0000-0000-000000000002'
 \set eventFreeID '1c020000-0000-0000-0000-000000000014'
 \set eventID '1c020000-0000-0000-0000-000000000003'
@@ -22,6 +23,7 @@ select plan(29);
 \set group5ID '1c020000-0000-0000-0000-000000000008'
 \set group6ID '1c020000-0000-0000-0000-000000000015'
 \set groupAdminID '1c020000-0000-0000-0000-000000000010'
+\set groupAutomaticTaxID '1c020000-0000-0000-0000-00000000001d'
 \set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
 \set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
@@ -31,9 +33,11 @@ select plan(29);
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
+\set priceWindowAutomaticTaxID '1c020000-0000-0000-0000-00000000001e'
 \set priceWindowFreeID '1c020000-0000-0000-0000-000000000017'
 \set priceWindowID '1c020000-0000-0000-0000-000000000016'
 \set priceWindowUnpublishedID '1c020000-0000-0000-0000-000000000018'
+\set ticketTypeAutomaticTaxID '1c020000-0000-0000-0000-00000000001f'
 \set ticketTypeFreeID '1c020000-0000-0000-0000-000000000019'
 \set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
 \set ticketTypeUnpublishedID '1c020000-0000-0000-0000-00000000000f'
@@ -282,7 +286,7 @@ insert into "group" (
     :'communityID',
     :'groupCategory1ID',
     'Unpublished ticketed event coverage',
-    '{"provider": "stripe", "recipient_id": "acct_456"}'::jsonb,
+    '{"provider": "stripe", "recipient_id": "acct_456", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb,
     '2024-01-15 10:00:00+00'
 );
 
@@ -293,22 +297,42 @@ insert into event (
     event_category_id,
     event_kind_id,
     group_id,
+    manual_tax_rate_ids,
     name,
     payment_currency_code,
     published,
     slug,
-    timezone
+    tax_behavior,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_state_code,
+    venue_state_name,
+    venue_zip_code
 ) values (
     'Published ticketed event for payment recipient validation',
     :'eventID'::uuid,
     :'eventCategoryID'::uuid,
-    'virtual',
+    'in-person',
     :'group4ID'::uuid,
+    array['txr_update_group']::text[],
     'Ticketed Group Event',
     'USD',
     true,
     'ticketed-group-event',
-    'UTC'
+    'inclusive',
+    'manual',
+    'UTC',
+    '123 Main St',
+    'Portland',
+    'US',
+    'Community Hall',
+    'OR',
+    'Oregon',
+    '97201'
 );
 
 -- Group with a published all-zero ticketed event
@@ -328,8 +352,29 @@ insert into "group" (
     :'communityID',
     :'groupCategory1ID',
     'Free ticketed event coverage',
-    '{"provider": "stripe", "recipient_id": "acct_free"}'::jsonb,
+    '{"provider": "stripe", "recipient_id": "acct_free", "seller_display_name": "Free Event Fiscal Sponsor"}'::jsonb,
     '2024-01-15 10:00:00+00'
+);
+
+-- Group with a published automatic-tax event for validation freshness checks
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+
+    description,
+    payment_recipient
+) values (
+    :'groupAutomaticTaxID'::uuid,
+    :'communityID'::uuid,
+    :'groupCategory1ID'::uuid,
+    'Group With Automatic Tax Event',
+    'automatic-tax-event-group',
+
+    'Automatic-tax validation freshness coverage',
+    '{"provider": "stripe", "recipient_id": "acct_automatic", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb
 );
 
 -- Published all-zero ticketed event used for payment recipient guards
@@ -355,7 +400,34 @@ insert into event (
     'UTC'
 );
 
--- Ticket type for the published ticketed event
+-- Published automatic-tax event used to reject stale provider validation
+insert into event (
+    description,
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    tax_calculation_mode,
+    timezone
+) values (
+    'Published automatic-tax event for validation freshness checks',
+    :'eventAutomaticTaxID'::uuid,
+    :'eventCategoryID'::uuid,
+    'virtual',
+    :'groupAutomaticTaxID'::uuid,
+    'Automatic Tax Event',
+    'USD',
+    true,
+    'automatic-tax-event',
+    'automatic',
+    'UTC'
+);
+
+-- Ticket type for the published automatic-tax event
 insert into event_ticket_type (
     event_ticket_type_id,
     event_id,
@@ -363,11 +435,11 @@ insert into event_ticket_type (
     seats_total,
     title
 ) values (
-    :'ticketTypeID'::uuid,
-    :'eventID'::uuid,
+    :'ticketTypeAutomaticTaxID'::uuid,
+    :'eventAutomaticTaxID'::uuid,
     1,
     50,
-    'General admission'
+    'Automatic tax admission'
 );
 
 -- Ticket type for the published all-zero ticketed event
@@ -385,6 +457,21 @@ insert into event_ticket_type (
     'Free admission'
 );
 
+-- Ticket type for the published ticketed event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID'::uuid,
+    :'eventID'::uuid,
+    1,
+    50,
+    'General admission'
+);
+
 -- Unpublished ticketed event used for payment recipient guards
 insert into event (
     description,
@@ -392,10 +479,12 @@ insert into event (
     event_category_id,
     event_kind_id,
     group_id,
+    manual_tax_rate_ids,
     name,
     payment_currency_code,
     published,
     slug,
+    tax_calculation_mode,
     timezone
 ) values (
     'Unpublished ticketed event for payment recipient validation',
@@ -403,10 +492,12 @@ insert into event (
     :'eventCategoryID'::uuid,
     'virtual',
     :'group5ID'::uuid,
+    array['txr_draft']::text[],
     'Draft Ticketed Group Event',
     'USD',
     false,
     'draft-ticketed-group-event',
+    'manual',
     'UTC'
 );
 
@@ -431,8 +522,9 @@ insert into event_ticket_price_window (
     amount_minor,
     event_ticket_type_id
 ) values
-    (:'priceWindowID', 2500, :'ticketTypeID'),
+    (:'priceWindowAutomaticTaxID', 2500, :'ticketTypeAutomaticTaxID'),
     (:'priceWindowFreeID', 0, :'ticketTypeFreeID'),
+    (:'priceWindowID', 2500, :'ticketTypeID'),
     (:'priceWindowUnpublishedID', 2500, :'ticketTypeUnpublishedID');
 
 -- ============================================================================
@@ -738,9 +830,19 @@ select lives_ok(
             "name": "Group With Payment Recipient",
             "category_id": "%s",
             "description": "Payment recipient audit coverage",
+            "_payment_validation": {
+                "expected_payment_recipient": null,
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_123",
+                    "seller_display_name": "New Fiscal Sponsor"
+                }
+            },
             "payment_recipient": {
                 "provider": "stripe",
-                "recipient_id": " acct_123 "
+                "recipient_id": " acct_123 ",
+                "seller_display_name": " New Fiscal Sponsor "
             }
         }'::jsonb
     )$$,
@@ -806,9 +908,152 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
     '{
         "provider": "stripe",
-        "recipient_id": "acct_123"
+        "recipient_id": "acct_123",
+        "seller_display_name": "New Fiscal Sponsor"
     }'::jsonb,
     'Should persist the normalized payment recipient after the update'
+);
+
+-- Should reject a sponsor swap that invalidates active manual-tax events
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Group With Payment Recipient",
+            "category_id": "%s",
+            "description": "Payment recipient validation coverage",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_123",
+                    "seller_display_name": "New Fiscal Sponsor"
+                },
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_replacement",
+                    "seller_display_name": "Replacement Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_replacement",
+                "seller_display_name": "Replacement Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'group4ID',
+        :'groupCategory1ID'
+    ),
+    'fiscal sponsor cannot be replaced while published manual-tax events are upcoming',
+    'Should reject a sponsor swap that invalidates active manual-tax events'
+);
+
+-- Should reject a sponsor change validated against stale recipient state
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Group With Unpublished Ticketed Event",
+            "category_id": "%s",
+            "description": "Unpublished ticketed event coverage",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_stale",
+                    "seller_display_name": "Stale Fiscal Sponsor"
+                },
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_new",
+                    "seller_display_name": "New Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_new",
+                "seller_display_name": "New Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'group5ID',
+        :'groupCategory1ID'
+    ),
+    'payment configuration changed during provider validation',
+    'Should reject a sponsor change validated against stale recipient state'
+);
+
+-- Should reject validation that missed a published automatic-tax event
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Group With Automatic Tax Event",
+            "category_id": "%s",
+            "description": "Automatic-tax validation freshness coverage",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_automatic",
+                    "seller_display_name": "Existing Fiscal Sponsor"
+                },
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_new",
+                    "seller_display_name": "New Fiscal Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_new",
+                "seller_display_name": "New Fiscal Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupAutomaticTaxID',
+        :'groupCategory1ID'
+    ),
+    'payment configuration changed during provider validation',
+    'Should reject validation that missed a published automatic-tax event'
+);
+
+-- Should reject a payment recipient without an attendee-visible seller name
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Group With Payment Recipient",
+            "category_id": "%s",
+            "description": "Payment recipient validation coverage",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_missing_name"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'group4ID',
+        :'groupCategory1ID'
+    ),
+    'payment recipient account and seller name must be provided together',
+    'Should reject a payment recipient without an attendee-visible seller name'
 );
 
 -- Should reject clearing payment recipient when published ticketed events exist
@@ -841,7 +1086,8 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
     '{
         "provider": "stripe",
-        "recipient_id": "acct_123"
+        "recipient_id": "acct_123",
+        "seller_display_name": "New Fiscal Sponsor"
     }'::jsonb,
     'Should keep the stored payment recipient after rejecting the clear'
 );
@@ -937,6 +1183,13 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
     null::jsonb,
     'Should clear the stored payment recipient when only unpublished ticketed events exist'
+);
+
+-- Should clear draft manual-tax selections after the sponsor changes
+select is(
+    (select manual_tax_rate_ids from event where event_id = :'eventUnpublishedID'::uuid),
+    '{}'::text[],
+    'Should require draft manual-tax events to reselect rates after a sponsor change'
 );
 
 -- Should update parent when the actor can manage the selected parent

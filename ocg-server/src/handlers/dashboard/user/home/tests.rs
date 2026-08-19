@@ -15,7 +15,7 @@ use crate::{
         DASHBOARD_PAGINATION_LIMIT,
         audit::AuditLogSort,
         user::{
-            events::UserEventsOutput, groups::UserGroupsOutput,
+            events::UserEventsOutput, groups::UserGroupsOutput, purchases::PurchaseDocumentsOutput,
             session_proposals::SessionProposalsOutput,
         },
     },
@@ -278,6 +278,60 @@ async fn test_page_logs_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_purchases_tab_success() {
+    // Setup identifiers and purchase-document output
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let purchases_output = PurchaseDocumentsOutput {
+        purchases: Vec::new(),
+        total: 0,
+    };
+
+    // Setup database expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_list_user_purchase_documents()
+        .times(1)
+        .withf(move |uid, filters| {
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(move |_, _| Ok(purchases_output.clone()));
+
+    // Request the purchases tab in the full dashboard
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/user?tab=purchases")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check the full dashboard renders purchase history
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(body.contains("No paid-ticket documents yet"));
 }
 
 #[tokio::test]

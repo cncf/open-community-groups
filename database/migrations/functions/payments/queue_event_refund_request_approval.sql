@@ -83,7 +83,7 @@ begin
         review_note,
         status
     ) values (
-        v_purchase.amount_minor,
+        v_purchase.provider_total_minor,
         v_purchase.currency_code,
         v_purchase.event_purchase_id,
         v_refund_request_id,

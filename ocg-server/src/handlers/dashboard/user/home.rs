@@ -11,8 +11,6 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{badges, events, groups, invitations, logs, session_proposals, submissions};
-
 use crate::{
     auth::AuthSession,
     db::DynDB,
@@ -23,6 +21,8 @@ use crate::{
         dashboard::user::home::{Content, Page, Tab},
     },
 };
+
+use super::{badges, events, groups, invitations, logs, purchases, session_proposals, submissions};
 
 #[cfg(test)]
 mod tests;
@@ -74,6 +74,10 @@ pub(crate) async fn page(
         Tab::Logs => {
             let (_, template) = logs::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Logs(template)
+        }
+        Tab::Purchases => {
+            let (_, template) = purchases::prepare_list_page(&db, user.user_id, raw_query).await?;
+            Content::Purchases(template)
         }
         Tab::SessionProposals => {
             let (_, template) =

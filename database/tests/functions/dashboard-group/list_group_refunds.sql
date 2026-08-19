@@ -5,16 +5,18 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID 'd4100000-0000-0000-0000-000000000001'
+\set creditNoteID 'd4100000-0000-0000-0000-000000000024'
 \set eventCategoryID 'd4100000-0000-0000-0000-000000000002'
 \set eventID 'd4100000-0000-0000-0000-000000000003'
 \set event2ID 'd4100000-0000-0000-0000-000000000004'
+\set feeAdjustmentID 'd4100000-0000-0000-0000-000000000025'
 \set groupCategoryID 'd4100000-0000-0000-0000-000000000005'
 \set groupID 'd4100000-0000-0000-0000-000000000006'
 \set missingGroupID 'd4100000-0000-0000-0000-000000000007'
@@ -150,83 +152,82 @@ insert into event_purchase (
 
     payment_provider_id,
     provider_checkout_session_id,
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixture.amount_minor,
+    fixture.created_at,
+    fixture.currency_code,
+    fixture.event_id,
+    fixture.event_purchase_id,
+    fixture.event_ticket_type_id,
+    fixture.status,
+    fixture.ticket_title,
+    fixture.updated_at,
+    fixture.user_id,
+    'stripe',
+    coalesce(fixture.provider_checkout_session_id, 'cs_' || fixture.event_purchase_id),
+    fixture.provider_payment_reference,
+
+    'direct-charge',
+    'acct_group_refunds_test',
+    case when fixture.status <> 'pending' then 0 end,
+    case when fixture.status <> 'pending' then 'ch_' || fixture.event_purchase_id end,
+    'acct_group_refunds_test',
+    case
+        when fixture.status = 'pending' then null
+        when fixture.event_purchase_id = :'needsPurchaseID'::uuid then 2750
+        else fixture.amount_minor
+    end,
+    '{}'::jsonb,
+    case when fixture.status <> 'pending' then fixture.amount_minor end,
+    case
+        when fixture.status = 'pending' then null
+        when fixture.event_purchase_id = :'needsPurchaseID'::uuid then 250
+        else 0
+    end,
+    case
+        when fixture.event_purchase_id = :'needsPurchaseID'::uuid then 'exclusive'
+        else 'inclusive'
+    end,
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (
+    values
+        (2500, '2024-01-01 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'needsPurchaseID'::uuid, :'ticketTypeID'::uuid, 'refund-requested', 'General admission', '2024-01-01 01:00:00+00'::timestamptz, :'needsUserID'::uuid, null::text, 'pi_needs'),
+        (2500, '2024-01-02 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'retryPurchaseID'::uuid, :'ticketTypeID'::uuid, 'refund-pending', 'General admission', '2024-01-02 01:00:00+00'::timestamptz, :'retryUserID'::uuid, null::text, 'pi_retry'),
+        (2500, '2024-01-03 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'waitingPurchaseID'::uuid, :'ticketTypeID'::uuid, 'pending', 'General admission', '2024-01-03 01:00:00+00'::timestamptz, :'waitingUserID'::uuid, 'cs_waiting', null),
+        (5000, '2024-01-04 00:00:00+00'::timestamptz, 'USD', :'event2ID'::uuid, :'refundedPurchaseID'::uuid, :'ticketType2ID'::uuid, 'refunded', 'Workshop', '2024-01-04 01:00:00+00'::timestamptz, :'refundedUserID'::uuid, null::text, 'pi_refunded'),
+        (2500, '2024-01-05 00:00:00+00'::timestamptz, 'USD', :'eventID'::uuid, :'rejectedPurchaseID'::uuid, :'ticketTypeID'::uuid, 'completed', 'General admission', '2024-01-05 01:00:00+00'::timestamptz, :'rejectedUserID'::uuid, null::text, 'pi_rejected')
+) as fixture(
+    amount_minor,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    updated_at,
+    user_id,
+    provider_checkout_session_id,
     provider_payment_reference
-) values
-    (
-        2500,
-        '2024-01-01 00:00:00+00',
-        'USD',
-        :'eventID',
-        :'needsPurchaseID',
-        :'ticketTypeID',
-        'refund-requested',
-        'General admission',
-        '2024-01-01 01:00:00+00',
-        :'needsUserID',
-        'stripe',
-        null,
-        'pi_needs'
-    ),
-    (
-        2500,
-        '2024-01-02 00:00:00+00',
-        'USD',
-        :'eventID',
-        :'retryPurchaseID',
-        :'ticketTypeID',
-        'refund-pending',
-        'General admission',
-        '2024-01-02 01:00:00+00',
-        :'retryUserID',
-        'stripe',
-        null,
-        'pi_retry'
-    ),
-    (
-        2500,
-        '2024-01-03 00:00:00+00',
-        'USD',
-        :'eventID',
-        :'waitingPurchaseID',
-        :'ticketTypeID',
-        'pending',
-        'General admission',
-        '2024-01-03 01:00:00+00',
-        :'waitingUserID',
-        'stripe',
-        'cs_waiting',
-        null
-    ),
-    (
-        5000,
-        '2024-01-04 00:00:00+00',
-        'USD',
-        :'event2ID',
-        :'refundedPurchaseID',
-        :'ticketType2ID',
-        'refunded',
-        'Workshop',
-        '2024-01-04 01:00:00+00',
-        :'refundedUserID',
-        'stripe',
-        null,
-        'pi_refunded'
-    ),
-    (
-        2500,
-        '2024-01-05 00:00:00+00',
-        'USD',
-        :'eventID',
-        :'rejectedPurchaseID',
-        :'ticketTypeID',
-        'completed',
-        'General admission',
-        '2024-01-05 01:00:00+00',
-        :'rejectedUserID',
-        'stripe',
-        null,
-        'pi_rejected'
-    );
+);
 
 -- Attendee requests represented in needs-review and completed history
 insert into event_refund_request (
@@ -317,6 +318,58 @@ insert into event_purchase_refund (
         're_refunded'
     );
 
+-- Exhausted application-fee work requiring operator action
+insert into event_purchase_application_fee_adjustment (
+    amount_minor,
+    attempt_count,
+    event_purchase_application_fee_adjustment_id,
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    status,
+    updated_at
+) values (
+    25,
+    10,
+    :'feeAdjustmentID',
+    :'retryPurchaseID',
+    'Application-fee request failed',
+    'refund-list-fee-adjustment',
+    'tax-reconciliation',
+    'failed',
+    '2024-01-02 05:00:00+00'
+);
+
+-- Exhausted credit-note work requiring operator action
+insert into event_purchase_credit_note (
+    amount_minor,
+    attempt_count,
+    currency_code,
+    event_purchase_credit_note_id,
+    event_purchase_refund_id,
+    failure_message,
+    idempotency_key,
+    payment_provider_id,
+    provider_object_account_id,
+    status,
+    tax_amount_minor,
+    updated_at
+) values (
+    2500,
+    10,
+    'USD',
+    :'creditNoteID',
+    :'retryRefundID',
+    'Credit-note request failed',
+    'refund-list-credit-note',
+    'stripe',
+    'acct_group_refunds_test',
+    'failed',
+    0,
+    '2024-01-02 06:00:00+00'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -329,7 +382,7 @@ select is(
             '{"limit": 50, "offset": 0}'::jsonb
         )->>'total'
     )::int,
-    3,
+    5,
     'Should default to unfinished refund work'
 );
 
@@ -361,6 +414,75 @@ select is(
     'Should order and expose administrator attention states'
 );
 
+-- Should expose exhausted application-fee and credit-note work
+select is(
+    (
+        select jsonb_agg(work->>'kind' order by work->>'kind')
+        from jsonb_array_elements(
+            list_group_refunds(
+                :'groupID'::uuid,
+                '{"limit": 50, "offset": 0, "view": "attention"}'::jsonb
+            )::jsonb->'financial_recoveries'
+        ) work
+    ),
+    '["application-fee-adjustment", "credit-note"]'::jsonb,
+    'Should expose exhausted application-fee and credit-note work'
+);
+
+-- Should search ticket details and return complete financial recovery rows
+select is(
+    list_group_refunds(
+        :'groupID'::uuid,
+        '{
+            "limit": 50,
+            "offset": 0,
+            "ts_query": "General admission",
+            "view": "attention"
+        }'::jsonb
+    )::jsonb->'financial_recoveries',
+    jsonb_build_array(
+        jsonb_build_object(
+            'amount_minor', 2500,
+            'attempt_count', 10,
+            'currency_code', 'USD',
+            'email', 'retry@example.test',
+            'event_name', 'Primary event',
+            'failure_message', 'Credit-note request failed',
+            'kind', 'credit-note',
+            'operation', 'Credit note',
+            'username', 'retry',
+            'work_id', :'creditNoteID'::uuid,
+            'name', null
+        ),
+        jsonb_build_object(
+            'amount_minor', 25,
+            'attempt_count', 10,
+            'currency_code', 'USD',
+            'email', 'retry@example.test',
+            'event_name', 'Primary event',
+            'failure_message', 'Application-fee request failed',
+            'kind', 'application-fee-adjustment',
+            'operation', 'Tax fee correction',
+            'username', 'retry',
+            'work_id', :'feeAdjustmentID'::uuid,
+            'name', null
+        )
+    ),
+    'Should search ticket details and return complete financial recovery rows'
+);
+
+-- Should hide unresolved financial work from the completed view
+select is(
+    jsonb_array_length(
+        list_group_refunds(
+            :'groupID'::uuid,
+            '{"limit": 50, "offset": 0, "view": "completed"}'::jsonb
+        )::jsonb->'financial_recoveries'
+    ),
+    0,
+    'Should hide unresolved financial work from the completed view'
+);
+
 -- Should include review and retry work in the attention view
 select is(
     (
@@ -369,7 +491,7 @@ select is(
             '{"limit": 50, "offset": 0, "view": "attention"}'::jsonb
         )->>'total'
     )::int,
-    2,
+    4,
     'Should include review and retry work in the attention view'
 );
 
@@ -393,7 +515,7 @@ select is(
             '{"limit": 50, "offset": 0, "view": "all"}'::jsonb
         )->>'total'
     )::int,
-    5,
+    7,
     'Should include every refund workflow in the all view'
 );
 
@@ -428,7 +550,7 @@ select is(
         )->'refunds'->0
     )::jsonb,
     jsonb_build_object(
-        'amount_minor', 2500,
+        'amount_minor', 2750,
         'created_at', 1704074400,
         'currency_code', 'USD',
         'email', 'requester@example.test',
@@ -452,7 +574,31 @@ select is(
     'Should search attendee, event, and ticket details'
 );
 
--- Should paginate refund history while retaining the filtered total
+-- Should bound financial recovery work within the shared operational page
+select results_eq(
+    $$
+        select
+            jsonb_array_length(result->'financial_recoveries'),
+            jsonb_array_length(result->'refunds'),
+            (result->'financial_recoveries'->0->>'work_id')::uuid,
+            (result->>'total')::int
+        from (
+            select list_group_refunds(
+                'd4100000-0000-0000-0000-000000000006'::uuid,
+                '{"limit": 1, "offset": 0, "view": "attention"}'::jsonb
+            )::jsonb as result
+        ) operations
+    $$,
+    $$ values (
+        1,
+        0,
+        'd4100000-0000-0000-0000-000000000024'::uuid,
+        4
+    ) $$,
+    'Should bound financial recovery work within the shared operational page'
+);
+
+-- Should paginate all operational history while retaining the filtered total
 select results_eq(
     $$
         select
@@ -467,9 +613,9 @@ select results_eq(
     $$,
     $$ values (
         'd4100000-0000-0000-0000-000000000011'::uuid,
-        5
+        7
     ) $$,
-    'Should paginate refund history while retaining the filtered total'
+    'Should paginate all operational history while retaining the filtered total'
 );
 
 -- Should return an empty payload outside the target group
@@ -478,7 +624,7 @@ select is(
         :'missingGroupID'::uuid,
         '{"limit": 50, "offset": 0, "view": "all"}'::jsonb
     )::jsonb,
-    '{"events": [], "refunds": [], "total": 0}'::jsonb,
+    '{"events": [], "financial_recoveries": [], "refunds": [], "total": 0}'::jsonb,
     'Should return an empty payload outside the target group'
 );
 

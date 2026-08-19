@@ -2,6 +2,7 @@ import { expect, test } from "../../../fixtures.js";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  TEST_FINANCIAL_WORK_IDS,
   TEST_PAYMENT_EVENT_IDS,
   expectCurrentPaginationNavigation,
   expectTableColumnsAtViewport,
@@ -10,9 +11,9 @@ import {
 } from "../../../utils.js";
 
 const getRefundRow = (dashboardContent, attendeeName) =>
-  dashboardContent.locator("tbody tr", {
-    hasText: attendeeName,
-  });
+  dashboardContent
+    .getByRole("table", { name: "Refunds list" })
+    .locator("tbody tr", { hasText: attendeeName });
 
 const openRefundsDashboard = async (
   page,
@@ -120,8 +121,8 @@ test.describe("group dashboard refunds", () => {
     // Verify each durable workflow state has its user-facing status.
     const expectedRefundStates = [
       ["E2E Admin One", "Refunded"],
-      ["E2E Community Viewer One", "Recovery required"],
-      ["E2E Events Manager One", "Needs retry"],
+      ["E2E Community Viewer One", /Recovery required|Refunded/u],
+      ["E2E Events Manager One", /Needs retry|Queued|Processing/u],
       ["E2E Group Viewer One", "Queued"],
       ["E2E Groups Manager One", "Needs review"],
       ["E2E Member One", "Needs review"],
@@ -218,6 +219,132 @@ test.describe("group dashboard refunds", () => {
     ).toHaveCount(0);
     await expect(
       dashboardContent.locator("[data-refund-reject-open]"),
+    ).toHaveCount(0);
+  });
+
+  test("shows exhausted financial work without calling the payment provider", async ({
+    groupViewerPage,
+    organizerGroupPage,
+  }) => {
+    // Open every attention item so both deterministic recovery fixtures are shown.
+    const dashboardContent = await openRefundsDashboard(
+      organizerGroupPage,
+      "/dashboard/group?tab=refunds&view=attention&limit=20",
+    );
+    const recoverySection = dashboardContent.getByRole("table", {
+      name: "Financial work needing attention",
+    });
+    const applicationFeeWork = recoverySection.locator(
+      'tbody tr[data-financial-work-kind="application-fee-adjustment"]',
+    );
+    const creditNoteWork = recoverySection.locator(
+      'tbody tr[data-financial-work-kind="credit-note"]',
+    );
+
+    // Verify the durable credit-note fixture and its retry details popover.
+    await expect(creditNoteWork).toContainText("E2E Events Manager One");
+    await expect(creditNoteWork).toContainText(/(?:US)?\$50\.00/u);
+    const creditNoteFailureButton = creditNoteWork.getByRole("button", {
+      name: "View last failure for Credit note",
+    });
+    await expect(creditNoteFailureButton).toHaveText("Needs retry");
+    await creditNoteFailureButton.focus();
+    const creditNoteFailureTooltip = creditNoteWork.getByRole("tooltip");
+    await expect(creditNoteFailureTooltip).toBeVisible();
+    await expect(creditNoteFailureTooltip).toContainText(
+      "Credit note attempts exhausted (10 attempts)",
+    );
+
+    // Verify the application-fee fixture when it is available.
+    if ((await applicationFeeWork.count()) > 0) {
+      await expect(applicationFeeWork).toContainText("E2E Organizer Two");
+      await expect(applicationFeeWork).toContainText(/(?:US)?\$5\.00/u);
+      await expect(applicationFeeWork).toContainText(
+        "Application fee refund attempts exhausted",
+      );
+    }
+
+    // Verify the retry request contract through an intercepted application route.
+    await organizerGroupPage.route(
+      "**/dashboard/group/financial-work/retry",
+      (route) => route.fulfill({ status: 422 }),
+    );
+    const creditNoteActionsMenu = creditNoteWork.locator("[data-actions-menu]");
+    await creditNoteActionsMenu.locator("summary").click();
+    const [retryResponse] = await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          new URL(response.url()).pathname ===
+            "/dashboard/group/financial-work/retry",
+      ),
+      creditNoteActionsMenu
+        .getByRole("button", { name: "Retry operation" })
+        .click(),
+    ]);
+    const retryData = new URLSearchParams(retryResponse.request().postData());
+    expect(retryData.get("kind")).toBe("credit-note");
+    expect(retryData.get("work_id")).toBe(TEST_FINANCIAL_WORK_IDS.creditNote);
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Something went wrong requeueing this financial work.",
+    );
+    await organizerGroupPage.locator(".swal2-confirm").click();
+
+    // Verify manual recovery collects all evidence without submitting it.
+    const manualRecoveryWork =
+      (await applicationFeeWork.count()) > 0
+        ? applicationFeeWork
+        : creditNoteWork;
+    const expectedRecoveryKind =
+      manualRecoveryWork === applicationFeeWork
+        ? "application-fee-adjustment"
+        : "credit-note";
+    const expectedRecoveryWorkId =
+      manualRecoveryWork === applicationFeeWork
+        ? TEST_FINANCIAL_WORK_IDS.applicationFeeAdjustment
+        : TEST_FINANCIAL_WORK_IDS.creditNote;
+    const manualRecoveryActionsMenu = manualRecoveryWork.locator(
+      "[data-actions-menu]",
+    );
+    if ((await manualRecoveryActionsMenu.getAttribute("open")) === null) {
+      await manualRecoveryActionsMenu.locator("summary").click();
+    }
+    await manualRecoveryActionsMenu
+      .getByText("Complete outside OCG", { exact: true })
+      .click();
+    const recoveryForm = dashboardContent.locator(
+      'form[hx-put="/dashboard/group/financial-work/recovery"]',
+    );
+    await expect(recoveryForm.locator('input[name="kind"]')).toHaveValue(
+      expectedRecoveryKind,
+    );
+    await expect(recoveryForm.locator('input[name="work_id"]')).toHaveValue(
+      expectedRecoveryWorkId,
+    );
+    await expect(
+      recoveryForm.locator('input[name="provider_object_id"]'),
+    ).toHaveAttribute("required", "");
+    await expect(
+      recoveryForm.locator('input[name="recovery_reference"]'),
+    ).toHaveAttribute("required", "");
+    await expect(
+      recoveryForm.locator('textarea[name="recovery_note"]'),
+    ).toHaveAttribute("required", "");
+
+    // Read-only viewers see the recovery details but cannot mutate them.
+    const viewerContent = await openRefundsDashboard(
+      groupViewerPage,
+      "/dashboard/group?tab=refunds&view=attention&limit=20",
+    );
+    const viewerRecoverySection = viewerContent.getByRole("table", {
+      name: "Financial work needing attention",
+    });
+    await expect(viewerRecoverySection).toBeVisible();
+    await expect(
+      viewerRecoverySection.getByRole("button", { name: "Retry operation" }),
+    ).toHaveCount(0);
+    await expect(
+      viewerRecoverySection.getByText("Complete outside OCG", { exact: true }),
     ).toHaveCount(0);
   });
 

@@ -265,13 +265,13 @@ insert into event_purchase (
     provider_payment_reference,
     refunded_at
 ) values
-    (2500, 'USD', :'durableEventID', :'durablePurchaseID', :'durableTicketTypeID', 'completed', 'Durable', :'userID', null, 'stripe', null, 'pi_durable', null),
-    (2500, 'USD', :'expiredPendingEventID', :'expiredPendingPurchaseID', :'expiredPendingTicketTypeID', 'pending', 'Expired', :'userID', current_timestamp - interval '1 minute', 'stripe', null, null, null),
-    (2500, 'USD', :'finalizedEventID', :'finalizedPurchaseID', :'finalizedTicketTypeID', 'refunded', 'Finalized', :'userID', null, 'stripe', null, 'pi_finalized', current_timestamp),
-    (2500, 'USD', :'pendingEventID', :'pendingPurchaseID', :'pendingTicketTypeID', 'pending', 'Pending', :'userID', current_timestamp + interval '30 minutes', 'stripe', null, null, null),
-    (2500, 'USD', :'providerPendingEventID', :'providerPendingPurchaseID', :'providerPendingTicketTypeID', 'pending', 'Provider', :'userID', current_timestamp - interval '1 minute', 'stripe', 'cs_pending_delete', null, null),
-    (2500, 'USD', :'purchaseDraftEventID', :'purchaseDraftPurchaseID', :'purchaseDraftTicketTypeID', 'completed', 'Draft', :'userID', null, 'stripe', null, 'pi_draft', null),
-    (2500, 'USD', :'recoveredEventID', :'recoveredPurchaseID', :'recoveredTicketTypeID', 'refunded', 'Recovered', :'userID', null, 'stripe', null, 'pi_recovered', current_timestamp);
+    (0, 'USD', :'durableEventID', :'durablePurchaseID', :'durableTicketTypeID', 'completed', 'Durable', :'userID', null, 'stripe', null, 'pi_durable', null),
+    (0, 'USD', :'expiredPendingEventID', :'expiredPendingPurchaseID', :'expiredPendingTicketTypeID', 'pending', 'Expired', :'userID', current_timestamp - interval '1 minute', 'stripe', null, null, null),
+    (0, 'USD', :'finalizedEventID', :'finalizedPurchaseID', :'finalizedTicketTypeID', 'refunded', 'Finalized', :'userID', null, 'stripe', null, 'pi_finalized', current_timestamp),
+    (0, 'USD', :'pendingEventID', :'pendingPurchaseID', :'pendingTicketTypeID', 'pending', 'Pending', :'userID', current_timestamp + interval '30 minutes', 'stripe', null, null, null),
+    (0, 'USD', :'providerPendingEventID', :'providerPendingPurchaseID', :'providerPendingTicketTypeID', 'pending', 'Provider', :'userID', current_timestamp - interval '1 minute', 'stripe', 'cs_pending_delete', null, null),
+    (0, 'USD', :'purchaseDraftEventID', :'purchaseDraftPurchaseID', :'purchaseDraftTicketTypeID', 'completed', 'Draft', :'userID', null, 'stripe', null, 'pi_draft', null),
+    (0, 'USD', :'recoveredEventID', :'recoveredPurchaseID', :'recoveredTicketTypeID', 'refunded', 'Recovered', :'userID', null, 'stripe', null, 'pi_recovered', current_timestamp);
 
 -- Durable refund that blocks deletion until provider work settles
 insert into event_purchase_refund (

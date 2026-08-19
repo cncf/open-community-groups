@@ -292,7 +292,8 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         venue_country_code: None,
         venue_country_name: None,
         venue_name: None,
-        venue_state: None,
+        venue_state_code: None,
+        venue_state_name: None,
         zip_code: None,
     }
 }

@@ -1,3 +1,5 @@
+-- Tests attaching checkout sessions to event purchases.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -94,7 +96,11 @@ values (
     :'groupCategoryID',
     'Payments Group',
     'payments-group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group')
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_test_group',
+        'seller_display_name', 'Checkout Session Fiscal Sponsor'
+    )
 );
 
 -- Event
@@ -156,36 +162,65 @@ insert into event_ticket_price_window (
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     event_id,
     event_ticket_type_id,
+    payment_provider_id,
+    provider_object_account_id,
+    seller_snapshot,
     status,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
     ticket_title,
-    user_id
+    user_id,
+    venue_snapshot
 ) values (
     :'pendingPurchaseID',
     2500,
+    'direct-charge',
+    'acct_attach',
     'USD',
     :'eventID',
     :'eventTicketTypeID',
+    'stripe',
+    'acct_attach',
+    '{"connected_account_id":"acct_attach","display_name":"Sponsor","provider":"stripe"}'::jsonb,
     'pending',
+    'inclusive',
+    'manual',
+    'professional-event-admission',
     'General admission',
-    :'userID'
+    :'userID',
+    '{}'::jsonb
 ), (
     :'completedPurchaseID',
-    2500,
+    0,
+    'ocg-free',
+    null,
     'USD',
     :'eventID',
     :'eventTicketTypeID',
+    null,
+    null,
+    null,
     'completed',
+    null,
+    null,
+    null,
     'General admission',
-    :'completedUserID'
+    :'completedUserID',
+    null
 );
 
 -- Completed purchase that must reject checkout-session attachment
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    charge_model,
+    connected_seller_id,
     currency_code,
     event_id,
     event_ticket_type_id,
@@ -195,10 +230,18 @@ insert into event_purchase (
 
     payment_provider_id,
     provider_checkout_session_id,
-    provider_checkout_url
+    provider_checkout_url,
+    provider_object_account_id,
+    seller_snapshot,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
 ) values (
     :'attachedPendingPurchaseID',
     2500,
+    'direct-charge',
+    'acct_attach',
     'USD',
     :'eventID',
     :'eventTicketTypeID',
@@ -208,7 +251,13 @@ insert into event_purchase (
 
     'stripe',
     'cs_existing',
-    'https://example.com/existing'
+    'https://example.com/existing',
+    'acct_attach',
+    '{"connected_account_id":"acct_attach","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
 );
 
 -- ============================================================================
@@ -221,6 +270,7 @@ select lives_ok(
         select attach_checkout_session_to_event_purchase(
             %L::uuid,
             'stripe',
+            'acct_attach',
             'cs_test_123',
             'https://example.com/checkout'
         )
@@ -254,6 +304,7 @@ select lives_ok(
         select attach_checkout_session_to_event_purchase(
             %L::uuid,
             'stripe',
+            'acct_attach',
             'cs_completed',
             'https://example.com/completed'
         )
@@ -281,6 +332,7 @@ select lives_ok(
         select attach_checkout_session_to_event_purchase(
             %L::uuid,
             'stripe',
+            'acct_attach',
             'cs_replacement',
             'https://example.com/replacement'
         )

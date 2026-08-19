@@ -151,6 +151,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "event_added",
     },
     AuditActionDefinition {
+        label: "Event application-fee recovery completed",
+        scopes: GROUP_SCOPES,
+        value: "event_application_fee_adjustment_recovery_completed",
+    },
+    AuditActionDefinition {
         label: "Event attendance canceled",
         scopes: GROUP_SCOPES,
         value: "event_attendee_attendance_canceled",
@@ -199,6 +204,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         label: "Event category updated",
         scopes: COMMUNITY_SCOPES,
         value: "event_category_updated",
+    },
+    AuditActionDefinition {
+        label: "Event credit note recovery completed",
+        scopes: GROUP_SCOPES,
+        value: "event_credit_note_recovery_completed",
     },
     AuditActionDefinition {
         label: "Event custom notification sent",

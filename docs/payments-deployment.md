@@ -10,11 +10,14 @@ and operational caveats.
 
 Once this setup is complete:
 
-- OCG can create Stripe Checkout sessions for paid event purchases.
-- OCG can verify Stripe webhook signatures.
-- Groups can store Stripe connected account IDs in group settings.
+- OCG can create direct-charge Stripe Checkout sessions for eligible paid
+  in-person and hybrid events with complete physical venues.
+- OCG can verify platform and connected-account webhook signatures separately.
+- Groups can select a fiscal sponsor or steward through its connected account.
 - Group administrators can configure paid-capable events and process
   refunds in OCG.
+- Attendees receive Stripe invoices and can access invoices and issued credit
+  notes from their user dashboard.
 
 Events with only free ticket types work when Stripe is not configured. Enrollment requires
 Stripe only when a configured or claim-time final price may be positive.
@@ -30,14 +33,27 @@ You need:
 - A public HTTPS URL for your OCG server.
 - A decision about whether this deployment is running in Stripe `test` mode or
   Stripe `live` mode.
+- Application-controlled, Standard-like connected accounts where the connected
+  account pays Stripe fees, Stripe collects requirements, Stripe assumes
+  ultimate liability for payment-related negative balances, and the sponsor has
+  full Dashboard access.
+- Active Stripe Tax settings, a head-office address, and applicable tax
+  registrations for each fiscal sponsor that uses automatic tax.
+- A Tax for ticket sales public-preview API version of `2026-03-25.preview` or
+  later. Manual-tax events instead select active Tax Rates owned by the fiscal
+  sponsor's connected account.
 
 Useful Stripe references:
 
-- [Platforms and marketplaces with Stripe Connect](https://docs.stripe.com/connect)
-- [How Connect works](https://docs.stripe.com/connect/how-connect-works)
-- [Use a prebuilt Stripe-hosted payment page](https://docs.stripe.com/payments/checkout)
+- [Account API reference](https://docs.stripe.com/api/accounts/object)
+- [Account controller properties](https://docs.stripe.com/connect/migrate-to-controller-properties)
 - [API keys](https://docs.stripe.com/keys)
+- [How Connect works](https://docs.stripe.com/connect/how-connect-works)
+- [Platforms and marketplaces with Stripe Connect](https://docs.stripe.com/connect)
+- [Product release phases](https://docs.stripe.com/release-phases)
 - [Receive Stripe events in your webhook endpoint](https://docs.stripe.com/webhooks)
+- [Tax for ticket sales](https://docs.stripe.com/tax/tax-for-tickets/integration-guide)
+- [Use a prebuilt Stripe-hosted payment page](https://docs.stripe.com/payments/checkout)
 
 ## OCG Configuration
 
@@ -50,8 +66,9 @@ payments:
   enabled: true
   provider: stripe
   mode: test
-  publishableKey: "pk_test_..."
+  connectedWebhookSecret: "whsec_..."
   secretKey: "sk_test_..."
+  ticketTaxApiVersion: "2026-07-29.preview"
   webhookSecret: "whsec_..."
   platformFeeBps: 0
 ```
@@ -61,10 +78,16 @@ A few notes about these values:
 - Set `enabled: true` to make payments available in OCG.
 - Set `provider: stripe` because OCG currently supports one configured payments
   provider at a time and Stripe is the only implemented provider.
-- Use `mode: test` with Stripe test keys.
-- Use `mode: live` only with live Stripe keys.
-- `publishableKey`, `secretKey`, and `webhookSecret` are all required when
-  payments are enabled.
+- Use `mode: test` with a Stripe test key.
+- Use `mode: live` only with a live Stripe key.
+- `secretKey`, `webhookSecret`, and `connectedWebhookSecret` are required when
+  payments are enabled. The two signing secrets must come from their respective
+  Stripe event destinations.
+- `ticketTaxApiVersion` is required when payments are enabled and is used for
+  automatic ticket tax and credit-note operations. Tax for ticket sales is in
+  public preview and requires `2026-03-25.preview` or later. This example pins
+  `2026-07-29.preview`; test the complete payment flow before changing it
+  because Stripe preview versions can contain breaking changes.
 - `platformFeeBps` is optional and defaults to `0` (no platform fee). See
   [Platform Fee](#platform-fee) for its semantics.
 
@@ -76,15 +99,22 @@ If you are not using the Helm chart, the equivalent `server.yml` section is:
 payments:
   provider: stripe
   mode: test
-  publishable_key: "pk_test_..."
+  connected_webhook_secret: "whsec_..."
   secret_key: "sk_test_..."
+  ticket_tax_api_version: "2026-07-29.preview"
   webhook_secret: "whsec_..."
   platform_fee_bps: 0
 ```
 
-The current server validates that `publishable_key`, `secret_key`, and
-`webhook_secret` are non-empty when Stripe payments are configured, and that
-`platform_fee_bps` does not exceed `10000`.
+The server validates that both webhook secrets, the API key, and the ticket Tax
+API version are non-empty when Stripe payments are configured. Stripe rejects
+unsupported API versions when OCG makes a request. Tax for ticket sales does
+not require an advance access request while it is in public preview; contact
+Stripe Support if a qualifying version returns an access or feature-disabled
+error.
+
+`platform_fee_bps` cannot exceed `9999`, because an application fee must remain
+strictly below a positive charge.
 
 ### Platform Fee
 
@@ -95,45 +125,44 @@ the listed ticket price.
 
 How the fee behaves:
 
-- The fee applies to the final charged amount after discounts, rounded down to
-  the nearest minor unit (for example, 250 bps on a 25.00 USD ticket collects
-  0.62 USD, since 62.5 cents rounds down to 62).
+- Checkout initially applies the fee to the discounted ticket amount. After
+  payment, OCG applies the basis points to Stripe's authoritative subtotal
+  excluding tax, rounds down, and returns any excess application fee to the
+  fiscal sponsor.
 - Each purchase snapshots the fee amount when its checkout hold is created.
   Changing `platform_fee_bps` affects only new purchases; existing holds and
   completed purchases keep their original fee.
 - Purchases with a zero final amount never collect a fee.
-- When a purchase that collected a fee is refunded through OCG, the platform
-  fee is refunded to the group as well, so the group is made whole for the
-  full refunded amount.
+- When a purchase is refunded through OCG, the remaining application fee is
+  returned to the fiscal sponsor and a credit note is linked to the existing
+  customer refund without creating another money movement.
 - Manual refund recovery records an externally arranged refund and does not
   call Stripe, so it does not return the collected application fee. Operators
   who want to return the fee for such refunds must reverse it directly in the
   Stripe Dashboard.
 
-Collecting application fees requires your Stripe Connect platform account to
-be eligible for application fees on destination charges.
+Application fees are collected on direct charges owned by the fiscal sponsor's
+connected account.
 
 Reference:
 [Collect fees with Stripe Connect](https://docs.stripe.com/connect/direct-charges#collect-fees).
 
 ## Stripe Dashboard Setup
 
-### Step 1: Collect the Correct API Keys
+### Step 1: Collect the Correct API Key
 
-In Stripe, open the Developers Dashboard and copy:
+In Stripe, open the Developers Dashboard and copy the secret key for the
+selected mode.
 
-- The publishable key for the selected mode.
-- The secret key for the selected mode.
+Stripe documents the secret key prefixes as:
 
-Stripe documents the key prefixes as:
-
-- `pk_test_...` and `sk_test_...` for test mode.
-- `pk_live_...` and `sk_live_...` for live mode.
+- `sk_test_...` for test mode.
+- `sk_live_...` for live mode.
 
 Reference:
 [API keys](https://docs.stripe.com/keys).
 
-### Step 2: Create the Webhook Endpoint
+### Step 2: Create Both Webhook Endpoints
 
 Register this endpoint in Stripe:
 
@@ -149,6 +178,16 @@ https://ocg.example.org/webhooks/payments
 
 The endpoint must be publicly reachable over HTTPS.
 
+Register a Connect event destination separately:
+
+```text
+https://{YOUR_OCG_BASE_URL}/webhooks/payments/connected
+```
+
+The platform route accepts only events without a connected-account scope. The
+Connect route requires Stripe's top-level connected account and uses a distinct
+signing secret. Do not reuse or swap their secrets.
+
 Reference:
 [Receive Stripe events in your webhook endpoint](https://docs.stripe.com/webhooks).
 
@@ -158,20 +197,31 @@ Set the webhook endpoint API version to `2024-10-28.acacia` or newer. OCG pins
 its API requests to that version; configuring the event destination version as
 well keeps the refund event names and payloads consistent.
 
-Configure the Stripe webhook endpoint to send only these events:
+Configure the connected-account event destination to send only these events:
 
 - `checkout.session.completed`
 - `checkout.session.expired`
+- `invoice.paid`
 - `refund.created`
 - `refund.failed`
 - `refund.updated`
 
-The checkout events complete purchases and expire seat holds. The refund events
-let OCG reconcile asynchronous provider refunds, finalize automatic refunds,
-and record terminal failures for manual recovery.
+Checkout events complete purchases or expire seat holds, invoice events attach
+financial documents, and refund events reconcile sponsor-funded refunds.
 
-Subscribing extra Stripe events is not recommended here because unsupported
-events are currently rejected by the webhook handler.
+Configure the platform-account endpoint to send:
+
+- `application_fee.created`
+
+Stripe creates direct-charge application fees asynchronously. OCG fulfills the
+paid Checkout without waiting for that object, then uses the platform event to
+attach the fee to its connected-account charge before fee adjustments run.
+Direct-charge Checkout, invoice, and refund events belong on the Connect
+destination.
+
+Subscribing extra events is not recommended. Valid platform events that OCG
+does not use are acknowledged and ignored; unsupported Connect events are
+rejected so an incomplete event subscription remains visible.
 
 References:
 
@@ -179,37 +229,46 @@ References:
 - [Refund webhook event update](https://docs.stripe.com/changelog/acacia/2024-10-28/refund-webhook-update)
 - [Fulfill orders](https://docs.stripe.com/checkout/fulfillment)
 - [How Checkout works](https://docs.stripe.com/payments/checkout/how-checkout-works)
+- [Create direct charges](https://docs.stripe.com/connect/direct-charges)
 - [Refund and cancel payments](https://docs.stripe.com/refunds)
 
 ### Step 4: Copy the Endpoint Signing Secret
 
-After creating the Stripe webhook endpoint, reveal its signing secret and store
-it in OCG as:
+After creating both event destinations, reveal their signing secrets and store
+them in OCG as:
 
 - Helm: `payments.webhookSecret`
 - Raw config: `payments.webhook_secret`
+- Helm Connect destination: `payments.connectedWebhookSecret`
+- Raw Connect destination: `payments.connected_webhook_secret`
 
 Stripe signing secrets start with `whsec_...`.
 
 Reference:
 [Resolve webhook signature verification errors](https://docs.stripe.com/webhooks/signature).
 
-## Connected Accounts For Groups
+## Fiscal Sponsors For Groups
 
 Enabling Stripe on the server does not automatically make every group payment-ready. Each group
-still needs its own Stripe connected account on the same Stripe Connect platform used by this
-OCG deployment.
+still needs a fiscal sponsor or steward with a compatible connected account on
+the same Stripe Connect platform. One sponsor account may support multiple
+groups.
+
+OCG supports application-controlled connected accounts created through the
+platform Dashboard. Account-controlled Standard accounts connected through
+OAuth are not supported.
 
 The expected flow is:
 
-1. A group administrator asks the platform administrator to create a Stripe
-   connected account for the group.
-2. The platform administrator creates that connected account and gives the
-   group administrator access to it in Stripe.
-3. The group administrator completes Stripe onboarding and payout details for
-   that connected account.
-4. The group administrator copies the `acct_...` connected account ID from
-   Stripe and saves it in OCG group settings.
+1. The group identifies a legal entity willing to act as seller and indirect-tax
+   filer.
+2. A platform administrator creates or opens the sponsor's
+   application-controlled, Standard-like account and verifies payments and the
+   required controller properties.
+3. The sponsor completes onboarding, invoice business details, tax
+   registrations, payout setup, and Dashboard access.
+4. The group saves the sponsor's legal seller name and `acct_...` account ID in
+   OCG group settings.
 
 That group-facing flow is documented in
 [docs/guides/payments-setup.md](guides/payments-setup.md).
@@ -221,11 +280,12 @@ during deployment.
 
 ### Webhook Route Registration
 
-OCG only mounts the payments webhook route when payments are enabled. The
-route is:
+OCG only mounts payment webhook routes when payments are enabled. The routes
+are:
 
 ```text
 /webhooks/payments
+/webhooks/payments/connected
 ```
 
 If Stripe payments are disabled, the route is not registered.
@@ -234,6 +294,23 @@ If Stripe payments are disabled, the route is not registered.
 
 OCG creates Stripe-hosted Checkout sessions on the server side and redirects
 attendees to Stripe Checkout for paid tickets.
+
+Every positive-total purchase is a direct charge in the snapshotted fiscal
+sponsor account. OCG requires an in-person or hybrid event with a complete
+physical venue and a ready sponsor. Each event uses automatic ticket tax,
+manual Tax Rates from the sponsor's connected account, or no tax collection.
+Virtual events remain free-only. Every paid
+hybrid ticket includes physical admission; it may also include virtual access,
+but cannot be virtual-only.
+
+Checkout requires the billing address, enables business tax-ID collection and
+post-payment invoices, and uses `txcd_50013001` for automatic professional-event
+admission. This classification covers in-person tickets and hybrid tickets that
+include physical admission. An event chooses automatic Stripe Tax, manual Stripe
+Tax Rates, or no tax collection. Automatic and manual modes may be inclusive
+or exclusive. Manual rates are selected from active definitions in
+the fiscal sponsor's connected account and are revalidated before Checkout.
+No-tax Checkout attaches no tax mechanism and must reconcile to zero tax.
 
 Intrinsically free tickets complete locally without a currency, provider
 session, webhook, or connected account. A positive base price reduced to zero
@@ -245,27 +322,47 @@ OCG currently restricts Stripe Checkout to card payments in code. This keeps
 the checkout flow aligned with the current webhook handling and avoids delayed
 payment methods that require async completion events.
 
+Automatic-tax ticket Products are immutable, seller-scoped resources keyed by
+their complete Product inputs. OCG revalidates a matching cached Product in
+Stripe before reuse and creates a replacement when its title, performance
+location, tax code, or provider state no longer matches. Older Products and
+their local cache records are retained intentionally; OCG does not archive
+them, so connected accounts should expect these resources to accumulate over
+time.
+
 Reference:
 [Create a Checkout Session](https://docs.stripe.com/api/checkout/sessions/create).
 
+The fiscal sponsor owns the Customer, PaymentIntent, Charge, invoice, credit
+note, refund, dispute, and Tax resources. Stripe charges its processing,
+Invoicing, and Tax fees to that account. Refunds and disputes debit the sponsor's
+connected account, while Stripe assumes ultimate liability when the account
+cannot repay a payment-related negative balance. The sponsor remains responsible
+for registrations, filing, and remittance. Stripe Tax calculation and reporting
+do not make Stripe or OCG the tax filer.
+
 ### Refund Recovery
 
-All provider-mediated refunds run through durable background work. HTTP handlers and verified
-webhooks only queue or update refund state; they do not call Stripe's refund API directly. OCG
-starts two provider refund workers and one stale-claim recovery worker. This same path handles
-approved attendee requests, organizer-initiated attendance cancellations, paid checkouts that can
-no longer be fulfilled, and automatic refunds from event cancellation.
+All provider-mediated refunds run through durable background work. HTTP handlers
+and verified webhooks only queue or update refund state; they do not call
+Stripe's refund API directly. OCG starts two provider refund workers and one
+payment recovery worker. The recovery worker sweeps abandoned refund,
+application-fee adjustment, and credit-note claims even when no payment provider
+is configured. The refund path handles approved attendee requests,
+organizer-initiated attendance cancellations, paid checkouts that can no longer
+be fulfilled, and automatic refunds from event cancellation.
 
 A late provider completion that cannot be fulfilled because its hold or offer
 expired, the offer was canceled, capacity changed, or event state changed is
 recorded and queued for an automatic full refund. It never creates attendance
 or revives the terminal offer.
 
-Workers look up an existing Stripe refund before creating one and reuse the purchase's stable
-idempotency key. Transient failures use up to ten claims with exponential backoff from one to
-thirty minutes. A claim left in `processing` for fifteen minutes is released by the recovery
-worker. If Stripe success was already persisted before interruption, recovery resumes local
-finalization without creating another refund.
+Workers look up an existing Stripe refund before creating one and reuse the
+purchase's stable idempotency key. Transient failures use up to ten claims with
+exponential backoff from one to thirty minutes. A claim left in `processing`
+for fifteen minutes is released by the payment recovery worker. If Stripe
+success was already persisted before interruption, refund recovery resumes
+local finalization without creating another refund.
 
 When this deployment has no payments provider configured, refund work remains queued and visible
 to organizers. It is not discarded or treated as complete.
@@ -277,6 +374,34 @@ releasing holds, and promoting queues independently of Stripe.
 OCG validates refund webhook amounts, currencies, and PaymentIntent identifiers
 against the durable purchase before accepting provider state changes. A refund
 event with copied or mismatched purchase metadata cannot finalize the purchase.
+
+Refunds are full only and are created in the snapshotted sponsor account. If
+the sponsor lacks funds, OCG retains the provider-pending state, keeps it
+visible in the group dashboard `Refunds` tab, and emits structured operator
+logs. OCG does not send a dedicated administrator notification or fund the
+sponsor account to accelerate the refund. Successful refunds queue the
+application-fee return and linked credit note as separately retryable work.
+
+Application-fee adjustments and credit notes stop after ten automatic attempts.
+The group dashboard `Refunds` tab then exposes each operation as financial work
+needing attention. An organizer with events write access can start another
+bounded retry cycle or record the operation as completed directly in Stripe.
+External completion captures the Stripe object ID, an independent recovery
+reference, and the evidence reviewed, then appends an event audit entry. Exact
+completion replays are idempotent; conflicting evidence is rejected.
+
+An abandoned application-fee adjustment or credit-note claim below ten
+attempts becomes retryable immediately with its existing idempotency key. It is
+resumable when a compatible provider is configured, but it is not shown as
+financial recovery work in the dashboard until all ten automatic attempts are
+exhausted. An abandoned tenth claim is marked failed for dashboard recovery,
+and its last provider error remains attached with an expiration notice that
+the provider outcome is unknown.
+
+OCG does not subscribe to, reconcile, or notify administrators about dispute
+events. The fiscal sponsor monitors and handles disputes entirely in Stripe,
+including evidence, balances, and any application-fee, invoice, or tax action.
+OCG does not change attendance automatically in response to a dispute.
 
 Stripe can report a refund as succeeded and later transition it to failed. When
 that happens after OCG has finalized the refund locally, OCG preserves the
@@ -333,22 +458,29 @@ card payments only when OCG creates Stripe Checkout sessions.
 
 1. Enable Stripe Connect on your Stripe platform account.
 2. Decide whether this OCG environment uses Stripe `test` or `live` mode.
-3. Copy the matching Stripe publishable and secret keys.
-4. Create a Stripe webhook endpoint pointing to
-   `https://{YOUR_OCG_BASE_URL}/webhooks/payments`.
-5. Set the webhook endpoint API version to `2024-10-28.acacia` or newer, then
-   subscribe it to `checkout.session.completed`, `checkout.session.expired`,
-   `refund.created`, `refund.failed`, and `refund.updated`.
-6. Copy the webhook signing secret into OCG config.
-7. Deploy OCG with `payments.enabled: true`.
-8. Verify the `Payments` section appears in group settings and the event editor
+3. Copy the matching Stripe secret key.
+4. Confirm a Tax for ticket sales public-preview API version of
+   `2026-03-25.preview` or later. Create active Tax Rate definitions in each
+   connected account that will use manual tax.
+5. Create the platform webhook at
+   `https://{YOUR_OCG_BASE_URL}/webhooks/payments` and the Connect destination
+   at `https://{YOUR_OCG_BASE_URL}/webhooks/payments/connected`.
+6. Subscribe the platform endpoint to `application_fee.created` and the Connect
+   destination to the Checkout completion/expiration, invoice, and refund
+   events listed above.
+7. Copy both distinct signing secrets and the pinned ticket-tax API version
+   into OCG config.
+8. Deploy OCG with `payments.enabled: true`.
+9. Verify the `Payments` section appears in group settings and the event editor
    `Tickets` tab is available.
-9. Create a Stripe connected account for a test group and give that group's
-   administrator access to it.
-10. Complete Stripe onboarding and payout setup for the test group's connected
-   account.
-11. Save the `acct_...` connected account ID in the test group's settings.
-12. Run a full paid-ticket flow in Stripe test mode before going live.
+10. Create or open an application-controlled, Standard-like fiscal-sponsor
+    account and verify its controller, payment, invoice, Tax, and payout
+    readiness.
+11. Save the sponsor's legal seller name and `acct_...` connected account ID
+    for two test groups.
+12. Run inclusive and exclusive test purchases, invoice delivery, a full
+    refund and credit note, and pending-refund handling before enabling live
+    sales.
 
 ## Troubleshooting
 
@@ -369,6 +501,7 @@ Check that:
 
 - The webhook endpoint secret in OCG matches the exact Stripe endpoint you
   created.
+- The platform and Connect signing secrets were not swapped.
 - You did not mix a Stripe CLI secret with a Dashboard-managed webhook secret.
 - Test and live secrets are not crossed.
 
@@ -395,13 +528,20 @@ Check that:
 
 - The platform administrator created a connected account for that group on the
   same Stripe Connect platform used by OCG.
-- The group administrator has completed onboarding and payout setup for that
-  connected account in Stripe.
-- The group saved a Stripe connected account ID in `acct_...` format.
+- The sponsor account reports charges enabled, onboarding details submitted,
+  application controller type, connected-account fee payment, Stripe
+  requirement collection, Stripe liability for payment-related negative
+  balances, and full Dashboard access.
+- The group saved the fiscal sponsor's legal seller name and a Stripe connected
+  account ID in `acct_...` format.
 - The connected account belongs to the same Stripe platform used by OCG.
 - The group settings were saved successfully.
-- Every positive final-price claim uses the same configured provider and
-  recipient currency context.
+- The event is in-person or hybrid with a complete physical venue and currency.
+- Every paid hybrid ticket includes physical admission and is not virtual-only.
+- Automatic Stripe Tax is active with a head-office address, applicable
+  registrations, and a supported public-preview API version; the event selects
+  active compatible Tax Rates from the sponsor account; or the event explicitly
+  uses no tax collection.
 
 If only free tickets are needed, remove positive current and future price
 windows and leave the event currency and discount codes empty.

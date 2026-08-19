@@ -80,7 +80,11 @@ values
         :'groupCategoryID',
         'Non Stripe Group',
         'non-stripe-group',
-        jsonb_build_object('provider', 'paypal', 'recipient_id', 'merchant_non_stripe')
+        jsonb_build_object(
+            'provider', 'paypal',
+            'recipient_id', 'merchant_non_stripe',
+            'seller_display_name', 'Non-Stripe Fiscal Sponsor'
+        )
     ),
     (
         :'validGroupID',
@@ -88,7 +92,11 @@ values
         :'groupCategoryID',
         'Valid Group',
         'valid-group',
-        jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_validate_context')
+        jsonb_build_object(
+            'provider', 'stripe',
+            'recipient_id', 'acct_validate_context',
+            'seller_display_name', 'Validate Context Fiscal Sponsor'
+        )
     );
 
 -- Events

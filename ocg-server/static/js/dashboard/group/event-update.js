@@ -9,6 +9,7 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
 import { initializeEventContributors } from "/static/js/dashboard/group/event-contributors.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
+import { initializeAutomaticTaxReadiness } from "/static/js/dashboard/event/automatic-tax-readiness.js";
 import "/static/js/dashboard/group/questions-editor.js";
 import {
   attachEventSaveAfterRequest,
@@ -184,6 +185,7 @@ export const initializeEventUpdatePage = (root = document) => {
     pageRoot,
     confirmMessage: "You have pending changes. If you continue, unsaved changes will be lost.",
   });
+  initializeAutomaticTaxReadiness({ pageRoot, displayActiveSection });
 
   initializeEventPreview({
     pageRoot,

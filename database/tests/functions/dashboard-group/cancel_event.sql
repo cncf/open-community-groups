@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -288,12 +288,66 @@ insert into event_purchase (
     provider_payment_reference,
     status,
     ticket_title,
+    user_id,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixture.amount_minor,
+    fixture.currency_code,
+    fixture.event_id,
+    fixture.event_purchase_id,
+    fixture.event_ticket_type_id,
+    fixture.payment_provider_id,
+    fixture.provider_payment_reference,
+    fixture.status,
+    fixture.ticket_title,
+    fixture.user_id,
+
+    case when fixture.amount_minor > 0 then 'direct-charge' else 'ocg-free' end,
+    case when fixture.amount_minor > 0 then 'acct_cancel_test' end,
+    case when fixture.amount_minor > 0 then 0 end,
+    case when fixture.amount_minor > 0 then 'ch_' || fixture.event_purchase_id end,
+    case when fixture.amount_minor > 0 then 'cs_' || fixture.event_purchase_id end,
+    case when fixture.amount_minor > 0 then 'acct_cancel_test' end,
+    case when fixture.amount_minor > 0 then fixture.amount_minor end,
+    case when fixture.amount_minor > 0 then '{}'::jsonb end,
+    case when fixture.amount_minor > 0 then fixture.amount_minor end,
+    case when fixture.amount_minor > 0 then 0 end,
+    case when fixture.amount_minor > 0 then 'inclusive' end,
+    case when fixture.amount_minor > 0 then 'manual' end,
+    case when fixture.amount_minor > 0 then 'professional-event-admission' end,
+    case when fixture.amount_minor > 0 then '{}'::jsonb end
+from (
+    values
+        (0, 'USD', :'eventID'::uuid, :'freePurchaseID'::uuid, :'ticketTypeID'::uuid, null::text, null::text, 'refund-requested', 'General admission', :'freeUserID'::uuid),
+        (2500, 'USD', :'eventID'::uuid, :'paidPurchaseID'::uuid, :'ticketTypeID'::uuid, 'stripe', 'pi_cancel_paid', 'refund-requested', 'General admission', :'paidUserID'::uuid),
+        (2500, 'USD', :'eventID'::uuid, :'rejectedPaidPurchaseID'::uuid, :'ticketTypeID'::uuid, 'stripe', 'pi_cancel_rejected', 'completed', 'General admission', :'rejectedPaidUserID'::uuid)
+) as fixture(
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_payment_reference,
+    status,
+    ticket_title,
     user_id
-) values
-    (0, 'USD', :'eventID', :'freePurchaseID', :'ticketTypeID', null, null, 'refund-requested', 'General admission', :'freeUserID'),
-    (2500, 'USD', :'eventInvalidPaymentID', :'invalidPaymentPurchaseID', :'invalidPaymentTicketTypeID', null, null, 'completed', 'Invalid payment', :'invalidPaymentUserID'),
-    (2500, 'USD', :'eventID', :'paidPurchaseID', :'ticketTypeID', 'stripe', 'pi_cancel_paid', 'refund-requested', 'General admission', :'paidUserID'),
-    (2500, 'USD', :'eventID', :'rejectedPaidPurchaseID', :'ticketTypeID', 'stripe', 'pi_cancel_rejected', 'completed', 'General admission', :'rejectedPaidUserID');
+);
 
 -- Pending free and paid attendee refund requests completed or queued by cancellation
 insert into event_refund_request (
@@ -360,31 +414,6 @@ select throws_ok(
     ),
     'event not found or inactive',
     'Should reject a completed past event'
-);
-
--- Should reject a paid purchase without provider refund references
-select throws_ok(
-    format(
-        $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
-        :'userID', :'groupID', :'eventInvalidPaymentID'
-    ),
-    'event has a paid purchase that is not ready for refund',
-    'Should reject a paid purchase without provider refund references'
-);
-
--- Should preserve event, attendee, and purchase state after refund validation fails
-select results_eq(
-    format($$
-        select e.canceled, ea.checked_in, ea.status, ep.status
-        from event e
-        join event_attendee ea using (event_id)
-        join event_purchase ep
-            on ep.event_id = ea.event_id
-            and ep.user_id = ea.user_id
-        where e.event_id = %L::uuid
-    $$, :'eventInvalidPaymentID'),
-    $$ values (false, true, 'confirmed'::text, 'completed'::text) $$,
-    'Should preserve event, attendee, and purchase state after refund validation fails'
 );
 
 -- Should mark as canceled and preserve publication metadata

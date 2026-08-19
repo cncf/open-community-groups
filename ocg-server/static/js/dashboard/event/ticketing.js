@@ -1,5 +1,42 @@
 import { getElementById } from "/static/js/common/dom.js";
 
+const PAID_EVENT_KINDS = new Set(["hybrid", "in-person"]);
+const PAID_VENUE_FIELDS = [
+  {
+    inputName: "venue_name",
+    message: "Paid tickets require a venue name.",
+    valueName: "venue_name",
+  },
+  {
+    inputName: "venue_address",
+    message: "Paid tickets require a venue address.",
+    valueName: "venue_address",
+  },
+  {
+    inputName: "venue_city",
+    message: "Paid tickets require a venue city.",
+    valueName: "venue_city",
+  },
+  {
+    inputName: "venue_zip_code",
+    message: "Paid tickets require a venue postal code.",
+    valueName: "venue_zip_code",
+  },
+  {
+    inputName: "venue_country_name",
+    message: "Paid tickets require a country.",
+    valueName: "venue_country_name",
+  },
+  {
+    inputName: "venue_country_code",
+    message: "Paid tickets require a country code to calculate taxes.",
+    valueName: "venue_country_code",
+  },
+];
+const PAID_VENUE_FIELD_NAMES = new Set(
+  PAID_VENUE_FIELDS.flatMap(({ inputName, valueName }) => [inputName, valueName]),
+);
+
 /**
  * Collects the shared event enrollment controls used across the form.
  * @param {Document|Element} [root=document] Root container
@@ -32,7 +69,7 @@ const resolveEventEnrollmentControls = (root = document) => ({
 /**
  * Synchronizes event enrollment controls and derived form state.
  * @param {Document|Element} [root=document] Root container
- * @returns {void}
+ * @returns {() => void} Enrollment state synchronization callback.
  */
 export function initializeEventEnrollmentState(root = document) {
   const {
@@ -46,6 +83,33 @@ export function initializeEventEnrollmentState(root = document) {
     waitlistToggleLabel,
   } = resolveEventEnrollmentControls(root);
   const ticketTypesEditor = ticketTypesRoot;
+
+  const syncPaidEventRequirements = () => {
+    const hasPositivePrices =
+      typeof ticketTypesEditor?.hasConfiguredPositivePrices === "function"
+        ? ticketTypesEditor.hasConfiguredPositivePrices()
+        : false;
+    const kindInput = getElementById(root, "kind_id");
+    const hasEligibleKind = PAID_EVENT_KINDS.has(kindInput?.value || "");
+
+    kindInput?.setCustomValidity(
+      hasPositivePrices && !hasEligibleKind ? "Paid tickets require an in-person or hybrid event." : "",
+    );
+
+    for (const requirement of PAID_VENUE_FIELDS) {
+      const input = root.querySelector(`[name="${requirement.inputName}"]`);
+      if (!input || typeof input.setCustomValidity !== "function") {
+        continue;
+      }
+
+      const requiresCompleteVenue = hasPositivePrices && hasEligibleKind;
+      const valueInput = root.querySelector(`[name="${requirement.valueName}"]`);
+      const hasValue = valueInput?.value.trim() !== "";
+
+      input.required = requiresCompleteVenue && requirement.inputName === requirement.valueName;
+      input.setCustomValidity(requiresCompleteVenue && !hasValue ? requirement.message : "");
+    }
+  };
 
   const syncPaymentCurrencyValidity = (hasTicketTypes) => {
     if (!paymentCurrencyInput) {
@@ -71,6 +135,7 @@ export function initializeEventEnrollmentState(root = document) {
         ? ticketTypesEditor.hasConfiguredTicketTypes()
         : false;
     syncPaymentCurrencyValidity(hasTicketTypes);
+    syncPaidEventRequirements();
 
     if (!toggleWaitlistEnabled || !waitlistEnabledInput) {
       return;
@@ -141,5 +206,12 @@ export function initializeEventEnrollmentState(root = document) {
     paymentCurrencyInput.addEventListener("change", syncEventEnrollmentState);
   }
 
+  root.addEventListener("input", (event) => {
+    if (PAID_VENUE_FIELD_NAMES.has(event.target?.name)) {
+      syncEventEnrollmentState();
+    }
+  });
+
   syncEventEnrollmentState();
+  return syncEventEnrollmentState;
 }

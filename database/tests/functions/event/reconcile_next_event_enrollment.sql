@@ -82,7 +82,7 @@ values (
     :'groupCategoryID',
     :'groupID',
     'Enrollment Reconciliation Group',
-    '{"provider": "stripe", "recipient_id": "acct_reconciliation_worker"}'::jsonb,
+    '{"provider": "stripe", "recipient_id": "acct_reconciliation_worker", "seller_display_name": "Worker Fiscal Sponsor"}'::jsonb,
     'enrollment-reconciliation-group'
 );
 

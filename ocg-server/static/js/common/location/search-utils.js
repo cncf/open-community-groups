@@ -13,6 +13,34 @@ export const parseCoordinate = (value) => {
 };
 
 /**
+ * Extracts the most specific matching ISO subdivision code from Nominatim address details.
+ * @param {Object} address Nominatim address details.
+ * @param {string} countryCode Selected ISO country code.
+ * @returns {string} Uppercase subdivision suffix, or an empty string.
+ */
+export const extractStateCode = (address = {}, countryCode = "") => {
+  const normalizedCountryCode = countryCode.trim().toUpperCase();
+  if (!normalizedCountryCode) return "";
+
+  return (
+    Object.entries(address)
+      .map(([key, value]) => {
+        const match = /^ISO3166-2-lvl(\d+)$/i.exec(key);
+        return {
+          level: match ? Number.parseInt(match[1], 10) : -1,
+          value: typeof value === "string" ? value.trim().toUpperCase() : "",
+        };
+      })
+      .filter(
+        ({ level, value }) => level >= 0 && value.startsWith(`${normalizedCountryCode}-`) && value.length > 3,
+      )
+      .sort((left, right) => right.level - left.level)
+      .map(({ value }) => value.slice(normalizedCountryCode.length + 1))
+      .find(Boolean) || ""
+  );
+};
+
+/**
  * Extracts structured address components from a Nominatim result.
  * @param {Object} result Nominatim search result object.
  * @returns {Object} Extracted address components.
@@ -30,6 +58,7 @@ export const extractAddress = (result) => {
   const state = addr.state || addr.province || addr.region || "";
   const country = addr.country || "";
   const countryCode = (addr.country_code || "").toUpperCase();
+  const stateCode = extractStateCode(addr, countryCode);
 
   return {
     venueName,
@@ -37,6 +66,7 @@ export const extractAddress = (result) => {
     venueCity: city,
     venueZipCode: zipCode,
     state,
+    stateCode,
     country,
     countryCode,
     latitude: Number.parseFloat(result.lat),

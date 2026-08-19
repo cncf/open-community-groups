@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,6 +22,9 @@ select plan(4);
 \set recentPurchaseID 'd4030000-0000-0000-0000-000000000007'
 \set recentRefundID 'd4030000-0000-0000-0000-000000000008'
 \set staleClaimID 'd4030000-0000-0000-0000-000000000009'
+\set staleFailedClaimID 'd4030000-0000-0000-0000-000000000019'
+\set staleFailedPurchaseID 'd4030000-0000-0000-0000-000000000020'
+\set staleFailedRefundID 'd4030000-0000-0000-0000-000000000021'
 \set stalePurchaseID 'd4030000-0000-0000-0000-000000000010'
 \set staleRefundID 'd4030000-0000-0000-0000-000000000011'
 \set staleSucceededClaimID 'd4030000-0000-0000-0000-000000000012'
@@ -108,14 +111,30 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
-) values
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending'),
-    (2500, 'USD', :'eventID', :'recentPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_recent'),
-    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale'),
-    (2500, 'USD', :'eventID', :'staleSucceededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_succeeded');
+    provider_payment_reference,
 
--- Refund rows covering stale unknown, stale succeeded, recent, and non-processing states
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+) values
+    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending', 'direct-charge', 'acct_refunds', 0, 'ch_stale_pending', 'cs_stale_pending', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'recentPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_recent', 'direct-charge', 'acct_refunds', 0, 'ch_stale_recent', 'cs_stale_recent', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'staleFailedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_failed', 'direct-charge', 'acct_refunds', 0, 'ch_stale_failed', 'cs_stale_failed', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale', 'direct-charge', 'acct_refunds', 0, 'ch_stale', 'cs_stale', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'staleSucceededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_succeeded', 'direct-charge', 'acct_refunds', 0, 'ch_stale_succeeded', 'cs_stale_succeeded', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb);
+
+-- Refund rows covering prior failure, stale outcomes, recent, and non-processing states
 insert into event_purchase_refund (
     amount_minor,
     attempt_count,
@@ -129,13 +148,15 @@ insert into event_purchase_refund (
     payment_provider_id,
     status,
 
+    failure_message,
     provider_refund_id,
     provider_refunded_at
 ) values
-    (2500, 0, null, null, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending', 'event-cancellation', 'stripe', 'provider-pending', null, null),
-    (2500, 1, :'recentClaimID', current_timestamp - interval '14 minutes', 'USD', :'recentPurchaseID', :'recentRefundID', 'refund-recent', 'event-cancellation', 'stripe', 'processing', null, null),
-    (2500, 1, :'staleClaimID', current_timestamp - interval '16 minutes', 'USD', :'stalePurchaseID', :'staleRefundID', 'refund-stale', 'event-cancellation', 'stripe', 'processing', null, null),
-    (2500, 1, :'staleSucceededClaimID', current_timestamp - interval '16 minutes', 'USD', :'staleSucceededPurchaseID', :'staleSucceededRefundID', 'refund-stale-succeeded', 'event-cancellation', 'stripe', 'processing', 're_stale_succeeded', current_timestamp);
+    (2500, 0, null, null, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending', 'event-cancellation', 'stripe', 'provider-pending', null, null, null),
+    (2500, 1, :'recentClaimID', current_timestamp - interval '14 minutes', 'USD', :'recentPurchaseID', :'recentRefundID', 'refund-recent', 'event-cancellation', 'stripe', 'processing', null, null, null),
+    (2500, 2, :'staleFailedClaimID', current_timestamp - interval '16 minutes', 'USD', :'staleFailedPurchaseID', :'staleFailedRefundID', 'refund-stale-failed', 'event-cancellation', 'stripe', 'processing', 'provider unavailable', null, null),
+    (2500, 1, :'staleClaimID', current_timestamp - interval '16 minutes', 'USD', :'stalePurchaseID', :'staleRefundID', 'refund-stale', 'event-cancellation', 'stripe', 'processing', null, null, null),
+    (2500, 1, :'staleSucceededClaimID', current_timestamp - interval '16 minutes', 'USD', :'staleSucceededPurchaseID', :'staleSucceededRefundID', 'refund-stale-succeeded', 'event-cancellation', 'stripe', 'processing', null, 're_stale_succeeded', current_timestamp);
 
 -- ============================================================================
 -- TESTS
@@ -144,25 +165,34 @@ insert into event_purchase_refund (
 -- Should release every claim older than the processing timeout
 select is(
     requeue_stale_event_purchase_refund_claims(),
-    2,
+    3,
     'Should release every claim older than the processing timeout'
 );
 
--- Should requeue a stale unknown outcome as retryable failure
+-- Should leave recent and non-processing refunds unchanged
 select results_eq(
     format($$
-        select
-            claim_id,
-            claimed_at,
-            failure_message,
-            next_attempt_at = current_timestamp,
-            status,
-            terminal_failure
+        select event_purchase_refund_id, claim_id, status
+        from event_purchase_refund
+        where event_purchase_refund_id in (%L::uuid, %L::uuid)
+        order by event_purchase_refund_id
+    $$, :'pendingRefundID', :'recentRefundID'),
+    format($$ values
+        (%L::uuid, null::uuid, 'provider-pending'::text),
+        (%L::uuid, %L::uuid, 'processing'::text)
+    $$, :'pendingRefundID', :'recentRefundID', :'recentClaimID'),
+    'Should leave recent and non-processing refunds unchanged'
+);
+
+-- Should preserve an existing provider failure for reconciliation
+select results_eq(
+    format($$
+        select claim_id, claimed_at, failure_message, status
         from event_purchase_refund
         where event_purchase_refund_id = %L::uuid
-    $$, :'staleRefundID'),
-    $$ values (null::uuid, null::timestamptz, 'refund worker claim expired'::text, true, 'provider-failed'::text, false) $$,
-    'Should requeue a stale unknown outcome as retryable failure'
+    $$, :'staleFailedRefundID'),
+    $$ values (null::uuid, null::timestamptz, 'provider unavailable'::text, 'provider-failed'::text) $$,
+    'Should preserve an existing provider failure for reconciliation'
 );
 
 -- Should preserve a recorded provider success for local finalization
@@ -182,19 +212,21 @@ select results_eq(
     'Should preserve a recorded provider success for local finalization'
 );
 
--- Should leave recent and non-processing refunds unchanged
+-- Should requeue a stale unknown outcome as retryable failure
 select results_eq(
     format($$
-        select event_purchase_refund_id, claim_id, status
+        select
+            claim_id,
+            claimed_at,
+            failure_message,
+            next_attempt_at = current_timestamp,
+            status,
+            terminal_failure
         from event_purchase_refund
-        where event_purchase_refund_id in (%L::uuid, %L::uuid)
-        order by event_purchase_refund_id
-    $$, :'pendingRefundID', :'recentRefundID'),
-    format($$ values
-        (%L::uuid, null::uuid, 'provider-pending'::text),
-        (%L::uuid, %L::uuid, 'processing'::text)
-    $$, :'pendingRefundID', :'recentRefundID', :'recentClaimID'),
-    'Should leave recent and non-processing refunds unchanged'
+        where event_purchase_refund_id = %L::uuid
+    $$, :'staleRefundID'),
+    $$ values (null::uuid, null::timestamptz, 'refund worker claim expired'::text, true, 'provider-failed'::text, false) $$,
+    'Should requeue a stale unknown outcome as retryable failure'
 );
 
 -- ============================================================================

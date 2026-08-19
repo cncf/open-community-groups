@@ -1412,7 +1412,7 @@ test.describe("event attendance", () => {
       await expect(refundButton).toContainText("Refund rejected");
       await expect(refundButton).toBeDisabled();
       await expect(rejectionReason).toHaveText(
-        "Reason: The request falls outside the refund policy window.",
+        "The request falls outside the refund policy window.",
       );
       await expect(getLeaveButton(pending1Page)).toBeHidden();
     });

@@ -5,7 +5,9 @@ create or replace function validate_event_ticketing_payload(
     p_payment_currency_code text,
     p_payment_recipient jsonb,
     p_ticket_types jsonb,
-    p_validate_payment_configuration boolean default true
+    p_validate_payment_configuration boolean default true,
+    p_event_id uuid default null,
+    p_event_payload jsonb default null
 )
 returns void as $$
 declare
@@ -33,7 +35,9 @@ begin
                 p_configured_provider,
                 v_paid_capable,
                 p_payment_currency_code,
-                p_payment_recipient
+                p_payment_recipient,
+                p_event_id,
+                p_event_payload
             );
         end if;
     end if;

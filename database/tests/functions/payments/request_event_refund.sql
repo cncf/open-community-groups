@@ -1,3 +1,5 @@
+-- Tests requesting event purchase refunds.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -318,8 +320,51 @@ insert into event_purchase (
     user_id,
 
     payment_provider_id,
-    provider_payment_reference
-) values (
+    provider_payment_reference,
+
+    charge_model,
+    connected_seller_id,
+    final_platform_fee_amount_minor,
+    provider_charge_id,
+    provider_checkout_session_id,
+    provider_object_account_id,
+    provider_total_minor,
+    seller_snapshot,
+    subtotal_excluding_tax_minor,
+    tax_amount_minor,
+    tax_behavior,
+    tax_calculation_mode,
+    tax_classification,
+    venue_snapshot
+)
+select
+    fixtures.event_purchase_id::uuid,
+    fixtures.amount_minor,
+    fixtures.created_at,
+    fixtures.currency_code,
+    fixtures.event_id::uuid,
+    fixtures.event_ticket_type_id::uuid,
+    fixtures.status,
+    fixtures.ticket_title,
+    fixtures.user_id::uuid,
+    coalesce(fixtures.payment_provider_id, 'stripe'),
+    coalesce(fixtures.provider_payment_reference, 'pi_' || fixtures.event_purchase_id),
+
+    'direct-charge',
+    'acct_refunds',
+    case when fixtures.status = 'completed' then 0 end,
+    case when fixtures.status = 'completed' then 'ch_' || fixtures.event_purchase_id end,
+    case when fixtures.status = 'completed' then 'cs_' || fixtures.event_purchase_id end,
+    'acct_refunds',
+    case when fixtures.status = 'completed' then fixtures.amount_minor end,
+    '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb,
+    case when fixtures.status = 'completed' then fixtures.amount_minor end,
+    case when fixtures.status = 'completed' then 0 end,
+    'inclusive',
+    'manual',
+    'professional-event-admission',
+    '{}'::jsonb
+from (values (
     :'purchaseCanceledID',
     2500,
     now(),
@@ -391,6 +436,18 @@ insert into event_purchase (
     :'requesterID',
     null,
     null
+)) as fixtures (
+    event_purchase_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+    payment_provider_id,
+    provider_payment_reference
 );
 
 -- ============================================================================
