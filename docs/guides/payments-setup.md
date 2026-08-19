@@ -130,9 +130,6 @@ details.
 You need administrator access to the Stripe Dashboard for the Stripe Connect
 platform account used by the OCG deployment.
 
-Decide whether you are working in a sandbox or in live mode. Complete and
-validate the whole process in a sandbox first, then repeat it in live mode.
-
 OCG only supports connected accounts with a Standard-like controller
 configuration:
 
@@ -143,12 +140,6 @@ configuration:
   negative balance.
 - The fiscal sponsor has access to the full Stripe Dashboard.
 
-Do not connect an existing account through OAuth. OCG requires an
-application-controlled account created from the platform.
-
-!> Double-check that the Dashboard shows the intended platform account and
-environment (sandbox or live mode) before creating anything.
-
 ### Step 1: Create the Connected Account
 
 The connected account must belong to the fiscal sponsor's legal entity. Do not
@@ -158,11 +149,12 @@ to an unrelated seller.
 1. Sign in to the [Stripe Dashboard](https://dashboard.stripe.com/).
 2. Select the Stripe Connect platform account used by the OCG deployment.
 3. Open `Connect` -> `Connected accounts` and select `Create`.
-4. On the `What would you like this account to do?` screen, select
-   `Accept payments from their own customers`, Stripe's merchant
-   configuration, and nothing else. Leave `Receive transfers to their Stripe
-   balance` unselected: OCG creates direct charges for the fiscal sponsor and
-   does not use transfers or the recipient configuration.
+4. On the `What would you like this account to do?` screen:
+   - Select `Accept payments from their own customers`, Stripe's merchant
+     configuration, and nothing else.
+   - Leave `Receive transfers to their Stripe balance` unselected: OCG creates
+     direct charges for the fiscal sponsor and does not use transfers or the
+     recipient configuration.
 5. On the `Edit account properties` screen, set every property to its required
    value. The `Stripe` Dashboard access option gives the fiscal sponsor the
    full Stripe Dashboard; do not pick `Express` or `None`.
@@ -176,18 +168,18 @@ to an unrelated seller.
    | Requirement collection | Stripe |
 
 6. On the `Create account` review screen, check the capabilities, account
-   properties, and legal details. Under `All capabilities requested`, confirm
-   that `Card payments` is listed: OCG currently creates card-only Stripe
-   Checkout sessions. Make sure `Country` and `Business type` match the fiscal
-   sponsor's legal registration; pick `Individual` only if the sponsor legally
-   operates as an individual, and pick the matching Stripe business type for a
-   company, nonprofit, or other legal entity.
+   properties, and legal details:
+   - Under `All capabilities requested`, confirm that `Card payments` is
+     listed: OCG currently creates card-only Stripe Checkout sessions.
+   - Make sure `Country` and `Business type` match the fiscal sponsor's legal
+     registration. Pick `Individual` only if the sponsor legally operates as
+     an individual; for a company, nonprofit, or other legal entity, pick the
+     matching Stripe business type.
 7. When everything looks right, select `Create`.
 
-!> OCG rejects accounts that deviate from this configuration. Platform-paid
-fees, platform negative-balance liability, Express or no Dashboard access, or
-platform-managed requirement collection all fail the fiscal-sponsor readiness
-check.
+!> OCG verifies that the account is ready to accept charges and that it keeps
+the required account properties above. Accounts that deviate from that
+configuration fail the fiscal-sponsor readiness check.
 
 ### Step 2: Hand Off Setup to the Fiscal Sponsor
 
@@ -255,8 +247,9 @@ The platform administrator should then open the connected account in the
 Stripe Dashboard and check that no onboarding or verification actions remain.
 
 ?> Account onboarded only confirms the onboarding flow itself. Payment,
-payout, invoice, and Stripe Tax readiness still need to be verified before the
-account is used for paid events.
+payout, and invoice readiness still need to be verified before the account is
+used for paid events, along with Stripe Tax readiness when events use
+automatic tax.
 
 ### Step 5: Enable Stripe Tax for the Fiscal Sponsor
 
@@ -282,39 +275,19 @@ Stripe may offer pay-as-you-go and monthly pricing. Tax activity is billed to
 the connected account, so the sponsor should review the available plans and
 understand the applicable charges.
 
-#### Set the Preset Product Category
+#### Add Tax Registrations
 
-During Stripe Tax setup, open `Edit preset product category` and select
-`General - Services` (`txcd_20030000`).
-
-This fallback only applies to products without a specific tax code. OCG
-assigns the professional-event admission code `txcd_50013001` directly to the
-Stripe Products it creates for event tickets.
-
-#### Add Test Tax Registrations
-
-In a sandbox, add test registrations for the locations your test events will
-use:
-
-1. Confirm that the connected account's head office address is correct.
-2. Select `Add a test tax registration`.
-3. Under `Choose a location`, pick a location relevant to the event flow you
-   are testing.
-4. Complete the registration flow.
-5. Repeat for every location the planned test events need.
-
-Test registrations let you preview Stripe Tax calculation and collection in a
-sandbox; they are not real registrations with a tax authority.
-
-!> In live mode, add or copy a registration only after the fiscal sponsor has
-determined that it must collect tax in that location and has registered with
-the relevant tax authority. Neither Stripe nor OCG makes that determination
-for the sponsor.
+Stripe Tax only calculates and collects tax in the locations where the
+connected account has an active registration. The sponsor must add the
+registrations that reflect where it is registered to collect tax and the
+jurisdictions applicable to its event locations, as described in
+[Complete Stripe Onboarding and Payout Details](#step-2-complete-stripe-onboarding-and-payout-details).
 
 ### Next Steps
 
-Once the account is onboarded and Stripe Tax is configured, copy its
-`acct_...` identifier and save the fiscal sponsor's legal name and account ID
+Once the account is onboarded, and Stripe Tax is configured if events will use
+automatic tax, copy its `acct_...` identifier and save the fiscal sponsor's
+legal name and account ID
 in OCG group settings, following
 [Copy the Stripe Account ID](#step-3-copy-the-stripe-account-id) and
 [Save the Fiscal Sponsor in OCG](#step-4-save-the-fiscal-sponsor-in-ocg)
@@ -369,8 +342,7 @@ For automatic tax, configure each fiscal sponsor's connected account in
 Stripe:
 
 1. Activate Stripe Tax.
-2. Set the head-office address and the default product tax code to
-   `txcd_20030000` (`General - Services`).
+2. Set the head-office address.
 3. In a sandbox, add every registration applicable to the locations used by
    test events.
 4. Before live sales, add the registrations that reflect where the fiscal
