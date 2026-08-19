@@ -154,30 +154,6 @@ class DiscountCodesEditor extends TicketingEditorBase {
   }
 
   /**
-   * Resolves the external count element id for this editor.
-   * @returns {string}
-   */
-  get _countElementId() {
-    return "discount-codes-count";
-  }
-
-  /**
-   * Resolves the singular row count label.
-   * @returns {string}
-   */
-  get _countLabel() {
-    return "discount code";
-  }
-
-  /**
-   * Resolves the plural row count label.
-   * @returns {string}
-   */
-  get _countLabelPlural() {
-    return "discount codes";
-  }
-
-  /**
    * Replaces serialized discount rows before normalization runs.
    * @param {Array<object>} discountCodes Serialized discount rows
    * @returns {void}

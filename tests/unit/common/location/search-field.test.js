@@ -3,7 +3,10 @@ import { expect } from "@open-wc/testing";
 import "/static/js/common/location/search-field.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("location-search-field", () => {
@@ -124,7 +127,9 @@ describe("location-search-field", () => {
   it("ignores aborted searches without replacing the existing search state", async () => {
     // Render the field and seed existing search state.
     const element = await renderField();
-    element._searchResults = [{ place_id: 42, display_name: "Existing result" }];
+    element._searchResults = [
+      { place_id: 42, display_name: "Existing result" },
+    ];
     element._searchError = "Previous error";
 
     // Mock an aborted Nominatim request.
@@ -138,7 +143,9 @@ describe("location-search-field", () => {
     await element._performSearch("Málaga");
 
     // Aborted searches preserve previous results and clear loading state.
-    expect(element._searchResults).to.deep.equal([{ place_id: 42, display_name: "Existing result" }]);
+    expect(element._searchResults).to.deep.equal([
+      { place_id: 42, display_name: "Existing result" },
+    ]);
     expect(element._searchError).to.equal("Previous error");
     expect(element._isSearching).to.equal(false);
     expect(element._abortController).to.equal(null);
@@ -214,8 +221,12 @@ describe("location-search-field", () => {
     expect(element._countryCodeValue).to.equal("ES");
     expect(element._stateCodeValue).to.equal("MA");
     expect(element._latitudeValue).to.equal("36.7213");
-    expect(document.getElementById("venue-city-field")?.value).to.equal("Málaga");
-    expect(document.getElementById("venue-country-field")?.value).to.equal("Spain");
+    expect(document.getElementById("venue-city-field")?.value).to.equal(
+      "Málaga",
+    );
+    expect(document.getElementById("venue-country-field")?.value).to.equal(
+      "Spain",
+    );
     expect(selectedEvents).to.deep.equal([
       {
         venueName: "Málaga",
@@ -253,21 +264,49 @@ describe("location-search-field", () => {
     await element.updateComplete;
 
     // Verify the generated form controls expose the complete submitted venue.
-    expect(element.querySelector('[name="venue_name"]')?.value).to.equal("FYCMA");
+    expect(element.querySelector('[name="venue_name"]')?.value).to.equal(
+      "FYCMA",
+    );
     expect(element.querySelector('[name="venue_address"]')?.value).to.equal(
       "Av. de José Ortega y Gasset, 201",
     );
-    expect(element.querySelector('[name="venue_city"]')?.value).to.equal("Málaga");
-    expect(element.querySelector('[name="venue_state_name"]')?.value).to.equal("Andalusia");
-    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal("MA");
-    expect(element.querySelector('[name="venue_country"]')?.value).to.equal("Spain");
-    expect(element.querySelector('[name="venue_country_code"]')?.value).to.equal("ES");
-    expect(element.querySelector('[name="venue_zip_code"]')?.value).to.equal("29006");
-    expect(element.querySelector('[name="venue_latitude"]')?.value).to.equal("36.7213");
-    expect(element.querySelector('[name="venue_longitude"]')?.value).to.equal("-4.4214");
-    expect(element.textContent.replace(/\s+/g, " ")).to.contain(
-      "For events with paid tickets, state/province and country codes are required to calculate taxes.",
+    expect(element.querySelector('[name="venue_city"]')?.value).to.equal(
+      "Málaga",
     );
+    expect(element.querySelector('[name="venue_state_name"]')?.value).to.equal(
+      "Andalusia",
+    );
+    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal(
+      "MA",
+    );
+    expect(element.querySelector('[name="venue_country"]')?.value).to.equal(
+      "Spain",
+    );
+    expect(
+      element.querySelector('[name="venue_country_code"]')?.value,
+    ).to.equal("ES");
+    expect(element.querySelector('[name="venue_zip_code"]')?.value).to.equal(
+      "29006",
+    );
+    expect(element.querySelector('[name="venue_latitude"]')?.value).to.equal(
+      "36.7213",
+    );
+    expect(element.querySelector('[name="venue_longitude"]')?.value).to.equal(
+      "-4.4214",
+    );
+    const normalizedText = element.textContent.replace(/\s+/g, " ");
+    const stateCodeInput = element.querySelector('[name="venue_state_code"]');
+    const stateCodeLabel = element.querySelector(
+      `label[for="${stateCodeInput.id}"]`,
+    );
+    expect(stateCodeLabel.textContent.trim()).to.equal("State/Province Code");
+    expect(normalizedText).to.contain(
+      "State or province code used to calculate taxes.",
+    );
+    expect(normalizedText).to.contain(
+      "Country Code * (required for paid tickets)",
+    );
+    expect(normalizedText).to.contain("Country code used to calculate taxes.");
     expect(element.textContent).not.to.contain("ISO state or province code.");
     expect(element.textContent).not.to.contain("ISO country code.");
   });
@@ -293,8 +332,12 @@ describe("location-search-field", () => {
     await element.updateComplete;
 
     // Manual name edits invalidate the previously selected codes.
-    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal("");
-    expect(element.querySelector('[name="venue_country_code"]')?.value).to.equal("");
+    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal(
+      "",
+    );
+    expect(
+      element.querySelector('[name="venue_country_code"]')?.value,
+    ).to.equal("");
   });
 
   it("preserves manual state-code overrides until the country or location changes", async () => {
@@ -313,7 +356,9 @@ describe("location-search-field", () => {
     countryInput.value = "Portugal";
     countryInput.dispatchEvent(new Event("input", { bubbles: true }));
     await element.updateComplete;
-    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal("");
+    expect(element.querySelector('[name="venue_state_code"]')?.value).to.equal(
+      "",
+    );
 
     // Selecting another location replaces the code with its own best derivation.
     element._selectLocation({

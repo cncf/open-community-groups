@@ -160,7 +160,7 @@ export const getLocationTextFieldDefinitions = (state) => {
       fieldName: state.stateCodeFieldName,
       handlerName: "stateCode",
       label: "State/Province Code",
-      legend: "",
+      legend: "State or province code used to calculate taxes.",
       value: state.stateCodeValue,
     },
     {
@@ -169,7 +169,8 @@ export const getLocationTextFieldDefinitions = (state) => {
       fieldName: state.stateCodeFieldName ? state.countryCodeFieldName : "",
       handlerName: "countryCode",
       label: "Country Code",
-      legend: "",
+      legend: "Country code used to calculate taxes.",
+      requiredForPaidTickets: true,
       value: state.countryCodeValue,
     },
   ];

@@ -107,7 +107,16 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
 
   return html`
     <div class="${field.className}">
-      <label for="${inputId}" class="form-label">${field.label}</label>
+      <label for="${inputId}" class="form-label">
+        ${field.label}
+        ${
+          field.requiredForPaidTickets
+            ? html`<span class="asterisk">
+                * <sup class="text-xs font-normal">(required for paid tickets)</sup>
+              </span>`
+            : ""
+        }
+      </label>
       <div class="mt-2">
         <input
           type="text"
@@ -161,16 +170,6 @@ export const renderLocationTextFields = (state) => {
           onInput: state.onInput,
         }),
       )}
-      ${
-        state.stateCodeFieldName && state.countryCodeFieldName
-          ? html`
-              <p class="form-legend col-span-full">
-                For events with paid tickets, state/province and country codes are required to calculate
-                taxes.
-              </p>
-            `
-          : ""
-      }
     </div>
   `;
 };

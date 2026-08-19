@@ -59,7 +59,7 @@ export const initializeAutomaticTaxReadiness = ({ pageRoot, displayActiveSection
       return;
     }
 
-    status.textContent = message;
+    status.textContent = capitalizeFirstLetter(message);
     if (saved) {
       panel.classList.remove(...STATUS_STYLE_CLASSES);
       panel.classList.add(...STATUS_STATE_CLASSES[state]);
@@ -138,9 +138,7 @@ export const initializeAutomaticTaxReadiness = ({ pageRoot, displayActiveSection
       const result = await response.json();
 
       if (response.ok && result.status === "ready") {
-        const stateDetail = result.state_code ? ` using state code ${result.state_code}` : "";
-        const cacheDetail = result.cached ? " A matching saved provider location was reused." : "";
-        setStatus(`Automatic tax is ready for this venue${stateDetail}.${cacheDetail}`, "ready");
+        setStatus("Automatic tax is ready.", "ready");
         return;
       }
 
@@ -170,3 +168,6 @@ export const initializeAutomaticTaxReadiness = ({ pageRoot, displayActiveSection
 
   syncVisibility();
 };
+
+const capitalizeFirstLetter = (message) =>
+  message ? `${message.charAt(0).toUpperCase()}${message.slice(1)}` : message;

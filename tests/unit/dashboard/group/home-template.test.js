@@ -81,4 +81,12 @@ describe("dashboard group home template", () => {
     );
     expect(template).to.include("<user-info-modal></user-info-modal>");
   });
+
+  it("loads group settings form validation", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      '<script type="module" src="/static/js/dashboard/group/settings-form.js"></script>',
+    );
+  });
 });

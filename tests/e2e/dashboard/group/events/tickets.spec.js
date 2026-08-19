@@ -336,9 +336,37 @@ test.describe("group dashboard event Tickets tab", () => {
       "A previously selected Tax Rate is inactive, missing, or belongs to another account.",
     );
 
+    // Complete the paid-event location requirements before testing the stale rate.
+    await openDetailsSection(organizerGroupPage);
+    const eventKind = organizerGroupPage.locator("#kind_id");
+    await expect(eventKind).toHaveJSProperty(
+      "validationMessage",
+      "Paid tickets require an in-person or hybrid event.",
+    );
+    await eventKind.selectOption("hybrid");
+    await expect(eventKind).toHaveValue("hybrid");
+    await expect(eventKind).toHaveJSProperty("validationMessage", "");
+    await organizerGroupPage
+      .locator('button[data-section="date-venue"]')
+      .click({ force: true });
+    await fillEventVenue(organizerGroupPage, {
+      address: "123 Tax Rate Way",
+      city: "New York",
+      countryCode: "US",
+      countryName: "United States",
+      latitude: "40.7128",
+      longitude: "-74.006",
+      name: "Tax Rate Hall",
+      state: "New York",
+      stateCode: "NY",
+      zipCode: "10001",
+    });
+
     // Expose the save action and verify paid tickets reject the stale selection.
+    await openDetailsSection(organizerGroupPage);
     const eventName = organizerGroupPage.locator("#name");
     await eventName.fill(`${await eventName.inputValue()} updated`);
+    await openPaymentsSection(organizerGroupPage);
     const updateEventButton = organizerGroupPage.locator(
       "#update-event-button",
     );
@@ -364,6 +392,7 @@ test.describe("group dashboard event Tickets tab", () => {
     expect(interceptedUpdateRequest).toBeNull();
 
     // Select the provider replacement and verify the submitted form contract.
+    await openPaymentsSection(organizerGroupPage);
     await manualTaxRateSelect.selectOption("txr_e2e_replacement");
     await expect(manualTaxRateSelect).toHaveValue("txr_e2e_replacement");
     await expect(manualTaxRateSelect).toHaveAttribute(
@@ -371,18 +400,17 @@ test.describe("group dashboard event Tickets tab", () => {
       "manual_tax_rate_ids[]",
     );
     await expect(unavailableRateMessage).toBeHidden();
-    await expect(taxCalculationMode).toHaveJSProperty(
-      "validationMessage",
-      "",
-    );
+    await expect(taxCalculationMode).toHaveJSProperty("validationMessage", "");
 
     const [updateRequest] = await Promise.all([
       organizerGroupPage.waitForRequest(
         (request) =>
           request.method() === "PUT" &&
-          request.url().includes(
-            `/dashboard/group/events/${TEST_TICKETING_EVENTS.manualTaxUnavailable.id}/update`,
-          ),
+          request
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_TICKETING_EVENTS.manualTaxUnavailable.id}/update`,
+            ),
       ),
       updateEventButton.click(),
     ]);
@@ -514,6 +542,8 @@ test.describe("group dashboard event Tickets tab", () => {
       .filter({ hasText: "General admission" });
     await purchasedTierRow.getByTitle("Delete").click();
     await expect(purchasedTierRow).toHaveCount(0);
-    await expect(organizerGroupPage.locator("#update-event-button")).toBeEnabled();
+    await expect(
+      organizerGroupPage.locator("#update-event-button"),
+    ).toBeEnabled();
   });
 });

@@ -184,8 +184,15 @@ describe("dashboard group event add template", () => {
       template.indexOf('id="manual-tax-rates"'),
     );
     expect(template).to.include(
-      'class="col-span-full 2xl:col-span-2 2xl:col-start-1"> <label for="tax_calculation_mode"',
+      'class="col-span-full 2xl:col-span-2 2xl:col-start-1"> <div class="flex flex-wrap items-center gap-2"> <label for="tax_calculation_mode"',
     );
+    expect(template).to.include(
+      'class="btn-primary-outline btn-mini" data-automatic-tax-readiness-action="check"',
+    );
+    expect(template).to.include(
+      'aria-label="Save the event before checking whether its venue is ready for automatic tax." title="Save the event before checking whether its venue is ready for automatic tax." disabled>Check readiness</button>',
+    );
+    expect(template).not.to.include("Automatic tax readiness</div>");
   });
 
   it("does not expose payment recipient details", async () => {
@@ -212,11 +219,12 @@ describe("dashboard group event add template", () => {
     expect(ticketForm).to.include(">Ticket Types</div>");
     expect(
       ticketForm.match(
-        /class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"/gu,
+        /class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"/gu,
       ),
     ).to.have.length(2);
-    expect(ticketForm).to.include('id="ticket-types-count"');
-    expect(ticketForm).to.include('id="discount-codes-count"');
+    expect(ticketForm).not.to.include("icon-add-circle");
+    expect(ticketForm).not.to.include('id="ticket-types-count"');
+    expect(ticketForm).not.to.include('id="discount-codes-count"');
     expect(ticketForm).not.to.include(
       "Payments are not configured for this group",
     );

@@ -237,9 +237,18 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       'data-automatic-tax-readiness-action="check" title="Check the saved venue with the automatic-tax provider"',
     );
+    expect(template).to.include(
+      'aria-describedby="automatic-tax-readiness-status"',
+    );
+    expect(template).to.include(
+      "{% if event_read_only %}disabled{% endif %}>Check readiness</button>",
+    );
     expect(template).to.include("Check readiness</button>");
     expect(template).to.include(
       '<div class="col-span-full hidden rounded-md border px-4 py-3" data-automatic-tax-readiness',
+    );
+    expect(template).to.include(
+      'id="automatic-tax-readiness-status" class="text-sm/6" data-automatic-tax-readiness-role="status" role="status" aria-live="polite"',
     );
   });
 
@@ -276,11 +285,12 @@ describe("dashboard group event update template", () => {
     );
     expect(
       ticketForm.match(
-        /class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"/gu,
+        /class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"/gu,
       ),
     ).to.have.length(2);
-    expect(ticketForm).to.include('id="ticket-types-count"');
-    expect(ticketForm).to.include('id="discount-codes-count"');
+    expect(ticketForm).not.to.include("icon-add-circle");
+    expect(ticketForm).not.to.include('id="ticket-types-count"');
+    expect(ticketForm).not.to.include('id="discount-codes-count"');
   });
 
   it("offers manual-tax and no-tax modes with event-level selections", async () => {
@@ -294,7 +304,10 @@ describe("dashboard group event update template", () => {
     );
     expect(template).to.include('<option value="none"');
     expect(template).to.include(
-      "{% if self.uses_no_ticket_tax() %}hidden{% endif %}",
+      '<div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">',
+    );
+    expect(template).to.include(
+      "{% if ticketing_read_only || self.uses_no_ticket_tax() %}disabled{% endif %}",
     );
     expect(template).to.include(
       "data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'",

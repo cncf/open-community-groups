@@ -121,47 +121,6 @@ describe("ticketing editors", () => {
     expect(uiRoot.hasConfiguredTicketTypes()).to.equal(true);
   });
 
-  it("keeps ticket and discount counts synchronized with editor rows", async () => {
-    const ticketCount = document.createElement("div");
-    ticketCount.id = "ticket-types-count";
-    const discountCount = document.createElement("div");
-    discountCount.id = "discount-codes-count";
-    document.body.append(ticketCount, discountCount);
-
-    const ticketTypesUiRoot = mountTicketTypesUi();
-    const discountCodesUiRoot = mountDiscountCodesUi();
-    await ticketTypesUiRoot.updateComplete;
-    await discountCodesUiRoot.updateComplete;
-
-    expect(ticketCount.textContent).to.equal("0 ticket types");
-    expect(discountCount.textContent).to.equal("0 discount codes");
-
-    ticketTypesUiRoot.setAttribute(
-      "ticket-types",
-      JSON.stringify([{ title: "General admission", price_windows: [{ amount_minor: 0 }] }]),
-    );
-    discountCodesUiRoot.setAttribute(
-      "discount-codes",
-      JSON.stringify([{ code: "WELCOME", kind: "percentage", percentage: 10, title: "Welcome" }]),
-    );
-    await ticketTypesUiRoot.updateComplete;
-    await discountCodesUiRoot.updateComplete;
-
-    expect(ticketCount.textContent).to.equal("1 ticket type");
-    expect(discountCount.textContent).to.equal("1 discount code");
-
-    discountCodesUiRoot.setAttribute(
-      "discount-codes",
-      JSON.stringify([
-        { code: "EARLY", kind: "percentage", percentage: 15, title: "Early bird" },
-        { code: "WELCOME", kind: "percentage", percentage: 10, title: "Welcome" },
-      ]),
-    );
-    await discountCodesUiRoot.updateComplete;
-
-    expect(discountCount.textContent).to.equal("2 discount codes");
-  });
-
   it("keeps seats and status in dedicated table cells on small layouts", async () => {
     // Prepare ui root for keeping seats and status in dedicated table cells.
     const uiRoot = mountTicketTypesUi();

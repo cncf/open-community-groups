@@ -220,7 +220,9 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include(
       '<caption class="border-b border-amber-200 bg-amber-50 px-3 py-3 text-left text-amber-900 xl:px-5">',
     );
-    expect(template).to.include('class="mt-5 mb-10 overflow-x-auto"');
+    expect(template).to.include(
+      'class="relative mt-8 mb-10 overflow-x-auto lg:overflow-x-visible"',
+    );
     expect(template).to.include("Financial work needs attention");
     expect(template).to.include("Automatic retries are exhausted.");
     expect(template).to.include(
@@ -247,17 +249,24 @@ describe("dashboard group refunds list template", () => {
     expect(template).not.to.include(
       '<th scope="col" class="px-4 py-3 text-right">Actions</th>',
     );
-    expect(template).to.include(
-      'class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-top"',
-    );
+    expect(
+      template.match(
+        /class="odd:bg-white even:bg-stone-50\/50 border-b border-stone-200 align-middle"/g,
+      ),
+    ).to.have.lengthOf(2);
     expect(template).to.include('<span class="sr-only">Actions</span>');
     expect(template).to.include('title = "Last failure"');
-    expect(template).to.include("{{ recovery.failure_message }}");
     expect(template).to.include(
-      'class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-500"',
+      "{{ recovery.failure_message }} ({{ recovery.attempt_count }} attempt{% if recovery.attempt_count != 1 %}s{% endif %})",
     );
     expect(template).to.include(
-      "Needs retry ({{ recovery.attempt_count }} attempt{% if recovery.attempt_count != 1 %}s{% endif %})",
+      'class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-red-800"',
+    );
+    expect(template).to.include(
+      '<span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">Needs retry</span>',
+    );
+    expect(template).not.to.include(
+      '<span class="block font-semibold text-stone-500">Attempts</span>',
     );
     expect(template).to.include(
       'class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800"',
@@ -281,17 +290,6 @@ describe("dashboard group refunds list template", () => {
   it("shows retry counts only for exhausted status badges", async () => {
     const template = normalizeWhitespace(await loadTemplate());
 
-    expect(template).to.include('title = "Retry attempts"');
-    expect(template).to.include('aria-label="View refund retry attempts"');
-    expect(template).to.include(
-      "refund-attempts-mobile-{{ refund.event_purchase_id }}",
-    );
-    expect(template).to.include(
-      "refund-attempts-{{ refund.event_purchase_id }}",
-    );
-    expect(template).to.include(
-      'class="size-2.5 rounded-full border-2 border-white bg-red-500"',
-    );
     expect(
       template.match(/attempt_count > 0 && refund\.can_retry\(\)/g),
     ).to.have.lengthOf(2);
@@ -300,9 +298,10 @@ describe("dashboard group refunds list template", () => {
         /\{\{ refund\.status\.label\(\) \}\} \(\{\{ attempt_count \}\} attempt/g,
       ),
     ).to.have.lengthOf(2);
-    expect(template).to.include(
-      "{% if attempt_count <= 0 || !refund.can_retry() %}hidden{% endif %}",
-    );
+    expect(template).not.to.include('title = "Retry attempts"');
+    expect(template).not.to.include("refund-attempts");
+    expect(template).not.to.include("attempt_count <= 0");
+    expect(template).not.to.include("!refund.can_retry()");
     expect(template).not.to.include('class="mt-2 text-xs text-stone-600"');
   });
 

@@ -920,9 +920,7 @@
               <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
             </div>
 
-            <div class="col-span-full 2xl:col-span-2
-                        {% if self.uses_no_ticket_tax() %}hidden{% endif %}"
-                 data-tax-control="behavior">
+            <div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">
               <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
               <div class="mt-2">
                 <select id="tax_behavior"
@@ -1039,27 +1037,14 @@
           {% endif -%}
         </p>
         <div class="mt-10">
-          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div id="ticket-types-count"
-                 class="text-sm font-semibold text-stone-700"
-                 aria-live="polite"
-                 aria-atomic="true">
-              {% if let Some(ticket_types) = &event.ticket_types -%}
-                {{ ticket_types.len() }} ticket type{% if ticket_types.len() != 1 %}s{% endif %}
-              {% else -%}
-                0 ticket types
-              {% endif -%}
-            </div>
+          <div class="flex justify-end">
             <button id="add-ticket-type-button"
                     type="button"
-                    class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                    class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
                     aria-label="Add ticket type"
                     {% if ticketing_read_only %}
                       disabled title="Ticket settings are currently read-only."
-                    {% endif %}>
-              <div class="svg-icon size-4 icon-add-circle"></div>
-              Add ticket type
-            </button>
+                    {% endif %}>Add ticket type</button>
           </div>
           {# djlint:off #}
           <ticket-types-editor id="ticket-types-ui" class="mt-5 block space-y-4" data-disabled="{{ ticketing_read_only }}" {% if ticketing_free_only %}free-only{% endif %} ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
@@ -1075,27 +1060,14 @@
             uses, or total redemptions.
           </p>
           <div class="mt-10">
-            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div id="discount-codes-count"
-                   class="text-sm font-semibold text-stone-700"
-                   aria-live="polite"
-                   aria-atomic="true">
-                {% if let Some(discount_codes) = &event.discount_codes -%}
-                  {{ discount_codes.len() }} discount code{% if discount_codes.len() != 1 %}s{% endif %}
-                {% else -%}
-                  0 discount codes
-                {% endif -%}
-              </div>
+            <div class="flex justify-end">
               <button id="add-discount-code-button"
                       type="button"
-                      class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                      class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
                       aria-label="Add discount code"
                       {% if ticketing_read_only %}
                         disabled title="Ticket settings are currently read-only."
-                      {% endif %}>
-                <div class="svg-icon size-4 icon-add-circle"></div>
-                Add discount code
-              </button>
+                      {% endif %}>Add discount code</button>
             </div>
             {# djlint:off #}
             <discount-codes-editor id="discount-codes-ui" class="mt-5 block space-y-4" data-disabled="{{ ticketing_read_only }}" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>

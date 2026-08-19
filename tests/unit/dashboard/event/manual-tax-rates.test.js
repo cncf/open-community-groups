@@ -138,6 +138,7 @@ describe("manual Stripe Tax Rates", () => {
     expect(fetchMock.calls[0][1].headers.get("X-OCG-Fetch")).to.equal("true");
     expect(controls.fieldset.hidden).to.equal(false);
     expect(controls.select.querySelector('option[value="txr_state"]')).to.exist;
+    expect(controls.select.querySelector('option[value=""]').disabled).to.equal(true);
     expect(controls.select.multiple).to.equal(false);
     expect(controls.select.disabled).to.equal(false);
     expect(controls.select.textContent).to.include("State sales tax — 8.875%");

@@ -21,19 +21,25 @@ const mountReadiness = ({ saved = true } = {}) => {
       </select>
       <input name="venue_address" value="123 Example Street">
       <location-search-field></location-search-field>
-      ${saved ? '<button type="button" data-automatic-tax-readiness-action="check">Check readiness</button>' : ""}
-      <section
-        class="${saved ? "hidden" : ""}"
-        data-automatic-tax-readiness
-        data-saved="${saved}"
-        ${saved ? 'data-readiness-url="/dashboard/group/events/event-id/automatic-tax/readiness"' : ""}
-      >
-        ${saved ? '<button type="button" data-automatic-tax-readiness-action="review-state" hidden>Review State code</button>' : ""}
-        <p data-automatic-tax-readiness-role="status" role="status" aria-live="polite">
-          ${saved ? "" : "Save the event before checking readiness."}
-        </p>
-        ${saved ? '<a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds" data-automatic-tax-readiness-role="manual-tax-help" hidden>Learn how to configure manual tax</a>' : ""}
-      </section>
+      <button
+        type="button"
+        data-automatic-tax-readiness-action="check"
+        ${saved ? "" : 'aria-label="Save the event before checking whether its venue is ready for automatic tax." disabled'}
+      >Check readiness</button>
+      ${
+        saved
+          ? `<section
+              class="hidden"
+              data-automatic-tax-readiness
+              data-saved="true"
+              data-readiness-url="/dashboard/group/events/event-id/automatic-tax/readiness"
+            >
+              <button type="button" data-automatic-tax-readiness-action="review-state" hidden>Review State code</button>
+              <p data-automatic-tax-readiness-role="status" role="status" aria-live="polite"></p>
+              <a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds" data-automatic-tax-readiness-role="manual-tax-help" hidden>Learn how to configure manual tax</a>
+            </section>`
+          : ""
+      }
     </main>
   `;
 
@@ -42,14 +48,22 @@ const mountReadiness = ({ saved = true } = {}) => {
   shadowRoot.innerHTML = '<input name="venue_state_code">';
 
   return {
-    check: document.querySelector('[data-automatic-tax-readiness-action="check"]'),
+    check: document.querySelector(
+      '[data-automatic-tax-readiness-action="check"]',
+    ),
     locationField,
-    manualTaxHelp: document.querySelector('[data-automatic-tax-readiness-role="manual-tax-help"]'),
+    manualTaxHelp: document.querySelector(
+      '[data-automatic-tax-readiness-role="manual-tax-help"]',
+    ),
     mode: document.querySelector('[name="tax_calculation_mode"]'),
     panel: document.querySelector("[data-automatic-tax-readiness]"),
-    review: document.querySelector('[data-automatic-tax-readiness-action="review-state"]'),
+    review: document.querySelector(
+      '[data-automatic-tax-readiness-action="review-state"]',
+    ),
     stateCode: shadowRoot.querySelector('[name="venue_state_code"]'),
-    status: document.querySelector('[data-automatic-tax-readiness-role="status"]'),
+    status: document.querySelector(
+      '[data-automatic-tax-readiness-role="status"]',
+    ),
   };
 };
 
@@ -64,16 +78,27 @@ describe("automatic tax readiness", () => {
     resetDom();
   });
 
-  it("checks persisted data and announces ready cache responses", async () => {
+  it("checks persisted data and announces a simple ready message", async () => {
     const controls = mountReadiness();
     fetchMock = mockFetch({
-      response: readinessResponse({ cached: true, state_code: "MA", status: "ready" }),
+      response: readinessResponse({
+        cached: true,
+        state_code: "MA",
+        status: "ready",
+      }),
     });
-    initializeAutomaticTaxReadiness({ pageRoot: document.body, displayActiveSection: () => {} });
+    initializeAutomaticTaxReadiness({
+      pageRoot: document.body,
+      displayActiveSection: () => {},
+    });
 
     controls.check.click();
     expect(controls.check.textContent).to.equal("Check readiness");
-    expect(controls.panel.classList.contains("border-stone-300")).to.equal(true);
+    expect(controls.check.disabled).to.equal(true);
+    expect(controls.check.getAttribute("aria-busy")).to.equal("true");
+    expect(controls.panel.classList.contains("border-stone-300")).to.equal(
+      true,
+    );
     expect(controls.panel.classList.contains("bg-stone-50")).to.equal(true);
     expect(controls.panel.classList.contains("text-stone-700")).to.equal(true);
     await waitForMicrotask();
@@ -81,25 +106,34 @@ describe("automatic tax readiness", () => {
     expect(fetchMock.calls).to.have.length(1);
     expect(fetchMock.calls[0][1].method).to.equal("POST");
     expect(controls.status.getAttribute("aria-live")).to.equal("polite");
-    expect(controls.status.textContent).to.include("state code MA");
-    expect(controls.status.textContent).to.include("reused");
+    expect(controls.status.textContent).to.equal("Automatic tax is ready.");
     expect(controls.check.disabled).to.equal(false);
+    expect(controls.check.hasAttribute("aria-busy")).to.equal(false);
     expect(controls.check.textContent).to.equal("Check readiness");
     expect(controls.panel.classList.contains("hidden")).to.equal(false);
-    expect(controls.panel.classList.contains("border-green-800")).to.equal(true);
+    expect(controls.panel.classList.contains("border-green-800")).to.equal(
+      true,
+    );
     expect(controls.panel.classList.contains("bg-green-100")).to.equal(true);
   });
 
   it("marks readiness stale after a relevant unsaved change", async () => {
     const controls = mountReadiness();
     fetchMock = mockFetch({
-      response: readinessResponse({ cached: false, state_code: null, status: "ready" }),
+      response: readinessResponse({
+        cached: false,
+        state_code: null,
+        status: "ready",
+      }),
     });
-    initializeAutomaticTaxReadiness({ pageRoot: document.body, displayActiveSection: () => {} });
+    initializeAutomaticTaxReadiness({
+      pageRoot: document.body,
+      displayActiveSection: () => {},
+    });
 
-    document.querySelector('[name="venue_address"]').dispatchEvent(
-      new Event("input", { bubbles: true, composed: true }),
-    );
+    document
+      .querySelector('[name="venue_address"]')
+      .dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     controls.check.click();
     await waitForMicrotask();
 
@@ -117,7 +151,7 @@ describe("automatic tax readiness", () => {
         {
           code: "state_code_invalid",
           fields: ["venue_state_code"],
-          message: "The state code ZZ is invalid for ES.",
+          message: "the state code ZZ is invalid for ES.",
           status: "not_ready",
         },
         { ok: false, status: 422 },
@@ -132,12 +166,16 @@ describe("automatic tax readiness", () => {
     await waitForMicrotask();
     expect(controls.review.hidden).to.equal(false);
     expect(controls.check.textContent).to.equal("Check readiness");
-    expect(controls.status.textContent).to.equal("The state code ZZ is invalid for ES.");
+    expect(controls.status.textContent).to.equal(
+      "The state code ZZ is invalid for ES.",
+    );
 
     controls.review.click();
     await waitForMicrotask();
     expect(displayedSections).to.deep.equal(["date-venue"]);
-    expect(controls.locationField.shadowRoot.activeElement).to.equal(controls.stateCode);
+    expect(controls.locationField.shadowRoot.activeElement).to.equal(
+      controls.stateCode,
+    );
   });
 
   it("offers manual-tax guidance for unsupported venue countries", async () => {
@@ -154,12 +192,17 @@ describe("automatic tax readiness", () => {
         { ok: false, status: 422 },
       ),
     });
-    initializeAutomaticTaxReadiness({ pageRoot: document.body, displayActiveSection: () => {} });
+    initializeAutomaticTaxReadiness({
+      pageRoot: document.body,
+      displayActiveSection: () => {},
+    });
 
     controls.check.click();
     await waitForMicrotask();
 
-    expect(controls.status.textContent).to.include("Select Manual Stripe Tax Rates instead");
+    expect(controls.status.textContent).to.include(
+      "Select Manual Stripe Tax Rates instead",
+    );
     expect(controls.manualTaxHelp.hidden).to.equal(false);
     expect(controls.manualTaxHelp.getAttribute("href")).to.equal(
       "/docs#/guides/event-operations?id=tickets-discounts-and-refunds",
@@ -174,7 +217,10 @@ describe("automatic tax readiness", () => {
         throw new Error("Provider unavailable");
       },
     });
-    initializeAutomaticTaxReadiness({ pageRoot: document.body, displayActiveSection: () => {} });
+    initializeAutomaticTaxReadiness({
+      pageRoot: document.body,
+      displayActiveSection: () => {},
+    });
 
     controls.check.click();
     await waitForMicrotask();
@@ -182,20 +228,43 @@ describe("automatic tax readiness", () => {
     expect(controls.status.textContent).to.equal(
       "Automatic tax readiness could not be confirmed. Try again later.",
     );
-    expect(controls.panel.classList.contains("border-amber-600")).to.equal(true);
+    expect(controls.panel.classList.contains("border-amber-600")).to.equal(
+      true,
+    );
     expect(controls.panel.classList.contains("bg-amber-50")).to.equal(true);
     expect(controls.panel.classList.contains("text-amber-900")).to.equal(true);
     expect(controls.check.disabled).to.equal(false);
+    expect(controls.check.hasAttribute("aria-busy")).to.equal(false);
   });
 
-  it("hides the control outside automatic mode and keeps add-page guidance", () => {
-    const controls = mountReadiness({ saved: false });
-    initializeAutomaticTaxReadiness({ pageRoot: document.body, displayActiveSection: () => {} });
+  it("hides the saved-event action outside automatic mode", () => {
+    const controls = mountReadiness();
+    initializeAutomaticTaxReadiness({
+      pageRoot: document.body,
+      displayActiveSection: () => {},
+    });
 
-    expect(controls.status.textContent).to.include("Save the event");
-    expect(controls.check).to.equal(null);
+    expect(controls.check.classList.contains("hidden")).to.equal(false);
     controls.mode.value = "manual";
     controls.mode.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(controls.check.classList.contains("hidden")).to.equal(true);
     expect(controls.panel.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("renders a disabled add-page action with save guidance", () => {
+    const controls = mountReadiness({ saved: false });
+    initializeAutomaticTaxReadiness({
+      pageRoot: document.body,
+      displayActiveSection: () => {},
+    });
+
+    expect(controls.check.disabled).to.equal(true);
+    expect(controls.check.getAttribute("aria-label")).to.equal(
+      "Save the event before checking whether its venue is ready for automatic tax.",
+    );
+    controls.mode.value = "manual";
+    controls.mode.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(controls.check.classList.contains("hidden")).to.equal(true);
   });
 });

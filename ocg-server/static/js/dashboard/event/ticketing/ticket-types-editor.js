@@ -158,30 +158,6 @@ class TicketTypesEditor extends TicketingEditorBase {
   }
 
   /**
-   * Resolves the external count element id for this editor.
-   * @returns {string}
-   */
-  get _countElementId() {
-    return "ticket-types-count";
-  }
-
-  /**
-   * Resolves the singular row count label.
-   * @returns {string}
-   */
-  get _countLabel() {
-    return "ticket type";
-  }
-
-  /**
-   * Resolves the plural row count label.
-   * @returns {string}
-   */
-  get _countLabelPlural() {
-    return "ticket types";
-  }
-
-  /**
    * Returns whether the editor currently has any configured ticket rows.
    * @returns {boolean}
    */
