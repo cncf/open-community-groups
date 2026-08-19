@@ -11,11 +11,7 @@ const rateResponse = (rates, { ok = true, status = 200 } = {}) => ({
   json: async () => rates,
 });
 
-const mountControls = ({
-  disabled = false,
-  mode = "automatic",
-  selectedRateIds = [],
-} = {}) => {
+const mountControls = ({ disabled = false, mode = "automatic", selectedRateIds = [] } = {}) => {
   document.body.innerHTML = `
     <form id="event-form">
       <div data-tax-control="behavior">
@@ -101,16 +97,14 @@ describe("manual Stripe Tax Rates", () => {
 
     const formData = new FormData(controls.form);
     expect(formData.get("manual_tax_rate_ids_present")).to.equal(null);
-    expect(formData.getAll("manual_tax_rate_ids[]")).to.deep.equal([
-      "txr_state",
-    ]);
+    expect(formData.getAll("manual_tax_rate_ids[]")).to.deep.equal(["txr_state"]);
     expect(controls.select.disabled).to.equal(true);
     expect(controls.select.value).to.equal("txr_state");
     expect(controls.state.hidden).to.equal(false);
+    expect(controls.state.classList.contains("border-stone-200")).to.equal(true);
+    expect(controls.state.classList.contains("bg-stone-50")).to.equal(true);
     expect(controls.state.classList.contains("text-stone-600")).to.equal(true);
-    expect(controls.state.textContent).to.equal(
-      "Manual Tax Rate selection is currently read-only.",
-    );
+    expect(controls.state.textContent).to.equal("Manual Tax Rate selection is currently read-only.");
   });
 
   it("lazy-loads compatible account rates when manual mode is selected", async () => {
@@ -142,9 +136,7 @@ describe("manual Stripe Tax Rates", () => {
     expect(controls.select.multiple).to.equal(false);
     expect(controls.select.disabled).to.equal(false);
     expect(controls.select.textContent).to.include("State sales tax — 8.875%");
-    expect(controls.select.textContent).to.include(
-      "Tax included in the ticket price",
-    );
+    expect(controls.select.textContent).to.include("Tax included in the ticket price");
     expect(controls.state.hidden).to.equal(true);
     expect(controls.state.textContent).to.equal("");
   });
@@ -179,21 +171,15 @@ describe("manual Stripe Tax Rates", () => {
     initializeManualTaxRates(document);
     await waitForMicrotask();
 
-    expect(
-      controls.select.querySelector('option[value="txr_inclusive"]').selected,
-    ).to.equal(true);
+    expect(controls.select.querySelector('option[value="txr_inclusive"]').selected).to.equal(true);
     controls.behavior.value = "exclusive";
     controls.behavior.dispatchEvent(new Event("change", { bubbles: true }));
     await waitForMicrotask();
 
     expect(fetchMock.calls).to.have.length(2);
+    expect(controls.select.querySelector('option[value="txr_exclusive"]').selected).to.equal(false);
     expect(
-      controls.select.querySelector('option[value="txr_exclusive"]').selected,
-    ).to.equal(false);
-    expect(
-      controls.fieldset.querySelectorAll(
-        'input[type="hidden"][name="manual_tax_rate_ids[]"]',
-      ),
+      controls.fieldset.querySelectorAll('input[type="hidden"][name="manual_tax_rate_ids[]"]'),
     ).to.have.length(0);
   });
 
@@ -277,9 +263,7 @@ describe("manual Stripe Tax Rates", () => {
 
     const formData = new FormData(controls.form);
     expect(controls.select.value).to.equal("txr_state");
-    expect(formData.getAll("manual_tax_rate_ids[]")).to.deep.equal([
-      "txr_state",
-    ]);
+    expect(formData.getAll("manual_tax_rate_ids[]")).to.deep.equal(["txr_state"]);
   });
 
   it("keeps invalid state inline and operational states in the selector", async () => {
@@ -302,10 +286,10 @@ describe("manual Stripe Tax Rates", () => {
     await waitForMicrotask();
 
     expect(controls.state.hidden).to.equal(false);
-    expect(controls.state.textContent).to.include(
-      "previously selected Tax Rate",
-    );
-    expect(controls.state.classList.contains("text-red-700")).to.equal(true);
+    expect(controls.state.textContent).to.include("previously selected Tax Rate");
+    expect(controls.state.classList.contains("border-red-200")).to.equal(true);
+    expect(controls.state.classList.contains("bg-red-50")).to.equal(true);
+    expect(controls.state.classList.contains("text-red-800")).to.equal(true);
 
     controls.select.value = "txr_state";
     controls.select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -321,13 +305,9 @@ describe("manual Stripe Tax Rates", () => {
     expect(controls.state.hidden).to.equal(true);
     expect(controls.state.textContent).to.equal("");
     expect(controls.retry.hidden).to.equal(false);
-    expect(controls.retry.title).to.equal(
-      "Retry the request before saving paid manual-tax tickets.",
-    );
+    expect(controls.retry.title).to.equal("Retry the request before saving paid manual-tax tickets.");
     expect(controls.select.disabled).to.equal(true);
-    expect(controls.select.textContent).to.equal(
-      "Stripe Tax Rates are unavailable right now.",
-    );
+    expect(controls.select.textContent).to.equal("Stripe Tax Rates are unavailable right now.");
 
     fetchMock.setImpl(async () => rateResponse([]));
     controls.fieldset.dispatchEvent(
@@ -339,9 +319,7 @@ describe("manual Stripe Tax Rates", () => {
 
     expect(controls.state.hidden).to.equal(true);
     expect(controls.state.textContent).to.equal("");
-    expect(controls.select.textContent).to.include(
-      "No active exclusive Tax Rates",
-    );
+    expect(controls.select.textContent).to.include("No active exclusive Tax Rates");
     expect(controls.select.textContent).not.to.include("Create rates in");
   });
 
@@ -364,18 +342,11 @@ describe("manual Stripe Tax Rates", () => {
 
     expect(controls.retry.disabled).to.equal(true);
     expect(controls.retry.hasAttribute("aria-busy")).to.equal(true);
-    expect(
-      controls.retry.querySelector('[data-tax-rates-role="retry-label"]')
-        .hidden,
-    ).to.equal(true);
-    expect(
-      controls.retry.querySelector('[data-tax-rates-role="retry-loading"]')
-        .hidden,
-    ).to.equal(false);
+    expect(controls.retry.querySelector('[data-tax-rates-role="retry-label"]').hidden).to.equal(true);
+    expect(controls.retry.querySelector('[data-tax-rates-role="retry-loading"]').hidden).to.equal(false);
     expect(
       Array.from(
-        controls.retry.querySelector('[data-tax-rates-role="retry-loading"]')
-          .children,
+        controls.retry.querySelector('[data-tax-rates-role="retry-loading"]').children,
         (element) => element.tagName,
       ),
     ).to.deep.equal(["SVG-SPINNER"]);
@@ -414,9 +385,7 @@ describe("manual Stripe Tax Rates", () => {
 
     expect(controls.behavior.value).to.equal("exclusive");
     expect(controls.behavior.disabled).to.equal(true);
-    expect(controls.behaviorWrapper.classList.contains("hidden")).to.equal(
-      false,
-    );
+    expect(controls.behaviorWrapper.classList.contains("hidden")).to.equal(false);
     expect(controls.fieldset.hidden).to.equal(true);
     expect(controls.mode.validationMessage).to.equal("");
     expect(controls.select.children).to.have.length(0);

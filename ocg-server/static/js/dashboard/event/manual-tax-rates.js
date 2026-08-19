@@ -5,6 +5,11 @@ import "/static/js/common/svg-spinner.js";
 const MANUAL_MODE = "manual";
 const PRESENCE_FIELD_NAME = "manual_tax_rate_ids_present";
 const RATE_FIELD_NAME = "manual_tax_rate_ids[]";
+const STATUS_STATE_CLASSES = {
+  "read-only": ["border-stone-200", "bg-stone-50", "text-stone-600"],
+  unavailable: ["border-red-200", "bg-red-50", "text-red-800"],
+};
+const STATUS_STYLE_CLASSES = Object.values(STATUS_STATE_CLASSES).flat();
 
 /**
  * Initializes event-level manual Stripe Tax Rate selection.
@@ -280,8 +285,10 @@ const renderStatus = ({ retryButton, select, state }, status, behavior) => {
   const showUnavailable = status === "unavailable";
   const showReadOnly = status === "read-only";
   state.hidden = !showUnavailable && !showReadOnly;
-  state.classList.toggle("text-red-700", showUnavailable);
-  state.classList.toggle("text-stone-600", showReadOnly);
+  state.classList.remove(...STATUS_STYLE_CLASSES);
+  if (!state.hidden) {
+    state.classList.add(...STATUS_STATE_CLASSES[status]);
+  }
 
   const behaviorLabel = behavior === "inclusive" ? "inclusive" : "exclusive";
   const messages = {
