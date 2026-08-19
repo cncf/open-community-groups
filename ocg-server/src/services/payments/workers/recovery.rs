@@ -3,11 +3,13 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, warn};
 
-use crate::{db::DynDB, services::workers::run_until_cancelled};
+use crate::{
+    db::DynDB,
+    services::workers::{WorkerIteration, run_worker},
+};
 
 #[cfg(test)]
 mod tests;
@@ -46,26 +48,12 @@ struct Worker {
 impl Worker {
     /// Requeues stale payment claims until graceful shutdown.
     async fn run(&self) {
-        loop {
-            // Stop before starting another recovery pass after cancellation
-            if self.cancellation_token.is_cancelled() {
-                break;
-            }
-
-            // Sweep every payment queue while allowing cancellation to abandon the pass
-            if run_until_cancelled(&self.cancellation_token, self.sweep_stale_claims())
-                .await
-                .is_none()
-            {
-                break;
-            }
-
-            // Preserve the recovery cadence without delaying graceful shutdown
-            tokio::select! {
-                () = sleep(PAUSE_ON_RECOVERY) => {},
-                () = self.cancellation_token.cancelled() => break,
-            }
-        }
+        run_worker(&self.cancellation_token, || async {
+            // Sweep every payment queue before the fixed recovery cadence
+            self.sweep_stale_claims().await;
+            WorkerIteration::Pause(PAUSE_ON_RECOVERY)
+        })
+        .await;
     }
 
     /// Attempts every payment queue recovery independently.
@@ -77,14 +65,12 @@ impl Worker {
                 .requeue_stale_event_purchase_application_fee_adjustment_claims()
                 .await,
         );
-        tokio::task::yield_now().await;
 
         // Recover abandoned credit-note claims even if the prior queue failed
         Self::report_recovery(
             "credit-note",
             self.db.requeue_stale_event_purchase_credit_note_claims().await,
         );
-        tokio::task::yield_now().await;
 
         // Recover abandoned refund claims even if another queue failed
         Self::report_recovery(

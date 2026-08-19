@@ -1,24 +1,19 @@
 //! Background reconciliation for due event enrollment reservations.
 
-use std::time::Duration;
-
-use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::error;
 
-use crate::{db::DynDB, services::workers::run_until_cancelled, types::payments::PaymentProvider};
+use crate::{
+    db::DynDB,
+    services::workers::claim_loop::{self, ClaimLoopConfig},
+    types::payments::PaymentProvider,
+};
 
 #[cfg(test)]
 mod tests;
 
 /// Number of concurrent enrollment reconciliation workers.
 const NUM_ENROLLMENT_WORKERS: usize = 1;
-
-/// Pause after a worker iteration fails.
-const PAUSE_ON_ERROR: Duration = Duration::from_secs(10);
-
-/// Pause when no due enrollment work is available.
-const PAUSE_ON_NONE: Duration = Duration::from_secs(15);
 
 /// Starts workers that expire due enrollment reservations and fill capacity.
 pub(crate) fn start_enrollment_workers(
@@ -53,39 +48,21 @@ struct EnrollmentWorker {
 impl EnrollmentWorker {
     /// Processes due enrollment reservations until graceful shutdown.
     async fn run(&self) {
-        loop {
-            // Stop before claiming more work after graceful shutdown begins
-            if self.cancellation_token.is_cancelled() {
-                break;
-            }
-
-            // Reconcile one due event while allowing prompt shutdown
-            let Some(result) = run_until_cancelled(
-                &self.cancellation_token,
-                self.db.reconcile_next_event_enrollment(self.payment_provider),
-            )
-            .await
-            else {
-                break;
-            };
-
-            // Continue immediately after work or select the idle/error backoff
-            let pause = match result {
-                Ok(Some(_)) => None,
-                Ok(None) => Some(PAUSE_ON_NONE),
-                Err(err) => {
-                    error!(error = %err, "error reconciling event enrollment");
-                    Some(PAUSE_ON_ERROR)
-                }
-            };
-
-            // Apply the selected backoff without delaying graceful shutdown
-            if let Some(pause) = pause {
-                tokio::select! {
-                    () = sleep(pause) => {},
-                    () = self.cancellation_token.cancelled() => break,
-                }
-            }
-        }
+        claim_loop::run(
+            &self.cancellation_token,
+            ClaimLoopConfig::default(),
+            || async {
+                // Map the optional reconciliation outcome to the shared claim contract
+                self.db
+                    .reconcile_next_event_enrollment(self.payment_provider)
+                    .await
+                    .map(|outcome| outcome.is_some())
+            },
+            |err| {
+                error!(error = %err, "error reconciling event enrollment");
+                None
+            },
+        )
+        .await;
     }
 }

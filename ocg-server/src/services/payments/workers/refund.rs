@@ -7,16 +7,16 @@ use tracing::{error, instrument, warn};
 use crate::{
     config::HttpServerConfig,
     db::{DynDB, payments::ClaimedEventPurchaseRefund},
-    services::notifications::DynNotificationsManager,
+    services::{
+        notifications::DynNotificationsManager,
+        workers::claim_loop::{self, ClaimLoopConfig},
+    },
 };
 
-use super::{
-    super::{
-        DynPaymentsProvider, FindRefundInput, RefundPaymentInput,
-        notification_composer::PaymentsNotificationComposer,
-        refund_recorder::{RecordedProviderRefund, persist_provider_refund_result},
-    },
-    claim_loop::run,
+use super::super::{
+    DynPaymentsProvider, FindRefundInput, RefundPaymentInput,
+    notification_composer::PaymentsNotificationComposer,
+    refund_recorder::{RecordedProviderRefund, persist_provider_refund_result},
 };
 
 #[cfg(test)]
@@ -67,10 +67,14 @@ impl Worker {
     /// Processes refunds until graceful shutdown.
     async fn run(&self) {
         // Delegate payment-specific claim cadence while preserving this error boundary
-        run(
+        claim_loop::run(
             &self.cancellation_token,
+            ClaimLoopConfig::default(),
             || self.process_next_refund(),
-            |err| error!(error = %err, "error processing event purchase refund"),
+            |err| {
+                error!(error = %err, "error processing event purchase refund");
+                None
+            },
         )
         .await;
     }
