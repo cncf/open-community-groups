@@ -42,6 +42,7 @@ const scannerTest = test.extend({
 
 test.describe("group dashboard check-in", () => {
   scannerTest("check-in manager scans an attendee credential", async ({ checkInManagerGroupPage }) => {
+    // Replace the browser scanner with a deterministic camera implementation.
     await checkInManagerGroupPage.addInitScript(() => {
       class FakeQrScanner {
         static last;
@@ -73,6 +74,8 @@ test.describe("group dashboard check-in", () => {
 
       window.__OCG_E2E_QR_SCANNER__ = FakeQrScanner;
     });
+
+    // Open the scanner for the seeded check-in event.
     await navigateToPath(checkInManagerGroupPage, "/dashboard/group?tab=check-in");
 
     await expect(checkInManagerGroupPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
@@ -85,6 +88,9 @@ test.describe("group dashboard check-in", () => {
     const modal = checkInManagerGroupPage.locator("#group-check-in-scanner-modal");
     await expect(modal).toBeVisible();
     await expect(modal.getByText("Hold an attendee QR code inside the frame.")).toBeVisible();
+    const muteButton = modal.getByRole("button", { name: "Mute sounds" });
+    await muteButton.click();
+    await expect(modal.getByRole("button", { name: "Unmute sounds" })).toBeVisible();
     await expect(modal.getByRole("link", { name: "Manual check-in" })).toHaveAttribute(
       "href",
       "/dashboard/group?tab=events",
@@ -94,6 +100,7 @@ test.describe("group dashboard check-in", () => {
       `/dashboard/group/events/${TEST_OPEN_CHECK_IN_EVENT.id}/attendees`,
     );
 
+    // Submit the attendee credential through the simulated camera.
     const responsePromise = checkInManagerGroupPage.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
@@ -108,6 +115,7 @@ test.describe("group dashboard check-in", () => {
     );
     expect((await responsePromise).ok()).toBe(true);
 
+    // Verify the successful response is reflected in the scanner feedback.
     await expect(modal.getByText("Checked in", { exact: true })).toBeVisible();
     await expect(modal.getByText(/E2E Pending Two/u)).toBeVisible();
   });
@@ -237,13 +245,12 @@ test.describe("group dashboard check-in", () => {
       const toggle = attendeeRow.getByRole("checkbox", {
         name: "Check in attendee",
       });
-      const checkInResponse = checkInManagerGroupPage.waitForResponse(
-        (response) => response.request().method() === "POST" && response.url().includes("/check-in"),
-      );
-      await attendeeRow.locator("label", { has: toggle }).click();
-      expect((await checkInResponse).ok()).toBe(true);
+      await waitForActionResponse(checkInManagerGroupPage, () => attendeeRow.locator("label").click(), {
+        method: "POST",
+        urlIncludes: `/dashboard/group/events/${TEST_OPEN_CHECK_IN_EVENT.id}/attendees/${TEST_USER_IDS.pending2}/check-in`,
+      });
       await expect(toggle).toBeChecked();
-      await manualPanel.getByRole("button", { name: "Back to scanner" }).click();
+      await manualPanel.getByRole("button", { name: "Back to check-in events" }).click();
       await expect(
         checkInManagerGroupPage.locator("[data-group-check-in-open]", {
           hasText: TEST_OPEN_CHECK_IN_EVENT.name,

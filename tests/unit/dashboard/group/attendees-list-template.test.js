@@ -25,7 +25,7 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees list template before checking enrollment filters.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify aggregate views and exact statuses are visually separated by native optgroups.
+    // Verify native optgroups separate aggregate views from exact statuses.
     expect(template).to.include('for="attendees-enrollment-status"');
     expect(template).to.include('text-stone-900">Status</label>');
     expect(template).to.include('id="attendees-enrollment-status"');
@@ -421,6 +421,7 @@ describe("dashboard group attendees list template", () => {
   });
 
   it("groups attendee invitations and CSV downloads in the actions menu", async () => {
+    // Load the attendee actions menu after removing the legacy QR entrypoint.
     const template = normalizeWhitespace(await loadTemplate());
     const actionsMenu = sliceTemplateSection(
       template,
@@ -428,6 +429,7 @@ describe("dashboard group attendees list template", () => {
       "{# End header actions -#}",
     );
 
+    // Verify invitations and exports remain grouped in the menu.
     expect(actionsMenu).not.to.include('id="open-event-qr-code-modal"');
     expect(actionsMenu).to.include('id="open-attendee-invitation-modal"');
     expect(actionsMenu).to.include("Invite attendee");

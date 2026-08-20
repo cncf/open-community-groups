@@ -1,6 +1,8 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/cards.html" as cards -%}
 
-<section data-user-check-in-root
+<section class="relative min-w-0"
+         data-user-check-in-root
          data-user-name="{{ name }}"
          data-user-photo-url="{{ photo_url|assigned_or("") }}"
          data-username="{{ username }}"
@@ -18,54 +20,30 @@
       <p class="mt-2 text-sm text-stone-600">Confirmed upcoming events will appear here.</p>
     </div>
   {% else -%}
-    <div class="mt-6 grid gap-4 xl:grid-cols-2">
+    <div class="mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 md:gap-8 2xl:grid-cols-2">
       {% for event in events -%}
         <button type="button"
-                class="group flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-primary-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                class="card-hover-border relative flex h-full w-full min-w-0 max-w-full select-none flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
                 data-user-check-in-open
                 data-event-id="{{ event.event_id }}"
+                data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"
                 data-event-name="{{ event.name }}"
                 data-qr-code-url="/dashboard/user/check-in/{{ event.event_id }}/qr-code"
                 data-ticket-title="{{ event.ticket_title|assigned_or("") }}">
-          <span class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-stone-100">
-            {% if let Some(logo_url) = event.logo_url -%}
-              <img src="{{ logo_url }}"
-                   alt=""
-                   class="size-full object-cover"
-                   loading="lazy">
-            {% else -%}
-              <span class="svg-icon size-6 icon-calendar bg-stone-400"></span>
-            {% endif -%}
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="block truncate font-semibold text-stone-900 group-hover:text-primary-600">{{ event.name }}</span>
-            <span class="mt-1 block text-sm text-stone-600">
-              {{ event.starts_at.with_timezone(event.timezone).format("%b %-d · %-I:%M %p %Z") }}
-            </span>
-            <span class="mt-1 block truncate text-xs text-stone-500">
-              {% if event.kind == crate::types::event::EventKind::Virtual -%}
-                Virtual event
-              {% else -%}
-                {{ event.location.as_deref() |assigned_or("Venue details pending") }}
-              {% endif -%}
-            </span>
-          </span>
-          <span class="shrink-0">
-            {% if event.checked_in -%}
-              <span class="custom-badge bg-green-50 text-green-800">Checked in</span>
-            {% else if event.in_progress -%}
-              <span class="custom-badge bg-primary-50 text-primary-700">In progress</span>
-            {% else -%}
-              <span class="svg-icon size-5 icon-qr-code bg-primary-500"></span>
-            {% endif -%}
-          </span>
+          {% call cards::check_in_event_card(event) -%}
+          {% if event.checked_in -%}
+            <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Checked in</span>
+          {% else -%}
+            <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Pending check-in</span>
+          {% endif -%}
+          {% endcall -%}
         </button>
       {% endfor -%}
     </div>
   {% endif -%}
 
   <div id="user-check-in-modal"
-       class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-6"
+       class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-6 flex"
        data-restorable-modal
        role="dialog"
        aria-modal="true"
@@ -76,51 +54,67 @@
             data-user-check-in-close
             tabindex="-1"
             aria-label="Close check-in code"></button>
-    <div class="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-7">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-wide text-primary-600">Attendee check-in</p>
-          <h2 id="user-check-in-modal-title"
-              class="mt-1 text-xl font-semibold text-stone-900"></h2>
+    <div class="relative z-10 flex h-[calc(100dvh-1.5rem)] w-full max-w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:h-auto sm:max-h-[calc(100dvh-3rem)] sm:max-w-md"
+         data-user-check-in-panel>
+      <div class="flex shrink-0 items-center justify-between gap-4 border-b border-stone-200 px-5 py-4 sm:px-6 sm:py-5">
+        <h2 id="user-check-in-modal-title"
+            class="text-xl font-semibold text-stone-900 sm:text-2xl">Attendee check-in</h2>
+        {{ dashboard::modal_close_button(attrs = "data-user-check-in-close") -}}
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"
+           data-user-check-in-body>
+        <div class="flex min-h-full items-center sm:block sm:min-h-0">
+          <div class="w-full overflow-hidden rounded-xl border border-stone-200 bg-white"
+               data-user-check-in-credential>
+            <div class="p-4 sm:p-5">
+              <h3 id="user-check-in-event-name"
+                  class="text-lg font-semibold text-stone-900"></h3>
+              <dl class="mt-2 space-y-2 text-sm text-stone-600">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="svg-icon size-4 shrink-0 icon-date bg-stone-400"
+                        aria-hidden="true"></span>
+                  <dt class="sr-only">Date</dt>
+                  <dd id="user-check-in-date" class="min-w-0">
+                  </dd>
+                </div>
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="svg-icon size-4 shrink-0 icon-ticket bg-stone-400"
+                        aria-hidden="true"></span>
+                  <dt class="sr-only">Ticket</dt>
+                  <dd id="user-check-in-ticket" class="min-w-0">
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="flex min-h-80 flex-col items-center justify-center border-t border-stone-200 px-4 py-6">
+              <div data-user-check-in-qr-status
+                   class="text-center text-sm text-stone-600"
+                   role="status">Loading QR code…</div>
+              <img id="user-check-in-qr-image"
+                   class="mx-auto hidden aspect-square w-full max-w-72"
+                   width="500"
+                   height="500"
+                   alt="">
+              <button type="button"
+                      class="btn-primary-outline mx-auto mt-4 hidden"
+                      data-user-check-in-qr-retry>Try again</button>
+              <p class="mt-5 text-center text-sm text-stone-500">Show this code to an organizer</p>
+            </div>
+          </div>
         </div>
-        <button type="button"
-                class="btn-tertiary p-2"
-                data-user-check-in-close
-                aria-label="Close check-in code">
-          <span class="svg-icon size-4 icon-close bg-stone-600"></span>
-        </button>
       </div>
 
-      <div class="mt-5 rounded-xl border border-stone-200 bg-white p-4">
-        <div data-user-check-in-qr-status
-             class="mb-3 text-center text-sm text-stone-600"
-             role="status">Loading QR code…</div>
-        <img id="user-check-in-qr-image"
-             class="mx-auto hidden aspect-square w-full max-w-80"
-             width="500"
-             height="500"
-             alt="">
-        <button type="button"
-                class="btn-primary-outline mx-auto hidden"
-                data-user-check-in-qr-retry>Try again</button>
-      </div>
-
-      <div class="mt-5 flex items-center gap-3 rounded-lg bg-stone-50 p-4">
+      <div class="flex shrink-0 items-center gap-3 border-t border-stone-200 px-5 py-4 sm:px-6 sm:py-5">
         <div id="user-check-in-photo"
-             class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
+             class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-100 text-sm font-semibold text-stone-700">
         </div>
         <div class="min-w-0">
           <p id="user-check-in-name" class="truncate font-semibold text-stone-900"></p>
           <p id="user-check-in-username" class="truncate text-sm text-stone-600"></p>
         </div>
       </div>
-      <dl class="mt-4 grid gap-3 text-sm">
-        <div>
-          <dt class="text-xs font-semibold uppercase tracking-wide text-stone-500">Ticket</dt>
-          <dd id="user-check-in-ticket" class="mt-1 text-stone-900">
-          </dd>
-        </div>
-      </dl>
     </div>
   </div>
 </section>

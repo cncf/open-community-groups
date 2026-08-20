@@ -3,29 +3,6 @@ const DEFAULT_COOLDOWN_MS = 1800;
 const DEFAULT_DEDUPE_MS = 3000;
 
 /**
- * Validates a decoded credential for the scanner's selected event.
- * @param {string} credential Decoded QR value.
- * @param {string} eventId Selected event identifier.
- * @returns {{ok: boolean, message?: string}} Validation result.
- */
-export const validateCredential = (credential, eventId) => {
-  if (typeof credential !== "string" || !credential.startsWith(CREDENTIAL_PREFIX)) {
-    return { ok: false, message: "This is not an Open Community Groups check-in code." };
-  }
-
-  const payload = credential.slice(CREDENTIAL_PREFIX.length);
-  const fields = payload.split(":");
-  if (fields.length !== 2 || !fields[0] || !fields[1]) {
-    return { ok: false, message: "This check-in code is malformed." };
-  }
-  if (fields[0].toLocaleLowerCase() !== eventId.toLocaleLowerCase()) {
-    return { ok: false, message: "This check-in code belongs to a different event." };
-  }
-
-  return { ok: true };
-};
-
-/**
  * Creates the camera-independent continuous scan controller.
  * @param {Object} options Controller dependencies.
  * @returns {Object} Scan controller.
@@ -69,11 +46,17 @@ export const createScanStateMachine = ({
       return false;
     }
 
+    const decodedAt = now();
+    for (const [recentCredential, lastSeenAt] of recentCredentials) {
+      if (decodedAt - lastSeenAt >= dedupeMs) {
+        recentCredentials.delete(recentCredential);
+      }
+    }
     const lastSeenAt = recentCredentials.get(credential);
-    if (lastSeenAt !== undefined && now() - lastSeenAt < dedupeMs) {
+    if (lastSeenAt !== undefined && decodedAt - lastSeenAt < dedupeMs) {
       return false;
     }
-    recentCredentials.set(credential, now());
+    recentCredentials.set(credential, decodedAt);
 
     const validation = validateCredential(credential, eventId);
     if (!validation.ok) {
@@ -98,6 +81,7 @@ export const createScanStateMachine = ({
       );
       return true;
     } catch (error) {
+      recentCredentials.delete(credential);
       if (!active) return false;
       beginCooldown(
         {
@@ -146,4 +130,27 @@ export const createScanStateMachine = ({
       audio?.close?.();
     },
   };
+};
+
+/**
+ * Validates a decoded credential for the scanner's selected event.
+ * @param {string} credential Decoded QR value.
+ * @param {string} eventId Selected event identifier.
+ * @returns {{ok: boolean, message?: string}} Validation result.
+ */
+export const validateCredential = (credential, eventId) => {
+  if (typeof credential !== "string" || !credential.startsWith(CREDENTIAL_PREFIX)) {
+    return { ok: false, message: "This is not an Open Community Groups check-in code." };
+  }
+
+  const payload = credential.slice(CREDENTIAL_PREFIX.length);
+  const fields = payload.split(":");
+  if (fields.length !== 2 || !fields[0] || !fields[1]) {
+    return { ok: false, message: "This check-in code is malformed." };
+  }
+  if (fields[0].toLowerCase() !== eventId.toLowerCase()) {
+    return { ok: false, message: "This check-in code belongs to a different event." };
+  }
+
+  return { ok: true };
 };

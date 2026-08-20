@@ -1,3 +1,5 @@
+import { buildElementId } from "/static/js/common/dom.js";
+
 /**
  * Determines whether the configured fields describe a venue location.
  * @param {Object} fields Location field configuration.
@@ -14,7 +16,7 @@ export const isVenueLocationContext = (fields) =>
  */
 export const getLocationInputId = (componentId, inputName) => {
   if (!inputName) return "";
-  return `${componentId || "location-search"}-${inputName}`;
+  return buildElementId(componentId || "location-search", inputName);
 };
 
 /**

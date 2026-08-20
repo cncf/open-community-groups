@@ -76,7 +76,7 @@ describe("group-selector", () => {
     button.click();
     await element.updateComplete;
 
-    // Verify every id is namespaced while the option class and focus behavior remain stable.
+    // Verify namespaced ids preserve option styling and focus behavior.
     expect(element.querySelector("#group-selector-button")).to.equal(null);
     expect(list).to.exist;
     expect(option?.classList.contains("group-button")).to.equal(true);

@@ -2,7 +2,7 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
-import { focusElementById } from "/static/js/common/dom.js";
+import { buildElementId, focusElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -71,7 +71,7 @@ export class DashboardSelectorBase extends LitWrapper {
    */
   _domId(suffix) {
     const prefix = this.idPrefix || this._selectorConfig.selectorName;
-    return `${prefix}-${suffix}`;
+    return buildElementId(prefix, suffix);
   }
 
   /**

@@ -40,7 +40,7 @@ describe("community-selector", () => {
     // Render the selector fixture.
     const element = await renderSelector();
 
-    // Read the rendered DOM state for rendering the selected community label.
+    // Read the selected community and default control ids.
     const button = element.querySelector("#community-selector-button");
     const list = element.querySelector("#community-selector-list");
     const option = element.querySelector("#community-option-1");
@@ -72,7 +72,7 @@ describe("community-selector", () => {
     button.click();
     await element.updateComplete;
 
-    // Verify every id is namespaced while the option class and focus behavior remain stable.
+    // Verify namespaced ids preserve option styling and focus behavior.
     expect(element.querySelector("#community-selector-button")).to.equal(null);
     expect(list).to.exist;
     expect(option?.classList.contains("community-button")).to.equal(true);
