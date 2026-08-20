@@ -12,7 +12,18 @@
 {% block header -%}
   {# Header -#}
   <div id="dashboard-header"
-       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5">
+       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-16 md:h-20 drop-shadow-sm flex items-center justify-between gap-3 px-3 lg:px-5">
+    {# Open menu button (mobile only) -#}
+    <button id="open-dashboard-menu"
+            type="button"
+            aria-controls="dashboard-menu-drawer"
+            aria-expanded="false"
+            class="h-10 w-10 shrink-0 justify-center items-center bg-primary-500 rounded-full p-2 hover:bg-primary-700 transition-colors
+                   {% block mobile_dashboard_menu_button_classes -%}hidden{% endblock mobile_dashboard_menu_button_classes -%}">
+      <div class="svg-icon h-4 w-4 bg-white icon-lines"></div>
+      <span class="sr-only">Open dashboard menu</span>
+    </button>
+    {# End open menu button (mobile only) -#}
     {% include "common/header.html" -%}
   </div>
   {# End Header -#}
@@ -28,12 +39,25 @@
   {% endblock mobile_dashboard_view -%}
 
   {# Main Content -#}
-  <div class="{% block dashboard_layout_classes -%}hidden md:flex{% endblock dashboard_layout_classes -%}">
+  <div id="dashboard-layout"
+       class="max-md:grow
+              {% block dashboard_layout_classes -%}hidden md:flex{% endblock dashboard_layout_classes -%}">
     {# Sticky menu -#}
-    <aside class="hidden h-dvh w-[225px] shrink-0 md:sticky md:top-0 md:block lg:w-[300px]"
+    <aside id="dashboard-menu-drawer"
+           class="fixed top-0 left-0 z-[1100] h-dvh w-80 shrink-0 -translate-x-full bg-stone-100 border-r border-stone-200 shadow-lg transition-transform md:sticky md:z-auto md:w-[225px] md:translate-x-0 md:bg-transparent md:border-r-0 md:shadow-none lg:w-[300px]"
            role="navigation"
-           aria-label="Dashboard navigation">
-      <div class="flex flex-col justify-between py-5 pt-24 h-full">
+           aria-label="Dashboard navigation"
+           tabindex="-1">
+      {# Close menu button (mobile only) -#}
+      <button id="close-dashboard-menu"
+              type="button"
+              class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center md:hidden">
+        <div class="svg-icon h-4 w-4 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+        <span class="sr-only">Close menu</span>
+      </button>
+      {# End close menu button (mobile only) -#}
+
+      <div class="flex flex-col justify-between py-5 pt-14 md:pt-24 h-full">
         <div class="flex flex-col grow min-h-0 w-full">
           {% block menu -%}
           {% endblock menu -%}
@@ -53,6 +77,11 @@
       </div>
     </aside>
     {# End sticky menu -#}
+
+    {# Menu drawer backdrop (mobile only) -#}
+    <div id="dashboard-menu-backdrop"
+         class="hidden bg-stone-950 opacity-[.35] fixed inset-0 z-[1050] md:hidden"></div>
+    {# End menu drawer backdrop (mobile only) -#}
 
     <main id="dashboard-main-content"
           class="relative mt-20 min-w-0 flex-1 rounded-lg border border-stone-200 bg-white md:m-5 md:ms-0 md:mt-[6.25rem]"

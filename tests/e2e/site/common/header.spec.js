@@ -130,6 +130,47 @@ test.describe("site header", () => {
     await expect(userMenu.getByRole("menuitem", { name: "Log in" })).toBeVisible();
   });
 
+  test("logged-in attendee opens personal check-in from the mobile menu @mobile", async ({
+    pending2Page,
+  }) => {
+    // Load the public shell with an attendee session.
+    await navigateToSiteHome(pending2Page);
+    await pending2Page.locator('#user-dropdown-button[data-logged-in="true"]').click();
+    const userMenu = pending2Page.locator("#user-dropdown");
+
+    // Follow the attendee shortcut while group check-in remains unavailable.
+    const checkInLink = userMenu.getByRole("menuitem", { name: "My Events Check-In" });
+    await expect(checkInLink).toBeVisible();
+    await expect(checkInLink).toHaveAttribute("href", "/dashboard/user?tab=check-in");
+    await expect(userMenu.getByRole("menuitem", { name: "Group Check-In" })).toHaveCount(0);
+    await checkInLink.click();
+
+    // Verify the shortcut opens the mobile attendee surface.
+    await expect(pending2Page).toHaveURL(/\/dashboard\/user\?tab=check-in$/u);
+    await expect(pending2Page.getByRole("heading", { name: "Check-In" })).toBeVisible();
+  });
+
+  test("group team member opens group check-in from the mobile menu @mobile", async ({
+    checkInManagerGroupPage,
+  }) => {
+    // Load the public shell with a check-in manager session.
+    await navigateToSiteHome(checkInManagerGroupPage);
+    await checkInManagerGroupPage
+      .locator('#user-dropdown-button[data-logged-in="true"]')
+      .click();
+    const userMenu = checkInManagerGroupPage.locator("#user-dropdown");
+
+    // Follow the permission-dependent group shortcut.
+    const groupCheckInLink = userMenu.getByRole("menuitem", { name: "Group Check-In" });
+    await expect(groupCheckInLink).toBeVisible();
+    await expect(groupCheckInLink).toHaveAttribute("href", "/dashboard/group?tab=check-in");
+    await groupCheckInLink.click();
+
+    // Verify the shortcut opens the mobile group surface.
+    await expect(checkInManagerGroupPage).toHaveURL(/\/dashboard\/group\?tab=check-in$/u);
+    await expect(checkInManagerGroupPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
+  });
+
   test("logged-in member menu exposes only authorized dashboard destinations", async ({
     member1Page,
   }) => {

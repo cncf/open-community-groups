@@ -1,4 +1,8 @@
-<section data-group-check-in-root aria-labelledby="group-check-in-title">
+{% import "macros/cards.html" as cards -%}
+
+<section class="relative min-w-0"
+         data-group-check-in-root
+         aria-labelledby="group-check-in-title">
   {# Check-in header -#}
   <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
        data-group-check-in-scanner-view>
@@ -24,45 +28,27 @@
     {# End empty state -#}
   {% else -%}
     {# Event cards -#}
-    <div class="mt-6 grid gap-4 xl:grid-cols-2"
+    <div class="mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2 2xl:grid-cols-3"
          data-group-check-in-scanner-view>
       {% for event in events -%}
-        <button type="button"
-                class="group flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-primary-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                data-group-check-in-open
-                data-event-id="{{ event.event_id }}"
-                data-event-name="{{ event.name }}"
-                data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"
-                data-attendees-url="/dashboard/group/events/{{ event.event_id }}/attendees">
-          <span class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-stone-100">
-            {% if let Some(logo_url) = event.logo_url -%}
-              <img src="{{ logo_url }}"
-                   alt=""
-                   class="size-full object-cover"
-                   loading="lazy">
-            {% else -%}
-              <span class="svg-icon size-6 icon-calendar bg-stone-400"></span>
-            {% endif -%}
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="block truncate font-semibold text-stone-900 group-hover:text-primary-600">{{ event.name }}</span>
-            <span class="mt-1 block text-sm text-stone-600">
-              {{ event.starts_at.with_timezone(event.timezone).format("%b %-d · %-I:%M %p %Z") }}
-            </span>
-            <span class="mt-1 block truncate text-xs text-stone-500">
-              {% if event.kind == crate::types::event::EventKind::Virtual -%}
-                Virtual event
-              {% else -%}
-                {{ event.location.as_deref() |assigned_or("Venue details pending") }}
-              {% endif -%}
-            </span>
-          </span>
+        <article class="card-hover-border relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm"
+                 data-group-check-in-card>
+          {% call cards::check_in_event_card(event) -%}
           {% if event.in_progress -%}
-            <span class="custom-badge shrink-0 bg-green-50 text-green-800">In progress</span>
-          {% else -%}
-            <span class="svg-icon size-5 shrink-0 icon-qr-code bg-primary-500"></span>
+            <span class="custom-badge bg-green-50 text-green-800">In progress</span>
           {% endif -%}
-        </button>
+          <button type="button"
+                  class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                  data-group-check-in-open
+                  data-event-id="{{ event.event_id }}"
+                  data-event-name="{{ event.name }}"
+                  data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"
+                  data-attendees-url="/dashboard/group/events/{{ event.event_id }}/attendees">
+            <span>Scan attendees</span>
+            <span class="sr-only">for {{ event.name }}</span>
+          </button>
+          {% endcall -%}
+        </article>
       {% endfor -%}
     </div>
     {# End event cards -#}

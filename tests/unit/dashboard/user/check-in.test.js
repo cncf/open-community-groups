@@ -13,10 +13,12 @@ describe("user check-in credential modal", () => {
   const renderFixture = ({ name = "Ada Lovelace", photoUrl = "", ticketTitle = "" } = {}) => {
     document.body.innerHTML = `
       <section data-user-check-in-root data-user-name="${name}" data-username="ada" data-user-photo-url="${photoUrl}">
-        <button type="button" data-user-check-in-open data-event-name="Open Source Summit" data-qr-code-url="/qr.svg" data-ticket-title="${ticketTitle}">Open</button>
+        <button type="button" data-user-check-in-open data-event-date="Oct 1, 2026 · 9:25 AM CDT" data-event-name="Open Source Summit" data-qr-code-url="/qr.svg" data-ticket-title="${ticketTitle}">Open</button>
         <div id="user-check-in-modal" class="hidden" aria-hidden="true">
           <button type="button" data-user-check-in-close>Close</button>
-          <h2 id="user-check-in-modal-title"></h2>
+          <h2 id="user-check-in-modal-title">Attendee check-in</h2>
+          <h3 id="user-check-in-event-name"></h3>
+          <p id="user-check-in-date"></p>
           <div data-user-check-in-qr-status></div>
           <img id="user-check-in-qr-image" class="hidden">
           <button type="button" class="hidden" data-user-check-in-qr-retry>Try again</button>
@@ -37,7 +39,9 @@ describe("user check-in credential modal", () => {
 
     // Verify the modal presents the event, attendee, ticket, and QR code.
     expect(document.getElementById("user-check-in-modal").classList.contains("hidden")).to.equal(false);
-    expect(document.getElementById("user-check-in-modal-title").textContent).to.equal("Open Source Summit");
+    expect(document.getElementById("user-check-in-modal-title").textContent).to.equal("Attendee check-in");
+    expect(document.getElementById("user-check-in-event-name").textContent).to.equal("Open Source Summit");
+    expect(document.getElementById("user-check-in-date").textContent).to.equal("Oct 1, 2026 · 9:25 AM CDT");
     expect(document.getElementById("user-check-in-qr-image").getAttribute("src")).to.equal("/qr.svg");
     expect(document.getElementById("user-check-in-name").textContent).to.equal("Ada Lovelace");
     expect(document.getElementById("user-check-in-username").textContent).to.equal("@ada");

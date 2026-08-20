@@ -123,28 +123,30 @@ test.describe("group dashboard check-in", () => {
   test("organizer switches mobile check-in to another manageable group @mobile", async ({
     organizerGroupPage,
   }) => {
-    // Load the mobile check-in surface with both selectors visible.
+    // Load the mobile check-in surface and open the dashboard menu drawer.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=check-in");
-    const communityControls = organizerGroupPage.getByRole("group", { name: "Community" });
-    const groupControls = organizerGroupPage.getByRole("group", { name: "Group" });
-    const communityButton = communityControls.locator("#mobile-community-selector-button");
-    const groupButton = groupControls.locator("#mobile-group-selector-button");
+    await organizerGroupPage.getByRole("button", { name: "Open dashboard menu" }).click();
+    const drawer = organizerGroupPage.locator("#dashboard-menu-drawer");
+    await expect(drawer).toBeVisible();
+    const communityButton = drawer.locator("#community-selector-button");
+    const groupButton = drawer.locator("#group-selector-button");
     await expect(communityButton).toBeVisible();
     await expect(communityButton).toContainText(TEST_COMMUNITY_TITLE);
     await expect(groupButton).toBeVisible();
     await expect(groupButton).toContainText(TEST_GROUP_NAMES.alpha);
 
-    // Open each selector and verify focus follows the mobile id namespace.
+    // Open each selector and verify focus follows the drawer selectors.
     await communityButton.click();
-    const communitySearch = communityControls.locator("#mobile-community-search-input");
+    const communitySearch = drawer.locator("#community-search-input");
     await expect(communitySearch).toBeFocused();
     await communitySearch.press("Escape");
+    await expect(drawer).toBeVisible();
     await groupButton.click();
-    const groupSearch = groupControls.locator("#mobile-group-search-input");
+    const groupSearch = drawer.locator("#group-search-input");
     await expect(groupSearch).toBeFocused();
 
     // Switch to another manageable group without leaving the Check-In URL.
-    const emptyGroup = groupControls.locator(`#mobile-group-option-${TEST_GROUP_IDS.community1.empty}`);
+    const emptyGroup = drawer.locator(`#group-option-${TEST_GROUP_IDS.community1.empty}`);
     await expect(emptyGroup).toContainText(TEST_GROUP_NAMES.empty);
     await waitForActionResponse(organizerGroupPage, () => emptyGroup.click(), {
       method: "PUT",
@@ -153,9 +155,6 @@ test.describe("group dashboard check-in", () => {
 
     // Verify the refreshed scanner list belongs to the newly selected group.
     await expect(organizerGroupPage).toHaveURL(/\/dashboard\/group\?tab=check-in$/u);
-    await expect(organizerGroupPage.locator("#mobile-group-selector-button")).toContainText(
-      TEST_GROUP_NAMES.empty,
-    );
     await expect(
       organizerGroupPage.getByRole("heading", { name: "No events available for check-in" }),
     ).toBeVisible();
@@ -164,40 +163,42 @@ test.describe("group dashboard check-in", () => {
         hasText: TEST_OPEN_CHECK_IN_EVENT.name,
       }),
     ).toHaveCount(0);
+
+    // Reopen the drawer and verify it reflects the newly selected group.
+    await organizerGroupPage.getByRole("button", { name: "Open dashboard menu" }).click();
+    await expect(organizerGroupPage.locator("#group-selector-button")).toContainText(
+      TEST_GROUP_NAMES.empty,
+    );
   });
 
   test("organizer recovers mobile check-in after selecting a read-only group @mobile", async ({
     organizerGroupPage,
   }) => {
-    // Load Check-In and select the organizer's read-only group.
+    // Load Check-In and select the organizer's read-only group from the drawer.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=check-in");
-    const groupControls = organizerGroupPage.getByRole("group", { name: "Group" });
-    await groupControls.locator("#mobile-group-selector-button").click();
-    const readOnlyGroup = groupControls.locator(`#mobile-group-option-${TEST_GROUP_IDS.community1.gamma}`);
+    await organizerGroupPage.getByRole("button", { name: "Open dashboard menu" }).click();
+    const drawer = organizerGroupPage.locator("#dashboard-menu-drawer");
+    await drawer.locator("#group-selector-button").click();
+    const readOnlyGroup = drawer.locator(`#group-option-${TEST_GROUP_IDS.community1.gamma}`);
     await expect(readOnlyGroup).toContainText(TEST_GROUP_NAMES.gamma);
     await waitForActionResponse(organizerGroupPage, () => readOnlyGroup.click(), {
       method: "PUT",
       urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.gamma}/select`,
     });
 
-    // Verify the fallback explains the permission problem and retains recovery controls.
-    const fallback = organizerGroupPage.locator("[data-check-in-fallback-overlay]");
+    // Verify the fallback keeps the Check-In URL and explains the permission problem.
     await expect(organizerGroupPage).toHaveURL(/\/dashboard\/group\?tab=check-in$/u);
-    await expect(fallback).toBeVisible();
-    await expect(
-      fallback.getByText("You cannot manage check-ins for the selected group.", { exact: true }),
-    ).toBeVisible();
-    await expect(fallback.getByRole("group", { name: "Community" })).toBeVisible();
-    const recoveryGroupControls = fallback.getByRole("group", { name: "Group" });
-    const recoveryGroupButton = recoveryGroupControls.locator("#mobile-group-selector-button");
-    await expect(recoveryGroupButton).toContainText(TEST_GROUP_NAMES.gamma);
-
-    // Switch back to the manageable group from the fallback overlay.
-    await recoveryGroupButton.click();
-    await expect(recoveryGroupControls.locator("#mobile-group-search-input")).toBeFocused();
-    const manageableGroup = recoveryGroupControls.locator(
-      `#mobile-group-option-${TEST_GROUP_IDS.community1.alpha}`,
+    const fallbackWarning = organizerGroupPage.getByText(
+      "You cannot manage check-ins for the selected group.",
+      { exact: true },
     );
+    await expect(fallbackWarning).toBeVisible();
+
+    // Switch back to the manageable group from the drawer.
+    await organizerGroupPage.getByRole("button", { name: "Open dashboard menu" }).click();
+    await drawer.locator("#group-selector-button").click();
+    await expect(drawer.locator("#group-search-input")).toBeFocused();
+    const manageableGroup = drawer.locator(`#group-option-${TEST_GROUP_IDS.community1.alpha}`);
     await waitForActionResponse(organizerGroupPage, () => manageableGroup.click(), {
       method: "PUT",
       urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.alpha}/select`,
@@ -205,7 +206,7 @@ test.describe("group dashboard check-in", () => {
 
     // Verify the same URL reopens Check-In for the restored group.
     await expect(organizerGroupPage).toHaveURL(/\/dashboard\/group\?tab=check-in$/u);
-    await expect(fallback).toHaveCount(0);
+    await expect(fallbackWarning).toHaveCount(0);
     await expect(organizerGroupPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
     await expect(
       organizerGroupPage.locator("[data-group-check-in-open]", {

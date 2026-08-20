@@ -2,29 +2,13 @@
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
-{# Mobile community and group selectors. #}
-{% macro mobile_selectors(communities, groups, selected_community_id, selected_group_id) -%}
-  <section aria-labelledby="mobile-community-group-title">
-    <div id="mobile-community-group-title"
-         class="text-xs/6 uppercase text-stone-500">Community and group</div>
-    <div class="mt-3" role="group" aria-labelledby="mobile-community-label">
-      <div id="mobile-community-label"
-           class="text-sm font-medium text-stone-700">Community</div>
-      <div class="mt-2">
-        <community-selector communities="{{ communities |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community" id-prefix="mobile-community">
-        {{ dashboard::selector_loading_button() -}}
-        </community-selector>
-      </div>
-    </div>
-    <div role="group" aria-labelledby="mobile-group-label">
-      <div id="mobile-group-label" class="text-sm font-medium text-stone-700">Group</div>
-      <group-selector groups="{{ groups |json }}" selected-group-id="{{ selected_group_id }}" id-prefix="mobile-group">
-      <div class="my-4">{{ dashboard::selector_loading_button() -}}</div>
-      </group-selector>
-    </div>
-  </section>
-{% endmacro mobile_selectors -%}
-{# End mobile community and group selectors. #}
+{% block dashboard_layout_classes -%}
+  {% if content.is_check_in() || is_check_in_fallback %}flex max-md:px-4 max-md:pb-4{% else %}hidden md:flex{% endif %}
+{% endblock dashboard_layout_classes -%}
+
+{% block mobile_dashboard_menu_button_classes -%}
+  {% if content.is_check_in() || is_check_in_fallback %}inline-flex md:hidden{% else %}hidden{% endif %}
+{% endblock mobile_dashboard_menu_button_classes -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/tooltip-panel.js"></script>
@@ -32,6 +16,7 @@
   <script type="module" src="/static/js/common/cfs-label-selector.js"></script>
   <script type="module" src="/static/js/common/cfs-labels-editor.js"></script>
   <script type="module" src="/static/js/dashboard/confirm-actions.js"></script>
+  <script type="module" src="/static/js/dashboard/menu-drawer.js"></script>
   <script type="module" src="/static/js/dashboard/event/sessions/section.js"></script>
   <script type="module" src="/static/js/dashboard/event/cfs/actions.js"></script>
   <script type="module" src="/static/js/dashboard/event/sponsors.js"></script>
@@ -69,33 +54,30 @@
 {% endblock scripts -%}
 
 {% block mobile_dashboard_view -%}
-  {% if is_check_in_fallback -%}
-    <div class="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-stone-100 px-6 pt-16 md:hidden"
-         data-check-in-fallback-overlay>
-      <div class="w-full max-w-md rounded-lg border border-stone-200 bg-white p-6 text-stone-800 shadow-sm">
-        {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.") -}}
-        {{ mobile_selectors(communities = communities(), groups = selected_community_groups(), selected_community_id = selected_community_id, selected_group_id = selected_group_id) -}}
+  <div id="mobile-dashboard-view" class="contents">
+    {% if !content.is_check_in() && !is_check_in_fallback -%}
+      <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
+        <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
+          <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
+          {% if can_manage_check_ins -%}
+            <a href="/dashboard/group?tab=check-in"
+               class="btn-primary-anchor mt-6 inline-flex">Open Check-In</a>
+          {% endif -%}
+        </div>
       </div>
-    </div>
-  {% else if !content.is_check_in() -%}
-    <div class="fixed inset-0 z-10 flex items-center justify-center bg-stone-100 px-6 pt-16 md:hidden">
-      <div class="max-w-md rounded-lg border-4 border-dashed border-primary-600 bg-stone-100 p-8 text-center text-stone-800">
-        <p class="text-xl font-medium">This dashboard is not optimized yet for mobile devices</p>
-        {% if can_manage_check_ins -%}
-          <a href="/dashboard/group?tab=check-in"
-             class="btn-primary-anchor mt-6 inline-flex">Open Check-In</a>
-        {% endif -%}
-      </div>
-    </div>
-  {% endif -%}
+    {% endif -%}
+  </div>
 {% endblock mobile_dashboard_view -%}
 
-{% block dashboard_layout_classes -%}
-  {% if content.is_check_in() %}flex{% else %}hidden md:flex{% endif %}
-{% endblock dashboard_layout_classes -%}
-
 {% block menu -%}
-  {% call dashboard::dashboard_menu_shell("Group Dashboard", spinner_classes = "hx-spinner -mt-0.5 relative") -%}
+  {% call dashboard::dashboard_menu_shell(
+    "Group Dashboard",
+    spinner_classes = "hx-spinner -mt-0.5 relative",
+    navigation_target = "#dashboard-layout",
+    navigation_select = "#dashboard-layout",
+    navigation_select_oob = "#mobile-dashboard-view:outerHTML,#open-dashboard-menu:outerHTML",
+    navigation_swap = "outerHTML show:window:top"
+  ) -%}
   {# Community and group selector -#}
   <div>
     {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
@@ -111,7 +93,7 @@
     {% if !selected_community_groups().is_empty() -%}
       {% let current_selection = current_selection_details() -%}
       {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + current_selection.1.public_slug() -%}
-      <div class="mt-6 grid gap-y-0.5">
+      <div class="mt-6 grid gap-y-0.5 max-md:hidden">
         {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/group?tab=settings") -}}
         {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/group?tab=team") -}}
         <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">
@@ -132,7 +114,7 @@
   {# End community and group selector -#}
 
   {# Analytics -#}
-  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5 max-md:hidden">
     {{ dashboard::menu_title(text = "Analytics", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "Analytics", icon = "charts", is_active = content.is_analytics() , href = "/dashboard/group?tab=analytics") -}}
   </div>
@@ -143,15 +125,17 @@
     {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
     {% if can_manage_check_ins -%}
       {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in") -}}
+    {% else -%}
+      {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden") -}}
     {% endif -%}
-    {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events") -}}
-    {{ dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds") -}}
+    {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events", extra_styles = "max-md:hidden") -}}
+    {{ dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds", extra_styles = "max-md:hidden") -}}
   </div>
   {# End events -#}
 
   {% if can_manage_badges -%}
     {# Badges -#}
-    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5 max-md:hidden">
       {{ dashboard::menu_title(text = "Badges", extra_styles = "py-1.5") -}}
       {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/group?tab=badges") -}}
       {{ dashboard::menu_item(name = "Artwork", icon = "image", is_active = content.is_artwork() , href = "/dashboard/group?tab=artwork") -}}
@@ -161,7 +145,7 @@
   {% endif -%}
 
   {# Members and sponsors -#}
-  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5 max-md:hidden">
     {{ dashboard::menu_title(text = "Members and sponsors", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "Members", icon = "members", is_active = content.is_members() , href = "/dashboard/group?tab=members") -}}
     {{ dashboard::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors() , href = "/dashboard/group?tab=sponsors") -}}
@@ -169,7 +153,7 @@
   {# End members and sponsors -#}
 
   {# Audit -#}
-  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5 max-md:hidden">
     {{ dashboard::menu_title(text = "AUDIT", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "Logs", icon = "logs", is_active = content.is_logs() , href = "/dashboard/group?tab=logs") -}}
   </div>
@@ -179,11 +163,6 @@
 
 {% block dashboard_main -%}
   {% let current_selection = current_selection_details() -%}
-  {% if content.is_check_in() -%}
-    <div class="p-4 sm:p-6 md:hidden">
-      {{ mobile_selectors(communities = communities(), groups = selected_community_groups(), selected_community_id = selected_community_id, selected_group_id = selected_group_id) -}}
-    </div>
-  {% endif -%}
   <div id="dashboard-content"
        data-community="{{ current_selection.0.name }}"
        data-community-name="{{ current_selection.0.name }}"
@@ -199,13 +178,18 @@
        hx-indicator="#dashboard-spinner"
        class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 lg:p-12">
     {% if is_check_in_fallback -%}
-      {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.") -}}
+      {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden") -}}
     {% endif -%}
     {% if content.is_refunds() && !payments_ready -%}
       {{ dashboard::permission_warning(message = "Current payment setup is unavailable. Historical refunds and recovery records remain accessible; restore the payment provider and fiscal sponsor before retrying provider operations.") -}}
     {% endif -%}
     {# Content -#}
-    {{ content|safe }}
+    {% if is_check_in_fallback -%}
+      {# The fallback keeps mobile users on the warning; content stays desktop-only. -#}
+      <div class="max-md:hidden">{{ content|safe }}</div>
+    {% else -%}
+      {{ content|safe }}
+    {% endif -%}
     {# End Content -#}
   </div>
 

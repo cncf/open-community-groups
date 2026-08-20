@@ -24,14 +24,21 @@
 
 {# Dashboard menu shell #}
 {# Used by dashboard home pages for the title, spinner, and menu wrapper. #}
-{% macro dashboard_menu_shell(title, spinner_classes = "group hx-spinner -mt-0.5 relative") -%}
-  <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
-    <div class="font-semibold text-stone-900 text-sm lg:text-lg">{{ title }}</div>
-    <div id="dashboard-spinner" class="{{ spinner_classes }}">{{ ui::spinner(size = "size-5") -}}</div>
-  </div>
+{% macro dashboard_menu_shell(title, spinner_classes = "group hx-spinner -mt-0.5 relative", navigation_target = "body", navigation_select = "", navigation_select_oob = "", navigation_swap = "") -%}
+  <div id="dashboard-menu"
+       class="contents"
+       hx-target="{{ navigation_target }}"
+       {% if !navigation_select.is_empty() %}hx-select="{{ navigation_select }}"{% endif %}
+       {% if !navigation_select_oob.is_empty() %}hx-select-oob="{{ navigation_select_oob }}"{% endif %}
+       {% if !navigation_swap.is_empty() %}hx-swap="{{ navigation_swap }}"{% endif %}>
+    <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
+      <div class="font-semibold text-stone-900 text-sm lg:text-lg">{{ title }}</div>
+      <div id="dashboard-spinner" class="{{ spinner_classes }}">{{ ui::spinner(size = "size-5") -}}</div>
+    </div>
 
-  <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
-    {{ caller() }}
+    <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
+      {{ caller() }}
+    </div>
   </div>
 {% endmacro dashboard_menu_shell -%}
 {# End dashboard menu shell #}
@@ -106,7 +113,6 @@
   {% if is_active -%}
     <div class="relative bg-white border border-stone-200 px-3 rounded-lg {{ extra_styles }}">
       <a hx-get="{{ href }}"
-         hx-target="body"
          hx-indicator="#dashboard-spinner"
          hx-push-url="true"
          class="flex items-center justify-between cursor-pointer"
@@ -152,7 +158,6 @@
     {% else -%}
       <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors {{ extra_styles }}">
         <a hx-get="{{ href }}"
-           hx-target="body"
            hx-indicator="#dashboard-spinner"
            hx-push-url="true"
            class="flex items-center justify-between cursor-pointer">

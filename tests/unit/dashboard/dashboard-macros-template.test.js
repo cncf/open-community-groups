@@ -17,12 +17,26 @@ describe("dashboard macros template", () => {
 
     // Verify dashboard shells share the menu title, spinner, and caller wrapper.
     expect(template).to.include(
-      'macro dashboard_menu_shell(title, spinner_classes = "group hx-spinner -mt-0.5 relative")',
+      'macro dashboard_menu_shell(title, spinner_classes = "group hx-spinner -mt-0.5 relative", navigation_target = "body", navigation_select = "", navigation_select_oob = "", navigation_swap = "")',
     );
+    expect(template).to.include('id="dashboard-menu"');
+    expect(template).to.include('hx-target="{{ navigation_target }}"');
     expect(template).to.include('id="dashboard-spinner"');
     expect(template).to.include('{{ ui::spinner(size = "size-5") -}}');
     expect(template).to.include("max-h-full w-full flex flex-col flex-1");
     expect(template).to.include("{{ caller() }}");
+  });
+
+  it("inherits dashboard navigation swap options from the menu shell", async () => {
+    // Load the dashboard macros template before checking HTMX navigation ownership.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify menu links inherit their target while retaining request and history contracts.
+    expect(template).to.include('hx-select="{{ navigation_select }}"');
+    expect(template).to.include('hx-select-oob="{{ navigation_select_oob }}"');
+    expect(template).to.include('hx-swap="{{ navigation_swap }}"');
+    expect(template).not.to.include('<a hx-get="{{ href }}" hx-target="body"');
+    expect(template).to.include('hx-indicator="#dashboard-spinner" hx-push-url="true"');
   });
 
   it("passes the curated dashboard user payload to profile modal triggers", async () => {
