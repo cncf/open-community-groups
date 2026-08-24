@@ -1,4 +1,6 @@
 -- sync_event_ticket_types upserts and prunes event ticket types.
+-- Callers hold the owning group and event row locks because deferred ticketing
+-- consistency triggers rely on that serialization.
 create or replace function sync_event_ticket_types(
     p_event_id uuid,
     p_ticket_types jsonb

@@ -25,27 +25,29 @@ begin
     and e.deleted = false
     and e.published = true;
 
-    -- Validate CFS is enabled
+    -- Reject events without an enabled CFS
     if v_cfs_enabled is distinct from true then
         raise exception 'cfs is not enabled for this event';
     end if;
 
-    -- Validate CFS window is configured
+    -- Reject events without a complete CFS window
     if v_cfs_starts_at is null or v_cfs_ends_at is null then
         raise exception 'cfs window not configured';
     end if;
 
-    -- Validate CFS is currently open
+    -- Reject events outside their CFS window
     if current_timestamp < v_cfs_starts_at or current_timestamp >= v_cfs_ends_at then
         raise exception 'cfs is not open';
     end if;
 
-    -- Validate proposal ownership
+    -- Lock and validate proposal ownership before creating a submission
     perform 1
     from session_proposal sp
     where sp.session_proposal_id = p_session_proposal_id
-    and sp.user_id = p_user_id;
+    and sp.user_id = p_user_id
+    for share;
 
+    -- Reject proposals outside the user's ownership
     if not found then
         raise exception 'session proposal not found';
     end if;
@@ -56,6 +58,7 @@ begin
     where sp.session_proposal_id = p_session_proposal_id
     and sp.session_proposal_status_id = 'ready-for-submission';
 
+    -- Reject proposals that are not ready for event submission
     if not found then
         raise exception 'session proposal not ready for submission';
     end if;
@@ -78,6 +81,7 @@ begin
     -- Link labels to submission
     perform sync_cfs_submission_labels(v_submission_id, p_event_id, p_label_ids);
 
+    -- Return the created submission identifier
     return v_submission_id;
 end;
 $$ language plpgsql;

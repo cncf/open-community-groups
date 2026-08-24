@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -31,6 +31,7 @@ select plan(12);
 \set happyRequestID 'd4050000-0000-0000-0000-000000000018'
 \set happyUserID 'd4050000-0000-0000-0000-000000000019'
 \set missingGroupID 'd4050000-0000-0000-0000-000000000021'
+\set missingPurchaseID 'd4050000-0000-0000-0000-000000000020'
 \set missingRequestPurchaseID 'd4050000-0000-0000-0000-000000000022'
 \set missingRequestUserID 'd4050000-0000-0000-0000-000000000023'
 \set noReferencePurchaseID 'd4050000-0000-0000-0000-000000000025'
@@ -336,6 +337,16 @@ select throws_ok(
     ),
     'paid purchase is not ready for refund',
     'Should reject a free purchase'
+);
+
+-- Should reject a missing purchase
+select throws_ok(
+    format(
+        $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
+        :'actorID', :'groupID', :'missingPurchaseID'
+    ),
+    'refund request not found',
+    'Should reject a missing purchase'
 );
 
 -- Should reject a purchase without a refund request

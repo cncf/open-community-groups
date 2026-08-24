@@ -1,4 +1,6 @@
 -- sync_event_discount_codes upserts and prunes event discount codes.
+-- Callers hold the owning group and event row locks because deferred ticketing
+-- consistency triggers rely on that serialization.
 create or replace function sync_event_discount_codes(
     p_event_id uuid,
     p_discount_codes jsonb

@@ -14,8 +14,10 @@ begin
     into v_current_co_speaker_user_id
     from session_proposal sp
     where sp.session_proposal_id = p_session_proposal_id
-    and sp.user_id = p_actor_user_id;
+    and sp.user_id = p_actor_user_id
+    for update;
 
+    -- Reject proposals outside the user's ownership
     if not found then
         raise exception 'session proposal not found';
     end if;
@@ -29,16 +31,19 @@ begin
     join session s on s.cfs_submission_id = cs.cfs_submission_id
     where cs.session_proposal_id = p_session_proposal_id;
 
+    -- Protect proposals already represented by an event session
     if found then
         raise exception 'session proposal linked to a session';
     end if;
 
     -- Ensure proposals with submissions keep the same co-speaker
     if v_new_co_speaker_user_id is distinct from v_current_co_speaker_user_id then
+        -- Check whether any event submission depends on the current speakers
         perform 1
         from cfs_submission cs
         where cs.session_proposal_id = p_session_proposal_id;
 
+        -- Preserve speakers after the first event submission
         if found then
             raise exception 'session proposal with submissions cannot change co-speaker';
         end if;
@@ -51,11 +56,15 @@ begin
         duration = make_interval(mins => (p_session_proposal->>'duration_minutes')::int),
         session_proposal_level_id = p_session_proposal->>'session_proposal_level_id',
         session_proposal_status_id = case
+            -- Recalculate readiness when the co-speaker changes
             when v_new_co_speaker_user_id is distinct from v_current_co_speaker_user_id then
                 case
+                    -- Make single-speaker proposals ready for submission
                     when v_new_co_speaker_user_id is null then 'ready-for-submission'
+                    -- Wait for a newly selected co-speaker
                     else 'pending-co-speaker-response'
                 end
+            -- Preserve readiness when the co-speaker is unchanged
             else session_proposal_status_id
         end,
         title = p_session_proposal->>'title',
@@ -63,6 +72,7 @@ begin
     where session_proposal_id = p_session_proposal_id
     and user_id = p_actor_user_id;
 
+    -- Reject proposals removed after ownership validation
     if not found then
         raise exception 'session proposal not found';
     end if;

@@ -433,6 +433,9 @@ pub(crate) trait DBDashboardGroup {
     /// Locks active event cancellation targets for the current transaction.
     async fn lock_events_for_cancellation(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()>;
 
+    /// Locks a group and its event mutation targets for the current transaction.
+    async fn lock_group_events(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()>;
+
     /// Publishes an event (sets published=true and records publication metadata).
     async fn publish_event(
         &self,
@@ -1496,6 +1499,16 @@ where
     async fn lock_events_for_cancellation(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()> {
         self.execute(
             "select lock_events_for_cancellation($1::uuid, $2::uuid[])",
+            &[&group_id, &event_ids],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::lock_group_events`].
+    #[instrument(skip(self, event_ids), err)]
+    async fn lock_group_events(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()> {
+        self.execute(
+            "select lock_group_events($1::uuid, $2::uuid[])",
             &[&group_id, &event_ids],
         )
         .await

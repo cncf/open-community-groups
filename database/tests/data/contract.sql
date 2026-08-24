@@ -638,12 +638,17 @@ insert into group_sponsor (
 -- EVENTS
 -- ============================================================================
 
+-- Public events consumed by event read and CFS lock contracts
 insert into event (
     banner_mobile_url,
     banner_url,
     capacity,
     created_at,
     created_by,
+    cfs_description,
+    cfs_enabled,
+    cfs_ends_at,
+    cfs_starts_at,
     description,
     description_short,
     ends_at,
@@ -680,6 +685,10 @@ insert into event (
         100,
         '2024-01-02 10:00:00+00',
         '00000000-0000-0000-0000-00000000c041',
+        'Submit a session proposal for the contract event',
+        true,
+        '2099-05-01 00:00:00+00',
+        '2020-01-01 00:00:00+00',
         'A future event used by Rust database contract tests',
         'Future contract event',
         '2099-05-20 19:00:00+00',
@@ -716,6 +725,10 @@ insert into event (
         50,
         '2024-01-04 10:00:00+00',
         '00000000-0000-0000-0000-00000000c041',
+        null,
+        null,
+        null,
+        null,
         'A past event used by Rust database contract tests',
         'Past contract event',
         '2000-05-20 19:00:00+00',
@@ -1902,7 +1915,69 @@ insert into event (
     'UTC'
 );
 
--- Free admission inventory for the event mutation fixtures
+-- First event used to verify group-level event mutation locks
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    100,
+    'A first group lock event used by Rust database contract tests',
+    '2099-08-03 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000c121',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c0a0',
+    'Contract Group Lock Event One',
+    false,
+    'contract-group-lock-event-one',
+    '2099-08-03 10:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Second event used to verify group-level event mutation locks
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    100,
+    'A second group lock event used by Rust database contract tests',
+    '2099-08-04 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000c122',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c0a0',
+    'Contract Group Lock Event Two',
+    false,
+    'contract-group-lock-event-two',
+    '2099-08-04 10:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Free admission inventory for the event mutation and group lock fixtures
 insert into event_ticket_type (
     event_id,
     event_ticket_type_id,
@@ -1919,9 +1994,12 @@ select
 from event e
 where e.event_id in (
     '00000000-0000-0000-0000-00000000c0d5',
-    '00000000-0000-0000-0000-00000000c0d6'
+    '00000000-0000-0000-0000-00000000c0d6',
+    '00000000-0000-0000-0000-00000000c121',
+    '00000000-0000-0000-0000-00000000c122'
 );
 
+-- Zero-price windows for the event mutation and group lock fixtures
 insert into event_ticket_price_window (
     amount_minor,
     event_ticket_price_window_id,
@@ -1931,7 +2009,9 @@ select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.even
 from event_ticket_type ett
 where ett.event_id in (
     '00000000-0000-0000-0000-00000000c0d5',
-    '00000000-0000-0000-0000-00000000c0d6'
+    '00000000-0000-0000-0000-00000000c0d6',
+    '00000000-0000-0000-0000-00000000c121',
+    '00000000-0000-0000-0000-00000000c122'
 );
 
 -- Published event used to verify cancellation locks serialize RSVP
@@ -2480,6 +2560,7 @@ insert into event_waitlist (
 -- CFS
 -- ============================================================================
 
+-- Session proposals consumed by attendee reads and proposal lock contracts
 insert into session_proposal (
     created_at,
     description,
@@ -2513,6 +2594,39 @@ insert into session_proposal (
         '00000000-0000-0000-0000-00000000c042',
         '00000000-0000-0000-0000-00000000c043',
         'pending-co-speaker-response'
+    ),
+    (
+        '2024-01-10 10:00:00+00',
+        'A proposal used to verify submission share locks',
+        make_interval(mins => 45),
+        '00000000-0000-0000-0000-00000000c124',
+        'beginner',
+        'Contract Add Lock Proposal',
+        '00000000-0000-0000-0000-00000000c041',
+        null,
+        'ready-for-submission'
+    ),
+    (
+        '2024-01-11 10:00:00+00',
+        'A proposal used to verify deletion locks',
+        make_interval(mins => 45),
+        '00000000-0000-0000-0000-00000000c125',
+        'beginner',
+        'Contract Delete Lock Proposal',
+        '00000000-0000-0000-0000-00000000c041',
+        null,
+        'ready-for-submission'
+    ),
+    (
+        '2024-01-12 10:00:00+00',
+        'A proposal used to verify update locks',
+        make_interval(mins => 45),
+        '00000000-0000-0000-0000-00000000c126',
+        'beginner',
+        'Contract Update Lock Proposal',
+        '00000000-0000-0000-0000-00000000c041',
+        null,
+        'ready-for-submission'
     );
 
 insert into event_cfs_label (

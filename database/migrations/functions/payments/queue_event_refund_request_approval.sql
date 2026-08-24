@@ -11,7 +11,20 @@ declare
     v_purchase event_purchase;
     v_refund_request_id uuid;
 begin
-    -- Lock the purchase and refund request before creating durable work
+    -- Lock the event before its purchase and refund workflow rows
+    perform 1
+    from event e
+    join event_purchase ep on ep.event_id = e.event_id
+    where e.group_id = p_group_id
+    and ep.event_purchase_id = p_event_purchase_id
+    for update of e;
+
+    -- Reject purchases outside the requested group
+    if not found then
+        raise exception 'refund request not found';
+    end if;
+
+    -- Lock and load the requested purchase before creating durable work
     select ep.*
     into v_purchase
     from event_purchase ep
@@ -23,10 +36,12 @@ begin
     and err.status in ('approving', 'pending')
     for update of ep;
 
+    -- Reject unavailable purchases or refund requests
     if not found then
         raise exception 'refund request not found';
     end if;
 
+    -- Lock the current refund request after its purchase
     select err.event_refund_request_id
     into v_refund_request_id
     from event_refund_request err
@@ -34,6 +49,7 @@ begin
     and err.status in ('approving', 'pending')
     for update;
 
+    -- Reject refund requests that changed while waiting for their lock
     if not found then
         raise exception 'refund request not found';
     end if;
@@ -45,11 +61,14 @@ begin
     where epr.event_purchase_id = v_purchase.event_purchase_id
     for update;
 
+    -- Reuse a compatible durable approval decision
     if found then
+        -- Reject durable work owned by another refund workflow
         if v_existing_refund_kind <> 'refund-request-approval' then
             raise exception 'event purchase refund already started with different kind';
         end if;
 
+        -- Finish a compatible replay without duplicating durable work
         return;
     end if;
 
@@ -102,6 +121,7 @@ begin
     where event_purchase_id = v_purchase.event_purchase_id
     and kind = 'refund-request-approval';
 
+    -- Reject durable work owned by another refund workflow
     if not found then
         raise exception 'event purchase refund already started with different kind';
     end if;

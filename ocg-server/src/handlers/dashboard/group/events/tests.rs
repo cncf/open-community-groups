@@ -2236,10 +2236,17 @@ async fn test_publish_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
+    let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     tx.expect_publish_event()
         .times(1)
@@ -2250,6 +2257,7 @@ async fn test_publish_success() {
                 && payment_provider.is_none()
                 && payment_validation.is_none()
         })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _, _, _| Ok(()));
     tx.expect_get_event_full()
         .times(1)
@@ -2360,6 +2368,10 @@ async fn test_publish_test_event_no_notification() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2453,6 +2465,11 @@ async fn test_publish_series_success() {
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(series_event_ids.clone()));
+    let locked_event_ids = expected_series_event_ids.clone();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == locked_event_ids)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2573,6 +2590,11 @@ async fn test_publish_series_sends_aggregate_notification() {
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(series_event_ids.clone()));
+    let locked_event_ids = expected_series_event_ids.clone();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == locked_event_ids)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2698,6 +2720,10 @@ async fn test_publish_already_published_no_notification() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -2790,6 +2816,10 @@ async fn test_publish_speakers_only() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3346,6 +3376,10 @@ async fn test_update_free_manual_event_without_tax_rates_skips_fiscal_sponsor_va
 
     // Persist the explicit empty selection without a provider validation snapshot
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3452,6 +3486,10 @@ async fn test_update_free_success() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3585,6 +3623,11 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
     // Setup the ordered state transition and notification expectations
     let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -3961,6 +4004,10 @@ async fn test_update_paid_notification_failure_rolls_back() {
 
     // Setup a successful update followed by a required notification failure
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -4073,6 +4120,10 @@ async fn test_update_reschedule_notification_success() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -4205,6 +4256,10 @@ async fn test_update_reschedule_rollback_on_enqueue_failure() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -4322,6 +4377,10 @@ async fn test_update_reschedule_rollback_on_notification_context_failure() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -4418,6 +4477,10 @@ async fn test_update_reschedule_skips_notification_when_shift_too_small() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -4523,6 +4586,10 @@ async fn test_update_reschedule_skips_notification_when_unpublished() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -4628,6 +4695,10 @@ async fn test_update_skips_notification_for_past_event() {
         })
         .returning(|_, _, _, _| Ok(true));
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -4727,6 +4798,10 @@ async fn test_update_unrelated_paid_event_edit_skips_fiscal_sponsor_validation()
 
     // Persist the unrelated edit without entering a notifiable paid state
     let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
