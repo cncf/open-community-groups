@@ -23,7 +23,7 @@ export const createScanStateMachine = ({
   let active = false;
   let cooldownTimer = null;
   let inFlight = false;
-  let muted = false;
+  let muted = true;
   let tornDown = false;
   const recentCredentials = new Map();
 
@@ -73,7 +73,7 @@ export const createScanStateMachine = ({
       beginCooldown(
         {
           attendeeName,
-          kind: alreadyCheckedIn ? "neutral" : "success",
+          kind: alreadyCheckedIn ? "error" : "success",
           message: alreadyCheckedIn ? "Already checked in" : "Checked in",
           ticketTitle: response.ticket_title || "Ticket information unavailable",
         },

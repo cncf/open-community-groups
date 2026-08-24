@@ -37,6 +37,23 @@ describe("dashboard base template", () => {
     expect(template).to.include("z-[1050]");
   });
 
+  it("renders the mobile drawer trigger in the dashboard header", async () => {
+    // Load the dashboard base before checking trigger placement and visibility.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the trigger belongs to the header and remains hidden by default.
+    const headerStart = template.indexOf('id="dashboard-header"');
+    const trigger = template.indexOf('id="open-dashboard-menu"');
+    const sharedHeader = template.indexOf('{% include "common/header.html" -%}');
+    const mainStart = template.indexOf('id="dashboard-main-content"');
+    expect(trigger).to.be.greaterThan(headerStart);
+    expect(trigger).to.be.lessThan(sharedHeader);
+    expect(trigger).to.be.lessThan(mainStart);
+    expect(template).to.include(
+      "{% block mobile_dashboard_menu_button_classes -%}hidden{% endblock mobile_dashboard_menu_button_classes -%}",
+    );
+  });
+
   it("stretches the dashboard layout to fill the viewport on mobile", async () => {
     // Load the dashboard base before checking the mobile layout height contract.
     const template = normalizeWhitespace(await loadTemplate());

@@ -88,9 +88,9 @@ test.describe("group dashboard check-in", () => {
     const modal = checkInManagerGroupPage.locator("#group-check-in-scanner-modal");
     await expect(modal).toBeVisible();
     await expect(modal.getByText("Hold an attendee QR code inside the frame.")).toBeVisible();
-    const muteButton = modal.getByRole("button", { name: "Mute sounds" });
-    await muteButton.click();
-    await expect(modal.getByRole("button", { name: "Unmute sounds" })).toBeVisible();
+    const muteToggle = modal.getByRole("checkbox", { name: "Mute sounds" });
+    await muteToggle.check();
+    await expect(muteToggle).toBeChecked();
     await expect(modal.getByRole("link", { name: "Manual check-in" })).toHaveAttribute(
       "href",
       "/dashboard/group?tab=events",

@@ -41,8 +41,13 @@ export const initializeGroupCheckInScanner = (container = document, { historyRes
       return;
     }
     const mute = event.target.closest?.("[data-group-check-in-mute]");
-    if (mute instanceof HTMLButtonElement && activeSession?.root === root && activeSession.controller) {
-      const muted = activeSession.controller.setMuted(!activeSession.controller.muted);
+    if (
+      mute instanceof HTMLInputElement &&
+      mute.type === "checkbox" &&
+      activeSession?.root === root &&
+      activeSession.controller
+    ) {
+      const muted = activeSession.controller.setMuted(mute.checked);
       setMuteState(mute, muted);
     }
   });
@@ -69,6 +74,12 @@ const cameraErrorMessage = (error) => {
   }
   return "The camera could not be started. Try another camera or use manual check-in.";
 };
+
+/** Returns the compact scanner status shown beside camera failure details. */
+const cameraStatusMessage = (error) =>
+  error?.name === "NotFoundError" || error?.name === "DevicesNotFoundError"
+    ? "Waiting for a camera…"
+    : "Camera unavailable.";
 
 /** Returns from manual attendee check-in to the scanner event cards. */
 const closeManualCheckIn = (root) => {
@@ -162,6 +173,10 @@ const openManualCheckIn = async (root, link) => {
 const populateCameras = async (select, scanner, isCurrent, torch, runHardwareControl) => {
   const cameras = await scannerImplementation().listCameras(true);
   if (!isCurrent()) return () => {};
+  if (cameras.length === 0) {
+    setCameraSelectPlaceholder(select, "Camera selection unavailable");
+    return () => {};
+  }
   select.replaceChildren();
   cameras.forEach((camera, index) => {
     const option = document.createElement("option");
@@ -215,11 +230,15 @@ const postCredential = async (url, credential) => {
 
 /** Renders visible and screen-reader scan feedback. */
 const renderFeedback = (element, feedback) => {
-  element.className = `absolute inset-x-4 top-4 rounded-lg p-4 text-center text-white shadow-lg ${
-    feedback.kind === "success" ? "bg-green-700" : feedback.kind === "neutral" ? "bg-stone-700" : "bg-red-700"
+  element.className = `absolute inset-x-4 top-4 rounded-lg border p-4 text-center shadow-lg ${
+    feedback.kind === "success"
+      ? "border-green-800 bg-green-100 text-green-800"
+      : feedback.kind === "neutral"
+        ? "border-stone-800 bg-stone-100 text-stone-800"
+        : "border-red-800 bg-red-100 text-red-800"
   }`;
   const message = document.createElement("p");
-  message.className = "font-semibold";
+  message.className = "text-sm font-normal md:text-base";
   message.textContent = feedback.message;
   element.replaceChildren(message);
   if (feedback.attendeeName) {
@@ -245,6 +264,26 @@ const replaceScannerVideo = (root) => {
 /** Returns the production decoder or an explicitly injected browser-test double. */
 const scannerImplementation = () => window.__OCG_E2E_QR_SCANNER__ || QrScanner;
 
+/** Updates the disabled camera selector with one explicit availability state. */
+const setCameraSelectPlaceholder = (select, message) => {
+  if (!(select instanceof HTMLSelectElement)) return;
+  const option = document.createElement("option");
+  option.textContent = message;
+  option.selected = true;
+  select.replaceChildren(option);
+  select.disabled = true;
+};
+
+/** Updates the visual camera-unavailable message inside the scanner viewport. */
+const setCameraUnavailableState = (root, message = "") => {
+  const unavailable = root.querySelector("[data-group-check-in-camera-unavailable]");
+  const unavailableMessage = root.querySelector("[data-group-check-in-camera-unavailable-message]");
+  if (!(unavailable instanceof HTMLElement)) return;
+  unavailable.classList.toggle("hidden", !message);
+  unavailable.classList.toggle("flex", Boolean(message));
+  if (unavailableMessage) unavailableMessage.textContent = message;
+};
+
 /** Updates the compact live region used while loading the manual attendee list. */
 const setManualCheckInStatus = (element, message) => {
   if (!(element instanceof HTMLElement)) return;
@@ -253,24 +292,26 @@ const setManualCheckInStatus = (element, message) => {
 };
 
 /** Updates the visible and accessible sound state. */
-const setMuteState = (button, isMuted) => {
-  if (!(button instanceof HTMLButtonElement)) return;
-  const label = button.querySelector("[data-group-check-in-mute-label]");
-  if (label) label.textContent = isMuted ? "Unmute sounds" : "Mute sounds";
+const setMuteState = (input, isMuted) => {
+  if (!(input instanceof HTMLInputElement) || input.type !== "checkbox") return;
+  input.checked = isMuted;
 };
 
-/** Updates whether torch controls are available for the active camera. */
-const setTorchAvailable = (button, isAvailable) => {
-  if (!(button instanceof HTMLButtonElement)) return;
-  button.classList.toggle("hidden", !isAvailable);
-  button.disabled = !isAvailable;
-  if (!isAvailable) setTorchState(button, false);
+/** Updates whether the torch switch is available for the active camera. */
+const setTorchAvailable = (input, isAvailable) => {
+  if (!(input instanceof HTMLInputElement) || input.type !== "checkbox") return;
+  const control = input.closest("[data-group-check-in-torch-control]");
+  if (!(control instanceof HTMLElement)) return;
+  control.classList.toggle("hidden", !isAvailable);
+  control.classList.toggle("inline-flex", isAvailable);
+  input.disabled = !isAvailable;
+  if (!isAvailable) setTorchState(input, false);
 };
 
-/** Updates the visible and accessible torch state. */
-const setTorchState = (button, isOn) => {
-  if (!(button instanceof HTMLButtonElement)) return;
-  button.textContent = isOn ? "Turn torch off" : "Turn torch on";
+/** Updates the visible and accessible torch switch state. */
+const setTorchState = (input, isOn) => {
+  if (!(input instanceof HTMLInputElement) || input.type !== "checkbox") return;
+  input.checked = isOn;
 };
 
 /** Starts one scanner session for a selected event. */
@@ -288,11 +329,17 @@ const startScannerSession = async (root, trigger) => {
   if (!(video instanceof HTMLVideoElement)) return;
 
   const eventId = trigger.dataset.eventId || "";
+  const eventDate = trigger.dataset.eventDate || "Date information unavailable";
+  const eventLocation = trigger.dataset.eventLocation || "Location information unavailable";
   const eventName = trigger.dataset.eventName || "Event check-in";
   const scanUrl = trigger.dataset.scanUrl || "";
-  const title = root.querySelector("#group-check-in-scanner-title");
+  const eventDateElement = root.querySelector("#group-check-in-event-date");
+  const eventLocationElement = root.querySelector("#group-check-in-event-location");
+  const eventNameElement = root.querySelector("#group-check-in-event-name");
   const manualLink = root.querySelector("[data-group-check-in-manual]");
-  if (title) title.textContent = eventName;
+  if (eventDateElement) eventDateElement.textContent = eventDate;
+  if (eventLocationElement) eventLocationElement.textContent = eventLocation;
+  if (eventNameElement) eventNameElement.textContent = eventName;
   if (manualLink instanceof HTMLAnchorElement) {
     manualLink.dataset.attendeesUrl = trigger.dataset.attendeesUrl || "";
     manualLink.dataset.eventId = eventId;
@@ -300,12 +347,10 @@ const startScannerSession = async (root, trigger) => {
   }
   if (status) status.textContent = "Starting camera…";
   if (result) result.classList.add("hidden");
-  if (camera instanceof HTMLSelectElement) {
-    camera.replaceChildren();
-    camera.disabled = true;
-  }
-  if (mute instanceof HTMLButtonElement) mute.disabled = false;
-  setMuteState(mute, false);
+  setCameraSelectPlaceholder(camera, "Finding cameras…");
+  setCameraUnavailableState(root);
+  if (mute instanceof HTMLInputElement) mute.disabled = false;
+  setMuteState(mute, true);
   setTorchAvailable(torch, false);
 
   let audio = null;
@@ -315,14 +360,14 @@ const startScannerSession = async (root, trigger) => {
   let resourcesCleaned = false;
   let scanner = null;
   let session;
-  let torchClickHandler = null;
+  let torchChangeHandler = null;
   const isCurrent = () => activeSession === session;
   const cleanupControls = () => {
     cleanupCameraSelection();
     cleanupCameraSelection = () => {};
-    if (torch instanceof HTMLButtonElement && torchClickHandler) {
-      torch.removeEventListener("click", torchClickHandler);
-      torchClickHandler = null;
+    if (torch instanceof HTMLInputElement && torchChangeHandler) {
+      torch.removeEventListener("change", torchChangeHandler);
+      torchChangeHandler = null;
     }
     setTorchAvailable(torch, false);
   };
@@ -345,7 +390,7 @@ const startScannerSession = async (root, trigger) => {
     if (hardwareControlPending || !isCurrent()) return false;
     hardwareControlPending = true;
     if (camera instanceof HTMLSelectElement) camera.disabled = true;
-    if (torch instanceof HTMLButtonElement) torch.disabled = true;
+    if (torch instanceof HTMLInputElement) torch.disabled = true;
     try {
       await operation();
       return true;
@@ -353,7 +398,11 @@ const startScannerSession = async (root, trigger) => {
       hardwareControlPending = false;
       if (isCurrent()) {
         if (camera instanceof HTMLSelectElement) camera.disabled = camera.options.length < 2;
-        if (torch instanceof HTMLButtonElement) torch.disabled = torch.classList.contains("hidden");
+        if (torch instanceof HTMLInputElement) {
+          const torchControl = torch.closest("[data-group-check-in-torch-control]");
+          torch.disabled =
+            !(torchControl instanceof HTMLElement) || torchControl.classList.contains("hidden");
+        }
       }
     }
   };
@@ -418,7 +467,7 @@ const startScannerSession = async (root, trigger) => {
       try {
         cleanupCameraSelection = await populateCameras(camera, scanner, isCurrent, torch, runHardwareControl);
       } catch {
-        if (isCurrent()) camera.disabled = true;
+        if (isCurrent()) setCameraSelectPlaceholder(camera, "Camera selection unavailable");
       }
     }
     if (!isCurrent()) {
@@ -426,10 +475,10 @@ const startScannerSession = async (root, trigger) => {
       controller.teardown();
       return;
     }
-    if (torch instanceof HTMLButtonElement) {
+    if (torch instanceof HTMLInputElement && torch.type === "checkbox") {
       setTorchAvailable(torch, hasFlash);
       if (hasFlash) setTorchState(torch, scanner.isFlashOn());
-      torchClickHandler = () => {
+      torchChangeHandler = () => {
         void runHardwareControl(async () => {
           try {
             await scanner.toggleFlash();
@@ -439,13 +488,16 @@ const startScannerSession = async (root, trigger) => {
           }
         });
       };
-      torch.addEventListener("click", torchClickHandler);
+      torch.addEventListener("change", torchChangeHandler);
     }
   } catch (error) {
     cleanupResources();
     if (isCurrent()) {
-      if (mute instanceof HTMLButtonElement) mute.disabled = true;
-      if (status) status.textContent = cameraErrorMessage(error);
+      const errorMessage = cameraErrorMessage(error);
+      if (mute instanceof HTMLInputElement) mute.disabled = true;
+      setCameraSelectPlaceholder(camera, "No cameras detected");
+      setCameraUnavailableState(root, errorMessage);
+      if (status) status.textContent = cameraStatusMessage(error);
     }
   }
 };

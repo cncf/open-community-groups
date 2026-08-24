@@ -3,6 +3,7 @@ import { expect } from "@open-wc/testing";
 import { initializeGroupCheckInScanner } from "/static/js/dashboard/group/check-in/scanner.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx } from "/tests/unit/test-utils/globals.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("group check-in scanner controls", () => {
   let htmx;
@@ -22,18 +23,33 @@ describe("group check-in scanner controls", () => {
     document.body.innerHTML = `
       <section data-group-check-in-root>
         <div data-group-check-in-scanner-view>
-          <button data-group-check-in-open data-event-id="event-a" data-event-name="Event A" data-scan-url="/scan-a" data-attendees-url="/events/event-a/attendees">A</button>
-          <button data-group-check-in-open data-event-id="event-b" data-event-name="Event B" data-scan-url="/scan-b" data-attendees-url="/events/event-b/attendees">B</button>
+          <button data-group-check-in-open data-event-id="event-a" data-event-date="Aug 24, 2026 · 9:00 AM CEST" data-event-location="Madrid" data-event-name="Event A" data-scan-url="/scan-a" data-attendees-url="/events/event-a/attendees">A</button>
+          <button data-group-check-in-open data-event-id="event-b" data-event-date="Aug 25, 2026 · 10:00 AM CEST" data-event-location="Virtual" data-event-name="Event B" data-scan-url="/scan-b" data-attendees-url="/events/event-b/attendees">B</button>
         </div>
         <div id="group-check-in-scanner-modal" class="hidden" aria-hidden="true">
           <button data-group-check-in-close tabindex="-1">Overlay</button>
-          <button data-group-check-in-mute><span data-group-check-in-mute-label>Mute sounds</span></button>
-          <h2 id="group-check-in-scanner-title"></h2>
+          <button data-group-check-in-close>Close</button>
+          <label>
+            <input type="checkbox" data-group-check-in-mute>
+            <span data-group-check-in-mute-label>Mute sounds</span>
+          </label>
+          <h2 id="group-check-in-scanner-title">Scan attendees</h2>
+          <h4 id="group-check-in-event-name"></h4>
+          <p id="group-check-in-event-date"></p>
+          <p id="group-check-in-event-location"></p>
           <video data-group-check-in-video></video>
-          <div data-group-check-in-status></div>
+          <div data-group-check-in-camera-unavailable class="hidden">
+            <span data-group-check-in-camera-unavailable-message></span>
+          </div>
+          <div id="group-check-in-scanner-status" data-group-check-in-status></div>
           <div data-group-check-in-result class="hidden"></div>
-          <select data-group-check-in-camera></select>
-          <button data-group-check-in-torch class="hidden">Turn torch on</button>
+          <select data-group-check-in-camera disabled>
+            <option>Finding cameras…</option>
+          </select>
+          <label data-group-check-in-torch-control class="hidden">
+            <input type="checkbox" data-group-check-in-torch disabled>
+            <span>Torch</span>
+          </label>
           <a data-group-check-in-manual href="/dashboard/group?tab=events"></a>
         </div>
         <div class="hidden" data-group-check-in-manual-panel tabindex="-1">
@@ -45,6 +61,68 @@ describe("group check-in scanner controls", () => {
       </section>
     `;
   };
+
+  it("renders already checked-in feedback with the site error alert style", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    const fetchMock = mockFetch({
+      response: new Response(
+        JSON.stringify({
+          attendee: { name: "Paula Webb" },
+          outcome: "already-checked-in",
+          ticket_title: "Expo Pass",
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    });
+
+    try {
+      // Scan an attendee who was already checked in.
+      renderFixture();
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      document.querySelector("[data-group-check-in-open]").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
+
+      // Verify the result uses a compact, centered, normal-weight error alert.
+      const result = document.querySelector("[data-group-check-in-result]");
+      const message = result.querySelector("p");
+      expect(result.classList.contains("border")).to.equal(true);
+      expect(result.classList.contains("border-red-800")).to.equal(true);
+      expect(result.classList.contains("bg-red-100")).to.equal(true);
+      expect(result.classList.contains("text-red-800")).to.equal(true);
+      expect(result.classList.contains("text-center")).to.equal(true);
+      expect(message.classList.contains("text-sm")).to.equal(true);
+      expect(message.classList.contains("md:text-base")).to.equal(true);
+      expect(message.classList.contains("font-normal")).to.equal(true);
+      expect(result.textContent).to.include("Already checked in");
+      expect(result.textContent).to.include("Paula Webb · Expo Pass");
+    } finally {
+      fetchMock.restore();
+    }
+  });
 
   it("continues scanning when audio initialization fails", async () => {
     // Provide a scanner that can start without audio feedback.
@@ -191,12 +269,12 @@ describe("group check-in scanner controls", () => {
     const triggers = document.querySelectorAll("[data-group-check-in-open]");
     const mute = document.querySelector("[data-group-check-in-mute]");
 
-    // Open a second event before the first camera check resolves.
+    // Enable sound, then open a second event before the first camera check resolves.
     triggers[0].click();
+    expect(mute.checked).to.equal(true);
     mute.click();
-    expect(mute.textContent).to.equal("Unmute sounds");
-    expect(mute.hasAttribute("aria-label")).to.equal(false);
-    expect(mute.hasAttribute("aria-pressed")).to.equal(false);
+    expect(mute.checked).to.equal(false);
+    expect(document.querySelector("[data-group-check-in-mute-label]").textContent).to.equal("Mute sounds");
     triggers[1].click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     releaseFirstCameraCheck(true);
@@ -210,9 +288,18 @@ describe("group check-in scanner controls", () => {
     expect(FakeScanner.instances[0].video.isConnected).to.equal(false);
     expect(FakeScanner.instances[1].video).to.equal(document.querySelector("[data-group-check-in-video]"));
     expect(document.querySelector("[data-group-check-in-camera]").value).to.equal("new-camera");
-    expect(document.getElementById("group-check-in-scanner-title").textContent).to.equal("Event B");
-    expect(mute.textContent).to.equal("Mute sounds");
-    expect(document.activeElement).to.equal(document.querySelector("[data-group-check-in-mute]"));
+    expect(document.getElementById("group-check-in-scanner-title").textContent).to.equal(
+      "Scan attendees",
+    );
+    expect(document.getElementById("group-check-in-event-name").textContent).to.equal("Event B");
+    expect(document.getElementById("group-check-in-event-date").textContent).to.equal(
+      "Aug 25, 2026 · 10:00 AM CEST",
+    );
+    expect(document.getElementById("group-check-in-event-location").textContent).to.equal("Virtual");
+    expect(mute.checked).to.equal(true);
+    expect(document.activeElement).to.equal(
+      document.querySelector('[data-group-check-in-close]:not([tabindex="-1"])'),
+    );
 
     // Close the current session and restore focus to its trigger.
     document.querySelector("[data-group-check-in-close]").click();
@@ -237,9 +324,17 @@ describe("group check-in scanner controls", () => {
 
     // Verify the modal remains open with actionable failure guidance.
     const modal = document.getElementById("group-check-in-scanner-modal");
+    const unavailable = document.querySelector("[data-group-check-in-camera-unavailable]");
     expect(modal.classList.contains("hidden")).to.equal(false);
     expect(document.querySelector("[data-group-check-in-status]").textContent).to.equal(
+      "Camera unavailable.",
+    );
+    expect(unavailable.classList.contains("hidden")).to.equal(false);
+    expect(unavailable.textContent.trim()).to.equal(
       "The camera could not be started. Try another camera or use manual check-in.",
+    );
+    expect(document.querySelector("[data-group-check-in-camera]").textContent.trim()).to.equal(
+      "No cameras detected",
     );
 
     // Close the failed scanner and restore page state.
@@ -247,6 +342,37 @@ describe("group check-in scanner controls", () => {
     expect(modal.classList.contains("hidden")).to.equal(true);
     expect(document.body.style.overflow).to.equal("");
     expect(document.activeElement).to.equal(trigger);
+  });
+
+  it("renders a waiting state when no camera is available", async () => {
+    // Provide a scanner implementation without an available camera.
+    class FakeScanner {
+      static async hasCamera() {
+        return false;
+      }
+
+      destroy() {}
+    }
+
+    // Open the scanner and allow camera discovery to settle.
+    renderFixture();
+    window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+    initializeGroupCheckInScanner();
+    document.querySelector("[data-group-check-in-open]").click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Verify the modal preserves the manual fallback with explicit camera states.
+    expect(document.querySelector("[data-group-check-in-status]").textContent).to.equal(
+      "Waiting for a camera…",
+    );
+    expect(document.querySelector("[data-group-check-in-camera-unavailable-message]").textContent).to.equal(
+      "No camera was found. Connect a camera or use manual check-in.",
+    );
+    expect(document.querySelector("[data-group-check-in-camera]").disabled).to.equal(true);
+    expect(document.querySelector("[data-group-check-in-camera]").textContent.trim()).to.equal(
+      "No cameras detected",
+    );
+    expect(document.querySelector("[data-group-check-in-mute]").disabled).to.equal(true);
   });
 
   it("loads selected attendees for manual check-in and returns to the scanner", async () => {
@@ -344,7 +470,7 @@ describe("group check-in scanner controls", () => {
     expect(FakeScanner.startCount).to.equal(1);
   });
 
-  it("uses action labels for torch state", async () => {
+  it("uses checked state for the torch toggle", async () => {
     // Provide a scanner with controllable flash state.
     class FakeScanner {
       static async hasCamera() {
@@ -378,17 +504,23 @@ describe("group check-in scanner controls", () => {
     document.querySelector("[data-group-check-in-open]").click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     const torch = document.querySelector("[data-group-check-in-torch]");
+    const torchControl = document.querySelector("[data-group-check-in-torch-control]");
 
-    // Toggle the torch and verify the next action.
+    // Toggle the torch and verify its native checked state.
+    expect(torchControl.classList.contains("hidden")).to.equal(false);
+    expect(torchControl.classList.contains("inline-flex")).to.equal(true);
+    expect(torch.disabled).to.equal(false);
+    expect(torch.checked).to.equal(false);
     torch.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(torch.hasAttribute("aria-pressed")).to.equal(false);
-    expect(torch.textContent).to.equal("Turn torch off");
+    expect(torch.checked).to.equal(true);
+    expect(torchControl.textContent.trim()).to.equal("Torch");
 
-    // Close the scanner and verify the action resets.
+    // Close the scanner and verify the switch resets and is hidden.
     document.querySelector("[data-group-check-in-close]").click();
-    expect(torch.hasAttribute("aria-pressed")).to.equal(false);
-    expect(torch.textContent).to.equal("Turn torch on");
+    expect(torch.checked).to.equal(false);
+    expect(torch.disabled).to.equal(true);
+    expect(torchControl.classList.contains("hidden")).to.equal(true);
   });
 
   it("serializes camera and torch hardware changes", async () => {
@@ -453,7 +585,7 @@ describe("group check-in scanner controls", () => {
     torch.click();
     expect(camera.disabled).to.equal(true);
     expect(torch.disabled).to.equal(true);
-    torch.dispatchEvent(new Event("click", { bubbles: true }));
+    torch.click();
     camera.value = "camera-b";
     camera.dispatchEvent(new Event("change", { bubbles: true }));
     expect(FakeScanner.toggleCount).to.equal(1);
@@ -470,7 +602,7 @@ describe("group check-in scanner controls", () => {
     expect(FakeScanner.cameraChanges).to.deep.equal(["camera-b"]);
     expect(camera.disabled).to.equal(true);
     expect(torch.disabled).to.equal(true);
-    torch.dispatchEvent(new Event("click", { bubbles: true }));
+    torch.click();
     expect(FakeScanner.toggleCount).to.equal(1);
 
     // Finish the camera change and verify both controls recover.

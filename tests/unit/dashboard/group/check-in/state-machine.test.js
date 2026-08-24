@@ -58,6 +58,8 @@ describe("group check-in scan state machine", () => {
 
     // Start the scanner and submit a valid credential.
     await controller.start();
+    expect(controller.muted).to.equal(true);
+    controller.setMuted(false);
     expect(await controller.handleDecode({ data: credential })).to.equal(true);
 
     // Verify success feedback and sound are emitted once.
@@ -76,8 +78,9 @@ describe("group check-in scan state machine", () => {
     expect(readyCount).to.equal(2);
   });
 
-  it("keeps one request in flight and deduplicates rapid repeats", async () => {
+  it("reports already checked-in attendees and deduplicates rapid repeats", async () => {
     // Hold the first request open with a controllable response.
+    const feedback = [];
     let now = 1000;
     let postCount = 0;
     let releasePost;
@@ -89,6 +92,7 @@ describe("group check-in scan state machine", () => {
       audio: {},
       eventId,
       now: () => now,
+      onFeedback: (value) => feedback.push(value),
       postCredential: async () => {
         postCount += 1;
         if (postCount === 1) await firstPost;
@@ -108,6 +112,12 @@ describe("group check-in scan state machine", () => {
     expect(postCount).to.equal(1);
     releasePost();
     await pending;
+
+    // Verify the duplicate state uses the site's red error alert tone.
+    expect(feedback[0]).to.include({
+      kind: "error",
+      message: "Already checked in",
+    });
 
     // Complete the first request's cooldown.
     timers.shift()();

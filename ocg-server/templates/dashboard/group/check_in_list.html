@@ -1,18 +1,21 @@
 {% import "macros/cards.html" as cards -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 <section class="relative min-w-0"
          data-group-check-in-root
          aria-labelledby="group-check-in-title">
   {# Check-in header -#}
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
-       data-group-check-in-scanner-view>
-    <div>
-      <h1 id="group-check-in-title"
-          class="text-xl font-medium text-stone-900 lg:text-2xl">Check-In</h1>
-      <p class="mt-1 text-sm/6 text-stone-500">Select an event, then scan attendee QR codes continuously.</p>
-    </div>
-    <a href="/dashboard/group?tab=events"
-       class="btn-primary-outline-anchor hidden justify-center md:inline-flex">Manual attendees list</a>
+  <div data-group-check-in-scanner-view>
+    <h1 id="group-check-in-title"
+        class="text-xl font-medium text-stone-900 lg:text-2xl">Check-In</h1>
+    <p class="mt-1 text-sm/6 text-stone-500">
+      Select an event, then scan attendee QR codes continuously.
+      <span class="hidden md:inline">
+        For manual check-in, open an event's attendee list from
+        <a href="/dashboard/group?tab=events"
+           class="font-medium text-primary-600 underline underline-offset-2 hover:text-primary-700">Events</a>.
+      </span>
+    </p>
   </div>
   {# End check-in header -#}
 
@@ -41,6 +44,8 @@
                   class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
                   data-group-check-in-open
                   data-event-id="{{ event.event_id }}"
+                  data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"
+                  data-event-location="{% if event.kind == EventKind::Virtual -%}Virtual{% else -%}{{ event.location.as_deref() |assigned_or("Venue details pending") }}{% endif -%}"
                   data-event-name="{{ event.name }}"
                   data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"
                   data-attendees-url="/dashboard/group/events/{{ event.event_id }}/attendees">
@@ -57,69 +62,122 @@
 
   {# QR scanner modal -#}
   <div id="group-check-in-scanner-modal"
-       class="fixed inset-0 z-50 hidden items-center justify-center p-0 sm:p-5"
+       class="fixed inset-0 z-[1000] hidden h-full max-h-full w-full items-center justify-center overflow-x-hidden overflow-y-auto flex"
        data-restorable-modal
        role="dialog"
        aria-modal="true"
        aria-hidden="true"
-       aria-labelledby="group-check-in-scanner-title">
+       aria-labelledby="group-check-in-scanner-title"
+       aria-describedby="group-check-in-scanner-status">
     <button type="button"
-            class="modal-overlay absolute inset-0 bg-stone-950/80"
+            class="modal-overlay absolute h-full w-full bg-stone-950 opacity-[0.35]"
             data-group-check-in-close
             tabindex="-1"
             aria-label="Close QR scanner"></button>
-    <div class="relative z-10 flex h-dvh w-full flex-col overflow-hidden bg-stone-950 text-white sm:h-[min(860px,calc(100dvh-2.5rem))] sm:max-w-4xl sm:rounded-xl sm:border sm:border-stone-700">
-      <header class="flex shrink-0 items-center justify-between gap-3 border-b border-stone-700 px-4 py-3">
-        <div class="min-w-0">
-          <p class="text-xs font-semibold uppercase tracking-wide text-primary-300">Continuous scanner</p>
-          <h2 id="group-check-in-scanner-title"
-              class="truncate text-lg font-semibold"></h2>
-        </div>
-        <div class="flex items-center gap-2">
-          <button type="button"
-                  class="rounded-md border border-stone-600 p-2 text-sm hover:bg-stone-800"
-                  data-group-check-in-mute>
-            <span data-group-check-in-mute-label>Mute sounds</span>
-          </button>
-          <button type="button"
-                  class="rounded-md border border-stone-600 p-2 hover:bg-stone-800"
-                  data-group-check-in-close
-                  aria-label="Close QR scanner">
-            <span class="svg-icon size-4 icon-close bg-white"></span>
-          </button>
-        </div>
-      </header>
+    <div class="modal-panel h-full max-h-full max-w-2xl p-4 sm:h-auto sm:max-h-[90vh]">
+      <div class="modal-card h-full max-h-full rounded-lg sm:h-auto sm:max-h-[calc(90vh-2rem)]">
+        {{ dashboard::modal_header(title_id = "group-check-in-scanner-title",
+          title = "Scan attendees",
+          close_attrs = "data-group-check-in-close") -}}
 
-      <div class="relative min-h-0 flex-1 bg-black">
-        <video data-group-check-in-video
-               class="size-full object-cover"
-               playsinline
-               muted>
-        </video>
-        <div class="pointer-events-none absolute inset-[12%] rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
+        <div class="modal-body flex-1 p-4 md:p-6">
+          <div class="w-full overflow-hidden rounded-xl border border-stone-200 bg-white">
+            <div class="p-4 sm:p-5">
+              <h4 id="group-check-in-event-name"
+                  class="text-lg font-semibold text-stone-900"></h4>
+              <dl class="mt-2 space-y-2 text-sm text-stone-600">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="svg-icon size-4 shrink-0 icon-date bg-stone-400"
+                        aria-hidden="true"></span>
+                  <dt class="sr-only">Date</dt>
+                  <dd id="group-check-in-event-date" class="min-w-0">
+                  </dd>
+                </div>
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="svg-icon size-4 shrink-0 icon-location bg-stone-400"
+                        aria-hidden="true"></span>
+                  <dt class="sr-only">Location</dt>
+                  <dd id="group-check-in-event-location" class="min-w-0 truncate">
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="relative aspect-[4/3] overflow-hidden border-t border-stone-200 bg-stone-950">
+              <video data-group-check-in-video
+                     class="size-full object-cover"
+                     playsinline
+                     muted>
+              </video>
+              <div class="pointer-events-none absolute inset-[10%] rounded-2xl border-2 border-white/70">
+                <div data-group-check-in-camera-unavailable
+                     class="absolute inset-0 hidden items-center justify-center px-4 text-center text-stone-300">
+                  <div>
+                    <span class="relative inline-flex" aria-hidden="true">
+                      <span class="svg-icon size-10 icon-recording bg-stone-500"></span>
+                      <span class="absolute left-1/2 top-1/2 h-0.5 w-12 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-stone-400">
+                      </span>
+                    </span>
+                    <p class="mt-4 text-sm sm:text-base"
+                       data-group-check-in-camera-unavailable-message></p>
+                  </div>
+                </div>
+              </div>
+              <div data-group-check-in-result
+                   class="absolute inset-x-4 top-4 hidden rounded-lg p-4 text-center shadow-lg"
+                   aria-live="polite"></div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-600">
+            <span class="size-2 shrink-0 rounded-full bg-stone-400" aria-hidden="true"></span>
+            <div id="group-check-in-scanner-status"
+                 data-group-check-in-status
+                 role="status">Starting camera…</div>
+          </div>
+
+          <div class="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div class="min-w-0">
+              <label for="group-check-in-camera" class="form-label">Camera</label>
+              <select id="group-check-in-camera"
+                      data-group-check-in-camera
+                      class="select select-primary mt-1"
+                      disabled>
+                <option>Finding cameras…</option>
+              </select>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4 sm:pb-1">
+              <label class="inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed">
+                <input type="checkbox" class="sr-only peer" data-group-check-in-mute>
+                <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+                </span>
+                <span class="ms-3 text-sm font-medium text-stone-900"
+                      data-group-check-in-mute-label>Mute sounds</span>
+              </label>
+              <label class="hidden cursor-pointer items-center has-[:disabled]:cursor-not-allowed"
+                     data-group-check-in-torch-control>
+                <input type="checkbox"
+                       class="sr-only peer"
+                       data-group-check-in-torch
+                       disabled>
+                <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+                </span>
+                <span class="ms-3 text-sm font-medium text-stone-900">Torch</span>
+              </label>
+            </div>
+          </div>
         </div>
-        <div data-group-check-in-status
-             class="absolute inset-x-4 bottom-4 rounded-lg bg-stone-900/90 p-4 text-center text-sm"
-             role="status">Starting camera…</div>
-        <div data-group-check-in-result
-             class="absolute inset-x-4 top-4 hidden rounded-lg p-4 text-center shadow-lg"
-             aria-live="polite"></div>
+
+        <footer class="flex shrink-0 flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+          <button type="button"
+                  class="btn-primary-outline w-full sm:w-auto"
+                  data-group-check-in-close>Close</button>
+          <a data-group-check-in-manual
+             href="/dashboard/group?tab=events"
+             class="btn-primary-anchor inline-flex w-full justify-center sm:w-auto">Manual check-in</a>
+        </footer>
       </div>
-
-      <footer class="grid shrink-0 gap-3 border-t border-stone-700 bg-stone-950 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-        <label class="flex min-w-0 items-center gap-2 text-sm">
-          <span class="shrink-0 text-stone-300">Camera</span>
-          <select data-group-check-in-camera
-                  class="min-w-0 flex-1 rounded-md border border-stone-600 bg-stone-900 px-3 py-2 text-white">
-          </select>
-        </label>
-        <button type="button"
-                class="hidden rounded-md border border-stone-600 px-4 py-2 text-sm hover:bg-stone-800"
-                data-group-check-in-torch>Turn torch on</button>
-        <a data-group-check-in-manual
-           href="/dashboard/group?tab=events"
-           class="rounded-md bg-white px-4 py-2 text-center text-sm font-semibold text-stone-900">Manual check-in</a>
-      </footer>
     </div>
   </div>
   {# End QR scanner modal -#}
