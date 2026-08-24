@@ -278,10 +278,6 @@ Stripe may offer pay-as-you-go and monthly pricing. Tax activity is billed to
 the connected account, so the sponsor should review the available plans and
 understand the applicable charges.
 
-?> OCG enables automatic tax on every Checkout session it creates, so the
-`Configure Tax to start collecting` integration toggles that turn tax on by
-default for new payments are not required for OCG tickets.
-
 Stripe Tax only calculates and collects tax in the locations where the
 connected account has an active registration. OCG checks that the connected
 account's Stripe Tax settings are active whenever automatic-tax readiness is
