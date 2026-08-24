@@ -21,9 +21,11 @@ Event enrollment remains available without these prerequisites. An event is
 paid-capable when any active or inactive ticket type has a positive current or
 future price window, including invitation-only tiers.
 
-In practice, this setup usually involves two people: a group administrator
-who wants to enable paid events for the group, and a platform administrator
-who manages the Stripe Connect platform for that OCG deployment.
+In practice, this setup usually involves three people: a group administrator
+who wants to enable paid events for the group, a platform administrator who
+manages the Stripe Connect platform for that OCG deployment, and the fiscal
+sponsor's authorized representative who completes Stripe onboarding and tax
+setup.
 
 **Sections:**
 
@@ -325,8 +327,9 @@ Once you have the sponsor's legal name and `acct_...` value:
 
 1. Open [Group Dashboard](/guides/group-dashboard.md).
 2. Go to `Settings`.
-3. Find the `Payments` section.
-4. Enter the legal seller name shown to attendees.
+3. Find the `Fiscal Sponsor` section.
+4. Enter the legal seller name shown to attendees into `Fiscal Sponsor Legal
+   Name`.
 5. Paste the Stripe connected account ID into `Fiscal Sponsor Stripe Account`.
 6. Save the group settings.
 
