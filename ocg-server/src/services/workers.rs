@@ -3,21 +3,12 @@
 use std::{future::Future, time::Duration};
 
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 pub(crate) mod claim_loop;
 
 #[cfg(test)]
 mod tests;
-
-/// Directs the shared worker driver after one iteration.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum WorkerIteration {
-    /// Starts the next iteration immediately.
-    Continue,
-    /// Waits for the specified duration before the next iteration.
-    Pause(Duration),
-}
 
 /// Runs cancellation-aware worker iterations until graceful shutdown.
 ///
@@ -53,4 +44,56 @@ pub(crate) async fn run_worker<Iterate, IterateFuture>(
             }
         }
     }
+}
+
+/// Coordinates background worker spawning and graceful shutdown.
+pub(crate) struct BackgroundTasks {
+    /// Token used to request worker cancellation.
+    cancellation_token: CancellationToken,
+    /// Tracker used to await worker completion.
+    task_tracker: TaskTracker,
+}
+
+impl BackgroundTasks {
+    /// Creates background task coordination primitives.
+    pub(crate) fn new() -> Self {
+        Self {
+            cancellation_token: CancellationToken::new(),
+            task_tracker: TaskTracker::new(),
+        }
+    }
+
+    /// Returns a clone of the shared worker cancellation token.
+    pub(crate) fn cancellation_token(&self) -> CancellationToken {
+        self.cancellation_token.clone()
+    }
+
+    /// Requests background workers to stop and waits for them.
+    pub(crate) async fn shutdown(self) {
+        // Prevent new tasks from joining the tracked set
+        self.task_tracker.close();
+
+        // Request graceful cancellation from every worker
+        self.cancellation_token.cancel();
+
+        // Wait for all tracked workers to finish their shutdown paths
+        self.task_tracker.wait().await;
+    }
+
+    /// Spawns a task tracked for graceful shutdown.
+    pub(crate) fn spawn<Task>(&self, task: Task)
+    where
+        Task: Future<Output = ()> + Send + 'static,
+    {
+        self.task_tracker.spawn(task);
+    }
+}
+
+/// Directs the shared worker driver after one iteration.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum WorkerIteration {
+    /// Starts the next iteration immediately.
+    Continue,
+    /// Waits for the specified duration before the next iteration.
+    Pause(Duration),
 }

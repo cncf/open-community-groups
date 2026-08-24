@@ -10,7 +10,7 @@ use mockall::automock;
 use serde::{Deserialize, Serialize};
 use serde_with::{DefaultOnNull, DurationSecondsWithFrac, serde_as, skip_serializing_none};
 use strum::{AsRefStr, Display, EnumString};
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, instrument};
 use uuid::Uuid;
 
@@ -18,7 +18,7 @@ use crate::{
     config::MeetingsZoomConfig,
     db::meetings::DynDBMeetings,
     services::workers::{
-        WorkerIteration,
+        BackgroundTasks, WorkerIteration,
         claim_loop::{self, ClaimLoopConfig},
         run_worker,
     },
@@ -180,17 +180,16 @@ impl MeetingsManager {
         providers: DynMeetingsProviders,
         db: DynDBMeetings,
         zoom_cfg: Option<MeetingsZoomConfig>,
-        task_tracker: &TaskTracker,
-        cancellation_token: &CancellationToken,
+        background_tasks: &BackgroundTasks,
     ) -> Self {
         // Setup and run workers to auto-end overdue meetings
         for _ in 1..=NUM_AUTO_END_WORKERS {
             let worker = MeetingsAutoEndWorker {
-                cancellation_token: cancellation_token.clone(),
+                cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
                 providers: providers.clone(),
             };
-            task_tracker.spawn(async move {
+            background_tasks.spawn(async move {
                 worker.run().await;
             });
         }
@@ -198,10 +197,10 @@ impl MeetingsManager {
         // Setup and run workers to recover abandoned meeting processing claims
         for _ in 1..=NUM_CLAIM_RECOVERY_WORKERS {
             let worker = MeetingsClaimRecoveryWorker {
-                cancellation_token: cancellation_token.clone(),
+                cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
             };
-            task_tracker.spawn(async move {
+            background_tasks.spawn(async move {
                 worker.run().await;
             });
         }
@@ -209,12 +208,12 @@ impl MeetingsManager {
         // Setup and run workers to synchronize meetings
         for _ in 1..=NUM_SYNC_WORKERS {
             let worker = MeetingsSyncWorker {
-                cancellation_token: cancellation_token.clone(),
+                cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
                 providers: providers.clone(),
                 zoom_cfg: zoom_cfg.clone(),
             };
-            task_tracker.spawn(async move {
+            background_tasks.spawn(async move {
                 worker.run().await;
             });
         }

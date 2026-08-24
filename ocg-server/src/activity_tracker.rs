@@ -17,11 +17,11 @@ use tokio::{
     sync::mpsc,
     time::{Instant, MissedTickBehavior},
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::error;
 use uuid::Uuid;
 
-use crate::db::activity_tracker::DynDBActivityTracker;
+use crate::{db::activity_tracker::DynDBActivityTracker, services::workers::BackgroundTasks};
 
 /// Format used to represent the date in the tracker.
 static DATE_FORMAT: LazyLock<Vec<FormatItem<'static>>> = LazyLock::new(|| {
@@ -74,11 +74,7 @@ pub(crate) struct ActivityTrackerDB {
 
 impl ActivityTrackerDB {
     /// Create a new `ActivityTrackerDB` instance.
-    pub(crate) fn new(
-        db: DynDBActivityTracker,
-        task_tracker: &TaskTracker,
-        cancellation_token: &CancellationToken,
-    ) -> Self {
+    pub(crate) fn new(db: DynDBActivityTracker, background_tasks: &BackgroundTasks) -> Self {
         // Setup channels
         let (activities_tx, activities_rx) = mpsc::channel(100);
         let (batches_tx, batches_rx) = mpsc::channel(5);
@@ -86,15 +82,15 @@ impl ActivityTrackerDB {
         // Setup and run the worker to aggregate tracked activities
         let aggregator = Aggregator {
             batches_tx,
-            cancellation_token: cancellation_token.clone(),
+            cancellation_token: background_tasks.cancellation_token(),
         };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             aggregator.run(activities_rx).await;
         });
 
         // Setup and run the worker to flush activity batches
         let flusher = Flusher { db };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             flusher.run(batches_rx).await;
         });
 
@@ -318,9 +314,8 @@ mod tests {
         let mock_db = Arc::new(mock_db);
 
         // Setup tracker and track some activities
-        let task_tracker = TaskTracker::new();
-        let cancellation_token = CancellationToken::new();
-        let tracker = ActivityTrackerDB::new(mock_db, &task_tracker, &cancellation_token);
+        let background_tasks = BackgroundTasks::new();
+        let tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
         tracker
             .track(Activity::CommunityView {
                 community_id: *COMMUNITY1_ID,
@@ -377,9 +372,7 @@ mod tests {
             .unwrap();
 
         // Stop the tracker and wait for the workers to complete
-        task_tracker.close();
-        cancellation_token.cancel();
-        task_tracker.wait().await;
+        background_tasks.shutdown().await;
     }
 
     /// Test that activities are flushed periodically.
@@ -406,9 +399,8 @@ mod tests {
         let mock_db = Arc::new(mock_db);
 
         // Setup tracker and track some activities
-        let task_tracker = TaskTracker::new();
-        let cancellation_token = CancellationToken::new();
-        let tracker = ActivityTrackerDB::new(mock_db, &task_tracker, &cancellation_token);
+        let background_tasks = BackgroundTasks::new();
+        let tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
         tracker
             .track(Activity::CommunityView {
                 community_id: *COMMUNITY1_ID,
@@ -432,9 +424,7 @@ mod tests {
         sleep(FLUSH_FREQUENCY * 2).await;
 
         // Stop the tracker and wait for the workers to complete
-        task_tracker.close();
-        cancellation_token.cancel();
-        task_tracker.wait().await;
+        background_tasks.shutdown().await;
     }
 
     /// Test that nothing is flushed if no activities are tracked.
@@ -442,18 +432,14 @@ mod tests {
     async fn test_skips_flush_when_no_activities_are_tracked() {
         // Setup tracker with no activities tracked
         let mock_db = Arc::new(MockDBActivityTracker::new());
-
-        let task_tracker = TaskTracker::new();
-        let cancellation_token = CancellationToken::new();
-        let _tracker = ActivityTrackerDB::new(mock_db, &task_tracker, &cancellation_token);
+        let background_tasks = BackgroundTasks::new();
+        let _tracker = ActivityTrackerDB::new(mock_db, &background_tasks);
 
         // Wait long enough for a periodic flush attempt
         sleep(FLUSH_FREQUENCY * 2).await;
 
         // Stop the tracker and wait for the workers to complete
-        task_tracker.close();
-        cancellation_token.cancel();
-        task_tracker.wait().await;
+        background_tasks.shutdown().await;
     }
 
     /// Test that queued activities are drained into the final shutdown batch.

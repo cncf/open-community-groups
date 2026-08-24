@@ -1,11 +1,14 @@
 //! Background reconciliation for due event enrollment reservations.
 
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::error;
 
 use crate::{
     db::DynDB,
-    services::workers::claim_loop::{self, ClaimLoopConfig},
+    services::workers::{
+        BackgroundTasks,
+        claim_loop::{self, ClaimLoopConfig},
+    },
     types::payments::PaymentProvider,
 };
 
@@ -18,18 +21,17 @@ const NUM_ENROLLMENT_WORKERS: usize = 1;
 /// Starts workers that expire due enrollment reservations and fill capacity.
 pub(crate) fn start_enrollment_workers(
     db: &DynDB,
-    task_tracker: &TaskTracker,
-    cancellation_token: &CancellationToken,
     payment_provider: Option<PaymentProvider>,
+    background_tasks: &BackgroundTasks,
 ) {
     // Start independent workers with shared graceful-shutdown coordination
     for _ in 0..NUM_ENROLLMENT_WORKERS {
         let worker = EnrollmentWorker {
-            cancellation_token: cancellation_token.clone(),
+            cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
             payment_provider,
         };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             worker.run().await;
         });
     }

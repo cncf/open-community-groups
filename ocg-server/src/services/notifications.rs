@@ -21,7 +21,7 @@ use lettre::{
 use mockall::automock;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, instrument, warn};
 use uuid::Uuid;
 
@@ -29,7 +29,7 @@ use crate::{
     config::EmailConfig,
     db::{DBOperations, DynDB},
     services::workers::{
-        WorkerIteration,
+        BackgroundTasks, WorkerIteration,
         claim_loop::{self, ClaimLoopConfig},
         run_worker,
     },
@@ -126,8 +126,7 @@ impl PgNotificationsManager {
         cfg: &EmailConfig,
         base_url: &str,
         email_sender: &DynEmailSender,
-        task_tracker: &TaskTracker,
-        cancellation_token: &CancellationToken,
+        background_tasks: &BackgroundTasks,
     ) -> Self {
         // Normalize the shared base URL before cloning it into workers
         let base_url = base_url_without_trailing_slash(base_url).to_string();
@@ -136,10 +135,10 @@ impl PgNotificationsManager {
         for _ in 1..=NUM_ENQUEUE_WORKERS {
             let worker = EnqueueWorker {
                 base_url: base_url.clone(),
-                cancellation_token: cancellation_token.clone(),
+                cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
             };
-            task_tracker.spawn(async move {
+            background_tasks.spawn(async move {
                 worker.run().await;
             });
         }
@@ -147,10 +146,10 @@ impl PgNotificationsManager {
         // Setup and run workers to recover abandoned notification delivery claims
         for _ in 1..=NUM_DELIVERY_RECOVERY_WORKERS {
             let worker = DeliveryRecoveryWorker {
-                cancellation_token: cancellation_token.clone(),
+                cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
             };
-            task_tracker.spawn(async move {
+            background_tasks.spawn(async move {
                 worker.run().await;
             });
         }
@@ -159,12 +158,12 @@ impl PgNotificationsManager {
         for _ in 1..=NUM_DELIVERY_WORKERS {
             let worker = DeliveryWorker {
                 base_url: base_url.clone(),
-                cancellation_token: cancellation_token.clone(),
+                cancellation_token: background_tasks.cancellation_token(),
                 cfg: cfg.clone(),
                 db: db.clone(),
                 email_sender: email_sender.clone(),
             };
-            task_tracker.spawn(async move {
+            background_tasks.spawn(async move {
                 worker.run().await;
             });
         }

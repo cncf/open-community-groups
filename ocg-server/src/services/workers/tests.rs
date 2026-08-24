@@ -10,7 +10,28 @@ use std::{
 use tokio::{sync::Notify, time::timeout};
 use tokio_util::sync::CancellationToken;
 
-use super::{WorkerIteration, run_worker};
+use super::{BackgroundTasks, WorkerIteration, run_worker};
+
+#[tokio::test]
+async fn test_background_tasks_shutdown_cancels_and_waits() {
+    // Setup tracked work that completes only after cancellation
+    let background_tasks = BackgroundTasks::new();
+    let cancellation_token = background_tasks.cancellation_token();
+    let task_completed = Arc::new(AtomicBool::new(false));
+    let task_completed_for_worker = task_completed.clone();
+    background_tasks.spawn(async move {
+        cancellation_token.cancelled().await;
+        task_completed_for_worker.store(true, Ordering::SeqCst);
+    });
+
+    // Request shutdown and wait for the tracked worker
+    timeout(Duration::from_secs(1), background_tasks.shutdown())
+        .await
+        .expect("background tasks to stop promptly");
+
+    // Check cancellation completed the tracked worker before shutdown returned
+    assert!(task_completed.load(Ordering::SeqCst));
+}
 
 #[tokio::test]
 async fn test_run_worker_cancellation_before_first_iteration() {

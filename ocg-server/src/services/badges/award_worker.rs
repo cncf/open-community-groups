@@ -3,13 +3,13 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info, instrument, warn};
 
 use crate::{
     db::{DynDB, badges::ClaimedBadgeAwardJob},
     services::workers::{
-        WorkerIteration,
+        BackgroundTasks, WorkerIteration,
         claim_loop::{self, ClaimLoopConfig},
         run_worker,
     },
@@ -43,18 +43,14 @@ const PAUSE_ON_RECOVERY: Duration = Duration::from_mins(1);
 const PROCESSING_TIMEOUT: Duration = Duration::from_mins(15);
 
 /// Starts durable badge award and abandoned-claim recovery workers.
-pub(crate) fn start_badge_award_workers(
-    db: &DynDB,
-    task_tracker: &TaskTracker,
-    cancellation_token: &CancellationToken,
-) {
+pub(crate) fn start_badge_award_workers(db: &DynDB, background_tasks: &BackgroundTasks) {
     // Start bounded award processors
     for _ in 0..NUM_AWARD_WORKERS {
         let worker = BadgeAwardWorker {
-            cancellation_token: cancellation_token.clone(),
+            cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
         };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             worker.run().await;
         });
     }
@@ -62,10 +58,10 @@ pub(crate) fn start_badge_award_workers(
     // Start recovery and cleanup maintenance
     for _ in 0..NUM_AWARD_RECOVERY_WORKERS {
         let worker = BadgeAwardRecoveryWorker {
-            cancellation_token: cancellation_token.clone(),
+            cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
         };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             worker.run().await;
         });
     }

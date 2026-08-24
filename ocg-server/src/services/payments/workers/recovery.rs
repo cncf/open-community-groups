@@ -3,12 +3,12 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, warn};
 
 use crate::{
     db::DynDB,
-    services::workers::{WorkerIteration, run_worker},
+    services::workers::{BackgroundTasks, WorkerIteration, run_worker},
 };
 
 #[cfg(test)]
@@ -21,17 +21,14 @@ const NUM_WORKERS: usize = 1;
 const PAUSE_ON_RECOVERY: Duration = Duration::from_mins(1);
 
 /// Starts payment claim recovery independently from provider configuration.
-pub(in crate::services::payments) fn start(
-    db: &DynDB,
-    task_tracker: &TaskTracker,
-    cancellation_token: &CancellationToken,
-) {
+pub(in crate::services::payments) fn start(db: &DynDB, background_tasks: &BackgroundTasks) {
+    // Start recovery workers under shared graceful-shutdown coordination
     for _ in 0..NUM_WORKERS {
         let worker = Worker {
-            cancellation_token: cancellation_token.clone(),
+            cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
         };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             worker.run().await;
         });
     }
