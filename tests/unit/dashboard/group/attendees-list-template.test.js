@@ -21,6 +21,32 @@ const sliceTemplateSection = (template, startToken, endToken) => {
 };
 
 describe("dashboard group attendees list template", () => {
+  it("opens the shared scanner for published current events on desktop", async () => {
+    // Load the attendees actions and shared scanner modal contracts.
+    const template = normalizeWhitespace(await loadTemplate());
+    const scannerModal = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/check_in_scanner_modal.html"),
+    );
+
+    // Verify the desktop action carries event context and explicit disabled states.
+    expect(template).to.include('class="hidden md:block"');
+    expect(template).to.include("data-group-check-in-open");
+    expect(template).to.include('data-event-id="{{ event.event_id }}"');
+    expect(template).to.include('data-event-name="{{ event.name }}"');
+    expect(template).to.include(
+      'data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"',
+    );
+    expect(template).to.include("{% if event.canceled -%}");
+    expect(template).to.include('disabled title="Canceled events cannot scan attendees."');
+    expect(template).to.include("{% else if !event.published -%}");
+    expect(template).to.include('disabled title="Publish this event before scanning attendees."');
+    expect(template).to.include("{% else if event.is_past() -%}");
+    expect(template).to.include('disabled title="Past events cannot scan attendees."');
+    expect(template).to.include('{% include "dashboard/group/check_in_scanner_modal.html" -%}');
+    expect(scannerModal).to.include('id="group-check-in-scanner-modal"');
+    expect(scannerModal).to.include('title = "Scan attendees"');
+  });
+
   it("groups enrollment views and exact statuses in one selector", async () => {
     // Load the attendees list template before checking enrollment filters.
     const template = normalizeWhitespace(await loadTemplate());

@@ -63,6 +63,9 @@ test.describe("group dashboard navigation", () => {
     await expect(
       organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]'),
     ).toContainText("Events");
+    await expect(
+      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=check-in"]'),
+    ).toBeHidden();
     if (E2E_PAYMENTS_ENABLED) {
       await expect(
         organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=refunds"]'),

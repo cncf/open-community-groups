@@ -117,7 +117,7 @@
     {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events", extra_styles = "max-md:hidden") -}}
     {% if can_manage_check_ins -%}
-      {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in") -}}
+      {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden") -}}
     {% else -%}
       {{ dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden") -}}
     {% endif -%}

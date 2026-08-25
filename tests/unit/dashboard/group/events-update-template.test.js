@@ -135,6 +135,7 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       'hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content"',
     );
+    expect(template).to.include('<div id="attendees-content" data-group-check-in-root>');
     expect(template).to.include(
       'hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content"',
     );

@@ -39,7 +39,7 @@ describe("group check-in scanner controls", () => {
           <div id="group-check-in-scanner-status" data-group-check-in-status></div>
           <div data-group-check-in-result class="hidden"></div>
           <select data-group-check-in-camera disabled>
-            <option>Finding cameras…</option>
+            <option>Finding cameras...</option>
           </select>
           <label data-group-check-in-torch-control class="hidden">
             <input type="checkbox" data-group-check-in-torch disabled>
@@ -49,6 +49,32 @@ describe("group check-in scanner controls", () => {
       </section>
     `;
   };
+
+  it("initializes lazy scanner content from its HTMX load target", () => {
+    // Capture the scanner controls loaded by the attendees HTMX request.
+    renderFixture();
+    const scannerContent = document.querySelector("[data-group-check-in-root]").innerHTML;
+    document.body.innerHTML = '<div id="attendees-content" data-group-check-in-root></div>';
+    const attendeesRoot = document.getElementById("attendees-content");
+
+    // Initialize the placeholder, then load scanner controls beneath the persistent root.
+    initializeGroupCheckInScanner(attendeesRoot);
+    expect(attendeesRoot.dataset.groupCheckInReady).to.equal(undefined);
+    attendeesRoot.innerHTML = scannerContent;
+    initializeGroupCheckInScanner(attendeesRoot.firstElementChild);
+
+    // Verify the descendant HTMX target binds the opener on the attendees root.
+    expect(attendeesRoot.dataset.groupCheckInReady).to.equal("true");
+    window.__OCG_E2E_QR_SCANNER__ = class {
+      constructor() {
+        throw new Error("Scanner initialization failed");
+      }
+    };
+    attendeesRoot.querySelector("[data-group-check-in-open]").click();
+    expect(
+      attendeesRoot.querySelector("#group-check-in-scanner-modal").classList.contains("hidden"),
+    ).to.equal(false);
+  });
 
   it("renders already checked-in feedback with the site error alert style", async () => {
     // Provide a scanner that exposes its decode callback.
@@ -351,7 +377,7 @@ describe("group check-in scanner controls", () => {
 
     // Verify the modal preserves the manual fallback with explicit camera states.
     expect(document.querySelector("[data-group-check-in-status]").textContent).to.equal(
-      "Waiting for a camera…",
+      "Waiting for a camera...",
     );
     expect(document.querySelector("[data-group-check-in-camera-unavailable-message]").textContent).to.equal(
       "No camera was found. Connect a camera or use manual check-in.",

@@ -1,9 +1,9 @@
 import { expect } from "@open-wc/testing";
 
-const loadTemplate = async () => {
-  const response = await fetch(
-    "/ocg-server/templates/dashboard/group/check_in_list.html",
-  );
+const loadTemplate = async (
+  templatePath = "/ocg-server/templates/dashboard/group/check_in_list.html",
+) => {
+  const response = await fetch(templatePath);
 
   expect(response.ok).to.equal(true);
 
@@ -63,9 +63,15 @@ describe("dashboard group check-in template", () => {
 
   it("uses shared dashboard styles for the scanner modal and controls", async () => {
     // Load the Check-In template before checking the modal primitives.
-    const template = normalizeWhitespace(await loadTemplate());
+    const checkInTemplate = normalizeWhitespace(await loadTemplate());
+    const template = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/check_in_scanner_modal.html"),
+    );
 
     // Verify the scanner follows the app modal, form, switch, and action styles.
+    expect(checkInTemplate).to.include(
+      '{% include "dashboard/group/check_in_scanner_modal.html" -%}',
+    );
     expect(template).to.include('{% import "macros/dashboard.html" as dashboard -%}');
     expect(template).to.include(
       'class="fixed inset-0 z-[1000] hidden h-full max-h-full w-full items-center justify-center overflow-x-hidden overflow-y-auto flex"',

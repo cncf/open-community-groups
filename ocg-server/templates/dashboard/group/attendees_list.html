@@ -219,6 +219,25 @@
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
   <div class="shrink-0 w-auto mt-1.5 mb-1.5 flex gap-3 flex-row">
+    {% if can_manage_events -%}
+      <div class="hidden md:block">
+        <button type="button"
+                class="btn-primary-outline w-full lg:w-auto disabled:cursor-not-allowed disabled:opacity-50"
+                data-group-check-in-open
+                data-event-id="{{ event.event_id }}"
+                data-event-date="{% if let Some(start_time) = &event.starts_at -%}{{ start_time.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}{% else -%}Date information unavailable{% endif -%}"
+                data-event-location="{% if event.kind.to_string() == "virtual" -%}Virtual{% else if let Some(location) = &event.location(90) -%}{{ location }}{% else -%}Venue details pending{% endif -%}"
+                data-event-name="{{ event.name }}"
+                data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"
+                {% if event.canceled -%}
+                  disabled title="Canceled events cannot scan attendees."
+                {% else if !event.published -%}
+                  disabled title="Publish this event before scanning attendees."
+                {% else if event.is_past() -%}
+                  disabled title="Past events cannot scan attendees."
+                {% endif -%}>Scan attendees</button>
+      </div>
+    {% endif -%}
     <div class="group relative w-full lg:w-auto
                 {% if !can_manage_events -%}
                   hidden
@@ -1139,6 +1158,10 @@
   </div>
 </div>
 {# End notification modal -#}
+
+{# QR scanner modal -#}
+{% include "dashboard/group/check_in_scanner_modal.html" -%}
+{# End QR scanner modal -#}
 
 {# Active offer badge with deadline tooltip. #}
 {% macro attendee_offer_status_badge(attendee, event, label, canceled, status_instance) -%}

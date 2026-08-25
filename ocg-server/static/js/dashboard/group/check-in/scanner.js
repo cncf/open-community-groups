@@ -12,12 +12,14 @@ let activeSession = null;
 export const initializeGroupCheckInScanner = (container = document, { historyRestore = false } = {}) => {
   const root = container.matches?.("[data-group-check-in-root]")
     ? container
-    : container.querySelector?.("[data-group-check-in-root]");
+    : container.closest?.("[data-group-check-in-root]") ||
+      container.querySelector?.("[data-group-check-in-root]");
   if (!(root instanceof HTMLElement)) return;
   if (historyRestore) {
     activeSession?.teardown();
     delete root.dataset.groupCheckInReady;
   }
+  if (!root.querySelector("[data-group-check-in-open]") || !root.querySelector(`#${MODAL_ID}`)) return;
   if (!markDatasetReady(root, "groupCheckInReady")) return;
 
   root.addEventListener("click", (event) => {
@@ -68,7 +70,7 @@ const cameraErrorMessage = (error) => {
 /** Returns the compact scanner status shown beside camera failure details. */
 const cameraStatusMessage = (error) =>
   error?.name === "NotFoundError" || error?.name === "DevicesNotFoundError"
-    ? "Waiting for a camera…"
+    ? "Waiting for a camera..."
     : "Camera unavailable.";
 
 /** Creates synthesized scanner feedback without shipping audio assets. */
@@ -265,9 +267,9 @@ const startScannerSession = async (root, trigger) => {
   if (eventDateElement) eventDateElement.textContent = eventDate;
   if (eventLocationElement) eventLocationElement.textContent = eventLocation;
   if (eventNameElement) eventNameElement.textContent = eventName;
-  if (status) status.textContent = "Starting camera…";
+  if (status) status.textContent = "Starting camera...";
   if (result) result.classList.add("hidden");
-  setCameraSelectPlaceholder(camera, "Finding cameras…");
+  setCameraSelectPlaceholder(camera, "Finding cameras...");
   setCameraUnavailableState(root);
   if (mute instanceof HTMLInputElement) mute.disabled = false;
   setMuteState(mute, false);
@@ -424,7 +426,13 @@ const startScannerSession = async (root, trigger) => {
 
 document.addEventListener("htmx:beforeCleanupElement", (event) => {
   const root = activeSession?.root;
-  if (root && (root === event.target || event.target?.contains?.(root))) {
+  const cleanupTarget = event.target;
+  if (
+    root &&
+    (root === cleanupTarget ||
+      (cleanupTarget instanceof Node &&
+        (root.contains(cleanupTarget) || cleanupTarget.contains(root))))
+  ) {
     activeSession.close();
   }
 });

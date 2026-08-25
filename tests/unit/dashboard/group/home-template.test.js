@@ -47,7 +47,7 @@ describe("dashboard group home template", () => {
       'dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events", extra_styles = "max-md:hidden")',
     );
     expect(template).to.include(
-      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in")',
+      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden")',
     );
     const eventsItem = template.indexOf('dashboard::menu_item(name = "Events"');
     const checkInItem = template.indexOf(

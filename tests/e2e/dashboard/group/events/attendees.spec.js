@@ -136,6 +136,65 @@ const openInvitationRequestsTab = async (page, eventName, eventId) => {
 };
 
 test.describe("group dashboard attendees tab", () => {
+  test("organizer opens the attendee scanner from a published current event", async ({
+    organizerGroupPage,
+  }) => {
+    // Replace the browser scanner with a deterministic camera implementation.
+    await organizerGroupPage.addInitScript(() => {
+      class FakeQrScanner {
+        static async hasCamera() {
+          return true;
+        }
+
+        static async listCameras() {
+          return [{ id: "test-camera", label: "Test camera" }];
+        }
+
+        destroy() {}
+        async hasFlash() {
+          return false;
+        }
+        isFlashOn() {
+          return false;
+        }
+        async setCamera() {}
+        async start() {}
+        async toggleFlash() {}
+      }
+
+      window.__OCG_E2E_QR_SCANNER__ = FakeQrScanner;
+    });
+
+    // Open the published event's attendees tab and launch its scanner.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_EVENT_NAMES.alpha[0],
+      TEST_EVENT_IDS.alpha.one,
+    );
+    const scannerButton = attendeesContent.getByRole("button", {
+      name: "Scan attendees",
+    });
+    await expect(scannerButton).toBeEnabled();
+    await scannerButton.click();
+
+    // Verify the shared scanner opens with the selected event and restores focus.
+    const scannerModal = attendeesContent.locator(
+      "#group-check-in-scanner-modal",
+    );
+    await expect(scannerModal).toBeVisible();
+    await expect(
+      scannerModal.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
+    ).toBeVisible();
+    await expect(
+      scannerModal.getByText("Hold an attendee QR code inside the frame."),
+    ).toBeVisible();
+    await scannerModal
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    await expect(scannerModal).toBeHidden();
+    await expect(scannerButton).toBeFocused();
+  });
+
   test("attendees table exposes every column at its responsive breakpoint", async ({
     organizerGroupPage,
   }) => {
