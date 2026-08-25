@@ -257,6 +257,139 @@ describe("group check-in scanner controls", () => {
     }
   });
 
+  it("refreshes attendees when an in-flight check-in settles after closing", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    let resolveScan;
+    const fetchMock = mockFetch({
+      impl: () =>
+        new Promise((resolve) => {
+          resolveScan = () =>
+            resolve(
+              new Response(
+                JSON.stringify({
+                  attendee: { name: "Paula Webb" },
+                  outcome: "checked-in",
+                  ticket_title: "Expo Pass",
+                }),
+                { headers: { "Content-Type": "application/json" } },
+              ),
+            );
+        }),
+    });
+
+    try {
+      // Close the scanner while its check-in request is still in flight.
+      renderFixture();
+      const root = document.querySelector("[data-group-check-in-root]");
+      let refreshCount = 0;
+      root.addEventListener("refresh-event-attendees", () => {
+        refreshCount += 1;
+      });
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      root.querySelector("[data-group-check-in-open]").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const decodePromise = FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
+      root.querySelector("[data-group-check-in-close]").click();
+      expect(refreshCount).to.equal(0);
+
+      // The committed check-in still refreshes the attendees region once.
+      resolveScan();
+      await decodePromise;
+      expect(refreshCount).to.equal(1);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("does not refresh attendees when an in-flight check-in settles after HTMX cleanup", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    let resolveScan;
+    const fetchMock = mockFetch({
+      impl: () =>
+        new Promise((resolve) => {
+          resolveScan = () =>
+            resolve(
+              new Response(
+                JSON.stringify({
+                  attendee: { name: "Paula Webb" },
+                  outcome: "checked-in",
+                  ticket_title: "Expo Pass",
+                }),
+                { headers: { "Content-Type": "application/json" } },
+              ),
+            );
+        }),
+    });
+
+    try {
+      // Let HTMX clean up the scanner while its check-in request is still in flight.
+      renderFixture();
+      const root = document.querySelector("[data-group-check-in-root]");
+      let refreshCount = 0;
+      root.addEventListener("refresh-event-attendees", () => {
+        refreshCount += 1;
+      });
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      root.querySelector("[data-group-check-in-open]").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const decodePromise = FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
+      root.dispatchEvent(new Event("htmx:beforeCleanupElement", { bubbles: true }));
+
+      // A cleanup-suppressed close never schedules a late refresh.
+      resolveScan();
+      await decodePromise;
+      expect(refreshCount).to.equal(0);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("does not refresh attendees when HTMX cleans up a changed scanner", async () => {
     // Provide a scanner that exposes its decode callback.
     class FakeScanner {

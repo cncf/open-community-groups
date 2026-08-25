@@ -178,8 +178,6 @@ record your arrival.
 Only confirmed, current or upcoming events appear. Keep the code private: it
 identifies your attendance and is intended to be scanned by event staff.
 
-![Group dashboard check in](../screenshots/dashboard-group-check-in.png)
-
 ## Submit to Call for Speakers (CFS)
 
 The CFS flow happens in two places:

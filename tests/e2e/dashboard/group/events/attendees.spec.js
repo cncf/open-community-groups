@@ -251,6 +251,38 @@ test.describe("group dashboard attendees tab", () => {
     ).toBeEnabled();
   });
 
+  test("check-in manager launches the desktop scanner without event write access", async ({
+    checkInManagerGroupPage,
+  }) => {
+    // Open the published event's attendees tab with check-in-only permissions.
+    const attendeesContent = await openAttendeesTab(
+      checkInManagerGroupPage,
+      TEST_EVENT_NAMES.alpha[0],
+      TEST_EVENT_IDS.alpha.one,
+    );
+
+    // Verify the desktop scan action stays discoverable for this role.
+    const scannerButton = attendeesContent.getByRole("button", {
+      name: "Scan attendees",
+    });
+    await expect(scannerButton).toBeVisible();
+    await expect(scannerButton).toBeEnabled();
+    await scannerButton.click();
+
+    // Verify the shared scanner opens for the selected event.
+    const scannerModal = attendeesContent.locator(
+      "#group-check-in-scanner-modal",
+    );
+    await expect(scannerModal).toBeVisible();
+    await expect(
+      scannerModal.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
+    ).toBeVisible();
+    await scannerModal
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    await expect(scannerModal).toBeHidden();
+  });
+
   test("attendees table exposes every column at its responsive breakpoint", async ({
     organizerGroupPage,
   }) => {

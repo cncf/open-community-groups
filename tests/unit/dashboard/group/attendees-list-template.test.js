@@ -29,7 +29,7 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify the desktop action carries event context and explicit disabled states.
-    expect(template).to.include('class="hidden md:block"');
+    expect(template).to.include('{% if can_manage_check_ins -%} <div class="hidden md:block">');
     expect(template).to.include("data-group-check-in-open");
     expect(template).to.include("data-refresh-attendees-on-close");
     expect(template).to.include('data-event-id="{{ event.event_id }}"');

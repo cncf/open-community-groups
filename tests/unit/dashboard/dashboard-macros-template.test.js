@@ -36,6 +36,7 @@ describe("dashboard macros template", () => {
     expect(template).to.include('hx-select-oob="{{ navigation_select_oob }}"');
     expect(template).to.include('hx-swap="{{ navigation_swap }}"');
     expect(template).not.to.include('<a hx-get="{{ href }}" hx-target="body"');
+    expect(template).to.include('<a href="{{ href }}" hx-get="{{ href }}"');
     expect(template).to.include('hx-indicator="#dashboard-spinner" hx-push-url="true"');
   });
 
@@ -88,7 +89,7 @@ describe("dashboard macros template", () => {
     expect(template).to.include('width_classes = "w-64"');
     expect(template).to.include('alignment_classes = "start-1/2 -translate-x-1/2"');
     expect(template).to.include('id="{{ id }}" role="tooltip"');
-    expect(template).to.include("role=\"tooltip\" data-tooltip-panel");
+    expect(template).to.include('role="tooltip" data-tooltip-panel');
     expect(template).to.include("rounded-lg border border-stone-200 bg-white");
     expect(template).to.include("max-w-[calc(100vw-2rem)]");
     expect(template).to.include("break-words whitespace-normal");

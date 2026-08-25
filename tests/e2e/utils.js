@@ -345,8 +345,9 @@ export const TEST_USER_CREDENTIALS = {
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
 const LOGIN_NAVIGATION_TIMEOUT_MS = 5_000;
 const LOGIN_RETRY_ATTEMPTS = 3;
+const NAVIGATION_ASSET_TIMEOUT_MS = 5_000;
 const NAVIGATION_ATTEMPT_TIMEOUT_MS = 15_000;
-const NAVIGATION_RETRY_ATTEMPTS = 4;
+const NAVIGATION_RETRY_ATTEMPTS = 12;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
 
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
@@ -360,6 +361,27 @@ const waitForNavigationRetry = () =>
   });
 
 /**
+ * Waits for the shared stylesheet and HTMX runtime required by every page.
+ */
+const waitForApplicationAssets = async (page) => {
+  try {
+    await page.waitForFunction(
+      () => {
+        const applicationStylesheet = document.querySelector(
+          'link[rel="stylesheet"][href="/static/css/styles.css"]',
+        );
+
+        return Boolean(applicationStylesheet?.sheet && window.htmx);
+      },
+      undefined,
+      { timeout: NAVIGATION_ASSET_TIMEOUT_MS },
+    );
+  } catch (error) {
+    throw new Error("Application assets did not load", { cause: error });
+  }
+};
+
+/**
  * Checks whether a navigation error is caused by a temporarily missing server.
  */
 const isServerUnavailableNavigationError = (error) => {
@@ -369,6 +391,7 @@ const isServerUnavailableNavigationError = (error) => {
   return (
     isNavigationTimeout ||
     message.includes("Could not connect to the server") ||
+    message.includes("Application assets did not load") ||
     message.includes("ERR_CONNECTION_RESET") ||
     message.includes("ERR_CONNECTION_REFUSED") ||
     message.includes("Navigation completed without a server response") ||
@@ -397,6 +420,7 @@ const navigateToUrl = async (page, url) => {
         throw new Error("Navigation completed without a server response");
       }
 
+      await waitForApplicationAssets(page);
       return;
     } catch (error) {
       lastError = error;
@@ -606,6 +630,10 @@ export const getLeaveButton = (page) =>
  * Waits until public attendance controls resolve to a stable state.
  */
 export const waitForAttendanceState = async (page) => {
+  const attendanceContainer = getAttendanceContainer(page);
+
+  await expect(attendanceContainer).toHaveAttribute("data-attendance-ready", "true");
+  await expect(attendanceContainer).toHaveAttribute("data-availability-hydrated", "true");
   await Promise.race([
     getAttendButton(page).waitFor({ state: "visible" }),
     getLeaveButton(page).waitFor({ state: "visible" }),

@@ -219,7 +219,7 @@
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
   <div class="shrink-0 w-auto mt-1.5 mb-1.5 flex gap-3 flex-row">
-    {% if can_manage_events -%}
+    {% if can_manage_check_ins -%}
       <div class="hidden md:block">
         <button type="button"
                 class="btn-primary-outline w-full lg:w-auto disabled:cursor-not-allowed disabled:opacity-50"

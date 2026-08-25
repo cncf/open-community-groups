@@ -210,12 +210,11 @@ test.describe("event attendance workflow", () => {
     await expect(checkInToggle).toBeChecked();
     await expect(checkInToggle).toBeDisabled();
 
-    // Verify the attendee dashboard retains the event with its checked-in state.
+    // Verify the attendee dashboard removes the event from pending check-in.
     await navigateToPath(member2Page, "/dashboard/user?tab=check-in");
     const attendeeEvent = member2Page.locator("[data-user-check-in-open]", {
       hasText: "Upcoming In-Person Event",
     });
-    await expect(attendeeEvent).toBeVisible();
-    await expect(attendeeEvent.getByText("Checked in")).toBeVisible();
+    await expect(attendeeEvent).toHaveCount(0);
   });
 });

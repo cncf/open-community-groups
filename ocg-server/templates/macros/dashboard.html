@@ -112,7 +112,8 @@
 {% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0, compact_name = "" ) -%}
   {% if is_active -%}
     <div class="relative bg-white border border-stone-200 px-3 rounded-lg {{ extra_styles }}">
-      <a hx-get="{{ href }}"
+      <a href="{{ href }}"
+         hx-get="{{ href }}"
          hx-indicator="#dashboard-spinner"
          hx-push-url="true"
          class="flex items-center justify-between cursor-pointer"
@@ -157,7 +158,8 @@
       </button>
     {% else -%}
       <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors {{ extra_styles }}">
-        <a hx-get="{{ href }}"
+        <a href="{{ href }}"
+           hx-get="{{ href }}"
            hx-indicator="#dashboard-spinner"
            hx-push-url="true"
            class="flex items-center justify-between cursor-pointer">

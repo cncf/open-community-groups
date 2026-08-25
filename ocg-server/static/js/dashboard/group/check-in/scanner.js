@@ -281,8 +281,10 @@ const startScannerSession = async (root, trigger) => {
   let audio = null;
   let attendeesChanged = false;
   let cleanupCameraSelection = () => {};
+  let closed = false;
   let controller = null;
   let hardwareControlPending = false;
+  let refreshOnSettle = false;
   let resourcesCleaned = false;
   let scanner = null;
   let session;
@@ -333,8 +335,19 @@ const startScannerSession = async (root, trigger) => {
     }
   };
 
+  // Records a committed check-in and refreshes attendees when it settles after closing.
+  const recordAttendeesChange = () => {
+    attendeesChanged = true;
+    if (closed && refreshOnSettle && root.isConnected) {
+      refreshOnSettle = false;
+      root.dispatchEvent(new Event(ATTENDEES_REFRESH_EVENT, { bubbles: true }));
+    }
+  };
+
   const close = ({ refreshAttendees = true } = {}) => {
     const shouldRefreshAttendees = refreshAttendees && refreshAttendeesOnClose && attendeesChanged;
+    closed = true;
+    refreshOnSettle = refreshAttendees && refreshAttendeesOnClose;
     attendeesChanged = false;
     cleanupResources();
     if (!isElementHidden(modal)) toggleModalVisibility(MODAL_ID);
@@ -344,6 +357,8 @@ const startScannerSession = async (root, trigger) => {
     }
   };
   const teardown = () => {
+    closed = true;
+    refreshOnSettle = false;
     attendeesChanged = false;
     cleanupResources();
     if (isCurrent()) activeSession = null;
@@ -364,15 +379,16 @@ const startScannerSession = async (root, trigger) => {
     controller = createScanStateMachine({
       audio,
       eventId,
-      onFeedback: (feedback) => {
-        if (feedback.kind === "success") attendeesChanged = true;
-        renderFeedback(result, feedback);
-      },
+      onFeedback: (feedback) => renderFeedback(result, feedback),
       onFeedbackEnd: () => result?.classList.add("hidden"),
       onReady: () => {
         if (status) status.textContent = "Hold an attendee QR code inside the frame.";
       },
-      postCredential: (credential) => postCredential(scanUrl, credential),
+      postCredential: async (credential) => {
+        const response = await postCredential(scanUrl, credential);
+        if (response.outcome !== "already-checked-in") recordAttendeesChange();
+        return response;
+      },
       scanner,
     });
     session.controller = controller;

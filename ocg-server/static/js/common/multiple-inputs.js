@@ -60,10 +60,7 @@ export class MultipleInputs extends LitWrapper {
    * @param {Map<PropertyKey, unknown>} changedProperties Changed reactive properties.
    */
   willUpdate(changedProperties) {
-    if (
-      changedProperties.has("items") &&
-      !this.items?.every?.((item) => typeof item?.value === "string")
-    ) {
+    if (changedProperties.has("items") && !this.items?.every?.((item) => typeof item?.value === "string")) {
       this._loadInitialData();
     }
   }

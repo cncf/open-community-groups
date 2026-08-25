@@ -69,9 +69,7 @@ test.describe("site header", () => {
     await expect(userMenu).toBeHidden();
   });
 
-  test("desktop navigation collapses into the user menu below the lg breakpoint", async ({
-    page,
-  }) => {
+  test("desktop navigation collapses into the user menu below the lg breakpoint", async ({ page }) => {
     // Load the public home page at the lg breakpoint.
     await page.setViewportSize({ width: 1024, height: 900 });
     await navigateToSiteHome(page);
@@ -110,22 +108,10 @@ test.describe("site header", () => {
     const userMenu = page.locator("#user-dropdown");
 
     // Verify mobile navigation and authentication destinations remain available.
-    await expect(userMenu.getByRole("menuitem", { name: "Home" })).toHaveAttribute(
-      "href",
-      "/",
-    );
-    await expect(userMenu.getByRole("menuitem", { name: "Explore" })).toHaveAttribute(
-      "href",
-      /\/explore/,
-    );
-    await expect(userMenu.getByRole("menuitem", { name: "Stats" })).toHaveAttribute(
-      "href",
-      "/stats",
-    );
-    await expect(userMenu.getByRole("menuitem", { name: "Docs" })).toHaveAttribute(
-      "href",
-      "/docs",
-    );
+    await expect(userMenu.getByRole("menuitem", { name: "Home" })).toHaveAttribute("href", "/");
+    await expect(userMenu.getByRole("menuitem", { name: "Explore" })).toHaveAttribute("href", /\/explore/);
+    await expect(userMenu.getByRole("menuitem", { name: "Stats" })).toHaveAttribute("href", "/stats");
+    await expect(userMenu.getByRole("menuitem", { name: "Docs" })).toHaveAttribute("href", "/docs");
     await expect(userMenu.getByRole("menuitem", { name: "Sign up" })).toBeVisible();
     await expect(userMenu.getByRole("menuitem", { name: "Log in" })).toBeVisible();
   });
@@ -139,10 +125,10 @@ test.describe("site header", () => {
     const userMenu = pending2Page.locator("#user-dropdown");
 
     // Follow the attendee shortcut while group check-in remains unavailable.
-    const checkInLink = userMenu.getByRole("menuitem", { name: "My Events Check-In" });
+    const checkInLink = userMenu.getByRole("menuitem", { name: "Check in" });
     await expect(checkInLink).toBeVisible();
     await expect(checkInLink).toHaveAttribute("href", "/dashboard/user?tab=check-in");
-    await expect(userMenu.getByRole("menuitem", { name: "Group Check-In" })).toHaveCount(0);
+    await expect(userMenu.getByRole("menuitem", { name: "Scan attendees" })).toHaveCount(0);
     await checkInLink.click();
 
     // Verify the shortcut opens the mobile attendee surface.
@@ -155,13 +141,11 @@ test.describe("site header", () => {
   }) => {
     // Load the public shell with a check-in manager session.
     await navigateToSiteHome(checkInManagerGroupPage);
-    await checkInManagerGroupPage
-      .locator('#user-dropdown-button[data-logged-in="true"]')
-      .click();
+    await checkInManagerGroupPage.locator('#user-dropdown-button[data-logged-in="true"]').click();
     const userMenu = checkInManagerGroupPage.locator("#user-dropdown");
 
     // Follow the permission-dependent group shortcut.
-    const groupCheckInLink = userMenu.getByRole("menuitem", { name: "Group Check-In" });
+    const groupCheckInLink = userMenu.getByRole("menuitem", { name: "Scan attendees" });
     await expect(groupCheckInLink).toBeVisible();
     await expect(groupCheckInLink).toHaveAttribute("href", "/dashboard/group?tab=check-in");
     await groupCheckInLink.click();
@@ -171,9 +155,7 @@ test.describe("site header", () => {
     await expect(checkInManagerGroupPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
   });
 
-  test("logged-in member menu exposes only authorized dashboard destinations", async ({
-    member1Page,
-  }) => {
+  test("logged-in member menu exposes only authorized dashboard destinations", async ({ member1Page }) => {
     // Load the public shell with a regular member session.
     await navigateToSiteHome(member1Page);
     await member1Page.locator('#user-dropdown-button[data-logged-in="true"]').click();
