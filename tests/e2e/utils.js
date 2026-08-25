@@ -368,7 +368,7 @@ const waitForApplicationAssets = async (page) => {
     await page.waitForFunction(
       () => {
         const applicationStylesheet = document.querySelector(
-          'link[rel="stylesheet"][href="/static/css/styles.css"]',
+          'link[rel="stylesheet"][href^="/static/css/styles."][href$=".css"]',
         );
 
         return Boolean(applicationStylesheet?.sheet && window.htmx);

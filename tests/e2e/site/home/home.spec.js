@@ -247,8 +247,7 @@ test.describe("site home page", () => {
           desktopStats.getByText(label, { exact: true }),
         ).toBeVisible();
         await expect(valueElement).toBeVisible();
-        const text = await valueElement.textContent();
-        expect(text?.trim()).toMatch(/^\d[\d,]*$/);
+        await expect(valueElement).toHaveText(/^\d[\d,]*$/);
       }
     });
 

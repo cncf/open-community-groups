@@ -11,8 +11,34 @@ import {
 const AWARDS_PATH = "/dashboard/group?tab=awards";
 const MENTOR_CREDENTIAL_ID = "dadadada-dada-dada-dada-dadadadada07";
 
-const waitForAwardsRefresh = async (page, action) =>
-  Promise.all([
+/**
+ * Runs an awards filter action and waits for its HTMX refresh to settle.
+ */
+const waitForAwardsRefresh = async (page, action) => {
+  await page.evaluate(() => {
+    window.__e2eAwardsRefreshSettled = new Promise((resolve) => {
+      const handleAwardsRefreshSettled = (event) => {
+        const responseUrl = new URL(event.detail.xhr.responseURL);
+
+        if (responseUrl.pathname !== "/dashboard/group/awards") {
+          return;
+        }
+
+        document.body.removeEventListener(
+          "htmx:afterSettle",
+          handleAwardsRefreshSettled,
+        );
+        resolve();
+      };
+
+      document.body.addEventListener(
+        "htmx:afterSettle",
+        handleAwardsRefreshSettled,
+      );
+    });
+  });
+
+  const [response] = await Promise.all([
     page.waitForResponse((response) => {
       const responseUrl = new URL(response.url());
 
@@ -24,6 +50,14 @@ const waitForAwardsRefresh = async (page, action) =>
     }),
     action(),
   ]);
+
+  await page.evaluate(() => window.__e2eAwardsRefreshSettled);
+  await page.evaluate(() => {
+    delete window.__e2eAwardsRefreshSettled;
+  });
+
+  return response;
+};
 
 test.describe("group badge award history", () => {
   test("empty state explains where award history will appear", async ({
