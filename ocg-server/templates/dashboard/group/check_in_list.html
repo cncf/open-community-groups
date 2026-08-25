@@ -1,0 +1,64 @@
+{% import "macros/cards.html" as cards -%}
+
+<section class="relative min-w-0"
+         data-group-check-in-root
+         aria-labelledby="group-check-in-title">
+  {# Check-in header -#}
+  <div data-group-check-in-scanner-view>
+    <h1 id="group-check-in-title"
+        class="text-xl font-medium text-stone-900 lg:text-2xl">Check-In</h1>
+    <p class="mt-1 text-sm/6 text-stone-500">
+      Select an event, then scan attendee QR codes continuously.
+      <span class="hidden md:inline">
+        For manual check-in, open an event's attendee list from
+        <a href="/dashboard/group?tab=events"
+           class="font-medium text-primary-600 underline underline-offset-2 hover:text-primary-700">Events</a>.
+      </span>
+    </p>
+  </div>
+  {# End check-in header -#}
+
+  {# Events available for check-in -#}
+  {% if events.is_empty() -%}
+    {# Empty state -#}
+    <div class="mt-8 rounded-lg border border-dashed border-stone-300 px-6 py-12 text-center"
+         data-group-check-in-scanner-view>
+      <div class="mx-auto size-8 svg-icon icon-qr-code bg-stone-400"></div>
+      <h2 class="mt-4 text-lg font-semibold text-stone-900">No events available for check-in</h2>
+      <p class="mt-2 text-sm text-stone-600">Published current and upcoming events will appear here.</p>
+    </div>
+    {# End empty state -#}
+  {% else -%}
+    {# Event cards -#}
+    <div class="mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2 2xl:grid-cols-3"
+         data-group-check-in-scanner-view>
+      {% for event in events -%}
+        <article class="card-hover-border relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm"
+                 data-group-check-in-card>
+          {% call cards::check_in_event_card(event) -%}
+          {% if event.in_progress -%}
+            <span class="custom-badge bg-green-50 text-green-800">In progress</span>
+          {% endif -%}
+          <button type="button"
+                  class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                  data-group-check-in-open
+                  data-event-id="{{ event.event_id }}"
+                  data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"
+                  data-event-location="{% if event.kind == EventKind::Virtual -%}Virtual{% else -%}{{ event.location.as_deref() |assigned_or("Venue details pending") }}{% endif -%}"
+                  data-event-name="{{ event.name }}"
+                  data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan">
+            <span>Scan Attendee Codes</span>
+            <span class="sr-only">for {{ event.name }}</span>
+          </button>
+          {% endcall -%}
+        </article>
+      {% endfor -%}
+    </div>
+    {# End event cards -#}
+  {% endif -%}
+  {# End events available for check-in -#}
+
+  {# QR scanner modal -#}
+  {% include "dashboard/group/check_in_scanner_modal.html" -%}
+  {# End QR scanner modal -#}
+</section>

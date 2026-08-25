@@ -39,6 +39,8 @@ impl PartialEq<CommunityPermission> for &CommunityPermission {
 pub(crate) enum GroupPermission {
     /// Permission to manage badges in a group.
     BadgesWrite,
+    /// Permission to process attendee check-ins in a group.
+    CheckInsWrite,
     /// Permission to manage events in a group.
     EventsWrite,
     /// Permission to manage group members.
@@ -58,6 +60,7 @@ impl GroupPermission {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
             Self::BadgesWrite => "group.badges.write",
+            Self::CheckInsWrite => "group.check-ins.write",
             Self::EventsWrite => "group.events.write",
             Self::MembersWrite => "group.members.write",
             Self::Read => "group.read",

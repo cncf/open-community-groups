@@ -29,6 +29,8 @@ pub(crate) struct ListPage {
     pub all_attendees_email_recipient_total: usize,
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
+    /// Whether the current user can process attendee check-ins.
+    pub can_manage_check_ins: bool,
     /// Whether the current user can manage events.
     pub can_manage_events: bool,
     /// Event for which attendees are listed.

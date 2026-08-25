@@ -91,10 +91,7 @@ test.describe("event attendance workflow", () => {
     // Open the event update form before switching to attendees.
     await waitForActionResponse(
       organizerGroupPage,
-      () =>
-        eventRow
-          .locator('td button[aria-label="Edit event: Upcoming In-Person Event"]')
-          .click(),
+      () => eventRow.locator('td button[aria-label="Edit event: Upcoming In-Person Event"]').click(),
       {
         method: "GET",
         urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`,
@@ -118,14 +115,10 @@ test.describe("event attendance workflow", () => {
     });
 
     // Assert that Attendees list is visible.
-    await expect(
-      attendeesContent.getByRole("table", { name: "Attendees list" }),
-    ).toBeVisible();
+    await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
     await expect(attendeeRow).toBeVisible();
     await expect(attendeeRow).toContainText("e2e-member-2");
-    await expect(
-      attendeesContent.getByRole("button", { name: "Send email" }),
-    ).toBeEnabled();
+    await expect(attendeesContent.getByRole("button", { name: "Send email" })).toBeEnabled();
     await expectUserProfileModalFromRow(
       organizerGroupPage,
       attendeeRow,
@@ -179,10 +172,7 @@ test.describe("event attendance workflow", () => {
     // Open the event update form before switching to attendees.
     await waitForActionResponse(
       organizerGroupPage,
-      () =>
-        eventRow
-          .locator('td button[aria-label="Edit event: Upcoming In-Person Event"]')
-          .click(),
+      () => eventRow.locator('td button[aria-label="Edit event: Upcoming In-Person Event"]').click(),
       {
         method: "GET",
         urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`,
@@ -213,19 +203,18 @@ test.describe("event attendance workflow", () => {
     // Check in the attendee from the attendees tab.
     await waitForActionResponse(organizerGroupPage, () => attendeeRow.locator("label").click(), {
       method: "POST",
-      urlIncludes:
-        `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${TEST_USER_IDS.member2}/check-in`,
+      urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${TEST_USER_IDS.member2}/check-in`,
     });
 
     // The attendee row reflects the saved interaction.
     await expect(checkInToggle).toBeChecked();
     await expect(checkInToggle).toBeDisabled();
 
-    // Verify the checked-in attendee can access the check-in page.
-    await navigateToPath(
-      member2Page,
-      `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`,
-    );
-    await expect(member2Page.getByText("You're checked in")).toBeVisible();
+    // Verify the attendee dashboard removes the event from pending check-in.
+    await navigateToPath(member2Page, "/dashboard/user?tab=check-in");
+    const attendeeEvent = member2Page.locator("[data-user-check-in-open]", {
+      hasText: "Upcoming In-Person Event",
+    });
+    await expect(attendeeEvent).toHaveCount(0);
   });
 });

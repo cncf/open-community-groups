@@ -1,6 +1,71 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 
+{# Check-in event card -#}
+{# Used by attendee and organizer check-in lists. -#}
+{% macro check_in_event_card(event) -%}
+  <span class="flex min-w-0 items-start gap-3 px-3.5 pt-3.5 md:gap-4 md:px-4 md:pt-4">
+    <span class="relative flex h-[60px] w-[60px] min-w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-lg border-[5px] border-white bg-white outline outline-1 outline-stone-300">
+      {% if let Some(logo_url) = event.logo_url -%}
+        <img src="{{ logo_url }}"
+             alt=""
+             class="size-full object-contain"
+             width="60"
+             height="60"
+             loading="lazy">
+      {% else -%}
+        <span class="svg-icon size-6 icon-calendar bg-stone-400" aria-hidden="true"></span>
+      {% endif -%}
+    </span>
+    <span class="min-w-0 flex-1">
+      <span class="flex min-h-[60px] min-w-0 flex-col items-start">
+        <span class="card-title !m-0 !h-auto !line-clamp-2 break-words text-[0.85rem]/[1.05rem] text-stone-900 md:text-[0.9rem]/[1.1rem]">
+          {{ event.name }}
+        </span>
+        <span class="mt-auto flex min-h-[17px] flex-wrap items-end gap-2">{{ caller() }}</span>
+      </span>
+    </span>
+  </span>
+
+  <span class="block pb-3 md:pb-4"></span>
+
+  <span class="mt-auto block min-w-0 max-w-full px-3.5 pb-3.5 md:px-4 md:pb-4">
+    <span class="flex min-w-0 items-center gap-3 rounded-lg bg-stone-100/60 py-2.5 pr-3 md:gap-4 md:py-3 md:pr-3.5">
+      <span class="w-[60px] min-w-[60px] shrink-0 text-center">
+        <span class="block text-[0.72rem] font-bold uppercase tracking-[0.12em] text-stone-900">
+          {{ event.starts_at.with_timezone(event.timezone).format("%b") }}
+        </span>
+        <span class="mt-0.5 block text-[1.7rem]/7 font-bold text-stone-900">
+          {{ event.starts_at.with_timezone(event.timezone).format("%e")|trim }}
+        </span>
+      </span>
+
+      <span class="min-w-0 flex-1">
+        <span class="flex min-w-0 items-center leading-4">
+          <span class="relative mr-2 size-3 shrink-0 bg-stone-500 svg-icon icon-location"
+                aria-hidden="true"></span>
+          <span class="truncate text-[0.825rem] text-stone-700">
+            {% if event.kind == EventKind::Virtual -%}
+              Virtual
+            {% else -%}
+              {{ event.location.as_deref() |assigned_or("Venue details pending") }}
+            {% endif -%}
+          </span>
+        </span>
+
+        <span class="mt-1.5 flex min-w-0 items-center leading-4">
+          <span class="relative -top-px mr-2 size-3 shrink-0 bg-stone-500 svg-icon icon-date"
+                aria-hidden="true"></span>
+          <span class="truncate text-[0.825rem] text-stone-700">
+            {{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}
+          </span>
+        </span>
+      </span>
+    </span>
+  </span>
+{% endmacro check_in_event_card -%}
+{# End check-in event card -#}
+
 {# Event footer -#}
 {# Used by explore and shared event cards for date and location metadata. -#}
 {% macro event_footer(event, left_width_classes = "w-[60px] min-w-[60px]", show_ticket_price = true) -%}

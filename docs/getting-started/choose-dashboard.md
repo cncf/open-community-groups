@@ -62,7 +62,8 @@ Group team roles:
 | Role | What it can do |
 | --- | --- |
 | `admin` | Full group management (`events`, `members`, `settings`, `sponsors`, `team`) |
-| `events-manager` | Event operations only (`events`) |
+| `check-in-manager` | Scan attendee codes and perform manual check-in, with read-only event access |
+| `events-manager` | Manage events and process scanner or manual attendee check-ins |
 | `viewer` | Read-only access |
 
 ![Group roles](../screenshots/dashboard-group-members-list-roles.png)

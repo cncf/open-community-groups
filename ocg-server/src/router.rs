@@ -187,10 +187,6 @@ pub(crate) async fn setup(
     let mut router = Router::new()
         // Community-prefixed protected routes
         .route(
-            "/{community}/check-in/{event_id}",
-            get(event::check_in_page).post(event::check_in),
-        )
-        .route(
             "/{community}/event/{event_id}/attend",
             post(event::attend_event),
         )

@@ -69,9 +69,7 @@ test.describe("site header", () => {
     await expect(userMenu).toBeHidden();
   });
 
-  test("desktop navigation collapses into the user menu below the lg breakpoint", async ({
-    page,
-  }) => {
+  test("desktop navigation collapses into the user menu below the lg breakpoint", async ({ page }) => {
     // Load the public home page at the lg breakpoint.
     await page.setViewportSize({ width: 1024, height: 900 });
     await navigateToSiteHome(page);
@@ -110,29 +108,54 @@ test.describe("site header", () => {
     const userMenu = page.locator("#user-dropdown");
 
     // Verify mobile navigation and authentication destinations remain available.
-    await expect(userMenu.getByRole("menuitem", { name: "Home" })).toHaveAttribute(
-      "href",
-      "/",
-    );
-    await expect(userMenu.getByRole("menuitem", { name: "Explore" })).toHaveAttribute(
-      "href",
-      /\/explore/,
-    );
-    await expect(userMenu.getByRole("menuitem", { name: "Stats" })).toHaveAttribute(
-      "href",
-      "/stats",
-    );
-    await expect(userMenu.getByRole("menuitem", { name: "Docs" })).toHaveAttribute(
-      "href",
-      "/docs",
-    );
+    await expect(userMenu.getByRole("menuitem", { name: "Home" })).toHaveAttribute("href", "/");
+    await expect(userMenu.getByRole("menuitem", { name: "Explore" })).toHaveAttribute("href", /\/explore/);
+    await expect(userMenu.getByRole("menuitem", { name: "Stats" })).toHaveAttribute("href", "/stats");
+    await expect(userMenu.getByRole("menuitem", { name: "Docs" })).toHaveAttribute("href", "/docs");
     await expect(userMenu.getByRole("menuitem", { name: "Sign up" })).toBeVisible();
     await expect(userMenu.getByRole("menuitem", { name: "Log in" })).toBeVisible();
   });
 
-  test("logged-in member menu exposes only authorized dashboard destinations", async ({
-    member1Page,
+  test("logged-in attendee opens personal check-in from the mobile menu @mobile", async ({
+    pending2Page,
   }) => {
+    // Load the public shell with an attendee session.
+    await navigateToSiteHome(pending2Page);
+    await pending2Page.locator('#user-dropdown-button[data-logged-in="true"]').click();
+    const userMenu = pending2Page.locator("#user-dropdown");
+
+    // Follow the attendee shortcut while group check-in remains unavailable.
+    const checkInLink = userMenu.getByRole("menuitem", { name: "Check in" });
+    await expect(checkInLink).toBeVisible();
+    await expect(checkInLink).toHaveAttribute("href", "/dashboard/user?tab=check-in");
+    await expect(userMenu.getByRole("menuitem", { name: "Scan attendees" })).toHaveCount(0);
+    await checkInLink.click();
+
+    // Verify the shortcut opens the mobile attendee surface.
+    await expect(pending2Page).toHaveURL(/\/dashboard\/user\?tab=check-in$/u);
+    await expect(pending2Page.getByRole("heading", { name: "Check-In" })).toBeVisible();
+  });
+
+  test("group team member opens group check-in from the mobile menu @mobile", async ({
+    checkInManagerGroupPage,
+  }) => {
+    // Load the public shell with a check-in manager session.
+    await navigateToSiteHome(checkInManagerGroupPage);
+    await checkInManagerGroupPage.locator('#user-dropdown-button[data-logged-in="true"]').click();
+    const userMenu = checkInManagerGroupPage.locator("#user-dropdown");
+
+    // Follow the permission-dependent group shortcut.
+    const groupCheckInLink = userMenu.getByRole("menuitem", { name: "Scan attendees" });
+    await expect(groupCheckInLink).toBeVisible();
+    await expect(groupCheckInLink).toHaveAttribute("href", "/dashboard/group?tab=check-in");
+    await groupCheckInLink.click();
+
+    // Verify the shortcut opens the mobile group surface.
+    await expect(checkInManagerGroupPage).toHaveURL(/\/dashboard\/group\?tab=check-in$/u);
+    await expect(checkInManagerGroupPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
+  });
+
+  test("logged-in member menu exposes only authorized dashboard destinations", async ({ member1Page }) => {
     // Load the public shell with a regular member session.
     await navigateToSiteHome(member1Page);
     await member1Page.locator('#user-dropdown-button[data-logged-in="true"]').click();

@@ -35,8 +35,6 @@ pub(crate) enum PageId {
     BadgeCredential,
     /// Public badge verification page.
     BadgeVerify,
-    /// Event check-in page.
-    CheckIn,
     /// Public community page.
     Community,
     /// Community administration dashboard.

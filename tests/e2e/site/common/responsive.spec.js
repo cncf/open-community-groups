@@ -6,7 +6,6 @@ import {
   TEST_EVENT_SLUG,
   TEST_GROUP_NAME,
   TEST_GROUP_SLUG,
-  TEST_OPEN_CHECK_IN_EVENT,
   TEST_SITE_TITLE,
   navigateToPath,
 } from "../../utils.js";
@@ -72,15 +71,6 @@ const RESPONSIVE_PAGES = [
     ready: (page) => page.getByRole("heading", { name: "Host" }),
   },
   {
-    name: "event check-in",
-    // The check-in route requires a signed-in user, so it uses an auth fixture.
-    authenticated: true,
-    path: `/${TEST_COMMUNITY_NAME}/check-in/${TEST_OPEN_CHECK_IN_EVENT.id}`,
-    ready: (page) => page.getByRole("heading", {
-      name: TEST_OPEN_CHECK_IN_EVENT.name,
-    }),
-  },
-  {
     name: "login",
     path: "/log-in",
     ready: (page) => page.getByRole("heading", { name: "Log In" }),
@@ -99,9 +89,7 @@ const RESPONSIVE_PAGES = [
 
 // Return the number of computed CSS grid columns for one visible section.
 const getGridColumnCount = (grid) =>
-  grid.evaluate((element) =>
-    getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
-  );
+  grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length);
 
 test.describe("public responsive layouts", () => {
   // Verify the ready state and layout bounds at every supported breakpoint.
@@ -143,10 +131,7 @@ test.describe("public responsive layouts", () => {
   test("card grids change columns at their declared breakpoints", async ({ page }) => {
     // Verify the site community cards change at the sm breakpoint.
     await navigateToPath(page, "/");
-    const communityGrid = page
-      .getByText("Communities", { exact: true })
-      .locator("..")
-      .locator(".grid");
+    const communityGrid = page.getByText("Communities", { exact: true }).locator("..").locator(".grid");
     await page.setViewportSize({ width: 639, height: 900 });
     expect(await getGridColumnCount(communityGrid)).toBe(1);
     await page.setViewportSize({ width: 640, height: 900 });
@@ -173,10 +158,7 @@ test.describe("public responsive layouts", () => {
     expect(await getGridColumnCount(groupEventsGrid)).toBe(2);
 
     // Verify event speaker cards change at both md and lg breakpoints.
-    await navigateToPath(
-      page,
-      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`,
-    );
+    await navigateToPath(page, `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}/event/${TEST_EVENT_SLUG}`);
     const speakersGrid = page.locator(".regular-speakers-grid");
     await page.setViewportSize({ width: 767, height: 900 });
     expect(await getGridColumnCount(speakersGrid)).toBe(1);

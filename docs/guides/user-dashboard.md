@@ -3,8 +3,8 @@
 # User Dashboard Guide
 
 Think of the User Dashboard as your home base inside OCG. It brings groups, upcoming events,
-profile, badges, invitations, proposal writing, and submission tracking into one place so moving
-from participant to speaker feels smooth.
+attendee check-in credentials, profile, badges, invitations, proposal writing, and submission
+tracking into one place so moving from participant to speaker feels smooth.
 
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
@@ -16,6 +16,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [User Dashboard Structure](#user-dashboard-structure)
 - [My Groups](#my-groups)
 - [My Events: Upcoming Participation](#my-events-upcoming-participation)
+- [Check-In: Attendee Credentials](#check-in-attendee-credentials)
 - [Purchases and Financial Documents](#purchases-and-financial-documents)
 - [Profile: Public Identity](#profile-public-identity)
 - [Badges: Portable Credentials](#badges-portable-credentials)
@@ -27,10 +28,11 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into nine areas:
+The dashboard is organized into ten areas:
 
 - [My Groups](/dashboard/user?tab=groups ':ignore')
 - [My Events](/dashboard/user?tab=events ':ignore')
+- [Check-In](/dashboard/user?tab=check-in ':ignore')
 - [Purchases & documents](/dashboard/user?tab=purchases ':ignore')
 - [Profile](/dashboard/user?tab=account ':ignore')
 - [Badges](/dashboard/user?tab=badges ':ignore')
@@ -39,8 +41,8 @@ The dashboard is organized into nine areas:
 - [Submissions](/dashboard/user?tab=submissions ':ignore')
 - [Logs](/dashboard/user?tab=logs ':ignore')
 
-Each area supports a different part of your participation in OCG: groups, events, profile,
-portable credentials, access, proposals, submissions, and audit visibility.
+Each area supports a different part of your participation in OCG: groups, events, attendee
+check-in, profile, portable credentials, access, proposals, submissions, and audit visibility.
 
 ## My Groups
 
@@ -103,6 +105,18 @@ Expired checkout holds disappear from the list unless you have another active ro
 hold expiration is reflected when the dashboard content next loads or refreshes.
 
 ![User profile area](../screenshots/dashboard-user-my-events.png)
+
+## Check-In: Attendee Credentials
+
+`Check-In` shows your personal QR code for each current or upcoming event where you are a
+confirmed attendee and have not checked in yet. Open an event card and present the code to an
+organizer when you arrive. The card is removed after check-in.
+
+The mobile dashboard entry screen links to Check-In. On larger screens, open the section directly
+at [/dashboard/user?tab=check-in](/dashboard/user?tab=check-in ':ignore'). Canceled, unpublished,
+unscheduled, and past events are excluded.
+
+![Attendee check-in QR code](../screenshots/dashboard-user-check-in-qr-code.png)
 
 ## Purchases and Financial Documents
 

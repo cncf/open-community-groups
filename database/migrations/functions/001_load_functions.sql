@@ -134,6 +134,8 @@
 {{ template "dashboard-group/cancel_event_admission_offer.sql" }}
 {{ template "dashboard-group/cancel_event_attendee_attendance.sql" }}
 {{ template "dashboard-group/cancel_event_series_events.sql" }}
+{{ template "dashboard-group/check_in_event.sql" }}
+{{ template "dashboard-group/check_in_attendee_by_code.sql" }} -- Depends on check_in_event
 {{ template "dashboard-group/claim_badge_award_job.sql" }}
 {{ template "dashboard-group/cleanup_badge_award_jobs.sql" }}
 {{ template "dashboard-group/delete_badge.sql" }}
@@ -165,6 +167,7 @@
 {{ template "dashboard-group/list_event_series_publishable_event_ids.sql" }}
 {{ template "dashboard-group/list_event_waitlist_ids.sql" }}
 {{ template "dashboard-group/list_group_audit_logs.sql" }}
+{{ template "dashboard-group/list_group_check_in_events.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
 {{ template "dashboard-group/list_group_members.sql" }}
 {{ template "dashboard-group/list_group_members_ids.sql" }}
@@ -176,7 +179,6 @@
 {{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/lock_events_for_cancellation.sql" }}
-{{ template "dashboard-group/manual_check_in_event.sql" }}
 {{ template "dashboard-group/process_badge_award_job_batch.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/publish_event_series_events.sql" }}
@@ -210,6 +212,7 @@
 {{ template "dashboard-user/list_user_audit_logs.sql" }}
 {{ template "dashboard-user/list_user_badges.sql" }}
 {{ template "dashboard-user/list_user_cfs_submissions.sql" }}
+{{ template "dashboard-user/list_user_check_in_events.sql" }}
 {{ template "dashboard-user/list_user_community_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_dashboard_groups.sql" }}
 {{ template "dashboard-user/list_user_event_invitations.sql" }}
@@ -232,13 +235,11 @@
 
 {{ template "event/add_cfs_submission.sql" }}
 {{ template "event/attend_event.sql" }}
-{{ template "event/check_in_event.sql" }}
 {{ template "event/close_event_enrollment.sql" }}
 {{ template "event/ensure_event_is_active.sql" }}
 {{ template "event/get_event_enrollment.sql" }}
 {{ template "event/get_event_full_by_slug.sql" }}
 {{ template "event/get_event_summary_by_id.sql" }}
-{{ template "event/is_event_check_in_window_open.sql" }}
 {{ template "payments/release_event_discount_code_availability.sql" }} -- Dependency for event and payments flows
 {{ template "payments/release_event_checkout_attendee_hold.sql" }} -- Dependency for checkout expiration flows
 {{ template "payments/refund_free_event_purchase.sql" }} -- Dependency for leave_event

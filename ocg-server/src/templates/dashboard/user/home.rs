@@ -11,7 +11,8 @@ use crate::{
         dashboard::{
             audit,
             user::{
-                badges, events, groups, invitations, purchases, session_proposals, submissions,
+                badges, check_in, events, groups, invitations, purchases, session_proposals,
+                submissions,
             },
         },
         filters,
@@ -45,6 +46,8 @@ pub(crate) enum Content {
     Account(Box<auth::UpdateUserPage>),
     /// User badges page.
     Badges(badges::ListPage),
+    /// User attendee check-in page.
+    CheckIn(check_in::ListPage),
     /// User upcoming events page.
     Events(events::ListPage),
     /// User groups page.
@@ -70,6 +73,11 @@ impl Content {
     /// Check if the content is the badges page.
     fn is_badges(&self) -> bool {
         matches!(self, Content::Badges(_))
+    }
+
+    /// Check if the content is the check-in page.
+    fn is_check_in(&self) -> bool {
+        matches!(self, Content::CheckIn(_))
     }
 
     /// Check if the content is the events page.
@@ -113,6 +121,7 @@ impl std::fmt::Display for Content {
         match self {
             Content::Account(template) => write!(f, "{}", template.render()?),
             Content::Badges(template) => write!(f, "{}", template.render()?),
+            Content::CheckIn(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
             Content::Invitations(template) => write!(f, "{}", template.render()?),
@@ -136,6 +145,8 @@ pub(crate) enum Tab {
     Account,
     /// Badges tab.
     Badges,
+    /// Attendee check-in tab.
+    CheckIn,
     /// Events tab.
     Events,
     /// Groups tab.

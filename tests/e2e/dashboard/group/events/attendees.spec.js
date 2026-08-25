@@ -27,10 +27,7 @@ import {
   ATTENDEE_NOTIFICATION_BODY,
   ATTENDEE_NOTIFICATION_SUBJECT,
 } from "../helpers.js";
-import {
-  createApprovalRequiredEvent,
-  deleteEventFromList,
-} from "./helpers.js";
+import { createApprovalRequiredEvent, deleteEventFromList } from "./helpers.js";
 import {
   expectUserColumnHasRoom,
   expectUserProfileModalFromRow,
@@ -45,10 +42,14 @@ const openAttendeesTab = async (page, eventName, eventId, query = "") => {
   });
   await expect(eventRow).toBeVisible();
 
-  await waitForActionResponse(page, () => eventRow.locator('td button[aria-label^="Edit event:"]').click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${eventId}/update`,
-  });
+  await waitForActionResponse(
+    page,
+    () => eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+    {
+      method: "GET",
+      urlIncludes: `/dashboard/group/events/${eventId}/update`,
+    },
+  );
 
   // The tab buttons only exist once the event update form has loaded.
   const attendeesTab = page.locator('button[data-section="attendees"]');
@@ -109,10 +110,14 @@ const openInvitationRequestsTab = async (page, eventName, eventId) => {
 
   const eventRow = page.locator("tr", { hasText: eventName });
   await expect(eventRow).toBeVisible();
-  await waitForActionResponse(page, () => eventRow.locator('td button[aria-label^="Edit event:"]').click(), {
-    method: "GET",
-    urlIncludes: `/dashboard/group/events/${eventId}/update`,
-  });
+  await waitForActionResponse(
+    page,
+    () => eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+    {
+      method: "GET",
+      urlIncludes: `/dashboard/group/events/${eventId}/update`,
+    },
+  );
   await waitForActionResponse(
     page,
     () => page.locator('button[data-section="invitation-requests"]').click(),
@@ -131,6 +136,153 @@ const openInvitationRequestsTab = async (page, eventName, eventId) => {
 };
 
 test.describe("group dashboard attendees tab", () => {
+  test("organizer scans and refreshes attendees from a published current event", async ({
+    organizerGroupPage,
+  }) => {
+    // Replace the browser scanner with a deterministic camera implementation.
+    await organizerGroupPage.addInitScript(() => {
+      class FakeQrScanner {
+        static last;
+
+        static async hasCamera() {
+          return true;
+        }
+
+        static async listCameras() {
+          return [{ id: "test-camera", label: "Test camera" }];
+        }
+
+        constructor(_video, onDecode) {
+          this.onDecode = onDecode;
+          FakeQrScanner.last = this;
+        }
+
+        destroy() {}
+        async hasFlash() {
+          return false;
+        }
+        isFlashOn() {
+          return false;
+        }
+        async setCamera() {}
+        async start() {}
+        async toggleFlash() {}
+      }
+
+      window.__OCG_E2E_QR_SCANNER__ = FakeQrScanner;
+    });
+
+    // Return a deterministic successful scan without mutating seeded attendee state.
+    await organizerGroupPage.route(
+      `**/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/check-ins/scan`,
+      (route) =>
+        route.fulfill({
+          body: JSON.stringify({
+            attendee: { name: "E2E Scanned Attendee" },
+            outcome: "checked-in",
+            ticket_title: "General admission",
+          }),
+          contentType: "application/json",
+          status: 200,
+        }),
+    );
+
+    // Open the published event's attendees tab and launch its scanner.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_EVENT_NAMES.alpha[0],
+      TEST_EVENT_IDS.alpha.one,
+    );
+    const scannerButton = attendeesContent.getByRole("button", {
+      name: "Scan Attendee Codes",
+    });
+    await expect(scannerButton).toBeEnabled();
+    await scannerButton.click();
+
+    // Verify the shared scanner opens with the selected event.
+    const scannerModal = attendeesContent.locator(
+      "#group-check-in-scanner-modal",
+    );
+    await expect(scannerModal).toBeVisible();
+    await expect(
+      scannerModal.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
+    ).toBeVisible();
+    await expect(
+      scannerModal.getByText("Hold an attendee QR code inside the frame."),
+    ).toBeVisible();
+
+    // Submit a successful credential through the simulated camera.
+    const scanResponsePromise = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response
+          .url()
+          .includes(
+            `/events/${TEST_EVENT_IDS.alpha.one}/check-ins/scan`,
+          ),
+    );
+    await organizerGroupPage.evaluate(
+      (eventId) =>
+        window.__OCG_E2E_QR_SCANNER__.last.onDecode({
+          data: `ocg-check-in:v1:${eventId}:e2e-scanner-credential`,
+        }),
+      TEST_EVENT_IDS.alpha.one,
+    );
+    expect((await scanResponsePromise).ok()).toBe(true);
+    await expect(
+      scannerModal.getByText("Checked in", { exact: true }),
+    ).toBeVisible();
+
+    // Closing the scanner refreshes the attendees region once.
+    const refreshResponsePromise = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response
+          .url()
+          .includes(`/events/${TEST_EVENT_IDS.alpha.one}/attendees`),
+    );
+    await scannerModal
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    expect((await refreshResponsePromise).ok()).toBe(true);
+    await expect(scannerModal).toBeHidden();
+    await expect(
+      attendeesContent.getByRole("button", { name: "Scan Attendee Codes" }),
+    ).toBeEnabled();
+  });
+
+  test("check-in manager launches the desktop scanner without event write access", async ({
+    checkInManagerGroupPage,
+  }) => {
+    // Open the published event's attendees tab with check-in-only permissions.
+    const attendeesContent = await openAttendeesTab(
+      checkInManagerGroupPage,
+      TEST_EVENT_NAMES.alpha[0],
+      TEST_EVENT_IDS.alpha.one,
+    );
+
+    // Verify the desktop scan action stays discoverable for this role.
+    const scannerButton = attendeesContent.getByRole("button", {
+      name: "Scan Attendee Codes",
+    });
+    await expect(scannerButton).toBeVisible();
+    await expect(scannerButton).toBeEnabled();
+    await scannerButton.click();
+
+    // Verify the shared scanner opens for the selected event.
+    const scannerModal = attendeesContent.locator(
+      "#group-check-in-scanner-modal",
+    );
+    await expect(scannerModal).toBeVisible();
+    await expect(
+      scannerModal.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
+    ).toBeVisible();
+    await scannerModal
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    await expect(scannerModal).toBeHidden();
+  });
+
   test("attendees table exposes every column at its responsive breakpoint", async ({
     organizerGroupPage,
   }) => {
@@ -174,13 +326,7 @@ test.describe("group dashboard attendees tab", () => {
       organizerGroupPage,
       attendeesTable,
       1536,
-      [
-        "Attendee",
-        "Status",
-        "Ticket type",
-        "Checked In",
-        "Actions",
-      ],
+      ["Attendee", "Status", "Ticket type", "Checked In", "Actions"],
       ["Select for email", "Position", "Enrollment Date"],
     );
     await expectTableColumnsAtViewport(
@@ -295,7 +441,12 @@ test.describe("group dashboard attendees tab", () => {
     // Open the event update form before switching to attendees.
     await waitForActionResponse(
       groupViewerPage,
-      () => eventRow.locator('td button[aria-label="Edit event: Full Event With Waitlist"]').click(),
+      () =>
+        eventRow
+          .locator(
+            'td button[aria-label="Edit event: Full Event With Waitlist"]',
+          )
+          .click(),
       {
         method: "GET",
         urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`,
@@ -319,16 +470,15 @@ test.describe("group dashboard attendees tab", () => {
     });
 
     // Assert that Attendees list is visible.
-    const attendeesTable = attendeesContent.getByRole("table", { name: "Attendees list" });
+    const attendeesTable = attendeesContent.getByRole("table", {
+      name: "Attendees list",
+    });
     await expect(attendeesTable).toBeVisible();
     await expectUserColumnHasRoom(attendeesTable, "Attendee");
     await expect(attendeeRow).toBeVisible();
     await expect(
-      attendeesContent.getByRole("button", { name: "Send email" }),
-    ).toBeDisabled();
-    await expect(
-      attendeesContent.getByRole("button", { name: "Send email" }),
-    ).toHaveAttribute("title", "Your role cannot send emails to attendees.");
+      attendeesContent.locator("#attendee-email-actions-button"),
+    ).toBeHidden();
     await expect(attendeeRow.locator(".check-in-toggle")).toBeDisabled();
   });
 
@@ -872,10 +1022,14 @@ test.describe("group dashboard attendees tab", () => {
         `/dashboard/group/events/${eventId}/invitation-requests`,
         "?limit=1&offset=0",
       );
-      await waitForActionResponse(organizerGroupPage, () => invitationRequestsTab.click(), {
-        method: "GET",
-        urlIncludes: `/dashboard/group/events/${eventId}/invitation-requests`,
-      });
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => invitationRequestsTab.click(),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${eventId}/invitation-requests`,
+        },
+      );
 
       const requestsContent = organizerGroupPage.locator(
         "#invitation-requests-content",
@@ -1114,7 +1268,10 @@ test.describe("group dashboard attendees tab", () => {
         .click();
       await waitForActionResponse(
         organizerGroupPage,
-        () => pendingTwoRow.getByRole("button", { name: "Accept", exact: true }).click(),
+        () =>
+          pendingTwoRow
+            .getByRole("button", { name: "Accept", exact: true })
+            .click(),
         {
           method: "PUT",
           urlIncludes: `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending2}/invitation-request/accept`,
@@ -1195,7 +1352,10 @@ test.describe("group dashboard attendees tab", () => {
     );
     await waitForActionResponse(
       organizerGroupPage,
-      () => unscopedRequestRow.getByRole("button", { name: "Accept", exact: true }).click(),
+      () =>
+        unscopedRequestRow
+          .getByRole("button", { name: "Accept", exact: true })
+          .click(),
       {
         method: "PUT",
         urlIncludes: `/events/${lifecycleEvent.id}/attendees/${TEST_USER_IDS.pending1}/invitation-request/accept`,
@@ -1221,7 +1381,10 @@ test.describe("group dashboard attendees tab", () => {
     ).toHaveValue("56555555-5555-5555-5555-655555555914");
     await waitForActionResponse(
       organizerGroupPage,
-      () => expiredOfferRow.getByRole("button", { name: "Reissue offer", exact: true }).click(),
+      () =>
+        expiredOfferRow
+          .getByRole("button", { name: "Reissue offer", exact: true })
+          .click(),
       {
         method: "PUT",
         urlIncludes: "/invitation-request/reissue",
@@ -1636,7 +1799,10 @@ test.describe("group dashboard attendees tab", () => {
         name: "Cancel attendance and refund",
       });
       await expect(cancelAttendance).toBeEnabled();
-      await expect(cancelAttendance).toHaveAttribute("hx-delete", /attendance$/u);
+      await expect(cancelAttendance).toHaveAttribute(
+        "hx-delete",
+        /attendance$/u,
+      );
       await cancelAttendance.click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
         "Their attendance will remain active until the refund is confirmed.",
@@ -1644,9 +1810,11 @@ test.describe("group dashboard attendees tab", () => {
       const attendeesRefreshResponse = organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(
-            `/dashboard/group/events/${TEST_PAYMENT_EVENT_IDS.refunds}/attendees`,
-          ) &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_PAYMENT_EVENT_IDS.refunds}/attendees`,
+            ) &&
           response.ok(),
       );
       await waitForActionResponse(
@@ -1689,9 +1857,12 @@ test.describe("group dashboard attendees tab", () => {
       });
       const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
       await rowActionsMenu.locator("summary").click();
-      const cancelAttendance = rowActionsMenu.locator("button[role='menuitem']", {
-        hasText: "Cancel attendance and refund",
-      });
+      const cancelAttendance = rowActionsMenu.locator(
+        "button[role='menuitem']",
+        {
+          hasText: "Cancel attendance and refund",
+        },
+      );
       await cancelAttendance.click();
 
       // Submit the cancellation and verify its paid-specific recovery feedback.
@@ -1744,9 +1915,12 @@ test.describe("group dashboard attendees tab", () => {
       });
       const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
       await rowActionsMenu.locator("summary").click();
-      const cancelAttendance = rowActionsMenu.locator("button[role='menuitem']", {
-        hasText: "Cancel attendance and refund",
-      });
+      const cancelAttendance = rowActionsMenu.locator(
+        "button[role='menuitem']",
+        {
+          hasText: "Cancel attendance and refund",
+        },
+      );
       await cancelAttendance.click();
       const cancellationResponse = organizerGroupPage.waitForResponse(
         (response) =>
@@ -1843,7 +2017,12 @@ test.describe("group dashboard attendees tab", () => {
     // Open the event update form before switching to attendees.
     await waitForActionResponse(
       organizerGroupPage,
-      () => eventRow.locator('td button[aria-label="Edit event: Full Event With Waitlist"]').click(),
+      () =>
+        eventRow
+          .locator(
+            'td button[aria-label="Edit event: Full Event With Waitlist"]',
+          )
+          .click(),
       {
         method: "GET",
         urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`,
@@ -1853,7 +2032,8 @@ test.describe("group dashboard attendees tab", () => {
     // Load the attendees tab for the event.
     await waitForActionResponse(
       organizerGroupPage,
-      () => organizerGroupPage.locator('button[data-section="attendees"]').click(),
+      () =>
+        organizerGroupPage.locator('button[data-section="attendees"]').click(),
       {
         method: "GET",
         urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees`,
@@ -1907,7 +2087,12 @@ test.describe("group dashboard attendees tab", () => {
     // Open the event update form before switching to attendees.
     await waitForActionResponse(
       organizerGroupPage,
-      () => eventRow.locator('td button[aria-label="Edit event: Full Event With Waitlist"]').click(),
+      () =>
+        eventRow
+          .locator(
+            'td button[aria-label="Edit event: Full Event With Waitlist"]',
+          )
+          .click(),
       {
         method: "GET",
         urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`,
@@ -1917,7 +2102,8 @@ test.describe("group dashboard attendees tab", () => {
     // Load the attendees tab for the event.
     await waitForActionResponse(
       organizerGroupPage,
-      () => organizerGroupPage.locator('button[data-section="attendees"]').click(),
+      () =>
+        organizerGroupPage.locator('button[data-section="attendees"]').click(),
       {
         method: "GET",
         urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees`,
@@ -2141,83 +2327,6 @@ test.describe("group dashboard attendees tab", () => {
 
     // Close the attendee email modal without sending.
     await modal.getByRole("button", { name: "Cancel" }).click();
-    await expect(modal).toBeHidden();
-  });
-
-  test("organizer can open the event QR code modal from the attendees tab", async ({
-    organizerGroupPage,
-  }) => {
-    // Load the group events dashboard before opening the seeded event.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
-
-    // Find the event row.
-    const eventRow = organizerGroupPage.locator("tr", {
-      hasText: "Full Event With Waitlist",
-    });
-    await expect(eventRow).toBeVisible();
-
-    // Open the event update form before switching to attendees.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => eventRow.locator('td button[aria-label="Edit event: Full Event With Waitlist"]').click(),
-      {
-        method: "GET",
-        urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`,
-      },
-    );
-
-    // Load the attendees tab for the event.
-    await waitForActionResponse(
-      organizerGroupPage,
-      () => organizerGroupPage.locator('button[data-section="attendees"]').click(),
-      {
-        method: "GET",
-        urlIncludes: `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees`,
-      },
-    );
-
-    // Open the attendee actions menu.
-    const attendeesContent = organizerGroupPage.locator("#attendees-content");
-    const actionsButton = attendeesContent.getByRole("button", {
-      name: "Open attendee actions menu",
-    });
-    await expect(actionsButton).toBeVisible();
-    await actionsButton.click();
-
-    // Assert the expected content is visible.
-    const openModalButton = attendeesContent.getByRole("menuitem", {
-      name: "Show check-in QR code",
-    });
-    await expect(openModalButton).toBeVisible();
-    await openModalButton.click();
-
-    // Verify the QR code modal content points at the check-in page.
-    const modal = organizerGroupPage.locator("#event-qr-code-modal");
-    await expect(modal).toBeVisible();
-    await expect(
-      modal.getByRole("heading", { name: "Event check-in QR code" }),
-    ).toBeVisible();
-    await expect(modal.locator("#event-qr-code-group-name")).toHaveText(
-      "Platform Ops Meetup",
-    );
-    await expect(modal.locator("#event-qr-code-name")).toHaveText(
-      "Full Event With Waitlist",
-    );
-    await expect(modal.locator("#event-qr-code-start")).not.toHaveText("");
-    await expect(modal.locator("#event-qr-code-link")).toHaveAttribute(
-      "href",
-      buildE2eUrl(
-        `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.waitlistLab}`,
-      ),
-    );
-    await expect(modal.locator("#event-qr-code-image")).toHaveAttribute(
-      "src",
-      `/dashboard/group/check-in/${TEST_EVENT_IDS.alpha.waitlistLab}/qr-code`,
-    );
-    await expect(modal.locator("#print-event-qr-code")).toBeEnabled();
-
-    // Close the QR code modal after verifying its content.
-    await modal.locator("#close-event-qr-code-modal").click();
     await expect(modal).toBeHidden();
   });
 });

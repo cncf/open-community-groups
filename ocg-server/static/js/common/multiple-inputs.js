@@ -56,6 +56,16 @@ export class MultipleInputs extends LitWrapper {
   }
 
   /**
+   * Normalizes item updates applied after the component is connected.
+   * @param {Map<PropertyKey, unknown>} changedProperties Changed reactive properties.
+   */
+  willUpdate(changedProperties) {
+    if (changedProperties.has("items") && !this.items?.every?.((item) => typeof item?.value === "string")) {
+      this._loadInitialData();
+    }
+  }
+
+  /**
    * Normalizes the items array structure on component initialization.
    * Ensures each item has both 'id' and 'value' properties by mapping over
    * existing items and assigning stable unique IDs. Initializes the _nextId
@@ -65,9 +75,10 @@ export class MultipleInputs extends LitWrapper {
   _loadInitialData() {
     if (this.items && this.items.length > 0) {
       this.items = this.items.map((item, index) => {
+        const itemValue = typeof item === "object" && item !== null ? item.value : item;
         return {
           id: index,
-          value: item || "",
+          value: typeof itemValue === "string" ? itemValue : "",
         };
       });
       // Set _nextId to prevent future ID collisions

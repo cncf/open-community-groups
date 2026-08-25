@@ -21,11 +21,38 @@ const sliceTemplateSection = (template, startToken, endToken) => {
 };
 
 describe("dashboard group attendees list template", () => {
+  it("opens the shared scanner for published current events on desktop", async () => {
+    // Load the attendees actions and shared scanner modal contracts.
+    const template = normalizeWhitespace(await loadTemplate());
+    const scannerModal = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/group/check_in_scanner_modal.html"),
+    );
+
+    // Verify the desktop action carries event context and explicit disabled states.
+    expect(template).to.include('{% if can_manage_check_ins -%} <div class="hidden md:block">');
+    expect(template).to.include("data-group-check-in-open");
+    expect(template).to.include("data-refresh-attendees-on-close");
+    expect(template).to.include('data-event-id="{{ event.event_id }}"');
+    expect(template).to.include('data-event-name="{{ event.name }}"');
+    expect(template).to.include(
+      'data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"',
+    );
+    expect(template).to.include("{% if event.canceled -%}");
+    expect(template).to.include('disabled title="Canceled events cannot scan attendees."');
+    expect(template).to.include("{% else if !event.published -%}");
+    expect(template).to.include('disabled title="Publish this event before scanning attendees."');
+    expect(template).to.include("{% else if event.is_past() -%}");
+    expect(template).to.include('disabled title="Past events cannot scan attendees."');
+    expect(template).to.include('{% include "dashboard/group/check_in_scanner_modal.html" -%}');
+    expect(scannerModal).to.include('id="group-check-in-scanner-modal"');
+    expect(scannerModal).to.include('title = "Scan Attendee Codes"');
+  });
+
   it("groups enrollment views and exact statuses in one selector", async () => {
     // Load the attendees list template before checking enrollment filters.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify aggregate views and exact statuses are visually separated by native optgroups.
+    // Verify native optgroups separate aggregate views from exact statuses.
     expect(template).to.include('for="attendees-enrollment-status"');
     expect(template).to.include('text-stone-900">Status</label>');
     expect(template).to.include('id="attendees-enrollment-status"');
@@ -366,9 +393,7 @@ describe("dashboard group attendees list template", () => {
     // Verify offer deadlines appear from the status badge on hover and focus.
     expect(template).not.to.include("icon-info");
     expect(template).to.include("relative inline-flex cursor-help rounded-full");
-    expect(template).to.include(
-      "attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}",
-    );
+    expect(template).to.include("attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}");
     expect(template).to.include('aria-describedby="{{ attendee_offer_tooltip_id }}"');
     expect(template).to.include("dashboard::tooltip_panel(");
     expect(template).to.include('title = "Ticket offer"');
@@ -422,7 +447,8 @@ describe("dashboard group attendees list template", () => {
     );
   });
 
-  it("groups attendee QR, invite, and CSV downloads in the actions menu", async () => {
+  it("groups attendee invitations and CSV downloads in the actions menu", async () => {
+    // Load the attendee actions menu after removing the legacy QR entrypoint.
     const template = normalizeWhitespace(await loadTemplate());
     const actionsMenu = sliceTemplateSection(
       template,
@@ -430,9 +456,8 @@ describe("dashboard group attendees list template", () => {
       "{# End header actions -#}",
     );
 
-    expect(actionsMenu).to.include('id="open-event-qr-code-modal"');
-    expect(actionsMenu).to.include("icon-qr-code");
-    expect(actionsMenu).to.include("Show check-in QR code");
+    // Verify invitations and exports remain grouped in the menu.
+    expect(actionsMenu).not.to.include('id="open-event-qr-code-modal"');
     expect(actionsMenu).to.include('id="open-attendee-invitation-modal"');
     expect(actionsMenu).to.include("Invite attendee");
     expect(actionsMenu).to.include("border-t border-stone-100");
@@ -491,16 +516,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
-    expect(template).to.include(
-      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
-    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44"');
     expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"');
     expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"');
-    expect(template).to.include(
-      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"',
-    );
+    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"');
     expect(template).to.include(
       '<div class="mt-2 lg:hidden">{{ attendee_status(attendee, event, "mobile") -}}</div>',
     );

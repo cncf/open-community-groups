@@ -1,9 +1,11 @@
+-- Tests group permission evaluation across community and group roles.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(149);
+select plan(176);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +22,7 @@ select plan(149);
 \set restrictedCommunityID '0a0e0000-0000-0000-0000-000000000009'
 \set restrictedGroupCategoryID '0a0e0000-0000-0000-0000-000000000010'
 \set restrictedGroupID '0a0e0000-0000-0000-0000-000000000011'
+\set userCheckInManagerID '0a0e0000-0000-0000-0000-000000000023'
 \set userCommunityAdminID '0a0e0000-0000-0000-0000-000000000012'
 \set userCommunityGroupsManagerID '0a0e0000-0000-0000-0000-000000000013'
 \set userCommunityPendingGroupsManagerID '0a0e0000-0000-0000-0000-000000000014'
@@ -91,6 +94,13 @@ insert into "user" (
     email_verified,
     username
 ) values (
+    :'userCheckInManagerID',
+    'Check-In Manager',
+    gen_random_bytes(32),
+    'check-in-manager@example.com',
+    true,
+    'checkinmanager'
+), (
     :'userGroupAdminID',
     'Group Admin',
     gen_random_bytes(32),
@@ -235,6 +245,11 @@ insert into group_team (
 ) values (
     true,
     :'groupID',
+    'check-in-manager',
+    :'userCheckInManagerID'
+), (
+    true,
+    :'groupID',
     'admin',
     :'userGroupAdminID'
 ), (
@@ -332,6 +347,7 @@ with tested_permissions (
 ) as (
     values
         ('group.badges.write'),
+        ('group.check-ins.write'),
         ('group.events.write'),
         ('group.members.write'),
         ('group.read'),
@@ -374,12 +390,23 @@ with actors (
 ) as (
     values
         (
+            'check-in-manager',
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'userCheckInManagerID'::uuid,
+            array[
+                'group.check-ins.write',
+                'group.read'
+            ]::text[]
+        ),
+        (
             'community-admin',
             :'communityID'::uuid,
             :'groupID'::uuid,
             :'userCommunityAdminID'::uuid,
             array[
                 'group.badges.write',
+                'group.check-ins.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -395,6 +422,7 @@ with actors (
             :'userCommunityAdminID'::uuid,
             array[
                 'group.badges.write',
+                'group.check-ins.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -410,6 +438,7 @@ with actors (
             :'userCommunityGroupsManagerID'::uuid,
             array[
                 'group.badges.write',
+                'group.check-ins.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -455,6 +484,7 @@ with actors (
             :'userDualRoleID'::uuid,
             array[
                 'group.badges.write',
+                'group.check-ins.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -470,6 +500,7 @@ with actors (
             :'userGroupAdminID'::uuid,
             array[
                 'group.badges.write',
+                'group.check-ins.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -485,6 +516,7 @@ with actors (
             :'userEventsManagerID'::uuid,
             array[
                 'group.badges.write',
+                'group.check-ins.write',
                 'group.events.write',
                 'group.read'
             ]::text[]
@@ -512,6 +544,7 @@ with actors (
             :'userOtherGroupAdminID'::uuid,
             array[
                 'group.badges.write',
+                'group.check-ins.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -560,6 +593,7 @@ with actors (
 ) as (
     values
         ('group.badges.write'),
+        ('group.check-ins.write'),
         ('group.events.write'),
         ('group.members.write'),
         ('group.read'),

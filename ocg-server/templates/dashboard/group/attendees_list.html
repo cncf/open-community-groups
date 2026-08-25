@@ -219,7 +219,30 @@
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
   <div class="shrink-0 w-auto mt-1.5 mb-1.5 flex gap-3 flex-row">
-    <div class="group relative w-full lg:w-auto">
+    {% if can_manage_check_ins -%}
+      <div class="hidden md:block">
+        <button type="button"
+                class="btn-primary-outline w-full lg:w-auto disabled:cursor-not-allowed disabled:opacity-50"
+                data-group-check-in-open
+                data-refresh-attendees-on-close
+                data-event-id="{{ event.event_id }}"
+                data-event-date="{% if let Some(start_time) = &event.starts_at -%}{{ start_time.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}{% else -%}Date information unavailable{% endif -%}"
+                data-event-location="{% if event.kind.to_string() == "virtual" -%}Virtual{% else if let Some(location) = &event.location(90) -%}{{ location }}{% else -%}Venue details pending{% endif -%}"
+                data-event-name="{{ event.name }}"
+                data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"
+                {% if event.canceled -%}
+                  disabled title="Canceled events cannot scan attendees."
+                {% else if !event.published -%}
+                  disabled title="Publish this event before scanning attendees."
+                {% else if event.is_past() -%}
+                  disabled title="Past events cannot scan attendees."
+                {% endif -%}>Scan Attendee Codes</button>
+      </div>
+    {% endif -%}
+    <div class="group relative w-full lg:w-auto
+                {% if !can_manage_events -%}
+                  hidden
+                {% endif -%}">
       <button id="attendee-email-actions-button"
               type="button"
               class="btn-primary-outline w-full lg:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
@@ -264,7 +287,10 @@
         </ul>
       </div>
     </div>
-    <div class="group relative w-full lg:w-auto">
+    <div class="group relative w-full lg:w-auto
+                {% if !can_manage_events -%}
+                  hidden
+                {% endif -%}">
       <button id="attendee-badge-actions-button"
               type="button"
               class="btn-primary-outline w-full lg:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
@@ -333,46 +359,24 @@
            data-attendee-actions-dropdown
            class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[22rem] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
-          <li>
-            <button id="open-event-qr-code-modal"
-                    type="button"
-                    role="menuitem"
-                    class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Show check-in QR code"
-                    {% if event.canceled -%}
-                      disabled title="Canceled events cannot use check-in."
-                    {% endif -%}
-                    data-event-id="{{ event.event_id }}"
-                    data-event-name="{{ event.name }}"
-                    data-group-name="{{ event.group_name }}"
-                    data-event-slug="{{ event.slug }}"
-                    data-check-in-url="/{{ event.community_name }}/check-in/{{ event.event_id }}"
-                    data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
-                    {% if let Some(start_time) = &event.starts_at -%}
-                      data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
-                    {% endif -%}>
-              <div class="svg-icon size-4 icon-qr-code shrink-0 bg-stone-500"></div>
-              <span>Show check-in QR code</span>
-            </button>
-          </li>
-          <li>
-            <button id="open-attendee-invitation-modal"
-                    type="button"
-                    role="menuitem"
-                    class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-                    {% if !can_manage_events -%}
-                      disabled title="Your role cannot invite attendees."
-                    {% else if event.canceled -%}
-                      disabled title="Canceled events cannot invite attendees."
-                    {% else if event.is_past() -%}
-                      disabled title="Past events cannot invite attendees."
-                    {% endif -%}
-                    data-event-id="{{ event.event_id }}">
-              <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-500"></div>
-              <span>Invite attendee</span>
-            </button>
-          </li>
-          <li role="presentation" class="my-2 border-t border-stone-100"></li>
+          {% if can_manage_events -%}
+            <li>
+              <button id="open-attendee-invitation-modal"
+                      type="button"
+                      role="menuitem"
+                      class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                      {% if event.canceled -%}
+                        disabled title="Canceled events cannot invite attendees."
+                      {% else if event.is_past() -%}
+                        disabled title="Past events cannot invite attendees."
+                      {% endif -%}
+                      data-event-id="{{ event.event_id }}">
+                <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-500"></div>
+                <span>Invite attendee</span>
+              </button>
+            </li>
+            <li role="presentation" class="my-2 border-t border-stone-100"></li>
+          {% endif -%}
           <li>
             <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
                download
@@ -646,17 +650,17 @@
             {# Checked In Toggle -#}
             <td class="px-3 xl:px-5 py-4 w-30">
               <label class="inline-flex items-center
-                            {% if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed || attendee.checked_in || !can_manage_events || event.canceled %}
+                            {% if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed || attendee.checked_in || !can_manage_check_ins || event.canceled %}
                               cursor-not-allowed
                             {% else %}
                               cursor-pointer
                             {% endif %}">
                 <input type="checkbox"
                        class="sr-only peer check-in-toggle"
-                       aria-label="{% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled %} Canceled attendance cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending %} Pending checkout cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled %} Canceled invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined %} Declined invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired %} Expired invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending %} Pending invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending %} Pending registration cannot be checked in {% else if attendee.checked_in %} Checked in {% else if event.canceled %} Canceled event check-in unavailable {% else if !can_manage_events %} Your role cannot manage check-in {% else %} Check in attendee {% endif %}"
+                       aria-label="{% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled %} Canceled attendance cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending %} Pending checkout cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled %} Canceled invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined %} Declined invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired %} Expired invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending %} Pending invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending %} Pending registration cannot be checked in {% else if attendee.checked_in %} Checked in {% else if event.canceled %} Canceled event check-in unavailable {% else if !can_manage_check_ins %} Your role cannot manage check-in {% else %} Check in attendee {% endif %}"
                        data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/check-in"
                        {% if attendee.checked_in %}checked{% endif %}
-                       {% if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed || attendee.checked_in || !can_manage_events || event.canceled %}
+                       {% if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed || attendee.checked_in || !can_manage_check_ins || event.canceled %}
                          disabled
                        {% endif %}>
                 <div class="relative w-11 h-6 bg-stone-200 rounded-full peer peer-checked:bg-primary-500 peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white">
@@ -1156,76 +1160,9 @@
 </div>
 {# End notification modal -#}
 
-{# QR code modal -#}
-<div id="event-qr-code-modal"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="event-qr-code-modal-title"
-     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
-  <div id="overlay-event-qr-code-modal"
-       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-  <div class="modal-panel p-4 max-w-4xl">
-    <div class="modal-card rounded-lg" data-qr-print-root="true">
-      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <h3 id="event-qr-code-modal-title"
-            class="text-xl font-semibold text-stone-900">Event check-in QR code</h3>
-        <button id="close-event-qr-code-modal"
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-          <span class="sr-only">Close modal</span>
-        </button>
-      </div>
-      <div class="modal-body px-4 py-6 md:px-8 md:py-10">
-        <div id="event-qr-code-print-area"
-             class="flex flex-col lg:flex-row gap-6 bg-white border border-stone-200 rounded-lg p-4 md:p-6">
-          <div class="flex-1 flex flex-col items-center text-center">
-            <div id="event-qr-code-container"
-                 class="relative w-full flex items-center justify-center">
-              <img id="event-qr-code-image"
-                   src=""
-                   height="auto"
-                   width="auto"
-                   alt="Event check-in QR code"
-                   class="max-w-[320px] w-full h-auto" />
-            </div>
-            <p class="text-xs text-stone-500">Scan to open the attendee check-in page.</p>
-          </div>
-          <div class="flex-1 space-y-4">
-            <div class="mt-7">
-              <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Group</p>
-              <p id="event-qr-code-group-name"
-                 class="text-base font-semibold text-stone-900 wrap-break-word line-clamp-2"></p>
-            </div>
-            <div>
-              <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Event</p>
-              <p id="event-qr-code-name"
-                 class="text-base font-semibold text-stone-900 wrap-break-word line-clamp-3"></p>
-            </div>
-            <div>
-              <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Date</p>
-              <p id="event-qr-code-start"
-                 class="text-base font-medium text-stone-700 wrap-break-word"></p>
-            </div>
-            <div>
-              <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Check-in link</p>
-              <a id="event-qr-code-link"
-                 href="#"
-                 class="text-sm font-medium text-primary-600 hover:underline break-all"
-                 target="_blank"
-                 rel="noopener">/check-in/</a>
-            </div>
-          </div>
-        </div>
-        <div class="mt-8 md:mt-10 pt-6 md:pt-10 border-t border-stone-200"
-             data-qr-print-actions="true">
-          <button id="print-event-qr-code" type="button" class="btn-primary w-full">Print QR Code</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-{# End QR code modal -#}
+{# QR scanner modal -#}
+{% include "dashboard/group/check_in_scanner_modal.html" -%}
+{# End QR scanner modal -#}
 
 {# Active offer badge with deadline tooltip. #}
 {% macro attendee_offer_status_badge(attendee, event, label, canceled, status_instance) -%}

@@ -11,7 +11,9 @@ use crate::{
         auth::User,
         dashboard::{
             audit,
-            group::{analytics, badges, events, members, refunds, settings, sponsors, team},
+            group::{
+                analytics, badges, check_in, events, members, refunds, settings, sponsors, team,
+            },
         },
         filters,
         helpers::user_initials,
@@ -22,13 +24,18 @@ use crate::{
 /// Home page template for the group dashboard.
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/home.html")]
+#[allow(clippy::struct_excessive_bools)]
 pub(crate) struct Page {
     /// Whether the current user can open the protected badge surface.
     pub can_manage_badges: bool,
+    /// Whether the current user can process attendee check-ins.
+    pub can_manage_check_ins: bool,
     /// Main content section for the page.
     pub content: Content,
     /// Groups organized by community.
     pub groups_by_community: Vec<UserGroupsByCommunity>,
+    /// Whether Check-In content fell back because the selected group is not manageable.
+    pub is_check_in_fallback: bool,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
@@ -89,6 +96,8 @@ pub(crate) enum Content {
     Awards(Box<badges::AwardsPage>),
     /// Badge definitions page.
     Badges(Box<badges::BadgesPage>),
+    /// Attendee check-in page.
+    CheckIn(check_in::ListPage),
     /// Events management page.
     Events(Box<events::ListPage>),
     /// Audit logs page.
@@ -124,6 +133,11 @@ impl Content {
     /// Check if the content is the badges page.
     fn is_badges(&self) -> bool {
         matches!(self, Content::Badges(_))
+    }
+
+    /// Check if the content is the check-in page.
+    fn is_check_in(&self) -> bool {
+        matches!(self, Content::CheckIn(_))
     }
 
     /// Check if the content is the events page.
@@ -169,6 +183,7 @@ impl std::fmt::Display for Content {
             Content::Artwork(template) => write!(f, "{}", template.render()?),
             Content::Awards(template) => write!(f, "{}", template.render()?),
             Content::Badges(template) => write!(f, "{}", template.render()?),
+            Content::CheckIn(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
@@ -196,6 +211,8 @@ pub(crate) enum Tab {
     Awards,
     /// Badge definitions tab.
     Badges,
+    /// Attendee check-in tab.
+    CheckIn,
     /// Events management tab.
     Events,
     /// Audit logs tab.

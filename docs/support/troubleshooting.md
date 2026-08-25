@@ -27,6 +27,7 @@ Disabled controls usually indicate role-based authorization, not a UI bug. Some 
 - Community `viewer` cannot modify settings/taxonomy/team/groups.
 - Community `groups-manager` cannot modify community settings/taxonomy/team.
 - Group `events-manager` can manage events but cannot manage members/settings/sponsors/team.
+- Group `check-in-manager` can scan and manually check in attendees but cannot edit events.
 - Group `viewer` is read-only.
 
 If you need broader access, request a higher role from a team admin.
@@ -128,10 +129,13 @@ Private tier names and prices do not appear on the public event page.
 Check that:
 
 1. You completed a ticket with this account.
-2. Event is published and not canceled.
-3. Check-in window is open:
-   - Opens 2 hours before start.
-   - Closes end of event day (or final day for multi-day events).
+2. The event is published, not canceled, and has not ended.
+3. You opened [User Dashboard -> Check-In](/dashboard/user?tab=check-in ':ignore') and selected
+   the event.
+
+If an organizer's scanner is unavailable, confirm the page uses HTTPS, allow camera permission in
+the browser, try another listed camera, and check that no other application is using it. The
+organizer can always use the attendee table's manual check-in toggle instead.
 
 ## Team Member Remove Action Is Disabled
 

@@ -41,6 +41,11 @@ Event write operations require events write access. This is granted by the group
 `events-manager` roles, and by the community `admin` and `groups-manager` roles. Read-only roles
 can still view event data but cannot change it.
 
+Check-in is a separate permission granted to group `admin`, `events-manager`, and
+`check-in-manager`, plus community `admin` and `groups-manager`. A check-in manager can view
+events and attendees and process check-ins, but cannot modify event settings or other attendee
+state.
+
 When your role cannot perform an operation, the event action controls are disabled in the UI, and
 OCG enforces the same permissions on every event change.
 
@@ -493,7 +498,7 @@ This tab supports delivery-day execution. From here you can:
 
 - Review the attendee list and enrollment timing.
 - Run manual check-in.
-- Open the attendee actions menu to generate a check-in QR code for on-site flow.
+- Open the QR scanner from desktop with `Scan Attendee Codes`.
 - Cancel confirmed attendance for future active events, queueing a full refund for paid tickets.
 - Open the attendee actions menu to invite attendees with an assigned ticket
   type.
@@ -501,8 +506,19 @@ This tab supports delivery-day execution. From here you can:
 - Send all-attendee or selected-attendee operational emails.
 - Download the attendee list or attendee answers as CSV.
 
-Manual check-in bypasses attendee self-check-in timing windows, but the person must already be
-registered as an attendee and the event must still be published or active.
+Use [Check-In](/dashboard/group?tab=check-in ':ignore') for the primary event-day workflow. Select
+the community and group above the event list when working on mobile, then select an event, allow
+camera access, and scan each attendee's personal QR code. The scanner stays open, shows the attendee
+name and ticket, distinguishes a new check-in from a duplicate scan, and then resumes automatically.
+On desktop, the Attendees tab also offers a `Scan Attendee Codes` button that opens the same scanner in
+place and updates the attendee table when it closes if any attendees have been scanned. It requires
+check-in access and is disabled for canceled, unpublished, or past events. Use the attendees
+table toggle as the manual fallback when a camera or QR code is unavailable. In both flows, the
+person must have confirmed attendance.
+
+![Group Check-In event selection](../screenshots/dashboard-group-check-in.png)
+
+![Successful attendee QR scan](../screenshots/dashboard-group-event-attendees-scanner.png)
 
 The `Award badge` menu opens the badge picker for the chosen attendee set. Selection mode keeps
 chosen attendees while you change table filters, sorting, or pages. For eligibility, duplicate
@@ -517,9 +533,8 @@ confirmation. The refund completion notification is sent after attendance is can
 released capacity is reconciled. Canceled attendance remains in the event history rather than
 being deleted.
 
-The attendee actions menu contains event-level attendee actions and exports. `Show check-in QR code`
-opens a QR code for the public check-in flow. `Invite attendee` is available
-when you have event write access. Invitations require an active,
+The attendee actions menu contains event-level attendee actions and exports. `Invite attendee` is
+available when you have event write access. Invitations require an active,
 currently priced tier with capacity. You can select a registered platform user
 or enter an email address. For new invitees, use their LF account primary email
 because LF SSO activates the email invitation by that address. For existing
@@ -718,7 +733,7 @@ For attendee/member perspective, see [Public Site Guide](public-site.md).
 ?> Run this checklist shortly before start time to catch delivery issues early.
 
 1. Confirm attendee table loads in the `Attendees` tab.
-2. Open QR flow and validate the check-in URL.
-3. Test one manual check-in path.
+2. Open the Check-In scanner and confirm camera access.
+3. Test one attendee QR code and the manual fallback.
 4. Prepare attendee email template for urgent updates.
 5. Re-verify schedule and meeting links before start.

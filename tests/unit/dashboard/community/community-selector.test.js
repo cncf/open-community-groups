@@ -40,16 +40,43 @@ describe("community-selector", () => {
     // Render the selector fixture.
     const element = await renderSelector();
 
-    // Read the rendered DOM state for rendering the selected community label.
+    // Read the selected community and default control ids.
     const button = element.querySelector("#community-selector-button");
+    const list = element.querySelector("#community-selector-list");
+    const option = element.querySelector("#community-option-1");
+    const searchInput = element.querySelector("#community-search-input");
 
-    // Verify renders the selected community label.
+    // Verify the default ids and semantic option class remain unchanged.
     expect(button?.textContent).to.include("CNCF");
+    expect(list).to.exist;
+    expect(option?.classList.contains("community-button")).to.equal(true);
+    expect(searchInput).to.exist;
     expect(element._findSelectedCommunity()).to.deep.equal({
       community_id: "1",
       display_name: "CNCF",
       name: "cncf",
     });
+  });
+
+  it("namespaces DOM ids and focuses the prefixed search input", async () => {
+    // Render the selector with a mobile id prefix.
+    const element = await renderSelector();
+    element.setAttribute("id-prefix", "mobile-community");
+    await element.updateComplete;
+
+    // Read the namespaced controls and open the selector.
+    const button = element.querySelector("#mobile-community-selector-button");
+    const list = element.querySelector("#mobile-community-selector-list");
+    const option = element.querySelector("#mobile-community-option-1");
+    const searchInput = element.querySelector("#mobile-community-search-input");
+    button.click();
+    await element.updateComplete;
+
+    // Verify namespaced ids preserve option styling and focus behavior.
+    expect(element.querySelector("#community-selector-button")).to.equal(null);
+    expect(list).to.exist;
+    expect(option?.classList.contains("community-button")).to.equal(true);
+    expect(document.activeElement).to.equal(searchInput);
   });
 
   it("filters communities from the debounced search query", async () => {

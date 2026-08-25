@@ -17,7 +17,6 @@ import {
 import { initializeRefundReviewModal } from "/static/js/dashboard/group/attendees/refunds.js";
 import { resolveAttendeesRoot } from "/static/js/dashboard/group/attendees/shared.js";
 import { initializeInvitationModal } from "/static/js/dashboard/group/attendees/invitation.js";
-import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code/modal.js";
 
 const initializeAttendeesFeatures = (root = document) => {
   const attendeesRoot = resolveAttendeesRoot(root);
@@ -31,7 +30,6 @@ const initializeAttendeesFeatures = (root = document) => {
   initializeAnswersModal(attendeesRoot);
   initializeInvitationModal(attendeesRoot);
   initializeAttendeeNotification(attendeesRoot);
-  initializeQrCodeModal(attendeesRoot);
   initializeRefundReviewModal(attendeesRoot);
   initCheckInToggles(attendeesRoot);
   initializeAttendeeOutsideClickListener();

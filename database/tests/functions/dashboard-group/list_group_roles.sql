@@ -1,3 +1,5 @@
+-- Tests the group role catalog and its stable ordering.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -16,6 +18,10 @@ select is(
         {
             "group_role_id": "admin",
             "display_name": "Admin"
+        },
+        {
+            "group_role_id": "check-in-manager",
+            "display_name": "Check-In Manager"
         },
         {
             "group_role_id": "events-manager",

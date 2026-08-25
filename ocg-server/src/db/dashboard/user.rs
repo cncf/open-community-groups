@@ -11,6 +11,7 @@ use crate::{
     templates::dashboard::{
         audit::{AuditLogFilters, AuditLogsOutput},
         user::{
+            check_in::UserCheckInEvent,
             events::{UserEventsFilters, UserEventsOutput},
             groups::{UserGroupsFilters, UserGroupsOutput},
             invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
@@ -84,6 +85,9 @@ pub(crate) trait DBDashboardUser {
     async fn get_user_badge(&self, user_id: Uuid, user_badge_id: Uuid)
     -> Result<Option<UserBadge>>;
 
+    /// Gets the current user's confirmed attendee credential for an event.
+    async fn get_user_check_in_code(&self, event_id: Uuid, user_id: Uuid) -> Result<Option<Uuid>>;
+
     /// Lists all available session proposal levels.
     async fn list_session_proposal_levels(&self) -> Result<Vec<SessionProposalLevel>>;
 
@@ -103,6 +107,9 @@ pub(crate) trait DBDashboardUser {
         user_id: Uuid,
         filters: &CfsSubmissionsFilters,
     ) -> Result<CfsSubmissionsOutput>;
+
+    /// Lists current and upcoming events carrying the user's credential.
+    async fn list_user_check_in_events(&self, user_id: Uuid) -> Result<Vec<UserCheckInEvent>>;
 
     /// Lists all pending community team invitations for the user.
     async fn list_user_community_team_invitations(
@@ -367,6 +374,22 @@ where
         .await
     }
 
+    /// [`DBDashboardUser::get_user_check_in_code`].
+    #[instrument(skip(self), err)]
+    async fn get_user_check_in_code(&self, event_id: Uuid, user_id: Uuid) -> Result<Option<Uuid>> {
+        self.fetch_scalar_opt(
+            r"
+                select check_in_code
+                from event_attendee
+                where event_id = $1::uuid
+                and user_id = $2::uuid
+                and status = 'confirmed'
+            ",
+            &[&event_id, &user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardUser::list_session_proposal_levels`]
     #[instrument(skip(self), err)]
     async fn list_session_proposal_levels(&self) -> Result<Vec<SessionProposalLevel>> {
@@ -407,6 +430,13 @@ where
             &[&user_id, &Json(filters)],
         )
         .await
+    }
+
+    /// [`DBDashboardUser::list_user_check_in_events`].
+    #[instrument(skip(self), err)]
+    async fn list_user_check_in_events(&self, user_id: Uuid) -> Result<Vec<UserCheckInEvent>> {
+        self.fetch_json_one("select list_user_check_in_events($1::uuid)", &[&user_id])
+            .await
     }
 
     /// [`DBDashboardUser::list_user_community_team_invitations`]

@@ -38,6 +38,8 @@ Main areas:
 - [Team](/dashboard/group?tab=team ':ignore'): organizer membership and roles.
 - [Analytics](/dashboard/group?tab=analytics ':ignore'): group-level growth trends.
 - [Events](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
+- [Check-In](/dashboard/group?tab=check-in ':ignore'): continuous attendee QR scanning and manual
+  check-in fallback.
 - `Badges`: a main-menu section below `Events` with full-width
   [Badges](/dashboard/group?tab=badges ':ignore'),
   [Artwork](/dashboard/group?tab=artwork ':ignore'), and
@@ -58,11 +60,12 @@ until you pick them.
 
 Group role permissions are fixed:
 
-| Group role       | Group read | Events    | Members   | Settings  | Sponsors  | Team      |
-| ---------------- | ---------- | --------- | --------- | --------- | --------- | --------- |
-| `admin`          | Yes        | Write     | Write     | Write     | Write     | Write     |
-| `events-manager` | Yes        | Write     | Read only | Read only | Read only | Read only |
-| `viewer`         | Yes        | Read only | Read only | Read only | Read only | Read only |
+| Group role         | Group read | Check-in  | Events    | Members   | Settings  | Sponsors  | Team      |
+| ------------------ | ---------- | --------- | --------- | --------- | --------- | --------- | --------- |
+| `admin`            | Yes        | Write     | Write     | Write     | Write     | Write     | Write     |
+| `check-in-manager` | Yes        | Write     | Read only | Read only | Read only | Read only | Read only |
+| `events-manager`   | Yes        | Write     | Write     | Read only | Read only | Read only | Read only |
+| `viewer`           | Yes        | Read only | Read only | Read only | Read only | Read only | Read only |
 
 ![Group roles](../screenshots/dashboard-group-members-list-roles.png)
 
@@ -172,7 +175,7 @@ Organizers with read access can still view attendee refund status in `Event -> A
 ## Team: Organizer Capacity
 
 `Team` supports invitation-driven organizer management with role updates for existing members.
-The assignable roles are `admin`, `events-manager`, and `viewer`.
+The assignable roles are `admin`, `check-in-manager`, `events-manager`, and `viewer`.
 
 One important protection applies: the last accepted group admin cannot be removed or demoted.
 This protects continuity for critical event operations and approvals.

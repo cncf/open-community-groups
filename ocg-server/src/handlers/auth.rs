@@ -703,7 +703,7 @@ pub(crate) async fn user_has_community_dashboard_permission(
                 Err(error) => return error.into_response(),
             }
         }
-        Err(response) => return response,
+        Err(error) => return error.into_response(),
     };
 
     // Check base dashboard access in the selected community
@@ -772,9 +772,10 @@ pub(crate) async fn user_has_path_group_permission(
     };
 
     // Resolve selected community to evaluate group permission in that context
-    let community_id = match get_selected_community_id(&session).await {
-        Ok(community_id) => community_id,
-        Err(response) => return response,
+    let community_id = match get_selected_community_id_optional(&session).await {
+        Ok(Some(community_id)) => community_id,
+        Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
+        Err(error) => return error.into_response(),
     };
 
     // Ensure the path group belongs to the selected community before checking permissions
@@ -826,7 +827,7 @@ pub(crate) async fn user_has_selected_community_permission(
                 Err(error) => return error.into_response(),
             }
         }
-        Err(response) => return response,
+        Err(error) => return error.into_response(),
     };
 
     // Check required permission in the selected community
@@ -887,7 +888,7 @@ pub(crate) async fn user_has_selected_group_permission(
         Ok(None) => {
             let selected_community_id = match get_selected_community_id_optional(&session).await {
                 Ok(selected_community_id) => selected_community_id,
-                Err(response) => return response,
+                Err(error) => return error.into_response(),
             };
             match select_first_accessible_group_for_dashboard(
                 &db,
@@ -902,7 +903,7 @@ pub(crate) async fn user_has_selected_group_permission(
                 Err(error) => return error.into_response(),
             }
         }
-        Err(response) => return response,
+        Err(error) => return error.into_response(),
     };
 
     // Check required permission in the selected group
@@ -995,38 +996,26 @@ fn get_log_in_url(next_url: Option<&str>) -> String {
 /// Resolves selected community and group IDs from the current session if present.
 async fn get_selected_community_and_group_ids_optional(
     session: &Session,
-) -> Result<Option<(Uuid, Uuid)>, Response> {
+) -> Result<Option<(Uuid, Uuid)>, HandlerError> {
     // Load selected community context from the session
     let Some(community_id) = get_selected_community_id_optional(session).await? else {
         return Ok(None);
     };
 
     // Load selected group context from the session
-    let group_id = match session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await {
-        Ok(Some(group_id)) => group_id,
-        Ok(None) => return Ok(None),
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+    let Some(group_id) = session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await? else {
+        return Ok(None);
     };
 
     // Return the complete dashboard context when both parts are present
     Ok(Some((community_id, group_id)))
 }
 
-/// Resolves the selected community ID from the current session.
-async fn get_selected_community_id(session: &Session) -> Result<Uuid, Response> {
-    match get_selected_community_id_optional(session).await {
-        Ok(Some(community_id)) => Ok(community_id),
-        Ok(None) => Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
-        Err(response) => Err(response),
-    }
-}
-
 /// Resolves the selected community ID from the current session if present.
-async fn get_selected_community_id_optional(session: &Session) -> Result<Option<Uuid>, Response> {
-    match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
-        Ok(community_id) => Ok(community_id),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
-    }
+async fn get_selected_community_id_optional(
+    session: &Session,
+) -> Result<Option<Uuid>, HandlerError> {
+    Ok(session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await?)
 }
 
 /// Get the sign up url including the next url if provided.

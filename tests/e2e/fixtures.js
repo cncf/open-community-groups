@@ -68,11 +68,7 @@ const createPreparedPage = async (browser, credentials, preparePage) => {
 const authenticatedPageFixture =
   (credentials, preparePage) =>
   async ({ browser }, use) => {
-    const preparedPage = await createPreparedPage(
-      browser,
-      credentials,
-      preparePage,
-    );
+    const preparedPage = await createPreparedPage(browser, credentials, preparePage);
 
     try {
       await use(preparedPage.page);
@@ -82,70 +78,37 @@ const authenticatedPageFixture =
   };
 
 export const test = base.extend({
-  adminCommunityPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.admin1,
-    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
+  adminCommunityPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.admin1, (page) =>
+    selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
   ),
-  adminEmptyCommunityPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.admin1,
-    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.empty),
+  adminEmptyCommunityPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.admin1, (page) =>
+    selectCommunityContext(page, TEST_COMMUNITY_IDS.empty),
   ),
-  adminSecondaryCommunityPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.admin2,
-    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community2),
+  adminSecondaryCommunityPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.admin2, (page) =>
+    selectCommunityContext(page, TEST_COMMUNITY_IDS.community2),
   ),
-  communityViewerPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.communityViewer1,
-    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
+  checkInManagerGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.checkInManager1, (page) =>
+    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
   ),
-  organizerGroupPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.organizer1,
-    (page) =>
-      selectGroupContext(
-        page,
-        TEST_COMMUNITY_IDS.community1,
-        TEST_GROUP_IDS.community1.alpha,
-      ),
+  communityViewerPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.communityViewer1, (page) =>
+    selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
   ),
-  organizerEmptyGroupPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.organizer1,
-    (page) =>
-      selectGroupContext(
-        page,
-        TEST_COMMUNITY_IDS.community1,
-        TEST_GROUP_IDS.community1.empty,
-      ),
+  organizerGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer1, (page) =>
+    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
   ),
-  organizerGroupWithoutPaymentsPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.organizer2,
-    (page) =>
-      selectGroupContext(
-        page,
-        TEST_COMMUNITY_IDS.community2,
-        TEST_GROUP_IDS.community2.delta,
-      ),
+  organizerEmptyGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer1, (page) =>
+    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.empty),
   ),
-  eventsManagerGroupPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.eventsManager1,
-    (page) =>
-      selectGroupContext(
-        page,
-        TEST_COMMUNITY_IDS.community1,
-        TEST_GROUP_IDS.community1.alpha,
-      ),
+  organizerGroupWithoutPaymentsPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer2, (page) =>
+    selectGroupContext(page, TEST_COMMUNITY_IDS.community2, TEST_GROUP_IDS.community2.delta),
   ),
-  groupViewerPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.groupViewer1,
-    (page) =>
-      selectGroupContext(
-        page,
-        TEST_COMMUNITY_IDS.community1,
-        TEST_GROUP_IDS.community1.alpha,
-      ),
+  eventsManagerGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.eventsManager1, (page) =>
+    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
   ),
-  groupsManagerPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.groupsManager1,
+  groupViewerPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.groupViewer1, (page) =>
+    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.alpha),
   ),
+  groupsManagerPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.groupsManager1),
   emptyUserPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.empty),
   member1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member1),
   member2Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member2),

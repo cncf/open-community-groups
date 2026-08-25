@@ -207,47 +207,39 @@ describe("dashboard group attendees", () => {
   };
 
   it("toggles and closes the attendee actions menu", () => {
-    // Render the DOM fixture for toggling and closes the attendee actions menu.
+    // Render an attendee actions menu with invitation and export options.
     document.body.innerHTML = `
       <div id="attendees-content">
         <button id="attendee-actions-button" type="button">
           More
         </button>
         <div id="attendee-actions-menu" data-attendee-actions-dropdown class="hidden">
-          <button type="button">Show check-in QR code</button>
+          <button type="button">Invite attendee</button>
           <a href="/dashboard/group/events/event-42/attendees.csv" download>Download CSV</a>
         </div>
       </div>
     `;
 
-    // Verify toggles and closes the attendee actions menu.
+    // Initialize the attendees behavior and read the menu controls.
     initializeAttendeesUi();
-
-    // Keep a reference to the attendee actions button element.
     const button = document.getElementById("attendee-actions-button");
     const dropdown = document.getElementById("attendee-actions-menu");
 
-    // Click the control.
+    // Open the menu and close it by selecting the export link.
     button.click();
     expect(dropdown.classList.contains("hidden")).to.equal(false);
-
-    // Click the dropdown.
     dropdown.querySelector("a")?.click();
     expect(dropdown.classList.contains("hidden")).to.equal(true);
 
-    // Click the next control.
+    // Reopen the menu and close it by selecting the invitation action.
     button.click();
     expect(dropdown.classList.contains("hidden")).to.equal(false);
-
-    // Click a dropdown button.
     dropdown.querySelector("button")?.click();
     expect(dropdown.classList.contains("hidden")).to.equal(true);
 
-    // Click the next control.
+    // Reopen the menu and close it through an outside click.
     button.click();
     expect(dropdown.classList.contains("hidden")).to.equal(false);
-
-    // Click the body.
     document.body.click();
     expect(dropdown.classList.contains("hidden")).to.equal(true);
   });

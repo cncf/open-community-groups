@@ -11,6 +11,56 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group home template", () => {
+  it("keeps only Check-In content visible below md", async () => {
+    // Load the group dashboard shell before checking responsive content ownership.
+    const template = await loadTemplate();
+
+    // Verify Check-In and its fallback stay visible while other content is hidden.
+    expect(template).to.include('{% extends "dashboard/dashboard_base.html" -%}');
+    expect(template).to.include(
+      "{% if content.is_check_in() || is_check_in_fallback %}block{% else %}hidden md:block{% endif %}",
+    );
+  });
+
+  it("keeps the check-in fallback warning inside the main content wrapper", async () => {
+    // Load the group dashboard shell before checking the fallback surface.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the fallback keeps the standard wrapper with only the warning on mobile.
+    expect(template).to.include(
+      'dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden")',
+    );
+    expect(template).to.include('<div class="max-md:hidden">{{ content|safe }}</div>');
+    expect(template).to.include("{% if !content.is_check_in() && !is_check_in_fallback -%}");
+    expect(template).not.to.include("Open Check-In</a>");
+    expect(template).not.to.include("mobile_selectors");
+    expect(template).not.to.include("data-check-in-fallback-overlay");
+  });
+
+  it("keeps only Check-In and the selectors in the mobile drawer menu", async () => {
+    // Load the group dashboard shell before checking responsive navigation.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify non Check-In navigation stays hidden below the medium breakpoint.
+    expect(template).to.include('<div class="mt-6 grid gap-y-0.5 max-md:hidden">');
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events", extra_styles = "max-md:hidden")',
+    );
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden")',
+    );
+    const eventsItem = template.indexOf('dashboard::menu_item(name = "Events"');
+    const checkInItem = template.indexOf(
+      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in()',
+    );
+    expect(checkInItem).to.be.greaterThan(eventsItem);
+
+    // Verify the drawer keeps a mobile-only Check-In entry for read-only groups.
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = is_check_in_fallback , href = "/dashboard/group?tab=check-in", extra_styles = "md:hidden")',
+    );
+  });
+
   it("groups badge tabs below events in the main dashboard menu", async () => {
     // Load the group dashboard shell before checking the navigation hierarchy.
     const template = normalizeWhitespace(await loadTemplate());
@@ -39,8 +89,9 @@ describe("dashboard group home template", () => {
 
     // Verify the group shell delegates shared title, spinner, and wrapper markup.
     expect(template).to.include(
-      'dashboard::dashboard_menu_shell("Group Dashboard", spinner_classes = "hx-spinner -mt-0.5 relative")',
+      'dashboard::dashboard_menu_shell( "Group Dashboard", spinner_classes = "hx-spinner -mt-0.5 relative", navigation_target = "#dashboard-layout", navigation_select = "#dashboard-layout", navigation_select_oob = "#mobile-dashboard-view:outerHTML", navigation_swap = "outerHTML show:window:top" )',
     );
+    expect(template).to.include('id="mobile-dashboard-view" class="contents"');
     expect(template).not.to.include('id="dashboard-spinner" class="hx-spinner -mt-0.5 relative"');
     expect(template).not.to.include("max-h-full w-full flex flex-col flex-1");
   });
@@ -62,7 +113,7 @@ describe("dashboard group home template", () => {
 
     // Verify the history tab remains available while unavailable provider actions receive a warning.
     expect(template).to.include(
-      'dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds")',
+      'dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds", extra_styles = "max-md:hidden")',
     );
     expect(template).to.include("{% if content.is_refunds() && !payments_ready -%}");
     expect(template).to.include("Historical refunds and recovery records remain accessible");

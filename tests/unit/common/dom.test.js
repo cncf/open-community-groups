@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import {
   bindOutsideClickListener,
+  buildElementId,
   closestElement,
   closestElementWithinRoot,
   ensureElementId,
@@ -32,6 +33,11 @@ describe("common dom", () => {
   afterEach(() => {
     resetDom();
     document.head.querySelectorAll(`script[src="${exampleScriptSrc}"]`).forEach((script) => script.remove());
+  });
+
+  it("builds stable element ids", () => {
+    // Verify a representative namespace and control suffix use the shared separator.
+    expect(buildElementId("community-selector", "search-input")).to.equal("community-selector-search-input");
   });
 
   it("queries ids from document and element roots", () => {

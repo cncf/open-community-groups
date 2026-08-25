@@ -2,16 +2,18 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
-import { focusElementById } from "/static/js/common/dom.js";
+import { buildElementId, focusElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
  * Base class for dashboard selectors that choose one item from a combobox.
  *
+ * @property {string} idPrefix Optional override for rendered DOM ids
  * @property {boolean} _isSubmitting Whether the current selection is saving
  */
 export class DashboardSelectorBase extends LitWrapper {
   static properties = {
+    idPrefix: { type: String, attribute: "id-prefix" },
     _isSubmitting: { state: true },
   };
 
@@ -36,6 +38,7 @@ export class DashboardSelectorBase extends LitWrapper {
   constructor(config) {
     super();
     this._selectorConfig = config;
+    this.idPrefix = "";
     this._isSubmitting = false;
     this._pendingQuery = "";
     this._combobox = new ComboboxController(this, {
@@ -46,7 +49,7 @@ export class DashboardSelectorBase extends LitWrapper {
       onOpen: () => {
         this._pendingQuery = "";
         this.updateComplete.then(() => {
-          focusElementById(this, `${this._selectorConfig.selectorName}-search-input`);
+          focusElementById(this, this._domId("search-input"));
         });
       },
       onClose: () => {
@@ -59,6 +62,16 @@ export class DashboardSelectorBase extends LitWrapper {
         }
       },
     });
+  }
+
+  /**
+   * Builds a selector DOM id with the configured or overridden prefix.
+   * @param {string} suffix Stable id suffix
+   * @returns {string}
+   */
+  _domId(suffix) {
+    const prefix = this.idPrefix || this._selectorConfig.selectorName;
+    return buildElementId(prefix, suffix);
   }
 
   /**
@@ -272,7 +285,7 @@ export class DashboardSelectorBase extends LitWrapper {
     return html`
       <div class="relative">
         <button
-          id="${this._selectorConfig.selectorName}-selector-button"
+          id="${this._domId("selector-button")}"
           type="button"
           class="select select-primary relative text-left pe-9 ${
             isDisabled ? `${disabledOpacityClass} cursor-not-allowed` : "cursor-pointer"
@@ -301,7 +314,7 @@ export class DashboardSelectorBase extends LitWrapper {
                 <div class="svg-icon size-4 icon-search bg-stone-300"></div>
               </div>
               <input
-                id="${this._selectorConfig.selectorName}-search-input"
+                id="${this._domId("search-input")}"
                 type="search"
                 class="input-primary w-full ps-9"
                 placeholder=${this._selectorConfig.searchPlaceholder}
@@ -319,7 +332,7 @@ export class DashboardSelectorBase extends LitWrapper {
             this._filteredItems.length > 0
               ? html`
                   <ul
-                    id="${this._selectorConfig.selectorName}-selector-list"
+                    id="${this._domId("selector-list")}"
                     class="max-h-48 overflow-y-auto text-stone-700"
                     role="listbox"
                   >
@@ -352,7 +365,7 @@ export class DashboardSelectorBase extends LitWrapper {
     return html`
       <li role="presentation" data-index=${index}>
         <button
-          id="${this._selectorConfig.selectorName}-option-${itemId}"
+          id="${this._domId(`option-${itemId}`)}"
           type="button"
           class="${
             this._selectorConfig.selectorName

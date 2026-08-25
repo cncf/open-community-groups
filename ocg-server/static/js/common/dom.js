@@ -1,4 +1,12 @@
 /**
+ * Builds a stable element id from a prefix and suffix.
+ * @param {string} prefix Element id prefix.
+ * @param {string} suffix Element id suffix.
+ * @returns {string} Combined element id.
+ */
+export const buildElementId = (prefix, suffix) => `${prefix}-${suffix}`;
+
+/**
  * Supports Document.getElementById and element-scoped lookup by id.
  * @param {Document|Element} root Query root.
  * @param {string} id Element id.

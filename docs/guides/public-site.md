@@ -3,7 +3,7 @@
 # Public Site Guide
 
 The public site is where people discover communities, join groups, RSVP to
-events, check in, and, when enabled, submit talks to Call for Speakers. If you
+events, and, when enabled, submit talks to Call for Speakers. If you
 are not sure where to start, this is the best place to begin.
 
 If you prefer a faster task-oriented run-through first, use
@@ -30,7 +30,6 @@ If you prefer a faster task-oriented run-through first, use
 | Community page | `/{community}`                                       | Community identity, activity, and top-level context              |
 | Group page     | `/{community}/group/{group_slug}`                    | Membership entry point and group-specific event stream           |
 | Event page     | `/{community}/group/{group_slug}/event/{event_slug}` | RSVP, schedule, CFS, and delivery details                        |
-| Check-in page  | `/{community}/check-in/{event_id}`                   | Event-day attendance confirmation                                |
 
 ![Home page overview](../screenshots/home-page.png)
 
@@ -171,18 +170,13 @@ For approval events, keep these points in mind:
 
 ## Check In on Event Day
 
-Check-in confirms that you attended the event, so time limits and attendance
-rules apply. The check-in window opens 2 hours before the start time and
-closes at the end of the event day; for multi-day events, it closes at the end
-of the last day.
+Open [User Dashboard -> Check-In](/dashboard/user?tab=check-in ':ignore') on
+your phone and select the event. OCG displays your personal QR code with your
+name and ticket details. Present that code to an organizer, who scans it to
+record your arrival.
 
-You cannot check in if you are not an attendee, if the event is not published
-or active, or if the check-in window is closed.
-
-!> Check-in is only available when you are an attendee, the event is active,
-and the check-in window is open.
-
-![Group dashboard check in](../screenshots/dashboard-group-check-in.png)
+Only confirmed, current or upcoming events appear. Keep the code private: it
+identifies your attendance and is intended to be scanned by event staff.
 
 ## Submit to Call for Speakers (CFS)
 
@@ -217,7 +211,7 @@ momentum at a glance: groups, members, events, and attendees over time.
 1. Discover in [Explore](/explore ':ignore').
 2. Join one or more groups.
 3. RSVP to events.
-4. Check in on event day.
+4. Present your personal dashboard QR code on event day.
 5. Use CFS features when you are ready to submit talks.
 
 When you transition into organizer responsibilities, use

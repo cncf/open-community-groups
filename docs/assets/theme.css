@@ -384,6 +384,14 @@ body,
   width: 80%;
 }
 
+.markdown-section img[src$="dashboard-group-check-in.png"],
+.markdown-section img[src$="dashboard-user-check-in-qr-code.png"] {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 26rem;
+  width: 100%;
+}
+
 .markdown-section p:has(> img) {
   margin: 2.5rem 0 2rem;
 }

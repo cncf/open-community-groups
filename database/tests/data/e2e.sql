@@ -825,8 +825,8 @@ insert into event (
     '55555555-5555-5555-5555-555555555529',
     'Open Public Check-In',
     'alpha-open-public-check-in',
-    'Live event used to verify the public attendee check-in form.',
-    'Live event with public check-in available.',
+    'Live event used to verify attendee credentials and organizer scanning.',
+    'Live event with organizer check-in available.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -1592,6 +1592,19 @@ insert into "user" (
     'b9c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1c4d5'
 );
 
+-- Check-in manager reserved for scanner and manual check-in coverage.
+insert into "user" (
+    user_id, username, email, email_verified, name, password, auth_hash
+) values (
+    '77777777-7777-7777-7777-777777777715',
+    'e2e-check-in-manager-1',
+    'e2e-check-in-manager-1@example.com',
+    true,
+    'E2E Check-In Manager One',
+    '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
+    'cad4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3e6'
+);
+
 update "user"
 set
     bio = 'Member Two profile for dashboard modal coverage.',
@@ -2314,6 +2327,15 @@ values (
     'viewer'
 );
 
+-- Check-in manager for the primary group dashboard.
+insert into group_team (group_id, user_id, accepted, role)
+values (
+    '44444444-4444-4444-4444-444444444441',
+    '77777777-7777-7777-7777-777777777715',
+    true,
+    'check-in-manager'
+);
+
 -- Pending invitation for the secondary group team
 insert into group_team (group_id, user_id, accepted, role)
 values (
@@ -2915,6 +2937,12 @@ values (
     '55555555-5555-5555-5555-555555555529',
     '77777777-7777-7777-7777-777777777708'
 );
+
+-- Keep the scanner fixture credential deterministic for browser injection.
+update event_attendee
+set check_in_code = '99999999-9999-9999-9999-999999999529'
+where event_id = '55555555-5555-5555-5555-555555555529'
+and user_id = '77777777-7777-7777-7777-777777777708';
 
 insert into event_attendee (event_id, user_id)
 values (

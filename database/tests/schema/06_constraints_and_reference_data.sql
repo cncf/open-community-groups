@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(180);
+select plan(182);
 
 -- ============================================================================
 -- VARIABLES
@@ -271,6 +271,8 @@ select has_check('session', 'session_meeting_provider_required_chk');
 select has_check('session', 'session_meeting_requested_times_chk');
 
 -- Test: event attendee statuses should match expected values
+select col_default_is('event_attendee', 'check_in_code', 'gen_random_uuid()');
+select col_not_null('event_attendee', 'check_in_code');
 select has_check('event_attendee', 'event_attendee_attendance_canceled_chk');
 select results_eq(
     $$
@@ -731,6 +733,7 @@ select results_eq(
     'select community_role_id, group_permission_id from community_role_group_permission order by community_role_id, group_permission_id',
     $$ values
         ('admin', 'group.badges.write'),
+        ('admin', 'group.check-ins.write'),
         ('admin', 'group.events.write'),
         ('admin', 'group.members.write'),
         ('admin', 'group.read'),
@@ -738,6 +741,7 @@ select results_eq(
         ('admin', 'group.sponsors.write'),
         ('admin', 'group.team.write'),
         ('groups-manager', 'group.badges.write'),
+        ('groups-manager', 'group.check-ins.write'),
         ('groups-manager', 'group.events.write'),
         ('groups-manager', 'group.members.write'),
         ('groups-manager', 'group.read'),
@@ -754,6 +758,7 @@ select results_eq(
     'select group_permission_id, display_name from group_permission order by group_permission_id',
     $$ values
         ('group.badges.write', 'Badges Write'),
+        ('group.check-ins.write', 'Check-Ins Write'),
         ('group.events.write', 'Events Write'),
         ('group.members.write', 'Members Write'),
         ('group.read', 'Read'),
@@ -769,6 +774,7 @@ select results_eq(
     'select * from group_role order by group_role_id',
     $$ values
         ('admin', 'Admin'),
+        ('check-in-manager', 'Check-In Manager'),
         ('events-manager', 'Events Manager'),
         ('viewer', 'Viewer')
     $$,
@@ -781,10 +787,14 @@ select results_eq(
     $$ values
         ('group.badges.write', 'admin'),
         ('group.badges.write', 'events-manager'),
+        ('group.check-ins.write', 'admin'),
+        ('group.check-ins.write', 'check-in-manager'),
+        ('group.check-ins.write', 'events-manager'),
         ('group.events.write', 'admin'),
         ('group.events.write', 'events-manager'),
         ('group.members.write', 'admin'),
         ('group.read', 'admin'),
+        ('group.read', 'check-in-manager'),
         ('group.read', 'events-manager'),
         ('group.read', 'viewer'),
         ('group.settings.write', 'admin'),

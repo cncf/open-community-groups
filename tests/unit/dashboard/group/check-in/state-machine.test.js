@@ -1,0 +1,239 @@
+import { expect } from "@open-wc/testing";
+
+import {
+  createScanStateMachine,
+  validateCredential,
+} from "/static/js/dashboard/group/check-in/state-machine.js";
+
+describe("group check-in scan state machine", () => {
+  const eventId = "00000000-0000-0000-0000-000000000001";
+  const credential = `ocg-check-in:v1:${eventId}:00000000-0000-0000-0000-000000000002`;
+
+  it("rejects unrelated and wrong-event QR payloads before posting", () => {
+    // Verify foreign and wrong-event credentials return distinct validation errors.
+    expect(validateCredential("https://example.test", eventId)).to.deep.equal({
+      ok: false,
+      message: "This is not an Open Community Groups check-in code.",
+    });
+    expect(
+      validateCredential(
+        "ocg-check-in:v1:00000000-0000-0000-0000-000000000003:00000000-0000-0000-0000-000000000002",
+        eventId,
+      ),
+    ).to.deep.equal({
+      ok: false,
+      message: "This check-in code belongs to a different event.",
+    });
+  });
+
+  it("posts a decode, reports success, and resumes after cooldown", async () => {
+    // Create a controller with observable scanner, audio, feedback, and timers.
+    const feedback = [];
+    const sounds = [];
+    const timers = [];
+    let feedbackEndCount = 0;
+    let readyCount = 0;
+    let startCount = 0;
+    const controller = createScanStateMachine({
+      audio: { play: (kind) => sounds.push(kind) },
+      eventId,
+      onFeedback: (value) => feedback.push(value),
+      onFeedbackEnd: () => {
+        feedbackEndCount += 1;
+      },
+      onReady: () => {
+        readyCount += 1;
+      },
+      postCredential: async (value) => ({
+        attendee: { name: value === credential ? "Ada Lovelace" : "Wrong attendee" },
+        outcome: "checked-in",
+        ticket_title: "General admission",
+      }),
+      scanner: {
+        start: async () => {
+          startCount += 1;
+        },
+      },
+      schedule: (callback, delay) => {
+        timers.push({ callback, delay });
+        return timers.length;
+      },
+    });
+
+    // Start the scanner and submit a valid credential.
+    await controller.start();
+    expect(controller.muted).to.equal(false);
+    expect(await controller.handleDecode({ data: credential })).to.equal(true);
+
+    // Verify success feedback and sound are emitted once.
+    expect(startCount).to.equal(1);
+    expect(readyCount).to.equal(1);
+    expect(sounds).to.deep.equal(["success"]);
+    expect(feedback[0]).to.include({
+      attendeeName: "Ada Lovelace",
+      kind: "success",
+      message: "Checked in",
+      ticketTitle: "General admission",
+    });
+    expect(timers.map(({ delay }) => delay)).to.deep.equal([1800, 3000]);
+
+    // Complete the cooldown while leaving the feedback visible.
+    timers[0].callback();
+    expect(readyCount).to.equal(2);
+    expect(feedbackEndCount).to.equal(0);
+
+    // End feedback after three seconds without extending the scan cooldown.
+    timers[1].callback();
+    expect(feedbackEndCount).to.equal(1);
+  });
+
+  it("reports already checked-in attendees and deduplicates rapid repeats", async () => {
+    // Hold the first request open with a controllable response.
+    const feedback = [];
+    let now = 1000;
+    let postCount = 0;
+    let releasePost;
+    const timers = [];
+    const firstPost = new Promise((resolve) => {
+      releasePost = resolve;
+    });
+    const controller = createScanStateMachine({
+      audio: {},
+      eventId,
+      now: () => now,
+      onFeedback: (value) => feedback.push(value),
+      postCredential: async () => {
+        postCount += 1;
+        if (postCount === 1) await firstPost;
+        return { attendee: { username: "ada" }, outcome: "already-checked-in" };
+      },
+      scanner: {},
+      schedule: (callback) => {
+        timers.push(callback);
+        return timers.length;
+      },
+    });
+    await controller.start();
+
+    // Submit the same credential again while the first request is pending.
+    const pending = controller.handleDecode(credential);
+    expect(await controller.handleDecode(credential)).to.equal(false);
+    expect(postCount).to.equal(1);
+    releasePost();
+    await pending;
+
+    // Verify the duplicate state uses the site's red error alert tone.
+    expect(feedback[0]).to.include({
+      kind: "error",
+      message: "Already checked in",
+    });
+
+    // Complete the first request's cooldown.
+    timers.shift()();
+
+    // Verify repeats stay blocked until the deduplication window expires.
+    expect(await controller.handleDecode(credential)).to.equal(false);
+    now = 4001;
+    expect(await controller.handleDecode(credential)).to.equal(true);
+    expect(postCount).to.equal(2);
+  });
+
+  it("retries a failed credential after cooldown", async () => {
+    // Create a controller with a stable clock and a recoverable first request.
+    let postCount = 0;
+    const timers = [];
+    const controller = createScanStateMachine({
+      audio: {},
+      eventId,
+      now: () => 1000,
+      postCredential: async () => {
+        postCount += 1;
+        if (postCount === 1) throw new Error("Network error");
+        return { attendee: { username: "ada" }, outcome: "checked-in" };
+      },
+      scanner: {},
+      schedule: (callback) => {
+        timers.push(callback);
+        return timers.length;
+      },
+    });
+    await controller.start();
+
+    // Fail the first request and finish its normal feedback cooldown.
+    expect(await controller.handleDecode(credential)).to.equal(false);
+    timers.shift()();
+
+    // Verify the same credential can retry without waiting for deduplication.
+    expect(await controller.handleDecode(credential)).to.equal(true);
+    expect(postCount).to.equal(2);
+  });
+
+  it("supports mute and tears down scanner, audio, and cooldown", async () => {
+    // Create observable audio, scanner, and cooldown cleanup hooks.
+    let audioClosed = false;
+    const canceledTimers = [];
+    let destroyCount = 0;
+    let playCount = 0;
+    const controller = createScanStateMachine({
+      audio: {
+        close: () => {
+          audioClosed = true;
+        },
+        play: () => {
+          playCount += 1;
+        },
+      },
+      eventId,
+      postCredential: async () => ({ attendee: {}, outcome: "checked-in" }),
+      scanner: {
+        destroy: () => {
+          destroyCount += 1;
+        },
+      },
+      schedule: () => 42,
+      unschedule: (timer) => {
+        canceledTimers.push(timer);
+      },
+    });
+
+    // Mute the controller, process a credential, and tear down the session.
+    await controller.start();
+    controller.setMuted(true);
+    await controller.handleDecode(credential);
+    controller.teardown();
+
+    // Verify teardown cancels feedback and releases every owned resource.
+    expect(playCount).to.equal(0);
+    expect(destroyCount).to.equal(1);
+    expect(audioClosed).to.equal(true);
+    expect(canceledTimers).to.deep.equal([42, 42]);
+  });
+
+  it("ignores an in-flight response after teardown", async () => {
+    // Hold a credential response open while tracking feedback side effects.
+    const feedback = [];
+    const sounds = [];
+    let releasePost;
+    const response = new Promise((resolve) => {
+      releasePost = resolve;
+    });
+    const controller = createScanStateMachine({
+      audio: { play: (kind) => sounds.push(kind) },
+      eventId,
+      onFeedback: (value) => feedback.push(value),
+      postCredential: () => response,
+      scanner: {},
+    });
+    await controller.start();
+
+    // Tear down the controller before resolving the pending request.
+    const pending = controller.handleDecode(credential);
+    controller.teardown();
+    releasePost({ attendee: { username: "ada" }, outcome: "checked-in" });
+
+    // Verify the stale response cannot update feedback or play audio.
+    expect(await pending).to.equal(false);
+    expect(feedback).to.deep.equal([]);
+    expect(sounds).to.deep.equal([]);
+  });
+});

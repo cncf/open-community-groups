@@ -10,6 +10,29 @@ import {
 } from "../../../utils.js";
 
 test.describe("group dashboard navigation", () => {
+  test("leaving Check-In keeps the page header mounted", async ({
+    organizerGroupPage,
+  }) => {
+    // Load Check-In and mark the header node before desktop tab navigation.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=check-in");
+    const header = organizerGroupPage.locator("#dashboard-header");
+    await header.evaluate((element) => {
+      element.dataset.navigationSentinel = "preserved";
+    });
+
+    // Open Events through the dashboard menu and wait for its HTMX response.
+    const eventsResponse = organizerGroupPage.waitForResponse(
+      (response) => response.url().includes("/dashboard/group?tab=events"),
+    );
+    await organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]').click();
+    expect((await eventsResponse).ok()).toBe(true);
+
+    // Verify navigation updates dashboard state without replacing the page header.
+    await expect(organizerGroupPage).toHaveURL(/\/dashboard\/group\?tab=events$/u);
+    await expect(header).toHaveAttribute("data-navigation-sentinel", "preserved");
+    await expect(organizerGroupPage.getByRole("button", { name: "Add Event" })).toBeVisible();
+  });
+
   test("shows the dashboard shell, selectors, and primary navigation", async ({
     organizerGroupPage,
   }) => {
@@ -40,6 +63,9 @@ test.describe("group dashboard navigation", () => {
     await expect(
       organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]'),
     ).toContainText("Events");
+    await expect(
+      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=check-in"]'),
+    ).toBeHidden();
     if (E2E_PAYMENTS_ENABLED) {
       await expect(
         organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=refunds"]'),
