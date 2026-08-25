@@ -5,7 +5,9 @@ import { toggleModalVisibility, trapModalFocus } from "/static/js/common/modals/
 import { createScanStateMachine } from "/static/js/dashboard/group/check-in/state-machine.js";
 import QrScanner from "/static/vendor/js/qr-scanner.min.js";
 
+const ATTENDEES_REFRESH_EVENT = "refresh-event-attendees";
 const MODAL_ID = "group-check-in-scanner-modal";
+const REFRESH_ATTENDEES_ON_CLOSE_ATTRIBUTE = "data-refresh-attendees-on-close";
 let activeSession = null;
 
 /** Initializes group check-in card and scanner controls. */
@@ -260,6 +262,7 @@ const startScannerSession = async (root, trigger) => {
   const eventDate = trigger.dataset.eventDate || "Date information unavailable";
   const eventLocation = trigger.dataset.eventLocation || "Location information unavailable";
   const eventName = trigger.dataset.eventName || "Event check-in";
+  const refreshAttendeesOnClose = trigger.hasAttribute(REFRESH_ATTENDEES_ON_CLOSE_ATTRIBUTE);
   const scanUrl = trigger.dataset.scanUrl || "";
   const eventDateElement = root.querySelector("#group-check-in-event-date");
   const eventLocationElement = root.querySelector("#group-check-in-event-location");
@@ -276,6 +279,7 @@ const startScannerSession = async (root, trigger) => {
   setTorchAvailable(torch, false);
 
   let audio = null;
+  let attendeesChanged = false;
   let cleanupCameraSelection = () => {};
   let controller = null;
   let hardwareControlPending = false;
@@ -329,12 +333,18 @@ const startScannerSession = async (root, trigger) => {
     }
   };
 
-  const close = () => {
+  const close = ({ refreshAttendees = true } = {}) => {
+    const shouldRefreshAttendees = refreshAttendees && refreshAttendeesOnClose && attendeesChanged;
+    attendeesChanged = false;
     cleanupResources();
     if (!isElementHidden(modal)) toggleModalVisibility(MODAL_ID);
     if (isCurrent()) activeSession = null;
+    if (shouldRefreshAttendees && root.isConnected) {
+      root.dispatchEvent(new Event(ATTENDEES_REFRESH_EVENT, { bubbles: true }));
+    }
   };
   const teardown = () => {
+    attendeesChanged = false;
     cleanupResources();
     if (isCurrent()) activeSession = null;
   };
@@ -354,7 +364,10 @@ const startScannerSession = async (root, trigger) => {
     controller = createScanStateMachine({
       audio,
       eventId,
-      onFeedback: (feedback) => renderFeedback(result, feedback),
+      onFeedback: (feedback) => {
+        if (feedback.kind === "success") attendeesChanged = true;
+        renderFeedback(result, feedback);
+      },
       onReady: () => {
         result?.classList.add("hidden");
         if (status) status.textContent = "Hold an attendee QR code inside the frame.";
@@ -430,15 +443,14 @@ document.addEventListener("htmx:beforeCleanupElement", (event) => {
   if (
     root &&
     (root === cleanupTarget ||
-      (cleanupTarget instanceof Node &&
-        (root.contains(cleanupTarget) || cleanupTarget.contains(root))))
+      (cleanupTarget instanceof Node && (root.contains(cleanupTarget) || cleanupTarget.contains(root))))
   ) {
-    activeSession.close();
+    activeSession.close({ refreshAttendees: false });
   }
 });
 window.addEventListener("beforeunload", () => activeSession?.teardown());
 window.addEventListener("pageshow", (event) => {
-  if (event.persisted) activeSession?.close();
+  if (event.persisted) activeSession?.close({ refreshAttendees: false });
 });
 
 initializeOnReadyAndHtmxLoad(initializeGroupCheckInScanner);

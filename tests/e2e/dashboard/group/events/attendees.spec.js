@@ -136,18 +136,25 @@ const openInvitationRequestsTab = async (page, eventName, eventId) => {
 };
 
 test.describe("group dashboard attendees tab", () => {
-  test("organizer opens the attendee scanner from a published current event", async ({
+  test("organizer scans and refreshes attendees from a published current event", async ({
     organizerGroupPage,
   }) => {
     // Replace the browser scanner with a deterministic camera implementation.
     await organizerGroupPage.addInitScript(() => {
       class FakeQrScanner {
+        static last;
+
         static async hasCamera() {
           return true;
         }
 
         static async listCameras() {
           return [{ id: "test-camera", label: "Test camera" }];
+        }
+
+        constructor(_video, onDecode) {
+          this.onDecode = onDecode;
+          FakeQrScanner.last = this;
         }
 
         destroy() {}
@@ -165,6 +172,21 @@ test.describe("group dashboard attendees tab", () => {
       window.__OCG_E2E_QR_SCANNER__ = FakeQrScanner;
     });
 
+    // Return a deterministic successful scan without mutating seeded attendee state.
+    await organizerGroupPage.route(
+      `**/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/check-ins/scan`,
+      (route) =>
+        route.fulfill({
+          body: JSON.stringify({
+            attendee: { name: "E2E Scanned Attendee" },
+            outcome: "checked-in",
+            ticket_title: "General admission",
+          }),
+          contentType: "application/json",
+          status: 200,
+        }),
+    );
+
     // Open the published event's attendees tab and launch its scanner.
     const attendeesContent = await openAttendeesTab(
       organizerGroupPage,
@@ -177,7 +199,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(scannerButton).toBeEnabled();
     await scannerButton.click();
 
-    // Verify the shared scanner opens with the selected event and restores focus.
+    // Verify the shared scanner opens with the selected event.
     const scannerModal = attendeesContent.locator(
       "#group-check-in-scanner-modal",
     );
@@ -188,11 +210,45 @@ test.describe("group dashboard attendees tab", () => {
     await expect(
       scannerModal.getByText("Hold an attendee QR code inside the frame."),
     ).toBeVisible();
+
+    // Submit a successful credential through the simulated camera.
+    const scanResponsePromise = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response
+          .url()
+          .includes(
+            `/events/${TEST_EVENT_IDS.alpha.one}/check-ins/scan`,
+          ),
+    );
+    await organizerGroupPage.evaluate(
+      (eventId) =>
+        window.__OCG_E2E_QR_SCANNER__.last.onDecode({
+          data: `ocg-check-in:v1:${eventId}:e2e-scanner-credential`,
+        }),
+      TEST_EVENT_IDS.alpha.one,
+    );
+    expect((await scanResponsePromise).ok()).toBe(true);
+    await expect(
+      scannerModal.getByText("Checked in", { exact: true }),
+    ).toBeVisible();
+
+    // Closing the scanner refreshes the attendees region once.
+    const refreshResponsePromise = organizerGroupPage.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response
+          .url()
+          .includes(`/events/${TEST_EVENT_IDS.alpha.one}/attendees`),
+    );
     await scannerModal
       .getByRole("button", { name: "Close", exact: true })
       .click();
+    expect((await refreshResponsePromise).ok()).toBe(true);
     await expect(scannerModal).toBeHidden();
-    await expect(scannerButton).toBeFocused();
+    await expect(
+      attendeesContent.getByRole("button", { name: "Scan attendees" }),
+    ).toBeEnabled();
   });
 
   test("attendees table exposes every column at its responsive breakpoint", async ({

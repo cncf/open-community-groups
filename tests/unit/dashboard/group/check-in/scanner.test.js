@@ -18,7 +18,7 @@ describe("group check-in scanner controls", () => {
     document.body.innerHTML = `
       <section data-group-check-in-root>
         <div data-group-check-in-scanner-view>
-          <button data-group-check-in-open data-event-id="event-a" data-event-date="Aug 24, 2026 · 9:00 AM CEST" data-event-location="Madrid" data-event-name="Event A" data-scan-url="/scan-a">A</button>
+          <button data-group-check-in-open data-refresh-attendees-on-close data-event-id="event-a" data-event-date="Aug 24, 2026 · 9:00 AM CEST" data-event-location="Madrid" data-event-name="Event A" data-scan-url="/scan-a">A</button>
           <button data-group-check-in-open data-event-id="event-b" data-event-date="Aug 25, 2026 · 10:00 AM CEST" data-event-location="Virtual" data-event-name="Event B" data-scan-url="/scan-b">B</button>
         </div>
         <div id="group-check-in-scanner-modal" class="hidden" aria-hidden="true">
@@ -114,6 +114,13 @@ describe("group check-in scanner controls", () => {
     try {
       // Scan an attendee who was already checked in.
       renderFixture();
+      let refreshCount = 0;
+      document.querySelector("[data-group-check-in-root]").addEventListener(
+        "refresh-event-attendees",
+        () => {
+          refreshCount += 1;
+        },
+      );
       window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
       initializeGroupCheckInScanner();
       document.querySelector("[data-group-check-in-open]").click();
@@ -133,6 +140,182 @@ describe("group check-in scanner controls", () => {
       expect(message.classList.contains("font-normal")).to.equal(true);
       expect(result.textContent).to.include("Already checked in");
       expect(result.textContent).to.include("Paula Webb · Expo Pass");
+
+      // Closing an unchanged session leaves the attendees list untouched.
+      document.querySelector("[data-group-check-in-close]").click();
+      expect(refreshCount).to.equal(0);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("does not refresh attendees after a failed scan", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    // Submit an invalid code and close its unchanged scanner session.
+    renderFixture();
+    const root = document.querySelector("[data-group-check-in-root]");
+    let refreshCount = 0;
+    root.addEventListener("refresh-event-attendees", () => {
+      refreshCount += 1;
+    });
+    window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+    initializeGroupCheckInScanner();
+    root.querySelector("[data-group-check-in-open]").click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await FakeScanner.instance.onDecode({ data: "invalid-code" });
+    root.querySelector("[data-group-check-in-close]").click();
+
+    // Failed scans do not request an attendee refresh.
+    expect(refreshCount).to.equal(0);
+  });
+
+  it("refreshes attendees only after closing a changed event-tab scanner", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    const fetchMock = mockFetch({
+      impl: async () =>
+        new Response(
+          JSON.stringify({
+            attendee: { name: "Paula Webb" },
+            outcome: "checked-in",
+            ticket_title: "Expo Pass",
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    });
+
+    try {
+      // Open the scanner and observe attendee refresh requests.
+      renderFixture();
+      const root = document.querySelector("[data-group-check-in-root]");
+      let refreshCount = 0;
+      root.addEventListener("refresh-event-attendees", () => {
+        refreshCount += 1;
+      });
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      root.querySelector("[data-group-check-in-open]").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Complete a new check-in without interrupting the active scanner.
+      await FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
+      expect(refreshCount).to.equal(0);
+
+      // Closing refreshes the attendees region once and clears the dirty state.
+      root.querySelector("[data-group-check-in-close]").click();
+      expect(refreshCount).to.equal(1);
+      root.querySelector("[data-group-check-in-close]").click();
+      expect(refreshCount).to.equal(1);
+
+      // The mobile Check-In opener closes without emitting the desktop refresh.
+      root.querySelectorAll("[data-group-check-in-open]")[1].click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-b:credential" });
+      root.querySelector("[data-group-check-in-close]").click();
+      expect(refreshCount).to.equal(1);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("does not refresh attendees when HTMX cleans up a changed scanner", async () => {
+    // Provide a scanner that exposes its decode callback.
+    class FakeScanner {
+      static instance;
+
+      static async hasCamera() {
+        return true;
+      }
+      static async listCameras() {
+        return [];
+      }
+
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeScanner.instance = this;
+      }
+
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      async start() {}
+    }
+
+    const fetchMock = mockFetch({
+      response: new Response(
+        JSON.stringify({
+          attendee: { name: "Paula Webb" },
+          outcome: "checked-in",
+          ticket_title: "Expo Pass",
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    });
+
+    try {
+      // Change attendee state in an active scanner session.
+      renderFixture();
+      const root = document.querySelector("[data-group-check-in-root]");
+      let refreshCount = 0;
+      root.addEventListener("refresh-event-attendees", () => {
+        refreshCount += 1;
+      });
+      window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
+      initializeGroupCheckInScanner();
+      root.querySelector("[data-group-check-in-open]").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
+
+      // HTMX cleanup closes the modal without starting a redundant refresh.
+      root.dispatchEvent(new Event("htmx:beforeCleanupElement", { bubbles: true }));
+      expect(refreshCount).to.equal(0);
+      expect(
+        document.getElementById("group-check-in-scanner-modal").classList.contains("hidden"),
+      ).to.equal(true);
     } finally {
       fetchMock.restore();
     }
