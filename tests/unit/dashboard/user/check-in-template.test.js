@@ -35,4 +35,29 @@ describe("dashboard user check-in template", () => {
     expect(template).to.include("cards::check_in_event_card(event)");
     expect(template).not.to.include("status_before_title");
   });
+
+  it("places attendee identity below the QR code and adds a modal footer", async () => {
+    // Load the Check-In template before checking credential and footer structure.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify identity stays inside the credential and the Close action stays fixed.
+    const credentialStart = template.indexOf("data-user-check-in-credential");
+    const qrImage = template.indexOf('id="user-check-in-qr-image"');
+    const userInfo = template.indexOf("data-user-check-in-user");
+    const credentialEnd = template.indexOf("</div> </div> </div> <footer");
+    const footer = template.indexOf('<footer class="flex shrink-0 justify-end');
+    expect(qrImage).to.be.greaterThan(credentialStart);
+    expect(userInfo).to.be.greaterThan(qrImage);
+    expect(userInfo).to.be.lessThan(credentialEnd);
+    expect(footer).to.be.greaterThan(credentialEnd);
+    expect(template).to.include(
+      'data-user-check-in-user> <div id="user-check-in-photo"',
+    );
+    expect(template).to.include(
+      'class="text-center text-xs text-stone-500">Show this code to an organizer</p>',
+    );
+    expect(template).to.include(
+      'class="btn-primary-outline w-full sm:w-auto" data-user-check-in-close>Close</button>',
+    );
+  });
 });

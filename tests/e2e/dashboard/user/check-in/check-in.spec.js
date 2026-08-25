@@ -47,6 +47,11 @@ test.describe("user dashboard check-in", () => {
     await expect(modal.locator("#user-check-in-username")).toHaveText(
       "@e2e-pending-2",
     );
+    const credential = modal.locator("[data-user-check-in-credential]");
+    await expect(credential.locator("#user-check-in-photo")).toBeVisible();
+    await expect(credential.locator("#user-check-in-name")).toHaveText(
+      "E2E Pending Two",
+    );
     const closeButton = modal
       .locator("[data-user-check-in-panel]")
       .getByRole("button", { name: "Close modal" });
@@ -66,6 +71,10 @@ test.describe("user dashboard check-in", () => {
     await expect(
       modal.getByText("Show this code to an organizer", { exact: true }),
     ).toBeVisible();
+    const footerCloseButton = modal
+      .locator("footer")
+      .getByRole("button", { name: "Close", exact: true });
+    await expect(footerCloseButton).toBeVisible();
 
     // Verify the panel fills the mobile viewport within an even outer margin.
     const panelBounds = await modal
@@ -79,17 +88,18 @@ test.describe("user dashboard check-in", () => {
     expect(panelBounds.width).toBe(viewport.width - 24);
     expect(panelBounds.height).toBe(viewport.height - 24);
 
-    // Verify the complete credential is vertically centered in the mobile body.
+    // Verify the complete credential starts within the scrollable mobile body.
     const bodyBounds = await modal
       .locator("[data-user-check-in-body]")
       .boundingBox();
-    const credentialBounds = await modal
-      .locator("[data-user-check-in-credential]")
-      .boundingBox();
+    const credentialBounds = await credential.boundingBox();
     expect(bodyBounds).not.toBeNull();
     expect(credentialBounds).not.toBeNull();
-    const bodyCenter = bodyBounds.y + bodyBounds.height / 2;
-    const credentialCenter = credentialBounds.y + credentialBounds.height / 2;
-    expect(Math.abs(bodyCenter - credentialCenter)).toBeLessThanOrEqual(1);
+    expect(credentialBounds.y).toBeGreaterThanOrEqual(bodyBounds.y);
+
+    // Close from the footer and verify focus returns to the event card.
+    await footerCloseButton.click();
+    await expect(modal).toBeHidden();
+    await expect(eventCard).toBeFocused();
   });
 });
