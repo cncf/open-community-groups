@@ -105,6 +105,14 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(
         adminCommunityPage.locator("#dashboard-main-content"),
       ).toBeHidden();
+      const openMenuButton = adminCommunityPage.getByRole("button", {
+        name: "Open dashboard menu",
+      });
+      await expect(openMenuButton).toBeVisible();
+      await openMenuButton.click();
+      await expect(
+        adminCommunityPage.locator("#dashboard-menu-drawer"),
+      ).toBeVisible();
     });
 
     test("group dashboard shows the mobile unsupported state", async ({
@@ -120,6 +128,14 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(
         organizerGroupPage.locator("#dashboard-main-content"),
       ).toBeHidden();
+      const openMenuButton = organizerGroupPage.getByRole("button", {
+        name: "Open dashboard menu",
+      });
+      await expect(openMenuButton).toBeVisible();
+      await openMenuButton.click();
+      await expect(
+        organizerGroupPage.locator("#dashboard-menu-drawer"),
+      ).toBeVisible();
     });
 
     test("user dashboard shows the mobile unsupported state", async ({
@@ -133,6 +149,42 @@ test.describe("dashboard access and shared behavior", () => {
         member1Page.getByText(MOBILE_WARNING, { exact: true }),
       ).toBeVisible();
       await expect(member1Page.locator("#dashboard-main-content")).toBeHidden();
+      const openMenuButton = member1Page.getByRole("button", {
+        name: "Open dashboard menu",
+      });
+      await expect(openMenuButton).toBeVisible();
+      await openMenuButton.click();
+      await expect(member1Page.locator("#dashboard-menu-drawer")).toBeVisible();
+    });
+
+    test("keeps the drawer and placeholder aligned at the md breakpoint", async ({
+      member1Page,
+    }) => {
+      // Load unsupported user content at the first desktop width.
+      await member1Page.setViewportSize({ width: 768, height: 900 });
+      await navigateToPath(member1Page, "/dashboard/user?tab=events");
+      const main = member1Page.locator("#dashboard-main-content");
+      const openMenuButton = member1Page.getByRole("button", {
+        name: "Open dashboard menu",
+      });
+      const warning = member1Page.getByText(MOBILE_WARNING, { exact: true });
+      await expect(main).toBeVisible();
+      await expect(openMenuButton).toBeHidden();
+      await expect(warning).toBeHidden();
+
+      // Cross below md and verify the placeholder always has its drawer trigger.
+      await member1Page.setViewportSize({ width: 767, height: 900 });
+      await expect(main).toBeHidden();
+      await expect(warning).toBeVisible();
+      await expect(openMenuButton).toBeVisible();
+      await openMenuButton.click();
+      await expect(member1Page.locator("#dashboard-menu-drawer")).toBeVisible();
+
+      // Return to md and verify the static sidebar and content replace mobile state.
+      await member1Page.setViewportSize({ width: 768, height: 900 });
+      await expect(main).toBeVisible();
+      await expect(warning).toBeHidden();
+      await expect(openMenuButton).toBeHidden();
     });
   });
 });

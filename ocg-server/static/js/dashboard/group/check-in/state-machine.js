@@ -23,7 +23,7 @@ export const createScanStateMachine = ({
   let active = false;
   let cooldownTimer = null;
   let inFlight = false;
-  let muted = true;
+  let muted = false;
   let tornDown = false;
   const recentCredentials = new Map();
 

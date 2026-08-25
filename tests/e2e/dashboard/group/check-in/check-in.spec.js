@@ -89,16 +89,8 @@ test.describe("group dashboard check-in", () => {
     await expect(modal).toBeVisible();
     await expect(modal.getByText("Hold an attendee QR code inside the frame.")).toBeVisible();
     const muteToggle = modal.getByRole("checkbox", { name: "Mute sounds" });
-    await muteToggle.check();
     await expect(muteToggle).toBeChecked();
-    await expect(modal.getByRole("link", { name: "Manual check-in" })).toHaveAttribute(
-      "href",
-      "/dashboard/group?tab=events",
-    );
-    await expect(modal.getByRole("link", { name: "Manual check-in" })).toHaveAttribute(
-      "data-attendees-url",
-      `/dashboard/group/events/${TEST_OPEN_CHECK_IN_EVENT.id}/attendees`,
-    );
+    await expect(modal.getByRole("link", { name: "Manual check-in" })).toHaveCount(0);
 
     // Submit the attendee credential through the simulated camera.
     const responsePromise = checkInManagerGroupPage.waitForResponse(
@@ -214,49 +206,4 @@ test.describe("group dashboard check-in", () => {
       }),
     ).toBeVisible();
   });
-
-  scannerTest(
-    "check-in manager can manually check in the selected event on mobile @mobile",
-    async ({ checkInManagerGroupPage }) => {
-      // Open the selected event's scanner on the mobile check-in surface.
-      await navigateToPath(checkInManagerGroupPage, "/dashboard/group?tab=check-in");
-      await checkInManagerGroupPage
-        .locator("[data-group-check-in-open]", {
-          hasText: TEST_OPEN_CHECK_IN_EVENT.name,
-        })
-        .click();
-      const modal = checkInManagerGroupPage.locator("#group-check-in-scanner-modal");
-
-      // Load the selected attendee table without leaving the mobile surface.
-      const attendeesResponse = checkInManagerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/events/${TEST_OPEN_CHECK_IN_EVENT.id}/attendees`),
-      );
-      await modal.getByRole("link", { name: "Manual check-in" }).click();
-      expect((await attendeesResponse).ok()).toBe(true);
-      const manualPanel = checkInManagerGroupPage.locator("[data-group-check-in-manual-panel]");
-      await expect(manualPanel).toBeVisible();
-      await expect(manualPanel.getByRole("table", { name: "Attendees list" })).toBeVisible();
-
-      // Use the existing manual toggle, then return to the same event card.
-      const attendeeRow = manualPanel.locator("tr", {
-        hasText: "E2E Pending Two",
-      });
-      const toggle = attendeeRow.getByRole("checkbox", {
-        name: "Check in attendee",
-      });
-      await waitForActionResponse(checkInManagerGroupPage, () => attendeeRow.locator("label").click(), {
-        method: "POST",
-        urlIncludes: `/dashboard/group/events/${TEST_OPEN_CHECK_IN_EVENT.id}/attendees/${TEST_USER_IDS.pending2}/check-in`,
-      });
-      await expect(toggle).toBeChecked();
-      await manualPanel.getByRole("button", { name: "Back to check-in events" }).click();
-      await expect(
-        checkInManagerGroupPage.locator("[data-group-check-in-open]", {
-          hasText: TEST_OPEN_CHECK_IN_EVENT.name,
-        }),
-      ).toBeFocused();
-    },
-  );
 });

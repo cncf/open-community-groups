@@ -11,24 +11,14 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group home template", () => {
-  it("inherits the shared dashboard base with the mobile Check-In layout", async () => {
-    // Load the group dashboard shell before checking responsive layout ownership.
+  it("keeps only Check-In content visible below md", async () => {
+    // Load the group dashboard shell before checking responsive content ownership.
     const template = await loadTemplate();
 
-    // Verify the page opts into the mobile Check-In layout over the shared base.
+    // Verify Check-In and its fallback stay visible while other content is hidden.
     expect(template).to.include('{% extends "dashboard/dashboard_base.html" -%}');
     expect(template).to.include(
-      "{% if content.is_check_in() || is_check_in_fallback %}flex max-md:px-4 max-md:pb-4{% else %}hidden md:flex{% endif %}",
-    );
-  });
-
-  it("shows the header menu trigger only on mobile Check-In", async () => {
-    // Load the group dashboard shell before checking trigger visibility.
-    const template = await loadTemplate();
-
-    // Verify Check-In and its fallback display the trigger only below medium.
-    expect(template).to.include(
-      "{% if content.is_check_in() || is_check_in_fallback %}inline-flex md:hidden{% else %}hidden{% endif %}",
+      "{% if content.is_check_in() || is_check_in_fallback %}block{% else %}hidden md:block{% endif %}",
     );
   });
 
@@ -42,6 +32,7 @@ describe("dashboard group home template", () => {
     );
     expect(template).to.include('<div class="max-md:hidden">{{ content|safe }}</div>');
     expect(template).to.include("{% if !content.is_check_in() && !is_check_in_fallback -%}");
+    expect(template).not.to.include("Open Check-In</a>");
     expect(template).not.to.include("mobile_selectors");
     expect(template).not.to.include("data-check-in-fallback-overlay");
   });
@@ -58,6 +49,11 @@ describe("dashboard group home template", () => {
     expect(template).to.include(
       'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in() , href = "/dashboard/group?tab=check-in")',
     );
+    const eventsItem = template.indexOf('dashboard::menu_item(name = "Events"');
+    const checkInItem = template.indexOf(
+      'dashboard::menu_item(name = "Check-In", icon = "qr-code", is_active = content.is_check_in()',
+    );
+    expect(checkInItem).to.be.greaterThan(eventsItem);
 
     // Verify the drawer keeps a mobile-only Check-In entry for read-only groups.
     expect(template).to.include(
@@ -93,7 +89,7 @@ describe("dashboard group home template", () => {
 
     // Verify the group shell delegates shared title, spinner, and wrapper markup.
     expect(template).to.include(
-      'dashboard::dashboard_menu_shell( "Group Dashboard", spinner_classes = "hx-spinner -mt-0.5 relative", navigation_target = "#dashboard-layout", navigation_select = "#dashboard-layout", navigation_select_oob = "#mobile-dashboard-view:outerHTML,#open-dashboard-menu:outerHTML", navigation_swap = "outerHTML show:window:top" )',
+      'dashboard::dashboard_menu_shell( "Group Dashboard", spinner_classes = "hx-spinner -mt-0.5 relative", navigation_target = "#dashboard-layout", navigation_select = "#dashboard-layout", navigation_select_oob = "#mobile-dashboard-view:outerHTML", navigation_swap = "outerHTML show:window:top" )',
     );
     expect(template).to.include('id="mobile-dashboard-view" class="contents"');
     expect(template).not.to.include('id="dashboard-spinner" class="hx-spinner -mt-0.5 relative"');

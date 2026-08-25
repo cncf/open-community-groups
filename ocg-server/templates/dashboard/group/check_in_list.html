@@ -47,8 +47,7 @@
                   data-event-date="{{ event.starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}"
                   data-event-location="{% if event.kind == EventKind::Virtual -%}Virtual{% else -%}{{ event.location.as_deref() |assigned_or("Venue details pending") }}{% endif -%}"
                   data-event-name="{{ event.name }}"
-                  data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"
-                  data-attendees-url="/dashboard/group/events/{{ event.event_id }}/attendees">
+                  data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan">
             <span>Scan attendees</span>
             <span class="sr-only">for {{ event.name }}</span>
           </button>
@@ -149,7 +148,7 @@
 
             <div class="flex flex-wrap items-center gap-4 sm:pb-1">
               <label class="inline-flex cursor-pointer items-center has-[:disabled]:cursor-not-allowed">
-                <input type="checkbox" class="sr-only peer" data-group-check-in-mute>
+                <input type="checkbox" class="sr-only peer" data-group-check-in-mute checked>
                 <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
                 </span>
                 <span class="ms-3 text-sm font-medium text-stone-900"
@@ -169,35 +168,13 @@
           </div>
         </div>
 
-        <footer class="flex shrink-0 flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+        <footer class="flex shrink-0 justify-end border-t border-stone-200 p-4 md:p-5">
           <button type="button"
                   class="btn-primary-outline w-full sm:w-auto"
                   data-group-check-in-close>Close</button>
-          <a data-group-check-in-manual
-             href="/dashboard/group?tab=events"
-             class="btn-primary-anchor inline-flex w-full justify-center sm:w-auto">Manual check-in</a>
         </footer>
       </div>
     </div>
   </div>
   {# End QR scanner modal -#}
-
-  {# Manual check-in panel -#}
-  <div class="hidden" data-group-check-in-manual-panel tabindex="-1">
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-wide text-primary-600">Manual check-in</p>
-        <h2 class="mt-1 text-xl font-semibold text-stone-900"
-            data-group-check-in-manual-title></h2>
-      </div>
-      <button type="button"
-              class="btn-primary-outline"
-              data-group-check-in-manual-back>Back to check-in events</button>
-    </div>
-    <div class="mb-4 hidden text-sm text-stone-600"
-         data-group-check-in-manual-status
-         role="status"></div>
-    <div id="attendees-content"></div>
-  </div>
-  {# End manual check-in panel -#}
 </section>

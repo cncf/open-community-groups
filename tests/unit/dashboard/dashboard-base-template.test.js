@@ -33,15 +33,16 @@ describe("dashboard base template", () => {
     expect(template).to.include('aria-controls="dashboard-menu-drawer"');
     expect(template).to.include('aria-expanded="false"');
     expect(template).to.include('<button id="close-dashboard-menu"');
+    expect(template).to.include("focus-visible:ring-primary-500");
     expect(template).to.include('<div id="dashboard-menu-backdrop"');
     expect(template).to.include("z-[1050]");
   });
 
-  it("renders the mobile drawer trigger in the dashboard header", async () => {
+  it("renders the mobile drawer trigger in the dashboard header below md", async () => {
     // Load the dashboard base before checking trigger placement and visibility.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the trigger belongs to the header and remains hidden by default.
+    // Verify the trigger belongs to the header and follows the drawer breakpoint.
     const headerStart = template.indexOf('id="dashboard-header"');
     const trigger = template.indexOf('id="open-dashboard-menu"');
     const sharedHeader = template.indexOf('{% include "common/header.html" -%}');
@@ -49,16 +50,21 @@ describe("dashboard base template", () => {
     expect(trigger).to.be.greaterThan(headerStart);
     expect(trigger).to.be.lessThan(sharedHeader);
     expect(trigger).to.be.lessThan(mainStart);
-    expect(template).to.include(
-      "{% block mobile_dashboard_menu_button_classes -%}hidden{% endblock mobile_dashboard_menu_button_classes -%}",
-    );
+    const triggerMarkup = template.slice(trigger, sharedHeader);
+    expect(triggerMarkup).to.include("focus-visible:ring-primary-500");
+    expect(triggerMarkup).to.include("md:hidden");
   });
 
-  it("stretches the dashboard layout to fill the viewport on mobile", async () => {
-    // Load the dashboard base before checking the mobile layout height contract.
+  it("keeps the drawer mounted while unsupported content is hidden on mobile", async () => {
+    // Load the dashboard base before checking the shared responsive contract.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the layout grows below the medium breakpoint like the shared page main.
-    expect(template).to.include('<div id="dashboard-layout" class="max-md:grow');
+    // Verify the shell stays mounted and only the unsupported main is hidden.
+    expect(template).to.include(
+      '<div id="dashboard-layout" class="flex max-md:grow max-md:px-4 max-md:pb-4">',
+    );
+    expect(template).to.include(
+      "{% block dashboard_main_classes -%}hidden md:block{% endblock dashboard_main_classes -%}",
+    );
   });
 });

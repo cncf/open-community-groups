@@ -21,16 +21,6 @@ export const initializeGroupCheckInScanner = (container = document, { historyRes
   if (!markDatasetReady(root, "groupCheckInReady")) return;
 
   root.addEventListener("click", (event) => {
-    const manualLink = event.target.closest?.("[data-group-check-in-manual]");
-    if (manualLink instanceof HTMLAnchorElement && typeof window.htmx?.ajax === "function") {
-      event.preventDefault();
-      void openManualCheckIn(root, manualLink);
-      return;
-    }
-    if (event.target.closest?.("[data-group-check-in-manual-back]")) {
-      closeManualCheckIn(root);
-      return;
-    }
     const trigger = event.target.closest?.("[data-group-check-in-open]");
     if (trigger instanceof HTMLElement) {
       void startScannerSession(root, trigger);
@@ -81,22 +71,6 @@ const cameraStatusMessage = (error) =>
     ? "Waiting for a camera…"
     : "Camera unavailable.";
 
-/** Returns from manual attendee check-in to the scanner event cards. */
-const closeManualCheckIn = (root) => {
-  const panel = root.querySelector("[data-group-check-in-manual-panel]");
-  if (!(panel instanceof HTMLElement)) return;
-
-  const eventId = panel.dataset.eventId || "";
-  panel.classList.add("hidden");
-  root.querySelectorAll("[data-group-check-in-scanner-view]").forEach((element) => {
-    element.classList.remove("hidden");
-  });
-  const origin = [...root.querySelectorAll("[data-group-check-in-open]")].find(
-    (element) => element.dataset.eventId === eventId,
-  );
-  origin?.focus();
-};
-
 /** Creates synthesized scanner feedback without shipping audio assets. */
 const createScannerAudio = () => {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -126,47 +100,6 @@ const createScannerAudio = () => {
     },
     unlock: () => context?.resume?.().catch(() => {}),
   };
-};
-
-/**
- * Loads the selected event's attendee table without leaving the mobile check-in
- * surface.
- */
-const openManualCheckIn = async (root, link) => {
-  const attendeesUrl = link.dataset.attendeesUrl || "";
-  const content = root.querySelector("#attendees-content");
-  const panel = root.querySelector("[data-group-check-in-manual-panel]");
-  const status = root.querySelector("[data-group-check-in-manual-status]");
-  if (!attendeesUrl || !(content instanceof HTMLElement) || !(panel instanceof HTMLElement)) return;
-
-  activeSession?.close();
-  root.querySelectorAll("[data-group-check-in-scanner-view]").forEach((element) => {
-    element.classList.add("hidden");
-  });
-  const title = panel.querySelector("[data-group-check-in-manual-title]");
-  if (title) title.textContent = link.dataset.eventName || "Event attendees";
-  panel.dataset.eventId = link.dataset.eventId || "";
-  panel.classList.remove("hidden");
-  panel.focus();
-  content.replaceChildren();
-  content.setAttribute("aria-busy", "true");
-  setManualCheckInStatus(status, "Loading attendees…");
-
-  try {
-    await window.htmx.ajax("GET", attendeesUrl, {
-      indicator: "#dashboard-spinner",
-      swap: "innerHTML",
-      target: "#attendees-content",
-    });
-    setManualCheckInStatus(status, "");
-  } catch {
-    setManualCheckInStatus(
-      status,
-      "The attendee list could not be loaded. Return to the scanner and try again.",
-    );
-  } finally {
-    content.removeAttribute("aria-busy");
-  }
 };
 
 /** Populates the available camera selector after access has been granted. */
@@ -284,13 +217,6 @@ const setCameraUnavailableState = (root, message = "") => {
   if (unavailableMessage) unavailableMessage.textContent = message;
 };
 
-/** Updates the compact live region used while loading the manual attendee list. */
-const setManualCheckInStatus = (element, message) => {
-  if (!(element instanceof HTMLElement)) return;
-  element.textContent = message;
-  element.classList.toggle("hidden", !message);
-};
-
 /** Updates the visible and accessible sound state. */
 const setMuteState = (input, isMuted) => {
   if (!(input instanceof HTMLInputElement) || input.type !== "checkbox") return;
@@ -336,21 +262,15 @@ const startScannerSession = async (root, trigger) => {
   const eventDateElement = root.querySelector("#group-check-in-event-date");
   const eventLocationElement = root.querySelector("#group-check-in-event-location");
   const eventNameElement = root.querySelector("#group-check-in-event-name");
-  const manualLink = root.querySelector("[data-group-check-in-manual]");
   if (eventDateElement) eventDateElement.textContent = eventDate;
   if (eventLocationElement) eventLocationElement.textContent = eventLocation;
   if (eventNameElement) eventNameElement.textContent = eventName;
-  if (manualLink instanceof HTMLAnchorElement) {
-    manualLink.dataset.attendeesUrl = trigger.dataset.attendeesUrl || "";
-    manualLink.dataset.eventId = eventId;
-    manualLink.dataset.eventName = eventName;
-  }
   if (status) status.textContent = "Starting camera…";
   if (result) result.classList.add("hidden");
   setCameraSelectPlaceholder(camera, "Finding cameras…");
   setCameraUnavailableState(root);
   if (mute instanceof HTMLInputElement) mute.disabled = false;
-  setMuteState(mute, true);
+  setMuteState(mute, false);
   setTorchAvailable(torch, false);
 
   let audio = null;

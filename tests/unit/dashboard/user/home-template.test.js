@@ -11,24 +11,14 @@ const loadTemplate = async () => {
 };
 
 describe("dashboard user home template", () => {
-  it("inherits the shared dashboard base with the mobile Check-In layout", async () => {
-    // Load the user dashboard shell before checking responsive layout ownership.
+  it("keeps only Check-In content visible below md", async () => {
+    // Load the user dashboard shell before checking responsive content ownership.
     const template = await loadTemplate();
 
-    // Verify the page opts into the mobile Check-In layout over the shared base.
+    // Verify Check-In stays visible while unsupported content yields to the placeholder.
     expect(template).to.include('{% extends "dashboard/dashboard_base.html" -%}');
     expect(template).to.include(
-      "{% if content.is_check_in() %}flex max-md:px-4 max-md:pb-4{% else %}hidden md:flex{% endif %}",
-    );
-  });
-
-  it("shows the header menu trigger only on mobile Check-In", async () => {
-    // Load the user dashboard shell before checking trigger visibility.
-    const template = await loadTemplate();
-
-    // Verify only the supported mobile dashboard surface displays the trigger.
-    expect(template).to.include(
-      "{% if content.is_check_in() %}inline-flex md:hidden{% else %}hidden{% endif %}",
+      "{% if content.is_check_in() %}block{% else %}hidden md:block{% endif %}",
     );
   });
 

@@ -36,7 +36,7 @@ export const closeDashboardMenuDrawer = () => {
 };
 
 /**
- * Opens the dashboard menu drawer and moves focus into it (mobile only).
+ * Opens the dashboard menu drawer and moves focus to its close button (mobile only).
  */
 export const openDashboardMenuDrawer = () => {
   const drawer = getElementById(document, DRAWER_ID);
@@ -51,7 +51,12 @@ export const openDashboardMenuDrawer = () => {
   if (openButton) {
     openButton.setAttribute("aria-expanded", "true");
   }
-  drawer.focus();
+  const closeButton = getElementById(document, CLOSE_BUTTON_ID);
+  if (closeButton) {
+    closeButton.focus();
+  } else {
+    drawer.focus();
+  }
 };
 
 /**

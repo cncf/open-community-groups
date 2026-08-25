@@ -18,9 +18,8 @@
             type="button"
             aria-controls="dashboard-menu-drawer"
             aria-expanded="false"
-            class="h-10 w-10 shrink-0 justify-center items-center bg-primary-500 rounded-full p-2 hover:bg-primary-700 transition-colors
-                   {% block mobile_dashboard_menu_button_classes -%}hidden{% endblock mobile_dashboard_menu_button_classes -%}">
-      <div class="svg-icon h-4 w-4 bg-white icon-lines"></div>
+            class="group h-10 w-10 shrink-0 inline-flex justify-center items-center bg-stone-100 rounded-full p-2 hover:bg-stone-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 md:hidden">
+      <div class="svg-icon h-4 w-4 bg-stone-700 group-hover:bg-stone-900 transition-colors icon-lines"></div>
       <span class="sr-only">Open dashboard menu</span>
     </button>
     {# End open menu button (mobile only) -#}
@@ -40,8 +39,7 @@
 
   {# Main Content -#}
   <div id="dashboard-layout"
-       class="max-md:grow
-              {% block dashboard_layout_classes -%}hidden md:flex{% endblock dashboard_layout_classes -%}">
+       class="flex max-md:grow max-md:px-4 max-md:pb-4">
     {# Sticky menu -#}
     <aside id="dashboard-menu-drawer"
            class="fixed top-0 left-0 z-[1100] h-dvh w-80 shrink-0 -translate-x-full bg-stone-100 border-r border-stone-200 shadow-lg transition-transform md:sticky md:z-auto md:w-[225px] md:translate-x-0 md:bg-transparent md:border-r-0 md:shadow-none lg:w-[300px]"
@@ -51,7 +49,7 @@
       {# Close menu button (mobile only) -#}
       <button id="close-dashboard-menu"
               type="button"
-              class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center md:hidden">
+              class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 md:hidden">
         <div class="svg-icon h-4 w-4 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
         <span class="sr-only">Close menu</span>
       </button>
@@ -84,7 +82,8 @@
     {# End menu drawer backdrop (mobile only) -#}
 
     <main id="dashboard-main-content"
-          class="relative mt-20 min-w-0 flex-1 rounded-lg border border-stone-200 bg-white md:m-5 md:ms-0 md:mt-[6.25rem]"
+          class="relative mt-20 min-w-0 flex-1 rounded-lg border border-stone-200 bg-white md:m-5 md:ms-0 md:mt-[6.25rem]
+                 {% block dashboard_main_classes -%}hidden md:block{% endblock dashboard_main_classes -%}"
           role="main">
       {% block dashboard_main -%}
       {% endblock dashboard_main -%}

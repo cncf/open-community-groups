@@ -94,15 +94,14 @@ describe("dashboard group check-in template", () => {
     );
     expect(template).to.include('class="select select-primary mt-1" disabled');
     expect(template).not.to.include("icon-caret-down");
-    expect(template).to.include('class="sr-only peer" data-group-check-in-mute');
+    expect(template).to.include('class="sr-only peer" data-group-check-in-mute checked');
     expect(template).to.include("data-group-check-in-torch-control");
     expect(template).to.include('class="sr-only peer" data-group-check-in-torch disabled');
     expect(template).to.include('class="ms-3 text-sm font-medium text-stone-900">Torch</span>');
     expect(template).to.include("peer-checked:bg-primary-500");
     expect(template).not.to.include("Turn torch on");
     expect(template).to.include('class="btn-primary-outline w-full sm:w-auto"');
-    expect(template).to.include(
-      'class="btn-primary-anchor inline-flex w-full justify-center sm:w-auto">Manual check-in</a>',
-    );
+    expect(template).not.to.include("data-group-check-in-manual");
+    expect(template).not.to.include("data-attendees-url");
   });
 });

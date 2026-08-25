@@ -37,17 +37,17 @@ describe("dashboard menu drawer", () => {
     window.matchMedia = () => ({ matches: isDesktop });
   };
 
-  it("opens from the menu button and moves focus into the drawer", () => {
+  it("opens from the menu button and moves focus to the close button", () => {
     // Render the drawer fixture and open it through the menu button.
     renderFixture();
     document.getElementById("open-dashboard-menu").click();
 
-    // Verify the drawer slides in, the backdrop shows, and focus enters the drawer.
+    // Verify the drawer slides in, the backdrop shows, and focus reaches its close path.
     const drawer = document.getElementById("dashboard-menu-drawer");
     expect(drawer.classList.contains("-translate-x-full")).to.equal(false);
     expect(document.getElementById("dashboard-menu-backdrop").classList.contains("hidden")).to.equal(false);
     expect(document.getElementById("open-dashboard-menu").getAttribute("aria-expanded")).to.equal("true");
-    expect(document.activeElement).to.equal(drawer);
+    expect(document.activeElement).to.equal(document.getElementById("close-dashboard-menu"));
   });
 
   it("closes from the close button and restores focus to the open button", () => {

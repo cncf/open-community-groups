@@ -2,20 +2,15 @@ import { expect } from "@open-wc/testing";
 
 import { initializeGroupCheckInScanner } from "/static/js/dashboard/group/check-in/scanner.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("group check-in scanner controls", () => {
-  let htmx;
-
   beforeEach(() => {
     resetDom();
-    htmx = mockHtmx();
   });
   afterEach(() => {
     window.dispatchEvent(new Event("beforeunload"));
     delete window.__OCG_E2E_QR_SCANNER__;
-    htmx.restore();
     resetDom();
   });
 
@@ -23,8 +18,8 @@ describe("group check-in scanner controls", () => {
     document.body.innerHTML = `
       <section data-group-check-in-root>
         <div data-group-check-in-scanner-view>
-          <button data-group-check-in-open data-event-id="event-a" data-event-date="Aug 24, 2026 · 9:00 AM CEST" data-event-location="Madrid" data-event-name="Event A" data-scan-url="/scan-a" data-attendees-url="/events/event-a/attendees">A</button>
-          <button data-group-check-in-open data-event-id="event-b" data-event-date="Aug 25, 2026 · 10:00 AM CEST" data-event-location="Virtual" data-event-name="Event B" data-scan-url="/scan-b" data-attendees-url="/events/event-b/attendees">B</button>
+          <button data-group-check-in-open data-event-id="event-a" data-event-date="Aug 24, 2026 · 9:00 AM CEST" data-event-location="Madrid" data-event-name="Event A" data-scan-url="/scan-a">A</button>
+          <button data-group-check-in-open data-event-id="event-b" data-event-date="Aug 25, 2026 · 10:00 AM CEST" data-event-location="Virtual" data-event-name="Event B" data-scan-url="/scan-b">B</button>
         </div>
         <div id="group-check-in-scanner-modal" class="hidden" aria-hidden="true">
           <button data-group-check-in-close tabindex="-1">Overlay</button>
@@ -50,13 +45,6 @@ describe("group check-in scanner controls", () => {
             <input type="checkbox" data-group-check-in-torch disabled>
             <span>Torch</span>
           </label>
-          <a data-group-check-in-manual href="/dashboard/group?tab=events"></a>
-        </div>
-        <div class="hidden" data-group-check-in-manual-panel tabindex="-1">
-          <h2 data-group-check-in-manual-title></h2>
-          <button data-group-check-in-manual-back>Back to check-in events</button>
-          <div class="hidden" data-group-check-in-manual-status role="status"></div>
-          <div id="attendees-content"></div>
         </div>
       </section>
     `;
@@ -373,64 +361,6 @@ describe("group check-in scanner controls", () => {
       "No cameras detected",
     );
     expect(document.querySelector("[data-group-check-in-mute]").disabled).to.equal(true);
-  });
-
-  it("loads selected attendees for manual check-in and returns to the scanner", async () => {
-    // Provide a camera-less scanner so manual check-in remains available.
-    class FakeScanner {
-      static async hasCamera() {
-        return false;
-      }
-
-      destroy() {}
-    }
-
-    // Open the scanner for the first event.
-    renderFixture();
-    window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
-    initializeGroupCheckInScanner();
-    const trigger = document.querySelector("[data-group-check-in-open]");
-    trigger.click();
-
-    // Switch to the selected event's manual attendee panel.
-    document.querySelector("[data-group-check-in-manual]").click();
-    const manualPanel = document.querySelector("[data-group-check-in-manual-panel]");
-    const manualStatus = document.querySelector("[data-group-check-in-manual-status]");
-    const attendeesContent = document.getElementById("attendees-content");
-
-    // Verify HTMX loads the expected attendee table and transfers focus.
-    expect(htmx.ajaxCalls).to.deep.equal([
-      [
-        "GET",
-        "/events/event-a/attendees",
-        {
-          indicator: "#dashboard-spinner",
-          swap: "innerHTML",
-          target: "#attendees-content",
-        },
-      ],
-    ]);
-    expect(manualPanel.classList.contains("hidden")).to.equal(false);
-    expect(
-      document.querySelector("[data-group-check-in-scanner-view]").classList.contains("hidden"),
-    ).to.equal(true);
-    expect(document.activeElement).to.equal(manualPanel);
-    expect(attendeesContent.hasAttribute("aria-live")).to.equal(false);
-    expect(attendeesContent.getAttribute("aria-busy")).to.equal("true");
-    expect(manualStatus.classList.contains("hidden")).to.equal(false);
-    expect(manualStatus.textContent).to.equal("Loading attendees…");
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(attendeesContent.hasAttribute("aria-busy")).to.equal(false);
-    expect(manualStatus.classList.contains("hidden")).to.equal(true);
-
-    // Return to the scanner view and restore focus to the event trigger.
-    document.querySelector("[data-group-check-in-manual-back]").click();
-    expect(manualPanel.classList.contains("hidden")).to.equal(true);
-    expect(
-      document.querySelector("[data-group-check-in-scanner-view]").classList.contains("hidden"),
-    ).to.equal(false);
-    expect(document.activeElement).to.equal(trigger);
   });
 
   it("rebinds controls from an HTMX history snapshot", async () => {

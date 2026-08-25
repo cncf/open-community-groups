@@ -2,13 +2,9 @@
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
-{% block dashboard_layout_classes -%}
-  {% if content.is_check_in() %}flex max-md:px-4 max-md:pb-4{% else %}hidden md:flex{% endif %}
-{% endblock dashboard_layout_classes -%}
-
-{% block mobile_dashboard_menu_button_classes -%}
-  {% if content.is_check_in() %}inline-flex md:hidden{% else %}hidden{% endif %}
-{% endblock mobile_dashboard_menu_button_classes -%}
+{% block dashboard_main_classes -%}
+  {% if content.is_check_in() %}block{% else %}hidden md:block{% endif %}
+{% endblock dashboard_main_classes -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/tooltip-panel.js"></script>
