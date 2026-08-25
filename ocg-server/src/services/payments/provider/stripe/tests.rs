@@ -24,13 +24,13 @@ use crate::{
     },
     types::payments::{
         FiscalSponsorSeller, PaymentMode, PaymentProvider, TicketTaxBehavior,
-        TicketTaxCalculationMode, TicketVenue,
+        TicketTaxCalculationMode, TicketTaxJurisdiction, TicketVenue,
     },
 };
 
 use super::{
     PaymentsProvider, PaymentsWebhookEndpoint, StripeListedRefund, StripeProvider,
-    StripeTaxProductResponse, StripeTaxProductTaxDetailsResponse,
+    StripeTaxProductResponse, StripeTaxProductTaxDetailsResponse, StripeTaxRegistrationResponse,
 };
 
 #[tokio::test]
@@ -566,6 +566,69 @@ fn build_refund_form_fields_only_refunds_the_direct_charge() {
 }
 
 #[tokio::test]
+async fn create_checkout_session_enforces_venue_tax_registration() {
+    // Setup a complete automatic-tax Checkout API for a California venue
+    let input = sample_checkout_session_input();
+    let router = Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/tax/settings",
+            get(|| async { Json(json!({"status": "active"})) }),
+        )
+        .route(
+            "/v1/tax/registrations",
+            get(|headers: HeaderMap| async move {
+                assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
+                Json(json!({
+                    "data": [{
+                        "country": "US",
+                        "country_options": {"us": {"state": "CA"}},
+                        "id": "taxreg_us_ca",
+                        "status": "active"
+                    }],
+                    "has_more": false
+                }))
+            }),
+        )
+        .route(
+            "/v1/tax/locations",
+            post(|headers: HeaderMap| async move {
+                assert_eq!(headers["stripe-version"], "2026-07-29.preview");
+                Json(json!({"id": "loc_us_ca"}))
+            }),
+        )
+        .route(
+            "/v1/products",
+            post(|| async { Json(json!({"id": "prod_ticket"})) }),
+        )
+        .route(
+            "/v1/checkout/sessions",
+            post(|| async {
+                Json(json!({
+                    "id": "cs_automatic_tax",
+                    "url": "https://checkout.stripe.test/automatic-tax"
+                }))
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Create Checkout after revalidating the snapshotted venue jurisdiction
+    let session = provider
+        .create_checkout_session(&input)
+        .await
+        .expect("matching venue registration to allow Checkout");
+    server.abort();
+
+    // Check automatic-tax Checkout proceeds after registration readiness
+    assert_eq!(session.provider_session_id, "cs_automatic_tax");
+}
+
+#[tokio::test]
 async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() {
     // Setup a manual-tax checkout and a Stripe-shaped connected-account API
     let mut input = sample_checkout_session_input();
@@ -587,19 +650,23 @@ async fn create_checkout_session_scopes_the_direct_charge_and_invoice_request() 
                     "data": [
                         {
                             "active": true,
+                            "country": "US",
                             "display_name": "Sales tax",
                             "id": "txr_state",
                             "inclusive": true,
                             "jurisdiction": "California",
-                            "percentage": 8.875
+                            "percentage": 8.875,
+                            "state": "CA"
                         },
                         {
                             "active": true,
+                            "country": "US",
                             "display_name": "District tax",
                             "id": "txr_local",
                             "inclusive": true,
                             "jurisdiction": "Example District",
-                            "percentage": 1.25
+                            "percentage": 1.25,
+                            "state": "CA"
                         }
                     ],
                     "has_more": false
@@ -1258,6 +1325,25 @@ async fn validate_fiscal_sponsor_accepts_dashboard_created_account_and_automatic
                 assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
                 Json(json!({"status": "active"}))
             }),
+        )
+        .route(
+            "/v1/tax/registrations",
+            get(|headers: HeaderMap, uri: Uri| async move {
+                assert_eq!(headers["stripe-account"], "acct_test_123");
+                assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
+                assert!(uri.query().is_some_and(|query| query.contains("status=active")));
+                assert!(uri.query().is_some_and(|query| query.contains("limit=100")));
+                assert!(uri.query().is_none_or(|query| !query.contains("country")));
+                Json(json!({
+                    "data": [{
+                        "country": "PT",
+                        "country_options": {},
+                        "id": "taxreg_pt",
+                        "status": "active"
+                    }],
+                    "has_more": false
+                }))
+            }),
         );
     let (api_base_url, server) = spawn_stripe_api(router).await;
     let mut provider = sample_stripe_provider();
@@ -1268,13 +1354,173 @@ async fn validate_fiscal_sponsor_accepts_dashboard_created_account_and_automatic
         .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
             connected_seller_id: "acct_test_123".to_string(),
             provider: PaymentProvider::Stripe,
-            require_automatic_tax: true,
+
+            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "PT".to_string(),
+                state_code: None,
+            }),
         })
         .await;
     server.abort();
 
     // Check both account and Tax readiness are accepted
     result.expect("ready fiscal sponsor to pass validation");
+}
+
+#[test]
+fn validate_fiscal_sponsor_accepts_matching_canadian_tax_registrations() {
+    // Setup country-wide and province-specific active Canadian registrations
+    let country_wide: StripeTaxRegistrationResponse = serde_json::from_value(json!({
+        "country": "CA",
+        "country_options": {"ca": {"type": "standard"}},
+        "id": "taxreg_ca",
+        "status": "active"
+    }))
+    .expect("country-wide Canadian registration to deserialize");
+    let province: StripeTaxRegistrationResponse = serde_json::from_value(json!({
+        "country": "CA",
+        "country_options": {
+            "ca": {
+                "province_standard": {"province": "BC"},
+                "type": "province_standard"
+            }
+        },
+        "id": "taxreg_ca_bc",
+        "status": "active"
+    }))
+    .expect("province-specific Canadian registration to deserialize");
+    let ontario = TicketTaxJurisdiction {
+        country_code: "CA".to_string(),
+        state_code: Some("ON".to_string()),
+    };
+    let british_columbia = TicketTaxJurisdiction {
+        country_code: "CA".to_string(),
+        state_code: Some("BC".to_string()),
+    };
+
+    // Check country-wide registrations cover Canada while province registrations remain exact
+    assert!(StripeProvider::tax_registration_matches(
+        &country_wide,
+        &ontario
+    ));
+    assert!(StripeProvider::tax_registration_matches(
+        &province,
+        &british_columbia
+    ));
+    assert!(!StripeProvider::tax_registration_matches(
+        &province, &ontario
+    ));
+}
+
+#[tokio::test]
+async fn validate_fiscal_sponsor_accepts_us_registration_without_venue_state() {
+    // Setup a ready sponsor with an active state registration
+    let router = Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/tax/settings",
+            get(|| async { Json(json!({"status": "active"})) }),
+        )
+        .route(
+            "/v1/tax/registrations",
+            get(|| async {
+                Json(json!({
+                    "data": [{
+                        "country": "US",
+                        "country_options": {"us": {"state": "CA"}},
+                        "id": "taxreg_us_ca",
+                        "status": "active"
+                    }],
+                    "has_more": false
+                }))
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate country-level registration coverage until the venue state is known
+    let result = provider
+        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            provider: PaymentProvider::Stripe,
+
+            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "US".to_string(),
+                state_code: None,
+            }),
+        })
+        .await;
+    server.abort();
+
+    // Allow performance-location validation to report the missing venue state
+    result.expect("active US registration to pass when the venue state is not known");
+}
+
+#[tokio::test]
+async fn validate_fiscal_sponsor_paginates_active_tax_registrations() {
+    // Setup a matching United States registration on the second provider page
+    let router = Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/tax/settings",
+            get(|| async { Json(json!({"status": "active"})) }),
+        )
+        .route(
+            "/v1/tax/registrations",
+            get(|uri: Uri| async move {
+                let query = uri.query().expect("registration query to be present");
+                if query.contains("starting_after=taxreg_es") {
+                    Json(json!({
+                        "data": [{
+                            "country": "US",
+                            "country_options": {"us": {"state": "CA"}},
+                            "id": "taxreg_us_ca",
+                            "status": "active"
+                        }],
+                        "has_more": false
+                    }))
+                } else {
+                    assert!(query.contains("limit=100"));
+                    assert!(query.contains("status=active"));
+                    Json(json!({
+                        "data": [{
+                            "country": "ES",
+                            "country_options": {},
+                            "id": "taxreg_es",
+                            "status": "active"
+                        }],
+                        "has_more": true
+                    }))
+                }
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate a subdivision-scoped venue through both registration pages
+    let result = provider
+        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            provider: PaymentProvider::Stripe,
+
+            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "US".to_string(),
+                state_code: Some("CA".to_string()),
+            }),
+        })
+        .await;
+    server.abort();
+
+    // Check a later matching registration satisfies readiness
+    result.expect("matching paginated registration to pass readiness");
 }
 
 #[tokio::test]
@@ -1300,7 +1546,8 @@ async fn validate_fiscal_sponsor_rejects_account_controlled_response_without_con
         .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
             connected_seller_id: "acct_test_123".to_string(),
             provider: PaymentProvider::Stripe,
-            require_automatic_tax: false,
+
+            automatic_tax_jurisdiction: None,
         })
         .await
         .expect_err("account-controlled sponsor should fail readiness validation");
@@ -1312,6 +1559,45 @@ async fn validate_fiscal_sponsor_rejects_account_controlled_response_without_con
         FiscalSponsorReadinessError::NotReady(ref message)
             if message == super::STRIPE_ACCOUNT_CONTROLLER_READINESS_ERROR
     ));
+}
+
+#[tokio::test]
+async fn validate_fiscal_sponsor_rejects_empty_incomplete_registration_page() {
+    // Setup an internally inconsistent paginated registration response
+    let router = Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/tax/settings",
+            get(|| async { Json(json!({"status": "active"})) }),
+        )
+        .route(
+            "/v1/tax/registrations",
+            get(|| async { Json(json!({"data": [], "has_more": true})) }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate readiness without allowing an unsafe pagination loop
+    let err = provider
+        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            provider: PaymentProvider::Stripe,
+
+            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "PT".to_string(),
+                state_code: None,
+            }),
+        })
+        .await
+        .expect_err("malformed registration pagination to fail closed");
+    server.abort();
+
+    // Preserve malformed provider responses as internal failures
+    assert!(matches!(err, FiscalSponsorReadinessError::Unexpected(_)));
 }
 
 #[tokio::test]
@@ -1335,7 +1621,11 @@ async fn validate_fiscal_sponsor_rejects_inactive_automatic_tax_settings() {
         .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
             connected_seller_id: "acct_test_123".to_string(),
             provider: PaymentProvider::Stripe,
-            require_automatic_tax: true,
+
+            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "PT".to_string(),
+                state_code: None,
+            }),
         })
         .await
         .expect_err("inactive Stripe Tax settings to fail closed");
@@ -1397,7 +1687,8 @@ async fn validate_fiscal_sponsor_rejects_incompatible_controller_configuration()
             .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
                 connected_seller_id: "acct_test_123".to_string(),
                 provider: PaymentProvider::Stripe,
-                require_automatic_tax: false,
+
+                automatic_tax_jurisdiction: None,
             })
             .await
             .expect_err(&format!("{scenario} should fail readiness validation"));
@@ -1413,32 +1704,63 @@ async fn validate_fiscal_sponsor_rejects_incompatible_controller_configuration()
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_treats_unknown_account_as_not_ready() {
-    // Setup the provider response returned for an unknown connected account
-    let router = Router::new().route(
-        "/v1/accounts/acct_unknown",
-        get(|| async { StatusCode::NOT_FOUND }),
-    );
+async fn validate_fiscal_sponsor_rejects_missing_us_state_registration() {
+    // Setup active registrations that do not cover the event's United States state
+    let router = Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/tax/settings",
+            get(|| async { Json(json!({"status": "active"})) }),
+        )
+        .route(
+            "/v1/tax/registrations",
+            get(|| async {
+                Json(json!({
+                    "data": [
+                        {
+                            "country": "US",
+                            "country_options": {"us": {"state": "NY"}},
+                            "id": "taxreg_us_ny",
+                            "status": "active"
+                        },
+                        {
+                            "country": "US",
+                            "country_options": {"us": {}},
+                            "id": "taxreg_us_missing_state",
+                            "status": "active"
+                        }
+                    ],
+                    "has_more": false
+                }))
+            }),
+        );
     let (api_base_url, server) = spawn_stripe_api(router).await;
     let mut provider = sample_stripe_provider();
     provider.api_base_url = api_base_url;
 
-    // Validate the unknown account through the public provider boundary
+    // Validate an event whose state is absent from the sponsor's registrations
     let err = provider
         .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
-            connected_seller_id: "acct_unknown".to_string(),
+            connected_seller_id: "acct_test_123".to_string(),
             provider: PaymentProvider::Stripe,
-            require_automatic_tax: false,
+
+            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "US".to_string(),
+                state_code: Some("CA".to_string()),
+            }),
         })
         .await
-        .expect_err("unknown Stripe account to fail readiness validation");
+        .expect_err("wrong or missing state registrations to fail readiness");
     server.abort();
 
-    // Keep organizer-correctable account selection failures user-facing
+    // Check the missing jurisdiction remains organizer-actionable
     assert!(matches!(
         err,
         FiscalSponsorReadinessError::NotReady(ref message)
-            if message == "fiscal sponsor Stripe account could not be validated"
+            if message.contains("active tax registration for US-CA")
     ));
 }
 
@@ -1458,7 +1780,8 @@ async fn validate_fiscal_sponsor_treats_provider_outage_as_unexpected() {
         .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
             connected_seller_id: "acct_test_123".to_string(),
             provider: PaymentProvider::Stripe,
-            require_automatic_tax: false,
+
+            automatic_tax_jurisdiction: None,
         })
         .await
         .expect_err("Stripe outage to fail readiness validation");
@@ -1466,6 +1789,257 @@ async fn validate_fiscal_sponsor_treats_provider_outage_as_unexpected() {
 
     // Preserve infrastructure failures as internal errors
     assert!(matches!(err, FiscalSponsorReadinessError::Unexpected(_)));
+}
+
+#[tokio::test]
+async fn validate_fiscal_sponsor_treats_tax_registration_outage_as_unexpected() {
+    // Setup a provider outage after account and Tax settings validation succeeds
+    let router = Router::new()
+        .route(
+            "/v1/accounts/acct_test_123",
+            get(|| async { Json(sample_stripe_account_response()) }),
+        )
+        .route(
+            "/v1/tax/settings",
+            get(|| async { Json(json!({"status": "active"})) }),
+        )
+        .route(
+            "/v1/tax/registrations",
+            get(|| async { StatusCode::SERVICE_UNAVAILABLE }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate readiness while the registration endpoint is unavailable
+    let err = provider
+        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            provider: PaymentProvider::Stripe,
+
+            automatic_tax_jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "PT".to_string(),
+                state_code: None,
+            }),
+        })
+        .await
+        .expect_err("Stripe registration outage to fail readiness");
+    server.abort();
+
+    // Preserve transient provider failures as internal errors
+    assert!(matches!(err, FiscalSponsorReadinessError::Unexpected(_)));
+}
+
+#[tokio::test]
+async fn validate_fiscal_sponsor_treats_unknown_account_as_not_ready() {
+    // Setup the provider response returned for an unknown connected account
+    let router = Router::new().route(
+        "/v1/accounts/acct_unknown",
+        get(|| async { StatusCode::NOT_FOUND }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate the unknown account through the public provider boundary
+    let err = provider
+        .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
+            connected_seller_id: "acct_unknown".to_string(),
+            provider: PaymentProvider::Stripe,
+
+            automatic_tax_jurisdiction: None,
+        })
+        .await
+        .expect_err("unknown Stripe account to fail readiness validation");
+    server.abort();
+
+    // Keep organizer-correctable account selection failures user-facing
+    assert!(matches!(
+        err,
+        FiscalSponsorReadinessError::NotReady(ref message)
+            if message == "fiscal sponsor Stripe account could not be validated"
+    ));
+}
+
+#[tokio::test]
+async fn validate_tax_rates_accepts_active_rate_without_valid_venue_jurisdiction() {
+    // Setup an active compatible rate while the event form has no valid country yet
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|| async {
+            Json(json!({
+                "data": [{
+                    "active": true,
+                    "display_name": "Custom tax",
+                    "id": "txr_custom",
+                    "inclusive": true,
+                    "percentage": 5.0
+                }],
+                "has_more": false
+            }))
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate account ownership and behavior without malformed geographic matching
+    let result = provider
+        .validate_tax_rates(&ValidateTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            manual_tax_rate_ids: vec!["txr_custom".to_string()],
+            tax_behavior: TicketTaxBehavior::Inclusive,
+
+            jurisdiction: None,
+        })
+        .await;
+    server.abort();
+
+    // Defer venue errors to the event validation boundary
+    result.expect("active Tax Rate to pass while the venue jurisdiction is invalid");
+}
+
+#[tokio::test]
+async fn validate_tax_rates_accepts_matching_country_and_state() {
+    // Setup country-wide and state-specific active rates covering the venue
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|headers: HeaderMap| async move {
+            assert_eq!(headers["stripe-account"], "acct_test_123");
+            Json(json!({
+                "data": [
+                    {
+                        "active": true,
+                        "country": "US",
+                        "display_name": "Sales tax",
+                        "id": "txr_country",
+                        "inclusive": false,
+                        "percentage": 8.0
+                    },
+                    {
+                        "active": true,
+                        "country": "US",
+                        "display_name": "State tax",
+                        "id": "txr_state",
+                        "inclusive": false,
+                        "percentage": 1.0,
+                        "state": "CA"
+                    }
+                ],
+                "has_more": false
+            }))
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Revalidate every selected rate against the event venue
+    let result = provider
+        .validate_tax_rates(&ValidateTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            manual_tax_rate_ids: vec!["txr_country".to_string(), "txr_state".to_string()],
+            tax_behavior: TicketTaxBehavior::Exclusive,
+
+            jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "US".to_string(),
+                state_code: Some("CA".to_string()),
+            }),
+        })
+        .await;
+    server.abort();
+
+    // Check both compatible jurisdiction shapes remain selectable
+    result.expect("matching Tax Rates to pass readiness");
+}
+
+#[tokio::test]
+async fn validate_tax_rates_accepts_state_rate_without_venue_state() {
+    // Setup a state-specific active rate for a venue whose state is not stored
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|| async {
+            Json(json!({
+                "data": [{
+                    "active": true,
+                    "country": "US",
+                    "display_name": "State tax",
+                    "id": "txr_state",
+                    "inclusive": true,
+                    "percentage": 8.0,
+                    "state": "CA"
+                }],
+                "has_more": false
+            }))
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Revalidate at country level because the venue subdivision is unknown
+    let result = provider
+        .validate_tax_rates(&ValidateTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            manual_tax_rate_ids: vec!["txr_state".to_string()],
+            tax_behavior: TicketTaxBehavior::Inclusive,
+
+            jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "US".to_string(),
+                state_code: None,
+            }),
+        })
+        .await;
+    server.abort();
+
+    // Preserve compatibility for stored venues without subdivision codes
+    result.expect("state-specific Tax Rate to pass when the venue state is unknown");
+}
+
+#[tokio::test]
+async fn validate_tax_rates_rejects_countryless_rate() {
+    // Setup an active rate without Stripe jurisdiction metadata
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|| async {
+            Json(json!({
+                "data": [{
+                    "active": true,
+                    "display_name": "Custom tax",
+                    "id": "txr_countryless",
+                    "inclusive": true,
+                    "percentage": 5.0
+                }],
+                "has_more": false
+            }))
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Revalidate the rate against a known event jurisdiction
+    let err = provider
+        .validate_tax_rates(&ValidateTaxRatesInput {
+            connected_seller_id: "acct_test_123".to_string(),
+            manual_tax_rate_ids: vec!["txr_countryless".to_string()],
+            tax_behavior: TicketTaxBehavior::Inclusive,
+
+            jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "PT".to_string(),
+                state_code: None,
+            }),
+        })
+        .await
+        .expect_err("countryless Tax Rate to fail readiness");
+    server.abort();
+
+    // Check the organizer is told to declare the venue country
+    assert!(matches!(
+        err,
+        FiscalSponsorReadinessError::NotReady(ref message)
+            if message.contains("must declare a country")
+    ));
 }
 
 #[tokio::test]
@@ -1485,6 +2059,11 @@ async fn validate_tax_rates_rejects_missing_or_incompatible_ids() {
             connected_seller_id: "acct_test_123".to_string(),
             manual_tax_rate_ids: vec!["txr_missing".to_string()],
             tax_behavior: TicketTaxBehavior::Inclusive,
+
+            jurisdiction: Some(TicketTaxJurisdiction {
+                country_code: "PT".to_string(),
+                state_code: None,
+            }),
         })
         .await
         .expect_err("missing Tax Rate to be rejected");
@@ -1492,6 +2071,64 @@ async fn validate_tax_rates_rejects_missing_or_incompatible_ids() {
 
     // Check provider drift remains an organizer-actionable readiness failure
     assert!(matches!(err, FiscalSponsorReadinessError::NotReady(_)));
+}
+
+#[tokio::test]
+async fn validate_tax_rates_rejects_wrong_country_or_state() {
+    // Setup active rates whose country and state each conflict with the venue
+    let router = Router::new().route(
+        "/v1/tax_rates",
+        get(|| async {
+            Json(json!({
+                "data": [
+                    {
+                        "active": true,
+                        "country": "IE",
+                        "display_name": "Irish VAT",
+                        "id": "txr_ie",
+                        "inclusive": true,
+                        "percentage": 23.0
+                    },
+                    {
+                        "active": true,
+                        "country": "US",
+                        "display_name": "New York tax",
+                        "id": "txr_ny",
+                        "inclusive": true,
+                        "percentage": 8.875,
+                        "state": "NY"
+                    }
+                ],
+                "has_more": false
+            }))
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Validate each mismatched selection against a California venue
+    for rate_id in ["txr_ie", "txr_ny"] {
+        let err = provider
+            .validate_tax_rates(&ValidateTaxRatesInput {
+                connected_seller_id: "acct_test_123".to_string(),
+                manual_tax_rate_ids: vec![rate_id.to_string()],
+                tax_behavior: TicketTaxBehavior::Inclusive,
+
+                jurisdiction: Some(TicketTaxJurisdiction {
+                    country_code: "US".to_string(),
+                    state_code: Some("CA".to_string()),
+                }),
+            })
+            .await
+            .expect_err("mismatched Tax Rate to fail readiness");
+        assert!(matches!(
+            err,
+            FiscalSponsorReadinessError::NotReady(ref message)
+                if message.contains("does not cover the event venue US-CA")
+        ));
+    }
+    server.abort();
 }
 
 #[test]

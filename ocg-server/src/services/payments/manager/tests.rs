@@ -27,7 +27,8 @@ use crate::{
         event::{EventKind, EventSummary},
         payments::{
             EventPurchaseSummary, FiscalSponsorSeller, GroupPaymentRecipient, PaymentProvider,
-            PreparedEventCheckout, TicketTaxBehavior, TicketTaxCalculationMode, TicketVenue,
+            PreparedEventCheckout, TicketTaxBehavior, TicketTaxCalculationMode,
+            TicketTaxJurisdiction, TicketVenue,
         },
         site::SiteSettings,
     },
@@ -1072,7 +1073,7 @@ async fn request_refund_returns_error_when_notification_context_load_fails() {
 }
 
 #[tokio::test]
-async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_requirement() {
+async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_jurisdiction() {
     // Setup a provider expectation for the selected fiscal sponsor
     let mut provider = MockPaymentsProvider::new();
     provider
@@ -1080,7 +1081,10 @@ async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_requirement()
         .withf(|input| {
             input.connected_seller_id == "acct_sponsor"
                 && input.provider == PaymentProvider::Stripe
-                && input.require_automatic_tax
+                && input.automatic_tax_jurisdiction.as_ref().is_some_and(|jurisdiction| {
+                    jurisdiction.country_code == "US"
+                        && jurisdiction.state_code.as_deref() == Some("CA")
+                })
         })
         .times(1)
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1091,6 +1095,10 @@ async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_requirement()
     );
 
     // Validate automatic-tax readiness through the manager boundary
+    let jurisdiction = TicketTaxJurisdiction {
+        country_code: "US".to_string(),
+        state_code: Some("CA".to_string()),
+    };
     manager
         .validate_fiscal_sponsor(
             &GroupPaymentRecipient {
@@ -1098,10 +1106,58 @@ async fn validate_fiscal_sponsor_forwards_provider_account_and_tax_requirement()
                 recipient_id: "acct_sponsor".to_string(),
                 seller_display_name: "Sponsor".to_string(),
             },
-            true,
+            Some(jurisdiction),
         )
         .await
         .expect("provider readiness to be forwarded");
+}
+
+#[tokio::test]
+async fn validate_tax_rates_forwards_venue_jurisdiction() {
+    // Setup provider expectations for the selected sponsor, rates, and venue
+    let mut provider = MockPaymentsProvider::new();
+    provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    provider
+        .expect_validate_tax_rates()
+        .withf(|input| {
+            input.connected_seller_id == "acct_sponsor"
+                && input.manual_tax_rate_ids == ["txr_state"]
+                && input.tax_behavior == TicketTaxBehavior::Exclusive
+                && input.jurisdiction.as_ref().is_some_and(|jurisdiction| {
+                    jurisdiction.country_code == "US"
+                        && jurisdiction.state_code.as_deref() == Some("CA")
+                })
+        })
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(()) }));
+    let manager = sample_payments_manager(
+        MockDB::new(),
+        MockNotificationsManager::new(),
+        Some(provider),
+    );
+    let jurisdiction = TicketTaxJurisdiction {
+        country_code: "US".to_string(),
+        state_code: Some("CA".to_string()),
+    };
+    let recipient = GroupPaymentRecipient {
+        provider: PaymentProvider::Stripe,
+        recipient_id: "acct_sponsor".to_string(),
+        seller_display_name: "Sponsor".to_string(),
+    };
+
+    // Validate manual rates through the manager boundary
+    manager
+        .validate_tax_rates(
+            &recipient,
+            &["txr_state".to_string()],
+            TicketTaxBehavior::Exclusive,
+            Some(jurisdiction),
+        )
+        .await
+        .expect("manual Tax Rate jurisdiction to be forwarded");
 }
 
 #[tokio::test]
@@ -1140,6 +1196,12 @@ async fn ensure_automatic_tax_readiness_reuses_cached_location_without_state() {
         .return_const(PaymentProvider::Stripe);
     provider
         .expect_validate_fiscal_sponsor()
+        .withf(|input| {
+            input.connected_seller_id == "acct_sponsor"
+                && input.automatic_tax_jurisdiction.as_ref().is_some_and(|jurisdiction| {
+                    jurisdiction.country_code == "PT" && jurisdiction.state_code.is_none()
+                })
+        })
         .times(1)
         .returning(|_| Box::pin(async { Ok(()) }));
     provider

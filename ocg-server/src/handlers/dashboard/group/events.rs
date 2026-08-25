@@ -303,7 +303,7 @@ pub(crate) async fn tax_rates(
                 "configure a fiscal sponsor before selecting Stripe Tax Rates".to_string(),
             )
         })?;
-    payments_manager.validate_fiscal_sponsor(&recipient, false).await?;
+    payments_manager.validate_fiscal_sponsor(&recipient, None).await?;
 
     // Return active rates matching the requested inclusive or exclusive behavior
     let rates = payments_manager
@@ -346,9 +346,7 @@ pub(crate) async fn add(
             &payments_manager,
             community_id,
             group_id,
-            event.manual_tax_rate_ids.as_deref().unwrap_or_default(),
-            event.tax_behavior,
-            event.tax_calculation_mode,
+            &event,
         )
         .await?;
         bind_payment_validation(&mut event_payload, &payment_validation)?;
@@ -730,9 +728,7 @@ pub(crate) async fn update(
             &payments_manager,
             community_id,
             group_id,
-            event.manual_tax_rate_ids.as_deref().unwrap_or_default(),
-            event.tax_behavior,
-            event.tax_calculation_mode,
+            &event,
         )
         .await?;
         bind_payment_validation(&mut event_json, &payment_validation)?;
@@ -1095,26 +1091,38 @@ async fn validate_group_fiscal_sponsor(
     payments_manager: &DynPaymentsManager,
     community_id: Uuid,
     group_id: Uuid,
-    manual_tax_rate_ids: &[String],
-    tax_behavior: TicketTaxBehavior,
-    tax_calculation_mode: TicketTaxCalculationMode,
+    event: &Event,
 ) -> Result<PaymentConfigurationValidation, HandlerError> {
+    // Snapshot tax inputs from the event form before contacting the provider
+    let jurisdiction = event_form_venue(event).valid_tax_jurisdiction();
+    let manual_tax_rate_ids = event.manual_tax_rate_ids.as_deref().unwrap_or_default();
+    let tax_behavior = event.tax_behavior;
+    let tax_calculation_mode = event.tax_calculation_mode;
+
     // Load the current recipient before validating its provider configuration
     let payment_recipient = db.get_group_payment_recipient(community_id, group_id).await?;
 
     // Validate sponsor readiness and any manual Tax Rate selection
     if let Some(recipient) = payment_recipient.as_ref() {
+        let automatic_tax_jurisdiction =
+            if tax_calculation_mode == TicketTaxCalculationMode::Automatic {
+                jurisdiction.clone()
+            } else {
+                None
+            };
         payments_manager
-            .validate_fiscal_sponsor(
-                recipient,
-                tax_calculation_mode == TicketTaxCalculationMode::Automatic,
-            )
+            .validate_fiscal_sponsor(recipient, automatic_tax_jurisdiction)
             .await?;
 
         // Recheck manual rate ownership and display behavior
         if tax_calculation_mode == TicketTaxCalculationMode::Manual {
             payments_manager
-                .validate_tax_rates(recipient, manual_tax_rate_ids, tax_behavior)
+                .validate_tax_rates(
+                    recipient,
+                    manual_tax_rate_ids,
+                    tax_behavior,
+                    jurisdiction.clone(),
+                )
                 .await?;
         }
     } else if tax_calculation_mode == TicketTaxCalculationMode::Manual
@@ -1178,9 +1186,7 @@ async fn validate_publish_fiscal_sponsor(
     // Validate the sponsor once, then recheck every applicable manual selection
     let payment_recipient = db.get_group_payment_recipient(community_id, group_id).await?;
     if let Some(recipient) = payment_recipient.as_ref() {
-        payments_manager
-            .validate_fiscal_sponsor(recipient, require_automatic_tax)
-            .await?;
+        payments_manager.validate_fiscal_sponsor(recipient, None).await?;
         for event in paid_events
             .iter()
             .filter(|event| event.tax_calculation_mode == TicketTaxCalculationMode::Automatic)
@@ -1191,8 +1197,14 @@ async fn validate_publish_fiscal_sponsor(
                 .map_err(automatic_tax_handler_error)?;
         }
         for event in manual_events {
+            let jurisdiction = event_venue(event).valid_tax_jurisdiction();
             payments_manager
-                .validate_tax_rates(recipient, &event.manual_tax_rate_ids, event.tax_behavior)
+                .validate_tax_rates(
+                    recipient,
+                    &event.manual_tax_rate_ids,
+                    event.tax_behavior,
+                    jurisdiction,
+                )
                 .await?;
         }
     } else if paid_events

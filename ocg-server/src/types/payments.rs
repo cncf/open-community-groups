@@ -462,6 +462,26 @@ impl TicketTaxCalculationMode {
     }
 }
 
+/// Normalized event jurisdiction used for ticket-tax readiness checks.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct TicketTaxJurisdiction {
+    /// ISO country code of the event venue.
+    pub country_code: String,
+
+    /// ISO state or province code of the event venue.
+    pub state_code: Option<String>,
+}
+
+impl TicketTaxJurisdiction {
+    /// Formats the jurisdiction for organizer-facing readiness errors.
+    pub(crate) fn display_code(&self) -> String {
+        self.state_code.as_ref().map_or_else(
+            || self.country_code.clone(),
+            |state_code| format!("{}-{state_code}", self.country_code),
+        )
+    }
+}
+
 /// Active Stripe Tax Rate available in a fiscal sponsor account.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -582,6 +602,26 @@ impl TicketVenue {
         }
 
         hex::encode(digest.finalize())
+    }
+
+    /// Returns the normalized country and subdivision used for tax readiness.
+    pub(crate) fn tax_jurisdiction(&self) -> TicketTaxJurisdiction {
+        let venue = self.normalized();
+
+        TicketTaxJurisdiction {
+            country_code: venue.country_code,
+            state_code: venue.state_code,
+        }
+    }
+
+    /// Returns a normalized tax jurisdiction when the venue country is valid.
+    pub(crate) fn valid_tax_jurisdiction(&self) -> Option<TicketTaxJurisdiction> {
+        let venue = self.normalized();
+
+        venue.has_valid_country_code().then_some(TicketTaxJurisdiction {
+            country_code: venue.country_code,
+            state_code: venue.state_code,
+        })
     }
 }
 

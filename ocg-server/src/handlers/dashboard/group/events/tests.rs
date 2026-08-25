@@ -1172,6 +1172,10 @@ async fn test_add_paid_rejects_unready_fiscal_sponsor_without_persisting() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
+    let body = format!(
+        "{}&venue_address=123%20Main%20St&venue_city=San%20Francisco&venue_country_code=us&venue_name=Main%20Venue&venue_state_code=ca&venue_zip_code=94105",
+        sample_paid_event_body().replace("kind_id=virtual", "kind_id=in-person")
+    );
     let session_record = sample_session_record(
         session_id,
         user_id,
@@ -1212,10 +1216,13 @@ async fn test_add_paid_rejects_unready_fiscal_sponsor_without_persisting() {
         .return_const(Some(PaymentProvider::Stripe));
     payments_manager
         .expect_validate_fiscal_sponsor()
-        .withf(|recipient, require_automatic_tax| {
+        .withf(|recipient, automatic_tax_jurisdiction| {
             recipient.provider == PaymentProvider::Stripe
                 && recipient.recipient_id == "acct_test"
-                && *require_automatic_tax
+                && automatic_tax_jurisdiction.as_ref().is_some_and(|jurisdiction| {
+                    jurisdiction.country_code == "US"
+                        && jurisdiction.state_code.as_deref() == Some("CA")
+                })
         })
         .times(1)
         .returning(|_, _| {
@@ -1236,7 +1243,7 @@ async fn test_add_paid_rejects_unready_fiscal_sponsor_without_persisting() {
         .uri("/dashboard/group/events/add")
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(sample_paid_event_body()))
+        .body(Body::from(body))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
 
@@ -2935,20 +2942,24 @@ async fn test_publish_validation_rechecks_every_manual_tax_selection() {
     payments_manager
         .expect_validate_fiscal_sponsor()
         .times(1)
-        .withf(|recipient, require_automatic_tax| {
-            recipient.recipient_id == "acct_test" && !require_automatic_tax
+        .withf(|recipient, automatic_tax_jurisdiction| {
+            recipient.recipient_id == "acct_test" && automatic_tax_jurisdiction.is_none()
         })
         .returning(|_, _| Box::pin(async { Ok(()) }));
     payments_manager
         .expect_validate_tax_rates()
         .times(2)
-        .withf(|recipient, rate_ids, behavior| {
+        .withf(|recipient, rate_ids, behavior, jurisdiction| {
             recipient.recipient_id == "acct_test"
                 && (rate_ids == ["txr_state", "txr_local"]
                     && *behavior == TicketTaxBehavior::Exclusive
                     || rate_ids == ["txr_free"] && *behavior == TicketTaxBehavior::Inclusive)
+                && jurisdiction.as_ref().is_some_and(|jurisdiction| {
+                    jurisdiction.country_code == "US"
+                        && jurisdiction.state_code.as_deref() == Some("CA")
+                })
         })
-        .returning(|_, _, _| Box::pin(async { Ok(()) }));
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
     let payments_manager: DynPaymentsManager = Arc::new(payments_manager);
 
     // Validate the full publish set and retain the paid mutation binding
@@ -4849,4 +4860,42 @@ async fn test_update_unrelated_paid_event_edit_skips_fiscal_sponsor_validation()
         StatusCode::NO_CONTENT,
         "refresh-group-dashboard-table",
     );
+}
+
+#[tokio::test]
+async fn test_validate_group_fiscal_sponsor_omits_invalid_form_jurisdiction() {
+    // Setup an automatic-tax form without a valid physical venue
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut event = sample_event_form();
+    event.kind_id = "in-person".to_string();
+    let mut db = MockDB::new();
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(Some(sample_group_payment_recipient())));
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_validate_fiscal_sponsor()
+        .times(1)
+        .withf(|recipient, jurisdiction| {
+            recipient.recipient_id == "acct_test" && jurisdiction.is_none()
+        })
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+    payments_manager.expect_validate_tax_rates().never();
+    let payments_manager: DynPaymentsManager = Arc::new(payments_manager);
+
+    // Validate sponsor ownership without sending an empty country to Stripe
+    let validation = super::validate_group_fiscal_sponsor(
+        &db,
+        &payments_manager,
+        community_id,
+        group_id,
+        &event,
+    )
+    .await
+    .expect("account-only sponsor validation to succeed");
+
+    // Preserve the automatic-tax binding for the database venue validation
+    assert!(validation.require_automatic_tax);
 }

@@ -17,7 +17,8 @@ use uuid::Uuid;
 use crate::{
     config::PaymentsStripeConfig,
     types::payments::{
-        PaymentMode, PaymentProvider, TicketTaxBehavior, TicketTaxCalculationMode, TicketTaxRate,
+        PaymentMode, PaymentProvider, TicketTaxBehavior, TicketTaxCalculationMode,
+        TicketTaxJurisdiction, TicketTaxRate,
     },
     util::base_url_without_trailing_slash,
 };
@@ -475,6 +476,66 @@ impl StripeProvider {
         matches!(status, "canceled" | "failed")
     }
 
+    /// Lists active connected-account Tax Rates matching the requested behavior.
+    async fn list_connected_tax_rates(
+        &self,
+        input: &ListTaxRatesInput,
+    ) -> Result<Vec<StripeTaxRateResponse>> {
+        let mut rates = Vec::new();
+        let mut starting_after: Option<String> = None;
+
+        loop {
+            // Request one account-scoped page with provider-side behavior filtering
+            let mut query = vec![
+                ("active", "true".to_string()),
+                (
+                    "inclusive",
+                    (input.tax_behavior == TicketTaxBehavior::Inclusive).to_string(),
+                ),
+                ("limit", "100".to_string()),
+            ];
+            if let Some(starting_after) = starting_after.as_ref() {
+                query.push(("starting_after", starting_after.clone()));
+            }
+            let response = self
+                .client
+                .get(format!(
+                    "{}/tax_rates?{}",
+                    self.api_base_url(),
+                    serde_urlencoded::to_string(&query)?
+                ))
+                .basic_auth(&self.cfg.secret_key, Some(""))
+                .header("stripe-account", &input.connected_seller_id)
+                .header("stripe-version", STRIPE_API_VERSION)
+                .send()
+                .await
+                .context("error listing fiscal sponsor Stripe Tax Rates")?;
+            let page = Self::parse_provider_response::<StripeTaxRateListResponse>(
+                response,
+                "Tax Rate listing",
+            )
+            .await?;
+            let next_starting_after = page.data.last().map(|rate| rate.id.clone());
+
+            // Preserve only active rates matching the requested display behavior
+            rates.extend(page.data.into_iter().filter(|rate| {
+                rate.active
+                    && rate.inclusive == (input.tax_behavior == TicketTaxBehavior::Inclusive)
+            }));
+
+            // Continue from the final provider identifier until pagination completes
+            if !page.has_more {
+                break;
+            }
+            starting_after = Some(
+                next_starting_after
+                    .context("Stripe Tax Rate page is empty while has_more is true")?,
+            );
+        }
+
+        Ok(rates)
+    }
+
     /// Normalizes a currency code for Stripe requests.
     fn normalized_currency_code(currency_code: &str) -> String {
         currency_code.trim().to_ascii_lowercase()
@@ -827,6 +888,45 @@ impl StripeProvider {
             })
     }
 
+    /// Returns whether an active Stripe registration covers the event jurisdiction.
+    fn tax_registration_matches(
+        registration: &StripeTaxRegistrationResponse,
+        jurisdiction: &TicketTaxJurisdiction,
+    ) -> bool {
+        if registration.status != "active"
+            || !registration.country.eq_ignore_ascii_case(&jurisdiction.country_code)
+        {
+            return false;
+        }
+
+        match jurisdiction.country_code.as_str() {
+            "US" => jurisdiction.state_code.as_deref().is_none_or(|venue_state| {
+                registration
+                    .country_options
+                    .us
+                    .as_ref()
+                    .and_then(|options| options.state.as_deref())
+                    .is_some_and(|registration_state| {
+                        registration_state.eq_ignore_ascii_case(venue_state)
+                    })
+            }),
+            "CA" => registration.country_options.ca.as_ref().is_some_and(|options| {
+                match options.registration_type.as_str() {
+                    "simplified" | "standard" => true,
+                    "province_standard" => {
+                        options.province_standard.as_ref().is_some_and(|province_standard| {
+                            jurisdiction.state_code.as_deref().is_some_and(|venue_state| {
+                                province_standard.province.eq_ignore_ascii_case(venue_state)
+                            })
+                        })
+                    }
+                    _ => false,
+                }
+            }),
+            _ => true,
+        }
+    }
+
     /// Truncates provider display text on a character boundary.
     fn truncate(value: &str, max_chars: usize) -> String {
         value.chars().take(max_chars).collect()
@@ -901,13 +1001,84 @@ impl StripeProvider {
             ));
         }
 
-        // Require active sponsor-scoped Tax settings when the event uses automatic tax
-        if input.require_automatic_tax {
+        // Require sponsor-scoped Tax settings and registration for automatic tax
+        if let Some(jurisdiction) = input.automatic_tax_jurisdiction.as_ref() {
             self.validate_connected_tax_settings(&input.connected_seller_id)
+                .await?;
+            self.validate_connected_tax_registration(&input.connected_seller_id, jurisdiction)
                 .await?;
         }
 
         Ok(())
+    }
+
+    /// Requires an active sponsor-scoped registration covering the event jurisdiction.
+    async fn validate_connected_tax_registration(
+        &self,
+        connected_seller_id: &str,
+        jurisdiction: &TicketTaxJurisdiction,
+    ) -> std::result::Result<(), FiscalSponsorReadinessError> {
+        let mut starting_after: Option<String> = None;
+
+        loop {
+            // Request active registrations without relying on unsupported country filters
+            let mut query = vec![
+                ("limit", "100".to_string()),
+                ("status", "active".to_string()),
+            ];
+            if let Some(starting_after) = starting_after.as_ref() {
+                query.push(("starting_after", starting_after.clone()));
+            }
+            let response = self
+                .client
+                .get(format!(
+                    "{}/tax/registrations?{}",
+                    self.api_base_url(),
+                    serde_urlencoded::to_string(&query).map_err(anyhow::Error::from)?
+                ))
+                .basic_auth(&self.cfg.secret_key, Some(""))
+                .header("stripe-account", connected_seller_id)
+                .header("stripe-version", STRIPE_API_VERSION)
+                .send()
+                .await
+                .context("error listing fiscal sponsor Stripe Tax registrations")
+                .map_err(FiscalSponsorReadinessError::Unexpected)?;
+            let page = Self::parse_fiscal_sponsor_response::<StripeTaxRegistrationListResponse>(
+                response,
+                "Tax registration listing",
+                "fiscal sponsor Stripe Tax registrations could not be validated",
+            )
+            .await?;
+
+            // Stop as soon as an active registration covers the event jurisdiction
+            if page
+                .data
+                .iter()
+                .any(|registration| Self::tax_registration_matches(registration, jurisdiction))
+            {
+                return Ok(());
+            }
+            if !page.has_more {
+                break;
+            }
+            starting_after = Some(
+                page.data
+                    .last()
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Stripe Tax registration page is empty while has_more is true"
+                        )
+                    })
+                    .map_err(FiscalSponsorReadinessError::Unexpected)?
+                    .id
+                    .clone(),
+            );
+        }
+
+        Err(FiscalSponsorReadinessError::NotReady(format!(
+            "fiscal sponsor Stripe account needs an active tax registration for {}",
+            jurisdiction.display_code()
+        )))
     }
 
     /// Requires active sponsor-scoped Stripe Tax settings for automatic tax.
@@ -953,6 +1124,8 @@ impl StripeProvider {
             connected_seller_id: input.seller.connected_account_id.clone(),
             manual_tax_rate_ids: manual_tax_rate_ids.to_vec(),
             tax_behavior: input.tax_behavior,
+
+            jurisdiction: Some(input.venue.tax_jurisdiction()),
         })
         .await?;
 
@@ -1008,8 +1181,10 @@ impl PaymentsProvider for StripeProvider {
         self.validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
             connected_seller_id: input.seller.connected_account_id.clone(),
             provider: input.seller.provider,
-            require_automatic_tax: input.tax_calculation_mode
-                == TicketTaxCalculationMode::Automatic,
+
+            automatic_tax_jurisdiction: (input.tax_calculation_mode
+                == TicketTaxCalculationMode::Automatic)
+                .then(|| input.venue.tax_jurisdiction()),
         })
         .await?;
 
@@ -1264,74 +1439,19 @@ impl PaymentsProvider for StripeProvider {
 
     /// [`PaymentsProvider::list_tax_rates`].
     async fn list_tax_rates(&self, input: &ListTaxRatesInput) -> Result<Vec<TicketTaxRate>> {
-        let mut rates = Vec::new();
-        let mut starting_after: Option<String> = None;
+        self.list_connected_tax_rates(input).await.map(|rates| {
+            rates
+                .into_iter()
+                .map(|rate| TicketTaxRate {
+                    display_name: rate.display_name,
+                    id: rate.id,
+                    inclusive: rate.inclusive,
+                    percentage: rate.percentage.to_string(),
 
-        loop {
-            // Request one account-scoped page with provider-side behavior filtering
-            let mut query = vec![
-                ("active", "true".to_string()),
-                (
-                    "inclusive",
-                    (input.tax_behavior == TicketTaxBehavior::Inclusive).to_string(),
-                ),
-                ("limit", "100".to_string()),
-            ];
-            if let Some(starting_after) = starting_after.as_ref() {
-                query.push(("starting_after", starting_after.clone()));
-            }
-            let response = self
-                .client
-                .get(format!(
-                    "{}/tax_rates?{}",
-                    self.api_base_url(),
-                    serde_urlencoded::to_string(&query)?
-                ))
-                .basic_auth(&self.cfg.secret_key, Some(""))
-                .header("stripe-account", &input.connected_seller_id)
-                .header("stripe-version", STRIPE_API_VERSION)
-                .send()
-                .await
-                .context("error listing fiscal sponsor Stripe Tax Rates")?;
-            let page = Self::parse_provider_response::<StripeTaxRateListResponse>(
-                response,
-                "Tax Rate listing",
-            )
-            .await?;
-
-            // Preserve only active rates matching the requested display behavior
-            rates.extend(
-                page.data
-                    .iter()
-                    .filter(|rate| {
-                        rate.active
-                            && rate.inclusive
-                                == (input.tax_behavior == TicketTaxBehavior::Inclusive)
-                    })
-                    .map(|rate| TicketTaxRate {
-                        display_name: rate.display_name.clone(),
-                        id: rate.id.clone(),
-                        inclusive: rate.inclusive,
-                        percentage: rate.percentage.to_string(),
-
-                        jurisdiction: rate.jurisdiction.clone(),
-                    }),
-            );
-
-            // Continue from the final provider identifier until pagination completes
-            if !page.has_more {
-                break;
-            }
-            starting_after = Some(
-                page.data
-                    .last()
-                    .context("Stripe Tax Rate page is empty while has_more is true")?
-                    .id
-                    .clone(),
-            );
-        }
-
-        Ok(rates)
+                    jurisdiction: rate.jurisdiction,
+                })
+                .collect()
+        })
     }
 
     /// [`PaymentsProvider::provider`].
@@ -1623,26 +1743,43 @@ impl PaymentsProvider for StripeProvider {
         }
 
         // Load active compatible rates from the selected connected account
-        let available_ids = self
-            .list_tax_rates(&ListTaxRatesInput {
+        let available_rates = self
+            .list_connected_tax_rates(&ListTaxRatesInput {
                 connected_seller_id: input.connected_seller_id.clone(),
                 tax_behavior: input.tax_behavior,
             })
             .await
-            .map_err(FiscalSponsorReadinessError::Unexpected)?
-            .into_iter()
-            .map(|rate| rate.id)
-            .collect::<BTreeSet<_>>();
+            .map_err(FiscalSponsorReadinessError::Unexpected)?;
 
-        // Require every selected identifier to remain available in that account
-        if !selected_ids
-            .iter()
-            .all(|selected_id| available_ids.contains(*selected_id))
-        {
-            return Err(FiscalSponsorReadinessError::NotReady(
-                "manual Stripe Tax Rates must be active in the fiscal sponsor account and match the ticket tax display"
-                    .to_string(),
-            ));
+        // Require every selected rate to remain available and cover the venue jurisdiction
+        for selected_id in selected_ids {
+            let Some(rate) = available_rates.iter().find(|rate| rate.id == selected_id) else {
+                return Err(FiscalSponsorReadinessError::NotReady(
+                    "manual Stripe Tax Rates must be active in the fiscal sponsor account and match the ticket tax display"
+                        .to_string(),
+                ));
+            };
+            if let Some(jurisdiction) = input.jurisdiction.as_ref() {
+                let Some(country) = rate.country.as_deref() else {
+                    return Err(FiscalSponsorReadinessError::NotReady(format!(
+                        "manual Stripe Tax Rate {selected_id} must declare a country matching the event venue"
+                    )));
+                };
+                if !country.eq_ignore_ascii_case(&jurisdiction.country_code)
+                    || rate
+                        .state
+                        .as_deref()
+                        .zip(jurisdiction.state_code.as_deref())
+                        .is_some_and(|(rate_state, venue_state)| {
+                            !rate_state.eq_ignore_ascii_case(venue_state)
+                        })
+                {
+                    return Err(FiscalSponsorReadinessError::NotReady(format!(
+                        "manual Stripe Tax Rate {selected_id} does not cover the event venue {}",
+                        jurisdiction.display_code()
+                    )));
+                }
+            }
         }
 
         Ok(())
@@ -1998,8 +2135,68 @@ struct StripeTaxRateResponse {
     /// Decimal Tax Rate percentage.
     percentage: serde_json::Number,
 
+    /// ISO country code declared on the Tax Rate.
+    country: Option<String>,
     /// Jurisdiction configured on the Tax Rate.
     jurisdiction: Option<String>,
+    /// ISO state or province code declared on the Tax Rate.
+    state: Option<String>,
+}
+
+/// Canadian registration options returned by Stripe Tax.
+#[derive(Debug, Deserialize)]
+struct StripeTaxRegistrationCanadaOptions {
+    /// Canadian registration scope selected in Stripe.
+    #[serde(rename = "type")]
+    registration_type: String,
+
+    /// Province-specific standard registration, when applicable.
+    province_standard: Option<StripeTaxRegistrationProvinceStandardOptions>,
+}
+
+/// Country-specific options attached to a Stripe Tax registration.
+#[derive(Debug, Deserialize)]
+struct StripeTaxRegistrationCountryOptions {
+    /// Canadian registration options.
+    ca: Option<StripeTaxRegistrationCanadaOptions>,
+    /// United States registration options.
+    us: Option<StripeTaxRegistrationUnitedStatesOptions>,
+}
+
+/// Paginated Stripe Tax registration listing response.
+#[derive(Debug, Deserialize)]
+struct StripeTaxRegistrationListResponse {
+    /// Tax registrations in this page.
+    data: Vec<StripeTaxRegistrationResponse>,
+    /// Whether another page is available.
+    has_more: bool,
+}
+
+/// Province-standard options attached to a Canadian registration.
+#[derive(Debug, Deserialize)]
+struct StripeTaxRegistrationProvinceStandardOptions {
+    /// ISO province code covered by the registration.
+    province: String,
+}
+
+/// Minimal Stripe Tax registration used for jurisdiction readiness.
+#[derive(Debug, Deserialize)]
+struct StripeTaxRegistrationResponse {
+    /// ISO country code covered by the registration.
+    country: String,
+    /// Country-specific subdivision details.
+    country_options: StripeTaxRegistrationCountryOptions,
+    /// Stripe registration identifier used for pagination.
+    id: String,
+    /// Registration lifecycle status.
+    status: String,
+}
+
+/// United States registration options returned by Stripe Tax.
+#[derive(Debug, Deserialize)]
+struct StripeTaxRegistrationUnitedStatesOptions {
+    /// ISO state code covered by the registration.
+    state: Option<String>,
 }
 
 /// Minimal Stripe Tax settings response used for automatic-tax readiness.

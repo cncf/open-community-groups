@@ -282,11 +282,13 @@ understand the applicable charges.
 
 Stripe Tax only calculates and collects tax in the locations where the
 connected account has an active registration. OCG checks that the connected
-account's Stripe Tax settings are active whenever automatic-tax readiness is
-required, but it does not determine whether the sponsor's registrations cover
-every event jurisdiction. Without an applicable registration, Stripe can
-return zero tax because the sponsor is not collecting there, so the sponsor
-and platform administrator must test each venue's tax result.
+account's Stripe Tax settings are active and that an active registration covers
+the event venue whenever automatic-tax readiness is required. Registrations
+match at country level, with an exact state match for United States venues.
+Canadian country-wide registrations cover every province; a province-specific
+registration must match the venue province. These readiness checks catch
+missing setup, but the sponsor and platform administrator must still verify the
+calculated tax result for each venue.
 
 Tax for ticket sales is in public preview and requires API version
 `2026-03-25.preview` or later. The OCG deployment configuration pins the
@@ -300,7 +302,9 @@ For manual tax, the sponsor owns the Tax Rate definitions in its connected
 Stripe account. Create active rates with the intended display name,
 jurisdiction, percentage, and inclusive or exclusive behavior. Event organizers
 then select the compatible rates in each event's `Tickets` tab. OCG does not
-copy or maintain the rate metadata.
+copy or maintain the rate metadata. Every selected rate must declare the event
+venue country. When the venue has a state or province code, a rate that
+declares one must also match that venue subdivision.
 
 ### Stripe-Side Readiness
 
@@ -348,7 +352,9 @@ virtual access, but a virtual-only ticket must remain free. In the event's
 `Tickets` tab, choose automatic Stripe Tax, one or more manual Tax Rates from
 the sponsor account, or no tax collection. Automatic and manual modes also
 choose inclusive or exclusive display. OCG revalidates manual selections against
-the connected account when the event is saved, published, and checked out.
+the connected account and venue jurisdiction when the event is saved,
+published, and checked out. Automatic-tax readiness likewise checks the active
+registration for the venue when paid setup is saved or revalidated.
 
 A positive final price uses sponsor-owned Stripe Checkout with required billing
 address, business tax-ID collection, and post-payment invoicing. An
