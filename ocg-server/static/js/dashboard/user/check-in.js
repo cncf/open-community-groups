@@ -37,7 +37,7 @@ export const initializeUserCheckIn = (container = document, { historyRestore = f
     const trigger = event.target.closest?.("[data-user-check-in-open]");
     if (trigger instanceof HTMLElement) {
       populateUserCheckInModal(root, trigger);
-      toggleModalVisibility(MODAL_ID, trigger);
+      toggleModalVisibility(modal, trigger);
       activeRoot = root;
       return;
     }
@@ -107,7 +107,7 @@ export const populateUserCheckInModal = (root, trigger) => {
 
 /** Closes the active attendee credential modal and releases its scroll lock. */
 const closeUserCheckInModal = (root, modal) => {
-  if (!isElementHidden(modal)) toggleModalVisibility(MODAL_ID);
+  if (!isElementHidden(modal)) toggleModalVisibility(modal);
   if (activeRoot === root) activeRoot = null;
 };
 

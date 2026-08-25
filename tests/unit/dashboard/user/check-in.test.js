@@ -138,11 +138,21 @@ describe("user check-in credential modal", () => {
     const root = document.querySelector("[data-user-check-in-root]");
     document.querySelector("[data-user-check-in-open]").click();
 
-    // Announce root cleanup while the modal is active.
+    // Insert replacement content before announcing cleanup of the outgoing root.
+    const outgoingModal = root.querySelector("#user-check-in-modal");
+    const incomingRoot = root.cloneNode(true);
+    const incomingModal = incomingRoot.querySelector("#user-check-in-modal");
+    incomingModal.classList.add("hidden");
+    incomingModal.setAttribute("aria-hidden", "true");
+    root.before(incomingRoot);
+
+    // Announce root cleanup while duplicate modal IDs share the document.
     root.dispatchEvent(new Event("htmx:beforeCleanupElement", { bubbles: true }));
 
-    // Verify cleanup closes the modal and releases its scroll lock.
-    expect(document.getElementById("user-check-in-modal").classList.contains("hidden")).to.equal(true);
+    // Verify cleanup closes the captured modal without opening its replacement.
+    expect(outgoingModal.classList.contains("hidden")).to.equal(true);
+    expect(incomingModal.classList.contains("hidden")).to.equal(true);
     expect(document.body.style.overflow).to.equal("");
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
   });
 });

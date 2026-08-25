@@ -350,7 +350,7 @@ const startScannerSession = async (root, trigger) => {
     refreshOnSettle = refreshAttendees && refreshAttendeesOnClose;
     attendeesChanged = false;
     cleanupResources();
-    if (!isElementHidden(modal)) toggleModalVisibility(MODAL_ID);
+    if (!isElementHidden(modal)) toggleModalVisibility(modal);
     if (isCurrent()) activeSession = null;
     if (shouldRefreshAttendees && root.isConnected) {
       root.dispatchEvent(new Event(ATTENDEES_REFRESH_EVENT, { bubbles: true }));
@@ -367,7 +367,7 @@ const startScannerSession = async (root, trigger) => {
   activeSession = session;
 
   try {
-    toggleModalVisibility(MODAL_ID, trigger);
+    toggleModalVisibility(modal, trigger);
     audio = createScannerAudio();
     audio.unlock();
     const Scanner = scannerImplementation();

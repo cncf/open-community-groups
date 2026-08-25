@@ -439,12 +439,20 @@ describe("group check-in scanner controls", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       await FakeScanner.instance.onDecode({ data: "ocg-check-in:v1:event-a:credential" });
 
-      // HTMX cleanup closes the modal without starting a redundant refresh.
+      // Insert the replacement modal before HTMX cleans up the outgoing modal.
+      const outgoingModal = root.querySelector("#group-check-in-scanner-modal");
+      const incomingModal = outgoingModal.cloneNode(true);
+      incomingModal.classList.add("hidden");
+      incomingModal.setAttribute("aria-hidden", "true");
+      outgoingModal.before(incomingModal);
+
+      // HTMX cleanup closes only the outgoing modal and releases its scroll lock.
       root.dispatchEvent(new Event("htmx:beforeCleanupElement", { bubbles: true }));
       expect(refreshCount).to.equal(0);
-      expect(document.getElementById("group-check-in-scanner-modal").classList.contains("hidden")).to.equal(
-        true,
-      );
+      expect(outgoingModal.classList.contains("hidden")).to.equal(true);
+      expect(incomingModal.classList.contains("hidden")).to.equal(true);
+      expect(document.body.style.overflow).to.equal("");
+      expect(document.body.dataset.modalOpenCount).to.equal("0");
     } finally {
       fetchMock.restore();
     }

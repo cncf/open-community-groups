@@ -172,13 +172,13 @@ export const resetBodyScrollLock = () => {
 
 /**
  * Toggles a modal and manages aria-hidden, body scroll, and focus.
- * @param {string} modalId ID of the modal element to toggle.
+ * @param {string|Element} modalTarget Modal element or its ID.
  * @param {HTMLElement|null} [trigger=null] Element that opened the modal.
  * @returns {void}
  */
-export const toggleModalVisibility = (modalId, trigger = null) => {
-  const modal = getElementById(document, modalId);
-  if (!modal) {
+export const toggleModalVisibility = (modalTarget, trigger = null) => {
+  const modal = typeof modalTarget === "string" ? getElementById(document, modalTarget) : modalTarget;
+  if (!(modal instanceof Element)) {
     return;
   }
 

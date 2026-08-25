@@ -306,6 +306,28 @@ describe("common utilities", () => {
     expect(document.activeElement).to.equal(document.getElementById("modal-review-note"));
   });
 
+  it("toggles a captured modal element when duplicate IDs exist", () => {
+    // Open the outgoing modal before a replacement with the same ID is inserted.
+    const outgoingModal = document.createElement("div");
+    outgoingModal.id = "swapped-modal";
+    outgoingModal.className = "hidden";
+    document.body.append(outgoingModal);
+    toggleModalVisibility(outgoingModal);
+
+    // Insert the incoming hidden modal ahead of the outgoing modal, as HTMX does.
+    const incomingModal = outgoingModal.cloneNode(true);
+    incomingModal.classList.add("hidden");
+    incomingModal.setAttribute("aria-hidden", "true");
+    outgoingModal.before(incomingModal);
+
+    // Closing the captured node leaves the replacement closed and releases scroll.
+    toggleModalVisibility(outgoingModal);
+    expect(outgoingModal.classList.contains("hidden")).to.equal(true);
+    expect(incomingModal.classList.contains("hidden")).to.equal(true);
+    expect(document.body.style.overflow).to.equal("");
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+  });
+
   it("tracks nested lock counts before unlocking body scroll", () => {
     // Nested locks keep body scrolling disabled and count both locks.
     lockBodyScroll();
