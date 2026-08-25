@@ -47,7 +47,7 @@
                   data-event-location="{% if event.kind == EventKind::Virtual -%}Virtual{% else -%}{{ event.location.as_deref() |assigned_or("Venue details pending") }}{% endif -%}"
                   data-event-name="{{ event.name }}"
                   data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan">
-            <span>Scan attendees</span>
+            <span>Scan Attendee Codes</span>
             <span class="sr-only">for {{ event.name }}</span>
           </button>
           {% endcall -%}

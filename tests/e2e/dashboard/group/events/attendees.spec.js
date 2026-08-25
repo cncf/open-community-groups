@@ -194,7 +194,7 @@ test.describe("group dashboard attendees tab", () => {
       TEST_EVENT_IDS.alpha.one,
     );
     const scannerButton = attendeesContent.getByRole("button", {
-      name: "Scan attendees",
+      name: "Scan Attendee Codes",
     });
     await expect(scannerButton).toBeEnabled();
     await scannerButton.click();
@@ -247,7 +247,7 @@ test.describe("group dashboard attendees tab", () => {
     expect((await refreshResponsePromise).ok()).toBe(true);
     await expect(scannerModal).toBeHidden();
     await expect(
-      attendeesContent.getByRole("button", { name: "Scan attendees" }),
+      attendeesContent.getByRole("button", { name: "Scan Attendee Codes" }),
     ).toBeEnabled();
   });
 
@@ -263,7 +263,7 @@ test.describe("group dashboard attendees tab", () => {
 
     // Verify the desktop scan action stays discoverable for this role.
     const scannerButton = attendeesContent.getByRole("button", {
-      name: "Scan attendees",
+      name: "Scan Attendee Codes",
     });
     await expect(scannerButton).toBeVisible();
     await expect(scannerButton).toBeEnabled();

@@ -498,7 +498,7 @@ This tab supports delivery-day execution. From here you can:
 
 - Review the attendee list and enrollment timing.
 - Run manual check-in.
-- Open the QR scanner from desktop with `Scan attendees`.
+- Open the QR scanner from desktop with `Scan Attendee Codes`.
 - Cancel confirmed attendance for future active events, queueing a full refund for paid tickets.
 - Open the attendee actions menu to invite attendees with an assigned ticket
   type.
@@ -510,11 +510,15 @@ Use [Check-In](/dashboard/group?tab=check-in ':ignore') for the primary event-da
 the community and group above the event list when working on mobile, then select an event, allow
 camera access, and scan each attendee's personal QR code. The scanner stays open, shows the attendee
 name and ticket, distinguishes a new check-in from a duplicate scan, and then resumes automatically.
-On desktop, the Attendees tab also offers a `Scan attendees` button that opens the same scanner in
+On desktop, the Attendees tab also offers a `Scan Attendee Codes` button that opens the same scanner in
 place and updates the attendee table when it closes if any attendees have been scanned. It requires
 check-in access and is disabled for canceled, unpublished, or past events. Use the attendees
 table toggle as the manual fallback when a camera or QR code is unavailable. In both flows, the
 person must have confirmed attendance.
+
+![Group Check-In event selection](../screenshots/dashboard-group-check-in.png)
+
+![Successful attendee QR scan](../screenshots/dashboard-group-event-attendees-scanner.png)
 
 The `Award badge` menu opens the badge picker for the chosen attendee set. Selection mode keeps
 chosen attendees while you change table filters, sorting, or pages. For eligibility, duplicate

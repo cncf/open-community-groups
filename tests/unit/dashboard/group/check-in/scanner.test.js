@@ -28,7 +28,7 @@ describe("group check-in scanner controls", () => {
             <input type="checkbox" data-group-check-in-mute>
             <span data-group-check-in-mute-label>Mute sounds</span>
           </label>
-          <h2 id="group-check-in-scanner-title">Scan attendees</h2>
+          <h2 id="group-check-in-scanner-title">Scan Attendee Codes</h2>
           <h4 id="group-check-in-event-name"></h4>
           <p id="group-check-in-event-date"></p>
           <p id="group-check-in-event-location"></p>
@@ -622,7 +622,9 @@ describe("group check-in scanner controls", () => {
     expect(FakeScanner.instances[0].video.isConnected).to.equal(false);
     expect(FakeScanner.instances[1].video).to.equal(document.querySelector("[data-group-check-in-video]"));
     expect(document.querySelector("[data-group-check-in-camera]").value).to.equal("new-camera");
-    expect(document.getElementById("group-check-in-scanner-title").textContent).to.equal("Scan attendees");
+    expect(document.getElementById("group-check-in-scanner-title").textContent).to.equal(
+      "Scan Attendee Codes",
+    );
     expect(document.getElementById("group-check-in-event-name").textContent).to.equal("Event B");
     expect(document.getElementById("group-check-in-event-date").textContent).to.equal(
       "Aug 25, 2026 · 10:00 AM CEST",

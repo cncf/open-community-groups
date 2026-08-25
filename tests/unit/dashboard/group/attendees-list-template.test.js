@@ -45,7 +45,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('disabled title="Past events cannot scan attendees."');
     expect(template).to.include('{% include "dashboard/group/check_in_scanner_modal.html" -%}');
     expect(scannerModal).to.include('id="group-check-in-scanner-modal"');
-    expect(scannerModal).to.include('title = "Scan attendees"');
+    expect(scannerModal).to.include('title = "Scan Attendee Codes"');
   });
 
   it("groups enrollment views and exact statuses in one selector", async () => {

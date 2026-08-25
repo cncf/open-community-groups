@@ -56,7 +56,7 @@ describe("dashboard group check-in template", () => {
     expect(template).to.include(
       'class="btn-primary-outline btn-mini inline-flex items-center whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"',
     );
-    expect(template).to.include("<span>Scan attendees</span>");
+    expect(template).to.include("<span>Scan Attendee Codes</span>");
     expect(template).to.include('<span class="sr-only">for {{ event.name }}</span>');
     expect(template).not.to.include("icon-qr-code bg-primary-500");
   });
@@ -84,7 +84,7 @@ describe("dashboard group check-in template", () => {
     );
     expect(template).to.include('<div class="modal-body flex-1 p-4 md:p-6">');
     expect(template).to.include(
-      '{{ dashboard::modal_header(title_id = "group-check-in-scanner-title", title = "Scan attendees", close_attrs = "data-group-check-in-close") -}}',
+      '{{ dashboard::modal_header(title_id = "group-check-in-scanner-title", title = "Scan Attendee Codes", close_attrs = "data-group-check-in-close") -}}',
     );
     expect(template).to.include('id="group-check-in-event-name"');
     expect(template).to.include('id="group-check-in-event-date"');

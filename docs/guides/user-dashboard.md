@@ -116,6 +116,8 @@ The mobile dashboard entry screen links to Check-In. On larger screens, open the
 at [/dashboard/user?tab=check-in](/dashboard/user?tab=check-in ':ignore'). Canceled, unpublished,
 unscheduled, and past events are excluded.
 
+![Attendee check-in QR code](../screenshots/dashboard-user-check-in-qr-code.png)
+
 ## Purchases and Financial Documents
 
 `Purchases & documents` is the durable history for paid tickets. Unlike `My
