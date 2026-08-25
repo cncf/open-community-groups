@@ -79,6 +79,7 @@ begin
     )
     for update of e;
 
+    -- Reject invitations when the event is missing or no longer inviteable
     if not found then
         raise exception 'event not found or inactive';
     end if;
@@ -103,9 +104,12 @@ begin
         and u.registration_status = 'registered'
         and u.email_verified = true;
 
+        -- Reject unknown or unverified registered invitees
         if not found then
             raise exception 'registered user not found';
         end if;
+
+    -- Resolve or pre-register the email invitee
     else
         -- Serialize pre-registration by normalized email across different events
         perform pg_advisory_xact_lock(
@@ -125,9 +129,12 @@ begin
         from "user" u
         where lower(u.email) = v_normalized_email;
 
+        -- Create a pre-registered user for a new invitee email
         if not found then
             v_create_pre_registered_user := true;
             v_target_user_id := gen_random_uuid();
+
+        -- Reject registered accounts whose email is still unverified
         elsif v_existing_user_registration_status = 'registered'
               and v_existing_user_email_verified = false then
             raise exception 'registered user email is not verified';
@@ -156,6 +163,7 @@ begin
             and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
         );
 
+        -- Require an explicit tier when more than one organizer-visible tier exists
         if v_selectable_ticket_type_count <> 1 then
             raise exception 'ticket type is required for event invitations';
         end if;
@@ -187,6 +195,7 @@ begin
     and ett.event_ticket_type_id = p_event_ticket_type_id
     and ett.active = true;
 
+    -- Reject missing, inactive, or currently unpriced invitation tiers
     if not found or v_ticket_current_price is null then
         raise exception 'ticket type is not available';
     end if;
@@ -240,8 +249,10 @@ begin
         return jsonb_build_object(
             'conflict',
             case
+                -- Keep queue heads ahead of organizer invitations
                 when cardinality(v_promoted_user_ids) > 0
                     then 'queue-has-priority'
+                -- Report a full tier when no queued user was promoted
                 else 'ticket-type-sold-out'
             end
         );
@@ -264,18 +275,22 @@ begin
     and ea.user_id = v_target_user_id
     for update of ea;
 
+    -- Reject confirmed attendees who already hold a seat
     if v_existing_status = 'confirmed' then
         raise exception 'user is already attending this event';
     end if;
 
+    -- Reject invitees who already have a pending attendance invitation
     if v_existing_status = 'invitation-pending' then
         raise exception 'user already has a pending event invitation';
     end if;
 
+    -- Reject invitees who still owe registration answers
     if v_existing_status = 'registration-questions-pending' then
         raise exception 'user already has a pending event registration';
     end if;
 
+    -- Reject invitees who already have an active offer reservation
     if exists (
         select 1
         from admission_offer ao
@@ -320,6 +335,8 @@ begin
             current_timestamp + interval '24 hours',
             v_starts_at
         );
+
+    -- Bound in-progress events by end time instead of start time
     else
         v_offer_expires_at := least(
             current_timestamp + interval '24 hours',
@@ -327,26 +344,40 @@ begin
         );
     end if;
 
+    -- Reject invitations that cannot reserve any remaining claim window
     if v_offer_expires_at <= current_timestamp then
         raise exception 'event not found or inactive';
     end if;
 
     -- Create the time-limited organizer invitation reservation
     insert into admission_offer (
+        amount_minor,
+        currency_code,
+        discount_amount_minor,
         event_id,
         event_ticket_type_id,
         expires_at,
         organizer_user_id,
         source,
         status,
+        ticket_title,
         user_id
     ) values (
+        v_ticket_current_price,
+        case
+            -- Keep intrinsic-free snapshots currency-free
+            when v_ticket_current_price > 0 then v_payment_currency_code
+            -- Drop event currency from free organizer invitations
+            else null
+        end,
+        0,
         p_event_id,
         p_event_ticket_type_id,
         v_offer_expires_at,
         p_actor_user_id,
         'organizer_invitation',
         'pending',
+        v_ticket_title,
         v_target_user_id
     )
     returning admission_offer_id into v_admission_offer_id;

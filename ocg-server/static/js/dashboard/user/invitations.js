@@ -9,6 +9,8 @@ import { isSuccessfulXHRStatus, parseJsonText } from "/static/js/common/utils.js
 
 // Maps recoverable server conflict codes to actionable offer-claim guidance.
 const CLAIM_CONFLICT_MESSAGES = {
+  "admission-offer-price-locked":
+    "This ticket offer is locked at its stored price. Clear the discount code to claim it.",
   "admission-offer-unavailable": "Ticket offer expired or is no longer available.",
   "payment-setup-unavailable":
     "Payment is temporarily unavailable for this ticket offer. Try again before the offer deadline.",

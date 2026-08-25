@@ -72,10 +72,11 @@ are disabled. The event page shows the open or close time when a window is confi
 If you started checkout before registration closed, the active ticket hold can still be completed
 until it expires.
 
-After registration closes, organizers cannot accept pending invitation requests
-until the event starts. Rejecting a request still works. Automatic waitlist
-promotion also stops while registration is closed. Organizers can still invite
-attendees manually.
+Organizers can still accept pending invitation requests and reissue expired
+approval offers outside the public registration window until the event is past
+or canceled. Rejecting a request still works. Automatic waitlist promotion
+stops while registration is closed. Organizers can still invite attendees
+manually.
 
 Organizer-created offers are an exception. They can be claimed and their
 required registration questions answered outside the public registration

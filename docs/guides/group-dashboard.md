@@ -275,10 +275,11 @@ Enrollment-aware event operations also include:
   checkout, registration-question answers, and automatic waitlist promotion.
   Registration open and close dates cannot be after the event start, and close must be after open
   when both are set. If only an open date is set, registration closes at event start; if both fields
-  are blank, no registration window is applied. After the window closes, organizers cannot accept
-  pending invitation requests until the event starts; rejecting a request and inviting attendees
-  manually still work. Active checkout holds may still complete checkout and
-  required registration questions after the public window closes, until the hold expires.
+  are blank, no registration window is applied. Organizers can still accept pending invitation
+  requests and reissue expired approval offers outside the window until the event is past or
+  canceled; rejecting a request and inviting attendees manually still work. Active checkout holds
+  may still complete checkout and required registration questions after the public window closes,
+  until the hold expires.
 - Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on event
   enrollment settings, with table search, sorting, and filters for day-of operations.
 - Automatic reconciliation when attendance, checkout, refund, capacity, or
@@ -292,8 +293,9 @@ Approval event operations include:
   paid ticketing.
 - Invitation requests appear in a separate `Requests` tab for organizer review. The tab defaults to
   pending requests and can be filtered to all, accepted, or rejected requests. Accept pending
-  requests while registration is open or after the event starts. `View answers` shows registration
-  answers submitted with a ticket request.
+  requests and reissue expired offers while the event is still active, including outside the
+  public registration window. `View answers` shows registration answers submitted with a ticket
+  request.
 - A public ticket request keeps the requester-selected tier.
 - A generic request for a fully private event requires the organizer
   to assign an invitation-only tier.
@@ -315,9 +317,10 @@ Organizer-created event invitations are managed from the event `Attendees` tab:
 - Invitations bypass public approval and registration windows, but never event
   capacity, tier capacity, or public-tier waiting-list priority.
 - Pending invitations reserve capacity until their displayed deadline and can
-  be canceled before claim. Offers are bounded by a 24-hour claim window and
-  the event or registration deadline. Expired organizer invitations may be
-  reissued when the recipient is still eligible.
+  be canceled before claim. Organizer invitations and approval offers are bounded
+  by a 24-hour claim window and event start before the event begins, or event
+  end after it starts. Expired organizer invitations may be reissued when the
+  recipient is still eligible.
 - Declined, canceled, or expired offers release their reservation and trigger
   queue reconciliation. Declined or expired waiting-list recipients are not
   automatically requeued, and their offers cannot be manually reissued.

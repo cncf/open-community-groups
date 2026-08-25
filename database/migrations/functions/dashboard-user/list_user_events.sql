@@ -134,11 +134,20 @@ returns json as $$
                 ao.admission_offer_id,
                 ao.source as admission_offer_source,
                 ao.status as admission_offer_status,
-                coalesce(ao.amount_minor, current_price.amount_minor) as amount_minor,
+                display_price.amount_minor,
                 case
-                    when coalesce(ao.amount_minor, current_price.amount_minor) > 0
-                         or coalesce(ao.discount_amount_minor, 0) > 0
-                        then coalesce(ao.currency_code, e.payment_currency_code)
+                    when display_price.amount_minor > 0
+                         or (
+                            (
+                                ao.status <> 'pending'
+                                or ao.discount_code is not null
+                            )
+                            and coalesce(ao.discount_amount_minor, 0) > 0
+                         )
+                        then coalesce(
+                            display_price.currency_code,
+                            e.payment_currency_code
+                        )
                 end as currency_code,
                 'invitation-approved' as enrollment_status,
                 ao.event_id,
@@ -166,6 +175,28 @@ returns json as $$
                     etpw.event_ticket_price_window_id
                 limit 1
             ) current_price on true
+            left join lateral (
+                select
+                    case
+                        when ao.status = 'pending'
+                             and ao.discount_code is null
+                            then coalesce(
+                                current_price.amount_minor,
+                                case
+                                    when ao.source in ('approval', 'organizer_invitation')
+                                        then ao.amount_minor
+                                end
+                            )
+                        else coalesce(ao.amount_minor, current_price.amount_minor)
+                    end as amount_minor,
+                    case
+                        when ao.status = 'pending'
+                             and ao.discount_code is null
+                             and current_price.amount_minor is not null
+                            then e.payment_currency_code
+                        else ao.currency_code
+                    end as currency_code
+            ) display_price on true
             left join lateral (
                 select ep.provider_checkout_url
                 from event_purchase ep

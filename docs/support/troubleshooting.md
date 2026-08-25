@@ -106,10 +106,13 @@ complete, check:
 
 1. The selected ticket type is active, currently priced, and public for direct
    enrollment.
-2. The ticket type has a price window that is currently in effect.
+2. Direct checkout needs a price window that is currently in effect. A pending
+   approval or organizer invitation can still be claimed at its stored price
+   after that window ends.
 3. The event registration window is currently open for starting checkout, if one is configured.
-   Existing active ticket holds can still complete until the hold expires. Accepting a pending
-   invitation request also requires the window to be open, or the event to have started.
+   Existing active ticket holds can still complete until the hold expires. Organizers can accept
+   pending invitation requests and reissue expired approval offers outside the window while the
+   event is still active.
 4. The discount code is active, still has remaining uses, and has not reached any total-use
    limit. Remaining uses are reserved by active holds and active purchases, then released again if
    the hold expires or the ticket is refunded.

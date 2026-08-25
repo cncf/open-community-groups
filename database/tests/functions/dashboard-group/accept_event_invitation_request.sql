@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(56);
+select plan(65);
 
 -- ============================================================================
 -- VARIABLES
@@ -31,10 +31,13 @@ select plan(56);
 \set eventPastID '3a010000-0000-0000-0000-000000000009'
 \set eventPendingInvitationID '3a010000-0000-0000-0000-000000000010'
 \set eventPaidNoRecipientApprovalID '3a010000-0000-0000-0000-000000000038'
+\set eventPaidReadyApprovalID '3a010000-0000-0000-0000-000000000063'
 \set eventPrivateTicketApprovalID '3a010000-0000-0000-0000-000000000027'
 \set eventPublicTicketApprovalID '3a010000-0000-0000-0000-000000000028'
 \set eventQuestionsApprovalID '3a010000-0000-0000-0000-000000000011'
 \set eventQueuePriorityID '3a010000-0000-0000-0000-00000000002e'
+\set eventRegistrationClosedApprovalID '3a010000-0000-0000-0000-000000000059'
+\set eventRegistrationNotYetOpenID '3a010000-0000-0000-0000-00000000005a'
 \set eventRegistrationOpenUntilStartID '3a010000-0000-0000-0000-000000000023'
 \set eventReissueOfferBlockID '3a010000-0000-0000-0000-000000000039'
 \set eventReissuePurchaseBlockID '3a010000-0000-0000-0000-00000000003a'
@@ -44,9 +47,17 @@ select plan(56);
 \set groupCategoryID '3a010000-0000-0000-0000-000000000013'
 \set groupID '3a010000-0000-0000-0000-000000000014'
 \set inactiveGroupID '3a010000-0000-0000-0000-000000000015'
+\set closedAcceptRequesterID '3a010000-0000-0000-0000-00000000005b'
+\set closedExpiredOfferID '3a010000-0000-0000-0000-00000000005f'
+\set closedPriceWindowID '3a010000-0000-0000-0000-00000000005e'
+\set closedReissueRequesterID '3a010000-0000-0000-0000-00000000005c'
+\set closedTicketTypeID '3a010000-0000-0000-0000-00000000005d'
 \set inProgressPriceWindowID '3a010000-0000-0000-0000-000000000054'
 \set inProgressRequesterID '3a010000-0000-0000-0000-000000000055'
 \set inProgressTicketTypeID '3a010000-0000-0000-0000-000000000056'
+\set notYetOpenPriceWindowID '3a010000-0000-0000-0000-000000000062'
+\set notYetOpenRequesterID '3a010000-0000-0000-0000-000000000060'
+\set notYetOpenTicketTypeID '3a010000-0000-0000-0000-000000000061'
 \set questionsAcceptedRequestUserID '3a010000-0000-0000-0000-000000000016'
 \set queuePriorityPriceWindowID '3a010000-0000-0000-0000-000000000030'
 \set queuePriorityRequesterID '3a010000-0000-0000-0000-000000000031'
@@ -62,6 +73,10 @@ select plan(56);
 \set requester7ID '3a010000-0000-0000-0000-000000000026'
 \set privateTicketPriceWindowID '3a010000-0000-0000-0000-000000000029'
 \set privateTicketTypeID '3a010000-0000-0000-0000-00000000002a'
+\set paidReadyGroupID '3a010000-0000-0000-0000-000000000064'
+\set paidReadyPriceWindowID '3a010000-0000-0000-0000-000000000065'
+\set paidReadyRequesterID '3a010000-0000-0000-0000-000000000066'
+\set paidReadyTicketTypeID '3a010000-0000-0000-0000-000000000067'
 \set paidTicketPriceWindowID '3a010000-0000-0000-0000-00000000003c'
 \set paidTicketTypeID '3a010000-0000-0000-0000-00000000003d'
 \set publicAlternateTicketPriceWindowID '3a010000-0000-0000-0000-00000000003e'
@@ -131,7 +146,10 @@ values (:'eventCategoryID', :'communityID', 'General');
 insert into "user" (user_id, auth_hash, email, username)
 values
     (:'actorID', 'h', 'actor@test.com', 'actor'),
+    (:'closedAcceptRequesterID', 'h', 'closed-accept@test.com', 'closed-accept'),
+    (:'closedReissueRequesterID', 'h', 'closed-reissue@test.com', 'closed-reissue'),
     (:'inProgressRequesterID', 'h', 'in-progress@test.com', 'in-progress'),
+    (:'notYetOpenRequesterID', 'h', 'not-yet-open@test.com', 'not-yet-open'),
     (:'requesterID', 'h', 'requester@test.com', 'requester'),
     (:'requester2ID', 'h', 'requester2@test.com', 'requester2'),
     (:'requester3ID', 'h', 'requester3@test.com', 'requester3'),
@@ -145,6 +163,7 @@ values
     (:'requester11ID', 'h', 'requester11@test.com', 'requester11'),
     (:'requester12ID', 'h', 'requester12@test.com', 'requester12'),
     (:'requester13ID', 'h', 'requester13@test.com', 'requester13'),
+    (:'paidReadyRequesterID', 'h', 'paid-ready@test.com', 'paid-ready'),
     (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request'),
     (:'queuePriorityRequesterID', 'h', 'queue-priority-requester@test.com', 'queue-priority-requester'),
     (:'queuePriorityWaitlistUserID', 'h', 'queue-priority-waitlist@test.com', 'queue-priority-waitlist'),
@@ -191,6 +210,31 @@ values
         'inactive-group',
         false
     );
+
+-- Group with a payment recipient for successful paid approval snapshots
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+
+    payment_recipient
+) values (
+    :'paidReadyGroupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Paid Ready Group',
+    'paid-ready-group',
+    true,
+
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_paid_ready",
+        "seller_display_name": "Paid Ready Fiscal Sponsor"
+    }'::jsonb
+);
 
 -- Events
 insert into event (
@@ -571,6 +615,72 @@ insert into event (
     'UTC'
 );
 
+-- Approval event whose registration window has closed before start
+insert into event (
+    attendee_approval_required,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    registration_ends_at,
+    registration_starts_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    true,
+    'Closed registration ticket approval event',
+    current_timestamp + interval '4 hours',
+    :'eventCategoryID',
+    :'eventRegistrationClosedApprovalID',
+    'in-person',
+    :'groupID',
+    'Closed Registration Ticket Approval',
+    true,
+    current_timestamp - interval '1 hour',
+    current_timestamp - interval '2 hours',
+    'closed-registration-ticket-approval',
+    current_timestamp + interval '2 hours',
+    'UTC'
+);
+
+-- Approval event whose public registration window has not opened yet
+insert into event (
+    attendee_approval_required,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    registration_ends_at,
+    registration_starts_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    true,
+    'Not yet open ticket approval event',
+    current_timestamp + interval '6 hours',
+    :'eventCategoryID',
+    :'eventRegistrationNotYetOpenID',
+    'in-person',
+    :'groupID',
+    'Not Yet Open Ticket Approval',
+    true,
+    current_timestamp + interval '3 hours',
+    current_timestamp + interval '1 hour',
+    'not-yet-open-ticket-approval',
+    current_timestamp + interval '4 hours',
+    'UTC'
+);
+
 -- Paid ticket approval event with no payment recipient configured on the group
 insert into event (
     attendee_approval_required,
@@ -600,6 +710,45 @@ insert into event (
     'UTC'
 );
 
+-- Paid approval event with payment-ready venue context
+insert into event (
+    attendee_approval_required,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    true,
+    'Paid ready ticket approval event',
+    :'eventCategoryID',
+    :'eventPaidReadyApprovalID',
+    'in-person',
+    :'paidReadyGroupID',
+    'Paid Ready Ticket Approval',
+    'USD',
+    true,
+    'paid-ready-ticket-approval',
+    current_timestamp + interval '1 day',
+    'UTC',
+    '1 Main St',
+    'Portland',
+    'US',
+    'Venue',
+    '97201'
+);
+
 -- Ticket tiers assigned or checked by the approval workflows
 insert into event_ticket_type (
     active,
@@ -618,6 +767,24 @@ insert into event_ticket_type (
         1,
         1,
         'In-progress admission'
+    ),
+    (
+        true,
+        'public',
+        :'eventRegistrationClosedApprovalID',
+        :'closedTicketTypeID',
+        1,
+        2,
+        'Closed registration admission'
+    ),
+    (
+        true,
+        'public',
+        :'eventRegistrationNotYetOpenID',
+        :'notYetOpenTicketTypeID',
+        1,
+        1,
+        'Not yet open admission'
     ),
     (
         true,
@@ -694,6 +861,15 @@ insert into event_ticket_type (
     (
         true,
         'public',
+        :'eventPaidReadyApprovalID',
+        :'paidReadyTicketTypeID',
+        1,
+        1,
+        'Paid ready admission'
+    ),
+    (
+        true,
+        'public',
         :'eventReissueOfferBlockID',
         :'reissueOfferBlockTicketTypeID',
         1,
@@ -716,9 +892,12 @@ insert into event_ticket_price_window (
     event_ticket_price_window_id,
     event_ticket_type_id
 ) values
+    (0, :'closedPriceWindowID', :'closedTicketTypeID'),
     (0, :'inProgressPriceWindowID', :'inProgressTicketTypeID'),
+    (0, :'notYetOpenPriceWindowID', :'notYetOpenTicketTypeID'),
     (0, :'privateTicketPriceWindowID', :'privateTicketTypeID'),
     (2500, :'paidTicketPriceWindowID', :'paidTicketTypeID'),
+    (2500, :'paidReadyPriceWindowID', :'paidReadyTicketTypeID'),
     (0, :'publicAlternateTicketPriceWindowID', :'publicAlternateTicketTypeID'),
     (0, :'publicGenericTicketPriceWindowID', :'publicGenericTicketTypeID'),
     (0, :'publicTicketPriceWindowID', :'publicTicketTypeID'),
@@ -776,6 +955,8 @@ values
     (:'eventAttendeeConflictID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventAttendeeConflictID' limit 1), :'requester4ID'),
     (:'eventAttendeeConflictID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventAttendeeConflictID' limit 1), :'requester5ID'),
     (:'eventInProgressApprovalID', :'inProgressTicketTypeID', :'inProgressRequesterID'),
+    (:'eventRegistrationClosedApprovalID', :'closedTicketTypeID', :'closedAcceptRequesterID'),
+    (:'eventRegistrationNotYetOpenID', :'notYetOpenTicketTypeID', :'notYetOpenRequesterID'),
     (:'eventRegistrationOpenUntilStartID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventRegistrationOpenUntilStartID' limit 1), :'requester6ID'),
     (:'eventAttendanceCanceledID', (select event_ticket_type_id from event_ticket_type where event_id = :'eventAttendanceCanceledID' limit 1), :'requester7ID'),
     (:'eventPrivateTicketApprovalID', :'publicGenericTicketTypeID', :'requester3ID'),
@@ -784,6 +965,7 @@ values
     (:'eventPublicTicketApprovalID', :'publicTicketTypeID', :'requester4ID'),
     (:'eventUnavailableTicketApprovalID', :'unavailableTicketTypeID', :'requester9ID'),
     (:'eventPaidNoRecipientApprovalID', :'paidTicketTypeID', :'requester10ID'),
+    (:'eventPaidReadyApprovalID', :'paidReadyTicketTypeID', :'paidReadyRequesterID'),
     (:'eventQueuePriorityID', :'queuePriorityTicketTypeID', :'queuePriorityRequesterID'),
     (:'eventTicketSoldOutID', :'soldOutTicketTypeID', :'soldOutRequesterID');
 
@@ -820,6 +1002,23 @@ insert into event_invitation_request (
         'accepted',
         :'requester12ID'
     );
+
+-- Accepted request reissued after registration closes before start
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    reviewed_at,
+    reviewed_by,
+    status,
+    user_id
+) values (
+    :'eventRegistrationClosedApprovalID',
+    :'closedTicketTypeID',
+    current_timestamp,
+    :'actorID',
+    'accepted',
+    :'closedReissueRequesterID'
+);
 
 -- Active offer that blocks reissuing an accepted ticket request
 insert into admission_offer (
@@ -925,6 +1124,29 @@ insert into admission_offer (
     'organizer_invitation',
     'pending',
     :'soldOutOccupantID'
+);
+
+-- Expired approval offer reissued after registration closes before start
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    organizer_user_id,
+    source,
+    status,
+    user_id
+) values (
+    :'closedExpiredOfferID',
+    current_timestamp - interval '2 hours',
+    :'eventRegistrationClosedApprovalID',
+    :'closedTicketTypeID',
+    current_timestamp - interval '30 minutes',
+    :'actorID',
+    'approval',
+    'expired',
+    :'closedReissueRequesterID'
 );
 
 -- Invitation request with registration answers copied when accepted
@@ -1681,6 +1903,79 @@ select ok(
     'Should create an approval offer without confirming attendance'
 );
 
+-- Should persist a free issue-time price snapshot on the approval offer
+select results_eq(
+    format(
+        $$
+            select
+                ao.amount_minor,
+                ao.currency_code,
+                ao.discount_amount_minor,
+                ao.discount_code,
+                ao.event_discount_code_id,
+                ao.ticket_title
+            from admission_offer ao
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+            and ao.status = 'pending'
+        $$,
+        :'eventID',
+        :'requesterID'
+    ),
+    $$ values (
+        0::bigint,
+        null::text,
+        0::bigint,
+        null::text,
+        null::uuid,
+        'General Admission'::text
+    ) $$,
+    'Should persist a free issue-time price snapshot on the approval offer'
+);
+
+-- Should accept a paid-ready invitation request
+select lives_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,null,%L)',
+        :'actorID',
+        :'paidReadyGroupID',
+        :'eventPaidReadyApprovalID',
+        :'paidReadyRequesterID',
+        'stripe'
+    ),
+    'Should accept a paid-ready invitation request'
+);
+
+-- Should persist a paid issue-time price snapshot on the approval offer
+select results_eq(
+    format(
+        $$
+            select
+                ao.amount_minor,
+                ao.currency_code,
+                ao.discount_amount_minor,
+                ao.discount_code,
+                ao.event_discount_code_id,
+                ao.ticket_title
+            from admission_offer ao
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+            and ao.status = 'pending'
+        $$,
+        :'eventPaidReadyApprovalID',
+        :'paidReadyRequesterID'
+    ),
+    $$ values (
+        2500::bigint,
+        'USD'::text,
+        0::bigint,
+        null::text,
+        null::uuid,
+        'Paid ready admission'::text
+    ) $$,
+    'Should persist a paid issue-time price snapshot on the approval offer'
+);
+
 -- Should accept after reconciling expired reservations
 select is(
     accept_event_invitation_request(
@@ -1842,6 +2137,110 @@ select lives_ok(
         :'actorID', :'groupID', :'eventRegistrationOpenUntilStartID', :'requester6ID'
     ),
     'Should accept attendee requests after registration closes while the event remains active'
+);
+
+-- Should accept invitation requests after registration closes before the event starts
+select is(
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventRegistrationClosedApprovalID',
+        :'closedAcceptRequesterID'
+    )->>'outcome',
+    'offer-created',
+    'Should accept invitation requests after registration closes before the event starts'
+);
+
+-- Should bound post-close approval offers by the remaining event window
+select results_eq(
+    format(
+        $$
+            select
+                ao.expires_at
+                    = least(current_timestamp + interval '24 hours', e.starts_at),
+                ao.expires_at > e.registration_ends_at,
+                ao.status,
+                eir.status
+            from admission_offer ao
+            join event e using (event_id)
+            join event_invitation_request eir
+                on eir.event_id = ao.event_id
+                and eir.user_id = ao.user_id
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+            and ao.status = 'pending'
+        $$,
+        :'eventRegistrationClosedApprovalID',
+        :'closedAcceptRequesterID'
+    ),
+    $$ values (true, true, 'pending'::text, 'accepted'::text) $$,
+    'Should bound post-close approval offers by the remaining event window'
+);
+
+-- Should reissue expired approval offers after registration closes before the event starts
+select is(
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventRegistrationClosedApprovalID',
+        :'closedReissueRequesterID'
+    )->>'outcome',
+    'offer-created',
+    'Should reissue expired approval offers after registration closes before the event starts'
+);
+
+-- Should keep the expired offer and bound the reissued offer by event start
+select is(
+    (
+        select jsonb_build_object(
+            'expired_count', count(*) filter (where ao.status = 'expired'),
+            'expires_at_matches', bool_or(
+                ao.status = 'pending'
+                and ao.expires_at
+                    = least(current_timestamp + interval '24 hours', e.starts_at)
+                and ao.expires_at > e.registration_ends_at
+            ),
+            'pending_count', count(*) filter (where ao.status = 'pending')
+        )
+        from admission_offer ao
+        join event e using (event_id)
+        where ao.event_id = :'eventRegistrationClosedApprovalID'::uuid
+        and ao.user_id = :'closedReissueRequesterID'::uuid
+    ),
+    '{"expired_count": 1, "expires_at_matches": true, "pending_count": 1}'::jsonb,
+    'Should keep the expired offer and bound the reissued offer by event start'
+);
+
+-- Should accept invitation requests before registration opens
+select is(
+    accept_event_invitation_request(
+        :'actorID',
+        :'groupID',
+        :'eventRegistrationNotYetOpenID',
+        :'notYetOpenRequesterID'
+    )->>'outcome',
+    'offer-created',
+    'Should accept invitation requests before registration opens'
+);
+
+-- Should create a pending offer when accepting before registration opens
+select results_eq(
+    format(
+        $$
+            select ao.status, eir.status
+            from admission_offer ao
+            join event_invitation_request eir
+                on eir.event_id = ao.event_id
+                and eir.user_id = ao.user_id
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+            and ao.status = 'pending'
+        $$,
+        :'eventRegistrationNotYetOpenID',
+        :'notYetOpenRequesterID'
+    ),
+    $$ values ('pending'::text, 'accepted'::text) $$,
+    'Should create a pending offer when accepting before registration opens'
 );
 
 -- Should reject accepting an already reviewed request

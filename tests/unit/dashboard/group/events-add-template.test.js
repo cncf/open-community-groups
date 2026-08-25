@@ -281,10 +281,10 @@ describe("dashboard group event add template", () => {
 
     // Verify registration window and question collection guidance.
     expect(template).to.include(
-      "cannot accept pending invitation requests until the event starts",
+      "accept pending invitation requests and reissue expired approval offers outside the",
     );
     expect(template).to.include(
-      "Accept pending requests while registration is open or after the event starts.",
+      "Accept pending requests and reissue expired offers while the event is still active",
     );
     expect(template).to.include(
       "Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.",

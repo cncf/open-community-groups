@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(54);
+select plan(60);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,6 +28,12 @@ select plan(54);
 \set completedPurchaseID '79100000-0000-0000-0000-000000000019'
 \set completedUserID '79100000-0000-0000-0000-000000000024'
 \set discountUserID '79100000-0000-0000-0000-000000000028'
+\set endedWindowDiscountOfferID '79100000-0000-0000-0000-000000000077'
+\set endedWindowDiscountUserID '79100000-0000-0000-0000-000000000078'
+\set endedWindowOfferID '79100000-0000-0000-0000-000000000079'
+\set endedWindowUserID '79100000-0000-0000-0000-00000000007a'
+\set endedWindowWaitlistOfferID '79100000-0000-0000-0000-00000000007d'
+\set endedWindowWaitlistUserID '79100000-0000-0000-0000-00000000007e'
 \set eventCategoryID '79100000-0000-0000-0000-000000000002'
 \set exhaustedDiscountUserID '79100000-0000-0000-0000-000000000027'
 \set freeDiscountID '79100000-0000-0000-0000-000000000016'
@@ -67,6 +73,8 @@ select plan(54);
 \set platformFeeMaxUserID '79100000-0000-0000-0000-000000000072'
 \set platformFeeUserID '79100000-0000-0000-0000-000000000071'
 \set limitedDiscountID '79100000-0000-0000-0000-000000000018'
+\set liveSnapshotOfferID '79100000-0000-0000-0000-00000000007b'
+\set liveSnapshotUserID '79100000-0000-0000-0000-00000000007c'
 \set mainEventID '79100000-0000-0000-0000-000000000003'
 \set manualTaxUserID '79100000-0000-0000-0000-000000000074'
 \set priceUnavailableEventID '79100000-0000-0000-0000-000000000068'
@@ -150,6 +158,9 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'unavailableDiscountUserID', 'hash-5', 'unavailable@example.com', true, 'unavailable-user'),
     (:'exhaustedDiscountUserID', 'hash-6', 'exhausted@example.com', true, 'exhausted-user'),
     (:'discountUserID', 'hash-7', 'discount@example.com', true, 'discount-user'),
+    (:'endedWindowDiscountUserID', 'hash-33', 'ended-window-discount@example.com', true, 'ended-window-discount-user'),
+    (:'endedWindowUserID', 'hash-34', 'ended-window@example.com', true, 'ended-window-user'),
+    (:'endedWindowWaitlistUserID', 'hash-36', 'ended-window-waitlist@example.com', true, 'ended-window-waitlist-user'),
     (:'freeUserID', 'hash-19', 'free@example.com', true, 'free-user'),
     (:'queueCheckoutUserID', 'hash-20', 'queue-checkout@example.com', true, 'queue-checkout-user'),
     (:'queueHolderUserID', 'hash-21', 'queue-holder@example.com', true, 'queue-holder-user'),
@@ -163,6 +174,7 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'underMinimumUserID', 'hash-12', 'under-minimum@example.com', true, 'under-minimum-user'),
     (:'questionsUserID', 'hash-13', 'questions@example.com', true, 'questions-user'),
     (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user'),
+    (:'liveSnapshotUserID', 'hash-35', 'live-snapshot@example.com', true, 'live-snapshot-user'),
     (:'offerDiscountUserID', 'hash-23', 'offer-discount@example.com', true, 'offer-discount-user'),
     (:'offerFreeUserID', 'hash-24', 'offer-free@example.com', true, 'offer-free-user'),
     (:'offerPaidUserID', 'hash-25', 'offer-paid@example.com', true, 'offer-paid-user'),
@@ -970,6 +982,83 @@ insert into admission_offer (
         :'offerPaidUserID'
     );
 
+-- Pending offers that already have an issue-time or bounced-back price snapshot
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values
+    (
+        :'endedWindowDiscountOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        'Price unavailable admission',
+        :'endedWindowDiscountUserID'
+    ),
+    (
+        :'endedWindowOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        'Price unavailable admission',
+        :'endedWindowUserID'
+    ),
+    (
+        :'endedWindowWaitlistOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        now() + interval '1 day',
+        'waitlist',
+        'pending',
+        'Price unavailable admission',
+        :'endedWindowWaitlistUserID'
+    ),
+    (
+        :'liveSnapshotOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        null,
+        :'mainEventID',
+        :'ticketTypeAID',
+        now() + interval '1 day',
+        'approval',
+        'pending',
+        'General admission',
+        :'liveSnapshotUserID'
+    );
+
 -- Fresh attendee used by the automatic-tax cache-reuse scenario
 insert into "user" (user_id, auth_hash, email, username)
 values (:'cacheUserID', 'hash-cache', 'cache@example.com', 'cache-user');
@@ -1753,28 +1842,18 @@ select results_eq(
     'Should copy the immutable first claim snapshot into every retry purchase'
 );
 
-select throws_ok(
-    format(
-        $$
-        select prepare_event_checkout_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            'total1',
-            'stripe',
-            null,
-            %L::uuid
-        )
-        $$,
-        :'communityID',
-        :'mainEventID',
-        :'offerPrivateTicketTypeID',
-        :'offerPaidUserID',
-        :'offerPaidID'
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'mainEventID'::uuid,
+        :'offerPrivateTicketTypeID'::uuid,
+        :'offerPaidUserID'::uuid,
+        'total1',
+        'stripe',
+        null,
+        :'offerPaidID'::uuid
     ),
-    'P0001',
-    'admission offer price selection cannot be changed',
+    '{"conflict":"admission-offer-price-locked"}'::jsonb,
     'Should reject changing the offer discount selection on retry'
 );
 
@@ -2225,6 +2304,135 @@ select results_eq(
     $$, :'mainEventID', :'manualTaxUserID'),
     $$ values (array['txr_state', 'txr_local']::text[], 'manual'::text) $$,
     'Should snapshot every event-level manual Tax Rate identifier'
+);
+
+-- Should apply a live-window discount over an issue-time offer snapshot
+select lives_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'freepass',
+            'stripe',
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'mainEventID',
+        :'ticketTypeAID',
+        :'liveSnapshotUserID',
+        :'liveSnapshotOfferID'
+    ),
+    'Should apply a live-window discount over an issue-time offer snapshot'
+);
+
+-- Should overwrite the issue snapshot with the claimed live price
+select results_eq(
+    format(
+        $$
+        select
+            ao.amount_minor,
+            ao.currency_code,
+            ao.discount_amount_minor,
+            ao.discount_code,
+            ao.status
+        from admission_offer ao
+        where ao.admission_offer_id = %L::uuid
+        $$,
+        :'liveSnapshotOfferID'
+    ),
+    $$ values (
+        0::bigint,
+        'USD'::text,
+        2500::bigint,
+        'FREEPASS'::text,
+        'checkout_pending'::text
+    ) $$,
+    'Should overwrite the issue snapshot with the claimed live price'
+);
+
+-- Should claim a snapshotted offer after its price window ends
+select lives_ok(
+    format(
+        $$
+        select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            %L::uuid
+        )
+        $$,
+        :'communityID',
+        :'priceUnavailableEventID',
+        :'priceUnavailableTicketTypeID',
+        :'endedWindowUserID',
+        :'endedWindowOfferID'
+    ),
+    'Should claim a snapshotted offer after its price window ends'
+);
+
+-- Should keep the stored price when claiming after the window ends
+select results_eq(
+    format(
+        $$
+        select
+            ao.amount_minor,
+            ao.currency_code,
+            ao.status,
+            ep.amount_minor
+        from admission_offer ao
+        join event_purchase ep using (admission_offer_id)
+        where ao.admission_offer_id = %L::uuid
+        $$,
+        :'endedWindowOfferID'
+    ),
+    $$ values (
+        2500::bigint,
+        'USD'::text,
+        'checkout_pending'::text,
+        2500::bigint
+    ) $$,
+    'Should keep the stored price when claiming after the window ends'
+);
+
+-- Should reject a new discount code when falling back to the stored price
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'priceUnavailableEventID'::uuid,
+        :'priceUnavailableTicketTypeID'::uuid,
+        :'endedWindowDiscountUserID'::uuid,
+        'freepass',
+        'stripe',
+        null,
+        :'endedWindowDiscountOfferID'::uuid
+    ),
+    '{"conflict":"admission-offer-price-locked"}'::jsonb,
+    'Should reject a new discount code when falling back to the stored price'
+);
+
+-- Should require a live price window for waitlist claims after sales end
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'priceUnavailableEventID'::uuid,
+        :'priceUnavailableTicketTypeID'::uuid,
+        :'endedWindowWaitlistUserID'::uuid,
+        null,
+        'stripe',
+        null,
+        :'endedWindowWaitlistOfferID'::uuid
+    ),
+    '{"conflict":"ticket-type-price-unavailable"}'::jsonb,
+    'Should require a live price window for waitlist claims after sales end'
 );
 
 -- ============================================================================

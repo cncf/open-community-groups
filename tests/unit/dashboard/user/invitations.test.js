@@ -211,6 +211,10 @@ describe("dashboard user invitations", () => {
 
   for (const [conflict, message] of [
     [
+      "admission-offer-price-locked",
+      "This ticket offer is locked at its stored price. Clear the discount code to claim it.",
+    ],
+    [
       "payment-setup-unavailable",
       "Payment is temporarily unavailable for this ticket offer. Try again before the offer deadline.",
     ],
