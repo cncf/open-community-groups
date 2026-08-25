@@ -1,9 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch(
-    "/ocg-server/templates/dashboard/user/check_in_list.html",
-  );
+  const response = await fetch("/ocg-server/templates/dashboard/user/check_in_list.html");
 
   expect(response.ok).to.equal(true);
 
@@ -18,9 +16,7 @@ describe("dashboard user check-in template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify the partial does not add a centered page-width constraint.
-    expect(template).to.include(
-      '<section class="relative min-w-0" data-user-check-in-root',
-    );
+    expect(template).to.include('<section class="relative min-w-0" data-user-check-in-root');
     expect(template).not.to.include("container mx-auto");
     expect(template).not.to.include("max-w-7xl");
   });
@@ -34,6 +30,18 @@ describe("dashboard user check-in template", () => {
     expect(template).not.to.include("md:gap-8 lg:grid-cols-2");
     expect(template).to.include("cards::check_in_event_card(event)");
     expect(template).not.to.include("status_before_title");
+  });
+
+  it("hides checked-in events and preserves the empty state", async () => {
+    // Load the Check-In template before checking event visibility.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify only pending credentials render and the empty grid reveals its placeholder.
+    expect(template).to.include("{% if !event.checked_in -%}");
+    expect(template).not.to.include(">Checked in</span>");
+    expect(template).to.include("empty:hidden");
+    expect(template).to.include("peer-empty:block");
+    expect(template).to.include("No events awaiting check-in");
   });
 
   it("places attendee identity below the QR code and adds a modal footer", async () => {
@@ -50,9 +58,7 @@ describe("dashboard user check-in template", () => {
     expect(userInfo).to.be.greaterThan(qrImage);
     expect(userInfo).to.be.lessThan(credentialEnd);
     expect(footer).to.be.greaterThan(credentialEnd);
-    expect(template).to.include(
-      'data-user-check-in-user> <div id="user-check-in-photo"',
-    );
+    expect(template).to.include('data-user-check-in-user> <div id="user-check-in-photo"');
     expect(template).to.include(
       'class="text-center text-xs text-stone-500">Show this code to an organizer</p>',
     );

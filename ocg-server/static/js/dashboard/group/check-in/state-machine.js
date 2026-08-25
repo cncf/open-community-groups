@@ -1,6 +1,7 @@
 const CREDENTIAL_PREFIX = "ocg-check-in:v1:";
 const DEFAULT_COOLDOWN_MS = 1800;
 const DEFAULT_DEDUPE_MS = 3000;
+const DEFAULT_FEEDBACK_MS = 3000;
 
 /**
  * Creates the camera-independent continuous scan controller.
@@ -12,8 +13,10 @@ export const createScanStateMachine = ({
   cooldownMs = DEFAULT_COOLDOWN_MS,
   dedupeMs = DEFAULT_DEDUPE_MS,
   eventId,
+  feedbackMs = DEFAULT_FEEDBACK_MS,
   now = () => Date.now(),
   onFeedback = () => {},
+  onFeedbackEnd = () => {},
   onReady = () => {},
   postCredential,
   scanner,
@@ -22,12 +25,17 @@ export const createScanStateMachine = ({
 }) => {
   let active = false;
   let cooldownTimer = null;
+  let feedbackTimer = null;
   let inFlight = false;
   let muted = false;
   let tornDown = false;
   const recentCredentials = new Map();
 
   const beginCooldown = (feedback, sound) => {
+    if (feedbackTimer !== null) {
+      unschedule(feedbackTimer);
+      feedbackTimer = null;
+    }
     onFeedback(feedback);
     if (!muted) {
       audio?.play?.(sound);
@@ -38,6 +46,12 @@ export const createScanStateMachine = ({
         onReady();
       }
     }, cooldownMs);
+    feedbackTimer = schedule(() => {
+      feedbackTimer = null;
+      if (active) {
+        onFeedbackEnd();
+      }
+    }, feedbackMs);
   };
 
   const handleDecode = async (result) => {
@@ -124,6 +138,10 @@ export const createScanStateMachine = ({
       if (cooldownTimer !== null) {
         unschedule(cooldownTimer);
         cooldownTimer = null;
+      }
+      if (feedbackTimer !== null) {
+        unschedule(feedbackTimer);
+        feedbackTimer = null;
       }
       recentCredentials.clear();
       scanner?.destroy?.();

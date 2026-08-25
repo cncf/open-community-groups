@@ -109,9 +109,8 @@ hold expiration is reflected when the dashboard content next loads or refreshes.
 ## Check-In: Attendee Credentials
 
 `Check-In` shows your personal QR code for each current or upcoming event where you are a
-confirmed attendee. Open an event card and present the code to an organizer when you arrive. The
-card remains available after check-in so another scan can safely report that you were already
-checked in.
+confirmed attendee and have not checked in yet. Open an event card and present the code to an
+organizer when you arrive. The card is removed after check-in.
 
 The mobile dashboard entry screen links to Check-In. On larger screens, open the section directly
 at [/dashboard/user?tab=check-in](/dashboard/user?tab=check-in ':ignore'). Canceled, unpublished,

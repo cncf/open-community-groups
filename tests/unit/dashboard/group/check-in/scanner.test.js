@@ -115,12 +115,9 @@ describe("group check-in scanner controls", () => {
       // Scan an attendee who was already checked in.
       renderFixture();
       let refreshCount = 0;
-      document.querySelector("[data-group-check-in-root]").addEventListener(
-        "refresh-event-attendees",
-        () => {
-          refreshCount += 1;
-        },
-      );
+      document.querySelector("[data-group-check-in-root]").addEventListener("refresh-event-attendees", () => {
+        refreshCount += 1;
+      });
       window.__OCG_E2E_QR_SCANNER__ = FakeScanner;
       initializeGroupCheckInScanner();
       document.querySelector("[data-group-check-in-open]").click();
@@ -135,8 +132,7 @@ describe("group check-in scanner controls", () => {
       expect(result.classList.contains("bg-red-100")).to.equal(true);
       expect(result.classList.contains("text-red-800")).to.equal(true);
       expect(result.classList.contains("text-center")).to.equal(true);
-      expect(message.classList.contains("text-sm")).to.equal(true);
-      expect(message.classList.contains("md:text-base")).to.equal(true);
+      expect(message.classList.contains("text-base")).to.equal(true);
       expect(message.classList.contains("font-normal")).to.equal(true);
       expect(result.textContent).to.include("Already checked in");
       expect(result.textContent).to.include("Paula Webb · Expo Pass");
@@ -313,9 +309,9 @@ describe("group check-in scanner controls", () => {
       // HTMX cleanup closes the modal without starting a redundant refresh.
       root.dispatchEvent(new Event("htmx:beforeCleanupElement", { bubbles: true }));
       expect(refreshCount).to.equal(0);
-      expect(
-        document.getElementById("group-check-in-scanner-modal").classList.contains("hidden"),
-      ).to.equal(true);
+      expect(document.getElementById("group-check-in-scanner-modal").classList.contains("hidden")).to.equal(
+        true,
+      );
     } finally {
       fetchMock.restore();
     }
@@ -485,9 +481,7 @@ describe("group check-in scanner controls", () => {
     expect(FakeScanner.instances[0].video.isConnected).to.equal(false);
     expect(FakeScanner.instances[1].video).to.equal(document.querySelector("[data-group-check-in-video]"));
     expect(document.querySelector("[data-group-check-in-camera]").value).to.equal("new-camera");
-    expect(document.getElementById("group-check-in-scanner-title").textContent).to.equal(
-      "Scan attendees",
-    );
+    expect(document.getElementById("group-check-in-scanner-title").textContent).to.equal("Scan attendees");
     expect(document.getElementById("group-check-in-event-name").textContent).to.equal("Event B");
     expect(document.getElementById("group-check-in-event-date").textContent).to.equal(
       "Aug 25, 2026 · 10:00 AM CEST",

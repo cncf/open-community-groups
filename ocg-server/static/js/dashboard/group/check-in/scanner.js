@@ -175,7 +175,7 @@ const renderFeedback = (element, feedback) => {
         : "border-red-800 bg-red-100 text-red-800"
   }`;
   const message = document.createElement("p");
-  message.className = "text-sm font-normal md:text-base";
+  message.className = "text-base font-normal";
   message.textContent = feedback.message;
   element.replaceChildren(message);
   if (feedback.attendeeName) {
@@ -368,8 +368,8 @@ const startScannerSession = async (root, trigger) => {
         if (feedback.kind === "success") attendeesChanged = true;
         renderFeedback(result, feedback);
       },
+      onFeedbackEnd: () => result?.classList.add("hidden"),
       onReady: () => {
-        result?.classList.add("hidden");
         if (status) status.textContent = "Hold an attendee QR code inside the frame.";
       },
       postCredential: (credential) => postCredential(scanUrl, credential),

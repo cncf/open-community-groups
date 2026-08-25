@@ -31,12 +31,16 @@ describe("group check-in scan state machine", () => {
     const feedback = [];
     const sounds = [];
     const timers = [];
+    let feedbackEndCount = 0;
     let readyCount = 0;
     let startCount = 0;
     const controller = createScanStateMachine({
       audio: { play: (kind) => sounds.push(kind) },
       eventId,
       onFeedback: (value) => feedback.push(value),
+      onFeedbackEnd: () => {
+        feedbackEndCount += 1;
+      },
       onReady: () => {
         readyCount += 1;
       },
@@ -50,8 +54,8 @@ describe("group check-in scan state machine", () => {
           startCount += 1;
         },
       },
-      schedule: (callback) => {
-        timers.push(callback);
+      schedule: (callback, delay) => {
+        timers.push({ callback, delay });
         return timers.length;
       },
     });
@@ -71,10 +75,16 @@ describe("group check-in scan state machine", () => {
       message: "Checked in",
       ticketTitle: "General admission",
     });
+    expect(timers.map(({ delay }) => delay)).to.deep.equal([1800, 3000]);
 
-    // Complete the cooldown and verify the scanner becomes ready again.
-    timers[0]();
+    // Complete the cooldown while leaving the feedback visible.
+    timers[0].callback();
     expect(readyCount).to.equal(2);
+    expect(feedbackEndCount).to.equal(0);
+
+    // End feedback after three seconds without extending the scan cooldown.
+    timers[1].callback();
+    expect(feedbackEndCount).to.equal(1);
   });
 
   it("reports already checked-in attendees and deduplicates rapid repeats", async () => {
@@ -161,9 +171,9 @@ describe("group check-in scan state machine", () => {
   it("supports mute and tears down scanner, audio, and cooldown", async () => {
     // Create observable audio, scanner, and cooldown cleanup hooks.
     let audioClosed = false;
+    const canceledTimers = [];
     let destroyCount = 0;
     let playCount = 0;
-    let canceledTimer;
     const controller = createScanStateMachine({
       audio: {
         close: () => {
@@ -182,7 +192,7 @@ describe("group check-in scan state machine", () => {
       },
       schedule: () => 42,
       unschedule: (timer) => {
-        canceledTimer = timer;
+        canceledTimers.push(timer);
       },
     });
 
@@ -196,7 +206,7 @@ describe("group check-in scan state machine", () => {
     expect(playCount).to.equal(0);
     expect(destroyCount).to.equal(1);
     expect(audioClosed).to.equal(true);
-    expect(canceledTimer).to.equal(42);
+    expect(canceledTimers).to.deep.equal([42, 42]);
   });
 
   it("ignores an in-flight response after teardown", async () => {

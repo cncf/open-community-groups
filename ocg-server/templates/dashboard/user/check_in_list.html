@@ -13,15 +13,9 @@
     <p class="mt-1 text-sm/6 text-stone-500">Present your event QR code to an organizer when you arrive.</p>
   </div>
 
-  {% if events.is_empty() -%}
-    <div class="mt-8 rounded-lg border border-dashed border-stone-300 px-6 py-12 text-center">
-      <div class="mx-auto size-8 svg-icon icon-qr-code bg-stone-400"></div>
-      <h2 class="mt-4 text-lg font-semibold text-stone-900">No check-in codes yet</h2>
-      <p class="mt-2 text-sm text-stone-600">Confirmed upcoming events will appear here.</p>
-    </div>
-  {% else -%}
-    <div class="mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 md:gap-8 2xl:grid-cols-2">
-      {% for event in events -%}
+  <div class="peer mt-6 grid min-w-0 max-w-full grid-cols-1 gap-6 empty:hidden md:gap-8 2xl:grid-cols-2">
+    {%- for event in events -%}
+      {% if !event.checked_in -%}
         <button type="button"
                 class="card-hover-border relative flex h-full w-full min-w-0 max-w-full select-none flex-col overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition-all hover:border-primary-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
                 data-user-check-in-open
@@ -31,16 +25,18 @@
                 data-qr-code-url="/dashboard/user/check-in/{{ event.event_id }}/qr-code"
                 data-ticket-title="{{ event.ticket_title|assigned_or("") }}">
           {% call cards::check_in_event_card(event) -%}
-          {% if event.checked_in -%}
-            <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Checked in</span>
-          {% else -%}
-            <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Pending check-in</span>
-          {% endif -%}
+          <span class="custom-badge border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">Pending check-in</span>
           {% endcall -%}
         </button>
-      {% endfor -%}
-    </div>
-  {% endif -%}
+      {% endif -%}
+    {% endfor -%}
+  </div>
+
+  <div class="mt-8 hidden rounded-lg border border-dashed border-stone-300 px-6 py-12 text-center peer-empty:block">
+    <div class="mx-auto size-8 svg-icon icon-qr-code bg-stone-400"></div>
+    <h2 class="mt-4 text-lg font-semibold text-stone-900">No events awaiting check-in</h2>
+    <p class="mt-2 text-sm text-stone-600">Confirmed upcoming events will appear here until you check in.</p>
+  </div>
 
   <div id="user-check-in-modal"
        class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-6 flex"
