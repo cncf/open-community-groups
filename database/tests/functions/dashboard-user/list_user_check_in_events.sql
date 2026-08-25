@@ -230,15 +230,22 @@ insert into event (
         'UTC'
     );
 
--- Confirmed attendee rows for current and future events
-insert into event_attendee (event_id, user_id, checked_in, status) values
-    (:'canceledEventID', :'userID', false, 'confirmed'),
-    (:'currentEventID', :'userID', true, 'confirmed'),
-    (:'endedEventID', :'userID', false, 'confirmed'),
-    (:'futureEventID', :'userID', false, 'confirmed'),
-    (:'nonConfirmedEventID', :'userID', false, 'attendance-canceled'),
-    (:'unpublishedEventID', :'userID', false, 'confirmed'),
-    (:'unscheduledEventID', :'userID', false, 'confirmed');
+-- Attendee rows for current, future, and excluded-event scenarios
+insert into event_attendee (
+    event_id,
+    user_id,
+    checked_in,
+    status,
+
+    attendance_canceled_at
+) values
+    (:'canceledEventID', :'userID', false, 'confirmed', null),
+    (:'currentEventID', :'userID', true, 'confirmed', null),
+    (:'endedEventID', :'userID', false, 'confirmed', null),
+    (:'futureEventID', :'userID', false, 'confirmed', null),
+    (:'nonConfirmedEventID', :'userID', false, 'attendance-canceled', current_timestamp),
+    (:'unpublishedEventID', :'userID', false, 'confirmed', null),
+    (:'unscheduledEventID', :'userID', false, 'confirmed', null);
 
 -- Unrelated attendance excluded from the user's list
 insert into event_attendee (event_id, user_id, status)

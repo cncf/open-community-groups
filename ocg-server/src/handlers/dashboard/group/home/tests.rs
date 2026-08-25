@@ -281,8 +281,8 @@ async fn test_page_check_in_tab_falls_back_without_management_permission() {
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("You cannot manage check-ins for the selected group."));
-    assert!(body.contains("id-prefix=\"mobile-community\""));
-    assert!(body.contains("id-prefix=\"mobile-group\""));
+    assert!(body.contains(&format!("selected-community-id=\"{community_id}\"")));
+    assert!(body.contains(&format!("selected-group-id=\"{group_id}\"")));
 }
 
 #[tokio::test]

@@ -163,11 +163,25 @@ insert into admission_offer (
     'Organizer admission'
 );
 
--- Confirmed attendee carrying the deterministic credential
-insert into event_attendee (event_id, user_id, check_in_code, status) values
-    (:'eventID', :'canceledAttendeeUserID', :'canceledCheckInCode', 'attendance-canceled'),
-    (:'endedEventID', :'actorUserID', :'endedCheckInCode', 'confirmed'),
-    (:'eventID', :'attendeeUserID', :'checkInCode', 'confirmed');
+-- Attendees carrying credentials for confirmed, canceled, and ended-event scenarios
+insert into event_attendee (
+    event_id,
+    user_id,
+    check_in_code,
+    status,
+
+    attendance_canceled_at
+) values
+    (
+        :'eventID',
+        :'canceledAttendeeUserID',
+        :'canceledCheckInCode',
+        'attendance-canceled',
+
+        current_timestamp
+    ),
+    (:'endedEventID', :'actorUserID', :'endedCheckInCode', 'confirmed', null),
+    (:'eventID', :'attendeeUserID', :'checkInCode', 'confirmed', null);
 
 -- ============================================================================
 -- TESTS

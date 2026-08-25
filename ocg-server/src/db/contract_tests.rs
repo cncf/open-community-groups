@@ -529,13 +529,13 @@ async fn db_contracts_check_in_attendee_by_code_rejects_concurrently_revoked_cod
     // Cancel and reconfirm attendance to rotate the credential before validation continues
     rotation_client
         .execute(
-            "update event_attendee set status = 'attendance-canceled' where event_id = $1::uuid and user_id = $2::uuid",
+            "update event_attendee set attendance_canceled_at = current_timestamp, status = 'attendance-canceled' where event_id = $1::uuid and user_id = $2::uuid",
             &[&event_id(), &attendee_id()],
         )
         .await?;
     rotation_client
         .execute(
-            "update event_attendee set status = 'confirmed' where event_id = $1::uuid and user_id = $2::uuid",
+            "update event_attendee set attendance_canceled_at = null, attendance_canceled_by_user_id = null, status = 'confirmed' where event_id = $1::uuid and user_id = $2::uuid",
             &[&event_id(), &attendee_id()],
         )
         .await?;
@@ -595,6 +595,8 @@ async fn db_contracts_check_in_event_serializes_concurrent_transitions() -> Resu
             &check_in_params,
         ),
     );
+
+    // Load the persisted attendee and audit outcomes
     let state = setup_client
         .query_one(
             "select checked_in, checked_in_at from event_attendee where event_id = $1::uuid and user_id = $2::uuid",
@@ -608,20 +610,6 @@ async fn db_contracts_check_in_event_serializes_concurrent_transitions() -> Resu
         )
         .await?
         .get::<_, i64>(0);
-
-    // Restore the shared cancellation-lock fixture before checking outcomes
-    setup_client
-        .execute(
-            "delete from audit_log where action = 'event_attendee_checked_in' and event_id = $1::uuid and resource_id = $2::uuid",
-            &[&check_in_event_id, &attendee_user_id],
-        )
-        .await?;
-    setup_client
-        .execute(
-            "delete from event_attendee where event_id = $1::uuid and user_id = $2::uuid",
-            &[&check_in_event_id, &attendee_user_id],
-        )
-        .await?;
 
     // Check exactly one call transitioned, timestamped, and audited the attendee
     let first_transition = first_result?.get::<_, bool>(0);
