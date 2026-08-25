@@ -257,11 +257,11 @@ describe("group check-in scanner controls", () => {
     const triggers = document.querySelectorAll("[data-group-check-in-open]");
     const mute = document.querySelector("[data-group-check-in-mute]");
 
-    // Enable sound, then open a second event before the first camera check resolves.
+    // Mute sound, then open a second event before the first camera check resolves.
     triggers[0].click();
-    expect(mute.checked).to.equal(true);
-    mute.click();
     expect(mute.checked).to.equal(false);
+    mute.click();
+    expect(mute.checked).to.equal(true);
     expect(document.querySelector("[data-group-check-in-mute-label]").textContent).to.equal("Mute sounds");
     triggers[1].click();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -284,7 +284,7 @@ describe("group check-in scanner controls", () => {
       "Aug 25, 2026 · 10:00 AM CEST",
     );
     expect(document.getElementById("group-check-in-event-location").textContent).to.equal("Virtual");
-    expect(mute.checked).to.equal(true);
+    expect(mute.checked).to.equal(false);
     expect(document.activeElement).to.equal(
       document.querySelector('[data-group-check-in-close]:not([tabindex="-1"])'),
     );

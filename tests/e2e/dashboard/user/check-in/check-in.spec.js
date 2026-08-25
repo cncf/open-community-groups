@@ -3,14 +3,13 @@ import { expect, test } from "../../../fixtures.js";
 import { TEST_OPEN_CHECK_IN_EVENT, navigateToPath } from "../../../utils.js";
 
 test.describe("user dashboard check-in", () => {
-  test("attendee opens a personal event credential on mobile", async ({
+  test("attendee opens a personal event credential on mobile @mobile", async ({
     pending2Page,
   }) => {
-    // Load the attendee check-in dashboard at a mobile viewport.
-    await pending2Page.setViewportSize({ width: 390, height: 844 });
+    // Load the attendee check-in dashboard in the configured mobile project.
     await navigateToPath(pending2Page, "/dashboard/user?tab=check-in");
 
-    // Open the seeded event credential.
+    // Verify the seeded event card stays within the dashboard wrapper.
     await expect(
       pending2Page.getByRole("heading", { name: "Check-In" }),
     ).toBeVisible();
@@ -18,6 +17,18 @@ test.describe("user dashboard check-in", () => {
       hasText: TEST_OPEN_CHECK_IN_EVENT.name,
     });
     await expect(eventCard).toBeVisible();
+    const checkInRootBounds = await pending2Page
+      .locator("[data-user-check-in-root]")
+      .boundingBox();
+    const eventCardBounds = await eventCard.boundingBox();
+    expect(checkInRootBounds).not.toBeNull();
+    expect(eventCardBounds).not.toBeNull();
+    expect(eventCardBounds.x).toBeGreaterThanOrEqual(checkInRootBounds.x);
+    expect(eventCardBounds.x + eventCardBounds.width).toBeLessThanOrEqual(
+      checkInRootBounds.x + checkInRootBounds.width,
+    );
+
+    // Open the seeded event credential.
     await eventCard.click();
 
     // Verify the modal shows the attendee identity and QR endpoint.
@@ -61,10 +72,12 @@ test.describe("user dashboard check-in", () => {
       .locator("[data-user-check-in-panel]")
       .boundingBox();
     expect(panelBounds).not.toBeNull();
+    const viewport = pending2Page.viewportSize();
+    expect(viewport).not.toBeNull();
     expect(panelBounds.x).toBe(12);
     expect(panelBounds.y).toBe(12);
-    expect(panelBounds.width).toBe(366);
-    expect(panelBounds.height).toBe(820);
+    expect(panelBounds.width).toBe(viewport.width - 24);
+    expect(panelBounds.height).toBe(viewport.height - 24);
 
     // Verify the complete credential is vertically centered in the mobile body.
     const bodyBounds = await modal

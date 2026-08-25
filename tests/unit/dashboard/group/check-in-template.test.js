@@ -94,7 +94,8 @@ describe("dashboard group check-in template", () => {
     );
     expect(template).to.include('class="select select-primary mt-1" disabled');
     expect(template).not.to.include("icon-caret-down");
-    expect(template).to.include('class="sr-only peer" data-group-check-in-mute checked');
+    expect(template).to.include('class="sr-only peer" data-group-check-in-mute>');
+    expect(template).not.to.include("data-group-check-in-mute checked");
     expect(template).to.include("data-group-check-in-torch-control");
     expect(template).to.include('class="sr-only peer" data-group-check-in-torch disabled');
     expect(template).to.include('class="ms-3 text-sm font-medium text-stone-900">Torch</span>');

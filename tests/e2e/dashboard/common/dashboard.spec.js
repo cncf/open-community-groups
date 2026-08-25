@@ -1,6 +1,10 @@
 import { expect, test } from "../../fixtures.js";
 
-import { buildE2eUrl, navigateToPath } from "../../utils.js";
+import {
+  buildE2eUrl,
+  navigateToPath,
+  waitForActionResponse,
+} from "../../utils.js";
 
 const DASHBOARD_ROUTES = [
   "/dashboard/community",
@@ -9,6 +13,19 @@ const DASHBOARD_ROUTES = [
 ];
 
 const MOBILE_WARNING = "This dashboard is not optimized yet for mobile devices";
+
+const openMobileDashboardDrawer = async (page) => {
+  const openMenuButton = page.getByRole("button", {
+    name: "Open dashboard menu",
+  });
+  await expect(openMenuButton).toBeVisible();
+  await openMenuButton.click();
+
+  const drawer = page.locator("#dashboard-menu-drawer");
+  await expect(drawer).toBeVisible();
+
+  return drawer;
+};
 
 test.describe("dashboard access and shared behavior", () => {
   for (const route of DASHBOARD_ROUTES) {
@@ -105,17 +122,12 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(
         adminCommunityPage.locator("#dashboard-main-content"),
       ).toBeHidden();
-      const openMenuButton = adminCommunityPage.getByRole("button", {
-        name: "Open dashboard menu",
-      });
-      await expect(openMenuButton).toBeVisible();
-      await openMenuButton.click();
-      await expect(
-        adminCommunityPage.locator("#dashboard-menu-drawer"),
-      ).toBeVisible();
+      const drawer = await openMobileDashboardDrawer(adminCommunityPage);
+      await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(0);
+      await expect(drawer.getByRole("link", { name: "Log out" })).toBeVisible();
     });
 
-    test("group dashboard shows the mobile unsupported state", async ({
+    test("group dashboard opens mobile check-in from its only available option", async ({
       organizerGroupPage,
     }) => {
       // Load the group dashboard on a mobile viewport.
@@ -128,17 +140,37 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(
         organizerGroupPage.locator("#dashboard-main-content"),
       ).toBeHidden();
-      const openMenuButton = organizerGroupPage.getByRole("button", {
-        name: "Open dashboard menu",
+      const drawer = await openMobileDashboardDrawer(organizerGroupPage);
+      const checkInLink = drawer.getByRole("link", {
+        name: "Check-In",
+        exact: true,
       });
-      await expect(openMenuButton).toBeVisible();
-      await openMenuButton.click();
+      await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(1);
+      await expect(checkInLink).toHaveAttribute(
+        "hx-get",
+        "/dashboard/group?tab=check-in",
+      );
+
+      // Follow the available option and verify HTMX replaces the placeholder.
+      await waitForActionResponse(organizerGroupPage, () => checkInLink.click(), {
+        method: "GET",
+        urlEndsWith: "/dashboard/group?tab=check-in",
+      });
+      await expect(organizerGroupPage).toHaveURL(
+        /\/dashboard\/group\?tab=check-in$/u,
+      );
       await expect(
-        organizerGroupPage.locator("#dashboard-menu-drawer"),
+        organizerGroupPage.getByText(MOBILE_WARNING, { exact: true }),
+      ).toBeHidden();
+      await expect(
+        organizerGroupPage.locator("#dashboard-main-content"),
+      ).toBeVisible();
+      await expect(
+        organizerGroupPage.getByRole("heading", { name: "Check-In" }),
       ).toBeVisible();
     });
 
-    test("user dashboard shows the mobile unsupported state", async ({
+    test("user dashboard opens mobile check-in from its only available option", async ({
       member1Page,
     }) => {
       // Load the user dashboard on a mobile viewport.
@@ -149,12 +181,32 @@ test.describe("dashboard access and shared behavior", () => {
         member1Page.getByText(MOBILE_WARNING, { exact: true }),
       ).toBeVisible();
       await expect(member1Page.locator("#dashboard-main-content")).toBeHidden();
-      const openMenuButton = member1Page.getByRole("button", {
-        name: "Open dashboard menu",
+      const drawer = await openMobileDashboardDrawer(member1Page);
+      const checkInLink = drawer.getByRole("link", {
+        name: "Check-In",
+        exact: true,
       });
-      await expect(openMenuButton).toBeVisible();
-      await openMenuButton.click();
-      await expect(member1Page.locator("#dashboard-menu-drawer")).toBeVisible();
+      await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(1);
+      await expect(checkInLink).toHaveAttribute(
+        "hx-get",
+        "/dashboard/user?tab=check-in",
+      );
+
+      // Follow the available option and verify the check-in surface replaces the page.
+      await waitForActionResponse(member1Page, () => checkInLink.click(), {
+        method: "GET",
+        urlEndsWith: "/dashboard/user?tab=check-in",
+      });
+      await expect(member1Page).toHaveURL(
+        /\/dashboard\/user\?tab=check-in$/u,
+      );
+      await expect(
+        member1Page.getByText(MOBILE_WARNING, { exact: true }),
+      ).toBeHidden();
+      await expect(member1Page.locator("#dashboard-main-content")).toBeVisible();
+      await expect(
+        member1Page.getByRole("heading", { name: "Check-In" }),
+      ).toBeVisible();
     });
 
     test("keeps the drawer and placeholder aligned at the md breakpoint", async ({
@@ -177,8 +229,7 @@ test.describe("dashboard access and shared behavior", () => {
       await expect(main).toBeHidden();
       await expect(warning).toBeVisible();
       await expect(openMenuButton).toBeVisible();
-      await openMenuButton.click();
-      await expect(member1Page.locator("#dashboard-menu-drawer")).toBeVisible();
+      await openMobileDashboardDrawer(member1Page);
 
       // Return to md and verify the static sidebar and content replace mobile state.
       await member1Page.setViewportSize({ width: 768, height: 900 });

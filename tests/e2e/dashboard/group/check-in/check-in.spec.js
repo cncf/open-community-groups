@@ -40,77 +40,130 @@ const scannerTest = test.extend({
   ],
 });
 
-test.describe("group dashboard check-in", () => {
-  scannerTest("check-in manager scans an attendee credential", async ({ checkInManagerGroupPage }) => {
-    // Replace the browser scanner with a deterministic camera implementation.
-    await checkInManagerGroupPage.addInitScript(() => {
-      class FakeQrScanner {
-        static last;
+const verifyScannerCredentialFlow = async ({ checkInManagerGroupPage }) => {
+  // Replace the browser scanner with a deterministic camera implementation.
+  await checkInManagerGroupPage.addInitScript(() => {
+    class FakeQrScanner {
+      static last;
 
-        static async hasCamera() {
-          return true;
-        }
-
-        static async listCameras() {
-          return [{ id: "test-camera", label: "Test camera" }];
-        }
-
-        constructor(_video, onDecode) {
-          this.onDecode = onDecode;
-          FakeQrScanner.last = this;
-        }
-
-        destroy() {}
-        async hasFlash() {
-          return false;
-        }
-        isFlashOn() {
-          return false;
-        }
-        async setCamera() {}
-        async start() {}
-        async toggleFlash() {}
+      static async hasCamera() {
+        return true;
       }
 
-      window.__OCG_E2E_QR_SCANNER__ = FakeQrScanner;
-    });
+      static async listCameras() {
+        return [{ id: "test-camera", label: "Test camera" }];
+      }
 
-    // Open the scanner for the seeded check-in event.
-    await navigateToPath(checkInManagerGroupPage, "/dashboard/group?tab=check-in");
+      constructor(_video, onDecode) {
+        this.onDecode = onDecode;
+        FakeQrScanner.last = this;
+      }
 
-    await expect(checkInManagerGroupPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
-    const eventCard = checkInManagerGroupPage.locator("[data-group-check-in-open]", {
-      hasText: TEST_OPEN_CHECK_IN_EVENT.name,
-    });
-    await expect(eventCard).toBeVisible();
-    await eventCard.click();
+      destroy() {}
+      async hasFlash() {
+        return false;
+      }
+      isFlashOn() {
+        return false;
+      }
+      async setCamera() {}
+      async start() {}
+      async toggleFlash() {}
+    }
 
-    const modal = checkInManagerGroupPage.locator("#group-check-in-scanner-modal");
-    await expect(modal).toBeVisible();
-    await expect(modal.getByText("Hold an attendee QR code inside the frame.")).toBeVisible();
-    const muteToggle = modal.getByRole("checkbox", { name: "Mute sounds" });
-    await expect(muteToggle).toBeChecked();
-    await expect(modal.getByRole("link", { name: "Manual check-in" })).toHaveCount(0);
-
-    // Submit the attendee credential through the simulated camera.
-    const responsePromise = checkInManagerGroupPage.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes(`/events/${TEST_OPEN_CHECK_IN_EVENT.id}/check-ins/scan`),
-    );
-    await checkInManagerGroupPage.evaluate(
-      ({ checkInCode, eventId }) =>
-        window.__OCG_E2E_QR_SCANNER__.last.onDecode({
-          data: `ocg-check-in:v1:${eventId}:${checkInCode}`,
-        }),
-      { checkInCode: CHECK_IN_CODE, eventId: TEST_OPEN_CHECK_IN_EVENT.id },
-    );
-    expect((await responsePromise).ok()).toBe(true);
-
-    // Verify the successful response is reflected in the scanner feedback.
-    await expect(modal.getByText("Checked in", { exact: true })).toBeVisible();
-    await expect(modal.getByText(/E2E Pending Two/u)).toBeVisible();
+    window.__OCG_E2E_QR_SCANNER__ = FakeQrScanner;
   });
+
+  // Open the scanner for the seeded check-in event.
+  await navigateToPath(
+    checkInManagerGroupPage,
+    "/dashboard/group?tab=check-in",
+  );
+
+  await expect(
+    checkInManagerGroupPage.getByRole("heading", { name: "Check-In" }),
+  ).toBeVisible();
+  const eventCard = checkInManagerGroupPage.locator(
+    "[data-group-check-in-open]",
+    {
+      hasText: TEST_OPEN_CHECK_IN_EVENT.name,
+    },
+  );
+  await expect(eventCard).toBeVisible();
+  await eventCard.click();
+
+  const modal = checkInManagerGroupPage.locator(
+    "#group-check-in-scanner-modal",
+  );
+  await expect(modal).toBeVisible();
+  await expect(
+    modal.getByText("Hold an attendee QR code inside the frame."),
+  ).toBeVisible();
+  const muteToggle = modal.getByRole("checkbox", { name: "Mute sounds" });
+  await expect(muteToggle).not.toBeChecked();
+  await expect(
+    modal.getByRole("link", { name: "Manual check-in" }),
+  ).toHaveCount(0);
+
+  // Submit the attendee credential through the simulated camera.
+  const responsePromise = checkInManagerGroupPage.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response
+        .url()
+        .includes(`/events/${TEST_OPEN_CHECK_IN_EVENT.id}/check-ins/scan`),
+  );
+  await checkInManagerGroupPage.evaluate(
+    ({ checkInCode, eventId }) =>
+      window.__OCG_E2E_QR_SCANNER__.last.onDecode({
+        data: `ocg-check-in:v1:${eventId}:${checkInCode}`,
+      }),
+    { checkInCode: CHECK_IN_CODE, eventId: TEST_OPEN_CHECK_IN_EVENT.id },
+  );
+  expect((await responsePromise).ok()).toBe(true);
+
+  // Verify the successful response is reflected in the scanner feedback.
+  await expect(modal.getByText("Checked in", { exact: true })).toBeVisible();
+  await expect(modal.getByText(/E2E Pending Two/u)).toBeVisible();
+
+  // Reopen the scanner and submit the same credential again.
+  await modal.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(modal).toBeHidden();
+  await eventCard.click();
+  await expect(modal).toBeVisible();
+  const duplicateResponsePromise = checkInManagerGroupPage.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response
+        .url()
+        .includes(`/events/${TEST_OPEN_CHECK_IN_EVENT.id}/check-ins/scan`),
+  );
+  await checkInManagerGroupPage.evaluate(
+    ({ checkInCode, eventId }) =>
+      window.__OCG_E2E_QR_SCANNER__.last.onDecode({
+        data: `ocg-check-in:v1:${eventId}:${checkInCode}`,
+      }),
+    { checkInCode: CHECK_IN_CODE, eventId: TEST_OPEN_CHECK_IN_EVENT.id },
+  );
+  expect((await duplicateResponsePromise).ok()).toBe(true);
+
+  // Verify duplicate scans produce the durable already-checked-in outcome.
+  await expect(
+    modal.getByText("Already checked in", { exact: true }),
+  ).toBeVisible();
+  await expect(modal.getByText(/E2E Pending Two/u)).toBeVisible();
+};
+
+test.describe("group dashboard check-in", () => {
+  scannerTest(
+    "check-in manager scans an attendee credential and handles a duplicate",
+    verifyScannerCredentialFlow,
+  );
+
+  scannerTest(
+    "check-in manager scans an attendee credential and handles a duplicate @mobile",
+    verifyScannerCredentialFlow,
+  );
 
   test("organizer switches mobile check-in to another manageable group @mobile", async ({
     organizerGroupPage,

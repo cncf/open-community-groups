@@ -58,8 +58,7 @@ describe("group check-in scan state machine", () => {
 
     // Start the scanner and submit a valid credential.
     await controller.start();
-    expect(controller.muted).to.equal(true);
-    controller.setMuted(false);
+    expect(controller.muted).to.equal(false);
     expect(await controller.handleDecode({ data: credential })).to.equal(true);
 
     // Verify success feedback and sound are emitted once.
