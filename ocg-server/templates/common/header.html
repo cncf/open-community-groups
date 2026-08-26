@@ -269,7 +269,7 @@
 
           {# Logout -#}
           <li class="border-t border-stone-200 mt-2 pt-2" role="none">
-            <form action="/log-out" method="post">
+            <form action="/log-out" method="post" hx-boost="false" target="_self">
               <button type="submit"
                       class="block w-full text-start px-4 py-2 hover:bg-stone-100"
                       role="menuitem">

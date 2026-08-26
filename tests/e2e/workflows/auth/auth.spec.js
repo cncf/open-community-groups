@@ -320,14 +320,23 @@ test.describe("authentication", () => {
     await userMenuButton.click();
 
     // Find the Log out control.
-    const logOutLink = page.getByRole("menuitem", { name: "Log out" });
-    await expect(logOutLink).toBeVisible();
+    const logOutButton = page.getByRole("menuitem", { name: "Log out" });
+    await expect(logOutButton).toBeVisible();
 
-    // Submit the action and wait for navigation.
-    await Promise.all([page.waitForURL(/\/log-in/), logOutLink.click()]);
+    // Submit a native POST and wait for full-page navigation.
+    const [, logOutRequest] = await Promise.all([
+      page.waitForURL(/\/log-in/),
+      page.waitForRequest(
+        (request) => request.method() === "POST" && request.url().endsWith("/log-out"),
+      ),
+      logOutButton.click(),
+    ]);
+    expect(logOutRequest.headers()["hx-request"]).toBeUndefined();
 
-    // Assert that Log In is visible.
-    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+    // Assert that Log In replaces the main document rather than the menu.
+    await expect(
+      page.locator("main#main-content").getByRole("heading", { name: "Log In" }),
+    ).toBeVisible();
 
     // Verify the session no longer grants access to protected pages.
     await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
