@@ -192,6 +192,12 @@ impl EventSummary {
         )
     }
 
+    /// Returns true when organizers can accept pending invitation requests.
+    pub fn invitation_request_acceptance_is_open(&self) -> bool {
+        self.registration_window_is_open()
+            || self.starts_at.is_some_and(|starts_at| starts_at <= Utc::now())
+    }
+
     /// Check if the event is in the past.
     pub fn is_past(&self) -> bool {
         let reference_time = self.ends_at.or(self.starts_at);

@@ -958,12 +958,14 @@ insert into event_invitation_request (
     created_at,
     event_id,
     event_ticket_type_id,
+    registration_answers,
     status,
     user_id
 ) values (
     '2024-01-08 10:00:00+00',
     '00000000-0000-0000-0000-00000000c031',
     '00000000-0000-0000-0000-00000000c081',
+    '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000c071", "value": "00000000-0000-0000-0000-00000000c072"}]}'::jsonb,
     'pending',
     '00000000-0000-0000-0000-00000000c043'
 );

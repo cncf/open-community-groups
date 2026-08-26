@@ -274,4 +274,21 @@ describe("dashboard group event add template", () => {
     expect(contributorForm).not.to.include("border-b");
     expect(contributorForm).not.to.include("border-stone-900/10");
   });
+
+  it("explains registration windows, required questions, and request review", async () => {
+    // Load the event add template before checking organizer guidance copy.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify registration window and question collection guidance.
+    expect(template).to.include(
+      "cannot accept pending invitation requests until the event starts",
+    );
+    expect(template).to.include(
+      "Accept pending requests while registration is open or after the event starts.",
+    );
+    expect(template).to.include(
+      "Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.",
+    );
+    expect(template).to.include("Ticket-request answers are available from Requests.");
+  });
 });

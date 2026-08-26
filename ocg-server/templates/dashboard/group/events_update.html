@@ -377,7 +377,7 @@
           <p class="form-legend">
             Let people request organizer approval before attending or claiming a ticket. Paid ticket
             events can use invitation approval. Invitation approval and the waitlist cannot be enabled
-            together.
+            together. Accept pending requests while registration is open or after the event starts.
           </p>
         </div>
         {# End Attendee approval required -#}
@@ -462,7 +462,12 @@
 <div data-content="questions" class="hidden">
   <form id="questions-form">
     <div class="pb-12">
-      {{ dashboard::form_title(title = "Registration questions", description = "Ask attendees for extra information before their registration is complete.") -}}
+      {{ dashboard::form_title(title = "Registration questions", description = "Ask attendees extra questions. Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.") -}}
+      <div class="mt-6 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+        Only questions marked Required must be answered. Questions appear with a ticket request,
+        before RSVP or checkout, and when claiming an organizer or waitlist offer. Joining a
+        waiting list does not collect answers. Ticket-request answers are available from Requests.
+      </div>
       {% if event.registration_questions_locked -%}
         <div class="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Registration questions are read-only because attendees have submitted answers.
@@ -667,9 +672,11 @@
           {# End registration window end -#}
 
           <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
-            A registration window limits attendee self-registration, ticket checkout, invitation requests,
-            waitlist promotion, and registration-question answers. Organizers can still manually invite
-            attendees outside the window; those invitees can complete required registration questions.
+            A registration window limits attendee self-registration, ticket checkout, new invitation
+            requests, waitlist promotion, and registration-question answers. After it closes, organizers
+            cannot accept pending invitation requests until the event starts. Rejecting requests and
+            inviting attendees manually still work; those invitees can complete required registration
+            questions.
           </div>
 
           {# Event reminder toggle -#}

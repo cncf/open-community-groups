@@ -125,6 +125,9 @@ describe("questions-editor", () => {
     // Verify marks question prompts and selectable options as required.
     expect(element.querySelector("#question-prompt-draft")?.required).to.equal(true);
     expect(element.querySelector('input[aria-label="Option 1"]')?.required).to.equal(true);
+    expect(element.querySelector(".form-legend")?.textContent).to.include(
+      "Required answers are collected with a ticket request, RSVP, checkout, or offer claim.",
+    );
   });
 
   it("keeps one option available for selectable questions", async () => {

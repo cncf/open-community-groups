@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/dashboard/group/attendees.js";
 import { initializeEventsListPage } from "/static/js/dashboard/group/events-list.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
@@ -47,9 +48,7 @@ const mountEventsList = ({ hasRelatedEvents = false } = {}) => {
 };
 
 const loadTemplate = async () => {
-  const response = await fetch(
-    "/ocg-server/templates/dashboard/group/events_list.html",
-  );
+  const response = await fetch("/ocg-server/templates/dashboard/group/events_list.html");
 
   expect(response.ok).to.equal(true);
 
@@ -81,9 +80,7 @@ describe("events list page", () => {
     expect(template).to.include(
       'data-cancel-text="{% if action == "cancel" %}Keep event{% else %}No{% endif %}"',
     );
-    expect(template).to.include(
-      'data-series-scope-text="Non-completed events in series"',
-    );
+    expect(template).to.include('data-series-scope-text="Non-completed events in series"');
   });
 
   it("disables deletion when the event is not eligible", async () => {
@@ -101,14 +98,8 @@ describe("events list page", () => {
     const template = await loadTemplate();
 
     // Both upcoming and past actions expose their label, target, and collapsed state.
-    expect(
-      template.match(/aria-label="Open actions for \{\{ event\.name \}\}"/g),
-    ).to.have.length(2);
-    expect(
-      template.match(
-        /aria-controls="dropdown-actions-\{\{ event\.event_id \}\}"/g,
-      ),
-    ).to.have.length(2);
+    expect(template.match(/aria-label="Open actions for \{\{ event\.name \}\}"/g)).to.have.length(2);
+    expect(template.match(/aria-controls="dropdown-actions-\{\{ event\.event_id \}\}"/g)).to.have.length(2);
     expect(template.match(/aria-expanded="false"/g)).to.have.length(2);
     expect(template).to.not.include("dropdownDefaultButton");
   });
@@ -165,9 +156,7 @@ describe("events list page", () => {
     root.querySelector(".btn-actions").dispatchEvent(clickEvent);
 
     expect(clickEvent.defaultPrevented).to.equal(true);
-    expect(
-      root.querySelector(".dropdown").classList.contains("hidden"),
-    ).to.equal(false);
+    expect(root.querySelector(".dropdown").classList.contains("hidden")).to.equal(false);
   });
 
   it("restores disclosure focus when Escape closes an actions dropdown", () => {
@@ -180,9 +169,7 @@ describe("events list page", () => {
     dropdown.querySelector("button").focus();
 
     // Escape closes the dropdown, synchronizes state, and restores focus.
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
-    );
+    document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
     expect(dropdown.classList.contains("hidden")).to.equal(true);
     expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
     expect(document.activeElement).to.equal(actionsButton);
@@ -209,8 +196,179 @@ describe("events list page", () => {
     // Check the unavailable controls and recovery guidance are synchronized.
     expect(root.querySelector("select").disabled).to.equal(true);
     expect(root.querySelector("button").disabled).to.equal(true);
-    expect(root.querySelector("p").classList.contains("hidden")).to.equal(
-      false,
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(false);
+  });
+
+  it("keeps invitation request accept disabled when registration is closed", () => {
+    // Build invitation request assignment with an eligible ticket after registration closed.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <form>
+          <select data-invitation-request-ticket-type>
+            <option value="">Select ticket type</option>
+            <option value="ticket-1">Private admission</option>
+          </select>
+          <p data-invitation-request-ticket-empty class="hidden">No tickets available.</p>
+          <button
+            data-invitation-request-ticket-submit
+            data-invitation-request-accept-blocked
+            type="submit"
+            disabled
+          >
+            Accept
+          </button>
+        </form>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    // Initialize the invitation request ticket guard.
+    initializeEventsListPage(root);
+
+    // Check accept stays blocked even when a ticket type can be assigned.
+    expect(root.querySelector("select").disabled).to.equal(false);
+    expect(root.querySelector("button").disabled).to.equal(true);
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps invitation request accept disabled when the template already disabled it", () => {
+    // Build invitation request assignment with an eligible ticket and a template-disabled accept.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <form>
+          <select data-invitation-request-ticket-type>
+            <option value="">Select ticket type</option>
+            <option value="ticket-1">Private admission</option>
+          </select>
+          <p data-invitation-request-ticket-empty class="hidden">No tickets available.</p>
+          <button
+            data-invitation-request-ticket-submit
+            type="submit"
+            disabled
+            title="Your role cannot manage invitation requests."
+          >
+            Accept
+          </button>
+        </form>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    // Initialize the invitation request ticket guard.
+    initializeEventsListPage(root);
+
+    // Check accept stays disabled for template reasons other than registration close.
+    expect(root.querySelector("select").disabled).to.equal(false);
+    expect(root.querySelector("button").disabled).to.equal(true);
+    expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);
+  });
+
+  it("does not bind answers modal controls without a review modal", () => {
+    // Initialize an events-list root that does not include a review modal.
+    document.body.innerHTML = `<div id="events-list-root"></div>`;
+    const root = document.getElementById("events-list-root");
+
+    initializeEventsListPage(root);
+
+    // Check the shared answers modal is not initialized on unrelated pages.
+    expect(root.dataset.invitationRequestAnswersModalReady).to.equal(undefined);
+  });
+
+  it("opens invitation request answers from the shared review modal", () => {
+    // Render an invitation request answers trigger and modal.
+    document.body.innerHTML = `
+      <div id="events-list-root">
+        <button
+          type="button"
+          data-answers-open
+          data-answers-source="invitation-request-answers-user-1"
+          data-answers-name="Requesting User"
+        >
+          View answers
+        </button>
+        <div id="invitation-request-answers-user-1" hidden>
+          <ol>
+            <li>
+              <h4>Dietary restrictions?</h4>
+              <div>Vegetarian</div>
+            </li>
+          </ol>
+        </div>
+        <div id="invitation-request-answers-modal" class="hidden">
+          <button id="close-invitation-request-answers-modal" type="button">Close</button>
+          <button id="cancel-invitation-request-answers-modal" type="button">Cancel</button>
+          <div id="overlay-invitation-request-answers-modal"></div>
+          <div id="invitation-request-answers-name"></div>
+          <div id="invitation-request-answers-content"></div>
+        </div>
+      </div>
+    `;
+    const root = document.getElementById("events-list-root");
+
+    // Initialize the invitation request answers modal.
+    initializeEventsListPage(root);
+    root.querySelector("[data-answers-open]")?.click();
+
+    // Verify opens the invitation request answers modal with copied answers.
+    const modal = document.getElementById("invitation-request-answers-modal");
+    const content = document.getElementById("invitation-request-answers-content");
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("invitation-request-answers-name")?.textContent).to.equal(
+      "Requesting User",
+    );
+    expect(content.textContent).to.include("Dietary restrictions?");
+    expect(content.textContent).to.include("Vegetarian");
+
+    // Close the invitation request answers modal.
+    document.getElementById("cancel-invitation-request-answers-modal")?.click();
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("opens invitation request answers when attendees features initialize first", () => {
+    // Render a Requests tab fragment the way HTMX adds it beside the Attendees tab scripts.
+    document.body.innerHTML = `
+      <div id="invitation-requests-refresh" data-events-list-page>
+        <button
+          type="button"
+          data-answers-open
+          data-answers-source="invitation-request-answers-user-1"
+          data-answers-name="Requesting User"
+        >
+          View answers
+        </button>
+        <div id="invitation-request-answers-user-1" hidden>
+          <ol>
+            <li>
+              <h4>Dietary restrictions?</h4>
+              <div>Vegetarian</div>
+            </li>
+          </ol>
+        </div>
+        <div id="invitation-request-answers-modal" class="hidden">
+          <button id="close-invitation-request-answers-modal" type="button">Close</button>
+          <button id="cancel-invitation-request-answers-modal" type="button">Cancel</button>
+          <div id="overlay-invitation-request-answers-modal"></div>
+          <div id="invitation-request-answers-name"></div>
+          <div id="invitation-request-answers-content"></div>
+        </div>
+      </div>
+    `;
+    const root = document.getElementById("invitation-requests-refresh");
+
+    // Initialize both page modules against the swapped Requests fragment.
+    dispatchHtmxLoad(root);
+    root.querySelector("[data-answers-open]")?.click();
+
+    // Verify the invitation request modal opens instead of targeting attendee modal ids.
+    const modal = document.getElementById("invitation-request-answers-modal");
+    expect(root.dataset.attendeeAnswersModalReady).to.equal(undefined);
+    expect(root.dataset.invitationRequestAnswersModalReady).to.equal("true");
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("invitation-request-answers-name")?.textContent).to.equal(
+      "Requesting User",
+    );
+    expect(document.getElementById("invitation-request-answers-content")?.textContent).to.include(
+      "Vegetarian",
     );
   });
 
@@ -227,9 +385,7 @@ describe("events list page", () => {
     // Verify the dialog copy and confirmation event use the single-event scope.
     expect(env.current.swal.calls[0].text).to.equal("Publish this event?");
     expect(env.current.swal.calls[0].cancelButtonText).to.equal("No");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      [button, "confirmed"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[button, "confirmed"]]);
     expect(button.dataset.requestScope).to.equal("this");
 
     // Apply the selected scope to the outgoing HTMX request.
@@ -240,9 +396,7 @@ describe("events list page", () => {
     button.dispatchEvent(configEvent);
 
     // Verify the request targets only the selected event.
-    expect(configEvent.detail.path).to.equal(
-      "/dashboard/group/events/123/publish",
-    );
+    expect(configEvent.detail.path).to.equal("/dashboard/group/events/123/publish");
   });
 
   it("confirms a series action and reports the scoped response message", async () => {
@@ -258,9 +412,7 @@ describe("events list page", () => {
 
     // Verify confirms a series action and reports the scoped response message.
     expect(env.current.swal.calls[0].text).to.equal("Publish this series?");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      [button, "confirmed"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[button, "confirmed"]]);
 
     // Prepare config event for confirming a series action and reports the scoped.
     const configEvent = new CustomEvent("htmx:configRequest", {
@@ -270,9 +422,7 @@ describe("events list page", () => {
     button.dispatchEvent(configEvent);
 
     // Verify confirms a series action and reports the scoped response message.
-    expect(configEvent.detail.path).to.equal(
-      "/dashboard/group/events/123/publish?scope=series",
-    );
+    expect(configEvent.detail.path).to.equal("/dashboard/group/events/123/publish?scope=series");
 
     // Dispatch the successful series action response.
     button.dispatchEvent(
@@ -343,9 +493,7 @@ describe("events list page", () => {
 
     // Verify the actions dropdown is initialized from the declarative root.
     document.querySelector(".btn-actions").click();
-    expect(
-      document.querySelector(".dropdown").classList.contains("hidden"),
-    ).to.equal(false);
+    expect(document.querySelector(".dropdown").classList.contains("hidden")).to.equal(false);
 
     // Dispatch the failed invitation action response.
     document.querySelector("[data-invitation-request-action]").dispatchEvent(
@@ -365,10 +513,7 @@ describe("events list page", () => {
   it("does not close unrelated dropdowns when initialized on the document", () => {
     // Prepare root for does not close unrelated dropdowns when initialized.
     const root = mountEventsList();
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      '<div id="user-dropdown" class="dropdown"></div>',
-    );
+    document.body.insertAdjacentHTML("beforeend", '<div id="user-dropdown" class="dropdown"></div>');
     initializeEventsListPage(document);
 
     // Keep a reference to the button actions element.

@@ -72,9 +72,22 @@ are disabled. The event page shows the open or close time when a window is confi
 If you started checkout before registration closed, the active ticket hold can still be completed
 until it expires.
 
+After registration closes, organizers cannot accept pending invitation requests
+until the event starts. Rejecting a request still works. Automatic waitlist
+promotion also stops while registration is closed. Organizers can still invite
+attendees manually.
+
 Organizer-created offers are an exception. They can be claimed and their
 required registration questions answered outside the public registration
 window until the offer expires.
+
+## When Are Registration Questions Required?
+
+Each question can be marked required. Only required questions must be answered; optional questions
+can be skipped. Required answers are collected with a ticket request, before RSVP or checkout, and
+when an organizer or waitlist offer is claimed. Joining a waiting list does not collect answers.
+
+Organizers review ticket-request answers from the event `Requests` tab through `View answers`.
 
 ## How Do Ticket Offers Work?
 

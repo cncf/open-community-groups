@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/attendees.js";
+import { resolveAttendeesRoot } from "/static/js/dashboard/group/attendees/shared.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
@@ -833,9 +834,9 @@ describe("dashboard group attendees", () => {
       <div id="attendees-content">
         <button
           type="button"
-          data-attendee-answers-open
-          data-attendee-answers-source="attendee-answers-user-1"
-          data-attendee-name="Ana Lopez"
+          data-answers-open
+          data-answers-source="attendee-answers-user-1"
+          data-answers-name="Ana Lopez"
         >
           View answers
         </button>
@@ -859,7 +860,7 @@ describe("dashboard group attendees", () => {
     `;
 
     initializeAttendeesUi();
-    document.querySelector("[data-attendee-answers-open]")?.click();
+    document.querySelector("[data-answers-open]")?.click();
 
     // Set up modal.
     const modal = document.getElementById("attendee-answers-modal");
@@ -874,6 +875,24 @@ describe("dashboard group attendees", () => {
     // Click the cancel attendee answers modal button.
     document.getElementById("cancel-attendee-answers-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("does not treat invitation request pages as the attendees root", () => {
+    // Render a Requests tab fragment without attendees content.
+    document.body.innerHTML = `
+      <div id="invitation-requests-refresh" data-events-list-page>
+        <button type="button" data-answers-open>View answers</button>
+        <div id="invitation-request-answers-modal" class="hidden"></div>
+      </div>
+    `;
+    const requestsRoot = document.getElementById("invitation-requests-refresh");
+
+    // Check attendee features stay unbound on the Requests tab.
+    expect(resolveAttendeesRoot(requestsRoot)).to.equal(null);
+    expect(resolveAttendeesRoot(document)).to.equal(null);
+    dispatchHtmxLoad(requestsRoot);
+    expect(requestsRoot.dataset.attendeeAnswersModalReady).to.equal(undefined);
+    expect(requestsRoot.dataset.attendeeActionsMenuReady).to.equal(undefined);
   });
 
   it("opens refund rejection with the selected attendee context", () => {
@@ -1342,13 +1361,15 @@ describe("dashboard group attendees", () => {
   it("keeps the check-in toggle disabled after a successful check-in", async () => {
     // Render the DOM fixture for keeping the check-in toggle disabled.
     document.body.innerHTML = `
-      <label class="cursor-pointer">
-        <input
-          type="checkbox"
-          class="check-in-toggle"
-          data-url="/dashboard/group/attendees/check-in/7"
-        />
-      </label>
+      <div id="attendees-content">
+        <label class="cursor-pointer">
+          <input
+            type="checkbox"
+            class="check-in-toggle"
+            data-url="/dashboard/group/attendees/check-in/7"
+          />
+        </label>
+      </div>
     `;
 
     // Verify keeps the check-in toggle disabled.
@@ -1380,13 +1401,15 @@ describe("dashboard group attendees", () => {
 
     // Render the DOM fixture for reverts the check-in toggle and shows an error.
     document.body.innerHTML = `
-      <label class="cursor-pointer">
-        <input
-          type="checkbox"
-          class="check-in-toggle"
-          data-url="/dashboard/group/attendees/check-in/8"
-        />
-      </label>
+      <div id="attendees-content">
+        <label class="cursor-pointer">
+          <input
+            type="checkbox"
+            class="check-in-toggle"
+            data-url="/dashboard/group/attendees/check-in/8"
+          />
+        </label>
+      </div>
     `;
 
     // Failed check-in reverts the toggle and shows an error.

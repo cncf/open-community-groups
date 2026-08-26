@@ -23,7 +23,13 @@ use crate::{
             },
         },
     },
-    types::permissions::GroupPermission,
+    types::{
+        permissions::GroupPermission,
+        questionnaire::{
+            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
+            QuestionnaireQuestion, QuestionnaireQuestionKind,
+        },
+    },
 };
 
 #[tokio::test]
@@ -76,6 +82,10 @@ async fn test_list_page_db_error() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_search_event_invitation_requests()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -109,11 +119,13 @@ async fn test_list_page_db_error() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
+    let question_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -125,7 +137,21 @@ async fn test_list_page_success() {
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
-    let invitation_request = sample_invitation_request();
+    let mut invitation_request = sample_invitation_request();
+    invitation_request.registration_answers = Some(QuestionnaireAnswers {
+        answers: vec![QuestionnaireAnswer {
+            question_id,
+            value: QuestionnaireAnswerValue::One("Vegetarian".to_string()),
+        }],
+    });
+    let registration_questions = vec![QuestionnaireQuestion {
+        id: question_id,
+        kind: QuestionnaireQuestionKind::FreeText,
+        prompt: "Dietary restrictions?".to_string(),
+        required: false,
+
+        options: vec![],
+    }];
     let output = InvitationRequestsOutput {
         invitation_requests: vec![invitation_request],
         total: 1,
@@ -163,6 +189,10 @@ async fn test_list_page_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(registration_questions.clone()));
     db.expect_search_event_invitation_requests()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -198,6 +228,13 @@ async fn test_list_page_success() {
     );
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("status=pending"));
+
+    // Check the list includes review answers for the request
+    assert!(body.contains("View answers"));
+    assert!(body.contains("data-answers-open"));
+    assert!(body.contains("id=\"invitation-request-answers-modal\""));
+    assert!(body.contains("Dietary restrictions?"));
+    assert!(body.contains("Vegetarian"));
 }
 
 #[tokio::test]
@@ -370,6 +407,10 @@ async fn test_list_page_with_all_status_filter() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_search_event_invitation_requests()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -461,6 +502,10 @@ async fn test_list_page_with_pagination_params() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_search_event_invitation_requests()
         .times(1)
         .withf(move |gid, eid, filters| {
@@ -551,6 +596,10 @@ async fn test_list_page_with_search_query() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_search_event_invitation_requests()
         .times(1)
         .withf(move |gid, eid, filters| {

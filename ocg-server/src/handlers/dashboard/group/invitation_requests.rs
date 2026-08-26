@@ -38,11 +38,13 @@ pub(crate) async fn list_page(
     Path(event_id): Path<Uuid>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary and invitation requests
+    // Validate list filters
     let filters: InvitationRequestsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     filters.validate()?;
-    let (can_manage_events, event, search_results) = tokio::try_join!(
+
+    // Fetch event context, questions, and invitation requests
+    let (can_manage_events, event, registration_questions, search_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -50,6 +52,7 @@ pub(crate) async fn list_page(
             GroupPermission::EventsWrite
         ),
         db.get_event_summary_dashboard(community_id, group_id, event_id),
+        db.get_event_registration_questions(community_id, event_id),
         db.search_event_invitation_requests(group_id, event_id, &filters)
     )?;
 
@@ -70,11 +73,13 @@ pub(crate) async fn list_page(
         invitation_requests: search_results.invitation_requests,
         navigation_links,
         refresh_url,
+        status: filters.status,
         total: search_results.total,
+
         limit: filters.limit,
         offset: filters.offset,
+        registration_questions,
         sort: filters.sort,
-        status: filters.status,
         title: filters.title,
         ts_query: filters.ts_query,
     };

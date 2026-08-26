@@ -7,7 +7,7 @@ export const attendeesRootSelector = "#attendees-content";
 /**
  * Resolves the attendee page root for scoped dashboard behavior.
  * @param {Document|Element} [root=document] Query root.
- * @returns {Document|Element} Attendees root element, body, or original root.
+ * @returns {Element|null} Attendees root when present.
  */
 export const resolveAttendeesRoot = (root = document) => {
   if (root instanceof Element && root.matches(attendeesRootSelector)) {
@@ -15,10 +15,10 @@ export const resolveAttendeesRoot = (root = document) => {
   }
 
   if (root instanceof Element) {
-    return root.closest(attendeesRootSelector) || getElementById(root, "attendees-content") || root;
+    return root.closest(attendeesRootSelector) || getElementById(root, "attendees-content") || null;
   }
 
-  return getElementById(root, "attendees-content") || root.body || root;
+  return getElementById(root, "attendees-content") || null;
 };
 
 /**

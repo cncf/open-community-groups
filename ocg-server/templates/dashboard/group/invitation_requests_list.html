@@ -1,6 +1,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
+{% import "macros/question_answers.html" as question_answers -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
 {# Invitation requests refresh area -#}
@@ -11,6 +12,12 @@
      hx-target="#invitation-requests-content"
      hx-swap="innerHTML">
   {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
+  {% if !event.invitation_request_acceptance_is_open() && !event.canceled && !event.is_past() -%}
+    <div class="mt-4 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+      Registration is closed. Pending requests cannot be accepted until the event starts. You can still
+      reject requests, or invite someone from the Attendees tab.
+    </div>
+  {% endif -%}
 
   {# Filters -#}
   <div class="my-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -308,10 +315,13 @@
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-24">
-                {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
+                {% let has_registration_answers = request.registration_answers.is_some() && !registration_questions.is_empty() -%}
+                {% let can_review_request = request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
                   || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
                   || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
                   || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
+                {% let manage_actions_unavailable = !can_manage_events || event.canceled || event.is_past() -%}
+                {% if has_registration_answers || can_review_request -%}
                   <div class="flex justify-end">
                     <div class="group relative">
                       <button type="button"
@@ -320,15 +330,17 @@
                               aria-controls="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                               aria-expanded="false"
                               class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
-                                     {% if !can_manage_events || event.canceled || event.is_past() -%}
+                                     {% if !has_registration_answers && manage_actions_unavailable -%}
                                        opacity-50 cursor-not-allowed
                                      {% endif -%}"
-                              {% if !can_manage_events -%}
-                                disabled title="Your role cannot manage invitation requests."
-                              {% else if event.canceled -%}
-                                disabled title="Canceled events cannot manage invitation requests."
-                              {% else if event.is_past() -%}
-                                disabled title="Past events cannot manage invitation requests."
+                              {% if !has_registration_answers -%}
+                                {% if !can_manage_events -%}
+                                  disabled title="Your role cannot manage invitation requests."
+                                {% else if event.canceled -%}
+                                  disabled title="Canceled events cannot manage invitation requests."
+                                {% else if event.is_past() -%}
+                                  disabled title="Past events cannot manage invitation requests."
+                                {% endif -%}
                               {% endif -%}>
                         <div class="svg-icon size-4 icon-vertical-dots"></div>
                       </button>
@@ -338,6 +350,22 @@
                            data-event-actions-dropdown
                            class="dropdown absolute end-0 top-8 z-10 hidden w-[280px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
                         <ul class="text-sm text-stone-700">
+                          {% if has_registration_answers -%}
+                            <li>
+                              <button type="button"
+                                      data-answers-open
+                                      data-answers-source="invitation-request-answers-{{ request.user.user_id }}"
+                                      data-answers-name="{{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
+                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                                <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-600"></div>
+                                <span>View answers</span>
+                              </button>
+                              <div id="invitation-request-answers-{{ request.user.user_id }}" hidden>
+                                {{ question_answers::review_list(questions = registration_questions,
+                                  answers = request.registration_answers.as_ref()) -}}
+                              </div>
+                            </li>
+                          {% endif -%}
                           {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending
                             || request.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired) -%}
                             <li>
@@ -387,7 +415,16 @@
                                 {% endif -%}
                                 <button type="submit"
                                         data-invitation-request-ticket-submit
-                                        class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                                        class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                        {% if !can_manage_events -%}
+                                          disabled title="Your role cannot manage invitation requests."
+                                        {% else if event.canceled -%}
+                                          disabled title="Canceled events cannot manage invitation requests."
+                                        {% else if event.is_past() -%}
+                                          disabled title="Past events cannot manage invitation requests."
+                                        {% else if !event.invitation_request_acceptance_is_open() -%}
+                                          data-invitation-request-accept-blocked disabled title="Pending requests cannot be accepted after registration closes until the event starts."
+                                        {% endif -%}>
                                   <div class="flex items-center gap-2">
                                     <div class="svg-icon size-4 icon-check bg-stone-600"></div>
                                     <div>
@@ -408,7 +445,14 @@
                               <li>
                                 <button id="cancel-invitation-request-offer-{{ admission_offer_id }}"
                                         type="button"
-                                        class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
+                                        class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                        {% if !can_manage_events -%}
+                                          disabled title="Your role cannot manage invitation requests."
+                                        {% else if event.canceled -%}
+                                          disabled title="Canceled events cannot manage invitation requests."
+                                        {% else if event.is_past() -%}
+                                          disabled title="Past events cannot manage invitation requests."
+                                        {% endif -%}
                                         hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"
                                         hx-indicator="#dashboard-spinner"
                                         hx-disabled-elt="this"
@@ -430,7 +474,14 @@
                             <li>
                               <button id="reject-invitation-request-{{ request.user.user_id }}"
                                       type="button"
-                                      class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
+                                      class="w-full cursor-pointer px-3 py-2 text-start text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                      {% if !can_manage_events -%}
+                                        disabled title="Your role cannot manage invitation requests."
+                                      {% else if event.canceled -%}
+                                        disabled title="Canceled events cannot manage invitation requests."
+                                      {% else if event.is_past() -%}
+                                        disabled title="Past events cannot manage invitation requests."
+                                      {% endif -%}
                                       hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/reject"
                                       hx-indicator="#dashboard-spinner"
                                       hx-disabled-elt="this"
@@ -461,6 +512,10 @@
       </tbody>
     </table>
   </div>
+
+  {# Invitation request answers modal -#}
+  {{ question_answers::review_modal(id_prefix = "invitation-request-answers") -}}
+  {# End invitation request answers modal -#}
 </div>
 {# End invitation requests table -#}
 {# End invitation requests refresh area -#}

@@ -168,7 +168,18 @@ Waitlist control also lives here:
 
 Use the `Questions` tab to define registration questions for attendees. Supported question types
 are free text, single select, and multi select. Select questions use organizer-defined options,
-and each question can be marked required.
+and each question can be marked `Required`. Only required questions must be answered; optional
+questions can be skipped.
+
+Questions appear when the answers are needed:
+
+- With a ticket request.
+- Before RSVP or checkout.
+- When an organizer or waitlist offer is claimed.
+
+Joining a waiting list does not collect answers. Mark a question `Required` when you need that
+answer at request, RSVP, checkout, or claim time. Ticket-request answers are available from the
+`Requests` tab through `View answers`. Confirmed-attendee answers are on the `Attendees` tab.
 
 Registration questions are copied when you create an event from an existing event. After attendees
 submit answers, or while active checkout holds exist, the questions become read-only so existing
@@ -186,6 +197,11 @@ Invitation review also lives here:
   time-limited offer when capacity and payment readiness allow it.
 - A generic private request requires the organizer to assign an active
   invitation-only tier during acceptance.
+- Accept pending requests while registration is open. After it closes, new
+  requests stop and pending requests cannot be accepted until the event starts.
+  Rejecting a request still works.
+- Use `View answers` on the `Requests` tab to review answers submitted with a
+  ticket request before accepting or rejecting it.
 - Disabling invitation review is blocked while pending requests exist.
 - Accepted requests receive a time-limited offer that must be claimed. Free
   offers complete inside OCG; positive prices continue to hosted checkout.
@@ -228,6 +244,10 @@ attendee-facing registration:
 - Active ticket checkout holds are also an override for completion only. Registration close stops
   new checkout starts, but attendees already holding a ticket can finish checkout and required
   registration questions until the hold expires.
+- Accepting a pending invitation request is blocked after registration closes
+  until the event starts. Reissuing an expired approval offer uses the same
+  rule. Rejecting a request still works.
+- Automatic waitlist promotion stops while registration is closed.
 
 When `Send Event Reminder` is enabled, OCG sends reminder messages about 24 hours before start
 time.
@@ -407,6 +427,7 @@ On the organizer side, the tabs work like this:
   while you refine the table.
 - Canceling an event notifies attendees, speakers, and waitlisted users.
 - Accepting or rejecting an invitation request is written to the audit log.
+- `View answers` on the `Requests` tab shows registration answers submitted with a ticket request.
 - Sending, canceling, accepting, or rejecting an organizer-created event invitation is written to
   the audit log.
 
@@ -560,6 +581,7 @@ audience and paid-refund progress.
 
 The invitation requests table can be sorted by requester or request date, filtered by request status
 or title presence, and reset to `All` statuses when you need to audit accepted and rejected requests.
+Row actions include `View answers` when the requester submitted registration answers.
 The waitlist table can be sorted by entry name or joined date and filtered by title presence; the
 queue column still shows the FIFO promotion order. An exhausted transient refund can be retried from
 its attendee row; terminal provider failures remain visible for operator recovery.

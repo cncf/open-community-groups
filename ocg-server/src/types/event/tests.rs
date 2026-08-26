@@ -636,6 +636,57 @@ fn event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
 }
 
 #[test]
+fn event_summary_invitation_request_acceptance_is_blocked_after_registration_closes() {
+    let now = Utc::now();
+    let mut event = sample_event_summary(vec![]);
+    event.ends_at = Some(now + Duration::hours(2));
+    event.registration_ends_at = Some(now - Duration::hours(1));
+    event.registration_starts_at = Some(now - Duration::hours(3));
+    event.starts_at = Some(now + Duration::hours(1));
+
+    assert!(!event.registration_window_is_open());
+    assert!(!event.invitation_request_acceptance_is_open());
+}
+
+#[test]
+fn event_summary_invitation_request_acceptance_is_blocked_when_event_has_no_start() {
+    let now = Utc::now();
+    let mut event = sample_event_summary(vec![]);
+    event.registration_ends_at = Some(now - Duration::hours(1));
+    event.registration_starts_at = Some(now - Duration::hours(3));
+    event.starts_at = None;
+
+    assert!(!event.registration_window_is_open());
+    assert!(!event.invitation_request_acceptance_is_open());
+}
+
+#[test]
+fn event_summary_invitation_request_acceptance_is_open_after_event_start() {
+    let now = Utc::now();
+    let mut event = sample_event_summary(vec![]);
+    event.ends_at = Some(now + Duration::hours(2));
+    event.registration_ends_at = Some(now - Duration::hours(1));
+    event.registration_starts_at = Some(now - Duration::hours(3));
+    event.starts_at = Some(now - Duration::minutes(15));
+
+    assert!(!event.registration_window_is_open());
+    assert!(event.invitation_request_acceptance_is_open());
+}
+
+#[test]
+fn event_summary_invitation_request_acceptance_is_open_while_registration_is_open() {
+    let now = Utc::now();
+    let mut event = sample_event_summary(vec![]);
+    event.ends_at = Some(now + Duration::hours(3));
+    event.registration_ends_at = Some(now + Duration::hours(1));
+    event.registration_starts_at = Some(now - Duration::hours(1));
+    event.starts_at = Some(now + Duration::hours(2));
+
+    assert!(event.registration_window_is_open());
+    assert!(event.invitation_request_acceptance_is_open());
+}
+
+#[test]
 fn event_summary_single_public_ticket_type_requires_exactly_one_visible_tier() {
     let single = sample_event_summary(vec![sample_ticket_type(true, Some(0), false, "General")]);
     let multiple = sample_event_summary(vec![
