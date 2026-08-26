@@ -16,7 +16,7 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
-    services::payments::DynPaymentsManager,
+    services::payments::{AutomaticTaxReadinessError, DynPaymentsManager},
     templates::dashboard::group::settings::{self, GroupUpdate},
     types::{payments::PaymentConfigurationValidation, permissions::GroupPermission},
 };
@@ -98,6 +98,8 @@ pub(crate) async fn update(
                 .group_requires_automatic_tax_readiness(community_id, group_id)
                 .await?;
             payments_manager.validate_fiscal_sponsor(recipient, None).await?;
+
+            // Recheck each upcoming automatic-tax event against the new sponsor
             if require_automatic_tax {
                 let event_ids = db
                     .list_group_automatic_tax_readiness_event_ids(community_id, group_id)
@@ -107,7 +109,7 @@ pub(crate) async fn update(
                     payments_manager
                         .ensure_automatic_tax_readiness(recipient, &event_venue(&event))
                         .await
-                        .map_err(automatic_tax_handler_error)?;
+                        .map_err(|error| upcoming_event_automatic_tax_error(&event.name, error))?;
                 }
             }
             payment_validation = Some(PaymentConfigurationValidation {
@@ -128,4 +130,19 @@ pub(crate) async fn update(
         .await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+}
+
+// Helpers.
+
+/// Maps an upcoming-event readiness failure onto the fiscal-sponsor update.
+fn upcoming_event_automatic_tax_error(
+    event_name: &str,
+    error: AutomaticTaxReadinessError,
+) -> HandlerError {
+    match automatic_tax_handler_error(error) {
+        HandlerError::Database(message) => HandlerError::Database(format!(
+            "cannot update fiscal sponsor: upcoming event \"{event_name}\" is not ready for payments: {message}"
+        )),
+        other => other,
+    }
 }
