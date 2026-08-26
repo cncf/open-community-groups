@@ -92,6 +92,9 @@ You can manage:
 - Social links.
 - Optional tags, photo gallery, and extra links.
 
+Enter social and additional links as absolute HTTP or HTTPS URLs. Other URL
+schemes and protocol-relative URLs are rejected.
+
 Category and region options in this form come from the defined community's
 [Group Categories](/dashboard/community?tab=group-categories ':ignore') and
 [Regions](/dashboard/community?tab=regions ':ignore') tabs.
@@ -226,6 +229,8 @@ sends the message body as plain text.
 
 Sponsors are managed once and reused across events, reducing repetitive event setup.
 They can also be individually featured on the public group page.
+Sponsor website links must be absolute HTTP or HTTPS URLs; other URL schemes
+and protocol-relative URLs are rejected.
 
 Typical flow:
 

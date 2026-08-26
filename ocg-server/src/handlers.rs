@@ -3,10 +3,12 @@
 //! This module organizes all HTTP request handlers by domain. It also includes shared
 //! utilities like error handling and request extractors for common functionality.
 
-use std::str::FromStr;
-
-use anyhow::{Result, anyhow};
-use axum::http::{HeaderMap, HeaderName, HeaderValue, Uri, header::ORIGIN, header::REFERER};
+use anyhow::{Context, Result};
+use axum::http::{
+    HeaderMap, HeaderName, HeaderValue,
+    header::{ORIGIN, REFERER},
+};
+use reqwest::Url;
 
 use crate::{config::HttpServerConfig, router::PUBLIC_SHARED_CACHE_HEADERS};
 
@@ -60,47 +62,39 @@ pub(crate) fn extend_public_shared_cache_headers(
     Ok(headers)
 }
 
-/// Checks whether the request comes from the configured site hostname.
-pub(crate) fn request_matches_site(
+/// Checks whether the Origin or Referer header matches the configured site origin.
+pub(crate) fn request_headers_match_site_origin(
     server_cfg: &HttpServerConfig,
     headers: &HeaderMap,
 ) -> Result<bool> {
-    // Check if referer checks are disabled
-    if server_cfg.disable_referer_checks {
-        return Ok(true);
+    // Resolve the configured site origin
+    let site_url = Url::parse(&server_cfg.base_url).context("invalid base_url")?;
+    if site_url.host_str().is_none() {
+        anyhow::bail!("missing host in base_url");
     }
+    let site_origin = site_url.origin();
 
-    // Extract the host from the base URL in the config
-    let site_host = Uri::from_str(&server_cfg.base_url)
-        .expect("valid base_url in config")
-        .host()
-        .map(str::to_ascii_lowercase)
-        .ok_or_else(|| anyhow!("missing host in base_url"))?;
-
-    // Prefer the origin header when present
+    // Prefer the Origin header when present
     if let Some(origin) = headers.get(ORIGIN) {
-        let Ok(origin) = origin.to_str() else {
-            return Ok(false);
-        };
-        let origin_host = Uri::from_str(origin)
+        let matches = origin
+            .to_str()
             .ok()
-            .and_then(|uri| uri.host().map(str::to_ascii_lowercase));
-
-        return Ok(origin_host.is_some_and(|origin_host| origin_host == site_host));
+            .and_then(|origin| Url::parse(origin).ok())
+            .is_some_and(|origin| origin.origin() == site_origin);
+        return Ok(matches);
     }
 
-    // Fall back to referer when origin is absent
+    // Fall back to Referer when Origin is absent
     let Some(referer) = headers.get(REFERER) else {
         return Ok(false);
     };
-    let Ok(referer) = referer.to_str() else {
-        return Ok(false);
-    };
-    let referer_host = Uri::from_str(referer)
+    let matches = referer
+        .to_str()
         .ok()
-        .and_then(|uri| uri.host().map(str::to_ascii_lowercase));
+        .and_then(|referer| Url::parse(referer).ok())
+        .is_some_and(|referer| referer.origin() == site_origin);
 
-    Ok(referer_host.is_some_and(|referer_host| referer_host == site_host))
+    Ok(matches)
 }
 
 /// Truncates gallery image URLs to the public display limit while preserving order.
@@ -151,36 +145,41 @@ mod helpers_tests {
     }
 
     #[test]
-    fn test_request_matches_site_accepts_when_referer_checks_disabled() {
-        let server_cfg = sample_server_cfg("https://example.test", true);
+    fn test_request_headers_match_site_origin_accepts_normalized_default_port() {
+        let server_cfg = sample_server_cfg("https://example.test");
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            REFERER,
+            HeaderValue::from_static("https://example.test:443/page"),
+        );
 
-        assert!(request_matches_site(&server_cfg, &HeaderMap::new()).unwrap());
+        assert!(request_headers_match_site_origin(&server_cfg, &headers).unwrap());
     }
 
     #[test]
-    fn test_request_matches_site_falls_back_to_referer() {
-        let server_cfg = sample_server_cfg("https://example.test", false);
+    fn test_request_headers_match_site_origin_falls_back_to_referer() {
+        let server_cfg = sample_server_cfg("https://example.test");
         let mut headers = HeaderMap::new();
         headers.insert(
             REFERER,
             HeaderValue::from_static("https://example.test/page"),
         );
 
-        assert!(request_matches_site(&server_cfg, &headers).unwrap());
+        assert!(request_headers_match_site_origin(&server_cfg, &headers).unwrap());
     }
 
     #[test]
-    fn test_request_matches_site_matches_origin_host_case_insensitively() {
-        let server_cfg = sample_server_cfg("https://Example.Test", false);
+    fn test_request_headers_match_site_origin_matches_host_case_insensitively() {
+        let server_cfg = sample_server_cfg("https://Example.Test");
         let mut headers = HeaderMap::new();
         headers.insert(ORIGIN, HeaderValue::from_static("https://EXAMPLE.TEST"));
 
-        assert!(request_matches_site(&server_cfg, &headers).unwrap());
+        assert!(request_headers_match_site_origin(&server_cfg, &headers).unwrap());
     }
 
     #[test]
-    fn test_request_matches_site_prefers_origin_over_referer() {
-        let server_cfg = sample_server_cfg("https://example.test", false);
+    fn test_request_headers_match_site_origin_prefers_origin_over_referer() {
+        let server_cfg = sample_server_cfg("https://example.test");
         let mut headers = HeaderMap::new();
         headers.insert(ORIGIN, HeaderValue::from_static("https://evil.test"));
         headers.insert(
@@ -188,30 +187,48 @@ mod helpers_tests {
             HeaderValue::from_static("https://example.test/page"),
         );
 
-        assert!(!request_matches_site(&server_cfg, &headers).unwrap());
+        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
     }
 
     #[test]
-    fn test_request_matches_site_rejects_invalid_base_url_without_host() {
-        let server_cfg = sample_server_cfg("/relative-path", false);
+    fn test_request_headers_match_site_origin_rejects_mismatched_port() {
+        let server_cfg = sample_server_cfg("https://example.test:8443");
+        let mut headers = HeaderMap::new();
+        headers.insert(ORIGIN, HeaderValue::from_static("https://example.test"));
 
-        assert!(request_matches_site(&server_cfg, &HeaderMap::new()).is_err());
+        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
     }
 
     #[test]
-    fn test_request_matches_site_rejects_non_utf8_origin() {
-        let server_cfg = sample_server_cfg("https://example.test", false);
+    fn test_request_headers_match_site_origin_rejects_mismatched_scheme() {
+        let server_cfg = sample_server_cfg("https://example.test");
+        let mut headers = HeaderMap::new();
+        headers.insert(ORIGIN, HeaderValue::from_static("http://example.test"));
+
+        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
+    }
+
+    #[test]
+    fn test_request_headers_match_site_origin_rejects_missing_host_in_base_url() {
+        let server_cfg = sample_server_cfg("/relative-path");
+
+        assert!(request_headers_match_site_origin(&server_cfg, &HeaderMap::new()).is_err());
+    }
+
+    #[test]
+    fn test_request_headers_match_site_origin_rejects_non_utf8_origin() {
+        let server_cfg = sample_server_cfg("https://example.test");
         let mut headers = HeaderMap::new();
         headers.insert(ORIGIN, HeaderValue::from_bytes(&[0xFF]).unwrap());
 
-        assert!(!request_matches_site(&server_cfg, &headers).unwrap());
+        assert!(!request_headers_match_site_origin(&server_cfg, &headers).unwrap());
     }
 
     #[test]
-    fn test_request_matches_site_rejects_when_no_origin_or_referer() {
-        let server_cfg = sample_server_cfg("https://example.test", false);
+    fn test_request_headers_match_site_origin_rejects_when_headers_are_missing() {
+        let server_cfg = sample_server_cfg("https://example.test");
 
-        assert!(!request_matches_site(&server_cfg, &HeaderMap::new()).unwrap());
+        assert!(!request_headers_match_site_origin(&server_cfg, &HeaderMap::new()).unwrap());
     }
 
     #[test]
@@ -253,10 +270,9 @@ mod helpers_tests {
 
     // Helpers
 
-    fn sample_server_cfg(base_url: &str, disable_referer_checks: bool) -> HttpServerConfig {
+    fn sample_server_cfg(base_url: &str) -> HttpServerConfig {
         HttpServerConfig {
             base_url: base_url.to_string(),
-            disable_referer_checks,
             ..Default::default()
         }
     }

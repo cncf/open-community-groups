@@ -103,7 +103,7 @@
   {% if show_meeting_details -%}
     {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
       Meeting link:
-      <a href="{{ meeting_join_url }}"
+      <a href="{{ meeting_join_url|safe_href }}"
          target="_blank"
          rel="noopener noreferrer">{{ meeting_join_url }}</a>
       <br />

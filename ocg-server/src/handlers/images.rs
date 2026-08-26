@@ -8,20 +8,20 @@ use axum::{
     body::Body,
     extract::{Multipart, Path, State},
     http::{
-        HeaderMap, HeaderValue, StatusCode,
+        HeaderMap, HeaderName, HeaderValue, StatusCode,
         header::{CACHE_CONTROL, CONTENT_TYPE},
     },
     response::IntoResponse,
 };
 use image::{ImageFormat, ImageReader};
-use quick_xml::{Reader, events::Event};
+use quick_xml::{Reader, XmlVersion, events::Event};
 use serde_json::json;
 use tracing::instrument;
 
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser, request_matches_site},
+    handlers::{error::HandlerError, extractors::CurrentUser, request_headers_match_site_origin},
     services::images::{
         DynImageStorage, NewImage, OPEN_GRAPH_IMAGE_HEIGHT, OPEN_GRAPH_IMAGE_WIDTH,
     },
@@ -37,6 +37,22 @@ const MAX_IMAGE_SIZE_BYTES: usize = 1024 * 1024;
 /// Cache-Control header for long-lived responses.
 const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
+/// Content-Security-Policy header name.
+const CONTENT_SECURITY_POLICY: HeaderName = HeaderName::from_static("content-security-policy");
+
+/// Cross-Origin-Resource-Policy header name.
+const CROSS_ORIGIN_RESOURCE_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-resource-policy");
+
+/// Cross-origin resource policy for publicly embeddable images.
+const RESOURCE_POLICY_CROSS_ORIGIN: &str = "cross-origin";
+
+/// Same-origin resource policy for images protected from hotlinking.
+const RESOURCE_POLICY_SAME_ORIGIN: &str = "same-origin";
+
+/// X-Content-Type-Options header name.
+const X_CONTENT_TYPE_OPTIONS: HeaderName = HeaderName::from_static("x-content-type-options");
+
 // Handlers
 
 /// Serves previously uploaded images.
@@ -47,12 +63,18 @@ pub(crate) async fn serve(
     State(server_cfg): State<HttpServerConfig>,
     Path(file_name): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate that the referer matches the configured hostname
-    if !request_matches_site(&server_cfg, &headers)? {
+    // Enforce same-origin loading unless public hotlinking is configured
+    let resource_policy = if server_cfg.allow_image_hotlinking {
+        RESOURCE_POLICY_CROSS_ORIGIN
+    } else if request_headers_match_site_origin(&server_cfg, &headers)? {
+        RESOURCE_POLICY_SAME_ORIGIN
+    } else {
         return Ok(StatusCode::FORBIDDEN.into_response());
-    }
+    };
 
-    Ok(serve_image(&image_storage, &file_name).await?.into_response())
+    Ok(serve_image(&image_storage, &file_name, resource_policy)
+        .await?
+        .into_response())
 }
 
 /// Serves images referenced by current or historical badge credentials.
@@ -67,7 +89,11 @@ pub(crate) async fn serve_badge(
         return Ok(StatusCode::NOT_FOUND.into_response());
     }
 
-    Ok(serve_image(&image_storage, &file_name).await?.into_response())
+    Ok(
+        serve_image(&image_storage, &file_name, RESOURCE_POLICY_CROSS_ORIGIN)
+            .await?
+            .into_response(),
+    )
 }
 
 /// Serves images that are currently configured for public Open Graph previews.
@@ -82,7 +108,11 @@ pub(crate) async fn serve_open_graph(
         return Ok(StatusCode::NOT_FOUND.into_response());
     }
 
-    Ok(serve_image(&image_storage, &file_name).await?.into_response())
+    Ok(
+        serve_image(&image_storage, &file_name, RESOURCE_POLICY_CROSS_ORIGIN)
+            .await?
+            .into_response(),
+    )
 }
 
 /// Handles authenticated image uploads.
@@ -94,8 +124,8 @@ pub(crate) async fn upload(
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate referer header matches configured hostname
-    if !request_matches_site(&server_cfg, &headers)? {
+    // Validate the request against the configured site origin
+    if !request_headers_match_site_origin(&server_cfg, &headers)? {
         return Ok((StatusCode::FORBIDDEN).into_response());
     }
 
@@ -240,6 +270,41 @@ fn image_extension(file_name: &str) -> Result<Cow<'_, str>> {
     Ok(Cow::from(extension.to_ascii_lowercase()))
 }
 
+/// Checks whether an SVG href is safe to retain in an inline SVG document.
+fn is_safe_svg_href(element_name: &[u8], value: &str) -> bool {
+    // Normalize characters that can obscure an explicit URL scheme
+    let normalized = value
+        .chars()
+        .filter(|character| !character.is_control() && !character.is_whitespace())
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+
+    // Allow references without an explicit leading scheme
+    let Some(colon_index) = normalized.find(':') else {
+        return true;
+    };
+    let path_separator_index = normalized.find(['/', '?', '#']).unwrap_or(normalized.len());
+    if colon_index > path_separator_index {
+        return true;
+    }
+
+    // Restrict explicit schemes and inline image media types
+    let (scheme, rest) = normalized.split_at(colon_index);
+    match scheme {
+        "http" | "https" => true,
+        "data" if element_name.eq_ignore_ascii_case(b"image") => {
+            let media_type = rest[1..]
+                .split_once([';', ','])
+                .map_or(rest[1..].as_ref(), |(media_type, _)| media_type);
+            matches!(
+                media_type,
+                "image/gif" | "image/jpeg" | "image/jpg" | "image/png" | "image/webp"
+            )
+        }
+        _ => false,
+    }
+}
+
 /// Determines whether the provided bytes and extension represent a valid SVG asset.
 ///
 /// This performs lightweight XML parsing to verify:
@@ -278,11 +343,22 @@ fn is_svg(bytes: &[u8], extension: &str) -> bool {
                     }
 
                     // Verify SVG namespace is present
-                    let has_svg_namespace = e.attributes().filter_map(Result::ok).any(|attr| {
-                        (attr.key.as_ref() == b"xmlns"
-                            || attr.key.local_name().as_ref() == b"xmlns")
-                            && attr.value.as_ref() == SVG_NAMESPACE
-                    });
+                    let mut has_svg_namespace = false;
+                    for attr in e.attributes() {
+                        let Ok(attr) = attr else {
+                            return false;
+                        };
+                        let Ok(value) = attr.decoded_and_normalized_value(
+                            XmlVersion::Implicit1_0,
+                            reader.decoder(),
+                        ) else {
+                            return false;
+                        };
+
+                        if attr.key.as_ref() == b"xmlns" && value.as_bytes() == SVG_NAMESPACE {
+                            has_svg_namespace = true;
+                        }
+                    }
 
                     if !has_svg_namespace {
                         return false;
@@ -294,38 +370,33 @@ fn is_svg(bytes: &[u8], extension: &str) -> bool {
 
                 // Check for dangerous elements
                 for dangerous in DANGEROUS_ELEMENTS {
-                    if tag_name.as_ref().eq_ignore_ascii_case(dangerous) {
+                    if tag_name.local_name().as_ref().eq_ignore_ascii_case(dangerous) {
                         return false;
                     }
                 }
 
                 // Check all attributes for dangerous content
-                for attr in e.attributes().filter_map(Result::ok) {
-                    let key = attr.key.as_ref();
-                    let value = attr.value.as_ref();
+                for attr in e.attributes() {
+                    let Ok(attr) = attr else {
+                        return false;
+                    };
+                    let key = attr.key.local_name();
+                    let Ok(value) = attr
+                        .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
+                    else {
+                        return false;
+                    };
 
                     // Block event handler attributes (onclick, onload, etc.)
-                    if key.len() >= 2 && key[..2].eq_ignore_ascii_case(b"on") {
+                    if key.as_ref().len() >= 2 && key.as_ref()[..2].eq_ignore_ascii_case(b"on") {
                         return false;
                     }
 
-                    // Block javascript: URLs
-                    if (key == b"href" || key == b"xlink:href")
-                        && value.len() >= 11
-                        && value[..11].eq_ignore_ascii_case(b"javascript:")
+                    // Restrict every namespace variant of href to safe URL forms
+                    if key.as_ref().eq_ignore_ascii_case(b"href")
+                        && !is_safe_svg_href(tag_name.local_name().as_ref(), &value)
                     {
                         return false;
-                    }
-
-                    // Block suspicious data: URLs that might contain scripts
-                    if (key == b"href" || key == b"xlink:href")
-                        && value.len() >= 5
-                        && value[..5].eq_ignore_ascii_case(b"data:")
-                    {
-                        // Allow data:image/ but block other data: URLs
-                        if value.len() < 11 || !value[5..11].eq_ignore_ascii_case(b"image/") {
-                            return false;
-                        }
                     }
                 }
             }
@@ -358,6 +429,7 @@ fn mime_type(format: &SupportedImageFormat) -> &'static str {
 async fn serve_image(
     image_storage: &DynImageStorage,
     file_name: &str,
+    resource_policy: &'static str,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the image bytes and content type from storage
     let Some(image) = image_storage.get(file_name).await? else {
@@ -375,6 +447,14 @@ async fn serve_image(
         HeaderValue::from_str(&image.content_type)
             .map_err(|err| HandlerError::Other(err.into()))?,
     );
+    response_headers.insert(
+        CROSS_ORIGIN_RESOURCE_POLICY,
+        HeaderValue::from_static(resource_policy),
+    );
+    response_headers.insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
+    if image.content_type == "image/svg+xml" {
+        response_headers.insert(CONTENT_SECURITY_POLICY, HeaderValue::from_static("sandbox"));
+    }
 
     // Build the image response body
     let body = Body::from(image.bytes);

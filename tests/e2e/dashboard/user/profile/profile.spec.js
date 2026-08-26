@@ -384,7 +384,7 @@ test.describe("user dashboard profile view", () => {
           (response) =>
             response.request().method() === "PUT" &&
             response.url().includes("/dashboard/account/update/password") &&
-            // The server answers with a redirect to the log-out flow.
+            // The server invalidates the session and redirects to log in.
             response.status() < 400,
         ),
         passwordForm.getByRole("button", { name: "Save" }).click(),

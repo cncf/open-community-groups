@@ -62,6 +62,16 @@ pub(crate) fn num_fmt(n: &i64, _: &dyn askama::Values) -> askama::Result<String>
     Ok(n.to_formatted_string(&Locale::en))
 }
 
+/// Replaces unsafe persisted links with an inert fragment target.
+#[askama::filter_fn]
+pub(crate) fn safe_href<S: AsRef<str>>(s: S, _: &dyn askama::Values) -> askama::Result<String> {
+    Ok(if crate::validation::is_safe_href(s.as_ref()) {
+        s.as_ref().to_string()
+    } else {
+        "#".to_string()
+    })
+}
+
 // Tests.
 
 #[cfg(test)]
@@ -163,6 +173,58 @@ mod tests {
         assert_eq!(
             num_fmt::default().execute(&1_234_567_890, values).unwrap(),
             "1,234,567,890"
+        );
+    }
+
+    #[test]
+    fn test_safe_href_accepts_absolute_web_url() {
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            safe_href::default()
+                .execute("https://example.com/path", values)
+                .unwrap(),
+            "https://example.com/path"
+        );
+    }
+
+    #[test]
+    fn test_safe_href_accepts_root_relative_url() {
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            safe_href::default().execute("/relative/path", values).unwrap(),
+            "/relative/path"
+        );
+    }
+
+    #[test]
+    fn test_safe_href_replaces_backslash_protocol_relative_url() {
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            safe_href::default().execute("/\\evil.com", values).unwrap(),
+            "#"
+        );
+    }
+
+    #[test]
+    fn test_safe_href_replaces_data_url() {
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            safe_href::default().execute("data:text/html,hello", values).unwrap(),
+            "#"
+        );
+    }
+
+    #[test]
+    fn test_safe_href_replaces_javascript_url() {
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            safe_href::default().execute("javascript:alert(1)", values).unwrap(),
+            "#"
         );
     }
 }

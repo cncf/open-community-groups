@@ -19,7 +19,7 @@ use crate::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M,
         MAX_LEN_S, MAX_PAGINATION_LIMIT, image_url_opt, image_url_vec, trimmed_non_empty,
         trimmed_non_empty_opt, trimmed_non_empty_tag_vec, url_map_values, valid_group_pretty_slug,
-        valid_latitude, valid_longitude, valid_payment_recipient,
+        valid_latitude, valid_longitude, valid_payment_recipient, web_url_opt,
     },
 };
 
@@ -121,7 +121,7 @@ pub(crate) struct Group {
     #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,
     /// Bluesky profile URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub bluesky_url: Option<String>,
     /// City where the group is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -136,22 +136,22 @@ pub(crate) struct Group {
     #[garde(custom(url_map_values))]
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Facebook profile URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
     /// Flickr profile URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub flickr_url: Option<String>,
     /// GitHub organization URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub github_url: Option<String>,
     /// Instagram profile URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub instagram_url: Option<String>,
     /// Latitude coordinate of the group location.
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
     /// `LinkedIn` profile URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
     /// Longitude coordinate of the group location.
     #[garde(custom(valid_longitude))]
@@ -182,7 +182,7 @@ pub(crate) struct Group {
     #[garde(skip)]
     pub region_id: Option<Uuid>,
     /// Slack workspace URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub slack_url: Option<String>,
     /// Admin-managed URL-friendly identifier for this group.
     #[garde(custom(valid_group_pretty_slug))]
@@ -194,15 +194,15 @@ pub(crate) struct Group {
     #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,
     /// Twitter profile URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub twitter_url: Option<String>,
     /// Group website URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
     /// `WeChat` URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub wechat_url: Option<String>,
     /// `YouTube` channel URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub youtube_url: Option<String>,
 }

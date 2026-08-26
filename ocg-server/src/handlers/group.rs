@@ -16,7 +16,8 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
-        extractors::CurrentUser, request_matches_site, site::not_found, trim_public_gallery_images,
+        extractors::CurrentUser, request_headers_match_site_origin, site::not_found,
+        trim_public_gallery_images,
     },
     router::PUBLIC_SHARED_CACHE_HEADERS,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -208,9 +209,13 @@ pub(crate) async fn track_view(
     State(server_cfg): State<HttpServerConfig>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    if request_matches_site(&server_cfg, &headers)? {
-        activity_tracker.track(Activity::GroupView { group_id }).await?;
+    // Require same-origin evidence before accepting analytics activity
+    if !request_headers_match_site_origin(&server_cfg, &headers)? {
+        return Ok(StatusCode::FORBIDDEN);
     }
+
+    // Record the verified page view
+    activity_tracker.track(Activity::GroupView { group_id }).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

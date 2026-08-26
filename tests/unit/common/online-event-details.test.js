@@ -343,6 +343,20 @@ describe("online-event-details", () => {
     });
   });
 
+  it("does not render an unsafe synced meeting URL", async () => {
+    // Mount synced meeting details with an unsafe join URL.
+    const element = await mountLitComponent("online-event-details", {
+      meetingInSync: true,
+      meetingJoinUrl: "javascript:alert(1)",
+      meetingRequested: true,
+    });
+
+    // Verify the synced state remains visible without exposing the URL.
+    expect(element.textContent).to.include("Meeting synced");
+    expect(element.querySelector('a[href^="javascript:"]')).to.equal(null);
+    expect(element.textContent).to.not.include("javascript:alert(1)");
+  });
+
   it("removes the capacity input listener when disconnected", async () => {
     // Create the capacity input fixture.
     const capacity = document.createElement("input");

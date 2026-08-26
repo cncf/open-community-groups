@@ -6,8 +6,9 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::{
-    event::EventSummary, group::GroupSummary, payments::format_amount_minor, site::Theme,
+use crate::{
+    templates::filters,
+    types::{event::EventSummary, group::GroupSummary, payments::format_amount_minor, site::Theme},
 };
 
 // Emails templates.

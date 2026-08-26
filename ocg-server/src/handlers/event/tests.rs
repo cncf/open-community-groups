@@ -3094,7 +3094,7 @@ async fn test_submit_cfs_submission_db_error() {
 }
 
 #[tokio::test]
-async fn test_track_view_success() {
+async fn test_track_view_accepts_same_origin_request() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
 
@@ -3134,7 +3134,7 @@ async fn test_track_view_success() {
 }
 
 #[tokio::test]
-async fn test_track_view_ignores_cross_origin_request() {
+async fn test_track_view_rejects_cross_origin_request() {
     // Setup database mock
     let db = MockDB::new();
 
@@ -3162,6 +3162,38 @@ async fn test_track_view_ignores_cross_origin_request() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(parts.status, StatusCode::FORBIDDEN);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_track_view_rejects_missing_origin_request() {
+    // Setup dependencies that must not record the unverified request
+    let db = MockDB::new();
+    let nm = MockNotificationsManager::new();
+    let mut activity_tracker = MockActivityTracker::new();
+    activity_tracker.expect_track().never();
+
+    // Send a headerless tracking request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_activity_tracker(activity_tracker)
+        .with_server_cfg(sample_tracking_server_cfg())
+        .build()
+        .await;
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/events/{}/views", Uuid::new_v4()))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check missing same-origin evidence is forbidden
+    assert_eq!(parts.status, StatusCode::FORBIDDEN);
     assert!(bytes.is_empty());
 }

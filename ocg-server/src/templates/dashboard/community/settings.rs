@@ -11,7 +11,7 @@ use crate::{
     types::community::CommunityFull,
     validation::{
         MAX_LEN_DESCRIPTION, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, image_url, image_url_opt,
-        image_url_vec, trimmed_non_empty, trimmed_non_empty_opt, url_map_values,
+        image_url_vec, trimmed_non_empty, trimmed_non_empty_opt, url_map_values, web_url_opt,
     },
 };
 
@@ -53,31 +53,31 @@ pub(crate) struct CommunityUpdate {
     pub logo_url: String,
 
     /// Target URL when users click on the advertisement banner.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub ad_banner_link_url: Option<String>,
     /// URL to the advertisement banner image.
     #[garde(custom(image_url_opt))]
     pub ad_banner_url: Option<String>,
     /// Link to the community's Bluesky profile.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub bluesky_url: Option<String>,
     /// Additional custom links displayed in the community navigation.
     #[garde(custom(url_map_values))]
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Link to the community's Facebook page.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
     /// Link to the community's Flickr photo collection.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub flickr_url: Option<String>,
     /// Link to the community's GitHub organization or repository.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub github_url: Option<String>,
     /// Link to the community's Instagram profile.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub instagram_url: Option<String>,
     /// Link to the community's `LinkedIn` page.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
     /// Instructions for creating new groups.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
@@ -89,18 +89,18 @@ pub(crate) struct CommunityUpdate {
     #[garde(custom(image_url_vec))]
     pub photos_urls: Option<Vec<String>>,
     /// Link to the community's Slack workspace.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub slack_url: Option<String>,
     /// Link to the community's Twitter/X profile.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub twitter_url: Option<String>,
     /// Link to the community's main website.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
     /// Link to the community's `WeChat` account or QR code.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub wechat_url: Option<String>,
     /// Link to the community's `YouTube` channel.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
     pub youtube_url: Option<String>,
 }

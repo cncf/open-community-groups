@@ -39,6 +39,9 @@ emojis = "0.9.0"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
 flate2 = "1.1.9"
 garde = { version = "0.23.0", features = ["derive", "url", "email"] }
+# Pin a patched h2. hyper/axum otherwise resolve to 0.4.14
+# (RUSTSEC-2026-0258, unbounded empty HTTP/2 DATA frames).
+h2 = "0.4.19"
 hex = "0.4"
 hmac = "0.13.0"
 icalendar = "0.17.13"

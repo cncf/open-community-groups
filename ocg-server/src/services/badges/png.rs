@@ -39,11 +39,11 @@ pub(crate) fn bake(source: &[u8], credential: &[u8]) -> Result<Vec<u8>> {
     }
 
     // Decode the source and require the badge artwork dimensions
-    let image = ImageReader::new(Cursor::new(source))
+    let mut reader = ImageReader::new(Cursor::new(source))
         .with_guessed_format()
-        .map_err(|_| BadgesManagerError::InvalidImage)?
-        .decode()
         .map_err(|_| BadgesManagerError::InvalidImage)?;
+    reader.limits(badge_image_limits());
+    let image = reader.decode().map_err(|_| BadgesManagerError::InvalidImage)?;
     if image.dimensions() != (512, 512) {
         return Err(BadgesManagerError::InvalidImage);
     }
@@ -98,6 +98,15 @@ pub(crate) fn extract(png: &[u8]) -> Result<Vec<u8>> {
 
     // Return only the unique validated credential payload
     credential.ok_or(BadgesManagerError::InvalidPng)
+}
+
+/// Returns strict decoding limits for canonical badge artwork.
+fn badge_image_limits() -> Limits {
+    let mut limits = Limits::default();
+    limits.max_alloc = Some(16 * 1024 * 1024);
+    limits.max_image_height = Some(512);
+    limits.max_image_width = Some(512);
+    limits
 }
 
 /// Encode a PNG chunk with its library-computed CRC.
@@ -198,15 +207,9 @@ fn read_chunk(png: &[u8], offset: usize) -> Result<(&[u8; 4], &[u8], usize)> {
 
 /// Decode the uploaded PNG within strict credential-artwork limits.
 fn validate_png_image(png: &[u8]) -> Result<()> {
-    // Configure strict image decoding limits
-    let mut limits = Limits::default();
-    limits.max_alloc = Some(16 * 1024 * 1024);
-    limits.max_image_height = Some(512);
-    limits.max_image_width = Some(512);
-
     // Decode the image through the bounded PNG reader
     let mut reader = ImageReader::with_format(Cursor::new(png), ImageFormat::Png);
-    reader.limits(limits);
+    reader.limits(badge_image_limits());
     let image = reader.decode().map_err(|_| BadgesManagerError::InvalidPng)?;
 
     // Enforce the canonical badge artwork dimensions

@@ -12,6 +12,7 @@ axum = { workspace = true }
 clap = { workspace = true }
 deadpool-postgres = { workspace = true }
 figment = { workspace = true }
+h2 = { workspace = true }
 ocg-common = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }

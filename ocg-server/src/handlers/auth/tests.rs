@@ -543,8 +543,8 @@ async fn test_log_out_success() {
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
-        .method("GET")
-        .uri(LOG_OUT_URL)
+        .method("POST")
+        .uri("/log-out")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -563,7 +563,7 @@ async fn test_log_out_success() {
 }
 
 #[tokio::test]
-async fn test_log_out_invalid_session() {
+async fn test_log_out_success_with_invalid_session() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
 
@@ -582,8 +582,8 @@ async fn test_log_out_invalid_session() {
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
-        .method("GET")
-        .uri(LOG_OUT_URL)
+        .method("POST")
+        .uri("/log-out")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -2087,7 +2087,7 @@ async fn test_update_user_details_returns_error_on_db_failure() {
 }
 
 #[tokio::test]
-async fn test_update_user_password_success() {
+async fn test_update_user_password_accepts_valid_change() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -2113,6 +2113,10 @@ async fn test_update_user_password_success() {
         .times(1)
         .withf(move |uid, new_password| *uid == user_id && new_password != "new-password")
         .returning(|_, _| Ok(()));
+    db.expect_delete_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(|_| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -2137,12 +2141,12 @@ async fn test_update_user_password_success() {
     assert!(bytes.is_empty());
     assert_eq!(
         parts.headers.get(LOCATION).unwrap(),
-        &HeaderValue::from_static(LOG_OUT_URL),
+        &HeaderValue::from_static(LOG_IN_URL),
     );
 }
 
 #[tokio::test]
-async fn test_update_user_password_wrong_old_password() {
+async fn test_update_user_password_rejects_wrong_old_password() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -2165,6 +2169,7 @@ async fn test_update_user_password_wrong_old_password() {
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(existing_password_hash.clone())));
     db.expect_update_user_password().times(0);
+    db.expect_delete_session().never();
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -2212,6 +2217,7 @@ async fn test_update_user_password_returns_bad_request_when_hash_is_missing() {
         .withf(move |id| *id == user_id)
         .returning(|_| Ok(None));
     db.expect_update_user_password().times(0);
+    db.expect_delete_session().never();
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -2263,6 +2269,7 @@ async fn test_update_user_password_returns_error_on_db_failure() {
         .times(1)
         .withf(move |uid, new_password| *uid == user_id && new_password != "new-password")
         .returning(|_, _| Err(anyhow!("db error")));
+    db.expect_delete_session().never();
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -2285,6 +2292,69 @@ async fn test_update_user_password_returns_error_on_db_failure() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_user_password_succeeds_when_session_delete_fails() {
+    // Setup the authenticated user and current password
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let existing_password_hash = password_auth::generate_hash("current-password");
+
+    // Setup a successful password update followed by a session deletion failure
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_user_password()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(existing_password_hash.clone())));
+    db.expect_update_user_password()
+        .times(1)
+        .withf(move |uid, new_password| *uid == user_id && new_password != "new-password")
+        .returning(|_, _| Ok(()));
+    db.expect_delete_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(|_| Err(anyhow!("db error")));
+    db.expect_update_session()
+        .times(1)
+        .withf(move |record| record.id == session_id && record.data.is_empty())
+        .returning(|_| Ok(()));
+
+    // Send the password update request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri("/dashboard/account/update/password")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(
+            "old_password=current-password&new_password=new-password",
+        ))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the committed password change still reports success
+    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert!(bytes.is_empty());
+    assert_eq!(
+        parts.headers.get(LOCATION).unwrap(),
+        &HeaderValue::from_static(LOG_IN_URL),
+    );
 }
 
 #[tokio::test]

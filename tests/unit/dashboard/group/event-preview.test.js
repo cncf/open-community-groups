@@ -145,6 +145,34 @@ describe("event preview", () => {
     expect(context.sessions[0].speakers[0].name).to.equal("Session Speaker");
   });
 
+  it("omits unsafe social links from the preview modal", () => {
+    // Prepare preview state with one valid and one unsafe social URL.
+    const pageRoot = mountPreviewPage();
+    pageRoot.querySelector('[name="luma_url"]').value = "javascript:alert(1)";
+    const modalRoot = document.getElementById("event-preview-modal-root");
+
+    // Open preview markup containing the social-links region.
+    openEventPreviewModal(
+      modalRoot,
+      `<div id="event-preview-modal">
+        <div data-event-preview-social-links>
+          <div data-event-preview-social-links-list></div>
+        </div>
+        <button type="button" data-event-preview-close>Close</button>
+      </div>`,
+      pageRoot,
+    );
+
+    // Verify valid links remain while the unsafe link is omitted.
+    expect(modalRoot.querySelector('[title="Meetup"]')?.getAttribute("href")).to.equal(
+      "https://meetup.example/events/draft",
+    );
+    expect(modalRoot.querySelector('[title="Luma"]')).to.equal(null);
+
+    // Close the modal to restore page state.
+    modalRoot.querySelector("[data-event-preview-close]").click();
+  });
+
   it("posts the preview payload and opens the returned modal", async () => {
     // Prepare page root for posting the preview payload and opens the returned.
     const pageRoot = mountPreviewPage();

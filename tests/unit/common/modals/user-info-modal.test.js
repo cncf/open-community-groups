@@ -82,7 +82,7 @@ describe("user-info-modal", () => {
 
     // Social links include the supported profile URLs.
     expect(links).to.deep.equal([
-      { url: "https://example.com", icon: "website", label: "Website" },
+      { url: "https://example.com/", icon: "website", label: "Website" },
       {
         url: "https://linkedin.com/in/ada",
         icon: "linkedin",
@@ -93,6 +93,28 @@ describe("user-info-modal", () => {
     expect(element.querySelector('a[href="https://openprofile.dev/profile/ada-lf"]')).to.not.equal(null);
     expect(element.querySelector('a[aria-label="Website"]')).to.not.equal(null);
     expect(element.querySelector('a[aria-label="LinkedIn"]')).to.not.equal(null);
+    expect(element.querySelector('a[aria-label="GitHub"]')).to.not.equal(null);
+  });
+
+  it("omits social links with unsafe URL schemes", async () => {
+    // Mount the modal before dispatching profile data.
+    const element = await mountLitComponent("user-info-modal");
+
+    // Open the modal with one unsafe and one valid social URL.
+    document.dispatchEvent(
+      new CustomEvent("open-user-modal", {
+        detail: {
+          name: "Ada Lovelace",
+          username: "ada",
+          websiteUrl: "javascript:alert(1)",
+          githubUrl: "https://github.com/ada",
+        },
+      }),
+    );
+    await element.updateComplete;
+
+    // Verify only the valid social link is rendered.
+    expect(element.querySelector('a[aria-label="Website"]')).to.equal(null);
     expect(element.querySelector('a[aria-label="GitHub"]')).to.not.equal(null);
   });
 

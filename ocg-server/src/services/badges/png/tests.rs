@@ -31,6 +31,21 @@ fn test_bake_rejects_oversized_credential() {
 }
 
 #[test]
+fn test_bake_rejects_oversized_dimensions() {
+    // Encode compact artwork above the decoder's dimension limit
+    let mut source = Cursor::new(Vec::new());
+    DynamicImage::new_rgba8(513, 512)
+        .write_to(&mut source, ImageFormat::Png)
+        .unwrap();
+
+    // Check the bounded decoder rejects the oversized dimensions
+    assert!(matches!(
+        bake(&source.into_inner(), b"{}"),
+        Err(BadgesManagerError::InvalidImage)
+    ));
+}
+
+#[test]
 fn test_bake_rejects_oversized_source() {
     let source = vec![0_u8; MAX_PNG_SIZE + 1];
     assert!(matches!(

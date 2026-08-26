@@ -107,7 +107,7 @@
                     <dt class="font-medium text-stone-500">Issuer</dt>
                     <dd class="break-all">
                       <a class="font-medium text-primary-600 hover:text-primary-700 hover:underline"
-                         href="{{ result.issuer }}">{{ result.issuer }}</a>
+                         href="{{ result.issuer|safe_href }}">{{ result.issuer }}</a>
                     </dd>
                   </div>
                   <div class="contents">

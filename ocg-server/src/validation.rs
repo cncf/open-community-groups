@@ -120,14 +120,14 @@ pub fn email_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
 
 /// Validates that a required string is a valid image URL (absolute or relative).
 ///
-/// Accepts absolute URLs (with scheme) or relative URLs starting with `/`.
+/// Accepts absolute HTTP(S) URLs or relative URLs starting with `/`.
 pub fn image_url(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
     validate_image_url(value.as_ref())
 }
 
 /// Validates that an optional string is a valid image URL (absolute or relative).
 ///
-/// Accepts absolute URLs (with scheme) or relative URLs starting with `/`.
+/// Accepts absolute HTTP(S) URLs or relative URLs starting with `/`.
 pub fn image_url_opt(value: &Option<String>, _ctx: &()) -> garde::Result {
     if let Some(url) = value {
         validate_image_url(url)?;
@@ -137,7 +137,7 @@ pub fn image_url_opt(value: &Option<String>, _ctx: &()) -> garde::Result {
 
 /// Validates that each string in a vector is a valid image URL (absolute or relative).
 ///
-/// Accepts absolute URLs (with scheme) or relative URLs starting with `/`.
+/// Accepts absolute HTTP(S) URLs or relative URLs starting with `/`.
 pub fn image_url_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
     if let Some(vec) = value {
         for url in vec {
@@ -145,6 +145,11 @@ pub fn image_url_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
         }
     }
     Ok(())
+}
+
+/// Returns whether a URL is safe to render in an HTML href attribute.
+pub(crate) fn is_safe_href(url: &str) -> bool {
+    is_safe_web_url(url, true)
 }
 
 /// Validates that a string is non-empty after trimming whitespace.
@@ -208,7 +213,7 @@ pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> ga
                     "URL for '{key}' exceeds max length of {MAX_LEN_L}"
                 )));
             }
-            if Url::parse(url).is_err() {
+            if !is_safe_web_url(url, false) {
                 return Err(garde::Error::new(format!("invalid URL for '{key}': {url}")));
             }
         }
@@ -329,6 +334,39 @@ pub fn valid_payment_recipient(value: &Option<GroupPaymentRecipient>, _ctx: &())
     Ok(())
 }
 
+/// Validates that an optional string is an absolute HTTP or HTTPS URL.
+pub fn web_url_opt(value: &Option<String>, _ctx: &()) -> garde::Result {
+    if let Some(url) = value
+        && !is_safe_web_url(url, false)
+    {
+        return Err(garde::Error::new(format!(
+            "URL must be an absolute HTTP or HTTPS URL: {url}"
+        )));
+    }
+    Ok(())
+}
+
+/// Checks an HTTP(S) URL and optionally permits root-relative paths.
+fn is_safe_web_url(url: &str, allow_root_relative: bool) -> bool {
+    // Reject characters browsers strip before parsing the URL
+    if url.contains(['\t', '\n', '\r']) {
+        return false;
+    }
+
+    // Permit unambiguous root-relative paths
+    if allow_root_relative
+        && url.starts_with('/')
+        && !url.starts_with("//")
+        && !url.starts_with("/\\")
+    {
+        return true;
+    }
+
+    // Require absolute URLs to use a web scheme and include a host
+    Url::parse(url)
+        .is_ok_and(|url| matches!(url.scheme(), "http" | "https") && url.host_str().is_some())
+}
+
 // Validates a single image URL string (absolute or relative)
 fn validate_image_url(url: &str) -> garde::Result {
     if url.trim().is_empty() {
@@ -339,8 +377,8 @@ fn validate_image_url(url: &str) -> garde::Result {
             "image URL exceeds max length of {MAX_LEN_L}"
         )));
     }
-    // Accept absolute URLs or relative URLs starting with /
-    if !url.starts_with('/') && Url::parse(url).is_err() {
+    // Accept absolute HTTP(S) URLs or root-relative paths
+    if !is_safe_web_url(url, true) {
         return Err(garde::Error::new(format!("invalid image URL: {url}")));
     }
     Ok(())
@@ -436,9 +474,24 @@ mod tests {
 
     #[test]
     fn test_image_url_invalid() {
-        // Not a valid URL and doesn't start with /
+        // Reject malformed, protocol-relative, and unsafe-scheme URLs
         assert!(image_url(&"not-a-url", &()).is_err());
         assert!(image_url(&"example.com/image.png", &()).is_err());
+        assert!(image_url(&"//example.com/image.png", &()).is_err());
+        assert!(image_url(&"/\\evil.com/image.png", &()).is_err());
+        assert!(image_url(&"data:image/png;base64,AA==", &()).is_err());
+        assert!(image_url(&"file:///tmp/image.png", &()).is_err());
+        assert!(image_url(&"javascript:alert(1)", &()).is_err());
+
+        // Reject characters browsers strip before parsing the URL
+        for url in [
+            "/\t/evil.com/image.png",
+            "/\n/evil.com/image.png",
+            "/\r/evil.com/image.png",
+        ] {
+            assert!(image_url(&url, &()).is_err());
+        }
+
         // Empty
         assert!(image_url(&"", &()).is_err());
         // Whitespace only
@@ -545,6 +598,13 @@ mod tests {
         );
         // Empty vec is valid
         assert!(image_url_vec(&Some(vec![]), &()).is_ok());
+    }
+
+    #[test]
+    fn test_is_safe_href_rejects_url_parser_control_characters() {
+        for url in ["/\t/evil.com", "/\n/evil.com", "/\r/evil.com"] {
+            assert!(!is_safe_href(url));
+        }
     }
 
     #[test]
@@ -673,6 +733,18 @@ mod tests {
         map.insert("valid".to_string(), "https://example.com".to_string());
         map.insert("invalid".to_string(), "not-a-url".to_string());
         assert!(url_map_values(&Some(map), &()).is_err());
+
+        // Reject URL schemes outside HTTP and HTTPS
+        for url in [
+            "custom://example.com",
+            "data:text/html,hello",
+            "file:///tmp/file",
+            "javascript:alert(1)",
+        ] {
+            let mut map = BTreeMap::new();
+            map.insert("test".to_string(), url.to_string());
+            assert!(url_map_values(&Some(map), &()).is_err());
+        }
     }
 
     #[test]
@@ -806,6 +878,32 @@ mod tests {
         };
 
         assert!(valid_payment_recipient(&Some(recipient), &()).is_ok());
+    }
+
+    #[test]
+    fn test_web_url_opt_invalid() {
+        for url in [
+            "/relative",
+            "//example.com",
+            "custom://example.com",
+            "data:text/html,hello",
+            "file:///tmp/file",
+            "javascript:alert(1)",
+            "https://",
+        ] {
+            assert!(web_url_opt(&Some(url.to_string()), &()).is_err());
+        }
+    }
+
+    #[test]
+    fn test_web_url_opt_none() {
+        assert!(web_url_opt(&None, &()).is_ok());
+    }
+
+    #[test]
+    fn test_web_url_opt_valid() {
+        assert!(web_url_opt(&Some("https://example.com/path".to_string()), &()).is_ok());
+        assert!(web_url_opt(&Some("http://example.com".to_string()), &()).is_ok());
     }
 
     // Deserializers.
