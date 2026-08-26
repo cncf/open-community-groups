@@ -28,6 +28,7 @@ emojis = { workspace = true }
 figment = { workspace = true }
 flate2 = { workspace = true }
 garde = { workspace = true }
+h2 = { workspace = true }
 hex = { workspace = true }
 hmac = { workspace = true }
 icalendar = { workspace = true }
