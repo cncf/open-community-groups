@@ -124,7 +124,9 @@ test.describe("dashboard access and shared behavior", () => {
       ).toBeHidden();
       const drawer = await openMobileDashboardDrawer(adminCommunityPage);
       await expect(drawer.locator("a[hx-get]:visible")).toHaveCount(0);
-      await expect(drawer.getByRole("link", { name: "Log out" })).toBeVisible();
+      await expect(
+        drawer.getByRole("button", { name: "Log out" }),
+      ).toBeVisible();
     });
 
     test("group dashboard opens mobile check-in from its only available option", async ({
