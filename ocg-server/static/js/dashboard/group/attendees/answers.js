@@ -6,31 +6,48 @@ import {
   setScopedModalVisibility,
 } from "/static/js/dashboard/group/attendees/shared.js";
 
-const answersModalId = "attendee-answers-modal";
-
-/**
- * Hide the attendee answers modal if it is currently visible.
- * @param {Document|Element} [root=document] Query root.
- * @returns {void}
- */
-const closeAnswersModal = (root = document) => {
-  setScopedModalVisibility(root, answersModalId, false);
+const defaultAnswersModal = {
+  closeSelector:
+    "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
+  contentId: "attendee-answers-content",
+  modalId: "attendee-answers-modal",
+  nameId: "attendee-answers-name",
+  openSelector: "[data-answers-open]",
 };
 
 /**
- * Populate the attendee answers modal with a row's answer markup.
- * @param {HTMLElement} trigger Modal trigger.
- * @param {Document|Element} root Query root.
+ * Build a dataset ready key unique to one answers modal.
+ * @param {string} modalId Modal element id.
+ * @returns {string} Dataset ready key.
+ */
+const answersModalReadyKey = (modalId) =>
+  `${modalId.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}Ready`;
+
+/**
+ * Hide the registration answers modal if it is currently visible.
+ * @param {Document|Element} [root=document] Query root.
+ * @param {string} [modalId=defaultAnswersModal.modalId] Modal element id.
  * @returns {void}
  */
-const populateAnswersModal = (trigger, root) => {
-  const sourceId = trigger.dataset.attendeeAnswersSource;
+const closeAnswersModal = (root = document, modalId = defaultAnswersModal.modalId) => {
+  setScopedModalVisibility(root, modalId, false);
+};
+
+/**
+ * Populate the registration answers modal with a row's answer markup.
+ * @param {HTMLElement} trigger Modal trigger.
+ * @param {Document|Element} root Query root.
+ * @param {typeof defaultAnswersModal} [ids=defaultAnswersModal] Modal element ids.
+ * @returns {void}
+ */
+const populateAnswersModal = (trigger, root, ids = defaultAnswersModal) => {
+  const sourceId = trigger.dataset.answersSource;
   const source = sourceId ? getElementById(root, sourceId) : null;
-  const content = getElementById(root, "attendee-answers-content");
-  const name = getElementById(root, "attendee-answers-name");
+  const content = getElementById(root, ids.contentId);
+  const name = getElementById(root, ids.nameId);
 
   if (name) {
-    name.textContent = trigger.dataset.attendeeName || "";
+    name.textContent = trigger.dataset.answersName || "";
   }
   if (content) {
     setTrustedHtml(content, readTrustedHtml(source));
@@ -38,40 +55,47 @@ const populateAnswersModal = (trigger, root) => {
 };
 
 /**
- * Show the attendee answers modal if it is currently hidden.
+ * Show the registration answers modal if it is currently hidden.
  * @param {Document|Element} [root=document] Query root.
+ * @param {string} [modalId=defaultAnswersModal.modalId] Modal element id.
  * @returns {void}
  */
-const openAnswersModal = (root = document) => {
-  setScopedModalVisibility(root, answersModalId, true);
+const openAnswersModal = (root = document, modalId = defaultAnswersModal.modalId) => {
+  setScopedModalVisibility(root, modalId, true);
 };
 
 /**
- * Initialize attendee answer review modal controls.
+ * Initialize registration answer review modal controls when the modal exists.
  * @param {Document|Element} [root=document] Query root.
+ * @param {Partial<typeof defaultAnswersModal>} [ids=defaultAnswersModal] Modal element ids.
  * @returns {void}
  */
-export const initializeAnswersModal = (root = document) => {
-  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeAnswersReady")) {
+export const initializeAnswersModal = (root = document, ids = defaultAnswersModal) => {
+  if (!(root instanceof Element)) {
+    return;
+  }
+
+  const modalIds = { ...defaultAnswersModal, ...ids };
+  if (
+    !getElementById(root, modalIds.modalId) ||
+    !markDatasetReady(root, answersModalReadyKey(modalIds.modalId))
+  ) {
     return;
   }
 
   root.addEventListener("click", (event) => {
-    const answersTrigger = closestElementWithinRoot(event.target, "[data-attendee-answers-open]", root);
+    const answersTrigger = closestElementWithinRoot(event.target, modalIds.openSelector, root);
     if (answersTrigger instanceof HTMLElement) {
       event.stopPropagation();
-      populateAnswersModal(answersTrigger, root);
-      openAnswersModal(root);
+      populateAnswersModal(answersTrigger, root, modalIds);
+      openAnswersModal(root, modalIds.modalId);
       return;
     }
 
-    closeScopedModalFromEvent(
-      event,
-      root,
-      "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
-      closeAnswersModal,
+    closeScopedModalFromEvent(event, root, modalIds.closeSelector, (queryRoot) =>
+      closeAnswersModal(queryRoot, modalIds.modalId),
     );
   });
 
-  bindScopedModalEscape(root, closeAnswersModal);
+  bindScopedModalEscape(root, (queryRoot) => closeAnswersModal(queryRoot, modalIds.modalId));
 };

@@ -33,6 +33,16 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       "Registration questions are read-only because attendees have submitted answers.",
     );
+    expect(template).to.include(
+      "Mark a question Required if you need the answer with a ticket request, RSVP, checkout, or offer claim.",
+    );
+    expect(template).to.include("Ticket-request answers are available from Requests.");
+    expect(template).to.include(
+      "cannot accept pending invitation requests until the event starts",
+    );
+    expect(template).to.include(
+      "Accept pending requests while registration is open or after the event starts.",
+    );
   });
 
   it("passes past-event state to online event and session details", async () => {

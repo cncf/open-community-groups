@@ -180,7 +180,7 @@ Event offer rows show:
 - The event, source, assigned ticket tier or RSVP, and displayed price.
 - The exact offer deadline in the event timezone.
 - Existing ticket-request answers and any registration questions required at
-  claim time.
+  claim time. Optional questions can be skipped.
 - `Claim offer`, plus `Decline`.
 - `Continue to checkout` and `Cancel checkout` when a paid checkout hold exists.
 

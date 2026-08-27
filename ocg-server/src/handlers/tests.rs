@@ -1103,6 +1103,7 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
         offer_expires_at: None,
         offered_event_ticket_type_id: None,
         offered_ticket_title: None,
+        registration_answers: None,
         reviewed_at: None,
     }
 }

@@ -11,6 +11,7 @@ use crate::{
     types::{
         event::{EventAdmissionOfferStatus, EventInvitationRequestStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
+        questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
         user::User,
     },
     validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
@@ -41,6 +42,9 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Registration questions configured for the event.
+    #[serde(default)]
+    pub registration_questions: Vec<QuestionnaireQuestion>,
     /// Sort option used to order invitation requests.
     pub sort: Option<InvitationRequestsSort>,
     /// User title presence filter.
@@ -73,6 +77,8 @@ pub struct InvitationRequest {
     pub offered_event_ticket_type_id: Option<uuid::Uuid>,
     /// Ticket title assigned by the organizer.
     pub offered_ticket_title: Option<String>,
+    /// Registration answers submitted with the request.
+    pub registration_answers: Option<QuestionnaireAnswers>,
     /// Public ticket type requested by the attendee, when one was visible.
     pub requested_event_ticket_type_id: Option<uuid::Uuid>,
     /// Public ticket title requested by the attendee, when one was visible.

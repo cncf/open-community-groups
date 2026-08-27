@@ -271,11 +271,13 @@ Enrollment-aware event operations also include:
 - Ticket types can be `Public` or `Invitation only`. Private tiers never appear
   in public event responses.
 - Optional `Registration Opens` and `Registration Closes` fields in `Date & Venue`.
-  When configured, the window controls public registration, invitation requests, starting ticket
+  When configured, the window controls public registration, new invitation requests, starting ticket
   checkout, registration-question answers, and automatic waitlist promotion.
   Registration open and close dates cannot be after the event start, and close must be after open
   when both are set. If only an open date is set, registration closes at event start; if both fields
-  are blank, no registration window is applied. Active checkout holds may still complete checkout and
+  are blank, no registration window is applied. After the window closes, organizers cannot accept
+  pending invitation requests until the event starts; rejecting a request and inviting attendees
+  manually still work. Active checkout holds may still complete checkout and
   required registration questions after the public window closes, until the hold expires.
 - Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on event
   enrollment settings, with table search, sorting, and filters for day-of operations.
@@ -289,7 +291,9 @@ Approval event operations include:
 - Approval cannot be combined with waitlist, but it can be used with free or
   paid ticketing.
 - Invitation requests appear in a separate `Requests` tab for organizer review. The tab defaults to
-  pending requests and can be filtered to all, accepted, or rejected requests.
+  pending requests and can be filtered to all, accepted, or rejected requests. Accept pending
+  requests while registration is open or after the event starts. `View answers` shows registration
+  answers submitted with a ticket request.
 - A public ticket request keeps the requester-selected tier.
 - A generic request for a fully private event requires the organizer
   to assign an invitation-only tier.

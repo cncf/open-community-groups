@@ -108,8 +108,8 @@ reserve seats.
 
 Registration questions appear at the stage where the answers are needed:
 before a direct checkout, with an approval request, or when an organizer or
-waitlist offer is claimed. Joining a ticket waiting list does not collect
-answers.
+waitlist offer is claimed. Only questions marked required must be answered.
+Joining a ticket waiting list does not collect answers.
 
 A few details shape event enrollment:
 

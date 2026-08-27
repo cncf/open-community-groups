@@ -3811,6 +3811,7 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
         None
     );
     assert_eq!(output.invitation_requests[0].offered_ticket_title, None);
+    assert!(output.invitation_requests[0].registration_answers.is_some());
     assert_eq!(
         output.invitation_requests[0].requested_event_ticket_type_id,
         Some(invitation_ticket_type_id())
@@ -3820,6 +3821,23 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
         Some("General Admission")
     );
     assert_eq!(output.invitation_requests[0].reviewed_at, None);
+
+    // Check the single-select registration answers payload
+    let answers = output.invitation_requests[0]
+        .registration_answers
+        .as_ref()
+        .expect("contract invitation request should include registration answers");
+    assert_eq!(answers.answers.len(), 1);
+    assert_eq!(
+        answers.answers[0].question_id,
+        parse_uuid("00000000-0000-0000-0000-00000000c071")
+    );
+    match &answers.answers[0].value {
+        QuestionnaireAnswerValue::One(value) => {
+            assert_eq!(value, "00000000-0000-0000-0000-00000000c072");
+        }
+        QuestionnaireAnswerValue::Many(_) => panic!("expected single-select answer"),
+    }
 
     Ok(())
 }

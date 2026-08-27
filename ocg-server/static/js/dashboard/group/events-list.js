@@ -8,11 +8,19 @@ import {
   isElementHidden,
   setElementHidden,
 } from "/static/js/common/dom.js";
+import { initializeAnswersModal } from "/static/js/dashboard/group/attendees/answers.js";
 
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 const EVENT_ACTIONS_BUTTON_SELECTOR = ".btn-actions";
 const EVENTS_LIST_PAGE_SELECTOR = "[data-events-list-page]";
 const INVITATION_REQUEST_ACTION_SELECTOR = "[data-invitation-request-action]";
+const INVITATION_REQUEST_ANSWERS_MODAL = {
+  closeSelector:
+    "#close-invitation-request-answers-modal, #cancel-invitation-request-answers-modal, #overlay-invitation-request-answers-modal",
+  contentId: "invitation-request-answers-content",
+  modalId: "invitation-request-answers-modal",
+  nameId: "invitation-request-answers-name",
+};
 const INVITATION_REQUEST_TICKET_SELECTOR = "[data-invitation-request-ticket-type]";
 const TABLE_FILTER_MENU_SELECTOR = "[data-table-filter-menu]";
 const initializedRoots = new WeakSet();
@@ -30,6 +38,11 @@ export const initializeEventsListPage = (root = document) => {
 
   initializedRoots.add(root);
   bindDocumentDropdownDismissHandler();
+
+  // Bind request-answer review only when this page owns the modal
+  if (getElementById(root, INVITATION_REQUEST_ANSWERS_MODAL.modalId)) {
+    initializeAnswersModal(root, INVITATION_REQUEST_ANSWERS_MODAL);
+  }
   initializeInvitationRequestTicketControls(root);
 
   root.addEventListener("click", (event) => {
@@ -283,7 +296,7 @@ const initializeInvitationRequestTicketControl = (ticketTypeInput) => {
 
   ticketTypeInput.disabled = !hasAssignableTicketType;
   if (submitButton instanceof HTMLButtonElement) {
-    submitButton.disabled = !hasAssignableTicketType;
+    submitButton.disabled = submitButton.disabled || !hasAssignableTicketType;
   }
   if (emptyState instanceof HTMLElement) {
     setElementHidden(emptyState, hasAssignableTicketType);

@@ -55,6 +55,7 @@ returns json as $$
                 extract(epoch from ao.expires_at)::bigint as offer_expires_at,
                 ao.event_ticket_type_id as offered_event_ticket_type_id,
                 offered_ett.title as offered_ticket_title,
+                eir.registration_answers,
                 eir.event_ticket_type_id as requested_event_ticket_type_id,
                 requested_ett.title as requested_ticket_title,
                 u.user_id,
@@ -129,6 +130,7 @@ returns json as $$
                 offer_expires_at,
                 offered_event_ticket_type_id,
                 offered_ticket_title,
+                registration_answers,
                 requested_event_ticket_type_id,
                 requested_ticket_title,
                 json_strip_nulls(json_build_object(
@@ -191,7 +193,8 @@ returns json as $$
                         'admission_offer_status', admission_offer_status,
                         'offer_expires_at', offer_expires_at,
                         'offered_event_ticket_type_id', offered_event_ticket_type_id,
-                        'offered_ticket_title', offered_ticket_title
+                        'offered_ticket_title', offered_ticket_title,
+                        'registration_answers', registration_answers
                     ))
                 ),
                 '[]'::json

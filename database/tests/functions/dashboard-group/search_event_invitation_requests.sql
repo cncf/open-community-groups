@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -206,6 +206,7 @@ insert into event_invitation_request (
     event_ticket_type_id,
     user_id,
     created_at,
+    registration_answers,
     reviewed_at,
     reviewed_by,
     status
@@ -214,6 +215,7 @@ insert into event_invitation_request (
     :'ticketTypeID',
     :'user1ID',
     '2024-01-01 00:00:00+00',
+    null,
     '2024-01-01 01:00:00+00',
     :'user3ID',
     'accepted'
@@ -222,6 +224,7 @@ insert into event_invitation_request (
     :'ticketTypeID',
     :'user2ID',
     '2024-01-02 00:00:00+00',
+    '{"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}',
     null,
     null,
     'pending'
@@ -230,6 +233,7 @@ insert into event_invitation_request (
     :'ticketTypeID',
     :'user3ID',
     '2024-01-03 00:00:00+00',
+    null,
     '2024-01-03 01:00:00+00',
     :'user1ID',
     'rejected'
@@ -238,6 +242,7 @@ insert into event_invitation_request (
     null,
     :'user3ID',
     '2024-01-04 00:00:00+00',
+    null,
     '2024-01-04 01:00:00+00',
     :'user1ID',
     'accepted'
@@ -301,7 +306,7 @@ select is(
     jsonb_build_object(
         'invitation_requests', '[
             {"created_at": 1704240000, "invitation_request_status": "rejected", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000011", "username": "carol", "name": "Carol", "title": "Designer"}, "reviewed_at": 1704243600},
-            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null},
+            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null, "registration_answers": {"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}},
             {"admission_offer_id": "3a2f0000-0000-0000-0000-000000000012", "admission_offer_status": "pending", "created_at": 1704067200, "invitation_request_status": "accepted", "offer_expires_at": 4071686400, "offered_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "offered_ticket_title": "General admission", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800}
         ]'::jsonb,
         'total', 3
@@ -358,7 +363,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
-            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null}
+            {"created_at": 1704153600, "invitation_request_status": "pending", "requested_event_ticket_type_id": "3a2f0000-0000-0000-0000-000000000014", "requested_ticket_title": "General admission", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null, "registration_answers": {"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}}
         ]'::jsonb,
         'total', 3
     ),
@@ -513,6 +518,21 @@ select is(
     )::jsonb->>'total',
     '2',
     'Should filter invitation requests by title presence'
+);
+
+-- Should include registration answers when present
+select is(
+    search_event_invitation_requests(
+        :'groupID'::uuid,
+        :'event1ID'::uuid,
+        jsonb_build_object(
+            'limit', 50,
+            'offset', 0,
+            'status', 'pending'
+        )
+    )::jsonb#>'{invitation_requests,0,registration_answers}',
+    '{"answers": [{"question_id": "3a2f0000-0000-0000-0000-000000000018", "value": "Vegetarian"}]}'::jsonb,
+    'Should include registration answers when present'
 );
 
 -- Should return no invitation requests when search has no matches

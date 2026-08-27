@@ -292,19 +292,25 @@ const renderQuestionModal = (editor) => html`
             </div>
           </div>
 
-          <label class="inline-flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              class="peer sr-only"
-              .checked=${editor._draftQuestion?.required || false}
-              ?disabled=${!editor._isModalOpen}
-              @change=${(event) => editor._updateDraftQuestion({ required: event.target.checked })}
-            />
-            <div
-              class="relative h-6 w-11 rounded-full bg-stone-200 peer peer-checked:bg-primary-500 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 after:absolute after:start-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full"
-            ></div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Required</span>
-          </label>
+          <div>
+            <label class="inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                class="peer sr-only"
+                .checked=${editor._draftQuestion?.required || false}
+                ?disabled=${!editor._isModalOpen}
+                @change=${(event) => editor._updateDraftQuestion({ required: event.target.checked })}
+              />
+              <div
+                class="relative h-6 w-11 rounded-full bg-stone-200 peer peer-checked:bg-primary-500 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 after:absolute after:start-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full"
+              ></div>
+              <span class="ms-3 text-sm font-medium text-stone-900">Required</span>
+            </label>
+            <p class="form-legend mt-2">
+              Required answers are collected with a ticket request, RSVP, checkout, or offer claim. Optional
+              questions can be skipped.
+            </p>
+          </div>
 
           ${editor._draftQuestion && editor._draftQuestion.kind !== "free-text" ? renderDraftOptions(editor) : ""}
         </div>

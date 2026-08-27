@@ -108,7 +108,8 @@ complete, check:
    enrollment.
 2. The ticket type has a price window that is currently in effect.
 3. The event registration window is currently open for starting checkout, if one is configured.
-   Existing active ticket holds can still complete until the hold expires.
+   Existing active ticket holds can still complete until the hold expires. Accepting a pending
+   invitation request also requires the window to be open, or the event to have started.
 4. The discount code is active, still has remaining uses, and has not reached any total-use
    limit. Remaining uses are reserved by active holds and active purchases, then released again if
    the hold expires or the ticket is refunded.

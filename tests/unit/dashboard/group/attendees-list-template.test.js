@@ -630,18 +630,15 @@ describe("dashboard group attendees list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify renders registration answers in the review modal layout.
-    expect(template).to.include('aria-describedby="attendee-answers-subtitle"');
-    expect(template).to.include('id="attendee-answers-subtitle"');
-    expect(template).to.include('<ol class="space-y-3">');
-    expect(template).to.include('<li class="rounded-md border border-stone-200 bg-white p-4">');
-    expect(template).to.include("{{ loop.index }}");
-    expect(template).to.include("No answer provided");
-    expect(template).to.include("text-sm italic text-stone-500");
+    expect(template).to.include(
+      'question_answers::review_modal(id_prefix = "attendee-answers")',
+    );
+    expect(template).to.include("data-answers-open");
+    expect(template).to.include(
+      "question_answers::review_list(questions = registration_questions, answers = attendee.registration_answers.as_ref())",
+    );
     expect(template).not.to.include(">Free text<");
     expect(template).not.to.include(">Single select<");
     expect(template).not.to.include(">Multi select<");
-    expect(template).to.include(
-      "question.is_option_selected(attendee.registration_answers.as_ref(), option.id)",
-    );
   });
 });
