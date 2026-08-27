@@ -12,10 +12,10 @@
      hx-target="#invitation-requests-content"
      hx-swap="innerHTML">
   {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
-  {% if !event.invitation_request_acceptance_is_open() && !event.canceled && !event.is_past() -%}
+  {% if !event.registration_window_is_open() && !event.has_started() && !event.canceled && !event.is_past() -%}
     <div class="mt-4 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
-      Registration is closed. Pending requests cannot be accepted until the event starts. You can still
-      reject requests, or invite someone from the Attendees tab.
+      Public registration is not currently open. New requests cannot be submitted. Pending requests can
+      still be accepted or rejected, and expired approval offers can be reissued.
     </div>
   {% endif -%}
 
@@ -422,8 +422,6 @@
                                           disabled title="Canceled events cannot manage invitation requests."
                                         {% else if event.is_past() -%}
                                           disabled title="Past events cannot manage invitation requests."
-                                        {% else if !event.invitation_request_acceptance_is_open() -%}
-                                          data-invitation-request-accept-blocked disabled title="Pending requests cannot be accepted after registration closes until the event starts."
                                         {% endif -%}>
                                   <div class="flex items-center gap-2">
                                     <div class="svg-icon size-4 icon-check bg-stone-600"></div>

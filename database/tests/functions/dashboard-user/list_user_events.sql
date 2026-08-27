@@ -5,17 +5,27 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set bouncedDiscountCodeID '4a0c0000-0000-0000-0000-000000000049'
+\set bouncedDiscountOfferID '4a0c0000-0000-0000-0000-000000000045'
+\set bouncedDiscountUserID '4a0c0000-0000-0000-0000-000000000046'
 \set checkoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000040'
 \set checkoutExpiredUserID '4a0c0000-0000-0000-0000-000000000041'
 \set checkoutPurchaseID '4a0c0000-0000-0000-0000-000000000042'
 \set checkoutUserID '4a0c0000-0000-0000-0000-000000000043'
 \set communityID '4a0c0000-0000-0000-0000-000000000001'
+\set endedWindowApprovalOfferID '4a0c0000-0000-0000-0000-00000000004a'
+\set endedWindowApprovalUserID '4a0c0000-0000-0000-0000-00000000004b'
+\set endedWindowEventID '4a0c0000-0000-0000-0000-00000000004c'
+\set endedWindowPriceWindowID '4a0c0000-0000-0000-0000-00000000004d'
+\set endedWindowTicketTypeID '4a0c0000-0000-0000-0000-00000000004e'
+\set endedWindowWaitlistOfferID '4a0c0000-0000-0000-0000-00000000004f'
+\set endedWindowWaitlistUserID '4a0c0000-0000-0000-0000-000000000050'
 \set eventAID '4a0c0000-0000-0000-0000-000000000002'
 \set eventBID '4a0c0000-0000-0000-0000-000000000003'
 \set eventCanceledID '4a0c0000-0000-0000-0000-000000000004'
@@ -39,6 +49,8 @@ select plan(13);
 \set groupDeletedID '4a0c0000-0000-0000-0000-000000000021'
 \set groupID '4a0c0000-0000-0000-0000-000000000022'
 \set groupInactiveID '4a0c0000-0000-0000-0000-000000000023'
+\set livePriceOfferID '4a0c0000-0000-0000-0000-000000000047'
+\set livePriceUserID '4a0c0000-0000-0000-0000-000000000048'
 \set pendingInvitationOfferID '4a0c0000-0000-0000-0000-000000000036'
 \set questionsAttendeeUserID '4a0c0000-0000-0000-0000-000000000024'
 \set questionsCheckoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000025'
@@ -116,6 +128,34 @@ insert into "user" (
     true,
     'alice',
     'Alice'
+), (
+    :'bouncedDiscountUserID',
+    'bounced-discount-auth-hash',
+    'bounced-discount@test.com',
+    true,
+    'bounced-discount',
+    'Bounced Discount'
+), (
+    :'endedWindowApprovalUserID',
+    'ended-window-approval-auth-hash',
+    'ended-window-approval@test.com',
+    true,
+    'ended-window-approval',
+    'Ended Window Approval'
+), (
+    :'endedWindowWaitlistUserID',
+    'ended-window-waitlist-auth-hash',
+    'ended-window-waitlist@test.com',
+    true,
+    'ended-window-waitlist',
+    'Ended Window Waitlist'
+), (
+    :'livePriceUserID',
+    'live-price-auth-hash',
+    'live-price@test.com',
+    true,
+    'live-price',
+    'Live Price'
 ), (
     :'userPaidID',
     'paid-auth-hash',
@@ -392,6 +432,37 @@ insert into event (
         'UTC'
     );
 
+-- Event whose ticket sales window has ended
+insert into event (
+    event_id,
+    canceled,
+    deleted,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    :'endedWindowEventID',
+    false,
+    false,
+    'Event whose ticket sales window has ended',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Ended Window Event',
+    'EUR',
+    true,
+    'ended-window-event',
+    '2099-01-19 10:00:00+00',
+    'UTC'
+);
+
 -- Event with registration questions shown in user event lists
 insert into event (
     event_id,
@@ -469,6 +540,59 @@ insert into event_ticket_price_window (
     :'eventPaidTicketTypeID'
 );
 
+-- Ticket tier whose sales window has already ended
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'endedWindowTicketTypeID',
+    :'endedWindowEventID',
+    1,
+    10,
+    'Ended window admission'
+);
+
+-- Lapsed price window used by ended-window offer display scenarios
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id,
+    ends_at,
+    starts_at
+) values (
+    2500,
+    :'endedWindowPriceWindowID',
+    :'endedWindowTicketTypeID',
+    current_timestamp - interval '1 minute',
+    current_timestamp - interval '2 days'
+);
+
+-- Discount used by the bounced-back pending snapshot fixture
+insert into event_discount_code (
+    event_discount_code_id,
+    active,
+    amount_minor,
+    available,
+    available_override_active,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'bouncedDiscountCodeID',
+    true,
+    1000,
+    1,
+    true,
+    'SAVE10',
+    :'eventPaidID',
+    'fixed_amount',
+    'Bounced save'
+);
+
 -- Events without an explicit ticket fixture use default admission tiers
 insert into event_ticket_type (
     event_id,
@@ -538,6 +662,95 @@ insert into admission_offer (
     'pending',
     :'questionsInvitedUserID'
 );
+
+-- Pending offers used to compare live-window and frozen discounted display prices
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'bouncedDiscountOfferID',
+    500,
+    'USD',
+    1000,
+    'SAVE10',
+    :'bouncedDiscountCodeID',
+    :'eventPaidID',
+    :'eventPaidTicketTypeID',
+    '2099-01-18 11:00:00+00',
+    'approval',
+    'pending',
+    'Paid admission',
+    :'bouncedDiscountUserID'
+), (
+    :'livePriceOfferID',
+    0,
+    null,
+    0,
+    null,
+    null,
+    :'eventPaidID',
+    :'eventPaidTicketTypeID',
+    '2099-01-18 11:00:00+00',
+    'approval',
+    'pending',
+    'Paid admission',
+    :'livePriceUserID'
+);
+
+-- Pending offers that keep or omit a stored snapshot after sales end
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values
+    (
+        :'endedWindowApprovalOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        :'endedWindowEventID',
+        :'endedWindowTicketTypeID',
+        '2099-01-19 11:00:00+00',
+        'approval',
+        'pending',
+        'Ended window admission',
+        :'endedWindowApprovalUserID'
+    ),
+    (
+        :'endedWindowWaitlistOfferID',
+        2500,
+        'USD',
+        0,
+        null,
+        :'endedWindowEventID',
+        :'endedWindowTicketTypeID',
+        '2099-01-19 11:00:00+00',
+        'waitlist',
+        'pending',
+        'Ended window admission',
+        :'endedWindowWaitlistUserID'
+    );
 
 -- Organizer invitation offer hidden while its refund is processing
 insert into admission_offer (
@@ -1051,6 +1264,110 @@ select is(
         'Questions admission'
     ),
     'Should include active organizer ticket offers without labeling recipients as attendees'
+);
+
+-- Should list the live ticket price for a pending offer with a stale free snapshot
+select is(
+    (
+        select jsonb_build_object(
+            'amount_minor', (
+                list_user_events(
+                    :'livePriceUserID'::uuid,
+                    '{"limit": 10, "offset": 0}'::jsonb
+                )::jsonb->'events'->0->>'amount_minor'
+            )::bigint,
+            'currency_code',
+            list_user_events(
+                :'livePriceUserID'::uuid,
+                '{"limit": 10, "offset": 0}'::jsonb
+            )::jsonb->'events'->0->>'currency_code'
+        )
+    ),
+    '{"amount_minor": 1500, "currency_code": "USD"}'::jsonb,
+    'Should list the live ticket price for a pending offer with a stale free snapshot'
+);
+
+-- Should list the stored snapshot for a pending discounted offer
+select is(
+    (
+        select jsonb_build_object(
+            'amount_minor', (
+                list_user_events(
+                    :'bouncedDiscountUserID'::uuid,
+                    '{"limit": 10, "offset": 0}'::jsonb
+                )::jsonb->'events'->0->>'amount_minor'
+            )::bigint,
+            'currency_code',
+            list_user_events(
+                :'bouncedDiscountUserID'::uuid,
+                '{"limit": 10, "offset": 0}'::jsonb
+            )::jsonb->'events'->0->>'currency_code'
+        )
+    ),
+    '{"amount_minor": 500, "currency_code": "USD"}'::jsonb,
+    'Should list the stored snapshot for a pending discounted offer'
+);
+
+-- Should list the stored snapshot currency for a pending approval offer after sales end
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id',
+            list_user_events(
+                :'endedWindowApprovalUserID'::uuid,
+                '{"limit": 10, "offset": 0}'::jsonb
+            )::jsonb->'events'->0->>'admission_offer_id',
+            'amount_minor',
+            (
+                list_user_events(
+                    :'endedWindowApprovalUserID'::uuid,
+                    '{"limit": 10, "offset": 0}'::jsonb
+                )::jsonb->'events'->0->>'amount_minor'
+            )::bigint,
+            'currency_code',
+            list_user_events(
+                :'endedWindowApprovalUserID'::uuid,
+                '{"limit": 10, "offset": 0}'::jsonb
+            )::jsonb->'events'->0->>'currency_code'
+        )
+    ),
+    jsonb_build_object(
+        'admission_offer_id', :'endedWindowApprovalOfferID',
+        'amount_minor', 2500,
+        'currency_code', 'USD'
+    ),
+    'Should list the stored snapshot currency for a pending approval offer after sales end'
+);
+
+-- Should omit the stored snapshot for a pending waitlist offer after sales end
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id',
+            list_user_events(
+                :'endedWindowWaitlistUserID'::uuid,
+                '{"limit": 10, "offset": 0}'::jsonb
+            )::jsonb->'events'->0->>'admission_offer_id',
+            'amount_minor',
+            (
+                list_user_events(
+                    :'endedWindowWaitlistUserID'::uuid,
+                    '{"limit": 10, "offset": 0}'::jsonb
+                )::jsonb->'events'->0->>'amount_minor'
+            )::bigint,
+            'currency_code',
+            list_user_events(
+                :'endedWindowWaitlistUserID'::uuid,
+                '{"limit": 10, "offset": 0}'::jsonb
+            )::jsonb->'events'->0->>'currency_code'
+        )
+    ),
+    jsonb_build_object(
+        'admission_offer_id', :'endedWindowWaitlistOfferID',
+        'amount_minor', null,
+        'currency_code', null
+    ),
+    'Should omit the stored snapshot for a pending waitlist offer after sales end'
 );
 
 -- Should include active direct checkout without labeling the user as an attendee

@@ -199,38 +199,6 @@ describe("events list page", () => {
     expect(root.querySelector("p").classList.contains("hidden")).to.equal(false);
   });
 
-  it("keeps invitation request accept disabled when registration is closed", () => {
-    // Build invitation request assignment with an eligible ticket after registration closed.
-    document.body.innerHTML = `
-      <div id="events-list-root">
-        <form>
-          <select data-invitation-request-ticket-type>
-            <option value="">Select ticket type</option>
-            <option value="ticket-1">Private admission</option>
-          </select>
-          <p data-invitation-request-ticket-empty class="hidden">No tickets available.</p>
-          <button
-            data-invitation-request-ticket-submit
-            data-invitation-request-accept-blocked
-            type="submit"
-            disabled
-          >
-            Accept
-          </button>
-        </form>
-      </div>
-    `;
-    const root = document.getElementById("events-list-root");
-
-    // Initialize the invitation request ticket guard.
-    initializeEventsListPage(root);
-
-    // Check accept stays blocked even when a ticket type can be assigned.
-    expect(root.querySelector("select").disabled).to.equal(false);
-    expect(root.querySelector("button").disabled).to.equal(true);
-    expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);
-  });
-
   it("keeps invitation request accept disabled when the template already disabled it", () => {
     // Build invitation request assignment with an eligible ticket and a template-disabled accept.
     document.body.innerHTML = `
@@ -257,7 +225,7 @@ describe("events list page", () => {
     // Initialize the invitation request ticket guard.
     initializeEventsListPage(root);
 
-    // Check accept stays disabled for template reasons other than registration close.
+    // Check accept stays disabled when the template already disabled the control.
     expect(root.querySelector("select").disabled).to.equal(false);
     expect(root.querySelector("button").disabled).to.equal(true);
     expect(root.querySelector("p").classList.contains("hidden")).to.equal(true);

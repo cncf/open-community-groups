@@ -38,10 +38,10 @@ describe("dashboard group event update template", () => {
     );
     expect(template).to.include("Ticket-request answers are available from Requests.");
     expect(template).to.include(
-      "cannot accept pending invitation requests until the event starts",
+      "accept pending invitation requests and reissue expired approval offers outside the window.",
     );
     expect(template).to.include(
-      "Accept pending requests while registration is open or after the event starts.",
+      "Accept pending requests and reissue expired offers while the event is still",
     );
   });
 

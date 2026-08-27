@@ -251,7 +251,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(rejectRequest).to.include("data-confirm-action");
     expect(rejectRequest).to.not.include("data-invitation-request-action");
 
-    // Verify organizers can review request answers and cannot accept after registration closes.
+    // Verify organizers can review request answers when public registration is not open.
     expect(template).to.include("View answers");
     expect(template).to.include(
       "question_answers::review_list(questions = registration_questions, answers = request.registration_answers.as_ref())",
@@ -260,13 +260,14 @@ describe("dashboard group invitation requests list template", () => {
       'question_answers::review_modal(id_prefix = "invitation-request-answers")',
     );
     expect(template).to.include("data-answers-open");
-    expect(template).to.include("event.invitation_request_acceptance_is_open()");
-    expect(template).to.include("data-invitation-request-accept-blocked");
+    expect(template).to.include("event.registration_window_is_open()");
+    expect(template).to.include("event.has_started()");
+    expect(template).to.not.include("data-invitation-request-accept-blocked");
     expect(template).to.include(
-      "Pending requests cannot be accepted after registration closes until the event starts.",
+      "Public registration is not currently open. New requests cannot be submitted. Pending requests can",
     );
     expect(template).to.include(
-      "Registration is closed. Pending requests cannot be accepted until the event starts.",
+      "still be accepted or rejected, and expired approval offers can be reissued.",
     );
   });
 });

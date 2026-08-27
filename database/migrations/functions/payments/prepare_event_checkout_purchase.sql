@@ -19,6 +19,7 @@ declare
     v_admission_offer_snapshot_discount_code text;
     v_admission_offer_snapshot_event_discount_code_id uuid;
     v_admission_offer_snapshot_ticket_title text;
+    v_admission_offer_source text;
     v_admission_offer_status text;
     v_cached_performance_location_fingerprint text;
     v_cached_product_fingerprint text;
@@ -53,6 +54,7 @@ declare
     v_tax_behavior text;
     v_tax_calculation_mode text;
     v_ticket_title text;
+    v_use_offer_snapshot boolean := false;
     v_venue_snapshot jsonb;
 begin
     -- Reject platform fee configuration outside the valid basis-point range
@@ -137,6 +139,7 @@ begin
             ao.discount_code,
             ao.event_discount_code_id,
             ao.expires_at,
+            ao.source,
             ao.status,
             ao.ticket_title
         into
@@ -146,6 +149,7 @@ begin
             v_admission_offer_snapshot_discount_code,
             v_admission_offer_snapshot_event_discount_code_id,
             v_admission_offer_expires_at,
+            v_admission_offer_source,
             v_admission_offer_status,
             v_admission_offer_snapshot_ticket_title
         from admission_offer ao
@@ -165,13 +169,24 @@ begin
             return jsonb_build_object('conflict', 'admission-offer-unavailable');
         end if;
 
-        -- Honor the immutable pricing snapshot for previously priced offers
-        if v_admission_offer_snapshot_amount_minor is not null then
+        -- Freeze in-progress holds and prior discounted claims
+        v_use_offer_snapshot :=
+            v_admission_offer_snapshot_amount_minor is not null
+            and (
+                v_admission_offer_status = 'checkout_pending'
+                or v_admission_offer_snapshot_discount_code is not null
+            );
+
+        -- Honor the immutable pricing snapshot for frozen offer claims
+        if v_use_offer_snapshot then
             -- Reject attempts to replace the snapshotted discount code
             if v_normalized_discount_code is not null
                and upper(nullif(btrim(v_admission_offer_snapshot_discount_code), ''))
                    is distinct from v_normalized_discount_code then
-                raise exception 'admission offer price selection cannot be changed';
+                return jsonb_build_object(
+                    'conflict',
+                    'admission-offer-price-locked'
+                );
             end if;
 
             -- Omitted codes reuse the immutable offer pricing snapshot
@@ -255,14 +270,14 @@ begin
     end if;
 
     -- Resolve pricing without rolling back queue reconciliation on sold-out conflicts
-    -- Use the immutable admission-offer pricing snapshot when available
-    if v_admission_offer_snapshot_amount_minor is not null then
+    -- Use the immutable snapshot for a frozen offer claim
+    if v_use_offer_snapshot then
         v_currency_code := v_admission_offer_snapshot_currency_code;
         v_discount_amount_minor := v_admission_offer_snapshot_discount_amount_minor;
         v_event_discount_code_id := v_admission_offer_snapshot_event_discount_code_id;
         v_final_amount_minor := v_admission_offer_snapshot_amount_minor;
         v_ticket_title := v_admission_offer_snapshot_ticket_title;
-    -- Resolve current ticket pricing when the offer has no immutable snapshot
+    -- Resolve current ticket pricing for pending offers and direct checkout
     else
         -- Translate live pricing outcomes into stable checkout conflicts
         begin
@@ -289,9 +304,50 @@ begin
                 -- Report admission offers that became unavailable
                 if sqlerrm = 'admission offer is no longer available' then
                     return jsonb_build_object('conflict', 'admission-offer-unavailable');
-                -- Report ticket types without an active price
+                -- Fall back to a stored offer snapshot when live pricing is gone
                 elsif sqlerrm = 'ticket type does not have an active price window' then
-                    return jsonb_build_object('conflict', 'ticket-type-price-unavailable');
+                    -- Use stored approval and organizer-invitation snapshots
+                    if p_admission_offer_id is not null
+                       and v_admission_offer_snapshot_amount_minor is not null
+                       and v_admission_offer_source in (
+                            'approval',
+                            'organizer_invitation'
+                       ) then
+                        -- Reject attempts to replace the snapshotted discount code
+                        if v_normalized_discount_code is not null
+                           and upper(
+                                nullif(
+                                    btrim(v_admission_offer_snapshot_discount_code),
+                                    ''
+                                )
+                           ) is distinct from v_normalized_discount_code then
+                            return jsonb_build_object(
+                                'conflict',
+                                'admission-offer-price-locked'
+                            );
+                        end if;
+
+                        -- Omitted codes reuse the stored offer pricing snapshot
+                        v_normalized_discount_code := upper(
+                            nullif(
+                                btrim(v_admission_offer_snapshot_discount_code),
+                                ''
+                            )
+                        );
+                        v_currency_code := v_admission_offer_snapshot_currency_code;
+                        v_discount_amount_minor :=
+                            v_admission_offer_snapshot_discount_amount_minor;
+                        v_event_discount_code_id :=
+                            v_admission_offer_snapshot_event_discount_code_id;
+                        v_final_amount_minor := v_admission_offer_snapshot_amount_minor;
+                        v_ticket_title := v_admission_offer_snapshot_ticket_title;
+                    -- Report ticket types without an active price or stored snapshot
+                    else
+                        return jsonb_build_object(
+                            'conflict',
+                            'ticket-type-price-unavailable'
+                        );
+                    end if;
                 -- Report inactive ticket types
                 elsif sqlerrm = 'ticket type is not active' then
                     return jsonb_build_object('conflict', 'ticket-type-inactive');
@@ -309,7 +365,16 @@ begin
                     return jsonb_build_object('conflict', 'ticket-type-sold-out');
                 end if;
 
-                raise;
+                -- Propagate unexpected pricing failures after the known conflicts
+                if sqlerrm <> 'ticket type does not have an active price window'
+                   or p_admission_offer_id is null
+                   or v_admission_offer_snapshot_amount_minor is null
+                   or v_admission_offer_source not in (
+                        'approval',
+                        'organizer_invitation'
+                   ) then
+                    raise;
+                end if;
         end;
     end if;
 
@@ -409,25 +474,37 @@ begin
         perform prepare_event_checkout_expire_previous_hold(v_existing_purchase_id);
     end if;
 
-    -- Snapshot the first offer claim and move its reservation into checkout
+    -- Snapshot the pending offer claim and move its reservation into checkout
     if p_admission_offer_id is not null then
         v_hold_expires_at := least(
             v_hold_expires_at,
             coalesce(v_admission_offer_expires_at, 'infinity'::timestamptz)
         );
 
-        update admission_offer
-        set
-            amount_minor = coalesce(amount_minor, v_final_amount_minor),
-            currency_code = coalesce(currency_code, v_currency_code),
-            discount_amount_minor = coalesce(discount_amount_minor, v_discount_amount_minor),
-            discount_code = coalesce(discount_code, v_normalized_discount_code),
-            event_discount_code_id = coalesce(event_discount_code_id, v_event_discount_code_id),
-            status = 'checkout_pending',
-            ticket_title = coalesce(ticket_title, v_ticket_title),
-            updated_at = current_timestamp
-        where admission_offer_id = p_admission_offer_id
-        and status in ('checkout_pending', 'pending');
+        -- Replace the issue snapshot with the claimed price on first checkout
+        if v_admission_offer_status = 'pending' then
+            update admission_offer
+            set
+                amount_minor = v_final_amount_minor,
+                currency_code = v_currency_code,
+                discount_amount_minor = v_discount_amount_minor,
+                discount_code = v_normalized_discount_code,
+                event_discount_code_id = v_event_discount_code_id,
+                status = 'checkout_pending',
+                ticket_title = v_ticket_title,
+                updated_at = current_timestamp
+            where admission_offer_id = p_admission_offer_id
+            and status = 'pending';
+
+        -- Keep the frozen snapshot on checkout retries
+        else
+            update admission_offer
+            set
+                status = 'checkout_pending',
+                updated_at = current_timestamp
+            where admission_offer_id = p_admission_offer_id
+            and status = 'checkout_pending';
+        end if;
 
         -- Reject offers that became unavailable before reservation
         if not found then

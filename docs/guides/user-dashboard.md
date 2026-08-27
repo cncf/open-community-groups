@@ -184,9 +184,11 @@ Event offer rows show:
 - `Claim offer`, plus `Decline`.
 - `Continue to checkout` and `Cancel checkout` when a paid checkout hold exists.
 
-The displayed ticket price is finalized on first claim. Checkout retries keep
-that confirmed snapshot. Before a claim completes, no charge or attendance has
-been created.
+Pending offers show the current ticket price while a sales window is open.
+In-progress checkout holds and discounted claims keep their stored snapshot,
+including after an abandoned hold returns to pending. Undiscounted pending
+offers can still use a new live price or discount while sales remain open.
+Before a claim completes, no charge or attendance has been created.
 
 When someone invites you to a team, you receive an in-app and email invitation with a direct path
 to accept or decline.

@@ -197,14 +197,15 @@ Invitation review also lives here:
   time-limited offer when capacity and payment readiness allow it.
 - A generic private request requires the organizer to assign an active
   invitation-only tier during acceptance.
-- Accept pending requests while registration is open. After it closes, new
-  requests stop and pending requests cannot be accepted until the event starts.
-  Rejecting a request still works.
+- Accept pending requests while the event is still active. New public requests
+  stop outside the registration window. Rejecting a request still works.
 - Use `View answers` on the `Requests` tab to review answers submitted with a
   ticket request before accepting or rejecting it.
 - Disabling invitation review is blocked while pending requests exist.
 - Accepted requests receive a time-limited offer that must be claimed. Free
-  offers complete inside OCG; positive prices continue to hosted checkout.
+  offers complete inside OCG; positive prices continue to hosted checkout. If
+  ticket sales end before the deadline, the stored offer price can still be
+  claimed.
 
 Brand inheritance in event details mirrors the group model: if the event logo is not provided,
 OCG falls back to the group logo, then the community logo; if the event banner or mobile banner
@@ -244,9 +245,9 @@ attendee-facing registration:
 - Active ticket checkout holds are also an override for completion only. Registration close stops
   new checkout starts, but attendees already holding a ticket can finish checkout and required
   registration questions until the hold expires.
-- Accepting a pending invitation request is blocked after registration closes
-  until the event starts. Reissuing an expired approval offer uses the same
-  rule. Rejecting a request still works.
+- Organizers can accept pending invitation requests and reissue expired approval
+  offers outside the public registration window until the event is past or
+  canceled. Rejecting a request still works.
 - Automatic waitlist promotion stops while registration is closed.
 
 When `Send Event Reminder` is enabled, OCG sends reminder messages about 24 hours before start
@@ -451,8 +452,12 @@ Capacity changes drive automatic waitlist behavior:
 - Organizer invitations bypass public approval and registration windows, but
   never capacity or public-tier queue priority.
 - Active offers reserve capacity until their displayed deadline. The claim
-  window is at most 24 hours and is shortened by the event or registration
-  deadline when necessary.
+  window is at most 24 hours. Organizer invitations and approval offers are
+  shortened by event start before the event begins, or by event end after it
+  starts. Waitlist offers are also shortened by the registration close time.
+  Approval and organizer-invitation claims keep a stored price so they remain
+  claimable after ticket sales end. Fresh or undiscounted waitlist claims
+  still need a current price window.
 - Expiry, decline, or organizer cancellation releases the reservation and runs
   reconciliation. Declined or expired waitlist recipients lose that queue
   position and are not automatically requeued.

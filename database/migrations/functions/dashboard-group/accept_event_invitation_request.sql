@@ -19,8 +19,6 @@ declare
     v_payment_currency_code text;
     v_payment_recipient jsonb;
     v_promoted_user_ids uuid[];
-    v_registration_ends_at timestamptz;
-    v_registration_starts_at timestamptz;
     v_requested_ticket_type_id uuid;
     v_request_status text;
     v_starts_at timestamptz;
@@ -40,8 +38,6 @@ begin
         g.name,
         e.payment_currency_code,
         g.payment_recipient,
-        e.registration_ends_at,
-        e.registration_starts_at,
         e.starts_at,
         e.timezone
     into
@@ -51,8 +47,6 @@ begin
         v_group_name,
         v_payment_currency_code,
         v_payment_recipient,
-        v_registration_ends_at,
-        v_registration_starts_at,
         v_starts_at,
         v_timezone
     from event e
@@ -70,6 +64,7 @@ begin
     )
     for update of e;
 
+    -- Reject review when the event is not an active approval event
     if not found then
         raise exception 'event not found or inactive';
     end if;
@@ -84,16 +79,6 @@ begin
     order by ett.event_ticket_type_id
     for update of ett;
 
-    -- Keep request review registration-bound until the event begins
-    if not is_registration_window_open(
-            v_registration_starts_at,
-            v_registration_ends_at,
-            v_starts_at
-       )
-       and (v_starts_at is null or v_starts_at > current_timestamp) then
-        raise exception 'event registration is not open';
-    end if;
-
     -- Resolve and lock the request tier before capacity allocation
     select
         eir.event_ticket_type_id,
@@ -107,18 +92,22 @@ begin
     and eir.status in ('accepted', 'pending')
     for update of eir;
 
+    -- Reject review when no pending or reissueable request exists
     if not found then
         raise exception 'pending invitation request not found';
     end if;
 
     -- Preserve public requests or require an organizer-assigned private tier
     if v_requested_ticket_type_id is not null then
+        -- Reject organizer overrides of a requester-selected public tier
         if p_event_ticket_type_id is not null
            and p_event_ticket_type_id <> v_requested_ticket_type_id then
             raise exception 'requested ticket type cannot be changed';
         end if;
 
         p_event_ticket_type_id := v_requested_ticket_type_id;
+
+    -- Require a private-tier assignment for generic invitation-only requests
     elsif p_event_ticket_type_id is null then
         raise exception 'invitation-only ticket type is required';
     end if;
@@ -153,6 +142,7 @@ begin
         or ett.availability = 'invitation_only'
     );
 
+    -- Reject inactive, unpriced, or ineligible ticket assignments
     if not found or v_target_price is null then
         raise exception 'ticket type is not available';
     end if;
@@ -174,6 +164,7 @@ begin
         raise exception 'user already has an active admission offer for this event';
     end if;
 
+    -- Reject request reissue while an active purchase still occupies the seat
     if v_request_status = 'accepted'
        and exists (
             select 1
@@ -209,6 +200,7 @@ begin
     and eir.status = v_request_status
     for update of eir;
 
+    -- Reject review when reconciliation removed the request
     if not found then
         raise exception 'pending invitation request not found';
     end if;
@@ -226,8 +218,10 @@ begin
         return jsonb_build_object(
             'conflict',
             case
+                -- Prefer queue-priority when reconciliation already promoted waitlist users
                 when cardinality(v_promoted_user_ids) > 0
                     then 'queue-has-priority'
+                -- Report a sold-out tier when no waitlist promotion consumed the seat
                 else 'ticket-type-sold-out'
             end
         );
@@ -242,13 +236,14 @@ begin
         p_event_id
     );
 
-    -- Bound the offer lifetime by the applicable registration or event deadline
+    -- Bound the invitation expiry to the remaining event window
     if v_starts_at is not null and v_starts_at > current_timestamp then
         v_offer_expires_at := least(
             current_timestamp + interval '24 hours',
-            coalesce(v_registration_ends_at, 'infinity'::timestamptz),
             v_starts_at
         );
+
+    -- Bound in-progress offers by event end when the start has already passed
     else
         v_offer_expires_at := least(
             current_timestamp + interval '24 hours',
@@ -256,6 +251,7 @@ begin
         );
     end if;
 
+    -- Reject offers that would expire immediately
     if v_offer_expires_at <= current_timestamp then
         raise exception 'event not found or inactive';
     end if;
@@ -272,22 +268,35 @@ begin
         and status = 'pending';
     end if;
 
-    -- Reserve the seat with a pending admission offer
+    -- Reserve the seat with a pending admission offer and its issue price
     insert into admission_offer (
+        amount_minor,
+        currency_code,
+        discount_amount_minor,
         event_id,
         event_ticket_type_id,
         expires_at,
         organizer_user_id,
         source,
         status,
+        ticket_title,
         user_id
     ) values (
+        v_target_price,
+        case
+            -- Keep intrinsic-free snapshots currency-free
+            when v_target_price > 0 then v_payment_currency_code
+            -- Drop event currency from free approval offers
+            else null
+        end,
+        0,
         p_event_id,
         p_event_ticket_type_id,
         v_offer_expires_at,
         p_actor_user_id,
         'approval',
         'pending',
+        v_target_ticket_title,
         p_user_id
     )
     returning admission_offer_id into v_offer_id;
@@ -326,7 +335,9 @@ begin
     -- Track the organizer decision after its enrollment transition succeeds
     perform insert_audit_log(
         case
+            -- Reissues keep the original approval and record a new offer
             when v_request_status = 'accepted' then 'event_admission_offer_reissued'
+            -- First reviews record the organizer acceptance
             else 'event_invitation_request_accepted'
         end,
         p_actor_user_id,

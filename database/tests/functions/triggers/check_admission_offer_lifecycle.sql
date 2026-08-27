@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,8 @@ select plan(8);
 
 \set checkoutOfferID 'ab180000-0000-0000-0000-000000000001'
 \set checkoutUserID 'ab180000-0000-0000-0000-000000000002'
+\set claimOverwriteOfferID 'ab180000-0000-0000-0000-00000000000c'
+\set claimOverwriteUserID 'ab180000-0000-0000-0000-00000000000d'
 \set communityID 'ab180000-0000-0000-0000-000000000003'
 \set eventCategoryID 'ab180000-0000-0000-0000-000000000004'
 \set eventID 'ab180000-0000-0000-0000-000000000005'
@@ -66,6 +68,13 @@ values (
 
 -- Offer recipients
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
+    (
+        :'claimOverwriteUserID',
+        'hash-claim-overwrite',
+        'claim-overwrite@example.test',
+        true,
+        'claim-overwrite-user'
+    ),
     (:'checkoutUserID', 'hash-checkout', 'checkout@example.test', true, 'checkout-user'),
     (:'pendingUserID', 'hash-pending', 'pending@example.test', true, 'pending-user'),
     (
@@ -125,7 +134,7 @@ insert into event_ticket_price_window (
     :'ticketTypeID'
 );
 
--- Pending and checkout-pending offers
+-- Pending, snapshotted-pending, and checkout-pending offers
 insert into admission_offer (
     admission_offer_id,
     event_id,
@@ -140,19 +149,6 @@ insert into admission_offer (
     discount_amount_minor,
     ticket_title
 ) values (
-    :'pendingOfferID',
-    :'eventID',
-    :'ticketTypeID',
-    current_timestamp + interval '1 hour',
-    'approval',
-    'pending',
-    :'pendingUserID',
-
-    null,
-    null,
-    null,
-    null
-), (
     :'checkoutOfferID',
     :'eventID',
     :'ticketTypeID',
@@ -165,6 +161,32 @@ insert into admission_offer (
     'USD',
     0,
     'General admission'
+), (
+    :'claimOverwriteOfferID',
+    :'eventID',
+    :'ticketTypeID',
+    current_timestamp + interval '1 hour',
+    'approval',
+    'pending',
+    :'claimOverwriteUserID',
+
+    1000,
+    'USD',
+    0,
+    'General admission'
+), (
+    :'pendingOfferID',
+    :'eventID',
+    :'ticketTypeID',
+    current_timestamp + interval '1 hour',
+    'approval',
+    'pending',
+    :'pendingUserID',
+
+    null,
+    null,
+    null,
+    null
 );
 
 -- ============================================================================
@@ -187,6 +209,25 @@ select lives_ok(
         :'pendingOfferID'
     ),
     'Should finalize the first snapshot while an offer remains pending'
+);
+
+-- Should allow a snapshotted pending offer to be claimed at a new price
+select lives_ok(
+    format(
+        $$
+            update admission_offer
+            set
+                amount_minor = 500,
+                currency_code = 'USD',
+                discount_amount_minor = 0,
+                status = 'checkout_pending',
+                ticket_title = 'General admission',
+                updated_at = current_timestamp
+            where admission_offer_id = %L::uuid
+        $$,
+        :'claimOverwriteOfferID'
+    ),
+    'Should allow a snapshotted pending offer to be claimed at a new price'
 );
 
 -- Should move a pending offer into checkout
@@ -269,6 +310,20 @@ select throws_ok(
     ),
     'admission offer ownership and deadline fields are immutable',
     'Should reject transferring an offer'
+);
+
+-- Should reject snapshot repricing after checkout has started
+select throws_ok(
+    format(
+        $$
+            update admission_offer
+            set amount_minor = 900, updated_at = current_timestamp
+            where admission_offer_id = %L::uuid
+        $$,
+        :'checkoutOfferID'
+    ),
+    'admission offer price snapshot is immutable',
+    'Should reject snapshot repricing after checkout has started'
 );
 
 -- Should allow canceling an offer while checkout is pending

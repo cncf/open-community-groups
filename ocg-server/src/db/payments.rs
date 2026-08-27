@@ -1321,6 +1321,8 @@ pub(crate) enum EventPurchaseRefundStatus {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum PrepareEventCheckoutPurchaseConflict {
+    /// The selected admission offer cannot apply a new discount code.
+    AdmissionOfferPriceLocked,
     /// An active admission offer must be claimed through its dedicated checkout path.
     AdmissionOfferRequired,
     /// The selected admission offer is no longer claimable.
@@ -1484,6 +1486,10 @@ mod tests {
     #[test]
     fn prepare_event_checkout_purchase_output_maps_conflicts() {
         for (value, expected) in [
+            (
+                "admission-offer-price-locked",
+                PrepareEventCheckoutPurchaseConflict::AdmissionOfferPriceLocked,
+            ),
             (
                 "admission-offer-required",
                 PrepareEventCheckoutPurchaseConflict::AdmissionOfferRequired,

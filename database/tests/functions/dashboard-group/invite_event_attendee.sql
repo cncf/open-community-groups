@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(52);
+select plan(55);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,6 +39,10 @@ select plan(52);
 \set paidContextInviteUserID '3a130000-0000-0000-0000-00000000004b'
 \set paidContextPriceWindowID '3a130000-0000-0000-0000-00000000004c'
 \set paidContextTicketTypeID '3a130000-0000-0000-0000-00000000004d'
+\set paidReadyEventID '3a130000-0000-0000-0000-00000000004e'
+\set paidReadyInviteUserID '3a130000-0000-0000-0000-00000000004f'
+\set paidReadyPriceWindowID '3a130000-0000-0000-0000-000000000050'
+\set paidReadyTicketTypeID '3a130000-0000-0000-0000-000000000051'
 \set paidEventID '3a130000-0000-0000-0000-00000000002a'
 \set paidInviteUserID '3a130000-0000-0000-0000-00000000002b'
 \set paidPriceWindowID '3a130000-0000-0000-0000-00000000002c'
@@ -176,6 +180,17 @@ values (
     'Paid Context Invite',
     :'paidContextInviteUserID',
     'paid-context-invite'
+);
+
+-- Invitee used by the successful paid snapshot scenario
+insert into "user" (auth_hash, email, email_verified, name, user_id, username)
+values (
+    'hash-paid-ready-invite',
+    'paid-ready-invite@example.com',
+    true,
+    'Paid Ready Invite',
+    :'paidReadyInviteUserID',
+    'paid-ready-invite'
 );
 
 -- Users used by expired RSVP reservation reconciliation
@@ -409,6 +424,49 @@ insert into event (
     current_timestamp + interval '1 day'
 );
 
+-- Paid event with a complete venue for successful paid invitation snapshots
+insert into event (
+    event_id,
+    canceled,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    timezone,
+    waitlist_enabled,
+
+    payment_currency_code,
+    starts_at,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    :'paidReadyEventID',
+    false,
+    'Paid event with complete venue context',
+    :'eventCategoryID',
+    'in-person',
+    :'paidContextGroupID',
+    'Paid Ready Event',
+    true,
+    'paid-ready-event',
+    'UTC',
+    false,
+
+    'USD',
+    current_timestamp + interval '1 day',
+    '1 Main St',
+    'Portland',
+    'US',
+    'Venue',
+    '97201'
+);
+
 -- RSVP event whose expired reservation is reconciled before organizer invite allocation
 insert into event (
     capacity,
@@ -538,6 +596,21 @@ insert into event_ticket_type (
     'Paid context admission'
 );
 
+-- Paid ticket tier used by the successful paid snapshot scenario
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'paidReadyTicketTypeID',
+    :'paidReadyEventID',
+    1,
+    100,
+    'Paid ready admission'
+);
+
 -- Inactive ticket type used to reject unavailable ticketed invitations
 insert into event_ticket_type (
     active,
@@ -577,6 +650,17 @@ insert into event_ticket_price_window (
     :'paidContextPriceWindowID',
     2500,
     :'paidContextTicketTypeID'
+);
+
+-- Positive ticket price used by the successful paid snapshot scenario
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'paidReadyPriceWindowID',
+    2500,
+    :'paidReadyTicketTypeID'
 );
 
 -- Events without a specialized ticket fixture use a default free tier
@@ -1338,6 +1422,81 @@ select results_eq(
         :'ticketTypeID'
     ),
     'Should reserve the organizer-selected ticket tier'
+);
+
+-- Should persist a free issue-time price snapshot on the organizer invitation
+select results_eq(
+    format(
+        $$
+            select
+                ao.amount_minor,
+                ao.currency_code,
+                ao.discount_amount_minor,
+                ao.discount_code,
+                ao.event_discount_code_id,
+                ao.ticket_title
+            from admission_offer ao
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+            and ao.status = 'pending'
+        $$,
+        :'ticketedEventID',
+        :'registeredUserID'
+    ),
+    $$ values (
+        0::bigint,
+        null::text,
+        0::bigint,
+        null::text,
+        null::uuid,
+        'General'::text
+    ) $$,
+    'Should persist a free issue-time price snapshot on the organizer invitation'
+);
+
+-- Should create a paid organizer invitation
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'paidContextGroupID',
+        :'paidReadyEventID',
+        :'paidReadyInviteUserID',
+        null,
+        :'paidReadyTicketTypeID',
+        'stripe'
+    )->>'outcome',
+    'offer-created',
+    'Should create a paid organizer invitation'
+);
+
+-- Should persist a paid issue-time price snapshot on the organizer invitation
+select results_eq(
+    format(
+        $$
+            select
+                ao.amount_minor,
+                ao.currency_code,
+                ao.discount_amount_minor,
+                ao.discount_code,
+                ao.event_discount_code_id,
+                ao.ticket_title
+            from admission_offer ao
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+            and ao.status = 'pending'
+        $$,
+        :'paidReadyEventID',
+        :'paidReadyInviteUserID'
+    ),
+    $$ values (
+        2500::bigint,
+        'USD'::text,
+        0::bigint,
+        null::text,
+        null::uuid,
+        'Paid ready admission'::text
+    ) $$,
+    'Should persist a paid issue-time price snapshot on the organizer invitation'
 );
 
 -- Should enqueue complete organizer offer notification context

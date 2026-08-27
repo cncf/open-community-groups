@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,9 +13,19 @@ select plan(6);
 
 \set acceptedUserID '4a0b0000-0000-0000-0000-000000000001'
 \set acceptedOfferID '4a0b0000-0000-0000-0000-00000000001a'
+\set bouncedDiscountCodeID '4a0b0000-0000-0000-0000-000000000029'
+\set bouncedDiscountOfferID '4a0b0000-0000-0000-0000-000000000027'
+\set bouncedDiscountUserID '4a0b0000-0000-0000-0000-000000000028'
 \set canceledEventID '4a0b0000-0000-0000-0000-000000000002'
 \set canceledOfferID '4a0b0000-0000-0000-0000-000000000018'
 \set communityID '4a0b0000-0000-0000-0000-000000000003'
+\set endedWindowApprovalOfferID '4a0b0000-0000-0000-0000-00000000002a'
+\set endedWindowApprovalUserID '4a0b0000-0000-0000-0000-00000000002b'
+\set endedWindowEventID '4a0b0000-0000-0000-0000-00000000002c'
+\set endedWindowPriceWindowID '4a0b0000-0000-0000-0000-00000000002d'
+\set endedWindowTicketTypeID '4a0b0000-0000-0000-0000-00000000002e'
+\set endedWindowWaitlistOfferID '4a0b0000-0000-0000-0000-00000000002f'
+\set endedWindowWaitlistUserID '4a0b0000-0000-0000-0000-000000000030'
 \set eventCategoryID '4a0b0000-0000-0000-0000-000000000004'
 \set eventID '4a0b0000-0000-0000-0000-000000000005'
 \set eventTicketedID '4a0b0000-0000-0000-0000-000000000012'
@@ -26,6 +36,8 @@ select plan(6);
 \set inactiveGroupOfferID '4a0b0000-0000-0000-0000-000000000019'
 \set invitedUserID '4a0b0000-0000-0000-0000-000000000010'
 \set invitedOfferID '4a0b0000-0000-0000-0000-000000000013'
+\set livePriceOfferID '4a0b0000-0000-0000-0000-000000000025'
+\set livePriceUserID '4a0b0000-0000-0000-0000-000000000026'
 \set privateOfferID '4a0b0000-0000-0000-0000-00000000001e'
 \set privatePriceWindowID '4a0b0000-0000-0000-0000-00000000001f'
 \set privateTicketTypeID '4a0b0000-0000-0000-0000-000000000020'
@@ -82,13 +94,6 @@ insert into "user" (
     username,
     name
 ) values (
-    :'invitedUserID',
-    'hash-invited',
-    'invited@example.com',
-    true,
-    'invited',
-    'Invited User'
-), (
     :'acceptedUserID',
     'hash-accepted',
     'accepted@example.com',
@@ -96,12 +101,40 @@ insert into "user" (
     'accepted',
     'Accepted User'
 ), (
-    :'rejectedUserID',
-    'hash-rejected',
-    'rejected@example.com',
+    :'bouncedDiscountUserID',
+    'hash-bounced-discount',
+    'bounced-discount@example.com',
     true,
-    'rejected',
-    'Rejected User'
+    'bounced-discount-user',
+    'Bounced Discount User'
+), (
+    :'endedWindowApprovalUserID',
+    'hash-ended-window-approval',
+    'ended-window-approval@example.com',
+    true,
+    'ended-window-approval-user',
+    'Ended Window Approval User'
+), (
+    :'endedWindowWaitlistUserID',
+    'hash-ended-window-waitlist',
+    'ended-window-waitlist@example.com',
+    true,
+    'ended-window-waitlist-user',
+    'Ended Window Waitlist User'
+), (
+    :'invitedUserID',
+    'hash-invited',
+    'invited@example.com',
+    true,
+    'invited',
+    'Invited User'
+), (
+    :'livePriceUserID',
+    'hash-live-price',
+    'live-price@example.com',
+    true,
+    'live-price-user',
+    'Live Price User'
 ), (
     :'privateUserID',
     'hash-private',
@@ -116,6 +149,13 @@ insert into "user" (
     true,
     'refund-user',
     'Refund User'
+), (
+    :'rejectedUserID',
+    'hash-rejected',
+    'rejected@example.com',
+    true,
+    'rejected',
+    'Rejected User'
 ), (
     :'ticketUserID',
     'hash-ticket',
@@ -207,6 +247,37 @@ insert into event (
     '2099-01-04 10:00:00+00'
 );
 
+-- Event whose ticket sales window has ended
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    payment_currency_code,
+    published,
+    canceled,
+    registration_questions,
+    starts_at
+) values (
+    :'endedWindowEventID',
+    'Ended Window Event',
+    'ended-window-event',
+    'Event whose ticket sales window has ended',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'EUR',
+    true,
+    false,
+    '[]'::jsonb,
+    '2099-01-06 10:00:00+00'
+);
+
 -- Ticket tier assigned by the approval offer
 insert into event_ticket_type (
     event_id,
@@ -231,6 +302,59 @@ insert into event_ticket_price_window (
     1000,
     :'priceWindowID',
     :'ticketTypeID'
+);
+
+-- Discount used by the bounced-back pending snapshot fixture
+insert into event_discount_code (
+    event_discount_code_id,
+    active,
+    amount_minor,
+    available,
+    available_override_active,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'bouncedDiscountCodeID',
+    true,
+    500,
+    1,
+    true,
+    'SAVE10',
+    :'eventTicketedID',
+    'fixed_amount',
+    'Bounced save'
+);
+
+-- Ticket tier whose sales window has already ended
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'endedWindowEventID',
+    :'endedWindowTicketTypeID',
+    1,
+    10,
+    'Ended window admission'
+);
+
+-- Lapsed price window used by ended-window offer display scenarios
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id,
+    ends_at,
+    starts_at
+) values (
+    2500,
+    :'endedWindowPriceWindowID',
+    :'endedWindowTicketTypeID',
+    current_timestamp - interval '1 minute',
+    current_timestamp - interval '2 days'
 );
 
 -- Events without an explicit ticket fixture use default admission tiers
@@ -297,6 +421,7 @@ insert into admission_offer (
     created_at,
     currency_code,
     discount_amount_minor,
+    discount_code,
     event_id,
     event_ticket_type_id,
     expires_at,
@@ -307,59 +432,12 @@ insert into admission_offer (
 )
 values
     (
-        :'invitedOfferID',
-        0,
-        '2024-01-02 10:00:00+00',
-        null,
-        0,
-        :'eventID',
-        (
-            select event_ticket_type_id
-            from event_ticket_type
-            where event_id = :'eventID'
-            and availability = 'public'
-            limit 1
-        ),
-        '2099-01-02 10:00:00+00',
-        'organizer_invitation',
-        'pending',
-        'General Admission',
-        :'invitedUserID'
-    ),
-    (
-        :'canceledOfferID',
-        0,
-        '2024-01-03 10:00:00+00',
-        null,
-        0,
-        :'canceledEventID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'canceledEventID' limit 1),
-        '2099-01-03 10:00:00+00',
-        'organizer_invitation',
-        'pending',
-        'General Admission',
-        :'invitedUserID'
-    ),
-    (
-        :'inactiveGroupOfferID',
-        0,
-        '2024-01-04 10:00:00+00',
-        null,
-        0,
-        :'inactiveGroupEventID',
-        (select event_ticket_type_id from event_ticket_type where event_id = :'inactiveGroupEventID' limit 1),
-        '2099-01-04 10:00:00+00',
-        'organizer_invitation',
-        'pending',
-        'General Admission',
-        :'invitedUserID'
-    ),
-    (
         :'acceptedOfferID',
         0,
         '2024-01-05 10:00:00+00',
         null,
         0,
+        null,
         :'eventID',
         (
             select event_ticket_type_id
@@ -375,11 +453,108 @@ values
         :'acceptedUserID'
     ),
     (
+        :'canceledOfferID',
+        0,
+        '2024-01-03 10:00:00+00',
+        null,
+        0,
+        null,
+        :'canceledEventID',
+        (select event_ticket_type_id from event_ticket_type where event_id = :'canceledEventID' limit 1),
+        '2099-01-03 10:00:00+00',
+        'organizer_invitation',
+        'pending',
+        'General Admission',
+        :'invitedUserID'
+    ),
+    (
+        :'inactiveGroupOfferID',
+        0,
+        '2024-01-04 10:00:00+00',
+        null,
+        0,
+        null,
+        :'inactiveGroupEventID',
+        (select event_ticket_type_id from event_ticket_type where event_id = :'inactiveGroupEventID' limit 1),
+        '2099-01-04 10:00:00+00',
+        'organizer_invitation',
+        'pending',
+        'General Admission',
+        :'invitedUserID'
+    ),
+    (
+        :'invitedOfferID',
+        0,
+        '2024-01-02 10:00:00+00',
+        null,
+        0,
+        null,
+        :'eventID',
+        (
+            select event_ticket_type_id
+            from event_ticket_type
+            where event_id = :'eventID'
+            and availability = 'public'
+            limit 1
+        ),
+        '2099-01-02 10:00:00+00',
+        'organizer_invitation',
+        'pending',
+        'General Admission',
+        :'invitedUserID'
+    ),
+    (
+        :'livePriceOfferID',
+        0,
+        '2024-01-10 10:00:00+00',
+        null,
+        0,
+        null,
+        :'eventTicketedID',
+        :'ticketTypeID',
+        '2099-01-05 10:00:00+00',
+        'approval',
+        'pending',
+        'General admission',
+        :'livePriceUserID'
+    ),
+    (
+        :'privateOfferID',
+        2500,
+        '2024-01-08 10:00:00+00',
+        'USD',
+        0,
+        null,
+        :'eventID',
+        :'privateTicketTypeID',
+        '2099-01-02 10:00:00+00',
+        'organizer_invitation',
+        'pending',
+        'Private supporter',
+        :'privateUserID'
+    ),
+    (
+        :'refundOfferID',
+        1000,
+        '2024-01-09 10:00:00+00',
+        'USD',
+        0,
+        null,
+        :'eventTicketedID',
+        :'ticketTypeID',
+        '2099-01-05 10:00:00+00',
+        'approval',
+        'checkout_pending',
+        'General admission',
+        :'refundUserID'
+    ),
+    (
         :'rejectedOfferID',
         0,
         '2024-01-06 10:00:00+00',
         null,
         0,
+        null,
         :'eventID',
         (
             select event_ticket_type_id
@@ -400,6 +575,7 @@ values
         '2024-01-07 10:00:00+00',
         'USD',
         0,
+        null,
         :'eventTicketedID',
         :'ticketTypeID',
         '2099-01-05 10:00:00+00',
@@ -407,34 +583,86 @@ values
         'checkout_pending',
         'General admission',
         :'ticketUserID'
-    ),
+    );
+
+-- Pending discounted offer frozen after an abandoned checkout
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'bouncedDiscountOfferID',
+    500,
+    '2024-01-11 10:00:00+00',
+    'USD',
+    500,
+    'SAVE10',
+    :'bouncedDiscountCodeID',
+    :'eventTicketedID',
+    :'ticketTypeID',
+    '2099-01-05 10:00:00+00',
+    'approval',
+    'pending',
+    'General admission',
+    :'bouncedDiscountUserID'
+);
+
+-- Pending offers that keep or omit a stored snapshot after sales end
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values
     (
-        :'privateOfferID',
+        :'endedWindowApprovalOfferID',
         2500,
-        '2024-01-08 10:00:00+00',
+        '2024-01-12 10:00:00+00',
         'USD',
         0,
-        :'eventID',
-        :'privateTicketTypeID',
-        '2099-01-02 10:00:00+00',
-        'organizer_invitation',
+        null,
+        :'endedWindowEventID',
+        :'endedWindowTicketTypeID',
+        '2099-01-06 10:00:00+00',
+        'approval',
         'pending',
-        'Private supporter',
-        :'privateUserID'
+        'Ended window admission',
+        :'endedWindowApprovalUserID'
     ),
     (
-        :'refundOfferID',
-        1000,
-        '2024-01-09 10:00:00+00',
+        :'endedWindowWaitlistOfferID',
+        2500,
+        '2024-01-12 10:00:00+00',
         'USD',
         0,
-        :'eventTicketedID',
-        :'ticketTypeID',
-        '2099-01-05 10:00:00+00',
-        'approval',
-        'checkout_pending',
-        'General admission',
-        :'refundUserID'
+        null,
+        :'endedWindowEventID',
+        :'endedWindowTicketTypeID',
+        '2099-01-06 10:00:00+00',
+        'waitlist',
+        'pending',
+        'Ended window admission',
+        :'endedWindowWaitlistUserID'
     );
 
 -- Accepted ticket request that supplies claim-time registration answers
@@ -675,6 +903,64 @@ select is(
         :'questionID'
     )::jsonb,
     'Should expose the exact assigned tier on an owned ticket offer'
+);
+
+-- Pending discounted offers keep the stored snapshot instead of the live window
+select is(
+    (
+        select jsonb_build_object(
+            'amount_minor', (list_user_event_invitations(:'bouncedDiscountUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
+            'currency_code', list_user_event_invitations(:'bouncedDiscountUserID'::uuid)::jsonb->0->>'currency_code'
+        )
+    ),
+    '{"amount_minor": 500, "currency_code": "USD"}'::jsonb,
+    'Should list the stored snapshot for a pending discounted offer'
+);
+
+-- Pending offers prefer the live price window over the issue-time snapshot
+select is(
+    (
+        select jsonb_build_object(
+            'amount_minor', (list_user_event_invitations(:'livePriceUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
+            'currency_code', list_user_event_invitations(:'livePriceUserID'::uuid)::jsonb->0->>'currency_code'
+        )
+    ),
+    '{"amount_minor": 1000, "currency_code": "USD"}'::jsonb,
+    'Should list the live ticket price for a pending offer with a stale free snapshot'
+);
+
+-- Pending approval offers keep the stored snapshot currency after sales end
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id', list_user_event_invitations(:'endedWindowApprovalUserID'::uuid)::jsonb->0->>'admission_offer_id',
+            'amount_minor', (list_user_event_invitations(:'endedWindowApprovalUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
+            'currency_code', list_user_event_invitations(:'endedWindowApprovalUserID'::uuid)::jsonb->0->>'currency_code'
+        )
+    ),
+    jsonb_build_object(
+        'admission_offer_id', :'endedWindowApprovalOfferID',
+        'amount_minor', 2500,
+        'currency_code', 'USD'
+    ),
+    'Should list the stored snapshot currency for a pending approval offer after sales end'
+);
+
+-- Pending waitlist offers omit the stored snapshot after sales end
+select is(
+    (
+        select jsonb_build_object(
+            'admission_offer_id', list_user_event_invitations(:'endedWindowWaitlistUserID'::uuid)::jsonb->0->>'admission_offer_id',
+            'amount_minor', (list_user_event_invitations(:'endedWindowWaitlistUserID'::uuid)::jsonb->0->>'amount_minor')::bigint,
+            'currency_code', list_user_event_invitations(:'endedWindowWaitlistUserID'::uuid)::jsonb->0->>'currency_code'
+        )
+    ),
+    jsonb_build_object(
+        'admission_offer_id', :'endedWindowWaitlistOfferID',
+        'amount_minor', null,
+        'currency_code', null
+    ),
+    'Should omit the stored snapshot for a pending waitlist offer after sales end'
 );
 
 -- Offers on a private paid tier use ticket wording even for a simple RSVP event
