@@ -199,17 +199,42 @@ describe("alerts", () => {
     ]);
   });
 
+  it("does not treat forced-refresh intercepts as successful mutations", () => {
+    // Stale-client intercepts are 2xx but the handler never ran.
+    expect(
+      handleHtmxResponse({
+        xhr: {
+          status: 204,
+          getResponseHeader: (name) => (name === "HX-Refresh" ? "true" : null),
+        },
+        successMessage: "Updated",
+        errorMessage: "Failed",
+      }),
+    ).to.equal(false);
+    expect(
+      handleHtmxResponse({
+        xhr: {
+          status: 204,
+          getResponseHeader: (name) => (name === "X-OCG-Refresh" ? "true" : null),
+        },
+        successMessage: "Updated",
+        errorMessage: "Failed",
+      }),
+    ).to.equal(false);
+
+    // No success or error alert: the dirty-form notice owns this path.
+    expect(env.current.swal.calls).to.have.length(0);
+  });
+
   it("detects successful responses that need backend flash refreshes", () => {
     // Build response fixtures with and without backend flash refresh triggers.
     const successfulFlashResponse = {
       status: 204,
-      getResponseHeader: (name) =>
-        name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-user-dashboard-content" : null),
     };
     const failedFlashResponse = {
       status: 500,
-      getResponseHeader: (name) =>
-        name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-user-dashboard-content" : null),
     };
 
     // Only successful responses without frontend messages need body refreshes.
@@ -231,8 +256,7 @@ describe("alerts", () => {
       handleHtmxResponse({
         xhr: {
           status: 204,
-          getResponseHeader: (name) =>
-            name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+          getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-user-dashboard-content" : null),
         },
         successMessage: "",
         errorMessage: "Failed",
@@ -260,8 +284,7 @@ describe("alerts", () => {
       handleHtmxResponse({
         xhr: {
           status: 204,
-          getResponseHeader: (name) =>
-            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+          getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-community-dashboard-table" : null),
         },
         successMessage: "You have successfully added the region.",
         errorMessage: "Failed",
@@ -339,9 +362,7 @@ describe("alerts", () => {
       confirmButtonText: "Yes",
       cancelButtonText: "No",
     });
-    expect(env.current.swal.calls[1].html).to.equal(
-      "<strong>Delete entry?</strong>",
-    );
+    expect(env.current.swal.calls[1].html).to.equal("<strong>Delete entry?</strong>");
     expect(env.current.swal.calls[1].confirmButtonText).to.equal("Delete");
     expect(env.current.swal.calls[1].cancelButtonText).to.equal("Cancel");
   });
@@ -353,15 +374,9 @@ describe("alerts", () => {
     // Assert all alert buttons use the shared stylesheet classes.
     expect(options.customClass.popup).to.equal("ocg-swal-popup");
     expect(options.customClass.actions).to.equal("ocg-swal-actions");
-    expect(options.customClass.confirmButton).to.equal(
-      "btn-primary ocg-swal-button",
-    );
-    expect(options.customClass.denyButton).to.equal(
-      "btn-primary-outline ocg-swal-button",
-    );
-    expect(options.customClass.cancelButton).to.equal(
-      "btn-primary-outline ocg-swal-button",
-    );
+    expect(options.customClass.confirmButton).to.equal("btn-primary ocg-swal-button");
+    expect(options.customClass.denyButton).to.equal("btn-primary-outline ocg-swal-button");
+    expect(options.customClass.cancelButton).to.equal("btn-primary-outline ocg-swal-button");
   });
 
   it("uses shared alert layout for recurring series confirmations", async () => {
@@ -377,12 +392,8 @@ describe("alerts", () => {
 
     // Assert the recurring choice keeps the shared alert layout.
     expect(result).to.equal("series");
-    expect(env.current.swal.calls[0].customClass.popup).to.equal(
-      "ocg-swal-popup",
-    );
-    expect(env.current.swal.calls[0].customClass.actions).to.equal(
-      "ocg-swal-actions",
-    );
+    expect(env.current.swal.calls[0].customClass.popup).to.equal("ocg-swal-popup");
+    expect(env.current.swal.calls[0].customClass.actions).to.equal("ocg-swal-actions");
   });
 
   it("triggers htmx confirmed events after confirmation", async () => {
@@ -394,9 +405,7 @@ describe("alerts", () => {
     await waitForMicrotask();
 
     // Accepted confirmation triggers the HTMX confirmed event.
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      ["#save-button", "confirmed"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#save-button", "confirmed"]]);
 
     // Reset HTMX calls and mock a declined confirmation.
     env.current.htmx.triggerCalls.length = 0;

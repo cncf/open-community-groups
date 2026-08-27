@@ -31,8 +31,8 @@ import {
 } from "../../dashboard/form-helpers.js";
 import {
   addDiscountCode,
-  openEventUpdateFormByName,
   openPaymentsSection,
+  waitForEventEditorAfterSave,
 } from "../../dashboard/group/events/helpers.js";
 
 import {
@@ -115,12 +115,13 @@ test.describe("event management workflows", () => {
       status: 201,
     });
 
-    // Verify the temporary event appears in the events list.
-    const eventRow = dashboardContent.locator("tr", { hasText: eventName });
-    await expect(eventRow).toBeVisible();
+    // Verify the first save opens the new draft's update page.
+    await waitForEventEditorAfterSave(organizerGroupPage);
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "You have successfully created the event.",
+    );
 
-    // Reopen the event and verify online details persisted.
-    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    // Verify online details persisted on the update page.
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
 
     // Verify the correct online meeting state persisted.
@@ -137,6 +138,8 @@ test.describe("event management workflows", () => {
 
     // Delete the temporary event to keep the seeded list reusable.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+    await expect(eventRow).toBeVisible();
     await eventRow.locator(".btn-actions").click();
 
     // Open the delete confirmation for the temporary event.
@@ -217,6 +220,10 @@ test.describe("event management workflows", () => {
       urlIncludes: "/dashboard/group/events/add",
       status: 201,
     });
+
+    // The first occurrence opens in the event editor after create.
+    await waitForEventEditorAfterSave(organizerGroupPage);
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     // Verify the recurring series creates the expected number of rows.
     const eventRows = dashboardContent.locator("tr", { hasText: eventName });
@@ -310,6 +317,10 @@ test.describe("event management workflows", () => {
       urlIncludes: "/dashboard/group/events/add",
       status: 201,
     });
+
+    // The first occurrence opens in the event editor after create.
+    await waitForEventEditorAfterSave(organizerGroupPage);
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     // Verify the recurring series creates the expected number of rows.
     const eventRows = dashboardContent.locator("tr", { hasText: eventName });
@@ -615,8 +626,8 @@ test.describe("event management workflows", () => {
       status: 201,
     });
 
-    // Reopen the event and verify event recording values persisted.
-    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    // Verify event recording values persisted on the update page.
+    await waitForEventEditorAfterSave(organizerGroupPage);
 
     // Open date and venue details before checking event recording fields.
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
@@ -1100,20 +1111,6 @@ test.describe("event management workflows", () => {
       await setCfsLabels(organizerGroupPage, values.cfsLabels);
     };
 
-    // Open the edit form from a rich event row and wait for HTMX content.
-    const openEventUpdateForm = async (eventRow) => {
-      await Promise.all([
-        organizerGroupPage.waitForResponse(
-          (response) =>
-            response.request().method() === "GET" &&
-            response.url().includes("/dashboard/group/events/") &&
-            response.url().includes("/update") &&
-            response.ok(),
-        ),
-        eventRow.locator('td button[aria-label^="Edit event:"]').click(),
-      ]);
-    };
-
     // Load the events list before opening the rich event form.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
@@ -1141,34 +1138,24 @@ test.describe("event management workflows", () => {
       status: 201,
     });
 
-    // Verify the initial temporary event appears in the list.
-    let eventRow = dashboardContent.locator("tr", {
-      hasText: initialValues.name,
-    });
-    await expect(eventRow).toBeVisible();
+    // The first save opens the new draft so later edits stay on the editor.
+    const eventId = await waitForEventEditorAfterSave(organizerGroupPage);
 
     // Update the event with the second set of rich values.
-    await openEventUpdateForm(eventRow);
     await fillEventForm(updatedValues);
 
-    // Submit the update and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes("/dashboard/group/events/") &&
-          response.url().includes("/update") &&
-          response.ok(),
-      ),
-      organizerGroupPage.locator("#update-event-button").click(),
-    ]);
+    // Submit the update and wait for the editor to reload from the follow-up GET.
+    await waitForEventEditorAfterSave(
+      organizerGroupPage,
+      () => organizerGroupPage.locator("#update-event-button").click(),
+      {
+        eventId,
+        method: "PUT",
+        urlIncludes: `/dashboard/group/events/${eventId}/update`,
+      },
+    );
 
-    // Verify the updated event name appears in the list.
-    eventRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
-    await expect(eventRow).toBeVisible();
-
-    // Reopen the form and verify the rich values persisted.
-    await openEventUpdateForm(eventRow);
+    // Verify the rich values persisted on the same update page.
     await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
     await expect(organizerGroupPage.locator("#kind_id")).toHaveValue(updatedValues.kindId);
     await expect(organizerGroupPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
@@ -1269,7 +1256,7 @@ test.describe("event management workflows", () => {
 
     // Delete the temporary event to keep the seeded list reusable.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
-    eventRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
+    const eventRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
     await expect(eventRow).toBeVisible();
 
     // Open the actions menu for the updated temporary event.

@@ -832,6 +832,7 @@ async fn test_preview_uses_submitted_payload_without_event_db_calls() {
 async fn test_add_free_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -881,7 +882,7 @@ async fn test_add_free_success() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _| Ok(Uuid::new_v4()));
+        .returning(move |_, _, _, _, _| Ok(event_id));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
@@ -907,12 +908,7 @@ async fn test_add_free_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::CREATED,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::CREATED, event_id);
 }
 
 #[tokio::test]
@@ -1156,12 +1152,7 @@ async fn test_add_paid_recurring_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check the recurring creation response
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::CREATED,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::CREATED, event_id);
 }
 
 #[tokio::test]
@@ -1358,19 +1349,17 @@ async fn test_add_paid_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check the event creation response
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::CREATED,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::CREATED, event_id);
 }
 
 #[tokio::test]
 async fn test_add_recurring_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let third_event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -1435,9 +1424,7 @@ async fn test_add_recurring_success() {
                     && payment_provider.is_none()
             },
         )
-        .returning(move |_, _, _, _, _, _| {
-            Ok(vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()])
-        });
+        .returning(move |_, _, _, _, _, _| Ok(vec![event_id, related_event_id, third_event_id]));
     expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
@@ -1460,12 +1447,7 @@ async fn test_add_recurring_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::CREATED,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::CREATED, event_id);
 }
 
 #[tokio::test]
@@ -2771,6 +2753,279 @@ async fn test_publish_already_published_no_notification() {
     );
 }
 
+#[tokio::test]
+async fn test_publish_return_editor_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let unpublished_event = EventSummary {
+        published: true,
+        ..sample_event_summary(event_id, group_id)
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(unpublished_event.clone()));
+    tx.expect_publish_event()
+        .times(1)
+        .withf(move |uid, gid, eid, payment_provider, payment_validation| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && payment_provider.is_none()
+                && payment_validation.is_none()
+        })
+        .returning(move |_, _, _, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send the editor-return publish request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/publish?return=editor"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the editor location replaces the table-refresh trigger
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
+}
+
+#[tokio::test]
+async fn test_publish_return_editor_with_series_scope_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event_summary = EventSummary {
+        published: true,
+        ..sample_event_summary(event_id, group_id)
+    };
+    let related_event_summary = EventSummary {
+        event_id: related_event_id,
+        published: true,
+        ..sample_event_summary(related_event_id, group_id)
+    };
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_publishable_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    let locked_event_ids = expected_series_event_ids.clone();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == locked_event_ids)
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_summary.clone()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
+        .returning(move |_, _, _| Ok(related_event_summary.clone()));
+    tx.expect_publish_event().times(0);
+    tx.expect_publish_event_series_events()
+        .times(1)
+        .withf(
+            move |uid, gid, event_ids, payment_provider, payment_validation| {
+                *uid == user_id
+                    && *gid == group_id
+                    && event_ids == expected_series_event_ids.as_slice()
+                    && payment_provider.is_none()
+                    && payment_validation.is_none()
+            },
+        )
+        .returning(move |_, _, _, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send the series editor-return publish request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/publish?scope=series&return=editor"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check series publish from the editor still reloads the editor
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
+}
+
+#[tokio::test]
+async fn test_publish_return_unknown_keeps_table_refresh() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let already_published_event = EventSummary {
+        published: true,
+        ..sample_event_summary(event_id, group_id)
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    let mut tx = MockDB::new();
+    tx.expect_lock_group_events()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .returning(|_, _| Ok(()));
+    tx.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(already_published_event.clone()));
+    tx.expect_publish_event()
+        .times(1)
+        .withf(move |uid, gid, eid, payment_provider, payment_validation| {
+            *uid == user_id
+                && *gid == group_id
+                && *eid == event_id
+                && payment_provider.is_none()
+                && payment_validation.is_none()
+        })
+        .returning(move |_, _, _, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send an unrecognized return destination
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/publish?return=foo"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check unknown return values keep list behavior
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
+    );
+}
+
 #[allow(clippy::too_many_lines)]
 #[tokio::test]
 async fn test_publish_speakers_only() {
@@ -3447,12 +3702,7 @@ async fn test_update_free_manual_event_without_tax_rates_skips_fiscal_sponsor_va
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check the update succeeds without sponsor validation
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -3549,12 +3799,7 @@ async fn test_update_free_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -3711,12 +3956,7 @@ async fn test_update_free_test_to_paid_live_sends_admin_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check the update response
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -4211,12 +4451,7 @@ async fn test_update_reschedule_notification_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -4540,12 +4775,7 @@ async fn test_update_reschedule_skips_notification_when_shift_too_small() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -4649,12 +4879,7 @@ async fn test_update_reschedule_skips_notification_when_unpublished() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -4749,12 +4974,7 @@ async fn test_update_skips_notification_for_past_event() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -4854,12 +5074,7 @@ async fn test_update_unrelated_paid_event_edit_skips_fiscal_sponsor_validation()
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check the update succeeds without sponsor validation
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_event_editor_location_response(&parts, &bytes, StatusCode::NO_CONTENT, event_id);
 }
 
 #[tokio::test]
@@ -4898,4 +5113,22 @@ async fn test_validate_group_fiscal_sponsor_omits_invalid_form_jurisdiction() {
 
     // Preserve the automatic-tax binding for the database venue validation
     assert!(validation.require_automatic_tax);
+}
+
+// Helpers.
+
+/// Asserts an empty event-editor HTMX location response without a table refresh.
+fn assert_event_editor_location_response(
+    parts: &axum::http::response::Parts,
+    bytes: &[u8],
+    status: StatusCode,
+    event_id: Uuid,
+) {
+    assert_empty_hx_location_response(
+        parts,
+        bytes,
+        status,
+        &super::event_editor_location_json(event_id),
+    );
+    assert!(parts.headers.get("HX-Trigger").is_none());
 }

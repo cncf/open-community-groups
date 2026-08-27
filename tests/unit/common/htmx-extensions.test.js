@@ -17,6 +17,7 @@ import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
+  HTMX_REFRESH_HEADER,
   REFRESH_HEADER,
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
@@ -43,6 +44,7 @@ describe("htmx extensions", () => {
     swal.restore();
     Date.now = originalDateNow;
     document.head.innerHTML = "";
+    document.body.innerHTML = "";
     resetDeploymentReloadState();
   });
 
@@ -381,6 +383,76 @@ describe("htmx extensions", () => {
     expect(event.defaultPrevented).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
+  });
+
+  it("keeps swapping dirty forms when an htmx response comes from a newer commit", () => {
+    // Store the current page commit SHA and show pending changes.
+    setLoadedCommitSha("abc123");
+    document.body.innerHTML = '<div id="pending-changes-alert"></div>';
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const onLoadEvent = new CustomEvent("htmx:beforeOnLoad", {
+      cancelable: true,
+      detail: {
+        xhr: {
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
+        },
+      },
+    });
+    const swapEvent = {
+      detail: {
+        shouldSwap: true,
+        xhr: {
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
+        },
+      },
+    };
+
+    // Handle the newer commit while the dirty form is still open.
+    handleCommitShaBeforeOnLoad(onLoadEvent);
+    handleCommitShaBeforeSwap(swapEvent);
+
+    // Dirty forms keep the real HTMX response instead of blocking the swap.
+    expect(onLoadEvent.defaultPrevented).to.equal(false);
+    expect(swapEvent.detail.shouldSwap).to.equal(true);
+    expect(reloads).to.equal(0);
+  });
+
+  it("cancels htmx refresh headers on a dirty form without reloading", () => {
+    // Show pending changes before an intercepted HTMX refresh arrives.
+    document.body.innerHTML = '<div id="pending-changes-alert"></div>';
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const onLoadEvent = new CustomEvent("htmx:beforeOnLoad", {
+      cancelable: true,
+      detail: {
+        xhr: {
+          getResponseHeader: (name) => (name === HTMX_REFRESH_HEADER ? "true" : null),
+        },
+      },
+    });
+    const swapEvent = {
+      detail: {
+        shouldSwap: true,
+        xhr: {
+          getResponseHeader: (name) => (name === HTMX_REFRESH_HEADER ? "true" : null),
+        },
+      },
+    };
+
+    // Own the native refresh header so HTMX does not reload the dirty form.
+    handleCommitShaBeforeOnLoad(onLoadEvent);
+    handleCommitShaBeforeSwap(swapEvent);
+
+    // Forced intercepts are consumed, not swapped, and do not reload.
+    expect(onLoadEvent.defaultPrevented).to.equal(true);
+    expect(swapEvent.detail.shouldSwap).to.equal(false);
+    expect(reloads).to.equal(0);
+    expect(swal.calls).to.have.length(1);
   });
 
   it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {

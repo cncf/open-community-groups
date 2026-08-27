@@ -101,6 +101,7 @@
                 hx-put="/dashboard/group/events/{{ event.event_id }}/publish"
                 hx-trigger="confirmed"
                 hx-target="#dashboard-content"
+                hx-swap="none"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="#publish-event-button, #update-event-button"
                 data-action-url="/dashboard/group/events/{{ event.event_id }}/publish"
@@ -148,6 +149,7 @@
               hx-ext="no-empty-vals-keep-zero"
               hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form, #payments-form"
               hx-target="#dashboard-content"
+              hx-swap="none"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
               {% if event.canceled -%}

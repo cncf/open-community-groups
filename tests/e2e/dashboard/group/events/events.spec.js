@@ -33,6 +33,7 @@ import {
   addDiscountCode,
   openEventUpdateFormByName,
   openPaymentsSection,
+  waitForEventEditorAfterSave,
 } from "./helpers.js";
 
 import {
@@ -353,7 +354,9 @@ test.describe("group dashboard Events tab", () => {
       },
     );
 
-    // Verify the temporary event appears in the events list.
+    // The first save opens the new draft; cancel from the list after returning.
+    await waitForEventEditorAfterSave(organizerGroupPage);
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     const eventRow = dashboardContent.locator("tr", { hasText: eventName });
     await expect(eventRow).toBeVisible();
 

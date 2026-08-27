@@ -123,12 +123,12 @@ pub(crate) fn assert_empty_hx_location_response(
     parts: &Parts,
     bytes: &[u8],
     status: StatusCode,
-    location: &'static str,
+    location: &str,
 ) {
     assert_empty_response(parts, bytes, status);
     assert_eq!(
-        parts.headers.get("HX-Location"),
-        Some(&HeaderValue::from_static(location)),
+        parts.headers.get("HX-Location").and_then(|value| value.to_str().ok()),
+        Some(location),
     );
 }
 

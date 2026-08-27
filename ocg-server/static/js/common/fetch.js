@@ -26,7 +26,7 @@ export const ocgFetch = async (input, init = {}) => {
     if (isDeploymentReloadRequested()) {
       return waitForDeploymentReload();
     }
-    return response;
+    return createBlockedDeploymentRefreshResponse(response);
   }
 
   const redirectUrl = response.headers?.get?.("X-OCG-Redirect");
@@ -62,3 +62,16 @@ const isSameOriginRequest = (input) => {
  * @returns {Promise<void>} Promise that stays pending until navigation replaces the page.
  */
 const waitForDeploymentReload = () => new Promise(() => {});
+
+/**
+ * Converts a dirty-form forced-refresh intercept into a non-success response.
+ * The server returns 204 because the handler never ran; callers must not treat that as success.
+ * @param {Response} response Intercepted fetch response.
+ * @returns {Response} Conflict response that preserves the refresh headers.
+ */
+const createBlockedDeploymentRefreshResponse = (response) =>
+  new Response(null, {
+    headers: response.headers,
+    status: 409,
+    statusText: "Conflict",
+  });

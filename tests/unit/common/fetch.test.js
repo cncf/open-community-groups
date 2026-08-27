@@ -3,11 +3,13 @@ import { expect } from "@open-wc/testing";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import {
   COMMIT_SHA_HEADER,
+  isDeploymentReloadRequested,
   REFRESH_HEADER,
   reloadIfDeploymentChanged,
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 // Set loaded commit sha for the test.
@@ -39,6 +41,7 @@ describe("ocgFetch", () => {
   afterEach(() => {
     Date.now = originalDateNow;
     document.head.innerHTML = "";
+    document.body.innerHTML = "";
     fetchMock.restore();
     resetDeploymentReloadState();
   });
@@ -132,13 +135,64 @@ describe("ocgFetch", () => {
     }));
 
     // Capture the async result.
-    const settledState = await getSettledStateAfterCurrentTask(
-      ocgFetch("/test"),
-    );
+    const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
 
     // Deployment refresh responses reload and leave callers pending.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
+  });
+
+  it("returns the response when a dirty form sees a newer commit", async () => {
+    // Mock a newer commit while the pending-changes banner is visible.
+    setLoadedCommitSha("abc123");
+    document.body.innerHTML = '<div id="pending-changes-alert"></div>';
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const swal = mockSwal();
+    fetchMock.setImpl(async () => ({
+      headers: new Headers({ [COMMIT_SHA_HEADER]: "def456" }),
+      ok: true,
+      status: 200,
+    }));
+
+    try {
+      // Capture the async result.
+      const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
+
+      // Dirty forms keep the fetch result instead of waiting for a reload.
+      expect(settledState).to.equal("resolved");
+      expect(reloads).to.equal(0);
+    } finally {
+      swal.restore();
+    }
+  });
+
+  it("does not treat a dirty-form forced refresh as success", async () => {
+    // Mock a stale-client intercept while the pending-changes banner is visible.
+    document.body.innerHTML = '<div id="pending-changes-alert"></div>';
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const swal = mockSwal();
+    fetchMock.setImpl(async () => ({
+      headers: new Headers({ [REFRESH_HEADER]: "true" }),
+      ok: true,
+      status: 204,
+    }));
+
+    try {
+      const response = await ocgFetch("/test");
+
+      // The empty 204 intercept is returned as a conflict so callers do not save-succeed.
+      expect(response.status).to.equal(409);
+      expect(response.ok).to.equal(false);
+      expect(reloads).to.equal(0);
+    } finally {
+      swal.restore();
+    }
   });
 
   it("reloads and leaves callers pending when a same-origin response comes from a newer commit", async () => {
@@ -155,9 +209,7 @@ describe("ocgFetch", () => {
     }));
 
     // Capture the async result.
-    const settledState = await getSettledStateAfterCurrentTask(
-      ocgFetch("/test"),
-    );
+    const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
 
     // Verify refresh keeps callers pending for a newer same-origin commit.
     expect(settledState).to.equal("pending");
@@ -184,12 +236,45 @@ describe("ocgFetch", () => {
     }));
 
     // Capture the async result.
-    const settledState = await getSettledStateAfterCurrentTask(
-      ocgFetch("/test"),
-    );
+    const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
 
     // The fetch promise remains pending while the page reloads.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
+  });
+
+  it("does not leave dirty-form callers pending after a retry is disarmed", async () => {
+    // Start inside the public cache window before entering retry mode.
+    Date.now = () => 1_000;
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
+    resetDeploymentReloadState({ clearRefreshHistory: false });
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    Date.now = () => 1_000 + 4 * 60 * 1000;
+    reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
+    document.body.innerHTML = '<div id="pending-changes-alert"></div>';
+    const swal = mockSwal();
+    fetchMock.setImpl(async () => ({
+      headers: new Headers({ [REFRESH_HEADER]: "true" }),
+      ok: true,
+      status: 204,
+    }));
+
+    try {
+      const response = await ocgFetch("/test");
+
+      // Dirty retry intercepts fail closed instead of hanging until a reload.
+      expect(response.status).to.equal(409);
+      expect(response.ok).to.equal(false);
+      expect(isDeploymentReloadRequested()).to.equal(false);
+      expect(reloads).to.equal(1);
+    } finally {
+      swal.restore();
+    }
   });
 });

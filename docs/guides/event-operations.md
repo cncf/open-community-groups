@@ -80,8 +80,12 @@ Recommended flow:
 1. Click `Add Event`.
 2. Optionally copy an earlier event to reuse structure.
 3. Complete each editor tab.
-4. Save.
+4. Save. The first save opens the new draft's update page so you can keep editing.
 5. Publish only after a full quality pass.
+
+Save keeps you on the event editor. After the first save, later saves stay on that update page.
+Publish from the editor stays on the editor. Publish and unpublish from the Events list stay on
+the list. Cancel still returns to the Events list.
 
 Copying is intentionally partial so stale logistics are not carried forward:
 

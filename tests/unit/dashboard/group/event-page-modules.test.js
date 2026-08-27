@@ -5,13 +5,18 @@ import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import "/static/js/dashboard/event/sessions/section.js";
 import { initializeEventAddPage, initializeEventAddPageRoots } from "/static/js/dashboard/group/event-add.js";
 import {
+  EVENT_EDITOR_CREATED_FOLLOW_UP_MESSAGE,
+  consumeStashedActiveEventSection,
+  disarmEventEditorLocationFollowUp,
+} from "/static/js/dashboard/group/event-page-shared.js";
+import {
   initializeEventUpdatePage,
   initializeEventUpdatePageRoots,
 } from "/static/js/dashboard/group/event-update.js";
 import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
-import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxAfterSwap, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 // Prepare the module under test.
 const sharedEventFormsMarkup = () => `
@@ -115,6 +120,8 @@ describe("event page modules", () => {
   afterEach(async () => {
     await waitForMicrotask();
     await waitForMicrotask();
+    disarmEventEditorLocationFollowUp();
+    consumeStashedActiveEventSection();
     resetDom();
     htmx.restore();
     swal.restore();
@@ -785,7 +792,9 @@ describe("event page modules", () => {
 
     // Series publication uses the existing query-string contract.
     expect(swal.calls[0].text).to.equal("Publish this series?");
-    expect(requestEvent.detail.path).to.equal("/dashboard/group/events/123/publish?scope=series");
+    expect(requestEvent.detail.path).to.equal(
+      "/dashboard/group/events/123/publish?scope=series&return=editor",
+    );
   });
 
   it("scopes add page initialization to the provided root", () => {
@@ -1055,5 +1064,128 @@ describe("event page modules", () => {
     // Submissions refresh is emitted from the update page root.
     expect(refreshEvents).to.deep.equal(["page"]);
     expect(bodyEvents).to.deep.equal([]);
+  });
+
+  it("disables add save and arms a follow-up GET listener after create succeeds", async () => {
+    // Mount and initialize the add page before a successful create.
+    mountAddPageShell();
+    initializeEventAddPage();
+    const addEventButton = document.getElementById("add-event-button");
+
+    // Dispatch the successful create response.
+    dispatchHtmxAfterRequest(addEventButton, {
+      elt: addEventButton,
+      status: 201,
+    });
+    await waitForMicrotask();
+
+    // The add save control cannot create a second event while the editor loads.
+    expect(addEventButton.disabled).to.equal(true);
+
+    // A failed follow-up GET tells the organizer the event exists.
+    dispatchHtmxAfterRequest(document.body, {
+      elt: document.body,
+      requestConfig: {
+        path: "/dashboard/group/events/11111111-1111-1111-1111-111111111111/update",
+        verb: "get",
+      },
+      status: 500,
+    });
+
+    expect(swal.calls.at(-1).text).to.equal(EVENT_EDITOR_CREATED_FOLLOW_UP_MESSAGE);
+    expect(addEventButton.disabled).to.equal(true);
+  });
+
+  it("does not treat a failed list-row editor GET as a saved-event notice", () => {
+    // Mount the add page without a successful mutation.
+    mountAddPageShell();
+    initializeEventAddPage();
+
+    // Dispatch a failed editor GET that is not a follow-up location request.
+    dispatchHtmxAfterRequest(document.body, {
+      elt: document.body,
+      requestConfig: {
+        path: "/dashboard/group/events/11111111-1111-1111-1111-111111111111/update",
+        verb: "get",
+      },
+      status: 500,
+    });
+
+    // List-row editor opens do not claim that an event was created.
+    expect(swal.calls.map((call) => call.text)).to.not.include(EVENT_EDITOR_CREATED_FOLLOW_UP_MESSAGE);
+  });
+
+  it("restores the stashed add-page section on the update page", async () => {
+    // Save from the Date & Venue section of the add page.
+    mountAddPageShell();
+    initializeEventAddPage();
+    document.querySelector('[data-section="date-venue"]').click();
+    dispatchHtmxAfterRequest(document.getElementById("add-event-button"), {
+      elt: document.getElementById("add-event-button"),
+      status: 201,
+    });
+    await waitForMicrotask();
+
+    // Load the update page after the location GET swaps the editor.
+    mountUpdatePageShell({ canManageEvents: true });
+    initializeEventUpdatePage();
+
+    // The Date & Venue section remains active when it exists on update.
+    expect(document.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
+      "true",
+    );
+    expect(document.querySelector('[data-section="details"]').getAttribute("data-active")).to.equal(
+      "false",
+    );
+  });
+
+  it("disarms the follow-up GET listener after the editor fragment swaps in", async () => {
+    // Arm the follow-up listener with a successful create.
+    mountAddPageShell();
+    const dashboardContent = document.createElement("div");
+    dashboardContent.id = "dashboard-content";
+    document.body.append(dashboardContent);
+    initializeEventAddPage();
+    dispatchHtmxAfterRequest(document.getElementById("add-event-button"), {
+      elt: document.getElementById("add-event-button"),
+      status: 201,
+    });
+    await waitForMicrotask();
+
+    // The editor fragment landing in dashboard content disarms the listener.
+    dispatchHtmxAfterSwap(document.body, { target: dashboardContent });
+    dispatchHtmxAfterRequest(document.body, {
+      elt: document.body,
+      requestConfig: {
+        path: "/dashboard/group/events/11111111-1111-1111-1111-111111111111/update",
+        verb: "get",
+      },
+      status: 500,
+    });
+
+    expect(swal.calls.map((call) => call.text)).to.not.include(EVENT_EDITOR_CREATED_FOLLOW_UP_MESSAGE);
+  });
+
+  it("appends return=editor when publishing a single event from the editor", async () => {
+    // Mount and initialize a manageable draft event.
+    mountUpdatePageShell({ canManageEvents: true });
+    initializeEventUpdatePage();
+    await waitForAnimationFrames();
+
+    // Confirm publication for a single event.
+    const publishButton = document.getElementById("publish-event-button");
+    publishButton.click();
+    await waitForMicrotask();
+    const requestEvent = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      detail: {
+        elt: publishButton,
+        path: publishButton.dataset.actionUrl,
+      },
+    });
+    publishButton.dispatchEvent(requestEvent);
+
+    // Editor publish requests stay on the update page after success.
+    expect(requestEvent.detail.path).to.equal("/dashboard/group/events/123/publish?return=editor");
   });
 });
