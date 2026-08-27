@@ -29,8 +29,9 @@ use crate::{
 };
 
 use super::{
-    PaymentsProvider, PaymentsWebhookEndpoint, StripeListedRefund, StripeProvider,
-    StripeTaxProductResponse, StripeTaxProductTaxDetailsResponse, StripeTaxRegistrationResponse,
+    PaymentsProvider, PaymentsWebhookEndpoint, StripeApplicationFeeRefund, StripeListedRefund,
+    StripeProvider, StripeTaxProductResponse, StripeTaxProductTaxDetailsResponse,
+    StripeTaxRegistrationResponse,
 };
 
 #[tokio::test]
@@ -767,6 +768,162 @@ async fn create_checkout_session_omits_tax_fields_for_no_tax_mode() {
 }
 
 #[test]
+fn find_matching_application_fee_refund_prefers_idempotency_key() {
+    // Setup a leftover purchase-kind match ahead of the durable identity
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let leftover = sample_application_fee_refund(purchase_id, "fr_other_123", 125);
+    let mut matched = sample_application_fee_refund(purchase_id, "fr_keyed_123", 125);
+    matched
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+
+    // Select the refund created under this adjustment's idempotency key
+    let refund =
+        StripeProvider::find_matching_application_fee_refund(&input, vec![leftover, matched])
+            .expect("application-fee refund lookup to parse")
+            .expect("idempotency-key match to be reused");
+
+    // Check the durable identity wins over an earlier purchase-kind match
+    assert_eq!(refund.id, "fr_keyed_123");
+}
+
+#[test]
+fn find_matching_application_fee_refund_rejects_idempotency_key_amount_mismatch() {
+    // Setup a keyed refund whose amount diverged, plus a later amount match
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut keyed = sample_application_fee_refund(purchase_id, "fr_keyed_123", 10);
+    keyed
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+    let sibling = sample_application_fee_refund(purchase_id, "fr_other_123", 125);
+
+    // Reconcile the durable identity before considering purchase-kind leftovers
+    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![keyed, sibling])
+        .expect_err("idempotency-key amount mismatch to be rejected");
+
+    // Check the keyed refund is not silently replaced by a sibling
+    assert!(err.to_string().contains("fr_keyed_123"));
+    assert!(err.to_string().contains("10"));
+    assert!(err.to_string().contains("125"));
+}
+
+#[test]
+fn find_matching_application_fee_refund_rejects_legacy_amount_mismatch() {
+    // Setup a pre-identity leftover whose purchase and kind match the wrong amount
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let leftover = sample_application_fee_refund(purchase_id, "fr_wrong_123", 10);
+
+    // Reconcile the leftover without creating a replacement refund
+    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![leftover])
+        .expect_err("legacy amount mismatch to be rejected");
+
+    // Check the conflicting leftover remains actionable
+    assert!(err.to_string().contains("fr_wrong_123"));
+    assert!(err.to_string().contains("10"));
+    assert!(err.to_string().contains("125"));
+}
+
+#[test]
+fn find_matching_application_fee_refund_rejects_multiple_legacy_amount_matches() {
+    // Setup two pre-identity refunds that both match purchase, kind, and amount
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let first = sample_application_fee_refund(purchase_id, "fr_first_123", 125);
+    let second = sample_application_fee_refund(purchase_id, "fr_second_123", 125);
+
+    // Refuse to pick an arbitrary matching leftover
+    let err = StripeProvider::find_matching_application_fee_refund(&input, vec![first, second])
+        .expect_err("ambiguous legacy matches to be rejected");
+
+    // Check both provider identifiers remain in the failure
+    assert!(err.to_string().contains("fr_first_123"));
+    assert!(err.to_string().contains("fr_second_123"));
+}
+
+#[test]
+fn find_matching_application_fee_refund_returns_legacy_amount_match() {
+    // Setup a pre-identity refund that matches purchase, kind, and amount
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let refunds = vec![sample_application_fee_refund(
+        purchase_id,
+        "fr_legacy_123",
+        125,
+    )];
+
+    // Reuse the leftover created before idempotency-key metadata existed
+    let refund = StripeProvider::find_matching_application_fee_refund(&input, refunds)
+        .expect("application-fee refund lookup to parse")
+        .expect("legacy amount match to be reused");
+
+    // Check the matching leftover is returned for durable storage
+    assert_eq!(refund.id, "fr_legacy_123");
+}
+
+#[test]
+fn find_matching_application_fee_refund_returns_matching_idempotency_key() {
+    // Setup a refund stored under this adjustment's durable identity
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut refund = sample_application_fee_refund(purchase_id, "fr_keyed_123", 125);
+    refund
+        .metadata
+        .insert("idempotency_key".to_string(), input.idempotency_key.clone());
+
+    // Reuse the provider object created for this adjustment
+    let matched = StripeProvider::find_matching_application_fee_refund(&input, vec![refund])
+        .expect("application-fee refund lookup to parse")
+        .expect("idempotency-key match to be reused");
+
+    // Check the durable identity is returned for durable storage
+    assert_eq!(matched.id, "fr_keyed_123");
+}
+
+#[test]
+fn find_matching_application_fee_refund_returns_none_when_unmatched() {
+    // Setup refunds that share some metadata but not this adjustment
+    let purchase_id = Uuid::new_v4();
+    let other_purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let mut other_kind = sample_application_fee_refund(purchase_id, "fr_kind_123", 125);
+    other_kind
+        .metadata
+        .insert("kind".to_string(), "purchase-refund".to_string());
+    let other_purchase = sample_application_fee_refund(other_purchase_id, "fr_purchase_123", 125);
+
+    // Look up an adjustment that has not been created on Stripe
+    let refund = StripeProvider::find_matching_application_fee_refund(
+        &input,
+        vec![other_kind, other_purchase],
+    )
+    .expect("application-fee refund lookup to parse");
+
+    // Check unmatched listings leave the caller free to create
+    assert!(refund.is_none());
+}
+
+#[test]
+fn find_matching_application_fee_refund_skips_legacy_mismatch_when_amount_matches() {
+    // Setup an earlier leftover with the wrong amount ahead of the expected refund
+    let purchase_id = Uuid::new_v4();
+    let input = sample_application_fee_adjustment_input(purchase_id);
+    let leftover = sample_application_fee_refund(purchase_id, "fr_wrong_123", 10);
+    let matched = sample_application_fee_refund(purchase_id, "fr_legacy_123", 125);
+
+    // Reuse the amount-matching leftover instead of bailing on the first hit
+    let refund =
+        StripeProvider::find_matching_application_fee_refund(&input, vec![leftover, matched])
+            .expect("application-fee refund lookup to parse")
+            .expect("legacy amount match to be reused");
+
+    // Check the expected leftover is selected despite an earlier mismatch
+    assert_eq!(refund.id, "fr_legacy_123");
+}
+
+#[test]
 fn find_matching_refund_result_ignores_terminal_refunds_when_unpinned() {
     // Setup an unpinned purchase refund lookup
     let purchase_id = Uuid::new_v4();
@@ -1127,6 +1284,10 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
                 Some(&"acct_test_123".to_string())
             );
             assert_eq!(
+                form.get("metadata[idempotency_key]"),
+                Some(&"fee-adjustment-test".to_string())
+            );
+            assert_eq!(
                 form.get("metadata[kind]"),
                 Some(&"tax-reconciliation".to_string())
             );
@@ -1154,6 +1315,57 @@ async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_pl
 
     // Check the platform-owned provider object is returned for durable storage
     assert_eq!(result.provider_application_fee_refund_id, "fr_test_123");
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_reuses_matching_listed_refund() {
+    // Setup a listed refund stored under this adjustment's durable identity
+    let purchase_id = Uuid::new_v4();
+    let router = Router::new().route(
+        "/v1/application_fees/fee_test_123/refunds",
+        get(move |headers: HeaderMap, uri: Uri| async move {
+            assert!(!headers.contains_key("stripe-account"));
+            assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
+            assert_eq!(uri.query(), Some("limit=100"));
+            Json(json!({
+                "data": [{
+                    "amount": 125,
+                    "id": "fr_existing_123",
+                    "metadata": {
+                        "event_purchase_id": purchase_id,
+                        "idempotency_key": "fee-adjustment-test",
+                        "kind": "tax-reconciliation"
+                    }
+                }]
+            }))
+        })
+        .post(|| async {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "matching application-fee refund must not be created again",
+            )
+        }),
+    );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile the durable adjustment against the existing provider object
+    let result = provider
+        .reconcile_application_fee_adjustment(&ApplicationFeeAdjustmentInput {
+            amount_minor: 125,
+            connected_seller_id: "acct_test_123".to_string(),
+            event_purchase_id: purchase_id,
+            idempotency_key: "fee-adjustment-test".to_string(),
+            kind: "tax-reconciliation".to_string(),
+            provider_application_fee_id: "fee_test_123".to_string(),
+        })
+        .await
+        .expect("application-fee adjustment to be reused");
+    server.abort();
+
+    // Check the listed provider object is returned without another create
+    assert_eq!(result.provider_application_fee_refund_id, "fr_existing_123");
 }
 
 #[tokio::test]
@@ -2587,6 +2799,35 @@ fn checkout_session_form_fields_map(
         .build_checkout_session_form_fields(input, Some("prod_ticket"))
         .into_iter()
         .collect()
+}
+
+/// Creates sample application-fee adjustment input.
+fn sample_application_fee_adjustment_input(purchase_id: Uuid) -> ApplicationFeeAdjustmentInput {
+    ApplicationFeeAdjustmentInput {
+        amount_minor: 125,
+        connected_seller_id: "acct_test_123".to_string(),
+        event_purchase_id: purchase_id,
+        idempotency_key: "fee-adjustment-test".to_string(),
+        kind: "tax-reconciliation".to_string(),
+        provider_application_fee_id: "fee_test_123".to_string(),
+    }
+}
+
+/// Creates a listed application-fee refund for matcher tests.
+fn sample_application_fee_refund(
+    purchase_id: Uuid,
+    id: &str,
+    amount_minor: i64,
+) -> StripeApplicationFeeRefund {
+    StripeApplicationFeeRefund {
+        amount: amount_minor,
+        id: id.to_string(),
+
+        metadata: BTreeMap::from([
+            ("event_purchase_id".to_string(), purchase_id.to_string()),
+            ("kind".to_string(), "tax-reconciliation".to_string()),
+        ]),
+    }
 }
 
 /// Creates sample performance-location input.

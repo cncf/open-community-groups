@@ -423,6 +423,75 @@ impl StripeProvider {
         )
     }
 
+    /// Finds an existing application-fee refund that should be reused.
+    fn find_matching_application_fee_refund(
+        input: &ApplicationFeeAdjustmentInput,
+        refunds: Vec<StripeApplicationFeeRefund>,
+    ) -> Result<Option<StripeApplicationFeeRefund>> {
+        // Prefer the durable create identity when Stripe still has that metadata
+        if let Some(refund) = refunds
+            .iter()
+            .find(|refund| refund.metadata.get("idempotency_key") == Some(&input.idempotency_key))
+        {
+            if refund.amount != input.amount_minor {
+                bail!(
+                    "existing Stripe application-fee refund {} has amount {}, expected {}",
+                    refund.id,
+                    refund.amount,
+                    input.amount_minor
+                );
+            }
+            return Ok(Some(refund.clone()));
+        }
+
+        // Fall back to purchase and kind for refunds created before the key was stored
+        let purchase_id = input.event_purchase_id.to_string();
+        let mut matching_amount = Vec::new();
+        let mut mismatched_amount = Vec::new();
+        for refund in refunds {
+            if refund.metadata.get("event_purchase_id") != Some(&purchase_id)
+                || refund.metadata.get("kind") != Some(&input.kind)
+            {
+                continue;
+            }
+            if refund.amount == input.amount_minor {
+                matching_amount.push(refund);
+            } else {
+                mismatched_amount.push(refund);
+            }
+        }
+
+        // Reject ambiguous leftover matches instead of taking the first hit
+        if matching_amount.len() > 1 {
+            let ids = matching_amount
+                .iter()
+                .map(|refund| refund.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            bail!("multiple Stripe application-fee refunds match this adjustment ({ids})");
+        }
+
+        // Reuse the unique purchase-kind amount match
+        if let Some(refund) = matching_amount.pop() {
+            return Ok(Some(refund));
+        }
+
+        // Surface leftover purchase-kind refunds whose amounts diverge
+        if !mismatched_amount.is_empty() {
+            let details = mismatched_amount
+                .iter()
+                .map(|refund| format!("{} has {}", refund.id, refund.amount))
+                .collect::<Vec<_>>()
+                .join(", ");
+            bail!(
+                "existing Stripe application-fee refund has the wrong amount ({details}; expected {})",
+                input.amount_minor
+            );
+        }
+
+        Ok(None)
+    }
+
     /// Finds a matching Stripe refund and maps its current status.
     fn find_matching_refund_result(
         input: &FindRefundInput,
@@ -1490,14 +1559,7 @@ impl PaymentsProvider for StripeProvider {
             "application-fee refund listing",
         )
         .await?;
-        let purchase_id = input.event_purchase_id.to_string();
-        if let Some(refund) = refunds.data.into_iter().find(|refund| {
-            refund.metadata.get("event_purchase_id") == Some(&purchase_id)
-                && refund.metadata.get("kind") == Some(&input.kind)
-        }) {
-            if refund.amount != input.amount_minor {
-                bail!("existing Stripe application-fee refund has the wrong amount");
-            }
+        if let Some(refund) = Self::find_matching_application_fee_refund(input, refunds.data)? {
             return Ok(ApplicationFeeAdjustmentResult {
                 provider_application_fee_refund_id: refund.id,
             });
@@ -1510,7 +1572,14 @@ impl PaymentsProvider for StripeProvider {
                 "metadata[connected_seller_id]".to_string(),
                 input.connected_seller_id.clone(),
             ),
-            ("metadata[event_purchase_id]".to_string(), purchase_id),
+            (
+                "metadata[event_purchase_id]".to_string(),
+                input.event_purchase_id.to_string(),
+            ),
+            (
+                "metadata[idempotency_key]".to_string(),
+                input.idempotency_key.clone(),
+            ),
             ("metadata[kind]".to_string(), input.kind.clone()),
         ]);
         let response = self
@@ -1893,7 +1962,7 @@ struct StripeAccountResponse {
 }
 
 /// Provider application-fee refund used for lookup-before-create reconciliation.
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 struct StripeApplicationFeeRefund {
     /// Refunded application-fee amount.
     amount: i64,
