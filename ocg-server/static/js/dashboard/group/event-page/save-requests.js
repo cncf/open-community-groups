@@ -1,6 +1,9 @@
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import { convertDateTimeLocalToISO } from "/static/js/common/datetime.js";
-import { stashActiveEventSection } from "/static/js/dashboard/group/event-page/context.js";
+import {
+  consumeStashedActiveEventSection,
+  stashActiveEventSection,
+} from "/static/js/dashboard/group/event-page/context.js";
 
 export const EVENT_EDITOR_CREATED_FOLLOW_UP_MESSAGE =
   "The event was created. Open it from the Events list to continue editing.";
@@ -97,6 +100,7 @@ export const armEventEditorLocationFollowUp = ({ created = false, controls = [] 
 
   const onFailure = () => {
     disarmEventEditorLocationFollowUp();
+    consumeStashedActiveEventSection();
     controls.forEach(disableEventMutationControl);
     showErrorAlert(created ? EVENT_EDITOR_CREATED_FOLLOW_UP_MESSAGE : EVENT_EDITOR_SAVED_FOLLOW_UP_MESSAGE);
   };

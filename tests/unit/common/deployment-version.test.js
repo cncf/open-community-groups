@@ -119,13 +119,40 @@ describe("deployment version", () => {
       const htmxChanged = reloadIfDeploymentChanged(new Headers({ [HTMX_REFRESH_HEADER]: "true" }));
       const fetchChanged = reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
 
-      // Forced intercepts are consumed so callers do not treat the empty 204 as success.
+      // Forced intercepts are consumed and every blocked request warns the user.
       expect(htmxChanged).to.equal(true);
       expect(fetchChanged).to.equal(true);
       expect(reloads).to.equal(0);
       expect(isDeploymentReloadRequested()).to.equal(false);
-      expect(swal.calls).to.have.length(1);
+      expect(swal.calls).to.have.length(2);
       expect(swal.calls[0].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
+      expect(swal.calls[1].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
+    } finally {
+      swal.restore();
+    }
+  });
+
+  it("warns about a blocked save after the generic notice was already shown", () => {
+    // Show the one-shot generic notice for a dirty form on a newer commit first.
+    setLoadedCommitSha("abc123");
+    document.body.innerHTML = '<div id="pending-changes-alert"></div>';
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const swal = mockSwal();
+
+    try {
+      const noticed = reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "def456" }));
+      const blocked = reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
+
+      // The blocked-mutation warning supersedes the earlier generic notice.
+      expect(noticed).to.equal(false);
+      expect(blocked).to.equal(true);
+      expect(reloads).to.equal(0);
+      expect(swal.calls).to.have.length(2);
+      expect(swal.calls[0].text).to.equal(DIRTY_DEPLOYMENT_NOTICE_MESSAGE);
+      expect(swal.calls[1].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
     } finally {
       swal.restore();
     }

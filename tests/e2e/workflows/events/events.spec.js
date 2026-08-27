@@ -1026,6 +1026,7 @@ test.describe("event management workflows", () => {
 
     // Fill every rich event field used by create and update flows.
     const fillEventForm = async (values) => {
+      await openDetailsSection(organizerGroupPage);
       await organizerGroupPage.locator("#name").fill(values.name);
       await organizerGroupPage.locator("#kind_id").selectOption(values.kindId);
       await organizerGroupPage.locator("#category_id").selectOption(values.categoryId);

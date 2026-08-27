@@ -17,6 +17,7 @@ import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
+  DIRTY_DEPLOYMENT_BLOCKED_MESSAGE,
   HTMX_REFRESH_HEADER,
   REFRESH_HEADER,
   resetDeploymentReloadState,
@@ -448,11 +449,13 @@ describe("htmx extensions", () => {
     handleCommitShaBeforeOnLoad(onLoadEvent);
     handleCommitShaBeforeSwap(swapEvent);
 
-    // Forced intercepts are consumed, not swapped, and do not reload.
+    // Forced intercepts are consumed, not swapped, and warn on every blocked pass.
     expect(onLoadEvent.defaultPrevented).to.equal(true);
     expect(swapEvent.detail.shouldSwap).to.equal(false);
     expect(reloads).to.equal(0);
-    expect(swal.calls).to.have.length(1);
+    expect(swal.calls).to.have.length(2);
+    expect(swal.calls[0].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
+    expect(swal.calls[1].text).to.equal(DIRTY_DEPLOYMENT_BLOCKED_MESSAGE);
   });
 
   it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {

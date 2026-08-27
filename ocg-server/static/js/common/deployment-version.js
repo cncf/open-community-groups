@@ -1,4 +1,4 @@
-import { showDeploymentRefreshRetryAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { showDeploymentRefreshRetryAlert, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 
 export const COMMIT_SHA_HEADER = "X-OCG-Commit-SHA";
 export const DEPLOYMENT_REFRESH_MESSAGE = "This page was refreshed because a new version is available.";
@@ -104,9 +104,7 @@ export const reloadIfDeploymentChanged = (headersSource, root = document) => {
   }
 
   if (dirty) {
-    notifyDirtyDeploymentOnce(
-      forcedRefresh ? DIRTY_DEPLOYMENT_BLOCKED_MESSAGE : DIRTY_DEPLOYMENT_NOTICE_MESSAGE,
-    );
+    notifyDirtyDeployment(forcedRefresh ? DIRTY_DEPLOYMENT_BLOCKED_MESSAGE : DIRTY_DEPLOYMENT_NOTICE_MESSAGE);
     return forcedRefresh;
   }
 
@@ -182,11 +180,18 @@ const hasVisiblePendingChanges = (root = document) => {
 };
 
 /**
- * Shows a one-shot notice that a new version is live without reloading a dirty form.
+ * Notifies that a new version is live without reloading a dirty form.
+ * Blocked-mutation warnings always surface so users never believe a dropped save
+ * succeeded; the passive stale-version notice is deduped to a one-shot info alert.
  * @param {string} message Notice copy for this intercept.
  * @returns {void}
  */
-const notifyDirtyDeploymentOnce = (message) => {
+const notifyDirtyDeployment = (message) => {
+  if (message === DIRTY_DEPLOYMENT_BLOCKED_MESSAGE) {
+    showErrorAlert(message);
+    return;
+  }
+
   if (dirtyDeploymentNoticeShown) {
     return;
   }
@@ -261,7 +266,7 @@ const requestDeploymentRefreshRetry = (root = document) => {
  */
 const deferDeploymentReloadForDirtyForm = (message) => {
   reloadRequested = false;
-  notifyDirtyDeploymentOnce(message);
+  notifyDirtyDeployment(message);
   scheduleDeploymentRefreshRetry();
 };
 

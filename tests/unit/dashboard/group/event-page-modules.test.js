@@ -1139,6 +1139,39 @@ describe("event page modules", () => {
     );
   });
 
+  it("clears the stashed section when the editor follow-up GET fails", async () => {
+    // Save from the Date & Venue section of the add page.
+    mountAddPageShell();
+    initializeEventAddPage();
+    document.querySelector('[data-section="date-venue"]').click();
+    dispatchHtmxAfterRequest(document.getElementById("add-event-button"), {
+      elt: document.getElementById("add-event-button"),
+      status: 201,
+    });
+    await waitForMicrotask();
+
+    // Fail the follow-up editor GET before it swaps the update page in.
+    dispatchHtmxAfterRequest(document.body, {
+      elt: document.body,
+      requestConfig: {
+        path: "/dashboard/group/events/11111111-1111-1111-1111-111111111111/update",
+        verb: "get",
+      },
+      status: 500,
+    });
+
+    // A later editor open starts from its default section instead of the stale stash.
+    mountUpdatePageShell({ canManageEvents: true });
+    initializeEventUpdatePage();
+
+    expect(document.querySelector('[data-section="details"]').getAttribute("data-active")).to.equal(
+      "true",
+    );
+    expect(document.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
+      "false",
+    );
+  });
+
   it("disarms the follow-up GET listener after the editor fragment swaps in", async () => {
     // Arm the follow-up listener with a successful create.
     mountAddPageShell();
