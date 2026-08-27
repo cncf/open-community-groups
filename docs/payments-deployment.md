@@ -313,9 +313,10 @@ the fiscal sponsor's connected account and are revalidated before Checkout.
 Each selected rate must declare the venue country. When the venue has a state
 or province code, a rate that declares one must match the venue subdivision.
 Automatic-tax readiness requires an active connected-account registration
-covering the venue country, with exact state matching in the United States.
-Canadian country-wide registrations cover all provinces, while
-province-specific registrations must match exactly. The
+covering the venue country. Any venue country is supported. Registrations match
+at country level, with exact state matching in the United States. Canadian
+country-wide registrations cover all provinces, while province-specific
+registrations must match exactly. The
 registration lookup uses Stripe's generally available Tax Registrations API and
 the standard Stripe API version, independently of the ticket-tax preview
 version.
