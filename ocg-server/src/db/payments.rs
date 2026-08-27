@@ -1119,6 +1119,8 @@ pub(crate) struct ClaimedEventPurchaseApplicationFeeAdjustment {
     pub claim_id: Uuid,
     /// Connected seller that owns the direct charge.
     pub connected_seller_id: String,
+    /// Currency of the purchase and adjustment amount.
+    pub currency_code: String,
     /// Durable adjustment identifier.
     pub event_purchase_application_fee_adjustment_id: Uuid,
     /// Purchase whose application fee is adjusted.

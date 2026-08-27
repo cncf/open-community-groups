@@ -765,6 +765,7 @@ async fn db_contracts_claim_event_purchase_application_fee_adjustment_deserializ
     // Check the complete provider request context deserializes
     assert_eq!(adjustment.amount_minor, 25);
     assert_eq!(adjustment.connected_seller_id, "acct_contract_documents");
+    assert_eq!(adjustment.currency_code, "USD");
     assert_eq!(
         adjustment.event_purchase_application_fee_adjustment_id,
         document_adjustment_id()

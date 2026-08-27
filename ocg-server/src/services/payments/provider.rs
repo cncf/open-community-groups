@@ -216,6 +216,8 @@ pub(crate) struct ApplicationFeeAdjustmentInput {
     pub amount_minor: i64,
     /// Connected seller that received the original application fee deduction.
     pub connected_seller_id: String,
+    /// Currency of the adjustment amount, matching the purchase currency.
+    pub currency_code: String,
     /// Durable purchase identifier used in provider metadata.
     pub event_purchase_id: Uuid,
     /// Stable idempotency key for provider creation.

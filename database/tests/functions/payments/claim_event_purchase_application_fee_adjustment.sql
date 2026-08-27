@@ -188,6 +188,7 @@ select results_eq(
             ),
             (item->>'claim_id') is not null,
             item->>'connected_seller_id',
+            item->>'currency_code',
             item->>'event_purchase_application_fee_adjustment_id',
             item->>'event_purchase_id',
             item->>'idempotency_key',
@@ -197,8 +198,8 @@ select results_eq(
     $$,
     format(
         $$ values (
-            '20'::text, '1'::text, true, 'acct_fee'::text, %L::text,
-            %L::text, 'claim-fee-adjustment'::text,
+            '20'::text, '1'::text, true, 'acct_fee'::text, 'USD'::text,
+            %L::text, %L::text, 'claim-fee-adjustment'::text,
             'tax-reconciliation'::text, 'fee_adjust'::text
         ) $$,
         :'adjustmentID', :'purchaseID'
