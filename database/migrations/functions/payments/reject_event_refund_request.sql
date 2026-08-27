@@ -17,7 +17,20 @@ begin
         raise exception 'refund rejection reason is required';
     end if;
 
-    -- Lock the pending refund request before rejecting it
+    -- Lock the event before its purchase and refund request
+    perform 1
+    from event e
+    join event_purchase ep on ep.event_id = e.event_id
+    where e.group_id = p_group_id
+    and ep.event_purchase_id = p_event_purchase_id
+    for update of e;
+
+    -- Reject purchases outside the requested group
+    if not found then
+        raise exception 'refund request not found';
+    end if;
+
+    -- Lock and load the pending refund request before rejecting it
     select
         g.community_id,
         ep.event_id,
@@ -36,6 +49,7 @@ begin
     and err.status = 'pending'
     for update of ep, err;
 
+    -- Reject refund requests that changed while waiting for their locks
     if not found then
         raise exception 'refund request not found';
     end if;

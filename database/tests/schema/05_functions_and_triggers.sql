@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(392);
+select plan(393);
 
 -- ============================================================================
 -- VARIABLES
@@ -344,6 +344,7 @@ select has_function('list_user_public_badges', array['text', 'integer', 'integer
 select has_function('list_user_session_proposals', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_session_proposals_for_cfs_event', array['uuid', 'uuid']::name[]);
 select has_function('lock_events_for_cancellation', array['uuid', 'uuid[]']::name[]);
+select has_function('lock_group_events', array['uuid', 'uuid[]']::name[]);
 select hasnt_function('manual_check_in_event', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('manual_requeue_notifications', array['uuid[]', 'text']::name[]);
 select has_function(

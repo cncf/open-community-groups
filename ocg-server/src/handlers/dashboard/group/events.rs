@@ -525,7 +525,7 @@ pub(crate) async fn delete(
 }
 
 /// Publishes an event (sets published=true and records publication metadata).
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 #[instrument(skip_all, err)]
 pub(crate) async fn publish(
     CurrentUser(user): CurrentUser,
@@ -567,13 +567,16 @@ pub(crate) async fn publish(
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
-                // Resolve target event ids and load prior state before publishing
+                // Resolve and lock target events before loading notification state
                 let event_ids = match scope {
                     EventActionScope::Series => {
                         tx.list_event_series_publishable_event_ids(group_id, event_id).await?
                     }
                     EventActionScope::This => vec![event_id],
                 };
+                tx.lock_group_events(group_id, &event_ids).await?;
+
+                // Load prior state while locks preserve publication eligibility
                 let mut events = Vec::with_capacity(event_ids.len());
                 for event_id in &event_ids {
                     events.push(tx.get_event_summary(community_id, group_id, *event_id).await?);
@@ -761,6 +764,9 @@ pub(crate) async fn update(
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
+                // Lock the group and event before loading notification state
+                tx.lock_group_events(group_id, &[event_id]).await?;
+
                 // Load prior state before mutating to drive notification decisions
                 let before = tx.get_event_summary(community_id, group_id, event_id).await?;
 

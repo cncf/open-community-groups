@@ -6,7 +6,7 @@ use deadpool_postgres::{Config as DeadpoolDbConfig, Pool, Runtime};
 use tokio_postgres::{
     NoTls,
     error::{DbError, SqlState},
-    types::ToSql,
+    types::{Json, ToSql},
 };
 use uuid::Uuid;
 
@@ -151,6 +151,50 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
     assert_eq!(user.registration_status, "registered");
     assert_eq!(user.user_id, activation_id());
     assert_eq!(user.username, "contract-activation");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_add_cfs_submission_blocks_no_key_updates() -> Result<()> {
+    // Setup independent submission and proposal-lock connections
+    let pool = contract_tests_pool()?;
+    let proposal_client = pool.get().await?;
+    let submission_client = pool.get().await?;
+
+    // Add a submission while retaining its proposal share lock
+    submission_client.batch_execute("begin").await?;
+    submission_client
+        .query_one(
+            "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, null::uuid[])",
+            &[
+                &community_id(),
+                &event_id(),
+                &organizer_id(),
+                &cfs_add_lock_proposal_id(),
+            ],
+        )
+        .await?;
+
+    // Probe with a lock mode that does not conflict with the foreign-key lock
+    proposal_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let lock_result = proposal_client
+        .query_one(
+            "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for no key update",
+            &[&cfs_add_lock_proposal_id()],
+        )
+        .await;
+
+    // Release both transactions before checking the lock outcome
+    proposal_client.batch_execute("rollback").await?;
+    submission_client.batch_execute("rollback").await?;
+
+    // Check the explicit share lock blocks a competing non-key update
+    let lock_err = lock_result.expect_err("proposal update should wait for the submission lock");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
 
     Ok(())
 }
@@ -456,6 +500,61 @@ async fn db_contracts_cancel_event_attendee_attendance_queues_paid_refund_deseri
     assert_eq!(refund.event_purchase_id, paid_cancellation_purchase_id());
     assert_eq!(refund.kind, EventPurchaseRefundKind::AttendanceCancellation);
     assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_cfs_session_link_serializes_submission_rejection() -> Result<()> {
+    // Setup independent session-link and submission-review connections
+    let pool = contract_tests_pool()?;
+    let review_client = pool.get().await?;
+    let session_client = pool.get().await?;
+    review_client.batch_execute("set lock_timeout = '250ms'").await?;
+    session_client.batch_execute("begin").await?;
+
+    // Link the approved submission while retaining its share lock
+    session_client
+        .execute(
+            "insert into session (cfs_submission_id, ends_at, event_id, name, session_id, session_kind_id, starts_at) values ($1::uuid, '2099-05-20 18:30:00+00', $2::uuid, 'CFS Lock Session', $3::uuid, 'hybrid', '2099-05-20 18:00:00+00')",
+            &[&cfs_submission_id(), &event_id(), &cfs_lock_session_id()],
+        )
+        .await?;
+
+    // Check a concurrent rejection cannot pass the session-link share lock
+    let lock_err = review_client
+        .query_one(
+            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, '{\"label_ids\": [], \"status_id\": \"rejected\"}'::jsonb)",
+            &[&organizer_id(), &event_id(), &cfs_submission_id()],
+        )
+        .await
+        .expect_err("submission rejection should wait for the session link lock");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+
+    // Commit the session link before retrying the review
+    session_client.batch_execute("commit").await?;
+
+    // Check the serialized rejection observes the committed session link
+    let linked_err = review_client
+        .query_one(
+            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, '{\"label_ids\": [], \"status_id\": \"rejected\"}'::jsonb)",
+            &[&organizer_id(), &event_id(), &cfs_submission_id()],
+        )
+        .await
+        .expect_err("linked submissions should remain approved");
+    assert_eq!(
+        linked_err.as_db_error().map(DbError::message),
+        Some("linked submissions must remain approved")
+    );
+
+    // Restore the shared submission fixture for later contract tests
+    review_client
+        .execute(
+            "delete from session where session_id = $1::uuid",
+            &[&cfs_lock_session_id()],
+        )
+        .await?;
 
     Ok(())
 }
@@ -825,6 +924,68 @@ async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> 
     assert_eq!(purchase.community_id, community_id());
     assert_eq!(purchase.event_id, paid_event_id());
     assert_eq!(purchase.user_id, free_buyer_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_delete_session_proposal_locks_before_submission_check() -> Result<()> {
+    // Setup a table-lock barrier and independent proposal-lock probe
+    let pool = contract_tests_pool()?;
+    let barrier_client = pool.get().await?;
+    let delete_client = pool.get().await?;
+    let probe_client = pool.get().await?;
+    let barrier_backend_pid = barrier_client
+        .query_one("select pg_backend_pid()", &[])
+        .await?
+        .get::<_, i32>(0);
+    let delete_backend_pid = delete_client
+        .query_one("select pg_backend_pid()", &[])
+        .await?
+        .get::<_, i32>(0);
+
+    // Block the dependent submission read after the proposal lock is acquired
+    barrier_client
+        .batch_execute("begin; lock table cfs_submission in access exclusive mode")
+        .await?;
+    let actor_user_id = organizer_id();
+    let session_proposal_id = cfs_delete_lock_proposal_id();
+    let delete_task = tokio::spawn(async move {
+        delete_client.batch_execute("begin").await?;
+        delete_client
+            .query_one(
+                "select delete_session_proposal($1::uuid, $2::uuid)",
+                &[&actor_user_id, &session_proposal_id],
+            )
+            .await?;
+        delete_client.batch_execute("rollback").await?;
+
+        Ok::<(), anyhow::Error>(())
+    });
+
+    // Wait until deletion reaches the dependent submission read
+    wait_for_backend_blocker(&probe_client, barrier_backend_pid, delete_backend_pid).await?;
+
+    // Probe whether deletion already holds the proposal update lock
+    probe_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let lock_result = probe_client
+        .query_one(
+            "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for key share",
+            &[&cfs_delete_lock_proposal_id()],
+        )
+        .await;
+
+    // Release the probes and let the deletion roll back its mutation
+    probe_client.batch_execute("rollback").await?;
+    barrier_client.batch_execute("rollback").await?;
+    delete_task.await??;
+
+    // Check deletion locks the proposal before inspecting submissions
+    let lock_err = lock_result.expect_err("proposal read should wait for the deletion lock");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
 
     Ok(())
 }
@@ -3127,6 +3288,57 @@ async fn db_contracts_lock_events_for_cancellation_serializes_rsvp() -> Result<(
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_lock_group_events_serializes_update() -> Result<()> {
+    // Setup independent event-lock and update connections
+    let db = contract_tests_db()?;
+    let racing_pool = contract_tests_pool()?;
+    let racing_client = racing_pool.get().await?;
+    let event_id = group_lock_first_event_id();
+    let event_payload =
+        Json(group_lock_event_update("Contract Group Lock Event One Updated", 3).to_db_payload()?);
+    racing_client.batch_execute("set lock_timeout = '250ms'").await?;
+
+    // Lock the group and event through the Rust database contract
+    let uow = db.begin().await?;
+    uow.lock_group_events(claim_group_id(), &[event_id]).await?;
+
+    // Check a competing event update cannot pass the helper's locks
+    let lock_err = racing_client
+        .query_one(
+            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[
+                &organizer_id(),
+                &claim_group_id(),
+                &event_id,
+                &event_payload,
+            ],
+        )
+        .await
+        .expect_err("event update should wait for the group event locks");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+
+    // Release the helper locks before retrying the update
+    uow.commit().await?;
+
+    // Check the serialized update succeeds after the locks are released
+    let updated = racing_client
+        .query_one(
+            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[
+                &organizer_id(),
+                &claim_group_id(),
+                &event_id,
+                &event_payload,
+            ],
+        )
+        .await?;
+    assert!(!updated.get::<_, bool>(0));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<()> {
     // Setup the contract database and checkout input
     let db = contract_tests_db()?;
@@ -3183,6 +3395,45 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
             .map(|seller| seller.connected_account_id.as_str()),
         Some("acct_contract")
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_queue_event_refund_request_approval_blocks_event_writers() -> Result<()> {
+    // Setup independent refund approval and event-lock connections
+    let pool = contract_tests_pool()?;
+    let approval_client = pool.get().await?;
+    let event_client = pool.get().await?;
+
+    // Queue approval while retaining the refund workflow locks
+    approval_client.batch_execute("begin").await?;
+    approval_client
+        .query_one(
+            "select queue_event_refund_request_approval($1::uuid, $2::uuid, $3::uuid, null::text)",
+            &[&organizer_id(), &group_id(), &refund_begin_purchase_id()],
+        )
+        .await?;
+
+    // Probe whether a competing writer can lock the owning event
+    event_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let lock_result = event_client
+        .query_one(
+            "select event_id from event where event_id = $1::uuid for update",
+            &[&refund_event_id()],
+        )
+        .await;
+
+    // Roll back the approval and lock probe before checking the outcome
+    event_client.batch_execute("rollback").await?;
+    approval_client.batch_execute("rollback").await?;
+
+    // Check approval holds the event lock before refund workflow rows
+    let lock_err = lock_result.expect_err("event writer should wait for refund approval");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
 
     Ok(())
 }
@@ -3306,6 +3557,50 @@ async fn db_contracts_refresh_user_badge_identity_deserializes() -> Result<()> {
     assert_eq!(award.identity_bound_at, Some(rebound.identity_bound_at));
     assert_eq!(award.identity_hash, Some(rebound.identity_hash));
     assert_eq!(award.identity_salt, Some(rebound.identity_salt));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_reject_event_refund_request_blocks_event_writers() -> Result<()> {
+    // Setup independent refund rejection and event-lock connections
+    let pool = contract_tests_pool()?;
+    let event_client = pool.get().await?;
+    let rejection_client = pool.get().await?;
+
+    // Reject the request while retaining the refund workflow locks
+    rejection_client.batch_execute("begin").await?;
+    rejection_client
+        .query_one(
+            "select reject_event_refund_request($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[
+                &organizer_id(),
+                &group_id(),
+                &refund_reject_purchase_id(),
+                &"Rejected by lock contract",
+            ],
+        )
+        .await?;
+
+    // Probe whether a competing writer can lock the owning event
+    event_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let lock_result = event_client
+        .query_one(
+            "select event_id from event where event_id = $1::uuid for update",
+            &[&refund_event_id()],
+        )
+        .await;
+
+    // Roll back the rejection and lock probe before checking the outcome
+    event_client.batch_execute("rollback").await?;
+    rejection_client.batch_execute("rollback").await?;
+
+    // Check rejection holds the event lock before refund workflow rows
+    let lock_err = lock_result.expect_err("event writer should wait for refund rejection");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
 
     Ok(())
 }
@@ -3690,6 +3985,116 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_update_event_serializes_same_group_mutations() -> Result<()> {
+    // Setup two event updates targeting different events in the same group
+    let db = contract_tests_db()?;
+    let racing_pool = contract_tests_pool()?;
+    let racing_client = racing_pool.get().await?;
+    let first_event_id = group_lock_first_event_id();
+    let first_payload =
+        group_lock_event_update("Contract Group Lock Event One Updated", 3).to_db_payload()?;
+    let second_event_id = group_lock_second_event_id();
+    let second_payload =
+        Json(group_lock_event_update("Contract Group Lock Event Two Updated", 4).to_db_payload()?);
+    racing_client.batch_execute("set lock_timeout = '250ms'").await?;
+
+    // Update the first event while retaining the owning group lock
+    let uow = db.begin().await?;
+    let requires_paid_notification = uow
+        .update_event(
+            organizer_id(),
+            claim_group_id(),
+            first_event_id,
+            &first_payload,
+            &HashMap::new(),
+            None,
+        )
+        .await?;
+    assert!(!requires_paid_notification);
+
+    // Check the second event update cannot pass the shared group lock
+    let lock_err = racing_client
+        .query_one(
+            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[
+                &organizer_id(),
+                &claim_group_id(),
+                &second_event_id,
+                &second_payload,
+            ],
+        )
+        .await
+        .expect_err("same-group event update should wait for the group lock");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+
+    // Commit the first update before retrying the second mutation
+    uow.commit().await?;
+
+    // Check the second update succeeds after observing the committed group state
+    let updated = racing_client
+        .query_one(
+            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[
+                &organizer_id(),
+                &claim_group_id(),
+                &second_event_id,
+                &second_payload,
+            ],
+        )
+        .await?;
+    assert!(!updated.get::<_, bool>(0));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_update_session_proposal_blocks_key_share() -> Result<()> {
+    // Setup independent proposal update and lock-probe connections
+    let pool = contract_tests_pool()?;
+    let probe_client = pool.get().await?;
+    let update_client = pool.get().await?;
+    let proposal = Json(serde_json::json!({
+        "co_speaker_user_id": null,
+        "description": "An updated proposal used to verify update locks",
+        "duration_minutes": 45,
+        "session_proposal_level_id": "beginner",
+        "title": "Contract Update Lock Proposal Updated"
+    }));
+
+    // Update the proposal while retaining its explicit update lock
+    update_client.batch_execute("begin").await?;
+    update_client
+        .query_one(
+            "select update_session_proposal($1::uuid, $2::uuid, $3::jsonb)",
+            &[&organizer_id(), &cfs_update_lock_proposal_id(), &proposal],
+        )
+        .await?;
+
+    // Probe with a lock mode compatible with an ordinary non-key update
+    probe_client
+        .batch_execute("begin; set local lock_timeout = '250ms'")
+        .await?;
+    let lock_result = probe_client
+        .query_one(
+            "select session_proposal_id from session_proposal where session_proposal_id = $1::uuid for key share",
+            &[&cfs_update_lock_proposal_id()],
+        )
+        .await;
+
+    // Roll back the update and lock probe before checking the outcome
+    probe_client.batch_execute("rollback").await?;
+    update_client.batch_execute("rollback").await?;
+
+    // Check the explicit update lock blocks a competing key-share reader
+    let lock_err = lock_result.expect_err("proposal read should wait for the update lock");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
     // Setup the contract database and external profile update
     let db = contract_tests_db()?;
@@ -3752,7 +4157,15 @@ const CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c0e9";
 const CANCELLATION_LOCK_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c0ec";
 /// Event fixture used to verify cancellation lock ownership.
 const CANCELLATION_LOCK_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d6";
+/// Proposal fixture used to verify submission share locking.
+const CFS_ADD_LOCK_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c124";
+/// Proposal fixture used to verify deletion lock ordering.
+const CFS_DELETE_LOCK_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c125";
+/// Session fixture used to verify CFS submission locking.
+const CFS_LOCK_SESSION_ID: &str = "00000000-0000-0000-0000-00000000c123";
 const CFS_SUBMISSION_ID: &str = "00000000-0000-0000-0000-00000000c0c5";
+/// Proposal fixture used to verify update lock strength.
+const CFS_UPDATE_LOCK_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c126";
 const CHECK_IN_CODE: &str = "00000000-0000-0000-0000-00000000c084";
 const CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e1";
 const CLAIM_GROUP_ID: &str = "00000000-0000-0000-0000-00000000c0a0";
@@ -3771,6 +4184,10 @@ const FINANCIAL_RECOVERY_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-0000000
 const FREE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e4";
 const FREE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f3";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
+/// First event fixture used to verify group-level mutation locks.
+const GROUP_LOCK_FIRST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c121";
+/// Second event fixture used to verify group-level mutation locks.
+const GROUP_LOCK_SECOND_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c122";
 const GROUP_SPONSOR_ID: &str = "00000000-0000-0000-0000-00000000c061";
 const INVITATION_OFFER_ID: &str = "00000000-0000-0000-0000-00000000c083";
 const INVITATION_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c081";
@@ -4026,9 +4443,29 @@ fn cancellation_lock_event_id() -> Uuid {
     parse_uuid(CANCELLATION_LOCK_EVENT_ID)
 }
 
+/// Returns the proposal used to verify submission share locking.
+fn cfs_add_lock_proposal_id() -> Uuid {
+    parse_uuid(CFS_ADD_LOCK_PROPOSAL_ID)
+}
+
+/// Returns the proposal used to verify deletion lock ordering.
+fn cfs_delete_lock_proposal_id() -> Uuid {
+    parse_uuid(CFS_DELETE_LOCK_PROPOSAL_ID)
+}
+
+/// Returns the session identifier used to verify CFS submission locking.
+fn cfs_lock_session_id() -> Uuid {
+    parse_uuid(CFS_LOCK_SESSION_ID)
+}
+
 /// Returns the call-for-speakers submission identifier used by the contract fixture.
 fn cfs_submission_id() -> Uuid {
     parse_uuid(CFS_SUBMISSION_ID)
+}
+
+/// Returns the proposal used to verify update lock strength.
+fn cfs_update_lock_proposal_id() -> Uuid {
+    parse_uuid(CFS_UPDATE_LOCK_PROPOSAL_ID)
 }
 
 /// Returns the attendee check-in code used by the contract fixture.
@@ -4138,6 +4575,43 @@ fn free_purchase_id() -> Uuid {
 /// Returns the group identifier used by the contract fixture.
 fn group_id() -> Uuid {
     parse_uuid(GROUP_ID)
+}
+
+/// Returns an event update used by group-level lock contract tests.
+fn group_lock_event_update(name: &str, day: u32) -> EventUpdate {
+    let starts_at = NaiveDate::from_ymd_opt(2099, 8, day)
+        .expect("date should be valid")
+        .and_hms_opt(10, 0, 0)
+        .expect("time should be valid");
+    let ends_at = NaiveDate::from_ymd_opt(2099, 8, day)
+        .expect("date should be valid")
+        .and_hms_opt(11, 0, 0)
+        .expect("time should be valid");
+
+    EventUpdate {
+        category_id: event_category_id(),
+        description: "An event used by group lock contract tests".to_string(),
+        kind_id: "virtual".to_string(),
+        name: name.to_string(),
+        timezone: "UTC".to_string(),
+
+        capacity: Some(100),
+        ends_at: Some(ends_at),
+        starts_at: Some(starts_at),
+        test_event: Some(true),
+
+        ..Default::default()
+    }
+}
+
+/// Returns the first event used to verify group-level mutation locks.
+fn group_lock_first_event_id() -> Uuid {
+    parse_uuid(GROUP_LOCK_FIRST_EVENT_ID)
+}
+
+/// Returns the second event used to verify group-level mutation locks.
+fn group_lock_second_event_id() -> Uuid {
+    parse_uuid(GROUP_LOCK_SECOND_EVENT_ID)
 }
 
 /// Returns the group sponsor identifier used by the contract fixture.
@@ -4393,6 +4867,38 @@ fn queue_invite_event_id() -> Uuid {
 /// Returns the queued invitation target used by the allocation contract.
 fn queue_invitee_id() -> Uuid {
     parse_uuid(QUEUE_INVITEE_ID)
+}
+
+/// Waits until one contract-test backend is blocked by another.
+async fn wait_for_backend_blocker(
+    client: &tokio_postgres::Client,
+    owner_pid: i32,
+    waiter_pid: i32,
+) -> Result<()> {
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            // Check whether the expected backend owns the blocking lock
+            let is_blocked = client
+                .query_one(
+                    "select $1::int = any(pg_blocking_pids($2::int))",
+                    &[&owner_pid, &waiter_pid],
+                )
+                .await?
+                .get::<_, bool>(0);
+
+            // Finish once the intended lock wait is observable
+            if is_blocked {
+                return Ok::<(), tokio_postgres::Error>(());
+            }
+
+            // Yield briefly before polling the lock graph again
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .context("backend should reach the expected lock wait")??;
+
+    Ok(())
 }
 
 /// Returns the waitlist identifier used by the contract fixture.

@@ -680,6 +680,11 @@ mock! {
             group_id: Uuid,
             event_ids: &[Uuid],
         ) -> Result<()>;
+        async fn lock_group_events(
+            &self,
+            group_id: Uuid,
+            event_ids: &[Uuid],
+        ) -> Result<()>;
         async fn publish_event(
             &self,
             actor_user_id: Uuid,

@@ -179,6 +179,7 @@
 {{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/lock_events_for_cancellation.sql" }}
+{{ template "dashboard-group/lock_group_events.sql" }}
 {{ template "dashboard-group/process_badge_award_job_batch.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/publish_event_series_events.sql" }}

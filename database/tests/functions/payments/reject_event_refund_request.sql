@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,7 @@ select plan(7);
 \set eventTicketTypeID '79460000-0000-0000-0000-000000000005'
 \set groupCategoryID '79460000-0000-0000-0000-000000000006'
 \set groupID '79460000-0000-0000-0000-000000000007'
+\set missingGroupID '79460000-0000-0000-0000-000000000013'
 \set missingPurchaseID '79460000-0000-0000-0000-000000000008'
 \set priceWindowID '79460000-0000-0000-0000-000000000009'
 \set purchaseID '79460000-0000-0000-0000-000000000010'
@@ -226,6 +227,18 @@ select results_eq(
     $$, :'purchaseID', :'refundRequestID', :'refundRequestID', :'refundRequestID', :'refundRequestID'),
     $$ values ('refund-requested'::text, null::text, null::timestamptz, null::uuid, 'pending'::text, 0::bigint) $$,
     'Should leave refund state and audit history unchanged after invalid input'
+);
+
+-- Should reject a request outside the requested group
+select throws_ok(
+    format($$select reject_event_refund_request(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        'Not eligible'
+    )$$, :'actorUserID', :'missingGroupID', :'purchaseID'),
+    'refund request not found',
+    'Should reject a request outside the requested group'
 );
 
 -- Should reject a pending refund request

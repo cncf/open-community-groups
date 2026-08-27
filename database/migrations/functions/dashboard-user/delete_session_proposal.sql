@@ -9,8 +9,10 @@ begin
     perform 1
     from session_proposal sp
     where sp.session_proposal_id = p_session_proposal_id
-    and sp.user_id = p_actor_user_id;
+    and sp.user_id = p_actor_user_id
+    for update;
 
+    -- Reject proposals outside the user's ownership
     if not found then
         raise exception 'session proposal not found';
     end if;
@@ -20,6 +22,7 @@ begin
     from cfs_submission cs
     where cs.session_proposal_id = p_session_proposal_id;
 
+    -- Preserve proposals already submitted to an event
     if found then
         raise exception 'session proposal has submissions';
     end if;
@@ -29,6 +32,7 @@ begin
     where session_proposal_id = p_session_proposal_id
     and user_id = p_actor_user_id;
 
+    -- Reject proposals removed after ownership validation
     if not found then
         raise exception 'session proposal not found';
     end if;
