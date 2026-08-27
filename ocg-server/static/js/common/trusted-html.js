@@ -27,3 +27,21 @@ export const setTrustedHtml = (element, html) => {
 export const insertTrustedHtml = (element, position, html) => {
   element?.insertAdjacentHTML?.(position, String(html ?? ""));
 };
+
+/**
+ * Escapes user-controlled text before it is inserted into HTML.
+ * @param {string} value Text to escape.
+ * @returns {string} HTML-safe text.
+ */
+export const escapeHtml = (value) =>
+  value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character],
+  );

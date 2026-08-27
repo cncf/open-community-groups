@@ -1,5 +1,6 @@
-import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { escapeHtml } from "/static/js/common/trusted-html.js";
+import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 
 export const CROP_IMAGE_ACCEPTED_FORMATS = ".svg,.png,.jpg,.jpeg,.webp";
 export const CROP_IMAGE_SUPPORTED_FORMATS_TEXT = "Supported formats: SVG, PNG, JPEG and WEBP.";
@@ -9,24 +10,6 @@ export const IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT = "Supported formats: SVG, PNG,
 export const IMAGE_UPLOAD_ERROR_DETAILS = `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`;
 export const OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS = ".png,.jpg,.jpeg,.webp";
 export const OPEN_GRAPH_IMAGE_SUPPORTED_FORMATS_TEXT = "Supported formats: PNG, JPEG and WEBP.";
-
-/**
- * Escapes user-controlled text before it is inserted into alert HTML.
- * @param {string} value - Text to escape
- * @returns {string} HTML-safe text
- */
-const escapeHtml = (value) =>
-  value.replace(
-    /[&<>"']/g,
-    (character) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      })[character],
-  );
 
 /**
  * Uploads an image through the dashboard image endpoint and returns its URL.

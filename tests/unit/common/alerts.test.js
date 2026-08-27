@@ -55,6 +55,24 @@ describe("alerts", () => {
     expect(env.current.swal.calls[3].html).to.include("Missing field");
   });
 
+  it("escapes markup in server error alert messages", () => {
+    // Show a server error whose copy includes user-controlled markup in both arguments.
+    showServerErrorAlert(
+      "Save failed for <img src=x onerror=alert(1)>",
+      "<img src=x onerror=alert(1)> is not ready for automatic tax",
+    );
+
+    // Assert both arguments are escaped while the warning-box wrapper stays intact.
+    expect(env.current.swal.calls).to.have.length(1);
+    const html = env.current.swal.calls[0].html;
+    expect(html).to.not.include("<img");
+    expect(html).to.include("Save failed for &lt;img src=x onerror=alert(1)&gt;");
+    expect(html).to.include("&lt;img src=x onerror=alert(1)&gt; is not ready for automatic tax");
+    expect(html).to.include(
+      'class="mt-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 text-left"',
+    );
+  });
+
   it("renders declarative page alerts once", () => {
     // Build the DOM fixture with server-rendered alert markers.
     document.body.innerHTML = `

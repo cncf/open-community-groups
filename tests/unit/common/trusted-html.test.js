@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  escapeHtml,
   insertTrustedHtml,
   readTrustedHtml,
   setTrustedHtml,
@@ -37,5 +38,10 @@ describe("common trusted html", () => {
     expect(readTrustedHtml(null)).to.equal("");
     expect(() => setTrustedHtml(null, "<span>Ignored</span>")).not.to.throw();
     expect(() => insertTrustedHtml(null, "beforeend", "<span>Ignored</span>")).not.to.throw();
+  });
+
+  it("escapes html-sensitive characters", () => {
+    expect(escapeHtml("")).to.equal("");
+    expect(escapeHtml(`&<>"'`)).to.equal("&amp;&lt;&gt;&quot;&#39;");
   });
 });
