@@ -97,9 +97,7 @@ pub(crate) async fn update(
             let require_automatic_tax = db
                 .group_requires_automatic_tax_readiness(community_id, group_id)
                 .await?;
-            payments_manager
-                .validate_fiscal_sponsor(recipient, require_automatic_tax)
-                .await?;
+            payments_manager.validate_fiscal_sponsor(recipient, None).await?;
             if require_automatic_tax {
                 let event_ids = db
                     .list_group_automatic_tax_readiness_event_ids(community_id, group_id)

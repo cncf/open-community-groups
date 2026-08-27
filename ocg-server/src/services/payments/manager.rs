@@ -16,7 +16,8 @@ use crate::{
     services::notifications::DynNotificationsManager,
     types::payments::{
         GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
-        TicketTaxCalculationMode, TicketTaxRate, TicketVenue, TicketVenueField,
+        TicketTaxCalculationMode, TicketTaxJurisdiction, TicketTaxRate, TicketVenue,
+        TicketVenueField,
     },
 };
 
@@ -107,7 +108,7 @@ pub(crate) trait PaymentsManager {
     async fn validate_fiscal_sponsor(
         &self,
         recipient: &GroupPaymentRecipient,
-        require_automatic_tax: bool,
+        automatic_tax_jurisdiction: Option<TicketTaxJurisdiction>,
     ) -> std::result::Result<(), FiscalSponsorReadinessError>;
 
     /// Validates manual Tax Rates in the group's fiscal sponsor account.
@@ -116,6 +117,7 @@ pub(crate) trait PaymentsManager {
         recipient: &GroupPaymentRecipient,
         manual_tax_rate_ids: &[String],
         tax_behavior: TicketTaxBehavior,
+        jurisdiction: Option<TicketTaxJurisdiction>,
     ) -> std::result::Result<(), FiscalSponsorReadinessError>;
 }
 
@@ -321,12 +323,13 @@ impl PaymentsManager for PgPaymentsManager {
             });
         }
 
-        // Require the sponsor's connected account and automatic-tax settings
+        // Require the sponsor's account, automatic-tax settings, and venue registration
         payments_provider
             .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
                 connected_seller_id: recipient.recipient_id.clone(),
                 provider: recipient.provider,
-                require_automatic_tax: true,
+
+                automatic_tax_jurisdiction: Some(venue.tax_jurisdiction()),
             })
             .await
             .map_err(|error| match error {
@@ -626,7 +629,7 @@ impl PaymentsManager for PgPaymentsManager {
     async fn validate_fiscal_sponsor(
         &self,
         recipient: &GroupPaymentRecipient,
-        require_automatic_tax: bool,
+        automatic_tax_jurisdiction: Option<TicketTaxJurisdiction>,
     ) -> std::result::Result<(), FiscalSponsorReadinessError> {
         let payments_provider = self
             .payments_provider()
@@ -635,7 +638,8 @@ impl PaymentsManager for PgPaymentsManager {
             .validate_fiscal_sponsor(&FiscalSponsorReadinessInput {
                 connected_seller_id: recipient.recipient_id.clone(),
                 provider: recipient.provider,
-                require_automatic_tax,
+
+                automatic_tax_jurisdiction,
             })
             .await
     }
@@ -646,6 +650,7 @@ impl PaymentsManager for PgPaymentsManager {
         recipient: &GroupPaymentRecipient,
         manual_tax_rate_ids: &[String],
         tax_behavior: TicketTaxBehavior,
+        jurisdiction: Option<TicketTaxJurisdiction>,
     ) -> std::result::Result<(), FiscalSponsorReadinessError> {
         let payments_provider = self
             .payments_provider()
@@ -661,6 +666,8 @@ impl PaymentsManager for PgPaymentsManager {
                 connected_seller_id: recipient.recipient_id.clone(),
                 manual_tax_rate_ids: manual_tax_rate_ids.to_vec(),
                 tax_behavior,
+
+                jurisdiction,
             })
             .await
     }

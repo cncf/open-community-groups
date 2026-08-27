@@ -528,8 +528,8 @@ async fn test_update_binds_changed_sponsor_validation_to_locked_state() {
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager
         .expect_validate_fiscal_sponsor()
-        .withf(|recipient, require_automatic_tax| {
-            recipient.recipient_id == "acct_new" && *require_automatic_tax
+        .withf(|recipient, automatic_tax_jurisdiction| {
+            recipient.recipient_id == "acct_new" && automatic_tax_jurisdiction.is_none()
         })
         .times(1)
         .returning(|_, _| Box::pin(async { Ok(()) }));
@@ -626,10 +626,10 @@ async fn test_update_rejects_changed_sponsor_without_required_automatic_tax() {
     let mut payments_manager = MockPaymentsManager::new();
     payments_manager
         .expect_validate_fiscal_sponsor()
-        .withf(|recipient, require_automatic_tax| {
+        .withf(|recipient, automatic_tax_jurisdiction| {
             recipient.provider == PaymentProvider::Stripe
                 && recipient.recipient_id == "acct_unready"
-                && *require_automatic_tax
+                && automatic_tax_jurisdiction.is_none()
         })
         .times(1)
         .returning(|_, _| {

@@ -14,7 +14,7 @@ use crate::{
     config::PaymentsConfig,
     types::payments::{
         FiscalSponsorSeller, PaymentProvider, TicketTaxBehavior, TicketTaxCalculationMode,
-        TicketTaxRate, TicketVenue,
+        TicketTaxJurisdiction, TicketTaxRate, TicketVenue,
     },
 };
 
@@ -428,8 +428,9 @@ pub(crate) struct FiscalSponsorReadinessInput {
     pub connected_seller_id: String,
     /// Payments provider that owns the connected account.
     pub provider: PaymentProvider,
-    /// Whether active automatic-tax settings are required.
-    pub require_automatic_tax: bool,
+
+    /// Venue jurisdiction requiring active automatic-tax setup.
+    pub automatic_tax_jurisdiction: Option<TicketTaxJurisdiction>,
 }
 
 /// Request used to retrieve authoritative Checkout financial fields.
@@ -587,6 +588,9 @@ pub(crate) struct ValidateTaxRatesInput {
     pub manual_tax_rate_ids: Vec<String>,
     /// Inclusive or exclusive behavior required by the event.
     pub tax_behavior: TicketTaxBehavior,
+
+    /// Valid venue jurisdiction the Tax Rates must cover.
+    pub jurisdiction: Option<TicketTaxJurisdiction>,
 }
 
 /// Builds a payments provider from configuration.
