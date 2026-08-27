@@ -19,7 +19,6 @@ use ocg_common::{
     runtime::{setup_logging, shutdown_signal},
 };
 use tokio::net::TcpListener;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, info};
 
 use crate::{
@@ -37,6 +36,7 @@ use crate::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
             start_payment_workers,
         },
+        workers::BackgroundTasks,
     },
 };
 
@@ -72,31 +72,6 @@ struct Args {
     config_file: Option<PathBuf>,
 }
 
-/// Background worker coordination primitives.
-struct BackgroundTasks {
-    /// Token used to request worker cancellation.
-    cancellation_token: CancellationToken,
-    /// Tracker used to await worker completion.
-    task_tracker: TaskTracker,
-}
-
-impl BackgroundTasks {
-    /// Create background task coordination primitives.
-    fn new() -> Self {
-        Self {
-            cancellation_token: CancellationToken::new(),
-            task_tracker: TaskTracker::new(),
-        }
-    }
-
-    /// Request background workers to stop and wait for them.
-    async fn shutdown(self) {
-        self.task_tracker.close();
-        self.cancellation_token.cancel();
-        self.task_tracker.wait().await;
-    }
-}
-
 /// Main entry point for the application.
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -113,31 +88,23 @@ async fn main() -> Result<()> {
     let image_storage = setup_image_storage(&cfg, db.clone());
 
     // Configure background services that depend on the database
-    let badge_workers_db = db.clone() as DynDB;
-    start_badge_award_workers(
-        &badge_workers_db,
-        &background_tasks.task_tracker,
-        &background_tasks.cancellation_token,
-    );
-    start_meetings_workers(&cfg, db.clone(), &background_tasks);
+    let workers_db = db.clone() as DynDB;
+    start_badge_award_workers(&workers_db, &background_tasks);
+    start_meetings_workers(cfg.meetings.as_ref(), db.clone(), &background_tasks);
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
     let payments_provider = build_payments_provider(cfg.payments.as_ref());
-    let enrollment_workers_db = db.clone() as DynDB;
     start_enrollment_workers(
-        &enrollment_workers_db,
-        &background_tasks.task_tracker,
-        &background_tasks.cancellation_token,
+        &workers_db,
         cfg.payments.as_ref().map(PaymentsConfig::provider),
+        &background_tasks,
     );
-    let payments_workers_db = db.clone() as DynDB;
     start_payment_workers(
-        &payments_workers_db,
+        &workers_db,
         notifications_manager.clone(),
         payments_provider.as_ref(),
         &cfg.server,
-        &background_tasks.task_tracker,
-        &background_tasks.cancellation_token,
+        &background_tasks,
     );
     let payments_manager = setup_payments_manager(
         db.clone(),
@@ -213,11 +180,7 @@ fn setup_activity_tracker(
     db: Arc<PgDB>,
     background_tasks: &BackgroundTasks,
 ) -> Arc<ActivityTrackerDB> {
-    Arc::new(ActivityTrackerDB::new(
-        db,
-        &background_tasks.task_tracker,
-        &background_tasks.cancellation_token,
-    ))
+    Arc::new(ActivityTrackerDB::new(db, background_tasks))
 }
 
 /// Parse the command line arguments and load configuration.
@@ -261,8 +224,7 @@ fn setup_notifications_manager(
         &cfg.email,
         &cfg.server.base_url,
         &email_sender,
-        &background_tasks.task_tracker,
-        &background_tasks.cancellation_token,
+        background_tasks,
     )))
 }
 
@@ -282,12 +244,16 @@ fn setup_payments_manager(
 }
 
 /// Start meetings workers for the enabled providers.
-fn start_meetings_workers(cfg: &Config, db: Arc<PgDB>, background_tasks: &BackgroundTasks) {
+fn start_meetings_workers(
+    meetings_cfg: Option<&MeetingsConfig>,
+    db: Arc<PgDB>,
+    background_tasks: &BackgroundTasks,
+) {
     // Collect the meetings providers enabled in the configuration
     let mut meetings_providers = HashMap::new();
 
-    if let Some(ref meetings_cfg) = cfg.meetings
-        && let Some(ref zoom_cfg) = meetings_cfg.zoom
+    if let Some(meetings_cfg) = meetings_cfg
+        && let Some(zoom_cfg) = &meetings_cfg.zoom
         && zoom_cfg.enabled
     {
         meetings_providers.insert(
@@ -301,11 +267,8 @@ fn start_meetings_workers(cfg: &Config, db: Arc<PgDB>, background_tasks: &Backgr
         MeetingsManager::new(
             Arc::new(meetings_providers),
             db,
-            cfg.meetings
-                .as_ref()
-                .and_then(|meetings_cfg| meetings_cfg.zoom.clone()),
-            &background_tasks.task_tracker,
-            &background_tasks.cancellation_token,
+            meetings_cfg.and_then(|meetings_cfg| meetings_cfg.zoom.clone()),
+            background_tasks,
         );
     }
 }

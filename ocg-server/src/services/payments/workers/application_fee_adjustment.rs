@@ -1,12 +1,15 @@
 //! Background processing for durable application-fee adjustments.
 
 use anyhow::Result;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, instrument, warn};
 
 use crate::{
     db::{DynDB, payments::ClaimedEventPurchaseApplicationFeeAdjustment},
-    services::workers::claim_loop::{self, ClaimLoopConfig},
+    services::workers::{
+        BackgroundTasks,
+        claim_loop::{self, ClaimLoopConfig},
+    },
 };
 
 use super::super::{ApplicationFeeAdjustmentInput, DynPaymentsProvider};
@@ -21,18 +24,17 @@ const NUM_WORKERS: usize = 1;
 pub(in crate::services::payments) fn start(
     db: &DynDB,
     payments_provider: Option<&DynPaymentsProvider>,
-    task_tracker: &TaskTracker,
-    cancellation_token: &CancellationToken,
+    background_tasks: &BackgroundTasks,
 ) {
     // Start dedicated processors with shared graceful-shutdown coordination
     for _ in 0..NUM_WORKERS {
         let worker = Worker {
-            cancellation_token: cancellation_token.clone(),
+            cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
 
             payments_provider: payments_provider.cloned(),
         };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             worker.run().await;
         });
     }

@@ -5,10 +5,10 @@
 //! should stay isolated inside provider modules, while shared checkout,
 //! refund, and webhook flows stay generic.
 
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
-
 use crate::{
-    config::HttpServerConfig, db::DynDB, services::notifications::DynNotificationsManager,
+    config::HttpServerConfig,
+    db::DynDB,
+    services::{notifications::DynNotificationsManager, workers::BackgroundTasks},
 };
 
 mod manager;
@@ -46,22 +46,16 @@ pub(crate) fn start_payment_workers(
     notifications_manager: DynNotificationsManager,
     payments_provider: Option<&DynPaymentsProvider>,
     server_cfg: &HttpServerConfig,
-    task_tracker: &TaskTracker,
-    cancellation_token: &CancellationToken,
+    background_tasks: &BackgroundTasks,
 ) {
     // Start provider-mediated application-fee adjustment workers
-    workers::application_fee_adjustment::start(
-        db,
-        payments_provider,
-        task_tracker,
-        cancellation_token,
-    );
+    workers::application_fee_adjustment::start(db, payments_provider, background_tasks);
 
     // Start provider-mediated credit-note workers
-    workers::credit_note::start(db, payments_provider, task_tracker, cancellation_token);
+    workers::credit_note::start(db, payments_provider, background_tasks);
 
     // Start provider-independent recovery for every durable payment queue
-    workers::recovery::start(db, task_tracker, cancellation_token);
+    workers::recovery::start(db, background_tasks);
 
     // Start provider-mediated refunds with their notification boundary
     workers::refund::start(
@@ -69,7 +63,6 @@ pub(crate) fn start_payment_workers(
         notifications_manager,
         payments_provider,
         server_cfg.clone(),
-        task_tracker,
-        cancellation_token,
+        background_tasks,
     );
 }

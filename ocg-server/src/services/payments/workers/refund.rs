@@ -1,7 +1,7 @@
 //! Background processing for all provider-mediated event refunds.
 
 use anyhow::{Context, Result, anyhow};
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::sync::CancellationToken;
 use tracing::{error, instrument, warn};
 
 use crate::{
@@ -9,7 +9,10 @@ use crate::{
     db::{DynDB, payments::ClaimedEventPurchaseRefund},
     services::{
         notifications::DynNotificationsManager,
-        workers::claim_loop::{self, ClaimLoopConfig},
+        workers::{
+            BackgroundTasks,
+            claim_loop::{self, ClaimLoopConfig},
+        },
     },
 };
 
@@ -31,8 +34,7 @@ pub(in crate::services::payments) fn start(
     notifications_manager: DynNotificationsManager,
     payments_provider: Option<&DynPaymentsProvider>,
     server_cfg: HttpServerConfig,
-    task_tracker: &TaskTracker,
-    cancellation_token: &CancellationToken,
+    background_tasks: &BackgroundTasks,
 ) {
     let notification_composer =
         PaymentsNotificationComposer::new(db.clone(), notifications_manager, server_cfg);
@@ -40,12 +42,12 @@ pub(in crate::services::payments) fn start(
     // Start provider workers even when this deployment has no configured provider
     for _ in 0..NUM_WORKERS {
         let worker = Worker {
-            cancellation_token: cancellation_token.clone(),
+            cancellation_token: background_tasks.cancellation_token(),
             db: db.clone(),
             notification_composer: notification_composer.clone(),
             payments_provider: payments_provider.cloned(),
         };
-        task_tracker.spawn(async move {
+        background_tasks.spawn(async move {
             worker.run().await;
         });
     }
