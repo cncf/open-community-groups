@@ -10,12 +10,19 @@ use mockall::automock;
 use serde::{Deserialize, Serialize};
 use serde_with::{DefaultOnNull, DurationSecondsWithFrac, serde_as, skip_serializing_none};
 use strum::{AsRefStr, Display, EnumString};
-use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, instrument};
 use uuid::Uuid;
 
-use crate::{config::MeetingsZoomConfig, db::meetings::DynDBMeetings};
+use crate::{
+    config::MeetingsZoomConfig,
+    db::meetings::DynDBMeetings,
+    services::workers::{
+        WorkerIteration,
+        claim_loop::{self, ClaimLoopConfig},
+        run_worker,
+    },
+};
 
 #[cfg(test)]
 mod tests;
@@ -178,7 +185,7 @@ impl MeetingsManager {
     ) -> Self {
         // Setup and run workers to auto-end overdue meetings
         for _ in 1..=NUM_AUTO_END_WORKERS {
-            let mut worker = MeetingsAutoEndWorker {
+            let worker = MeetingsAutoEndWorker {
                 cancellation_token: cancellation_token.clone(),
                 db: db.clone(),
                 providers: providers.clone(),
@@ -201,7 +208,7 @@ impl MeetingsManager {
 
         // Setup and run workers to synchronize meetings
         for _ in 1..=NUM_SYNC_WORKERS {
-            let mut worker = MeetingsSyncWorker {
+            let worker = MeetingsSyncWorker {
                 cancellation_token: cancellation_token.clone(),
                 db: db.clone(),
                 providers: providers.clone(),
@@ -228,34 +235,20 @@ struct MeetingsAutoEndWorker {
 
 impl MeetingsAutoEndWorker {
     /// Main worker loop: auto-ends meetings until cancelled.
-    async fn run(&mut self) {
-        loop {
-            // Try to auto-end an overdue meeting
-            match self.auto_end_meeting().await {
-                Ok(true) => {
-                    // One meeting was processed, try to process another one immediately
-                }
-                Ok(false) => tokio::select! {
-                    // No overdue meetings to process, pause unless we've been asked to stop
-                    () = sleep(PAUSE_ON_AUTO_END_NONE) => {},
-                    () = self.cancellation_token.cancelled() => break,
-                },
-                Err(err) => {
-                    // Something went wrong processing auto-end, pause unless we've been asked to stop
-                    error!(%err, "error auto-ending meeting");
-                    let pause = err.retry_after().unwrap_or(PAUSE_ON_AUTO_END_ERROR);
-                    tokio::select! {
-                        () = sleep(pause) => {},
-                        () = self.cancellation_token.cancelled() => break,
-                    }
-                }
-            }
-
-            // Exit if the worker has been asked to stop
-            if self.cancellation_token.is_cancelled() {
-                break;
-            }
-        }
+    async fn run(&self) {
+        claim_loop::run(
+            &self.cancellation_token,
+            ClaimLoopConfig {
+                pause_on_error: PAUSE_ON_AUTO_END_ERROR,
+                pause_on_none: PAUSE_ON_AUTO_END_NONE,
+            },
+            || self.auto_end_meeting(),
+            |err| {
+                error!(%err, "error auto-ending meeting");
+                err.retry_after()
+            },
+        )
+        .await;
     }
 
     /// Attempt to auto-end one overdue meeting, if any.
@@ -329,8 +322,8 @@ struct MeetingsClaimRecoveryWorker {
 impl MeetingsClaimRecoveryWorker {
     /// Main worker loop: recovers stale meeting claims until cancelled.
     async fn run(&self) {
-        loop {
-            // Recover stale meeting claims and pick next pause interval
+        run_worker(&self.cancellation_token, || async {
+            // Recover stale meeting claims and select the next maintenance cadence
             let pause = match self.mark_stale_meeting_claims_unknown().await {
                 Ok(_) => PAUSE_ON_CLAIM_RECOVERY_NONE,
                 Err(err) => {
@@ -338,13 +331,9 @@ impl MeetingsClaimRecoveryWorker {
                     PAUSE_ON_CLAIM_RECOVERY_ERROR
                 }
             };
-
-            // Exit if the worker has been asked to stop
-            tokio::select! {
-                () = sleep(pause) => {},
-                () = self.cancellation_token.cancelled() => break,
-            }
-        }
+            WorkerIteration::Pause(pause)
+        })
+        .await;
     }
 
     /// Mark stale meeting processing claims with an unknown outcome.
@@ -377,41 +366,25 @@ struct MeetingsSyncWorker {
 
 impl MeetingsSyncWorker {
     /// Main worker loop: synchronizes meetings until cancelled.
-    async fn run(&mut self) {
-        loop {
-            // Try to sync a pending meeting
-            match self.sync_meeting().await {
-                Ok(true) => {
-                    // One meeting was synced, try to sync another one immediately
-                }
-                Ok(false) => tokio::select! {
-                    // No pending meetings to sync, pause unless we've been asked
-                    // to stop
-                    () = sleep(PAUSE_ON_SYNC_NONE) => {},
-                    () = self.cancellation_token.cancelled() => break,
-                },
-                Err(err) => {
-                    // Something went wrong syncing the meeting, pause unless
-                    // we've been asked to stop
-                    error!(%err, "error syncing meeting");
-                    let pause = err.retry_after().unwrap_or(PAUSE_ON_SYNC_ERROR);
-                    tokio::select! {
-                        () = sleep(pause) => {},
-                        () = self.cancellation_token.cancelled() => break,
-                    }
-                }
-            }
-
-            // Exit if the worker has been asked to stop
-            if self.cancellation_token.is_cancelled() {
-                break;
-            }
-        }
+    async fn run(&self) {
+        claim_loop::run(
+            &self.cancellation_token,
+            ClaimLoopConfig {
+                pause_on_error: PAUSE_ON_SYNC_ERROR,
+                pause_on_none: PAUSE_ON_SYNC_NONE,
+            },
+            || self.sync_meeting(),
+            |err| {
+                error!(%err, "error syncing meeting");
+                err.retry_after()
+            },
+        )
+        .await;
     }
 
     /// Attempt to sync an out-of-sync meeting, if any.
     #[instrument(skip(self), err)]
-    async fn sync_meeting(&mut self) -> Result<bool, SyncError> {
+    async fn sync_meeting(&self) -> Result<bool, SyncError> {
         // Claim an out-of-sync meeting before provider side effects
         let Some(meeting) = self.db.claim_meeting_out_of_sync().await.map_err(SyncError::Other)?
         else {

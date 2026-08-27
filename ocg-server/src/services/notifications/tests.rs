@@ -98,64 +98,6 @@ async fn test_enqueue_worker_enqueue_due_notifications_error() {
 }
 
 #[tokio::test]
-async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_error() {
-    // Setup cancellation token
-    let cancellation_token = CancellationToken::new();
-    let cancellation_token_for_mock = cancellation_token.clone();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_enqueue_due_event_reminders()
-        .times(1)
-        .withf(|base_url| base_url == "https://example.test")
-        .returning(move |_| {
-            cancellation_token_for_mock.cancel();
-            Err(anyhow!("enqueue error"))
-        });
-    let db: DynDB = Arc::new(db);
-
-    // Setup worker and execute loop
-    let worker = EnqueueWorker {
-        base_url: "https://example.test".to_string(),
-        cancellation_token: cancellation_token.clone(),
-        db,
-    };
-    worker.run().await;
-
-    // Check cancellation state
-    assert!(cancellation_token.is_cancelled());
-}
-
-#[tokio::test]
-async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_success() {
-    // Setup cancellation token
-    let cancellation_token = CancellationToken::new();
-    let cancellation_token_for_mock = cancellation_token.clone();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_enqueue_due_event_reminders()
-        .times(1)
-        .withf(|base_url| base_url == "https://example.test")
-        .returning(move |_| {
-            cancellation_token_for_mock.cancel();
-            Ok(1)
-        });
-    let db: DynDB = Arc::new(db);
-
-    // Setup worker and execute loop
-    let worker = EnqueueWorker {
-        base_url: "https://example.test".to_string(),
-        cancellation_token: cancellation_token.clone(),
-        db,
-    };
-    worker.run().await;
-
-    // Check cancellation state
-    assert!(cancellation_token.is_cancelled());
-}
-
-#[tokio::test]
 async fn test_delivery_recovery_worker_mark_stale_processing_notifications_unknown() {
     // Setup database mock
     let mut db = MockDB::new();
@@ -174,34 +116,6 @@ async fn test_delivery_recovery_worker_mark_stale_processing_notifications_unkno
 
     // Check result matches expectations
     assert_eq!(recovered, 2);
-}
-
-#[tokio::test]
-async fn test_delivery_recovery_worker_run_stops_on_cancellation_after_success() {
-    // Setup cancellation token
-    let cancellation_token = CancellationToken::new();
-    let cancellation_token_for_mock = cancellation_token.clone();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_mark_stale_processing_notifications_unknown()
-        .times(1)
-        .withf(|timeout| *timeout == DELIVERY_PROCESSING_TIMEOUT)
-        .returning(move |_| {
-            cancellation_token_for_mock.cancel();
-            Ok(1)
-        });
-    let db: DynDB = Arc::new(db);
-
-    // Setup worker and execute loop
-    let worker = DeliveryRecoveryWorker {
-        cancellation_token: cancellation_token.clone(),
-        db,
-    };
-    worker.run().await;
-
-    // Check cancellation state
-    assert!(cancellation_token.is_cancelled());
 }
 
 #[tokio::test]
@@ -244,7 +158,7 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification() 
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
@@ -302,7 +216,7 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification_wi
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
@@ -328,7 +242,7 @@ async fn test_delivery_worker_deliver_notification_no_pending_notifications() {
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
@@ -375,7 +289,7 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
@@ -429,7 +343,7 @@ async fn test_delivery_worker_deliver_notification_records_unknown_send_error() 
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
@@ -487,7 +401,7 @@ async fn test_delivery_worker_deliver_notification_requeues_retryable_send_error
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
@@ -541,7 +455,7 @@ async fn test_delivery_worker_deliver_notification_returns_unknown_update_error(
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),
@@ -586,7 +500,7 @@ async fn test_delivery_worker_deliver_notification_returns_update_error() {
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
-    let mut worker = DeliveryWorker {
+    let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
         cfg: sample_email_config(None),

@@ -4,10 +4,12 @@ use anyhow::Result;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, instrument, warn};
 
-use crate::db::{DynDB, payments::ClaimedEventPurchaseApplicationFeeAdjustment};
+use crate::{
+    db::{DynDB, payments::ClaimedEventPurchaseApplicationFeeAdjustment},
+    services::workers::claim_loop::{self, ClaimLoopConfig},
+};
 
 use super::super::{ApplicationFeeAdjustmentInput, DynPaymentsProvider};
-use super::claim_loop::run;
 
 #[cfg(test)]
 mod tests;
@@ -51,14 +53,16 @@ impl Worker {
     /// Processes application-fee adjustments until graceful shutdown.
     async fn run(&self) {
         // Delegate payment-specific claim cadence while preserving this error boundary
-        run(
+        claim_loop::run(
             &self.cancellation_token,
+            ClaimLoopConfig::default(),
             || self.process_next_application_fee_adjustment(),
             |err| {
                 error!(
                     error = %err,
                     "error processing event purchase application-fee adjustment"
                 );
+                None
             },
         )
         .await;

@@ -4,10 +4,12 @@ use anyhow::Result;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, instrument, warn};
 
-use crate::db::{DynDB, payments::ClaimedEventPurchaseCreditNote};
+use crate::{
+    db::{DynDB, payments::ClaimedEventPurchaseCreditNote},
+    services::workers::claim_loop::{self, ClaimLoopConfig},
+};
 
 use super::super::{CreditNoteInput, DynPaymentsProvider};
-use super::claim_loop::run;
 
 #[cfg(test)]
 mod tests;
@@ -51,10 +53,14 @@ impl Worker {
     /// Processes credit notes until graceful shutdown.
     async fn run(&self) {
         // Delegate payment-specific claim cadence while preserving this error boundary
-        run(
+        claim_loop::run(
             &self.cancellation_token,
+            ClaimLoopConfig::default(),
             || self.process_next_credit_note(),
-            |err| error!(error = %err, "error processing event purchase credit note"),
+            |err| {
+                error!(error = %err, "error processing event purchase credit note");
+                None
+            },
         )
         .await;
     }

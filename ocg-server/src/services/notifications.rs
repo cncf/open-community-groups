@@ -28,6 +28,11 @@ use uuid::Uuid;
 use crate::{
     config::EmailConfig,
     db::{DBOperations, DynDB},
+    services::workers::{
+        WorkerIteration,
+        claim_loop::{self, ClaimLoopConfig},
+        run_worker,
+    },
     templates::{
         helpers,
         notifications::{
@@ -152,7 +157,7 @@ impl PgNotificationsManager {
 
         // Setup and run workers to deliver notifications
         for _ in 1..=NUM_DELIVERY_WORKERS {
-            let mut worker = DeliveryWorker {
+            let worker = DeliveryWorker {
                 base_url: base_url.clone(),
                 cancellation_token: cancellation_token.clone(),
                 cfg: cfg.clone(),
@@ -189,8 +194,8 @@ struct EnqueueWorker {
 impl EnqueueWorker {
     /// Main worker loop: enqueues due notifications until cancelled.
     async fn run(&self) {
-        loop {
-            // Enqueue due notifications and pick next pause interval
+        run_worker(&self.cancellation_token, || async {
+            // Enqueue due notifications and select the next maintenance cadence
             let pause = match self.enqueue_due_notifications().await {
                 Ok(_) => PAUSE_ON_ENQUEUE_NONE,
                 Err(err) => {
@@ -198,13 +203,9 @@ impl EnqueueWorker {
                     PAUSE_ON_ENQUEUE_ERROR
                 }
             };
-
-            // Exit if the worker has been asked to stop
-            tokio::select! {
-                () = sleep(pause) => {},
-                () = self.cancellation_token.cancelled() => break,
-            }
-        }
+            WorkerIteration::Pause(pause)
+        })
+        .await;
     }
 
     /// Enqueue due notifications and return the number enqueued.
@@ -225,8 +226,8 @@ struct DeliveryRecoveryWorker {
 impl DeliveryRecoveryWorker {
     /// Main worker loop: marks stale processing notifications until cancelled.
     async fn run(&self) {
-        loop {
-            // Recover stale delivery claims and pick next pause interval
+        run_worker(&self.cancellation_token, || async {
+            // Recover stale delivery claims and select the next maintenance cadence
             let pause = match self.mark_stale_processing_notifications_unknown().await {
                 Ok(recovered) => {
                     if recovered > 0 {
@@ -239,13 +240,9 @@ impl DeliveryRecoveryWorker {
                     PAUSE_ON_DELIVERY_RECOVERY_ERROR
                 }
             };
-
-            // Exit if the worker has been asked to stop
-            tokio::select! {
-                () = sleep(pause) => {},
-                () = self.cancellation_token.cancelled() => break,
-            }
-        }
+            WorkerIteration::Pause(pause)
+        })
+        .await;
     }
 
     /// Mark stale processing notifications with an unknown delivery outcome.
@@ -273,41 +270,25 @@ struct DeliveryWorker {
 
 impl DeliveryWorker {
     /// Main worker loop: delivers notifications until cancelled.
-    async fn run(&mut self) {
-        loop {
-            // Try to deliver a pending notification
-            match self.deliver_notification().await {
-                Ok(true) => {
-                    // One notification was delivered, try to deliver another
-                    // one immediately
-                }
-                Ok(false) => tokio::select! {
-                    // No pending notifications, pause unless we've been asked
-                    // to stop
-                    () = sleep(PAUSE_ON_DELIVERY_NONE) => {},
-                    () = self.cancellation_token.cancelled() => break,
-                },
-                Err(err) => {
-                    // Something went wrong delivering the notification, pause
-                    // unless we've been asked to stop
-                    error!(error = %err, "error delivering notification");
-                    tokio::select! {
-                        () = sleep(PAUSE_ON_DELIVERY_ERROR) => {},
-                        () = self.cancellation_token.cancelled() => break,
-                    }
-                }
-            }
-
-            // Exit if the worker has been asked to stop
-            if self.cancellation_token.is_cancelled() {
-                break;
-            }
-        }
+    async fn run(&self) {
+        claim_loop::run(
+            &self.cancellation_token,
+            ClaimLoopConfig {
+                pause_on_error: PAUSE_ON_DELIVERY_ERROR,
+                pause_on_none: PAUSE_ON_DELIVERY_NONE,
+            },
+            || self.deliver_notification(),
+            |err| {
+                error!(error = %err, "error delivering notification");
+                None
+            },
+        )
+        .await;
     }
 
     /// Attempt to deliver a pending notification, if available.
     #[instrument(skip(self), err)]
-    async fn deliver_notification(&mut self) -> Result<bool> {
+    async fn deliver_notification(&self) -> Result<bool> {
         // Claim a notification before any external delivery side effects
         let Some(notification) = self.db.claim_pending_notification().await? else {
             return Ok(false);
