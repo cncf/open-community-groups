@@ -194,16 +194,20 @@ describe("questions-editor", () => {
     );
   });
 
-  it("uses a full-size secondary action for adding questions", async () => {
+  it("uses a full-size secondary action with a visible icon for adding questions", async () => {
+    // Mount an empty editor and locate the add-question action.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
     });
     const addQuestionButton = [...element.querySelectorAll("button")].find(
       (button) => button.textContent.trim() === "Add question",
     );
+    const addQuestionIcon = addQuestionButton.querySelector(".icon-add-circle");
 
+    // Verify the action uses full-size styling and a visible icon color.
     expect(addQuestionButton.classList.contains("btn-secondary")).to.equal(true);
     expect(addQuestionButton.classList.contains("btn-mini")).to.equal(false);
+    expect(addQuestionIcon.classList.contains("bg-current")).to.equal(true);
   });
 
   it("edits selectable questions through the modal editor", async () => {

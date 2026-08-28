@@ -58,19 +58,22 @@ const populateAnswersModal = (trigger, root, ids = defaultAnswersModal) => {
  * Show the registration answers modal if it is currently hidden.
  * @param {Document|Element} [root=document] Query root.
  * @param {string} [modalId=defaultAnswersModal.modalId] Modal element id.
+ * @param {HTMLElement|null} [focusOrigin=null] Element to focus when the modal closes.
  * @returns {void}
  */
-const openAnswersModal = (root = document, modalId = defaultAnswersModal.modalId) => {
-  setScopedModalVisibility(root, modalId, true);
+const openAnswersModal = (root = document, modalId = defaultAnswersModal.modalId, focusOrigin = null) => {
+  setScopedModalVisibility(root, modalId, true, focusOrigin);
 };
 
 /**
  * Initialize registration answer review modal controls when the modal exists.
  * @param {Document|Element} [root=document] Query root.
  * @param {Partial<typeof defaultAnswersModal>} [ids=defaultAnswersModal] Modal element ids.
+ * @param {(trigger: HTMLElement, root: Document|Element) => HTMLElement|null} [prepareOpen]
+ *   Prepares the surrounding UI and returns the modal focus origin.
  * @returns {void}
  */
-export const initializeAnswersModal = (root = document, ids = defaultAnswersModal) => {
+export const initializeAnswersModal = (root = document, ids = defaultAnswersModal, prepareOpen) => {
   if (!(root instanceof Element)) {
     return;
   }
@@ -87,8 +90,9 @@ export const initializeAnswersModal = (root = document, ids = defaultAnswersModa
     const answersTrigger = closestElementWithinRoot(event.target, modalIds.openSelector, root);
     if (answersTrigger instanceof HTMLElement) {
       event.stopPropagation();
+      const focusOrigin = prepareOpen?.(answersTrigger, root) ?? answersTrigger;
       populateAnswersModal(answersTrigger, root, modalIds);
-      openAnswersModal(root, modalIds.modalId);
+      openAnswersModal(root, modalIds.modalId, focusOrigin);
       return;
     }
 

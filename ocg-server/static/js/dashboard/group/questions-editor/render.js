@@ -23,7 +23,7 @@ const renderQuestionsEditor = (editor) => html`
           ?disabled=${editor.disabled}
           @click=${() => editor._addQuestion()}
         >
-          <div class="svg-icon size-4 icon-add-circle"></div>
+          <div class="svg-icon size-4 bg-current icon-add-circle"></div>
           Add question
         </button>
       </div>

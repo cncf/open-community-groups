@@ -131,6 +131,22 @@ describe("events list page", () => {
     expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
   });
 
+  it("restores disclosure focus when a root click closes an actions dropdown", () => {
+    // Open an actions dropdown and move focus into its controls.
+    const root = mountEventsList();
+    initializeEventsListPage(root);
+    const actionsButton = root.querySelector(".btn-actions");
+    const dropdown = root.querySelector("[data-event-actions-dropdown]");
+    actionsButton.click();
+    dropdown.querySelector("button").focus();
+
+    // A click inside the root closes the dropdown and restores its disclosure.
+    root.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+    expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
+    expect(document.activeElement).to.equal(actionsButton);
+  });
+
   it("toggles event action dropdowns added after initialization", () => {
     // Prepare an empty root before inserting a newly rendered event row.
     document.body.innerHTML = '<div id="events-list-root"></div>';
@@ -242,25 +258,40 @@ describe("events list page", () => {
     expect(root.dataset.invitationRequestAnswersModalReady).to.equal(undefined);
   });
 
-  it("opens invitation request answers from the shared review modal", () => {
-    // Render an invitation request answers trigger and modal.
+  it("closes the actions dropdown when opening invitation request answers", () => {
+    // Render a production-shaped invitation request actions dropdown and modal.
     document.body.innerHTML = `
       <div id="events-list-root">
         <button
           type="button"
-          data-answers-open
-          data-answers-source="invitation-request-answers-user-1"
-          data-answers-name="Requesting User"
+          class="btn-actions"
+          data-event-id="invitation-request-user-1"
+          aria-controls="dropdown-actions-invitation-request-user-1"
+          aria-expanded="false"
         >
-          View answers
+          Actions
         </button>
-        <div id="invitation-request-answers-user-1" hidden>
-          <ol>
-            <li>
-              <h4>Dietary restrictions?</h4>
-              <div>Vegetarian</div>
-            </li>
-          </ol>
+        <div
+          id="dropdown-actions-invitation-request-user-1"
+          data-event-actions-dropdown
+          class="dropdown hidden"
+        >
+          <button
+            type="button"
+            data-answers-open
+            data-answers-source="invitation-request-answers-user-1"
+            data-answers-name="Requesting User"
+          >
+            View answers
+          </button>
+          <div id="invitation-request-answers-user-1" hidden>
+            <ol>
+              <li>
+                <h4>Dietary restrictions?</h4>
+                <div>Vegetarian</div>
+              </li>
+            </ol>
+          </div>
         </div>
         <div id="invitation-request-answers-modal" class="hidden">
           <button id="close-invitation-request-answers-modal" type="button">Close</button>
@@ -273,23 +304,32 @@ describe("events list page", () => {
     `;
     const root = document.getElementById("events-list-root");
 
-    // Initialize the invitation request answers modal.
+    // Open the actions dropdown and invitation request answers modal.
     initializeEventsListPage(root);
-    root.querySelector("[data-answers-open]")?.click();
+    const actionsButton = root.querySelector(".btn-actions");
+    const answersButton = root.querySelector("[data-answers-open]");
+    const dropdown = root.querySelector("[data-event-actions-dropdown]");
+    actionsButton.click();
+    answersButton.focus();
+    answersButton.click();
 
-    // Verify opens the invitation request answers modal with copied answers.
+    // Verify the modal opens with copied answers after closing its actions dropdown.
     const modal = document.getElementById("invitation-request-answers-modal");
     const content = document.getElementById("invitation-request-answers-content");
     expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+    expect(actionsButton.getAttribute("aria-expanded")).to.equal("false");
+    expect(modal.contains(document.activeElement)).to.equal(true);
     expect(document.getElementById("invitation-request-answers-name")?.textContent).to.equal(
       "Requesting User",
     );
     expect(content.textContent).to.include("Dietary restrictions?");
     expect(content.textContent).to.include("Vegetarian");
 
-    // Close the invitation request answers modal.
+    // Dismiss the modal and restore focus to the visible actions disclosure.
     document.getElementById("cancel-invitation-request-answers-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(document.activeElement).to.equal(actionsButton);
   });
 
   it("opens invitation request answers when attendees features initialize first", () => {
