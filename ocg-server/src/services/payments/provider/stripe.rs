@@ -1636,11 +1636,12 @@ impl PaymentsProvider for StripeProvider {
             });
         }
 
-        // Guard creation against a fee Stripe settled in another currency
+        // Retrieve the application fee's platform settlement currency
+        let query = serde_urlencoded::to_string([("expand[]", "balance_transaction")])?;
         let response = self
             .client
             .get(format!(
-                "{}/application_fees/{}",
+                "{}/application_fees/{}?{query}",
                 self.api_base_url(),
                 input.provider_application_fee_id
             ))
@@ -1654,14 +1655,24 @@ impl PaymentsProvider for StripeProvider {
             "application-fee retrieval",
         )
         .await?;
+
+        // Fail closed when Stripe has not recorded a settlement currency
         let currency_code = Self::normalized_currency_code(&input.currency_code);
-        let fee_currency_code = Self::normalized_currency_code(&fee.currency);
-        if fee_currency_code != currency_code {
+        let Some(settlement) = fee.balance_transaction else {
+            bail!(
+                "Stripe application fee {} has no settlement currency; return the fee in the Stripe Dashboard and record it through financial recovery",
+                input.provider_application_fee_id
+            );
+        };
+
+        // Guard creation against a fee Stripe settled in another currency
+        let settlement_currency_code = Self::normalized_currency_code(&settlement.currency);
+        if settlement_currency_code != currency_code {
             bail!(
                 "Stripe application fee {} was settled as {} {} but the adjustment requests {} {}; return the fee in the Stripe Dashboard and record it through financial recovery",
                 input.provider_application_fee_id,
-                fee.amount,
-                fee_currency_code,
+                settlement.amount,
+                settlement_currency_code,
                 input.amount_minor,
                 currency_code
             );
@@ -2082,10 +2093,8 @@ struct StripeAccountResponse {
 /// Provider application fee used to guard refund creation.
 #[derive(Debug, Deserialize)]
 struct StripeApplicationFee {
-    /// Collected fee amount in the fee currency.
-    amount: i64,
-    /// Currency Stripe settled the fee in.
-    currency: String,
+    /// Balance transaction describing the platform settlement of the collected fee.
+    balance_transaction: Option<StripeBalanceTransaction>,
 }
 
 /// Provider application-fee refund used for lookup-before-create reconciliation.
@@ -2107,6 +2116,15 @@ struct StripeApplicationFeeRefund {
 struct StripeApplicationFeeRefundList {
     /// Application-fee refunds returned by Stripe.
     data: Vec<StripeApplicationFeeRefund>,
+}
+
+/// Platform settlement impact of a collected application fee.
+#[derive(Debug, Deserialize)]
+struct StripeBalanceTransaction {
+    /// Settled amount in the platform currency.
+    amount: i64,
+    /// Currency Stripe settled the fee in.
+    currency: String,
 }
 
 /// Minimal response payload returned by Stripe checkout session creation.

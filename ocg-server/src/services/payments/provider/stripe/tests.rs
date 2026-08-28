@@ -1352,14 +1352,15 @@ async fn list_tax_rates_propagates_provider_errors() {
 
 #[tokio::test]
 async fn reconcile_application_fee_adjustment_looks_up_before_creating_on_the_platform() {
-    // Setup an empty lookup, the fee currency guard, and the creation response
+    // Setup an empty lookup, the settlement-currency guard, and the creation response
     let router = Router::new()
         .route(
             "/v1/application_fees/fee_test_123",
-            get(|headers: HeaderMap| async move {
+            get(|headers: HeaderMap, uri: Uri| async move {
                 assert!(!headers.contains_key("stripe-account"));
                 assert_eq!(headers["stripe-version"], super::STRIPE_API_VERSION);
-                Json(json!({"amount": 125, "currency": "usd"}))
+                assert_eq!(uri.query(), Some("expand%5B%5D=balance_transaction"));
+                Json(json!({"balance_transaction": {"amount": 125, "currency": "usd"}}))
             }),
         )
         .route(
@@ -1430,7 +1431,13 @@ async fn reconcile_application_fee_adjustment_rejects_cross_currency_fee() {
     let router = Router::new()
         .route(
             "/v1/application_fees/fee_test_123",
-            get(|| async { Json(json!({"amount": 105, "currency": "eur"})) }),
+            get(|| async {
+                Json(json!({
+                    "amount": 125,
+                    "currency": "usd",
+                    "balance_transaction": {"amount": 105, "currency": "eur"}
+                }))
+            }),
         )
         .route(
             "/v1/application_fees/fee_test_123/refunds",
@@ -1464,6 +1471,48 @@ async fn reconcile_application_fee_adjustment_rejects_cross_currency_fee() {
     assert!(err.to_string().contains("fee_test_123"));
     assert!(err.to_string().contains("105 eur"));
     assert!(err.to_string().contains("125 usd"));
+    assert!(err.to_string().contains("financial recovery"));
+}
+
+#[tokio::test]
+async fn reconcile_application_fee_adjustment_rejects_missing_settlement_currency() {
+    // Setup an empty lookup and a fee with no settlement transaction
+    let router = Router::new()
+        .route(
+            "/v1/application_fees/fee_test_123",
+            get(|| async { Json(json!({"balance_transaction": null})) }),
+        )
+        .route(
+            "/v1/application_fees/fee_test_123/refunds",
+            get(|| async { Json(json!({"data": []})) }).post(|| async {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "unverified application-fee refund must not be created",
+                )
+            }),
+        );
+    let (api_base_url, server) = spawn_stripe_api(router).await;
+    let mut provider = sample_stripe_provider();
+    provider.api_base_url = api_base_url;
+
+    // Reconcile an adjustment whose settlement currency cannot be verified
+    let err = provider
+        .reconcile_application_fee_adjustment(&ApplicationFeeAdjustmentInput {
+            amount_minor: 125,
+            connected_seller_id: "acct_test_123".to_string(),
+            currency_code: "USD".to_string(),
+            event_purchase_id: Uuid::new_v4(),
+            idempotency_key: "fee-adjustment-test".to_string(),
+            kind: "tax-reconciliation".to_string(),
+            provider_application_fee_id: "fee_test_123".to_string(),
+        })
+        .await
+        .expect_err("missing settlement currency to fail fast");
+    server.abort();
+
+    // Check the failure directs operators toward manual financial recovery
+    assert!(err.to_string().contains("fee_test_123"));
+    assert!(err.to_string().contains("no settlement currency"));
     assert!(err.to_string().contains("financial recovery"));
 }
 
