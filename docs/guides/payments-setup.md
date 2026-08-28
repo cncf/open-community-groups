@@ -283,8 +283,10 @@ understand the applicable charges.
 Stripe Tax only calculates and collects tax in the locations where the
 connected account has an active registration. OCG checks that the connected
 account's Stripe Tax settings are active and that an active registration covers
-the event venue whenever automatic-tax readiness is required. Any venue country
-is supported. Registrations match at country level, with an exact state match
+the event venue whenever automatic-tax readiness is required. OCG does not
+restrict venue countries, but Stripe Tax must support the venue location;
+unsupported locations fail readiness and require Manual Stripe Tax Rates.
+Registrations match at country level, with an exact state match
 for United States venues. Canadian country-wide registrations cover every
 province; a province-specific registration must match the venue province. These
 readiness checks catch missing setup, but the sponsor and platform administrator

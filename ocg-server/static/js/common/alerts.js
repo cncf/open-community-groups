@@ -5,6 +5,7 @@ import {
   markDatasetReady,
 } from "/static/js/common/dom.js";
 import { getHtmxTriggerNames } from "/static/js/common/htmx-triggers.js";
+import { escapeHtml } from "/static/js/common/trusted-html.js";
 
 const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
@@ -147,10 +148,10 @@ export const showDeploymentRefreshRetryAlert = () => {
 export const showServerErrorAlert = (baseMessage, serverError) => {
   const warningBox = serverError
     ? `<div class="mt-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 text-left">
-      ${serverError}
+      ${escapeHtml(serverError)}
       </div>`
     : "";
-  showErrorAlert(`${baseMessage}${warningBox}`, true, true);
+  showErrorAlert(`${escapeHtml(baseMessage)}${warningBox}`, true, true);
 };
 
 /**
