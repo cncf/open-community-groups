@@ -77,6 +77,11 @@ export const TEST_REGISTRATION_WINDOW_EVENTS = {
     name: "Registration Window Approval Closed",
     slug: "alpha-registration-window-approval-closed",
   },
+  approvalFuture: {
+    id: "55555555-5555-5555-5555-555555555922",
+    name: "Registration Window Approval Future",
+    slug: "alpha-registration-window-approval-future",
+  },
   closeOnlyOpen: {
     id: "55555555-5555-5555-5555-555555555907",
     name: "Registration Window Close Only Open",
@@ -121,6 +126,11 @@ export const TEST_REGISTRATION_WINDOW_EVENTS = {
     id: "55555555-5555-5555-5555-555555555903",
     name: "Registration Window Paid Open",
     slug: "alpha-registration-window-paid-open",
+  },
+  priceEnded: {
+    id: "55555555-5555-5555-5555-555555555923",
+    name: "Registration Window Price Ended",
+    slug: "alpha-registration-window-price-ended",
   },
   waitlistClosed: {
     id: "55555555-5555-5555-5555-555555555906",

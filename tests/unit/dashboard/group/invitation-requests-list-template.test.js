@@ -95,7 +95,7 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('class="2xl:hidden px-8 py-12 text-center" colspan="3"');
     expect(template).not.to.include("hidden xl:table-cell 2xl:hidden");
     expect(template).to.include(
-      'class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center" colspan="5"',
+      'class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center" colspan="5"',
     );
     expect(template).to.include('class="hidden min-[1920px]:table-cell px-8 py-12 text-center" colspan="7"');
     expect(tableHeader.indexOf("Status")).to.be.lessThan(tableHeader.indexOf("Ticket type"));

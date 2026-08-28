@@ -1,5 +1,6 @@
 import { expect, test } from "../../../fixtures.js";
 
+import { queryE2eDatabase } from "../../../database.js";
 import {
   E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
@@ -9,6 +10,7 @@ import {
   TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
   TEST_REGISTRATION_WINDOW_EVENTS,
+  TEST_USER_IDS,
   expectPaginationNavigation,
   expectTableColumnsAtViewport,
   expectTableHeaders,
@@ -19,6 +21,28 @@ import {
   waitForActionResponse,
   waitForAttendanceState,
 } from "../../../utils.js";
+
+// Restore the active checkout hold and its unanswered registration state.
+const resetClosedCheckoutAnswers = () => {
+  const eventId =
+    TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed.id;
+
+  queryE2eDatabase(`
+    update event_attendee
+    set
+      registration_answers = null,
+      status = 'registration-questions-pending'
+    where event_id = '${eventId}'
+    and user_id = '${TEST_USER_IDS.member2}';
+
+    update event_purchase
+    set
+      hold_expires_at = current_timestamp + interval '2 days',
+      provider_checkout_url = 'https://example.test/checkout/registration-window-pending',
+      status = 'pending'
+    where event_purchase_id = '59555555-5555-5555-5555-555555555911';
+  `);
+};
 
 // Cancel attendance from the public event page when a reusable user is registered.
 const cancelPublicAttendance = async (page, eventId) => {
@@ -351,6 +375,104 @@ test.describe("user dashboard my events view", () => {
         name: "Cancel checkout",
       }),
     ).toBeEnabled();
+  });
+
+  test("active checkout holds save required answers after registration closes", async ({
+    member2Page,
+  }) => {
+    const event =
+      TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed;
+
+    // Restore the active checkout hold after registration closes.
+    resetClosedCheckoutAnswers();
+
+    try {
+      // Load the held registration and open its completion flow.
+      await navigateToPath(member2Page, "/dashboard/user?tab=events");
+      const dashboardContent = member2Page.locator("#dashboard-content");
+      const eventRow = dashboardContent.locator("tr", {
+        hasText: event.name,
+      });
+      await expect(eventRow).toContainText("Payment pending");
+      await openEventActions(eventRow);
+      const completeRegistrationAction = eventRow.getByRole("menuitem", {
+        name: "Complete registration",
+      });
+      await expect(completeRegistrationAction).toBeEnabled();
+      await completeRegistrationAction.click();
+
+      // Answer the required registration question in the completion modal.
+      const registrationModal = member2Page.getByRole("dialog", {
+        name: "Registration questions",
+      });
+      const answer =
+        "I will finish these answers while my checkout hold is active.";
+      await expect(registrationModal).toBeVisible();
+      await registrationModal
+        .locator("fieldset", {
+          hasText: "What should the organizers know?",
+        })
+        .locator("textarea")
+        .fill(answer);
+
+      // Submit the answer and verify its serialized request contract.
+      const answersRequest = member2Page.waitForRequest(
+        (request) =>
+          request.method() === "PUT" &&
+          request.url().includes(`/${event.id}/registration-answers`),
+      );
+      await waitForActionResponse(
+        member2Page,
+        () =>
+          registrationModal
+            .getByRole("button", {
+              name: "Save answers",
+              exact: true,
+            })
+            .click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${event.id}/registration-answers`,
+        },
+      );
+      const requestData = new URLSearchParams(
+        (await answersRequest).postData() ?? "",
+      );
+      expect(JSON.parse(requestData.get("registration_answers"))).toEqual({
+        answers: [
+          {
+            question_id: "57555555-5555-5555-5555-555555555911",
+            value: answer,
+          },
+        ],
+      });
+      await expect(registrationModal).toBeHidden();
+      await expect(member2Page.locator(".swal2-popup")).toContainText(
+        "Registration answers saved.",
+      );
+      await member2Page.getByRole("button", { name: "OK" }).click();
+
+      // Reloaded state keeps the hold resumable and the answer editable.
+      await expect(eventRow).toContainText("Payment pending");
+      await openEventActions(eventRow);
+      await expect(
+        eventRow.getByRole("menuitem", { name: "Continue to checkout" }),
+      ).toHaveAttribute(
+        "href",
+        "https://example.test/checkout/registration-window-pending",
+      );
+      await eventRow
+        .getByRole("menuitem", { name: "Update answers" })
+        .click();
+      await expect(
+        member2Page
+          .getByRole("dialog", { name: "Registration questions" })
+          .locator("textarea"),
+      ).toHaveValue(answer);
+    } finally {
+      // Restore the seeded checkout hold for later tests.
+      resetClosedCheckoutAnswers();
+    }
   });
 });
 test("my events table exposes every column at its responsive breakpoint", async ({

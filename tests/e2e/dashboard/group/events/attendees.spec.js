@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test } from "../../../fixtures.js";
 
+import { queryE2eDatabase } from "../../../database.js";
 import {
   buildE2eUrl,
   E2E_PAYMENTS_ENABLED,
@@ -9,18 +10,23 @@ import {
   TEST_EVENT_CANCELLATION,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
+  TEST_GROUP_SLUGS,
   TEST_INVITATION_CANCELLATION,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
+  TEST_REGISTRATION_WINDOW_EVENTS,
   TEST_TICKETING_EVENTS,
   TEST_USER_IDS,
   expectCurrentPaginationNavigation,
   expectTableColumnsAtViewport,
   expectTableHeaders,
+  getAttendButton,
+  navigateToEvent,
   navigateToPath,
   routeNextRequestWithQuery,
   waitForActionResponse,
+  waitForAttendanceState,
 } from "../../../utils.js";
 
 import {
@@ -32,6 +38,122 @@ import {
   expectUserColumnHasRoom,
   expectUserProfileModalFromRow,
 } from "./user-profile-modal-helpers.js";
+
+const CLOSED_APPROVAL_OFFER_ID =
+  "59555555-5555-5555-5555-555555555905";
+
+// Restore invitation review fixtures whose public registration window is closed.
+const resetClosedRegistrationWindowRequests = () => {
+  const eventId = TEST_REGISTRATION_WINDOW_EVENTS.approvalClosed.id;
+
+  queryE2eDatabase(`
+    delete from event_purchase
+    where event_id = '${eventId}'
+    and user_id in (
+      '${TEST_USER_IDS.member1}',
+      '${TEST_USER_IDS.pending1}',
+      '${TEST_USER_IDS.pending2}'
+    );
+
+    delete from event_attendee
+    where event_id = '${eventId}'
+    and user_id in (
+      '${TEST_USER_IDS.member1}',
+      '${TEST_USER_IDS.pending1}',
+      '${TEST_USER_IDS.pending2}'
+    );
+
+    delete from admission_offer
+    where event_id = '${eventId}'
+    and user_id in (
+      '${TEST_USER_IDS.member1}',
+      '${TEST_USER_IDS.pending1}',
+      '${TEST_USER_IDS.pending2}'
+    );
+
+    update event_invitation_request
+    set
+      status = case
+        when user_id = '${TEST_USER_IDS.member1}' then 'accepted'
+        else 'pending'
+      end,
+      reviewed_at = case
+        when user_id = '${TEST_USER_IDS.member1}' then current_timestamp - interval '2 days'
+        else null
+      end,
+      reviewed_by = case
+        when user_id = '${TEST_USER_IDS.member1}' then '${TEST_USER_IDS.organizer1}'::uuid
+        else null
+      end
+    where event_id = '${eventId}'
+    and user_id in (
+      '${TEST_USER_IDS.member1}',
+      '${TEST_USER_IDS.pending1}',
+      '${TEST_USER_IDS.pending2}'
+    );
+
+    insert into admission_offer (
+      admission_offer_id,
+      created_at,
+      amount_minor,
+      currency_code,
+      discount_amount_minor,
+      event_id,
+      event_ticket_type_id,
+      expires_at,
+      source,
+      status,
+      ticket_title,
+      user_id
+    ) values (
+      '${CLOSED_APPROVAL_OFFER_ID}',
+      current_timestamp - interval '2 days',
+      null,
+      null,
+      null,
+      '${eventId}',
+      (
+        select event_ticket_type_id
+        from event_ticket_type
+        where event_id = '${eventId}'
+        order by "order"
+        limit 1
+      ),
+      current_timestamp - interval '1 day',
+      'approval',
+      'expired',
+      null,
+      '${TEST_USER_IDS.member1}'
+    );
+  `);
+};
+
+// Restore the pending approval request whose registration window opens later.
+const resetFutureRegistrationWindowRequest = () => {
+  const eventId = TEST_REGISTRATION_WINDOW_EVENTS.approvalFuture.id;
+
+  queryE2eDatabase(`
+    delete from event_purchase
+    where event_id = '${eventId}'
+    and user_id = '${TEST_USER_IDS.member1}';
+
+    delete from event_attendee
+    where event_id = '${eventId}'
+    and user_id = '${TEST_USER_IDS.member1}';
+
+    delete from admission_offer
+    where event_id = '${eventId}'
+    and user_id = '${TEST_USER_IDS.member1}';
+
+    update event_invitation_request
+    set
+      status = 'pending',
+      reviewed_at = null,
+      reviewed_by = null
+    where event_id = '${eventId}'
+    and user_id = '${TEST_USER_IDS.member1}';
+  `);
+};
 
 // Open the attendees tab for a specific event and return its content.
 const openAttendeesTab = async (page, eventName, eventId, query = "") => {
@@ -93,14 +215,14 @@ const expectTicketOfferStatus = async (
     exact: true,
   });
   const offerDetails = requestRow.getByRole("tooltip");
+  const offerStatusDetails = offerDetails
+    .getByText("Offer status", { exact: true })
+    .locator("..");
 
   await requestStatusButton.focus();
   await expect(offerDetails).toBeVisible();
   await expect(
-    offerDetails.getByText("Offer status", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    offerDetails.getByText(offerStatus, { exact: true }),
+    offerStatusDetails.getByText(offerStatus, { exact: true }),
   ).toBeVisible();
 };
 
@@ -774,6 +896,112 @@ test.describe("group dashboard attendees tab", () => {
     await expect(answersModal).toBeHidden();
   });
 
+  test("organizer can review invitation request registration answers", async ({
+    organizerGroupPage,
+  }) => {
+    // Load Requests for the seeded approval-required registration event.
+    const requestEvent = TEST_TICKETING_EVENTS.ticketRequest;
+    const requestsContent = await openInvitationRequestsTab(
+      organizerGroupPage,
+      requestEvent.name,
+      requestEvent.id,
+    );
+    const requestRow = requestsContent.locator("tr", {
+      hasText: "E2E Pending One",
+    });
+    const actionsButton = requestRow.getByRole("button", {
+      name: "Open actions for E2E Pending One",
+    });
+    const actionsDropdown = requestRow.locator(
+      "[data-event-actions-dropdown]",
+    );
+
+    // Open the request actions and select its answer review action.
+    await expect(requestRow).toBeVisible();
+    await actionsButton.click();
+    await expect(actionsDropdown).toBeVisible();
+    await requestRow
+      .getByRole("button", { name: "View answers" })
+      .click();
+
+    // Verify the dropdown closes and the request answers fill the modal.
+    const answersModal = organizerGroupPage.locator(
+      "#invitation-request-answers-modal",
+    );
+    await expect(actionsDropdown).toBeHidden();
+    await expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    await expect(answersModal).toBeVisible();
+    await expect(
+      answersModal.getByRole("heading", { name: "Registration answers" }),
+    ).toBeVisible();
+    await expect(
+      answersModal.locator("#invitation-request-answers-name"),
+    ).toHaveText("E2E Pending One");
+    await expect(answersModal).toContainText(
+      "Why would you like this ticket?",
+    );
+    await expect(answersModal).toContainText(
+      "community programs can make technical events more welcoming",
+    );
+    await expect
+      .poll(() =>
+        answersModal.evaluate((modal) =>
+          modal.contains(document.activeElement),
+        ),
+      )
+      .toBe(true);
+
+    // Close the modal and return focus to the visible actions disclosure.
+    await answersModal
+      .locator("#cancel-invitation-request-answers-modal")
+      .click();
+    await expect(answersModal).toBeHidden();
+    await expect(actionsButton).toBeFocused();
+  });
+
+  test("viewer can review invitation request answers without managing the request", async ({
+    groupViewerPage,
+  }) => {
+    // Load Requests with read-only group permissions.
+    const requestEvent = TEST_TICKETING_EVENTS.ticketRequest;
+    const requestsContent = await openInvitationRequestsTab(
+      groupViewerPage,
+      requestEvent.name,
+      requestEvent.id,
+    );
+    const requestRow = requestsContent.locator("tr", {
+      hasText: "E2E Pending One",
+    });
+    const actionsButton = requestRow.getByRole("button", {
+      name: "Open actions for E2E Pending One",
+    });
+
+    // Open the read-only actions and review the submitted answer.
+    await expect(actionsButton).toBeEnabled();
+    await actionsButton.click();
+    await expect(
+      requestRow.getByRole("button", { name: "Accept", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      requestRow.getByRole("button", { name: "Reject", exact: true }),
+    ).toBeDisabled();
+    await requestRow
+      .getByRole("button", { name: "View answers" })
+      .click();
+
+    // Verify answers remain available, then dismiss with the keyboard.
+    const answersModal = groupViewerPage.locator(
+      "#invitation-request-answers-modal",
+    );
+    await expect(answersModal).toBeVisible();
+    await expect(answersModal).toContainText(
+      "community programs can make technical events more welcoming",
+    );
+    await groupViewerPage.keyboard.press("Escape");
+    await expect(answersModal).toBeHidden();
+    await expect(actionsButton).toBeFocused();
+  });
+
   test("organizer can download attendee answers as CSV", async ({
     organizerGroupPage,
   }) => {
@@ -1280,6 +1508,229 @@ test.describe("group dashboard attendees tab", () => {
       await expectTicketOfferStatus(pendingTwoRow, "Accepted", "Pending");
     } finally {
       await deleteEventFromList(organizerGroupPage, eventId);
+    }
+  });
+
+  test("organizer accepts and rejects requests after registration closes", async ({
+    organizerGroupPage,
+  }) => {
+    const event = TEST_REGISTRATION_WINDOW_EVENTS.approvalClosed;
+
+    // Restore the closed-window requests before organizer review.
+    resetClosedRegistrationWindowRequests();
+
+    try {
+      // Load the closed event's pending Requests tab.
+      const requestsContent = await openInvitationRequestsTab(
+        organizerGroupPage,
+        event.name,
+        event.id,
+      );
+
+      // Public registration is closed, but organizer review remains available.
+      await expect(requestsContent).toContainText(
+        "Public registration is not currently open.",
+      );
+      await expect(requestsContent).toContainText(
+        "Pending requests can still be accepted or rejected",
+      );
+
+      // Keep terminal requests visible while both organizer actions complete.
+      await requestsContent.getByLabel("Status filters").click();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () =>
+          requestsContent
+            .locator("#invitation-requests-status-filter")
+            .getByRole("button", { name: "All", exact: true })
+            .click(),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${event.id}/invitation-requests`,
+        },
+      );
+
+      // Reject one pending request and verify its updated state.
+      const rejectedRow = requestsContent.locator("tr", {
+        hasText: "E2E Pending One",
+      });
+      await rejectedRow
+        .getByRole("button", { name: "Open actions for E2E Pending One" })
+        .click();
+      const rejectButton = rejectedRow.getByRole("button", {
+        name: "Reject",
+        exact: true,
+      });
+      await expect(rejectButton).toBeEnabled();
+      await rejectButton.click();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${event.id}/attendees/${TEST_USER_IDS.pending1}/invitation-request/reject`,
+        },
+      );
+      await expect(rejectedRow).toContainText("Rejected");
+
+      // Accept the other request and verify its pending offer.
+      const acceptedRow = requestsContent.locator("tr", {
+        hasText: "E2E Pending Two",
+      });
+      await acceptedRow
+        .getByRole("button", { name: "Open actions for E2E Pending Two" })
+        .click();
+      const acceptButton = acceptedRow.getByRole("button", {
+        name: "Accept",
+        exact: true,
+      });
+      await expect(acceptButton).toBeEnabled();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => acceptButton.click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${event.id}/attendees/${TEST_USER_IDS.pending2}/invitation-request/accept`,
+        },
+      );
+      await expectTicketOfferStatus(acceptedRow, "Accepted", "Pending");
+    } finally {
+      // Restore the shared request fixtures for later tests.
+      resetClosedRegistrationWindowRequests();
+    }
+  });
+
+  test("organizer accepts a request before public registration opens", async ({
+    member1Page,
+    member2Page,
+    organizerGroupPage,
+  }) => {
+    const event = TEST_REGISTRATION_WINDOW_EVENTS.approvalFuture;
+
+    // Restore the pending request used by this cross-surface flow.
+    resetFutureRegistrationWindowRequest();
+
+    try {
+      // Public invitation requests remain unavailable before registration opens.
+      await navigateToEvent(
+        member2Page,
+        TEST_COMMUNITY_NAME,
+        TEST_GROUP_SLUGS.community1.alpha,
+        event.slug,
+      );
+      await waitForAttendanceState(member2Page);
+      await expect(getAttendButton(member2Page)).toContainText(
+        "Request invitation",
+      );
+      await expect(getAttendButton(member2Page)).toBeDisabled();
+
+      // Accept the seeded request from the organizer dashboard.
+      const requestsContent = await openInvitationRequestsTab(
+        organizerGroupPage,
+        event.name,
+        event.id,
+      );
+      await expect(requestsContent).toContainText(
+        "Public registration is not currently open.",
+      );
+
+      const requestRow = requestsContent.locator("tr", {
+        hasText: "E2E Member One",
+      });
+      await requestRow
+        .getByRole("button", { name: "Open actions for E2E Member One" })
+        .click();
+      const acceptButton = requestRow.getByRole("button", {
+        name: "Accept",
+        exact: true,
+      });
+      await expect(acceptButton).toBeEnabled();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => acceptButton.click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${event.id}/attendees/${TEST_USER_IDS.member1}/invitation-request/accept`,
+        },
+      );
+      await expect(requestRow).toHaveCount(0);
+
+      // The accepted request appears as a claimable offer for the requester.
+      await navigateToPath(member1Page, "/dashboard/user?tab=invitations");
+      const offerRow = member1Page.locator("#dashboard-content tr", {
+        hasText: event.name,
+      });
+      await expect(offerRow).toContainText("RSVP request approved");
+      await offerRow.getByLabel(/Open offer actions/).click();
+      await expect(
+        offerRow.getByRole("menuitem", { name: "Claim offer" }),
+      ).toBeEnabled();
+    } finally {
+      // Restore the shared request fixture for later tests.
+      resetFutureRegistrationWindowRequest();
+    }
+  });
+
+  test("organizer reissues an expired approval offer after registration closes", async ({
+    organizerGroupPage,
+  }) => {
+    const event = TEST_REGISTRATION_WINDOW_EVENTS.approvalClosed;
+
+    // Restore the expired approval offer before organizer review.
+    resetClosedRegistrationWindowRequests();
+
+    try {
+      // Load the closed event's Requests tab.
+      const requestsContent = await openInvitationRequestsTab(
+        organizerGroupPage,
+        event.name,
+        event.id,
+      );
+
+      // Include accepted requests so the expired approval offer is visible.
+      await requestsContent.getByLabel("Status filters").click();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () =>
+          requestsContent
+            .locator("#invitation-requests-status-filter")
+            .getByRole("button", { name: "All", exact: true })
+            .click(),
+        {
+          method: "GET",
+          urlIncludes: `/dashboard/group/events/${event.id}/invitation-requests`,
+        },
+      );
+
+      // Reissue the expired offer and verify its pending lifecycle state.
+      const requestRow = requestsContent.locator("tr", {
+        hasText: "E2E Member One",
+      });
+      await expectTicketOfferStatus(requestRow, "Accepted", "Expired");
+      await requestRow
+        .getByRole("button", { name: "Open actions for E2E Member One" })
+        .click();
+      const reissueButton = requestRow.getByRole("button", {
+        name: "Reissue offer",
+        exact: true,
+      });
+      await expect(reissueButton).toBeEnabled();
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => reissueButton.click(),
+        {
+          method: "PUT",
+          urlIncludes: `/dashboard/group/events/${event.id}/attendees/${TEST_USER_IDS.member1}/invitation-request/reissue`,
+        },
+      );
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Ticket offer reissued.",
+      );
+      await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+      await expectTicketOfferStatus(requestRow, "Accepted", "Pending");
+    } finally {
+      // Restore the shared request fixtures for later tests.
+      resetClosedRegistrationWindowRequests();
     }
   });
 

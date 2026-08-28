@@ -1239,6 +1239,48 @@ insert into event (
     null,
     now() - interval '1 day',
     '[{"id":"57555555-5555-5555-5555-555555555911","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555922',
+    'Registration Window Approval Future',
+    'alpha-registration-window-approval-future',
+    'Approval-required event whose registration window has not opened.',
+    'Approval event with future registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '120 days',
+    now() + interval '120 days 2 hours',
+    null,
+    false,
+    true,
+    now() + interval '1 day',
+    now() + interval '30 days',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555923',
+    'Registration Window Price Ended',
+    'alpha-registration-window-price-ended',
+    'Ticket offer event whose only price window has ended.',
+    'Ticket event with ended pricing.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '121 days',
+    now() + interval '121 days 2 hours',
+    null,
+    false,
+    true,
+    null,
+    null,
+    '[]'::jsonb
 );
 
 -- Ticketing workflow fixtures for payment returns, offers, and request coverage.
@@ -2731,6 +2773,14 @@ values (
     30,
     'Registration window pass',
     'Sellable pass used for pending payment dashboard coverage.'
+), (
+    '56555555-5555-5555-5555-555555555923',
+    true,
+    '55555555-5555-5555-5555-555555555923',
+    1,
+    20,
+    'Ended sales pass',
+    'Zero-price pass whose only sales window has ended.'
 );
 
 insert into event_ticket_type (
@@ -2975,6 +3025,75 @@ values (
     '77777777-7777-7777-7777-777777777703'
 );
 
+-- Pending ticket request with registration answers for dashboard review coverage.
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    registration_answers,
+    status,
+    user_id
+)
+values (
+    '55555555-5555-5555-5555-555555555913',
+    '56555555-5555-5555-5555-555555555913',
+    '{
+        "answers": [
+            {
+                "question_id": "57555555-5555-5555-5555-555555555913",
+                "value": "I want to learn how community programs can make technical events more welcoming."
+            }
+        ]
+    }'::jsonb,
+    'pending',
+    '77777777-7777-7777-7777-777777777707'
+);
+
+-- Invitation requests used to verify organizer review outside public windows.
+insert into event_invitation_request (
+    event_id,
+    event_ticket_type_id,
+    status,
+    user_id,
+    reviewed_at,
+    reviewed_by
+)
+values (
+    '55555555-5555-5555-5555-555555555905',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555905' order by "order" limit 1),
+    'pending',
+    '77777777-7777-7777-7777-777777777707',
+    null,
+    null
+), (
+    '55555555-5555-5555-5555-555555555905',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555905' order by "order" limit 1),
+    'pending',
+    '77777777-7777-7777-7777-777777777708',
+    null,
+    null
+), (
+    '55555555-5555-5555-5555-555555555905',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555905' order by "order" limit 1),
+    'accepted',
+    '77777777-7777-7777-7777-777777777705',
+    now() - interval '2 days',
+    '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555922',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555922' order by "order" limit 1),
+    'pending',
+    '77777777-7777-7777-7777-777777777705',
+    null,
+    null
+), (
+    '55555555-5555-5555-5555-555555555923',
+    '56555555-5555-5555-5555-555555555923',
+    'accepted',
+    '77777777-7777-7777-7777-777777777707',
+    now() - interval '2 days',
+    '77777777-7777-7777-7777-777777777703'
+);
+
 -- Claimable approval offer pairing member1's accepted invitation request.
 insert into admission_offer (
     admission_offer_id,
@@ -3139,6 +3258,62 @@ values
         'pending',
         '77777777-7777-7777-7777-777777777705'
     );
+
+-- Offers used by outside-window review and ended-price claim coverage.
+insert into admission_offer (
+    admission_offer_id,
+    created_at,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555905',
+    current_timestamp - interval '2 days',
+    null,
+    null,
+    null,
+    '55555555-5555-5555-5555-555555555905',
+    (select event_ticket_type_id from event_ticket_type where event_id = '55555555-5555-5555-5555-555555555905' order by "order" limit 1),
+    current_timestamp - interval '1 day',
+    'approval',
+    'expired',
+    null,
+    '77777777-7777-7777-7777-777777777705'
+), (
+    '59555555-5555-5555-5555-555555555923',
+    current_timestamp,
+    0,
+    null,
+    0,
+    '55555555-5555-5555-5555-555555555923',
+    '56555555-5555-5555-5555-555555555923',
+    current_timestamp + interval '5 days',
+    'approval',
+    'pending',
+    'Ended sales pass',
+    '77777777-7777-7777-7777-777777777707'
+), (
+    '59555555-5555-5555-6555-555555555923',
+    current_timestamp,
+    0,
+    null,
+    0,
+    '55555555-5555-5555-5555-555555555923',
+    '56555555-5555-5555-5555-555555555923',
+    current_timestamp + interval '5 days',
+    'waitlist',
+    'pending',
+    'Ended sales pass',
+    '77777777-7777-7777-7777-777777777708'
+);
 
 -- Terminal waitlist offers cover unavailable dashboard action reasons.
 insert into admission_offer (
@@ -3446,6 +3621,14 @@ values (
     30,
     'Registration window pass',
     'Sellable pass used for pending payment dashboard coverage.'
+), (
+    '56555555-5555-5555-5555-555555555923',
+    true,
+    '55555555-5555-5555-5555-555555555923',
+    1,
+    20,
+    'Ended sales pass',
+    'Zero-price pass whose only sales window has ended.'
 )
 on conflict (event_ticket_type_id) do nothing;
 
@@ -3522,6 +3705,12 @@ values (
     '56555555-5555-5555-5555-555555555911',
     null,
     null
+), (
+    '57555555-5555-5555-5555-555555555923',
+    0,
+    '56555555-5555-5555-5555-555555555923',
+    now() - interval '2 days',
+    now() - interval '1 day'
 ), (
     '57555555-5555-5555-5555-555555555912',
     2500,

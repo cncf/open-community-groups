@@ -230,7 +230,7 @@
                 <span class="text-stone-500">No invitation requests found.</span>
               {% endif -%}
             </td>
-            <td class="hidden 2xl:table-cell min-[1920px]:hidden px-8 py-12 text-center"
+            <td class="hidden 2xl:table-cell min-[1920px]:hidden! px-8 py-12 text-center"
                 colspan="5">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}

@@ -41,7 +41,7 @@ export const initializeEventsListPage = (root = document) => {
 
   // Bind request-answer review only when this page owns the modal
   if (getElementById(root, INVITATION_REQUEST_ANSWERS_MODAL.modalId)) {
-    initializeAnswersModal(root, INVITATION_REQUEST_ANSWERS_MODAL);
+    initializeAnswersModal(root, INVITATION_REQUEST_ANSWERS_MODAL, prepareInvitationRequestAnswersOpen);
   }
   initializeInvitationRequestTicketControls(root);
 
@@ -60,7 +60,7 @@ export const initializeEventsListPage = (root = document) => {
     }
 
     if (!closestElementWithinRoot(event.target, EVENT_ACTION_DROPDOWN_SELECTOR, root)) {
-      closeDropdowns(root);
+      closeDropdowns(root, null, true);
     }
   });
 
@@ -310,6 +310,23 @@ const initializeInvitationRequestTicketControl = (ticketTypeInput) => {
  */
 const initializeInvitationRequestTicketControls = (root) => {
   initializeMatchingRoots(root, INVITATION_REQUEST_TICKET_SELECTOR, initializeInvitationRequestTicketControl);
+};
+
+/**
+ * Closes an invitation request dropdown before opening its answers modal.
+ * @param {HTMLElement} trigger Answers modal trigger.
+ * @param {Document|Element} root Event list root.
+ * @returns {HTMLElement} Element that should regain focus when the modal closes.
+ */
+const prepareInvitationRequestAnswersOpen = (trigger, root) => {
+  const dropdown = closestElementWithinRoot(trigger, EVENT_ACTION_DROPDOWN_SELECTOR, root);
+  if (!dropdown) {
+    return trigger;
+  }
+
+  const actionsButton = getActionsDropdownButton(root, dropdown);
+  closeDropdowns(root);
+  return actionsButton ?? trigger;
 };
 
 /**
