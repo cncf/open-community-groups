@@ -76,6 +76,9 @@ describe("dashboard group event add template", () => {
     expect(template).to.include('id="pending-changes-alert" class="col-span-full hidden min-w-0"');
     expect(template).to.include('class="min-w-0 flex-1 break-words text-sm/6"');
     expect(template).to.include('class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"');
+    expect(template).to.include('hx-post="/dashboard/group/events/add"');
+    expect(template).to.include('hx-target="#dashboard-content"');
+    expect(template).to.include('hx-swap="none"');
   });
 
   it("keeps bottom actions in the main grid column", async () => {

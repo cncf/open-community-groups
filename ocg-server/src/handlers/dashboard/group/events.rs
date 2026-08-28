@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use askama::Template;
 use axum::{
     Json,
@@ -355,7 +355,8 @@ pub(crate) async fn add(
         .map_err(|err| HandlerError::Deserialization(err.to_string()))?;
 
     // Persist the events and required notifications atomically
-    db.as_ref()
+    let event_ids = db
+        .as_ref()
         .transaction(|tx| {
             Box::pin(async move {
                 // Create either a single event or a linked recurring event series
@@ -393,16 +394,18 @@ pub(crate) async fn add(
                     .await?;
                 }
 
-                Ok(())
+                Ok(event_ids)
             })
         })
         .await?;
 
-    Ok((
-        StatusCode::CREATED,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
-    )
-        .into_response())
+    // Reload the update editor so later saves update the created event
+    let event_id = event_ids
+        .into_iter()
+        .next()
+        .ok_or_else(|| HandlerError::Other(anyhow!("created event without an identifier")))?;
+
+    Ok((StatusCode::CREATED, event_editor_location_header(event_id)).into_response())
 }
 
 /// Cancels an event (sets canceled=true).
@@ -647,10 +650,20 @@ pub(crate) async fn publish(
         })
         .await?;
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
-    ))
+    // Stay on the editor when requested; otherwise refresh the events list
+    if query.return_to.as_deref() == Some("editor") {
+        Ok((
+            StatusCode::NO_CONTENT,
+            event_editor_location_header(event_id),
+        )
+            .into_response())
+    } else {
+        Ok((
+            StatusCode::NO_CONTENT,
+            [("HX-Trigger", "refresh-group-dashboard-table")],
+        )
+            .into_response())
+    }
 }
 
 /// Unpublishes an event (sets published=false and clears publication metadata).
@@ -805,9 +818,10 @@ pub(crate) async fn update(
         })
         .await?;
 
+    // Reload the update editor so the form receives server-assigned identifiers
     Ok((
         StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
+        event_editor_location_header(event_id),
     )
         .into_response())
 }
@@ -838,9 +852,12 @@ struct AutomaticTaxReadinessResponse {
     status: &'static str,
 }
 
-/// Query parameters accepted by cancel/delete actions.
+/// Query parameters accepted by event management actions.
 #[derive(Debug, Default, Deserialize)]
 struct EventActionQuery {
+    /// Optional post-action destination. Only `editor` reloads the event editor.
+    #[serde(default, rename = "return")]
+    return_to: Option<String>,
     /// Selected action scope.
     #[serde(default)]
     scope: EventActionScope,
@@ -1028,6 +1045,21 @@ async fn event_action_ids(
     } else {
         Ok(event_ids)
     }
+}
+
+/// Builds the HTMX location header that reloads the event editor fragment.
+fn event_editor_location_header(event_id: Uuid) -> [(HeaderName, String); 1] {
+    [(
+        HeaderName::from_static("hx-location"),
+        event_editor_location_json(event_id),
+    )]
+}
+
+/// Builds the HTMX location JSON that reloads the event editor fragment.
+fn event_editor_location_json(event_id: Uuid) -> String {
+    format!(
+        r##"{{"path":"/dashboard/group/events/{event_id}/update", "target":"#dashboard-content", "push":"false"}}"##
+    )
 }
 
 /// Builds the normalized provider venue from a submitted dashboard event.

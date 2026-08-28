@@ -80,6 +80,7 @@ describe("dashboard group event update template", () => {
     expect(template).to.include('id="event-public-page-link"');
     expect(template).to.include('id="publish-event-button"');
     expect(template).to.include('hx-put="/dashboard/group/events/{{ event.event_id }}/publish"');
+    expect(template).to.include('hx-swap="none"');
     expect(template).to.include('data-has-related-events="{{ event.has_related_events }}"');
     expect(template).to.include('disabled title="This event is already published."');
     expect(template.indexOf("{% if event.canceled -%}")).to.be.lessThan(
@@ -123,6 +124,9 @@ describe("dashboard group event update template", () => {
     expect(template).to.include('id="pending-changes-alert" class="col-span-full hidden min-w-0"');
     expect(template).to.include('class="min-w-0 flex-1 break-words text-sm/6"');
     expect(template).to.include("btn-primary btn-mini h-7! w-24 text-nowrap ms-auto");
+    expect(template).to.include('hx-put="/dashboard/group/events/{{ event.event_id }}/update"');
+    expect(template).to.include('hx-target="#dashboard-content"');
+    expect(template).to.include('hx-swap="none"');
   });
 
   it("lazy-loads event review tabs from the desktop tab buttons", async () => {

@@ -12,6 +12,8 @@ export const EVENT_PAGE_FORM_IDS = [
   "cfs-form",
 ];
 
+let stashedActiveEventSection = null;
+
 /**
  * Resolves the page root for an event page bootstrap.
  * @param {Document|Element} root Query root.
@@ -102,4 +104,24 @@ export const initializeEventPagePendingChanges = ({ pageRoot, confirmMessage }) 
     confirmMessage,
     confirmText: "Leave",
   });
+};
+
+/**
+ * Returns and clears the section stashed before a successful event mutation.
+ * @returns {string|null} Stashed section name when present.
+ */
+export const consumeStashedActiveEventSection = () => {
+  const sectionName = stashedActiveEventSection;
+  stashedActiveEventSection = null;
+  return sectionName;
+};
+
+/**
+ * Stashes the active event-editor section so it can be restored after reload.
+ * @param {Document|Element} pageRoot Event page root.
+ * @returns {void}
+ */
+export const stashActiveEventSection = (pageRoot) => {
+  const activeSection = pageRoot?.querySelector?.("[data-section][data-active='true']");
+  stashedActiveEventSection = activeSection?.getAttribute("data-section") || null;
 };

@@ -222,7 +222,8 @@ export const handleHtmxExcludeConfigRequest = (event) => {
 
 /**
  * Records deployment refreshes before HTMX consumes native refresh headers.
- * This keeps the one-shot post-refresh alert in deployment state.
+ * This keeps the one-shot post-refresh alert in deployment state and cancels
+ * HX-Refresh so a dirty form is not discarded by an intercepted save.
  * @param {CustomEvent} event HTMX beforeOnLoad event.
  * @param {Document} root Document used to read the loaded commit SHA.
  * @returns {void}

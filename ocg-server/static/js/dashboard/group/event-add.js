@@ -355,6 +355,8 @@ export const initializeEventAddPage = (root = document) => {
     saveButtonId: "add-event-button",
     successMessage: "You have successfully created the event.",
     errorMessage: "Something went wrong creating the event. Please try again later.",
+    created: true,
+    followUpControls: [addEventButton],
   });
 };
 

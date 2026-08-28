@@ -12,14 +12,17 @@ import { initializeEventPreview } from "/static/js/dashboard/group/event-preview
 import { initializeAutomaticTaxReadiness } from "/static/js/dashboard/event/automatic-tax-readiness.js";
 import "/static/js/dashboard/group/questions-editor.js";
 import {
+  armEventEditorLocationFollowUp,
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,
   attachEventSaveConfigRequest,
+  consumeStashedActiveEventSection,
   createSessionsDateRangeSync,
   initializeEventPageContext,
   initializeEventPagePendingChanges,
   initializeSharedEventPageControls,
   resolveSharedEventPageControls,
+  stashActiveEventSection,
 } from "/static/js/dashboard/group/event-page-shared.js";
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
@@ -171,6 +174,11 @@ export const initializeEventUpdatePage = (root = document) => {
     },
   });
 
+  const stashedSection = consumeStashedActiveEventSection();
+  if (stashedSection && pageRoot.querySelector(`[data-section="${CSS.escape(stashedSection)}"]`)) {
+    displayActiveSection(stashedSection);
+  }
+
   const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =
     initializeSharedEventPageControls({
       pageRoot,
@@ -226,7 +234,8 @@ export const initializeEventUpdatePage = (root = document) => {
       }
 
       const actionUrl = publishEventButton.dataset.actionUrl;
-      publishEventButton.dataset.requestPath = scope === "series" ? `${actionUrl}?scope=series` : actionUrl;
+      publishEventButton.dataset.requestPath =
+        scope === "series" ? `${actionUrl}?scope=series&return=editor` : `${actionUrl}?return=editor`;
       publishEventButton.dataset.requestScope = scope;
       htmx.trigger(publishEventButton, "confirmed");
     });
@@ -250,7 +259,7 @@ export const initializeEventUpdatePage = (root = document) => {
       delete publishEventButton.dataset.requestPath;
       delete publishEventButton.dataset.requestScope;
 
-      handleHtmxResponse({
+      const ok = handleHtmxResponse({
         xhr: event.detail?.xhr,
         successMessage: isSeriesRequest
           ? publishEventButton.dataset.seriesSuccessMessage
@@ -259,6 +268,13 @@ export const initializeEventUpdatePage = (root = document) => {
           ? publishEventButton.dataset.seriesErrorMessage
           : publishEventButton.dataset.errorMessage,
       });
+
+      if (ok) {
+        stashActiveEventSection(pageRoot);
+        armEventEditorLocationFollowUp({
+          controls: [updateEventButton, publishEventButton],
+        });
+      }
     });
   }
 
@@ -302,6 +318,7 @@ export const initializeEventUpdatePage = (root = document) => {
     saveButtonId: "update-event-button",
     successMessage: "You have successfully updated the event.",
     errorMessage: "Something went wrong updating the event. Please try again later.",
+    followUpControls: [updateEventButton, publishEventButton],
     onSuccess: () => {
       pageRoot.dispatchEvent(new CustomEvent("refresh-event-submissions"));
     },

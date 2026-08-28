@@ -1,10 +1,16 @@
-import { showDeploymentRefreshRetryAlert } from "/static/js/common/alerts.js";
+import { showDeploymentRefreshRetryAlert, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 
 export const COMMIT_SHA_HEADER = "X-OCG-Commit-SHA";
 export const DEPLOYMENT_REFRESH_MESSAGE = "This page was refreshed because a new version is available.";
+export const DIRTY_DEPLOYMENT_BLOCKED_MESSAGE =
+  "A new version is live. This request did not complete. Copy any unsaved work, then reload to pick up the update.";
+export const DIRTY_DEPLOYMENT_NOTICE_MESSAGE =
+  "A new version is live. Save or leave this page, then reload to pick up the update.";
+export const HTMX_REFRESH_HEADER = "HX-Refresh";
 export const REFRESH_HEADER = "X-OCG-Refresh";
 
 const COMMIT_SHA_META_SELECTOR = 'meta[name="ocg-commit-sha"]';
+const PENDING_CHANGES_ALERT_SELECTOR = "#pending-changes-alert";
 const DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY = "ocg.deploymentRefreshAlert";
 const DEPLOYMENT_LAST_AUTO_REFRESH_STORAGE_KEY = "ocg.deploymentLastAutoRefreshAt";
 const DEPLOYMENT_REFRESH_RETRY_STALE_COMMIT_SHA_STORAGE_KEY = "ocg.deploymentRefreshRetryStaleCommitSha";
@@ -13,6 +19,7 @@ const DEPLOYMENT_AUTO_REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
 // After the cooldown blocks an immediate reload, keep retrying until fresh HTML loads.
 const DEPLOYMENT_REFRESH_RETRY_INTERVAL_MS = 30 * 1000;
 
+let dirtyDeploymentNoticeShown = false;
 let reloadRequested = false;
 let reloadHandler = () => window.location.reload();
 let refreshRetryTimeout = null;
@@ -61,20 +68,44 @@ export const consumePendingDeploymentRefreshAlert = () => {
 };
 
 /**
+ * Returns whether the response is a stale-client refresh intercept.
+ * @param {XMLHttpRequest|Headers|object|null|undefined} headersSource Response headers source.
+ * @returns {boolean} Whether the server asked the client to refresh without running the handler.
+ */
+export const isForcedDeploymentRefresh = (headersSource) =>
+  getHeader(headersSource, REFRESH_HEADER) === "true" ||
+  getHeader(headersSource, HTMX_REFRESH_HEADER) === "true";
+
+/**
  * Handles deployment refresh signals from response headers.
+ * Forced-refresh intercepts on dirty forms return true so HTMX does not honor
+ * HX-Refresh and callers do not treat the empty 204 as a successful mutation.
  * @param {XMLHttpRequest|Headers|object|null|undefined} headersSource Response headers source.
  * @param {Document} root Document used to read the loaded commit SHA.
  * @returns {boolean} Whether a refresh signal was handled or a reload is pending.
  */
 export const reloadIfDeploymentChanged = (headersSource, root = document) => {
+  const forcedRefresh = isForcedDeploymentRefresh(headersSource);
+  const dirty = hasVisiblePendingChanges(root);
+
   if (reloadRequested) {
+    if (dirty) {
+      deferDeploymentReloadForDirtyForm(
+        forcedRefresh ? DIRTY_DEPLOYMENT_BLOCKED_MESSAGE : DIRTY_DEPLOYMENT_NOTICE_MESSAGE,
+      );
+      return forcedRefresh;
+    }
     return true;
   }
 
-  const forcedRefresh = getHeader(headersSource, REFRESH_HEADER) === "true";
   const responseCommitSha = getHeader(headersSource, COMMIT_SHA_HEADER);
   if (!forcedRefresh && !isCommitShaMismatch(responseCommitSha, getLoadedCommitSha(root))) {
     return false;
+  }
+
+  if (dirty) {
+    notifyDirtyDeployment(forcedRefresh ? DIRTY_DEPLOYMENT_BLOCKED_MESSAGE : DIRTY_DEPLOYMENT_NOTICE_MESSAGE);
+    return forcedRefresh;
   }
 
   if (wasDeploymentAutoRefreshRecent()) {
@@ -93,6 +124,7 @@ export const reloadIfDeploymentChanged = (headersSource, root = document) => {
  * @returns {void}
  */
 export const resetDeploymentReloadState = ({ clearRefreshHistory = true, clearRetryState = true } = {}) => {
+  dirtyDeploymentNoticeShown = false;
   reloadRequested = false;
   reloadHandler = () => window.location.reload();
   if (refreshRetryTimeout !== null) {
@@ -135,6 +167,37 @@ export const initializeDeploymentRefreshRetry = (root = document) => {
 
   requestDeploymentRefreshRetry();
   return true;
+};
+
+/**
+ * Returns whether the pending-changes banner is currently visible.
+ * @param {Document|Element} root Document or fragment used to find the banner.
+ * @returns {boolean} Whether unsaved dashboard changes are visible.
+ */
+const hasVisiblePendingChanges = (root = document) => {
+  const alert = root.querySelector?.(PENDING_CHANGES_ALERT_SELECTOR);
+  return Boolean(alert && !alert.classList.contains("hidden"));
+};
+
+/**
+ * Notifies that a new version is live without reloading a dirty form.
+ * Blocked-mutation warnings always surface so users never believe a dropped save
+ * succeeded; the passive stale-version notice is deduped to a one-shot info alert.
+ * @param {string} message Notice copy for this intercept.
+ * @returns {void}
+ */
+const notifyDirtyDeployment = (message) => {
+  if (message === DIRTY_DEPLOYMENT_BLOCKED_MESSAGE) {
+    showErrorAlert(message);
+    return;
+  }
+
+  if (dirtyDeploymentNoticeShown) {
+    return;
+  }
+
+  dirtyDeploymentNoticeShown = true;
+  showInfoAlert(message);
 };
 
 /**
@@ -197,7 +260,19 @@ const requestDeploymentRefreshRetry = (root = document) => {
 };
 
 /**
+ * Stops treating a retry as an in-flight reload so a dirty form can keep its draft.
+ * @param {string} message Notice copy for this deferral.
+ * @returns {void}
+ */
+const deferDeploymentReloadForDirtyForm = (message) => {
+  reloadRequested = false;
+  notifyDirtyDeployment(message);
+  scheduleDeploymentRefreshRetry();
+};
+
+/**
  * Schedules the next full page reload attempt during deployment refresh retry.
+ * Re-checks dirtiness when the timer fires so a form edited after arming is not discarded.
  * @returns {void}
  */
 const scheduleDeploymentRefreshRetry = () => {
@@ -207,6 +282,12 @@ const scheduleDeploymentRefreshRetry = () => {
 
   refreshRetryTimeout = window.setTimeout(() => {
     refreshRetryTimeout = null;
+    if (hasVisiblePendingChanges()) {
+      deferDeploymentReloadForDirtyForm(DIRTY_DEPLOYMENT_NOTICE_MESSAGE);
+      return;
+    }
+
+    reloadRequested = true;
     sessionStorageSetItem(DEPLOYMENT_LAST_AUTO_REFRESH_STORAGE_KEY, Date.now().toString());
     reloadHandler();
   }, DEPLOYMENT_REFRESH_RETRY_INTERVAL_MS);
