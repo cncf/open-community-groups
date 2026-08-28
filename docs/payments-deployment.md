@@ -136,6 +136,12 @@ How the fee behaves:
 - When a purchase is refunded through OCG, the remaining application fee is
   returned to the fiscal sponsor and a credit note is linked to the existing
   customer refund without creating another money movement.
+- Stripe settles application fees in the platform account's default currency.
+  When that currency differs from the purchase currency, automatic fee returns
+  fail with a diagnostic instead of moving an unverifiable amount; operators
+  return the fee in the Stripe Dashboard and record the reference through
+  manual financial recovery in the group's `Refunds` tab. Fee refunds that
+  already exist on Stripe are reused based on their durable identity.
 - Manual refund recovery records an externally arranged refund and does not
   call Stripe, so it does not return the collected application fee. Operators
   who want to return the fee for such refunds must reverse it directly in the

@@ -7,6 +7,7 @@ declare
     v_adjustment event_purchase_application_fee_adjustment;
     v_claim_id uuid := gen_random_uuid();
     v_connected_seller_id text;
+    v_currency_code text;
     v_provider_application_fee_id text;
 begin
     -- Surface an abandoned final attempt without losing provider diagnostics
@@ -77,15 +78,18 @@ begin
     -- Resolve immutable provider references from the purchase snapshot
     select
         ep.connected_seller_id,
+        ep.currency_code,
         ep.provider_application_fee_id
     into
         v_connected_seller_id,
+        v_currency_code,
         v_provider_application_fee_id
     from event_purchase ep
     where ep.event_purchase_id = v_adjustment.event_purchase_id;
 
     -- Reject claims whose immutable provider context is incomplete
     if nullif(btrim(v_connected_seller_id), '') is null
+       or nullif(btrim(v_currency_code), '') is null
        or nullif(btrim(v_provider_application_fee_id), '') is null then
         raise exception 'application-fee adjustment is missing provider context';
     end if;
@@ -95,6 +99,7 @@ begin
         'amount_minor', v_adjustment.amount_minor,
         'claim_id', v_adjustment.claim_id,
         'connected_seller_id', v_connected_seller_id,
+        'currency_code', v_currency_code,
         'event_purchase_application_fee_adjustment_id',
             v_adjustment.event_purchase_application_fee_adjustment_id,
         'event_purchase_id', v_adjustment.event_purchase_id,

@@ -81,6 +81,7 @@ impl Worker {
             .reconcile_application_fee_adjustment(&ApplicationFeeAdjustmentInput {
                 amount_minor: adjustment.amount_minor,
                 connected_seller_id: adjustment.connected_seller_id,
+                currency_code: adjustment.currency_code,
                 event_purchase_id: adjustment.event_purchase_id,
                 idempotency_key: adjustment.idempotency_key,
                 kind: adjustment.kind,

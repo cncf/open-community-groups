@@ -11,7 +11,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -82,6 +82,24 @@ impl StripeProvider {
     /// Returns the Stripe API base URL.
     fn api_base_url(&self) -> &str {
         &self.api_base_url
+    }
+
+    /// Formats the amount a listed application-fee refund represents.
+    fn application_fee_refund_reported_amount(refund: &StripeApplicationFeeRefund) -> String {
+        // Prefer the request values recorded when OCG created the refund
+        if let (Some(requested_amount), Some(requested_currency)) = (
+            refund.metadata.get("requested_amount_minor"),
+            refund.metadata.get("requested_currency"),
+        ) {
+            return format!("{requested_amount} {requested_currency}");
+        }
+
+        // Report the provider amount in the fee currency otherwise
+        format!(
+            "{} {}",
+            refund.amount,
+            Self::normalized_currency_code(&refund.currency)
+        )
     }
 
     /// Builds the Stripe Checkout form body for a purchase.
@@ -257,6 +275,44 @@ impl StripeProvider {
         form_fields
     }
 
+    /// Compares a listed refund against the adjustment's requested amount.
+    fn classify_application_fee_refund_amount(
+        input: &ApplicationFeeAdjustmentInput,
+        refund: &StripeApplicationFeeRefund,
+    ) -> ApplicationFeeRefundAmountCheck {
+        // Prefer the recorded request values for a like-for-like comparison
+        if let (Some(requested_amount), Some(requested_currency)) = (
+            refund.metadata.get("requested_amount_minor"),
+            refund.metadata.get("requested_currency"),
+        ) {
+            let is_consistent = *requested_amount == input.amount_minor.to_string()
+                && *requested_currency == Self::normalized_currency_code(&input.currency_code);
+            return if is_consistent {
+                ApplicationFeeRefundAmountCheck::Consistent
+            } else {
+                ApplicationFeeRefundAmountCheck::Inconsistent
+            };
+        }
+
+        // Compare provider units directly when the refund shares the currency
+        if Self::normalized_currency_code(&refund.currency)
+            == Self::normalized_currency_code(&input.currency_code)
+        {
+            return if refund.amount == input.amount_minor {
+                ApplicationFeeRefundAmountCheck::Consistent
+            } else {
+                ApplicationFeeRefundAmountCheck::Inconsistent
+            };
+        }
+
+        // Trust the durable identity when Stripe converted the fee currency
+        warn!(
+            refund_id = %refund.id,
+            "cannot verify cross-currency application-fee refund amount"
+        );
+        ApplicationFeeRefundAmountCheck::Unverifiable
+    }
+
     /// Builds the signature digest used by Stripe.
     fn compute_signature(secret: &str, payload: &str) -> String {
         type HmacSha256 = Hmac<Sha256>;
@@ -421,6 +477,90 @@ impl StripeProvider {
             input.public_group_slug(),
             input.event_slug
         )
+    }
+
+    /// Finds an existing application-fee refund that should be reused.
+    fn find_matching_application_fee_refund(
+        input: &ApplicationFeeAdjustmentInput,
+        refunds: Vec<StripeApplicationFeeRefund>,
+    ) -> Result<Option<StripeApplicationFeeRefund>> {
+        // Prefer the durable create identity when Stripe still has that metadata
+        if let Some(refund) = refunds
+            .iter()
+            .find(|refund| refund.metadata.get("idempotency_key") == Some(&input.idempotency_key))
+        {
+            // Reject the keyed refund when comparable amounts diverge
+            if matches!(
+                Self::classify_application_fee_refund_amount(input, refund),
+                ApplicationFeeRefundAmountCheck::Inconsistent
+            ) {
+                bail!(
+                    "existing Stripe application-fee refund {} has amount {}, expected {} {}",
+                    refund.id,
+                    Self::application_fee_refund_reported_amount(refund),
+                    input.amount_minor,
+                    Self::normalized_currency_code(&input.currency_code)
+                );
+            }
+            return Ok(Some(refund.clone()));
+        }
+
+        // Fall back to purchase and kind for refunds created before the key was stored
+        let purchase_id = input.event_purchase_id.to_string();
+        let mut matching = Vec::new();
+        let mut mismatched = Vec::new();
+        for refund in refunds {
+            // Skip refunds recorded for another purchase or adjustment kind
+            if refund.metadata.get("event_purchase_id") != Some(&purchase_id)
+                || refund.metadata.get("kind") != Some(&input.kind)
+            {
+                continue;
+            }
+
+            // Separate comparable divergences from reusable identity matches
+            match Self::classify_application_fee_refund_amount(input, &refund) {
+                ApplicationFeeRefundAmountCheck::Consistent
+                | ApplicationFeeRefundAmountCheck::Unverifiable => matching.push(refund),
+                ApplicationFeeRefundAmountCheck::Inconsistent => mismatched.push(refund),
+            }
+        }
+
+        // Reject ambiguous leftover matches instead of taking the first hit
+        if matching.len() > 1 {
+            let ids = matching
+                .iter()
+                .map(|refund| refund.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            bail!("multiple Stripe application-fee refunds match this adjustment ({ids})");
+        }
+
+        // Reuse the unique purchase-kind match
+        if let Some(refund) = matching.pop() {
+            return Ok(Some(refund));
+        }
+
+        // Surface leftover purchase-kind refunds whose amounts diverge
+        if !mismatched.is_empty() {
+            let details = mismatched
+                .iter()
+                .map(|refund| {
+                    format!(
+                        "{} has {}",
+                        refund.id,
+                        Self::application_fee_refund_reported_amount(refund)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            bail!(
+                "existing Stripe application-fee refund has the wrong amount ({details}; expected {} {})",
+                input.amount_minor,
+                Self::normalized_currency_code(&input.currency_code)
+            );
+        }
+
+        Ok(None)
     }
 
     /// Finds a matching Stripe refund and maps its current status.
@@ -1490,17 +1630,52 @@ impl PaymentsProvider for StripeProvider {
             "application-fee refund listing",
         )
         .await?;
-        let purchase_id = input.event_purchase_id.to_string();
-        if let Some(refund) = refunds.data.into_iter().find(|refund| {
-            refund.metadata.get("event_purchase_id") == Some(&purchase_id)
-                && refund.metadata.get("kind") == Some(&input.kind)
-        }) {
-            if refund.amount != input.amount_minor {
-                bail!("existing Stripe application-fee refund has the wrong amount");
-            }
+        if let Some(refund) = Self::find_matching_application_fee_refund(input, refunds.data)? {
             return Ok(ApplicationFeeAdjustmentResult {
                 provider_application_fee_refund_id: refund.id,
             });
+        }
+
+        // Retrieve the application fee's platform settlement currency
+        let query = serde_urlencoded::to_string([("expand[]", "balance_transaction")])?;
+        let response = self
+            .client
+            .get(format!(
+                "{}/application_fees/{}?{query}",
+                self.api_base_url(),
+                input.provider_application_fee_id
+            ))
+            .basic_auth(&self.cfg.secret_key, Some(""))
+            .header("stripe-version", STRIPE_API_VERSION)
+            .send()
+            .await
+            .context("error retrieving Stripe application fee")?;
+        let fee = Self::parse_provider_response::<StripeApplicationFee>(
+            response,
+            "application-fee retrieval",
+        )
+        .await?;
+
+        // Fail closed when Stripe has not recorded a settlement currency
+        let currency_code = Self::normalized_currency_code(&input.currency_code);
+        let Some(settlement) = fee.balance_transaction else {
+            bail!(
+                "Stripe application fee {} has no settlement currency; return the fee in the Stripe Dashboard and record it through financial recovery",
+                input.provider_application_fee_id
+            );
+        };
+
+        // Guard creation against a fee Stripe settled in another currency
+        let settlement_currency_code = Self::normalized_currency_code(&settlement.currency);
+        if settlement_currency_code != currency_code {
+            bail!(
+                "Stripe application fee {} was settled as {} {} but the adjustment requests {} {}; return the fee in the Stripe Dashboard and record it through financial recovery",
+                input.provider_application_fee_id,
+                settlement.amount,
+                settlement_currency_code,
+                input.amount_minor,
+                currency_code
+            );
         }
 
         // Create the missing partial or full application-fee refund idempotently
@@ -1510,8 +1685,20 @@ impl PaymentsProvider for StripeProvider {
                 "metadata[connected_seller_id]".to_string(),
                 input.connected_seller_id.clone(),
             ),
-            ("metadata[event_purchase_id]".to_string(), purchase_id),
+            (
+                "metadata[event_purchase_id]".to_string(),
+                input.event_purchase_id.to_string(),
+            ),
+            (
+                "metadata[idempotency_key]".to_string(),
+                input.idempotency_key.clone(),
+            ),
             ("metadata[kind]".to_string(), input.kind.clone()),
+            (
+                "metadata[requested_amount_minor]".to_string(),
+                input.amount_minor.to_string(),
+            ),
+            ("metadata[requested_currency]".to_string(), currency_code),
         ]);
         let response = self
             .client
@@ -1839,6 +2026,17 @@ impl PaymentsProvider for StripeProvider {
     }
 }
 
+/// Amount consistency of a listed application-fee refund against an adjustment.
+#[derive(Debug)]
+enum ApplicationFeeRefundAmountCheck {
+    /// Comparable amounts match the requested adjustment.
+    Consistent,
+    /// Comparable amounts diverge from the requested adjustment.
+    Inconsistent,
+    /// Legacy cross-currency refund whose amount cannot be compared.
+    Unverifiable,
+}
+
 /// Connected account responsibility fields required for direct charges.
 #[derive(Debug, Deserialize)]
 struct StripeAccountController {
@@ -1892,11 +2090,20 @@ struct StripeAccountResponse {
     controller: Option<StripeAccountController>,
 }
 
-/// Provider application-fee refund used for lookup-before-create reconciliation.
+/// Provider application fee used to guard refund creation.
 #[derive(Debug, Deserialize)]
+struct StripeApplicationFee {
+    /// Balance transaction describing the platform settlement of the collected fee.
+    balance_transaction: Option<StripeBalanceTransaction>,
+}
+
+/// Provider application-fee refund used for lookup-before-create reconciliation.
+#[derive(Clone, Debug, Deserialize)]
 struct StripeApplicationFeeRefund {
-    /// Refunded application-fee amount.
+    /// Refunded application-fee amount in the fee currency.
     amount: i64,
+    /// Currency of the application-fee refund.
+    currency: String,
     /// Provider application-fee refund identifier.
     id: String,
     /// Metadata identifying the durable adjustment.
@@ -1909,6 +2116,15 @@ struct StripeApplicationFeeRefund {
 struct StripeApplicationFeeRefundList {
     /// Application-fee refunds returned by Stripe.
     data: Vec<StripeApplicationFeeRefund>,
+}
+
+/// Platform settlement impact of a collected application fee.
+#[derive(Debug, Deserialize)]
+struct StripeBalanceTransaction {
+    /// Settled amount in the platform currency.
+    amount: i64,
+    /// Currency Stripe settled the fee in.
+    currency: String,
 }
 
 /// Minimal response payload returned by Stripe checkout session creation.

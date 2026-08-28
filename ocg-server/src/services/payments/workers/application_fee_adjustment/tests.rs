@@ -118,6 +118,7 @@ async fn test_process_next_application_fee_adjustment_reconciles_due_work() {
         .withf(|input| {
             input.amount_minor == 125
                 && input.connected_seller_id == "acct_worker"
+                && input.currency_code == "USD"
                 && input.idempotency_key == "fee-adjustment-worker"
                 && input.provider_application_fee_id == "fee_worker"
         })
@@ -216,6 +217,7 @@ fn sample_application_fee_adjustment() -> ClaimedEventPurchaseApplicationFeeAdju
         amount_minor: 125,
         claim_id: Uuid::new_v4(),
         connected_seller_id: "acct_worker".to_string(),
+        currency_code: "USD".to_string(),
         event_purchase_application_fee_adjustment_id: Uuid::new_v4(),
         event_purchase_id: Uuid::new_v4(),
         idempotency_key: "fee-adjustment-worker".to_string(),
