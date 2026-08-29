@@ -1,4 +1,4 @@
-import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html, nothing } from "lit";
 import {
   MEETING_RECORDING_RAW_URLS_LEGEND,
   MEETING_RECORDING_URL_LEGEND,

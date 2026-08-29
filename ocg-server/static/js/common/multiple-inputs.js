@@ -1,4 +1,5 @@
-import { html, nothing, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html, nothing } from "lit";
+import { repeat } from "lit/directives/repeat.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**

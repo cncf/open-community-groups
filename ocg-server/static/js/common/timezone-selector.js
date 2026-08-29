@@ -1,4 +1,5 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
+import { repeat } from "lit/directives/repeat.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { focusElementById, getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";

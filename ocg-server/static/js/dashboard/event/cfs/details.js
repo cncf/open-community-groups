@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 

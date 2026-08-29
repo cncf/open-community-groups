@@ -1,4 +1,4 @@
-import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html, nothing } from "lit";
 import { localizeCurrencyLabel } from "/static/js/common/currency.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
