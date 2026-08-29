@@ -31,7 +31,10 @@ describe("common base template", () => {
     // Parse the import map and verify its production contract.
     const importMap = JSON.parse(importMapMatch[1]);
     expect(importMap).to.deep.equal(expectedLitImportMap);
-    expect(litBundlePath).to.match(/^\/static\/vendor\/js\/lit-all\.v\d+\.\d+\.\d+\.min\.js$/);
+
+    // Verify the parsed mapping points to a versioned vendored Lit bundle.
+    const mappedBundlePath = importMap.imports.lit;
+    expect(mappedBundlePath).to.match(/^\/static\/vendor\/js\/lit-all\.v\d+\.\d+\.\d+\.min\.js$/);
 
     // Verify the import map is processed before any module script.
     const importMapIndex = template.indexOf(importMapMatch[0]);
@@ -40,7 +43,7 @@ describe("common base template", () => {
     expect(firstModuleScriptIndex).to.be.greaterThan(importMapIndex);
 
     // Verify the mapped source bundle exists in the repository test server.
-    const bundleResponse = await fetch(`/ocg-server${litBundlePath}`);
+    const bundleResponse = await fetch(`/ocg-server${mappedBundlePath}`);
     expect(bundleResponse.ok).to.equal(true);
   });
 

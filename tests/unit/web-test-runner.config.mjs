@@ -6,6 +6,7 @@ import { playwrightLauncher } from "@web/test-runner-playwright";
 const configDir = dirname(fileURLToPath(import.meta.url));
 const repoRootDir = resolve(configDir, "../..");
 const litBundlePath = "/static/vendor/js/lit-all.v3.3.3.min.js";
+const litDevModeWarningUrl = "lit.dev/msg/dev-mode";
 const litImportSpecifiers = new Set([
   "lit",
   "lit/directives/ref.js",
@@ -37,14 +38,15 @@ const importMap = JSON.stringify({
 export default {
   rootDir: repoRootDir,
   files: `${repoRootDir}/tests/unit/**/*.test.js`,
+  filterBrowserLogs: ({ args }) =>
+    !args.some((argument) => typeof argument === "string" && argument.includes(litDevModeWarningUrl)),
   hostname: "127.0.0.1",
   nodeResolve: true,
   plugins: [litImportMapResolver],
   browsers: [
     playwrightLauncher({
       product: "chromium",
-      createBrowserContext: ({ browser }) =>
-        browser.newContext({ locale: "en-US" }),
+      createBrowserContext: ({ browser }) => browser.newContext({ locale: "en-US" }),
     }),
   ],
   testRunnerHtml: (testFrameworkImport) => `<!DOCTYPE html>
