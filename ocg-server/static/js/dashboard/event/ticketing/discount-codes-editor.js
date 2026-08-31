@@ -1,4 +1,5 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
+import { repeat } from "lit/directives/repeat.js";
 import { toDateTimeLocalInTimezone, toUtcIsoInTimezone } from "/static/js/common/datetime.js";
 import { parseJsonAttribute, toBoolean, toTrimmedString } from "/static/js/common/utils.js";
 import {

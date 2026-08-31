@@ -1,4 +1,5 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
+import { repeat } from "lit/directives/repeat.js";
 import { FILTER_CHANGE_EVENT } from "/static/js/community/explore/filters.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 

@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
 import { QUESTION_TYPES, getQuestionTypeLabel } from "/static/js/dashboard/group/questions-editor/model.js";
 
 /**

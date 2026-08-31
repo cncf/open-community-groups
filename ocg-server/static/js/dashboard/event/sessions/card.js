@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/media/logo-image.js";
@@ -49,7 +49,7 @@ class SessionCard extends LitWrapper {
 
   /**
    * Renders speaker avatars with overflow indicator.
-   * @returns {import("/static/vendor/js/lit-all.v3.3.3.min.js").TemplateResult|string}
+   * @returns {import("lit").TemplateResult|string}
    * @private
    */
   _renderSpeakerAvatars() {

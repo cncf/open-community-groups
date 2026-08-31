@@ -1,4 +1,4 @@
-import { html, render } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html, render } from "lit";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
 import {

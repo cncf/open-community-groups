@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
 import "/static/js/common/actions-menu.js";
 import "/static/js/common/media/logo-image.js";
 import { computeUserInitials } from "/static/js/common/users/initials.js";

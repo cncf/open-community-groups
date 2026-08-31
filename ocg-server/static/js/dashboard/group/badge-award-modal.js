@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
@@ -337,7 +337,7 @@ export class BadgeAwardModal extends LitWrapper {
 
   /**
    * Renders the loading, empty, or selectable badge list state.
-   * @returns {import("/static/vendor/js/lit-all.v3.3.3.min.js").TemplateResult}
+   * @returns {import("lit").TemplateResult}
    * @private
    */
   _renderBadges() {
@@ -396,7 +396,7 @@ export class BadgeAwardModal extends LitWrapper {
 
   /**
    * Renders the summary returned after an award request succeeds.
-   * @returns {import("/static/vendor/js/lit-all.v3.3.3.min.js").TemplateResult}
+   * @returns {import("lit").TemplateResult}
    * @private
    */
   _renderSuccess() {
@@ -415,7 +415,7 @@ export class BadgeAwardModal extends LitWrapper {
 
   /**
    * Renders the badge award dialog for the current workflow state.
-   * @returns {import("/static/vendor/js/lit-all.v3.3.3.min.js").TemplateResult}
+   * @returns {import("lit").TemplateResult}
    */
   render() {
     if (!this._isOpen) {

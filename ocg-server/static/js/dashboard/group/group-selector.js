@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html } from "lit";
 import { DashboardSelectorBase } from "/static/js/dashboard/dashboard-selector-base.js";
 
 /**

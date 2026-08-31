@@ -1,4 +1,4 @@
-import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { html, nothing } from "lit";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";

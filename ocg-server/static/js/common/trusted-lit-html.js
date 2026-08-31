@@ -1,4 +1,4 @@
-import { unsafeHTML } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 /**
  * Renders server-sanitized trusted HTML inside Lit templates.
