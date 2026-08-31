@@ -134,6 +134,14 @@ test.describe("site explore groups page", () => {
   });
 
   test("supports searching groups and switching to map view", async ({ page }) => {
+    // Keep the real map runtime while removing external basemap dependencies.
+    await page.route("https://tiles.openfreemap.org/styles/bright", (route) =>
+      route.fulfill({
+        headers: { "access-control-allow-origin": "*" },
+        json: { version: 8, sources: {}, layers: [] },
+      }),
+    );
+
     // Load the groups explore page with the community filter applied.
     await navigateToPath(page, `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`);
 
@@ -175,16 +183,16 @@ test.describe("site explore groups page", () => {
 
     // Verify map mode renders the map and hides sorting controls.
     await expect(page.locator("#map-box")).toBeVisible();
-    await expect(page.locator("#map-box.leaflet-container")).toBeVisible();
+    await expect(page.locator("#map-box.maplibregl-map")).toBeVisible();
     await expect(page.locator("#sort_selector")).toHaveCount(0);
 
     // Verify the filtered group marker exposes its card and public destination.
     const groupMarker = page.locator(
-      `.leaflet-marker-icon.marker-${TEST_GROUP_SLUGS.community1.gamma}`,
+      `.maplibregl-marker.marker-${TEST_GROUP_SLUGS.community1.gamma}`,
     );
     await expect(groupMarker).toBeVisible();
     await groupMarker.hover();
-    await expect(page.locator(".leaflet-tooltip")).toContainText(TEST_GROUP_NAMES.gamma);
+    await expect(page.locator(".maplibregl-popup.explore-map-tooltip")).toContainText(TEST_GROUP_NAMES.gamma);
     await Promise.all([
       page.waitForURL(
         new RegExp(

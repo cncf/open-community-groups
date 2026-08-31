@@ -165,19 +165,19 @@ export class LocationSearchField extends LitWrapper {
     this._mapPreview = new LocationMapPreview(this._mapElementId);
   }
 
-  get _leafletMap() {
+  get _map() {
     return this._mapPreview.map;
   }
 
-  set _leafletMap(map) {
+  set _map(map) {
     this._mapPreview.map = map;
   }
 
-  get _leafletMarker() {
+  get _mapMarker() {
     return this._mapPreview.marker;
   }
 
-  set _leafletMarker(marker) {
+  set _mapMarker(marker) {
     this._mapPreview.marker = marker;
   }
 

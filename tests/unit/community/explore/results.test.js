@@ -14,12 +14,12 @@ import {
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("explore helpers", () => {
   const originalFullCalendar = globalThis.FullCalendar;
-  const originalLeaflet = globalThis.L;
-  const originalWindowLeaflet = globalThis.window.L;
+  let mapLibre;
   let fetchMock;
   let htmx;
   let swal;
@@ -32,6 +32,8 @@ describe("explore helpers", () => {
   });
 
   afterEach(() => {
+    mapLibre?.restore();
+    mapLibre = null;
     resetDom();
     Calendar._instance = null;
     ExploreMap._instance = null;
@@ -42,16 +44,6 @@ describe("explore helpers", () => {
       globalThis.FullCalendar = originalFullCalendar;
     } else {
       delete globalThis.FullCalendar;
-    }
-    if (originalLeaflet) {
-      globalThis.L = originalLeaflet;
-    } else {
-      delete globalThis.L;
-    }
-    if (originalWindowLeaflet) {
-      globalThis.window.L = originalWindowLeaflet;
-    } else {
-      delete globalThis.window.L;
     }
   });
 
@@ -255,73 +247,7 @@ describe("explore helpers", () => {
   });
 
   it("initializes map widgets from declarative payloads", async () => {
-    let loadHandler;
-    const markerAdds = [];
-    const addedLayers = [];
-    const leafletMock = {
-      Browser: { retina: false },
-      latLng(lat, lng) {
-        return { lat, lng };
-      },
-      latLngBounds(sw, ne) {
-        return { sw, ne };
-      },
-      map() {
-        return {
-          on(name, handler) {
-            if (name === "load") {
-              loadHandler = handler;
-            }
-          },
-          addLayer(layer) {
-            addedLayers.push(layer);
-          },
-          off() {},
-          remove() {},
-          invalidateSize() {},
-          setView() {},
-          getBounds() {
-            return {
-              _southWest: { lat: 1, lng: 2 },
-              _northEast: { lat: 3, lng: 4 },
-            };
-          },
-          flyToBounds() {},
-        };
-      },
-      control: {
-        zoom() {
-          return { addTo() {} };
-        },
-      },
-      tileLayer() {
-        return { addTo() {} };
-      },
-      markerClusterGroup() {
-        return {
-          addLayer(layer) {
-            markerAdds.push(layer);
-          },
-        };
-      },
-      divIcon(config) {
-        return config;
-      },
-      marker(latLng, config) {
-        return {
-          latLng,
-          config,
-          on() {},
-          bindTooltip() {},
-          openTooltip() {},
-          getTooltip() {
-            return null;
-          },
-        };
-      },
-    };
-    globalThis.L = leafletMock;
-    globalThis.window.L = leafletMock;
+    mapLibre = mockMapLibre();
     document.body.innerHTML = `
       <div id="main-loading-map" class="hidden"></div>
       <div id="loading-map" class="hidden"></div>
@@ -345,12 +271,16 @@ describe("explore helpers", () => {
     await initializeExploreWidgets(document);
     await waitForMicrotask();
     await waitForMicrotask();
-    loadHandler();
+    await ExploreMap._instance.setupPromise;
+    mapLibre.maps[0].emit("load").emit("render");
 
     // The map receives the declarative payload and adds valid markers.
     expect(ExploreMap._instance.entity).to.equal("groups");
-    expect(markerAdds).to.have.length(1);
-    expect(addedLayers).to.have.length(1);
+    expect(document.querySelector(".marker-malaga-js")).not.to.equal(null);
+    expect(mapLibre.maps[0].getSource("explore-locations").cluster).to.equal(
+      true,
+    );
+    expect(ExploreMap._instance.state.status).to.equal("ready");
   });
 
   it("delegates search and clear actions to the active explore form", () => {

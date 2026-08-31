@@ -261,9 +261,9 @@ test.describe("event page", () => {
       // Open the full map modal from the location preview.
       await mapButton.click();
 
-      // Verify the modal opens and Leaflet initializes the modal map.
+      // Verify the modal opens and MapLibre initializes the modal map.
       await expect(mapModal).toBeVisible();
-      await expect(modalMap).toHaveClass(/leaflet-container/);
+      await expect(modalMap).toHaveClass(/maplibregl-map/);
 
       // Close the map modal and verify it is hidden again.
       await page.locator("#close-event-map-modal").click();

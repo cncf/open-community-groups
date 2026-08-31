@@ -1,78 +1,23 @@
 import { expect } from "@open-wc/testing";
 
 import { initializeMapModals } from "/static/js/common/modals/map-modal.js";
-import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import {
+  waitForAnimationFrames,
+  waitForMicrotask,
+} from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mockMapLibre } from "/tests/unit/test-utils/maps.js";
 
 describe("map modal", () => {
-  const originalLeaflet = globalThis.L;
-  const originalWindowLeaflet = globalThis.window.L;
-  let mapCalls;
+  let mapLibre;
+  let swal;
 
   beforeEach(() => {
     resetDom();
-    mapCalls = [];
-    const leafletMock = {
-      Browser: { retina: false },
-      latLng(lat, lng) {
-        return { lat, lng };
-      },
-      latLngBounds(sw, ne) {
-        return { sw, ne };
-      },
-      map(id) {
-        const map = {
-          id,
-          dragging: { disable() {} },
-          touchZoom: { disable() {} },
-          scrollWheelZoom: { disable() {} },
-          doubleClickZoom: { disable() {} },
-          boxZoom: { disable() {} },
-          keyboard: { disable() {} },
-          tap: { disable() {} },
-          setView(center, zoom) {
-            map.center = center;
-            map.zoom = zoom;
-            return map;
-          },
-          invalidateSize() {},
-        };
-        mapCalls.push(map);
-        return map;
-      },
-      tileLayer() {
-        return { addTo() {} };
-      },
-      divIcon(config) {
-        return config;
-      },
-      marker(latLng, config) {
-        return {
-          latLng,
-          config,
-          addTo() {},
-        };
-      },
-    };
-    globalThis.L = leafletMock;
-    globalThis.window.L = leafletMock;
-  });
+    mapLibre = mockMapLibre();
+    swal = mockSwal();
 
-  afterEach(() => {
-    resetDom();
-    if (originalLeaflet) {
-      globalThis.L = originalLeaflet;
-    } else {
-      delete globalThis.L;
-    }
-    if (originalWindowLeaflet) {
-      globalThis.window.L = originalWindowLeaflet;
-    } else {
-      delete globalThis.window.L;
-    }
-  });
-
-  it("initializes preview maps and lazily loads modal maps", async () => {
     // Build the DOM fixture with a declarative map modal.
     document.body.innerHTML = `
       <div
@@ -92,25 +37,98 @@ describe("map modal", () => {
         <div id="event-map-modal-map"></div>
       </div>
     `;
+  });
 
+  afterEach(() => {
+    mapLibre.restore();
+    swal.restore();
+    resetDom();
+  });
+
+  it("initializes preview maps and lazily loads modal maps", async () => {
     // Initialize the preview map and open the modal with the keyboard.
     initializeMapModals();
     await waitForMicrotask();
-    document.getElementById("event-map").dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-    );
+    document
+      .getElementById("event-map")
+      .dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
     await waitForAnimationFrames(2);
 
     // The preview loads immediately and the modal map loads only after opening.
-    expect(mapCalls.map((map) => map.id)).to.deep.equal(["event-map", "event-map-modal-map"]);
-    expect(document.getElementById("event-map-modal")?.classList.contains("hidden")).to.equal(
+    expect(mapLibre.maps.map((map) => map.options.container)).to.deep.equal([
+      "event-map",
+      "event-map-modal-map",
+    ]);
+    expect(
+      document.getElementById("event-map-modal")?.classList.contains("hidden"),
+    ).to.equal(false);
+
+    expect(mapLibre.maps[0].options).to.include({
+      style: "https://tiles.openfreemap.org/styles/bright",
+      interactive: false,
+    });
+    expect(mapLibre.maps[0].options.center).to.deep.equal([-4.4214, 36.7213]);
+    expect(mapLibre.maps[1].options.interactive).to.equal(true);
+    expect(mapLibre.maps[1].keyboard.rotationDisabled).to.equal(true);
+    expect(mapLibre.maps[1].touchZoomRotate.rotationDisabled).to.equal(true);
+    expect(mapLibre.maps[0].controls[0].position).to.equal("top-right");
+    expect(mapLibre.maps[0].controls[0].control.options.compact).to.equal(
       false,
     );
 
     // Close actions toggle the modal closed.
     document.getElementById("close-event-map-modal").click();
-    expect(document.getElementById("event-map-modal")?.classList.contains("hidden")).to.equal(
-      true,
+    expect(
+      document.getElementById("event-map-modal")?.classList.contains("hidden"),
+    ).to.equal(true);
+
+    // Attribution clicks do not open the preview's modal.
+    const attribution = document.createElement("a");
+    attribution.className = "maplibregl-ctrl";
+    document.getElementById("event-map").append(attribution);
+    attribution.click();
+    expect(
+      document.getElementById("event-map-modal").classList.contains("hidden"),
+    ).to.equal(true);
+
+    // HTMX cleanup releases the preview's map resources.
+    document
+      .getElementById("event-map")
+      .dispatchEvent(
+        new CustomEvent("htmx:beforeCleanupElement", { bubbles: true }),
+      );
+    expect(mapLibre.maps[0].removed).to.equal(true);
+    expect(mapLibre.maps[1].removed).not.to.equal(true);
+  });
+
+  it("reports preview failures and retries a modal after initialization fails", async () => {
+    // Simulate unavailable WebGL for the preview and the first modal opening.
+    const MapConstructor = mapLibre.api.Map;
+    mapLibre.api.Map = class UnavailableMap {
+      constructor() {
+        throw new Error("Failed to initialize WebGL");
+      }
+    };
+    initializeMapModals();
+    await waitForMicrotask();
+    expect(swal.calls[0].text).to.equal(
+      "Unable to load the map. Reload the page to try again.",
     );
+    document.getElementById("event-map").click();
+    await waitForAnimationFrames(2);
+    expect(swal.calls).to.have.length(2);
+    expect(mapLibre.maps).to.have.length(0);
+
+    // Reopen the modal after initialization becomes available again.
+    document.getElementById("close-event-map-modal").click();
+    mapLibre.api.Map = MapConstructor;
+    document.getElementById("event-map").click();
+    await waitForAnimationFrames(2);
+    expect(mapLibre.maps.map((map) => map.options.container)).to.deep.equal([
+      "event-map-modal-map",
+    ]);
+    expect(swal.calls).to.have.length(2);
   });
 });

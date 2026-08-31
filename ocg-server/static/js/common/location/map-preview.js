@@ -1,9 +1,10 @@
-import { loadMap } from "/static/js/common/location/leaflet.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { createMapMarker, loadMap } from "/static/js/common/location/maplibre.js";
 import { DEFAULT_MAP_ZOOM, parseCoordinate } from "/static/js/common/location/search-utils.js";
 
 /**
- * Coordinates the Leaflet map preview used by location search fields.
+ * Coordinates the map preview used by location search fields.
  */
 export class LocationMapPreview {
   /**
@@ -12,14 +13,18 @@ export class LocationMapPreview {
   constructor(mapElementId) {
     this.mapElementId = mapElementId;
     this.map = null;
+    this.mapErrorShown = false;
     this.marker = null;
     this.syncPromise = Promise.resolve();
+    this.syncRevision = 0;
   }
 
   /**
-   * Remove the current Leaflet map and marker.
+   * Remove the current map and marker.
    */
   reset() {
+    this.syncRevision += 1;
+    this.mapErrorShown = false;
     if (this.map) {
       this.map.remove();
       this.map = null;
@@ -43,16 +48,19 @@ export class LocationMapPreview {
     if (!state.mapVisible || !this._hasValidCoordinates(state)) {
       return Promise.resolve();
     }
-    this.syncPromise = this.syncPromise.catch(() => {}).then(() => this.syncInternal(state));
+    const revision = ++this.syncRevision;
+    this.syncPromise = this.syncPromise.catch(() => {}).then(() => this.syncInternal(state, revision));
     return this.syncPromise;
   }
 
   /**
    * Initialize or update the enabled map/marker with the latest coordinates.
    * @param {Object} state Map preview state.
+   * @param {number} revision Scheduled sync revision.
    * @returns {Promise<void>}
    */
-  async syncInternal(state) {
+  async syncInternal(state, revision = this.syncRevision) {
+    if (revision !== this.syncRevision) return;
     if (!this._hasValidCoordinates(state)) {
       this.reset();
       return;
@@ -67,47 +75,56 @@ export class LocationMapPreview {
 
     const zoom = state.mapZoom || DEFAULT_MAP_ZOOM;
     if (!this.map) {
-      this.map = await loadMap(this.mapElementId, lat, lng, {
-        zoom,
-        interactive: true,
-        marker: false,
+      let map;
+      try {
+        map = await loadMap(this.mapElementId, lat, lng, {
+          zoom,
+          interactive: true,
+          marker: false,
+        });
+      } catch {
+        if (revision === this.syncRevision && container.isConnected && !this.mapErrorShown) {
+          this.mapErrorShown = true;
+          showErrorAlert("Unable to load the map preview. You can still enter the location details.");
+        }
+        return;
+      }
+      if (!map) return;
+      if (revision !== this.syncRevision) {
+        map.remove();
+        return;
+      }
+      this.map = map;
+      this.mapErrorShown = false;
+      map.on("remove", () => {
+        this.map = null;
+        this.marker = null;
       });
     }
 
     if (this.marker) {
-      this.marker.setLatLng([lat, lng]);
-    } else if (window.L) {
-      const icon = L.divIcon({
-        html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 icon-marker"></div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-        popupAnchor: [0, -25],
-        className: "marker-icon",
-      });
-      this.marker = L.marker(L.latLng(lat, lng), {
-        icon,
-        interactive: false,
-        autoPanOnFocus: false,
-        bubblingMouseEvents: false,
-      }).addTo(this.map);
+      this.marker.setLngLat([lng, lat]);
+    } else {
+      this.marker = createMapMarker([lng, lat]).addTo(this.map);
     }
 
-    const leaflet = window.L;
     const canFitBounds =
-      state.shouldFitBounds &&
-      Array.isArray(state.mapBoundingBox) &&
-      state.mapBoundingBox.length === 4 &&
-      leaflet;
+      state.shouldFitBounds && Array.isArray(state.mapBoundingBox) && state.mapBoundingBox.length === 4;
 
     if (canFitBounds) {
       const [south, north, west, east] = state.mapBoundingBox;
-      const bounds = leaflet.latLngBounds([south, west], [north, east]);
-      this.map.fitBounds(bounds, { animate: false });
+      this.map.fitBounds(
+        [
+          [west, south],
+          [east, north],
+        ],
+        { duration: 0 },
+      );
     } else {
-      this.map.setView([lat, lng], zoom, { animate: false });
+      this.map.jumpTo({ center: [lng, lat], zoom });
     }
 
-    this.map.invalidateSize?.(false);
+    this.map.resize();
   }
 
   /**
