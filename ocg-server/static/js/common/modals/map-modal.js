@@ -1,15 +1,17 @@
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import {
   getElementById,
   initializeOnReadyAndHtmxLoad,
   isDatasetReady,
   markDatasetReady,
 } from "/static/js/common/dom.js";
-import { loadMap } from "/static/js/common/location/leaflet.js";
+import { loadMap } from "/static/js/common/location/maplibre.js";
 import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 
-const MAP_MODAL_SELECTOR = "[data-map-modal]";
-const MAP_MODAL_READY_KEY = "mapModalReady";
 const ENTER_KEY = "Enter";
+const MAP_ERROR_MESSAGE = "Unable to load the map. Reload the page to try again.";
+const MAP_MODAL_READY_KEY = "mapModalReady";
+const MAP_MODAL_SELECTOR = "[data-map-modal]";
 const SPACE_KEY = " ";
 
 /**
@@ -63,7 +65,14 @@ const initializeMapModal = (mapContainer) => {
     }
     modalMapLoaded = true;
     requestAnimationFrame(() => {
-      loadMap(modalMapId, lat, lng);
+      loadMap(modalMapId, lat, lng)
+        .then((map) => {
+          modalMapLoaded = Boolean(map);
+        })
+        .catch(() => {
+          modalMapLoaded = false;
+          if (mapContainer.isConnected) showErrorAlert(MAP_ERROR_MESSAGE);
+        });
     });
   };
 
@@ -72,10 +81,15 @@ const initializeMapModal = (mapContainer) => {
     ensureModalMap();
   };
 
-  loadMap(mapContainer.id, lat, lng, { interactive: false });
+  loadMap(mapContainer.id, lat, lng, { interactive: false }).catch(() => {
+    if (mapContainer.isConnected) showErrorAlert(MAP_ERROR_MESSAGE);
+  });
 
-  mapContainer.addEventListener("click", openModal);
+  mapContainer.addEventListener("click", (event) => {
+    if (!event.target.closest(".maplibregl-ctrl")) openModal();
+  });
   mapContainer.addEventListener("keydown", (event) => {
+    if (event.target !== mapContainer) return;
     if (event.key === ENTER_KEY || event.key === SPACE_KEY) {
       event.preventDefault();
       openModal();

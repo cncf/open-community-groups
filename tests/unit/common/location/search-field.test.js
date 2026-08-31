@@ -10,8 +10,6 @@ import {
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("location-search-field", () => {
-  const originalLeaflet = window.L;
-
   useMountedElementsCleanup("location-search-field");
 
   let fetchMock;
@@ -23,13 +21,6 @@ describe("location-search-field", () => {
 
   afterEach(() => {
     fetchMock.restore();
-
-    // Restore the original Leaflet global after map-related tests.
-    if (originalLeaflet) {
-      window.L = originalLeaflet;
-    } else {
-      delete window.L;
-    }
   });
 
   // Render a field with the standard venue field names used by location forms.
@@ -180,13 +171,13 @@ describe("location-search-field", () => {
     });
 
     // Seed the fixture data.
-    element._leafletMap = {
+    element._map = {
       remove() {},
-      setView() {},
-      invalidateSize() {},
+      jumpTo() {},
+      resize() {},
     };
-    element._leafletMarker = {
-      setLatLng() {},
+    element._mapMarker = {
+      setLngLat() {},
     };
 
     // Track emitted events.
@@ -485,7 +476,7 @@ describe("location-search-field", () => {
     element._latitudeValue = "36.7213";
     element._longitudeValue = "-4.4214";
     element._mapVisible = true;
-    element._leafletMap = {
+    element._map = {
       remove() {
         removed += 1;
       },
@@ -506,7 +497,7 @@ describe("location-search-field", () => {
     expect(element._latitudeValue).to.equal("");
     expect(element._longitudeValue).to.equal("");
     expect(element._mapVisible).to.equal(false);
-    expect(element._leafletMap).to.equal(null);
+    expect(element._map).to.equal(null);
     expect(removed).to.equal(1);
     expect(clearedEvents).to.have.length(1);
   });
@@ -516,12 +507,7 @@ describe("location-search-field", () => {
     const element = await renderField();
     const markerCalls = [];
     const fitBoundsCalls = [];
-    const setViewCalls = [];
-
-    // Mock the external browser library.
-    window.L = {
-      latLngBounds: (southWest, northEast) => ({ southWest, northEast }),
-    };
+    const jumpToCalls = [];
 
     // Seed the component state.
     element._mapVisible = true;
@@ -529,18 +515,18 @@ describe("location-search-field", () => {
     element._longitudeValue = "-4.4214";
     element._mapBoundingBox = [36.68, 36.75, -4.49, -4.35];
     element._shouldFitBounds = true;
-    element._leafletMap = {
+    element._map = {
       remove() {},
       fitBounds(bounds, options) {
         fitBoundsCalls.push({ bounds, options });
       },
-      setView(coords, zoom, options) {
-        setViewCalls.push({ coords, zoom, options });
+      jumpTo(options) {
+        jumpToCalls.push(options);
       },
-      invalidateSize() {},
+      resize() {},
     };
-    element._leafletMarker = {
-      setLatLng(coords) {
+    element._mapMarker = {
+      setLngLat(coords) {
         markerCalls.push(coords);
       },
     };
@@ -550,14 +536,14 @@ describe("location-search-field", () => {
     await element._syncMapPreviewInternal();
 
     // Fits map bounds when a country result provides a bounding box.
-    expect(markerCalls[0]).to.deep.equal([36.7213, -4.4214]);
+    expect(markerCalls[0]).to.deep.equal([-4.4214, 36.7213]);
     expect(fitBoundsCalls.at(-1)).to.deep.equal({
-      bounds: {
-        southWest: [36.68, -4.49],
-        northEast: [36.75, -4.35],
-      },
-      options: { animate: false },
+      bounds: [
+        [-4.49, 36.68],
+        [-4.35, 36.75],
+      ],
+      options: { duration: 0 },
     });
-    expect(setViewCalls).to.deep.equal([]);
+    expect(jumpToCalls).to.deep.equal([]);
   });
 });

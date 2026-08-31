@@ -3,7 +3,7 @@ import "/static/js/common/breadcrumb-nav.js";
 import { convertDateTimeLocalToISO } from "/static/js/common/datetime.js";
 import { closestElement, getElementById, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
-import { loadMap } from "/static/js/common/location/leaflet.js";
+import { loadMap } from "/static/js/common/location/maplibre.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,

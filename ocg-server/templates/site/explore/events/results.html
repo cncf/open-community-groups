@@ -118,17 +118,16 @@
     {# End placeholder map -#}
 
     <div id="map-box"
-         class="relative w-full h-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom
-                {% if events.len() == 0 -%}opacity-30{%- endif %}">
-      {# Main loading spinner -#}
-      <div id="main-loading-map"
-           role="status"
-           class="absolute inset-0 flex items-center justify-center hidden">
-        {{ ui::main_loading() -}}
-        <span class="sr-only">Loading...</span>
-      </div>
-      {# End main loading spinner -#}
+         class="relative w-full h-full
+                {% if events.len() == 0 -%}opacity-30{%- endif %}"></div>
+    {# Main loading spinner -#}
+    <div id="main-loading-map"
+         role="status"
+         class="absolute inset-0 z-[450] flex items-center justify-center hidden">
+      {{ ui::main_loading() -}}
+      <span class="sr-only">Loading...</span>
     </div>
+    {# End main loading spinner -#}
   </div>
 </div>
 {# djlint:off #}

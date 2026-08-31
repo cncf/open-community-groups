@@ -1,6 +1,7 @@
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import { navigateWithHtmx } from "/static/js/common/htmx-navigation.js";
 import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/loading-spinner.js";
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { createMapMarker, loadMap, loadMapScript } from "/static/js/common/location/maplibre.js";
 import { fetchData } from "/static/js/community/explore/results.js";
 import {
   cancelDelayedPopover,
@@ -10,11 +11,11 @@ import {
   scheduleDelayedPopover,
 } from "/static/js/community/explore/widgets.js";
 
-const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
-const MARKER_CLUSTER_SCRIPT_SRC = "/static/vendor/js/leaflet.markercluster.v1.5.3.min.js";
+const LOCATIONS_SOURCE_ID = "explore-locations";
 const MAIN_LOADING_MAP_ID = "main-loading-map";
-const MAP_LOADING_ID = "loading-map";
 const MAP_ELEMENT_ID = "map-box";
+const MAP_ERROR_MESSAGE = "Unable to load the map. Switch to list view or reload the page to try again.";
+const MAP_LOADING_ID = "loading-map";
 const MAP_STATUS = Object.freeze({
   empty: "empty",
   error: "error",
@@ -22,268 +23,289 @@ const MAP_STATUS = Object.freeze({
   loading: "loading",
   ready: "ready",
 });
-const MARKER_ICON_CONFIG = {
-  html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker"></div>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-  popupAnchor: [0, -25],
-};
-const TOOLTIP_OPTIONS = {
-  className: "explore-map-tooltip",
-  direction: "top",
-  permanent: false,
-  sticky: false,
-  offset: [0, -18],
-  opacity: 1,
-};
 
 /**
- * Gets the collection for the selected explore entity.
- * @param {string} entity - Explore entity type
- * @param {object} data - Explore response payload
- * @returns {Array} Items for the entity
- */
-const getItemsForEntity = (entity, data) => {
-  if (entity === "events") {
-    return data.events || [];
-  }
-
-  if (entity === "groups") {
-    return data.groups || [];
-  }
-
-  return [];
-};
-
-/**
- * Checks whether a coordinate is finite and non-zero.
- * @param {unknown} value - Coordinate value
- * @returns {boolean} True when the coordinate can be used for map markers
- */
-const isFiniteNonZeroCoordinate = (value) => {
-  const coordinate = Number(value);
-  return Number.isFinite(coordinate) && coordinate !== 0;
-};
-
-/**
- * Checks whether an item can be rendered as a map marker.
- * @param {object} item - Explore item
- * @returns {boolean} True when coordinates are present and non-zero
- */
-const hasValidCoordinates = (item) =>
-  isFiniteNonZeroCoordinate(item.latitude) && isFiniteNonZeroCoordinate(item.longitude);
-
-/**
- * Filters explore items to those that can be rendered as map markers.
- * @param {Array} items - Explore items
- * @returns {Array} Items with finite, non-zero coordinates
- */
-const getMappableItems = (items) => items.filter((item) => hasValidCoordinates(item));
-
-/**
- * Normalizes a latitude value to be within the -90 to 90 range.
- * @param {number} lat - Latitude value to normalize
- * @returns {number} Normalized latitude value between -90 and 90
- */
-const normalizeLatitude = (lat) => Math.max(-90, Math.min(90, lat));
-
-/**
- * Normalizes a longitude value to be within the -180 to 180 range.
- * Leaflet can return values outside this range when wrapping around the map.
- * @param {number} lng - Longitude value to normalize
- * @returns {number} Normalized longitude value between -180 and 180
- */
-const normalizeLongitude = (lng) => {
-  const normalizedLongitude = ((lng + 180) % 360) - 180;
-  if (normalizedLongitude < -180) {
-    return normalizedLongitude + 360;
-  }
-  return normalizedLongitude;
-};
-
-/**
- * Checks if a bounding box object contains valid, non-identical coordinates.
- * @param {object} bbox - Bounding box object with coordinate properties
- * @returns {boolean} True if bbox is valid (coordinates are not all the same)
- */
-const checkValidBbox = (bbox) => {
-  const allEqual = new Set(Object.values(bbox)).size === 1;
-  return !allEqual;
-};
-
-/**
- * Fits the map to a valid response bounding box.
- * @param {object} map - Leaflet map instance
- * @param {object|null|undefined} bbox - Optional response bounding box
- */
-const fitMapToBbox = (map, bbox) => {
-  if (!bbox || !checkValidBbox(bbox)) {
-    return;
-  }
-
-  const southWest = L.latLng(bbox.sw_lat, bbox.sw_lon);
-  const northEast = L.latLng(bbox.ne_lat, bbox.ne_lon);
-  const bounds = L.latLngBounds(southWest, northEast);
-  map.flyToBounds(bounds, { animate: false, noMoveStart: true });
-};
-
-/**
- * Creates a Leaflet marker icon for an explore item.
- * @param {object} item - Explore item
- * @returns {object} Leaflet div icon
- */
-const createMarkerIcon = (item) =>
-  L.divIcon({
-    ...MARKER_ICON_CONFIG,
-    className: `marker-${item.slug}`,
-  });
-
-/**
- * Binds delayed tooltip behavior to a marker.
- * @param {object} marker - Leaflet marker instance
- * @param {object} item - Explore item
- * @param {WeakMap} tooltipTimers - Marker tooltip timers
- */
-const bindMarkerTooltip = (marker, item, tooltipTimers) => {
-  if (!item.popover_html) {
-    return;
-  }
-
-  marker.on("mouseover", () => {
-    scheduleDelayedPopover(tooltipTimers, marker, () => {
-      if (!marker.getTooltip()) {
-        marker.bindTooltip(renderPopoverCardShell(item.popover_html), TOOLTIP_OPTIONS);
-      }
-      marker.openTooltip();
-    });
-  });
-
-  marker.on("mouseout", () => {
-    cancelDelayedPopover(tooltipTimers, marker);
-    if (marker.getTooltip()) {
-      marker.closeTooltip();
-      marker.unbindTooltip();
-    }
-  });
-
-  marker.on("remove", () => {
-    cancelDelayedPopover(tooltipTimers, marker);
-    if (marker.getTooltip()) {
-      marker.unbindTooltip();
-    }
-  });
-};
-
-/**
- * Leaflet-backed community explore map controller.
+ * Community explore map with native clustering and custom HTML markers.
  */
 export class Map {
   /**
-   * Initializes the map with Leaflet.js and marker clustering.
-   * Uses singleton pattern to ensure only one map instance exists.
-   * @param {string} entity - The type of entity to display ('events' or 'groups')
-   * @param {object} data - Initial map data containing items to display
+   * Reuses the explore controller when HTMX replaces the map view.
+   * @param {string} entity Explore entity type ('events' or 'groups').
+   * @param {object} data Initial map data containing items to display.
    */
   constructor(entity, data) {
     // Check if map is already initialized
-    if (Map._instance) {
-      Map._instance.entity = entity;
-      Map._instance.enabledMoveEnd = false;
-      Map._instance.setup(data);
-      return Map._instance;
+    const controller = Map._instance || this;
+    if (!Map._instance) {
+      this.markers = new globalThis.Map();
+      this.pendingSourceUpdate = null;
+      this.tooltipTimers = new WeakMap();
+      this.dataRevision = 0;
+      this.requestId = 0;
+      this.setupPromise = Promise.resolve();
+      this.state = { status: MAP_STATUS.idle };
+
+      // Save map instance
+      Map._instance = this;
     }
 
-    this.entity = entity;
-    this.enabledMoveEnd = false;
-    this.tooltipTimers = new WeakMap();
-    this.state = { status: MAP_STATUS.idle };
-
-    // Save map instance
-    Map._instance = this;
+    controller.entity = entity;
+    controller.enabledMoveEnd = false;
     loadWidgetScripts({
       mainLoadingId: MAIN_LOADING_MAP_ID,
-      loadScripts: () => this.loadScripts(),
-      onReady: () => this.setup(data),
-    });
-  }
-
-  /**
-   * Loads Leaflet and marker clustering in dependency order.
-   * @returns {Promise<void>} Promise resolved when map libraries are ready
-   */
-  loadScripts() {
-    return loadScriptOnce(LEAFLET_SCRIPT_SRC, {
-      isLoaded: () => typeof window.L !== "undefined",
-    }).then(() =>
-      loadScriptOnce(MARKER_CLUSTER_SCRIPT_SRC, {
-        isLoaded: () => typeof window.L?.markerClusterGroup === "function",
-      }),
-    );
-  }
-
-  /**
-   * Sets up the Leaflet map instance with tile layers and event listeners.
-   * @param {object} data - Map data containing items to display
-   */
-  setup(data) {
-    this.map = L.map(MAP_ELEMENT_ID, {
-      maxZoom: 20,
-      minZoom: 3,
-      zoomControl: false,
-      maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)),
-      maxBoundsViscosity: 1.0,
-    });
-
-    // Add zoom control to the map on the top right
-    L.control
-      .zoom({
-        position: "topright",
-      })
-      .addTo(this.map);
-
-    // Load events after the map is loaded
-    this.map.on("load", () => {
-      this.refresh(true, data);
-    });
-
-    // Remove map on unload, invalidating the size and removing event listeners
-    this.map.on("unload", () => {
-      this.map.invalidateSize();
-      this.map.off();
-      this.map.remove();
-    });
-
-    // Center map view
-    this.map.setView([0, 0], 0);
-
-    // Adding the base layer to the map
-    L.tileLayer(
-      `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}${
-        L.Browser.retina ? "@2x.png" : ".png"
-      }`,
-      {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
-        maxZoom: 20,
-        minZoom: 0,
-        noWrap: true,
+      loadScripts: loadMapScript,
+      onReady: () => {
+        controller.setupPromise = controller.setupPromise.catch(() => {}).then(() => controller.setup(data));
+        return controller.setupPromise;
       },
-    ).addTo(this.map);
+    });
+    return controller;
+  }
 
-    // Adding a listener to the map after setting the position to get the bounds
-    // when the map is moved (zoom or pan)
-    this.map.on("moveend", () => {
-      if (this.enabledMoveEnd) {
-        this.refresh();
+  /**
+   * Updates the source while retaining markers until the replacement is ready.
+   * @param {Array} items Explore items with coordinates.
+   */
+  addMarkers(items) {
+    this.markers.forEach((entry) => {
+      const element = entry.marker.getElement();
+      if (element instanceof HTMLButtonElement) {
+        if (document.activeElement === element) this.map.getCanvas().focus({ preventScroll: true });
+        element.disabled = true;
       }
-      this.enabledMoveEnd = true;
+    });
+    this.items = items.filter(hasValidCoordinates);
+    this.dataRevision += 1;
+    this.pendingSourceUpdate = { failed: false, requestId: this.requestId };
+    this.map.getSource(LOCATIONS_SOURCE_ID).setData({
+      type: "FeatureCollection",
+      features: this.items.map((item, index) => ({
+        type: "Feature",
+        properties: { index, revision: this.dataRevision },
+        geometry: {
+          type: "Point",
+          coordinates: [Number(item.longitude), Number(item.latitude)],
+        },
+      })),
     });
   }
 
   /**
-   * Stores the current map status and syncs the blocking loading affordance.
-   * @param {string} status - Map status
+   * Removes HTML markers, popups, and pending hover timers.
+   */
+  clearMarkers() {
+    if (this.clusterPopup?.getElement()?.contains(document.activeElement)) {
+      this.map?.getCanvas().focus({ preventScroll: true });
+    }
+    this.markers.forEach((entry) => this.removeMarker(entry));
+    this.markers.clear();
+    this.clusterPopup?.remove();
+    this.clusterPopup = null;
+  }
+
+  /**
+   * Creates a clickable cluster count using the existing map colors.
+   * @param {object} feature Cluster feature returned by the source.
+   * @returns {object} Marker entry.
+   */
+  createClusterMarker(feature) {
+    const element = document.createElement("button");
+    element.type = "button";
+    element.className = "map-cluster";
+    element.setAttribute("aria-label", `Show ${feature.properties.point_count} locations`);
+    const count = document.createElement("span");
+    count.textContent = feature.properties.point_count_abbreviated;
+    element.append(count);
+    element.addEventListener("click", () => this.expandCluster(feature, element));
+    return {
+      marker: createMapMarker(feature.geometry.coordinates, { element, anchor: "center" }),
+    };
+  }
+
+  /**
+   * Creates a linked pin with a delayed hover or keyboard-focus card.
+   * @param {object} feature Point feature returned by the source.
+   * @returns {object} Marker entry and optional popup.
+   */
+  createItemMarker(feature) {
+    const item = this.items[feature.properties.index];
+    const element = createItemLink(this.entity, item);
+    element.className = `marker-${item.slug}`;
+    element.setAttribute("aria-label", item.name || item.slug);
+    const pin = document.createElement("div");
+    pin.className = "svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker";
+    pin.setAttribute("aria-hidden", "true");
+    element.replaceChildren(pin);
+    const marker = createMapMarker([Number(item.longitude), Number(item.latitude)], { element });
+    const entry = { marker };
+
+    if (item.popover_html) {
+      entry.popup = new maplibregl.Popup({
+        className: "explore-map-tooltip",
+        closeButton: false,
+        closeOnClick: false,
+        focusAfterOpen: false,
+        maxWidth: "none",
+        offset: 30,
+      }).setHTML(renderPopoverCardShell(item.popover_html));
+      const open = () => {
+        scheduleDelayedPopover(this.tooltipTimers, marker, () => {
+          entry.popup.setLngLat(marker.getLngLat()).addTo(this.map);
+          const tooltip = entry.popup.getElement();
+          tooltip.id = `explore-map-tooltip-${this.dataRevision}-${feature.properties.index}`;
+          tooltip.setAttribute("role", "tooltip");
+          tooltip.querySelectorAll("a[href]").forEach((link) => link.removeAttribute("href"));
+          element.setAttribute("aria-describedby", tooltip.id);
+        });
+      };
+      const close = () => {
+        cancelDelayedPopover(this.tooltipTimers, marker);
+        entry.popup.remove();
+        element.removeAttribute("aria-describedby");
+      };
+      element.addEventListener("mouseenter", open);
+      element.addEventListener("mouseleave", close);
+      element.addEventListener("focus", open);
+      element.addEventListener("blur", close);
+      element.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          close();
+        }
+      });
+    }
+    return entry;
+  }
+
+  /**
+   * Zooms into a cluster or lists locations that cannot separate at maximum zoom.
+   * @param {object} feature Cluster feature returned by the source.
+   * @param {HTMLButtonElement} element Cluster button.
+   */
+  async expandCluster(feature, element) {
+    if (element.disabled || feature.properties.revision !== this.dataRevision) return;
+    const map = this.map;
+    const revision = this.dataRevision;
+    const source = map.getSource(LOCATIONS_SOURCE_ID);
+    const clusterId = feature.properties.cluster_id;
+    const clusterHadFocus = document.activeElement === element;
+    element.disabled = true;
+    if (clusterHadFocus) map.getCanvas().focus({ preventScroll: true });
+    try {
+      const zoom = await source.getClusterExpansionZoom(clusterId);
+      if (map !== this.map || revision !== this.dataRevision) return;
+      if (map.getZoom() < map.getMaxZoom()) {
+        map.easeTo({ center: feature.geometry.coordinates, zoom: Math.min(zoom, map.getMaxZoom()) });
+        return;
+      }
+
+      const leaves = await source.getClusterLeaves(clusterId, feature.properties.point_count, 0);
+      if (map !== this.map || revision !== this.dataRevision) return;
+      const list = document.createElement("ul");
+      list.className = "max-h-60 overflow-y-auto space-y-2 p-2";
+      leaves.forEach((leaf) => {
+        const listItem = document.createElement("li");
+        const link = createItemLink(this.entity, this.items[leaf.properties.index]);
+        link.className = "block underline";
+        listItem.append(link);
+        list.append(listItem);
+      });
+      this.clusterPopup?.remove();
+      const popup = new maplibregl.Popup({ maxWidth: "320px" })
+        .setLngLat(feature.geometry.coordinates)
+        .setDOMContent(list)
+        .addTo(map);
+      const popupElement = popup.getElement();
+      const handleKeydown = (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          popup.remove();
+        }
+      };
+      popupElement.addEventListener("keydown", handleKeydown);
+      popup.on("close", () => {
+        popupElement.removeEventListener("keydown", handleKeydown);
+        if (this.clusterPopup === popup) this.clusterPopup = null;
+        if (
+          element.isConnected &&
+          (document.activeElement === document.body || popupElement.contains(document.activeElement))
+        ) {
+          element.focus();
+        }
+      });
+      this.clusterPopup = popup;
+    } catch {
+      if (map === this.map && revision === this.dataRevision) {
+        this.setStatus(MAP_STATUS.error);
+        showErrorAlert("Unable to expand these locations. Please try again.");
+      }
+    } finally {
+      element.disabled = false;
+    }
+  }
+
+  /**
+   * Fetches locations using the current filters and map bounds.
+   * @returns {Promise<object>} Explore response payload.
+   */
+  async fetchLocationData() {
+    const params = new URLSearchParams(location.search);
+    params.delete("view_mode");
+    params.delete("kind", "virtual");
+
+    const bounds = this.map.getBounds();
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+    params.append("bbox_sw_lat", normalizeLatitude(southWest.lat));
+    params.append("bbox_sw_lon", normalizeLongitude(southWest.lng));
+    params.append("bbox_ne_lat", normalizeLatitude(northEast.lat));
+    params.append("bbox_ne_lon", normalizeLongitude(northEast.lng));
+    return fetchData(this.entity, params.toString());
+  }
+
+  /**
+   * Refreshes locations without letting older requests replace newer results.
+   * @param {object|null} currentData Optional data instead of a network request.
+   */
+  async refresh(currentData = null) {
+    const requestId = ++this.requestId;
+    this.setStatus(MAP_STATUS.loading);
+    let data = currentData;
+    if (!data) {
+      try {
+        data = await this.fetchLocationData();
+      } catch {
+        if (requestId === this.requestId) this.setStatus(MAP_STATUS.error);
+        return;
+      }
+    }
+    if (requestId !== this.requestId) return;
+    if (!data) {
+      this.setStatus(MAP_STATUS.error);
+      return;
+    }
+
+    const items = (data[this.entity] || []).filter(hasValidCoordinates);
+    this.addMarkers(items);
+  }
+
+  /**
+   * Releases one marker and its delayed card.
+   * @param {object} entry Cached marker entry.
+   */
+  removeMarker(entry) {
+    if (entry.marker.getElement() === document.activeElement) {
+      this.map?.getCanvas().focus({ preventScroll: true });
+    }
+    cancelDelayedPopover(this.tooltipTimers, entry.marker);
+    entry.popup?.remove();
+    entry.marker.remove();
+  }
+
+  /**
+   * Stores the map status and updates loading indicators.
+   * @param {string} status Map status.
    */
   setStatus(status) {
     this.state = { status };
@@ -291,123 +313,192 @@ export class Map {
       showLoadingSpinner(MAP_LOADING_ID);
     } else {
       hideLoadingSpinner(MAP_LOADING_ID);
+      document.getElementById(MAIN_LOADING_MAP_ID)?.classList.add("hidden");
     }
   }
 
   /**
-   * Refreshes the map by updating markers with new data.
-   * @param {boolean} overwriteBounds - Whether to overwrite map bounds with new data
-   * @param {object} currentData - Optional current data to use instead of fetching
+   * Creates the map, clustered GeoJSON source, and viewport listeners.
+   * @param {object} data Initial explore response.
    */
-  async refresh(overwriteBounds = false, currentData = null) {
-    let data;
-    // If currentData is provided, use it instead of fetching
-    // This is useful for initial load when we already have data
-    // or when we want to overwrite bounds with a specific bbox
-    if (currentData) {
-      data = currentData;
-    } else {
-      this.setStatus(MAP_STATUS.loading);
-
-      // Fetch data based on current map bounds
-      try {
-        data = await this.fetchLocationData(overwriteBounds);
-      } catch (error) {
+  async setup(data) {
+    this.map?.remove();
+    const container = document.getElementById(MAP_ELEMENT_ID);
+    if (!container) return;
+    this.enabledMoveEnd = false;
+    let map;
+    try {
+      map = await loadMap(MAP_ELEMENT_ID, 0, 0, {
+        bounds: getMapBounds(data?.bbox),
+        marker: false,
+        minZoom: 2,
+        navigationControl: true,
+        zoom: 3,
+      });
+    } catch {
+      if (container.isConnected && document.getElementById(MAP_ELEMENT_ID) === container) {
         this.setStatus(MAP_STATUS.error);
-        return;
+        showErrorAlert(MAP_ERROR_MESSAGE, false, true);
       }
-    }
-
-    if (!data) {
-      this.setStatus(MAP_STATUS.error);
       return;
     }
-
-    const mappableItems = getMappableItems(getItemsForEntity(this.entity, data));
-    if (mappableItems.length > 0) {
-      this.addMarkers(mappableItems, overwriteBounds ? data.bbox : null);
-      this.setStatus(MAP_STATUS.ready);
-    } else {
-      this.setStatus(MAP_STATUS.empty);
-    }
-  }
-
-  /**
-   * Fetches data from the server based on current map bounds and filters.
-   * @param {boolean} overwriteBounds - Whether to include bbox in request
-   * @returns {Promise<object>} The fetched data containing items and optional bbox
-   */
-  async fetchLocationData(overwriteBounds) {
-    // Prepare query params
-    const params = new URLSearchParams(location.search);
-
-    // Remove view mode and virtual kind from query params
-    params.delete("view_mode");
-    params.delete("kind", "virtual");
-
-    if (overwriteBounds) {
-      // Get bbox to overwrite bounds on first load
-      params.append("include_bbox", true);
-    } else {
-      // Get current bounds from map
-      const bounds = this.map.getBounds();
-
-      // Add bounds to query params, normalizing coordinate values to stay within
-      // valid ranges. Latitude: -90 to 90, Longitude: -180 to 180. Leaflet can
-      // return values outside these ranges when wrapping around or at extreme zoom.
-      params.append("bbox_sw_lat", normalizeLatitude(bounds._southWest.lat));
-      params.append("bbox_sw_lon", normalizeLongitude(bounds._southWest.lng));
-      params.append("bbox_ne_lat", normalizeLatitude(bounds._northEast.lat));
-      params.append("bbox_ne_lon", normalizeLongitude(bounds._northEast.lng));
-    }
-
-    // Fetch data from the server
-    // This will return either events or groups based on the entity type
-    // and will include bbox if requested
-    const data = await fetchData(this.entity, params.toString());
-    return data;
-  }
-
-  /**
-   * Adds markers to the map with clustering and delayed tooltip functionality.
-   * @param {Array} items - Array of items (events or groups) to add as markers
-   * @param {object} bbox - Optional bounding box to fit the map view
-   */
-  addMarkers(items, bbox) {
-    fitMapToBbox(this.map, bbox);
-
-    // Create marker cluster group
-    const markers = window.L.markerClusterGroup({
-      showCoverageOnHover: false,
+    if (!map) return;
+    this.map = map;
+    let mapErrorShown = false;
+    let mapLoaded = false;
+    map.on("load", () => {
+      mapLoaded = true;
+      map.addSource(LOCATIONS_SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+        cluster: true,
+        clusterRadius: 80,
+        maxzoom: map.getMaxZoom() + 1,
+        clusterMaxZoom: map.getMaxZoom(),
+        clusterProperties: { revision: ["max", ["get", "revision"]] },
+      });
+      // A source layer keeps tiles loaded while HTML markers display the features.
+      map.addLayer({
+        id: LOCATIONS_SOURCE_ID,
+        type: "circle",
+        source: LOCATIONS_SOURCE_ID,
+        paint: { "circle-radius": 1, "circle-opacity": 0 },
+      });
+      this.refresh(data);
+      this.enabledMoveEnd = true;
     });
-
-    // Add markers
-    items.forEach((item) => {
-      if (!hasValidCoordinates(item)) {
+    map.on("moveend", () => {
+      if (this.enabledMoveEnd) this.refresh();
+    });
+    map.on("render", () => this.syncMarkers());
+    map.on("error", (event) => {
+      if (mapLoaded) {
+        if (event?.sourceId === LOCATIONS_SOURCE_ID && this.pendingSourceUpdate) {
+          this.pendingSourceUpdate.failed = true;
+          if (this.pendingSourceUpdate.requestId === this.requestId) this.setStatus(MAP_STATUS.error);
+        }
         return;
       }
-
-      const marker = L.marker(L.latLng(item.latitude, item.longitude), {
-        icon: createMarkerIcon(item),
-        autoPanOnFocus: false,
-        bubblingMouseEvents: true,
-      });
-
-      bindMarkerTooltip(marker, item, this.tooltipTimers);
-
-      // Add click handler to navigate to item page
-      marker.on("click", () => {
-        const url = getExploreItemUrl(this.entity, item);
-        if (url) {
-          navigateWithHtmx(url);
-        }
-      });
-
-      // Add marker to the marker cluster group
-      markers.addLayer(marker);
+      this.setStatus(MAP_STATUS.error);
+      if (!mapErrorShown) {
+        mapErrorShown = true;
+        showErrorAlert(MAP_ERROR_MESSAGE, false, true);
+      }
     });
+    map.on("remove", () => {
+      this.requestId += 1;
+      this.pendingSourceUpdate = null;
+      this.clearMarkers();
+      this.map = null;
+    });
+  }
 
-    // Add marker cluster group to the map
-    this.map.addLayer(markers);
+  /**
+   * Syncs visible HTML markers with the source's clustered features.
+   */
+  syncMarkers() {
+    if (this.pendingSourceUpdate?.failed) return;
+    if (!this.map?.getSource(LOCATIONS_SOURCE_ID) || !this.map.isSourceLoaded(LOCATIONS_SOURCE_ID)) return;
+    const focusedMarker = [...this.markers.values()].find(
+      (entry) => entry.marker.getElement() === document.activeElement,
+    );
+    const focusedLocationUrl = focusedMarker?.marker.getElement().getAttribute("href");
+    const visibleIds = new Set();
+    const bounds = this.map.getBounds();
+    this.map.querySourceFeatures(LOCATIONS_SOURCE_ID).forEach((feature) => {
+      const properties = feature.properties;
+      if (properties.revision !== this.dataRevision || !bounds.contains(feature.geometry.coordinates)) return;
+      const featureId = properties.cluster ? `cluster-${properties.cluster_id}` : `item-${properties.index}`;
+      const id = `${properties.revision}-${featureId}`;
+      if (visibleIds.has(id)) return;
+      visibleIds.add(id);
+      if (!this.markers.has(id)) {
+        const entry = properties.cluster ? this.createClusterMarker(feature) : this.createItemMarker(feature);
+        entry.marker.addTo(this.map);
+        this.markers.set(id, entry);
+      }
+    });
+    if (this.pendingSourceUpdate) {
+      if (this.clusterPopup?.getElement()?.contains(document.activeElement)) {
+        this.map.getCanvas().focus({ preventScroll: true });
+      }
+      this.clusterPopup?.remove();
+      this.clusterPopup = null;
+    }
+    this.markers.forEach((entry, id) => {
+      if (!visibleIds.has(id)) {
+        this.removeMarker(entry);
+        this.markers.delete(id);
+      }
+    });
+    if (focusedLocationUrl && document.activeElement === this.map.getCanvas()) {
+      const replacement = [...this.markers.values()].find(
+        (entry) => entry.marker.getElement().getAttribute("href") === focusedLocationUrl,
+      );
+      replacement?.marker.getElement().focus({ preventScroll: true });
+    }
+    if (this.pendingSourceUpdate) {
+      if (this.pendingSourceUpdate.requestId === this.requestId) {
+        this.setStatus(this.items.length ? MAP_STATUS.ready : MAP_STATUS.empty);
+      }
+      this.pendingSourceUpdate = null;
+    }
   }
 }
+
+/**
+ * Builds an accessible location link while preserving HTMX navigation.
+ * @param {string} entity Explore entity type.
+ * @param {object} item Explore item.
+ * @returns {HTMLAnchorElement} Location link.
+ */
+const createItemLink = (entity, item) => {
+  const link = document.createElement("a");
+  link.setAttribute("role", "link");
+  const url = getExploreItemUrl(entity, item);
+  link.textContent = item.name || item.slug;
+  if (url) {
+    link.href = url;
+    link.addEventListener("click", (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      navigateWithHtmx(url);
+    });
+  }
+  return link;
+};
+
+/**
+ * Converts response bounds to MapLibre's longitude-first coordinate order.
+ * @param {object} bbox Optional response bounding box.
+ * @returns {number[][]|undefined} Map bounds when the response has an extent.
+ */
+const getMapBounds = (bbox) => {
+  if (!bbox || new Set(Object.values(bbox)).size === 1) return undefined;
+  return [
+    [bbox.sw_lon, bbox.sw_lat],
+    [bbox.ne_lon, bbox.ne_lat],
+  ];
+};
+
+/**
+ * Checks for finite, non-zero coordinates used by explore locations.
+ * @param {object} item Explore item.
+ * @returns {boolean} Whether a marker can be rendered.
+ */
+const hasValidCoordinates = (item) =>
+  [item.latitude, item.longitude].every((value) => Number.isFinite(Number(value)) && Number(value) !== 0);
+
+/**
+ * Clamps latitude to the server's accepted range.
+ * @param {number} latitude Latitude.
+ * @returns {number} Normalized latitude.
+ */
+const normalizeLatitude = (latitude) => Math.max(-90, Math.min(90, latitude));
+
+/**
+ * Clamps longitude to the server's accepted range without wrapping world edges.
+ * @param {number} longitude Longitude.
+ * @returns {number} Normalized longitude.
+ */
+const normalizeLongitude = (longitude) => Math.max(-180, Math.min(180, longitude));

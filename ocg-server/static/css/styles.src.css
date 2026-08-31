@@ -469,9 +469,10 @@ input:placeholder-shown {
 }
 /* End full calendar */
 
-/* Leaflet */
-.leaflet-touch .leaflet-bar a {
+/* MapLibre */
+.maplibregl-ctrl-group button {
   height: 35px !important;
+  width: 35px !important;
 }
 
 .explore-popover-card-shell {
@@ -500,7 +501,7 @@ input:placeholder-shown {
   box-shadow: none;
 }
 
-.leaflet-tooltip.explore-map-tooltip {
+.explore-map-tooltip .maplibregl-popup-content {
   background-color: transparent;
   border: 0;
   border-radius: 0;
@@ -508,71 +509,37 @@ input:placeholder-shown {
   font-family: "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   max-width: none;
   padding: 0;
+  pointer-events: none;
 }
 
-.leaflet-tooltip.explore-map-tooltip > div {
-  width: auto !important;
-}
-
-.leaflet-tooltip.explore-map-tooltip::before {
-  display: none;
-}
-
-.leaflet-tooltip.explore-map-tooltip::after {
-  border: 5px solid #0000;
-  content: "";
-  display: block;
-  height: 0;
-  position: absolute;
-  width: 0;
-}
-
-.leaflet-tooltip-top.explore-map-tooltip::after {
-  border-top: 5px solid rgb(209, 213, 219);
-  bottom: -10px;
-  left: calc(50% - 2px);
-  transform: translateX(-50%);
-}
-
-.leaflet-tooltip-bottom.explore-map-tooltip::after {
-  border-bottom: 5px solid rgb(209, 213, 219);
-  left: calc(50% - 2px);
-  top: -10px;
-  transform: translateX(-50%);
-}
-
-.leaflet-tooltip-left.explore-map-tooltip::after {
-  border-left: 5px solid rgb(209, 213, 219);
-  right: -10px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.leaflet-tooltip-right.explore-map-tooltip::after {
-  border-right: 5px solid rgb(209, 213, 219);
-  left: -10px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.leaflet-container a {
+.maplibregl-map a {
   color: inherit !important;
 }
-
-.leaflet-pane, .leaflet-bottom, .leaflet-top {
-  z-index: 1 !important;
-}
-/* End Leaflet */
+/* End MapLibre */
 
 /* Marker cluster */
-.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
-  background-color: color-mix(in oklab, var(--ocg-primary) 50%, white) !important;
+.map-cluster {
+  background-color: color-mix(in oklab, var(--ocg-primary) 50%, white);
+  border-radius: 50%;
+  cursor: pointer;
+  height: 40px;
+  padding: 5px;
+  width: 40px;
 }
 
-.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
-  background-color: var(--ocg-primary) !important;
+.map-cluster > span {
+  background-color: var(--ocg-primary);
+  border-radius: 50%;
   color: white;
+  display: block;
   font-weight: 700;
+  line-height: 30px;
+  text-align: center;
+}
+
+.map-cluster:focus-visible, .maplibregl-marker:focus-visible {
+  outline: 2px solid var(--ocg-primary);
+  outline-offset: 2px;
 }
 /* End marker cluster */
 

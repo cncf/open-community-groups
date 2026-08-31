@@ -150,7 +150,7 @@ export const initializeEventUpdatePage = (root = document) => {
   const { displayActiveSection } = initializeSectionTabs({
     root: pageRoot,
     onSectionChange: (sectionName) => {
-      // Maps need a visible container before Leaflet can size the preview.
+      // Maps need a visible container before MapLibre can size the preview.
       if (sectionName === "date-venue") {
         showLocationMapIfNeeded();
       }
