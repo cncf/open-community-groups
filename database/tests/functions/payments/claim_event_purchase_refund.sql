@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,8 @@ select plan(6);
 \set communityID 'd4010000-0000-0000-0000-000000000001'
 \set eventCategoryID 'd4010000-0000-0000-0000-000000000002'
 \set eventID 'd4010000-0000-0000-0000-000000000003'
+\set externalPurchaseID 'd4010000-0000-0000-0000-000000000022'
+\set externalUserID 'd4010000-0000-0000-0000-000000000023'
 \set exhaustedPurchaseID 'd4010000-0000-0000-0000-000000000004'
 \set exhaustedRefundID 'd4010000-0000-0000-0000-000000000005'
 \set failedPurchaseID 'd4010000-0000-0000-0000-000000000006'
@@ -74,7 +76,9 @@ values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
 
 -- User owning all independent purchase fixtures
 insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+values
+    ('user', 'user@example.test', :'userID', 'user'),
+    ('external-user', 'external-user@example.test', :'externalUserID', 'external-user');
 
 -- Event owning all independent purchase fixtures
 insert into event (
@@ -176,6 +180,33 @@ from (values
     connected_seller_id,
     platform_fee_amount_minor,
     provider_payment_reference
+);
+
+-- Completed external purchase that must not produce provider refund work
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'KRW',
+    :'eventID',
+    :'externalPurchaseID',
+    :'ticketTypeID',
+    0,
+    0,
+    'completed',
+    'External admission',
+    :'externalUserID'
 );
 
 -- Refund rows covering priority, retry, scheduling, exhaustion, and provider scoping
@@ -293,6 +324,17 @@ select results_eq(
         (%L::uuid, null::uuid, 'provider-failed'::text)
     $$, :'exhaustedRefundID', :'futureRefundID', :'otherProviderRefundID', :'terminalRefundID'),
     'Should leave future, exhausted, terminal, and other-provider work unclaimed'
+);
+
+-- Should keep provider refund claims isolated from external purchases
+select is(
+    (
+        select count(*)::int
+        from event_purchase_refund
+        where event_purchase_id = :'externalPurchaseID'::uuid
+    ),
+    0,
+    'Should keep provider refund claims isolated from external purchases'
 );
 
 -- ============================================================================

@@ -154,9 +154,12 @@ begin
         where event_id = p_event_id
         and status = 'pending'
         returning
+            charge_model,
             event_discount_code_id,
+            event_purchase_id,
             user_id
     loop
+        -- Release any reserved discount redemption after expiring the hold
         if v_event_purchase.event_discount_code_id is not null then
             perform release_event_discount_code_availability(
                 v_event_purchase.event_discount_code_id
@@ -167,6 +170,24 @@ begin
             p_event_id,
             v_event_purchase.user_id
         );
+
+        -- Tell external payers not to send money after the event is canceled
+        if v_event_purchase.charge_model = 'external' then
+            perform enqueue_notification(
+                'event-external-payment-expired',
+                jsonb_strip_nulls(jsonb_build_object(
+                    'dashboard_url', '/dashboard/user?tab=events',
+                    'do_not_pay', true,
+                    'event_id', p_event_id,
+                    'event_name', v_event_name,
+                    'event_purchase_id', v_event_purchase.event_purchase_id,
+                    'group_name', v_group_name,
+                    'theme', v_theme
+                )),
+                '[]'::jsonb,
+                array[v_event_purchase.user_id]
+            );
+        end if;
     end loop;
 
     -- Return abandoned checkouts to pending before canceling every active offer

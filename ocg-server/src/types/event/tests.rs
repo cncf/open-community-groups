@@ -16,8 +16,10 @@ fn event_enrollment_state_can_request_refund_allows_tbd_events() {
 
         admission_offer_id: None,
         event_ticket_type_id: None,
+        external_payment: None,
         manually_invited: false,
         purchase_amount_minor: Some(2_500),
+        purchase_charge_model: None,
         refund_rejection_reason: None,
         refund_request_status: None,
         resume_checkout_url: None,
@@ -51,6 +53,7 @@ fn event_full_to_summary_maps_event_fields() {
         ends_at: Some(ends_at),
         event_id,
         event_series_id: Some(event_series_id),
+        external_payment_url: Some("https://pay.example.test/event".to_string()),
         group: GroupSummary {
             category: crate::types::group::GroupCategory {
                 name: "Technology".to_string(),
@@ -101,6 +104,7 @@ fn event_full_to_summary_maps_event_fields() {
         summary.group_slug_pretty.as_deref(),
         Some("pretty-group-slug")
     );
+    assert!(summary.has_external_payment);
     assert!(summary.has_related_events);
     assert_eq!(summary.kind, EventKind::Hybrid);
     assert_eq!(summary.logo_url, "https://example.com/logo.png");
@@ -717,6 +721,7 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),
         group_slug: "group".to_string(),
+        has_external_payment: false,
         has_registration_questions: false,
         has_related_events: false,
         kind: EventKind::InPerson,

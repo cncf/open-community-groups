@@ -71,7 +71,7 @@ export const handleAttendanceClick = (event) => {
   const attendButton = closestElement(event.target, '[data-attendance-role="attend-btn"]');
   if (attendButton instanceof HTMLButtonElement && attendButton.dataset.resumeUrl) {
     event.preventDefault();
-    window.location.assign(attendButton.dataset.resumeUrl);
+    openResumeUrl(attendButton.dataset.resumeUrl, attendButton.dataset.openInNewTab === "true");
     return;
   }
 
@@ -114,7 +114,7 @@ export const handleAttendanceClick = (event) => {
   const checkoutResumeButton = closestElement(event.target, '[data-attendance-role="checkout-resume-btn"]');
   if (checkoutResumeButton instanceof HTMLButtonElement && checkoutResumeButton.dataset.resumeUrl) {
     event.preventDefault();
-    window.location.assign(checkoutResumeButton.dataset.resumeUrl);
+    openResumeUrl(checkoutResumeButton.dataset.resumeUrl, false);
     return;
   }
 
@@ -227,4 +227,19 @@ export const handleAttendanceKeydown = (event) => {
       closeTicketModal(container);
     }
   });
+};
+
+/**
+ * Opens a stored checkout or external payment URL.
+ * @param {string} url - URL to open
+ * @param {boolean} openInNewTab - Whether to open the URL in a new tab
+ * @returns {void}
+ */
+const openResumeUrl = (url, openInNewTab) => {
+  if (openInNewTab) {
+    window.open(url, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  window.location.assign(url);
 };

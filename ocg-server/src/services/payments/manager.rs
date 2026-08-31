@@ -40,6 +40,15 @@ pub(crate) trait PaymentsManager {
     /// Approves a pending refund request and queues the provider refund.
     async fn approve_refund_request(&self, input: &ApproveRefundRequestInput) -> Result<()>;
 
+    /// Completes an external purchase after an organizer marks it paid.
+    async fn complete_external_checkout(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        details: Option<String>,
+    ) -> Result<()>;
+
     /// Completes a free checkout and enqueues the attendee welcome notification.
     async fn complete_free_checkout(
         &self,
@@ -211,6 +220,38 @@ impl PgPaymentsManager {
 impl PaymentsManager for PgPaymentsManager {
     /// [`PaymentsManager::approve_refund_request`].
     async fn approve_refund_request(&self, input: &ApproveRefundRequestInput) -> Result<()> {
+        // Load the purchase rail before choosing local or provider approval
+        let charge_model = self
+            .db
+            .get_event_purchase_charge_model(input.event_purchase_id)
+            .await?;
+
+        // Approve external purchases locally without creating provider work
+        if charge_model.is_external() {
+            // Load identifiers before composing the in-transaction notification
+            let context = self
+                .db
+                .get_event_purchase_notification_context(input.group_id, input.event_purchase_id)
+                .await?
+                .ok_or_else(|| anyhow::anyhow!("refund request not found"))?;
+            let notification_template_data = self
+                .notification_composer
+                .build_refund_approval_template_data(context.community_id, context.event_id, true)
+                .await?;
+
+            self.db
+                .approve_external_event_refund_request(
+                    input.actor_user_id,
+                    input.group_id,
+                    input.event_purchase_id,
+                    input.review_note.clone(),
+                    Some(notification_template_data),
+                )
+                .await?;
+
+            return Ok(());
+        }
+
         // Persist the review decision and durable worker job atomically
         self.db
             .queue_event_refund_request_approval(
@@ -220,6 +261,40 @@ impl PaymentsManager for PgPaymentsManager {
                 input.review_note.clone(),
             )
             .await
+    }
+
+    /// [`PaymentsManager::complete_external_checkout`].
+    async fn complete_external_checkout(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        details: Option<String>,
+    ) -> Result<()> {
+        // Load identifiers before composing the in-transaction notification
+        let context = self
+            .db
+            .get_event_purchase_notification_context(group_id, event_purchase_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("purchase not found"))?;
+        let (notification_template_data, notification_attachments) = self
+            .notification_composer
+            .build_event_welcome_notification_payload(context.community_id, context.event_id)
+            .await?;
+
+        // Finalize the external purchase and enqueue the welcome notification atomically
+        self.db
+            .complete_external_event_purchase(
+                actor_user_id,
+                group_id,
+                event_purchase_id,
+                details,
+                Some(notification_attachments),
+                Some(notification_template_data),
+            )
+            .await?;
+
+        Ok(())
     }
 
     /// [`PaymentsManager::complete_free_checkout`].
@@ -251,7 +326,11 @@ impl PaymentsManager for PgPaymentsManager {
         let notification_template_data = if context.notification_required {
             Some(
                 self.notification_composer
-                    .build_refund_approval_template_data(context.community_id, context.event_id)
+                    .build_refund_approval_template_data(
+                        context.community_id,
+                        context.event_id,
+                        false,
+                    )
                     .await?,
             )
         } else {

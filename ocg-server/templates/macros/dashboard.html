@@ -313,6 +313,13 @@
               </div>
             {% endif -%}
           </dl>
+          <p id="{{ id_prefix }}-external-note"
+             class="mt-3 hidden text-sm text-stone-700"
+             hidden>
+            This payment was collected outside this platform. Approving records
+            that the money was returned outside OCG and cancels attendance
+            immediately.
+          </p>
           <div class="mt-5">
             <label for="{{ review_note_id }}" class="form-label">
               {% if review_note_required -%}

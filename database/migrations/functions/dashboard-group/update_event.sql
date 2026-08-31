@@ -20,6 +20,11 @@ declare
     v_event_reminder_enabled boolean := coalesce((p_event->>'event_reminder_enabled')::boolean, true);
     v_event_tags text[];
     v_event_waitlist_enabled boolean := coalesce((p_event->>'waitlist_enabled')::boolean, false);
+    v_external_mode boolean := false;
+    v_external_payment_instructions text;
+    v_external_payment_url text;
+    v_external_payment_window_hours int;
+    v_group_external_ready boolean := false;
     v_has_pending_invitation_requests boolean;
     v_has_waitlist_entries boolean;
     v_is_paid_capable boolean;
@@ -46,9 +51,11 @@ begin
     -- paid ticket updates cannot invalidate each other
     select
         g.community_id,
+        is_group_external_payments_ready(g.group_id),
         g.payment_recipient
     into
         v_community_id,
+        v_group_external_ready,
         v_payment_recipient
     from "group" g
     where g.group_id = p_group_id
@@ -84,64 +91,92 @@ begin
 
     -- Resolve ticketing values and the effective event capacity
     v_discount_codes := case
-        -- Use explicitly submitted discount codes
         when p_event ? 'discount_codes'
         then nullif(p_event->'discount_codes', 'null'::jsonb)
-        -- Preserve discount codes omitted from a partial payload
         else v_event_before->'discount_codes'
     end;
     v_ticket_types := case
-        -- Use explicitly submitted ticket types
         when p_event ? 'ticket_types'
         then nullif(p_event->'ticket_types', 'null'::jsonb)
-        -- Preserve ticket types omitted from a partial payload
         else v_event_before->'ticket_types'
     end;
     v_is_paid_capable := is_event_ticketing_payload_paid_capable(v_ticket_types);
     v_manual_tax_rate_ids := case
-        -- Use explicitly submitted manual Tax Rate selections
         when p_event ? 'manual_tax_rate_ids'
         then coalesce(jsonb_text_array(p_event->'manual_tax_rate_ids'), '{}'::text[])
-        -- Preserve manual Tax Rate selections omitted from a partial payload
         else coalesce(jsonb_text_array(v_event_before->'manual_tax_rate_ids'), '{}'::text[])
     end;
     v_ticket_capacity := get_event_ticket_capacity(v_ticket_types);
     v_tax_calculation_mode := case
-        -- Use the explicitly submitted tax calculation mode
         when p_event ? 'tax_calculation_mode'
         then coalesce(nullif(p_event->>'tax_calculation_mode', ''), 'automatic')
-        -- Preserve the tax calculation mode omitted from a partial payload
         else coalesce(nullif(v_event_before->>'tax_calculation_mode', ''), 'automatic')
     end;
     v_tax_behavior := case
-        -- Normalize events that do not collect tax
         when v_tax_calculation_mode = 'none' then 'inclusive'
-        -- Use the explicitly submitted tax display behavior
         when p_event ? 'tax_behavior'
         then coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
-        -- Preserve the tax display behavior omitted from a partial payload
         else coalesce(nullif(v_event_before->>'tax_behavior', ''), 'inclusive')
     end;
     v_effective_capacity := v_ticket_capacity;
     v_payment_currency_code := case
-        -- Use the explicitly submitted payment currency
         when p_event ? 'payment_currency_code'
         then nullif(p_event->>'payment_currency_code', '')
-        -- Preserve the payment currency omitted from a partial payload
         else nullif(v_event_before->>'payment_currency_code', '')
     end;
     v_was_paid_capable := is_event_ticketing_payload_paid_capable(v_event_before->'ticket_types');
     v_was_test_event := coalesce((v_event_before->>'test_event')::boolean, false);
+    v_external_payment_instructions := case
+        when p_event ? 'external_payment_instructions'
+        then nullif(btrim(p_event->>'external_payment_instructions'), '')
+        else nullif(btrim(v_event_before->>'external_payment_instructions'), '')
+    end;
+    v_external_payment_url := case
+        when p_event ? 'external_payment_url'
+        then nullif(btrim(p_event->>'external_payment_url'), '')
+        else nullif(btrim(v_event_before->>'external_payment_url'), '')
+    end;
+    v_external_payment_window_hours := case
+        when p_event ? 'external_payment_window_hours'
+        then nullif(p_event->>'external_payment_window_hours', '')::int
+        else nullif(v_event_before->>'external_payment_window_hours', '')::int
+    end;
+
+    -- Reject any external URL while the group cannot collect externally
+    if v_external_payment_url is not null and not v_group_external_ready then
+        raise exception 'external payments are not available for this event';
+    end if;
+
+    -- Use the external rail only while the group is eligible right now
+    v_external_mode := v_is_paid_capable and v_group_external_ready;
+
+    -- Normalize external paid events onto organizer-managed tax
+    if v_external_mode then
+        v_manual_tax_rate_ids := '{}'::text[];
+        v_tax_behavior := 'inclusive';
+        v_tax_calculation_mode := 'none';
+
+    -- Clear leftover external fields only when the event is leaving that rail
+    else
+        v_external_payment_instructions := null;
+        v_external_payment_url := null;
+        v_external_payment_window_hours := null;
+    end if;
 
     v_ticketing_configuration_changed := event_ticketing_configuration_changed(
         v_event_before,
-        p_event
+        p_event || jsonb_build_object(
+            'external_payment_instructions', v_external_payment_instructions,
+            'external_payment_url', v_external_payment_url,
+            'external_payment_window_hours', v_external_payment_window_hours
+        )
     );
 
     -- Bind provider validation to the recipient protected by the group lock
     if p_configured_provider is not null
        and v_is_paid_capable
        and v_ticketing_configuration_changed
+       and not v_external_mode
        and (
            v_payment_validation is null
            or not (v_payment_validation ? 'expected_payment_recipient')
@@ -250,7 +285,13 @@ begin
         v_ticket_types,
         false,
         p_event_id,
-        p_event
+        p_event || jsonb_build_object(
+            'external_mode', v_external_mode,
+            'external_payment_url', v_external_payment_url,
+            'external_payment_window_hours', v_external_payment_window_hours,
+            'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
+            'tax_calculation_mode', v_tax_calculation_mode
+        )
     );
 
     -- Parse event timestamps once for validation and row updates
@@ -328,6 +369,9 @@ begin
         location = v_event_location,
         logo_url = nullif(p_event->>'logo_url', ''),
         luma_url = nullif(p_event->>'luma_url', ''),
+        external_payment_instructions = v_external_payment_instructions,
+        external_payment_url = v_external_payment_url,
+        external_payment_window_hours = v_external_payment_window_hours,
         manual_tax_rate_ids = v_manual_tax_rate_ids,
         meeting_hosts = v_event_meeting_hosts,
         meeting_in_sync = case
@@ -405,7 +449,13 @@ begin
         v_ticket_types,
         v_ticketing_configuration_changed,
         p_event_id,
-        p_event
+        p_event || jsonb_build_object(
+            'external_mode', v_external_mode,
+            'external_payment_url', v_external_payment_url,
+            'external_payment_window_hours', v_external_payment_window_hours,
+            'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
+            'tax_calculation_mode', v_tax_calculation_mode
+        )
     );
 
     -- Fill ticket-tier capacity made available by the synchronized payload

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(55);
+select plan(58);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,8 +20,18 @@ select plan(55);
 \set communityID '3a130000-0000-0000-0000-000000000003'
 \set confirmedAttendeeUserID '3a130000-0000-0000-0000-000000000004'
 \set eventCategoryID '3a130000-0000-0000-0000-000000000005'
+\set eventExternalReadyID '3a130000-0000-0000-0000-000000000070'
+\set eventExternalUnreadyID '3a130000-0000-0000-0000-000000000071'
 \set eventID '3a130000-0000-0000-0000-000000000006'
 \set eventQuestionsID '3a130000-0000-0000-0000-000000000007'
+\set externalReadyInviteUserID '3a130000-0000-0000-0000-000000000072'
+\set externalReadyPriceWindowID '3a130000-0000-0000-0000-000000000073'
+\set externalReadyTicketTypeID '3a130000-0000-0000-0000-000000000074'
+\set externalUnreadyInviteUserID '3a130000-0000-0000-0000-000000000075'
+\set externalUnreadyPriceWindowID '3a130000-0000-0000-0000-000000000076'
+\set externalUnreadyTicketTypeID '3a130000-0000-0000-0000-000000000077'
+\set groupExternalReadyID '3a130000-0000-0000-0000-000000000078'
+\set groupExternalUnreadyID '3a130000-0000-0000-0000-000000000079'
 \set expiredReservationEventID '3a130000-0000-0000-0000-00000000003f'
 \set expiredReservationInviteUserID '3a130000-0000-0000-0000-000000000040'
 \set expiredReservationOfferID '3a130000-0000-0000-0000-000000000041'
@@ -85,6 +95,17 @@ select plan(55);
 -- SEED DATA
 -- ============================================================================
 
+-- Operator allowlist used by external invitation readiness scenarios
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
+
 -- Community
 insert into site (description, site_id, theme, title)
 values (
@@ -147,6 +168,44 @@ insert into "group" (
     }'::jsonb
 );
 
+-- Allowlisted group with external payments enabled for ready invitations
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    true,
+    :'groupCategoryID',
+    :'groupExternalReadyID',
+    'External Ready Invite Group',
+    'external-ready-invite-group'
+);
+
+-- External-marked group outside the allowlist for readiness rejection
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'US',
+    true,
+    :'groupCategoryID',
+    :'groupExternalUnreadyID',
+    'External Unready Invite Group',
+    'external-unready-invite-group'
+);
+
 -- Users
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
@@ -191,6 +250,28 @@ values (
     'Paid Ready Invite',
     :'paidReadyInviteUserID',
     'paid-ready-invite'
+);
+
+-- Invitee used by the ready external-payments invitation scenario
+insert into "user" (auth_hash, email, email_verified, name, user_id, username)
+values (
+    'hash-external-ready-invite',
+    'external-ready-invite@example.com',
+    true,
+    'External Ready Invite',
+    :'externalReadyInviteUserID',
+    'external-ready-invite'
+);
+
+-- Invitee used by the unready external-payments invitation scenario
+insert into "user" (auth_hash, email, email_verified, name, user_id, username)
+values (
+    'hash-external-unready-invite',
+    'external-unready-invite@example.com',
+    true,
+    'External Unready Invite',
+    :'externalUnreadyInviteUserID',
+    'external-unready-invite'
 );
 
 -- Users used by expired RSVP reservation reconciliation
@@ -821,6 +902,108 @@ insert into admission_offer (
     :'soldOutOccupantID'
 );
 
+-- External-marked event that is ready for paid invitations
+insert into event (
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    false,
+    'External ready invitation event',
+    :'eventCategoryID',
+    :'eventExternalReadyID',
+    'in-person',
+    'https://pay.example.test/invite-ready',
+    :'groupExternalReadyID',
+    'External Ready Invite Event',
+    'KRW',
+    true,
+    'external-ready-invite-event',
+    current_timestamp + interval '1 day',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- External-marked event that is not allowlisted for paid invitations
+insert into event (
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    false,
+    'External unready invitation event',
+    :'eventCategoryID',
+    :'eventExternalUnreadyID',
+    'in-person',
+    'https://pay.example.test/invite-unready',
+    :'groupExternalUnreadyID',
+    'External Unready Invite Event',
+    'USD',
+    true,
+    'external-unready-invite-event',
+    current_timestamp + interval '1 day',
+    'UTC',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'Community Hall',
+    '94105'
+);
+
+-- Ticket types for the external invitation fixtures
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values
+    (:'externalReadyTicketTypeID', :'eventExternalReadyID', 1, 50, 'External ready admission'),
+    (:'externalUnreadyTicketTypeID', :'eventExternalUnreadyID', 1, 50, 'External unready admission');
+
+-- Price windows for the external invitation fixtures
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values
+    (:'externalReadyPriceWindowID', 5000, :'externalReadyTicketTypeID'),
+    (:'externalUnreadyPriceWindowID', 2500, :'externalUnreadyTicketTypeID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -1217,6 +1400,21 @@ select is(
     'Should not create an offer when a tier belongs to a different event'
 );
 
+-- Should invite a paid attendee when the external event is ready
+select is(
+    invite_event_attendee(
+        :'actorID',
+        :'groupExternalReadyID',
+        :'eventExternalReadyID',
+        :'externalReadyInviteUserID',
+        null,
+        :'externalReadyTicketTypeID',
+        null
+    )->>'outcome',
+    'offer-created',
+    'Should invite a paid attendee when the external event is ready'
+);
+
 -- Should reject paid ticket invitations when payment readiness fails
 select throws_ok(
     format(
@@ -1231,6 +1429,32 @@ select throws_ok(
     'P0001',
     'paid-capable events require a payment recipient',
     'Should reject paid ticket invitations when payment readiness fails'
+);
+
+-- Should reject paid invitations when an external-marked event is not ready
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null, %L, null) $$,
+        :'actorID',
+        :'groupExternalUnreadyID',
+        :'eventExternalUnreadyID',
+        :'externalUnreadyInviteUserID',
+        :'externalUnreadyTicketTypeID'
+    ),
+    'P0001',
+    'external payments are not available for this event',
+    'Should reject paid invitations when an external-marked event is not ready'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'eventExternalUnreadyID'::uuid
+        and user_id = :'externalUnreadyInviteUserID'::uuid
+    ),
+    0,
+    'Should not create an offer when an external-marked event is not ready'
 );
 
 select is(

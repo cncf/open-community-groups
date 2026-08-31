@@ -5,7 +5,10 @@ create or replace function validate_event_ticketing_payment_readiness(
     p_payment_currency_code text,
     p_payment_recipient jsonb,
     p_event_id uuid default null,
-    p_event_payload jsonb default null
+    p_event_payload jsonb default null,
+    p_external_mode boolean default false,
+    p_external_payment_url text default null,
+    p_external_window_hours int default null
 )
 returns void as $$
 declare
@@ -13,13 +16,29 @@ declare
     v_existing_venue_country_code text;
     v_existing_venue_state_code text;
     v_existing_venue_state_name text;
+    v_external_payment_url text := nullif(btrim(p_external_payment_url), '');
     v_manual_tax_rate_ids text[];
+    v_max_window_hours int;
     v_tax_behavior text;
     v_tax_calculation_mode text;
     v_venue_snapshot jsonb;
 begin
-    -- Skip provider requirements when every configured ticket price is zero
+    -- Reject leftover external fields when the group is not in external mode
+    if p_external_mode is not true
+       and (
+           v_external_payment_url is not null
+           or p_external_window_hours is not null
+       ) then
+        raise exception 'external payment fields require external payments mode';
+    end if;
+
+    -- Skip payment requirements when every configured ticket price is zero
     if p_paid_capable is not true then
+        -- Reject leftover external fields on unpaid events
+        if v_external_payment_url is not null or p_external_window_hours is not null then
+            raise exception 'external payment fields require paid-capable ticketing';
+        end if;
+
         return;
     end if;
 
@@ -30,25 +49,60 @@ begin
 
     perform validate_payment_currency_code(p_payment_currency_code);
 
-    -- Validate the server and group payment configuration
-    if p_configured_provider is null then
+    -- Validate external-mode fields and skip Stripe recipient requirements
+    if p_external_mode then
+        -- Require a current operator configuration before accepting external mode
+        select cfg.max_payment_window_hours
+        into v_max_window_hours
+        from external_payments_config cfg
+        where cfg.singleton;
+
+        -- Reject external mode when the operator configuration is absent
+        if not found then
+            raise exception 'external payments are not configured on this server';
+        end if;
+
+        -- Require an absolute http(s) payments URL for paid external events
+        if v_external_payment_url is null
+           or v_external_payment_url !~* '^https?://[^[:space:]/?#]+' then
+            raise exception 'paid-capable events require a valid external payment url';
+        end if;
+
+        -- Reject windows outside the operator-configured maximum
+        if p_external_window_hours is not null
+           and (
+               p_external_window_hours < 1
+               or p_external_window_hours > v_max_window_hours
+           ) then
+            raise exception 'external payment window exceeds the configured maximum';
+        end if;
+
+    -- Validate the server Stripe configuration for non-external paid events
+    elsif p_configured_provider is null then
         raise exception 'payments are not configured on this server';
     end if;
 
-    if p_payment_recipient is null then
-        raise exception 'paid-capable events require a payment recipient';
-    end if;
+    -- Validate the Stripe recipient required by non-external paid events
+    if p_external_mode is not true then
+        -- Reject paid events without a configured fiscal sponsor
+        if p_payment_recipient is null then
+            raise exception 'paid-capable events require a payment recipient';
+        end if;
 
-    if coalesce(p_payment_recipient->>'provider', '') <> p_configured_provider then
-        raise exception 'paid-capable events require a payment recipient for the server payments provider';
-    end if;
+        -- Reject recipients that do not match the configured provider
+        if coalesce(p_payment_recipient->>'provider', '') <> p_configured_provider then
+            raise exception 'paid-capable events require a payment recipient for the server payments provider';
+        end if;
 
-    if nullif(btrim(p_payment_recipient->>'recipient_id'), '') is null then
-        raise exception 'paid-capable events require a valid payment recipient';
-    end if;
+        -- Reject recipients without a connected account identifier
+        if nullif(btrim(p_payment_recipient->>'recipient_id'), '') is null then
+            raise exception 'paid-capable events require a valid payment recipient';
+        end if;
 
-    if nullif(btrim(p_payment_recipient->>'seller_display_name'), '') is null then
-        raise exception 'paid-capable events require a payment recipient seller name';
+        -- Reject recipients without an attendee-visible seller name
+        if nullif(btrim(p_payment_recipient->>'seller_display_name'), '') is null then
+            raise exception 'paid-capable events require a payment recipient seller name';
+        end if;
     end if;
 
     -- Resolve the event and venue snapshot from a mutation payload or stored row
@@ -113,6 +167,8 @@ begin
             ),
             'zip_code', nullif(btrim(p_event_payload->>'venue_zip_code'), '')
         );
+
+    -- Load stored event context when the mutation did not include a payload
     elsif p_event_id is not null then
         select
             e.event_kind_id,
@@ -137,9 +193,12 @@ begin
         from event e
         where e.event_id = p_event_id;
 
+        -- Reject missing events after the stored-context lookup
         if not found then
             raise exception 'event not found or inactive';
         end if;
+
+    -- Reject paid-capable validation that cannot resolve event context
     else
         raise exception 'paid-capable event readiness requires event context';
     end if;
@@ -154,14 +213,20 @@ begin
         raise exception 'paid ticketing requires an in-person or hybrid event with a complete physical venue';
     end if;
 
+    -- Skip Stripe tax-rate checks when the event collects payments externally
+    if p_external_mode then
+        return;
+    end if;
+
     -- Require one internally consistent tax calculation path
     if v_tax_calculation_mode = 'automatic' then
         -- Reject stale manual Tax Rate selections in automatic mode
         if cardinality(v_manual_tax_rate_ids) > 0 then
             raise exception 'automatic ticket tax cannot include manual Tax Rates';
         end if;
+
+    -- Require a nonempty, unique set of usable Stripe identifiers
     elsif v_tax_calculation_mode = 'manual' then
-        -- Require a nonempty, unique set of usable Stripe identifiers
         if cardinality(v_manual_tax_rate_ids) = 0
            or array_position(v_manual_tax_rate_ids, null) is not null
            or exists (
@@ -176,11 +241,14 @@ begin
            ) then
             raise exception 'manual ticket tax requires at least one unique Stripe Tax Rate';
         end if;
+
+    -- Normalize no-tax events and reject stale manual Tax Rate selections
     elsif v_tax_calculation_mode = 'none' then
-        -- Normalize no-tax events and reject stale manual Tax Rate selections
         if v_tax_behavior <> 'inclusive' or cardinality(v_manual_tax_rate_ids) > 0 then
             raise exception 'events that do not collect tax require inclusive display and no Tax Rates';
         end if;
+
+    -- Reject tax modes the ticketing contract does not support
     else
         raise exception 'unsupported ticket tax calculation mode';
     end if;

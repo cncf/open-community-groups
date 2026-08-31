@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,6 +22,10 @@ select plan(9);
 \set directUserID '4a170000-0000-0000-0000-000000000007'
 \set discountCodeID '4a170000-0000-0000-0000-000000000008'
 \set eventCategoryID '4a170000-0000-0000-0000-000000000009'
+\set externalEventID '4a170000-0000-0000-0000-000000000017'
+\set externalPurchaseID '4a170000-0000-0000-0000-000000000018'
+\set externalTicketTypeID '4a170000-0000-0000-0000-000000000019'
+\set externalUserID '4a170000-0000-0000-0000-00000000001a'
 \set groupCategoryID '4a170000-0000-0000-0000-00000000000a'
 \set groupID '4a170000-0000-0000-0000-00000000000b'
 \set offerID '4a170000-0000-0000-0000-00000000000c'
@@ -133,6 +137,13 @@ insert into "user" (
         'close-direct'
     ),
     (
+        :'externalUserID',
+        'hash-external',
+        'external@example.test',
+        true,
+        'close-external'
+    ),
+    (
         :'offerUserID',
         'hash-offer',
         'offer@example.test',
@@ -212,6 +223,37 @@ insert into event (
     'UTC'
 );
 
+-- External-payment event with a pending hold
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+
+    external_payment_url
+) values (
+    :'externalEventID',
+    'Event with a pending external payment hold',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'External Closure Event',
+    'KRW',
+    true,
+    'external-closure-event',
+    current_timestamp + interval '2 days',
+    'UTC',
+
+    'https://pay.example.test/close'
+);
+
 -- Ticket tiers used by the queue and request events
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -233,6 +275,13 @@ insert into event_ticket_type (
         1,
         10,
         'Request admission'
+    ),
+    (
+        :'externalTicketTypeID',
+        :'externalEventID',
+        1,
+        10,
+        'External admission'
     );
 
 -- Current price used by the active checkout snapshots
@@ -385,6 +434,35 @@ insert into event_purchase (
     'completed',
     'Queue admission',
     :'confirmedUserID'
+);
+
+-- Pending external purchase expired when enrollment closes
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'KRW',
+    :'externalEventID',
+    :'externalPurchaseID',
+    :'externalTicketTypeID',
+    current_timestamp + interval '2 days',
+    0,
+    0,
+    'pending',
+    'External admission',
+    :'externalUserID'
 );
 
 -- Checkout-created attendee holds released when pending purchases expire
@@ -540,6 +618,29 @@ select is(
     ),
     2,
     'Should enqueue one cancellation notification per canceled offer'
+);
+
+-- Should expire pending external purchases and enqueue a do-not-pay notice
+select is(
+    close_event_enrollment(:'actorUserID', :'externalEventID'),
+    array[]::uuid[],
+    'Should expire pending external purchases and enqueue a do-not-pay notice'
+);
+
+select ok(
+    exists(
+        select 1
+        from event_purchase ep
+        join notification n
+            on n.user_id = ep.user_id
+            and n.kind = 'event-external-payment-expired'
+        join notification_template_data ntd using (notification_template_data_id)
+        where ep.event_purchase_id = :'externalPurchaseID'::uuid
+        and ep.status = 'expired'
+        and (ntd.data->>'do_not_pay')::boolean = true
+        and (ntd.data->>'event_purchase_id')::uuid = :'externalPurchaseID'::uuid
+    ),
+    'Should expire pending external purchases and enqueue a do-not-pay notice'
 );
 
 -- Should clear pending approval requests

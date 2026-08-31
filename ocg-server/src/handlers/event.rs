@@ -47,7 +47,7 @@ use crate::{
     },
     types::{
         event::{EventEnrollmentStatus, EventFull, EventSummary},
-        payments::{EventPurchaseStatus, EventTicketType},
+        payments::{EventPurchaseStatus, EventTicketType, PreparedEventCheckout},
         questionnaire::{
             OptionalQuestionnaireAnswersForm, QuestionnaireAnswers, QuestionnaireQuestion,
         },
@@ -295,6 +295,14 @@ pub(crate) async fn attend_event(
         {
             enrollment_status = updated_enrollment_status;
         } else if prepared_checkout.purchase.amount_minor != 0 {
+            // Return snapshot payment details for external pending purchases
+            if prepared_checkout.purchase.charge_model.is_external() {
+                return Ok((
+                    StatusCode::OK,
+                    Json(external_pending_payment_response(&prepared_checkout)),
+                ));
+            }
+
             // Create or reuse the provider redirect for a paid pending purchase
             let redirect_url = payments_manager
                 .get_or_create_checkout_redirect_url(&prepared_checkout, user.user_id)
@@ -429,6 +437,7 @@ pub(crate) async fn enrollment_state(
         "admission_offer_id": enrollment.admission_offer_id,
         "can_request_refund": can_request_refund,
         "event_ticket_type_id": enrollment.event_ticket_type_id,
+        "external_payment": enrollment.external_payment,
         "is_checked_in": enrollment.is_checked_in,
         "manually_invited": enrollment.manually_invited,
         "purchase_amount_minor": enrollment.purchase_amount_minor,
@@ -628,6 +637,14 @@ pub(crate) async fn start_checkout(
             Json(json!({
                 "status": EventEnrollmentStatus::Attendee,
             })),
+        ));
+    }
+
+    // Return snapshot payment details for external pending purchases
+    if prepared_checkout.purchase.charge_model.is_external() {
+        return Ok((
+            StatusCode::OK,
+            Json(external_pending_payment_response(&prepared_checkout)),
         ));
     }
 
@@ -944,6 +961,27 @@ async fn ensure_attendee_event_is_active(
             }
             other => other,
         })
+}
+
+/// Builds the attendee-facing pending-payment payload for an external purchase.
+fn external_pending_payment_response(
+    prepared_checkout: &PreparedEventCheckout,
+) -> serde_json::Value {
+    json!({
+        "external_payment": {
+            "amount_minor": prepared_checkout.purchase.amount_minor,
+            "currency_code": prepared_checkout.purchase.currency_code,
+            "deadline": prepared_checkout.purchase.hold_expires_at.map(|deadline| deadline.timestamp()),
+            "instructions": prepared_checkout.purchase.external_payment_instructions,
+            "reference": prepared_checkout.purchase.event_purchase_id,
+            "url": prepared_checkout.purchase.external_payment_url,
+        },
+        "hold_expires_at": prepared_checkout
+            .purchase
+            .hold_expires_at
+            .map(|deadline| deadline.timestamp()),
+        "status": EventEnrollmentStatus::PendingPayment,
+    })
 }
 
 /// Returns the attendee-facing status when checkout should not continue.

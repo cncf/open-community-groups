@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(25);
+select plan(38);
 
 -- ============================================================================
 -- VARIABLES
@@ -25,6 +25,23 @@ select plan(25);
 \set dueTicketTypeID '4a160000-0000-0000-0000-000000000006'
 \set dueUserID '4a160000-0000-0000-0000-000000000007'
 \set eventCategoryID '4a160000-0000-0000-0000-000000000008'
+\set externalExpiredEventID '4a160000-0000-0000-0000-000000000031'
+\set externalExpiredPurchaseID '4a160000-0000-0000-0000-000000000032'
+\set externalExpiredTicketTypeID '4a160000-0000-0000-0000-000000000033'
+\set externalExpiredUserID '4a160000-0000-0000-0000-000000000034'
+\set externalGroupID '4a160000-0000-0000-0000-000000000035'
+\set externalReadyEventID '4a160000-0000-0000-0000-000000000036'
+\set externalReadyTicketTypeID '4a160000-0000-0000-0000-000000000037'
+\set externalReadyUserID '4a160000-0000-0000-0000-000000000038'
+\set externalReminderEventID '4a160000-0000-0000-0000-000000000039'
+\set externalReminderPurchaseID '4a160000-0000-0000-0000-00000000003a'
+\set externalReminderTicketTypeID '4a160000-0000-0000-0000-00000000003b'
+\set externalReminderUserID '4a160000-0000-0000-0000-00000000003c'
+\set externalShortPurchaseID '4a160000-0000-0000-0000-000000000040'
+\set externalShortUserID '4a160000-0000-0000-0000-000000000041'
+\set externalUnreadyEventID '4a160000-0000-0000-0000-00000000003d'
+\set externalUnreadyTicketTypeID '4a160000-0000-0000-0000-00000000003e'
+\set externalUnreadyUserID '4a160000-0000-0000-0000-00000000003f'
 \set freeEventID '4a160000-0000-0000-0000-000000000009'
 \set freeTicketTypeID '4a160000-0000-0000-0000-00000000000a'
 \set freeUser1ID '4a160000-0000-0000-0000-00000000000b'
@@ -73,6 +90,17 @@ values (
     'Enrollment Reconciliation Site'
 );
 
+-- Operator allowlist used by external-ready promotion and hold lifecycle
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
+
 insert into community (
     community_id,
     name,
@@ -113,6 +141,27 @@ insert into "group" (
     'Reconciliation Group',
     '{"provider": "stripe", "recipient_id": "acct_reconciliation", "seller_display_name": "Reconciliation Fiscal Sponsor"}'::jsonb,
     'reconciliation-group'
+);
+
+-- Allowlisted group with external payments enabled for ready-event promotion
+insert into "group" (
+    country_code,
+    community_id,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    payment_recipient,
+    slug
+) values (
+    'KR',
+    :'communityID',
+    true,
+    :'groupCategoryID',
+    :'externalGroupID',
+    'External Reconciliation Group',
+    '{"provider": "stripe", "recipient_id": "acct_external_reconcile", "seller_display_name": "External Fiscal Sponsor"}'::jsonb,
+    'external-reconciliation-group'
 );
 
 -- Enrollment users
@@ -173,6 +222,41 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
         'closed-queue@example.test',
         true,
         'closed-queue-user'
+    ),
+    (
+        :'externalExpiredUserID',
+        'hash-external-expired',
+        'external-expired@example.test',
+        true,
+        'external-expired-user'
+    ),
+    (
+        :'externalReadyUserID',
+        'hash-external-ready',
+        'external-ready@example.test',
+        true,
+        'external-ready-user'
+    ),
+    (
+        :'externalReminderUserID',
+        'hash-external-reminder',
+        'external-reminder@example.test',
+        true,
+        'external-reminder-user'
+    ),
+    (
+        :'externalShortUserID',
+        'hash-external-short',
+        'external-short@example.test',
+        true,
+        'external-short-user'
+    ),
+    (
+        :'externalUnreadyUserID',
+        'hash-external-unready',
+        'external-unready@example.test',
+        true,
+        'external-unready-user'
     );
 
 -- Active events covering RSVP and ticket reconciliation paths
@@ -328,6 +412,138 @@ insert into event (
     true
 );
 
+-- External-ready paid event that promotes without a Stripe provider gate
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    waitlist_enabled
+) values (
+    'External-ready paid queue event',
+    :'eventCategoryID',
+    :'externalReadyEventID',
+    'virtual',
+    null,
+    'https://pay.example.test/ready-queue',
+    :'externalGroupID',
+    'External Ready Reconciliation Event',
+    'KRW',
+    true,
+    'external-ready-reconciliation-event',
+    current_timestamp + interval '2 days',
+    'UTC',
+    true
+);
+
+-- External-marked event on a Stripe-ready group that is not externally eligible
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    waitlist_enabled
+) values (
+    'External-marked unready paid queue event',
+    :'eventCategoryID',
+    :'externalUnreadyEventID',
+    'virtual',
+    null,
+    'https://pay.example.test/unready-queue',
+    :'groupID',
+    'External Unready Reconciliation Event',
+    'USD',
+    true,
+    'external-unready-reconciliation-event',
+    current_timestamp + interval '2 days',
+    'UTC',
+    true
+);
+
+-- Event hosting an expired external pending hold
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    waitlist_enabled
+) values (
+    'External expired hold event',
+    :'eventCategoryID',
+    :'externalExpiredEventID',
+    'virtual',
+    'Pay by bank transfer',
+    'https://pay.example.test/expired-hold',
+    :'externalGroupID',
+    'External Expired Reconciliation Event',
+    'KRW',
+    true,
+    'external-expired-reconciliation-event',
+    current_timestamp + interval '2 days',
+    'UTC',
+    false
+);
+
+-- Event hosting a reminder-due external pending hold
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    waitlist_enabled
+) values (
+    'External reminder-due hold event',
+    :'eventCategoryID',
+    :'externalReminderEventID',
+    'virtual',
+    'Pay by bank transfer',
+    'https://pay.example.test/reminder-hold',
+    :'externalGroupID',
+    'External Reminder Reconciliation Event',
+    'KRW',
+    true,
+    'external-reminder-reconciliation-event',
+    current_timestamp + interval '2 days',
+    'UTC',
+    false
+);
+
 -- Ticket tiers
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -389,6 +605,30 @@ insert into event_ticket_type (
     1,
     1,
     'Closed registration admission'
+), (
+    :'externalReadyTicketTypeID',
+    :'externalReadyEventID',
+    1,
+    1,
+    'External ready admission'
+), (
+    :'externalUnreadyTicketTypeID',
+    :'externalUnreadyEventID',
+    1,
+    1,
+    'External unready admission'
+), (
+    :'externalExpiredTicketTypeID',
+    :'externalExpiredEventID',
+    1,
+    1,
+    'External expired admission'
+), (
+    :'externalReminderTicketTypeID',
+    :'externalReminderEventID',
+    1,
+    1,
+    'External reminder admission'
 );
 
 -- Current prices, excluding the intentionally blocked no-price tier
@@ -403,7 +643,11 @@ insert into event_ticket_price_window (
     (gen_random_uuid(), 1000, :'retryTicketTypeID'),
     (gen_random_uuid(), 1000, :'dueTicketTypeID'),
     (gen_random_uuid(), 0, :'replacementTicketTypeID'),
-    (gen_random_uuid(), 0, :'closedTicketTypeID');
+    (gen_random_uuid(), 0, :'closedTicketTypeID'),
+    (gen_random_uuid(), 5000, :'externalReadyTicketTypeID'),
+    (gen_random_uuid(), 5000, :'externalUnreadyTicketTypeID'),
+    (gen_random_uuid(), 5000, :'externalExpiredTicketTypeID'),
+    (gen_random_uuid(), 5000, :'externalReminderTicketTypeID');
 
 -- RSVP events without a specialized ticket fixture use a default tier
 insert into event_ticket_type (
@@ -539,6 +783,107 @@ insert into event_waitlist (
     :'closedEventID',
     :'closedTicketTypeID',
     :'closedQueueUserID'
+), (
+    '2024-01-01 00:00:00+00',
+    :'externalReadyEventID',
+    :'externalReadyTicketTypeID',
+    :'externalReadyUserID'
+), (
+    '2024-01-01 00:00:00+00',
+    :'externalUnreadyEventID',
+    :'externalUnreadyTicketTypeID',
+    :'externalUnreadyUserID'
+);
+
+-- Expired external hold that should enqueue an expiry notification
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'KRW',
+    :'externalExpiredEventID',
+    :'externalExpiredPurchaseID',
+    :'externalExpiredTicketTypeID',
+    current_timestamp - interval '1 minute',
+    0,
+    0,
+    'pending',
+    'External expired admission',
+    :'externalExpiredUserID'
+);
+
+-- Reminder-due external hold within 24 hours of its deadline
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    current_timestamp - interval '48 hours',
+    'KRW',
+    :'externalReminderEventID',
+    :'externalReminderPurchaseID',
+    :'externalReminderTicketTypeID',
+    current_timestamp + interval '12 hours',
+    0,
+    0,
+    'pending',
+    'External reminder admission',
+    :'externalReminderUserID'
+);
+
+-- Short external hold that should not receive a closing-soon reminder
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    current_timestamp,
+    'KRW',
+    :'externalReminderEventID',
+    :'externalShortPurchaseID',
+    :'externalReminderTicketTypeID',
+    current_timestamp + interval '12 hours',
+    0,
+    0,
+    'pending',
+    'External short admission',
+    :'externalShortUserID'
 );
 
 -- Checkout-pending offers with stale hold and deadline scenarios
@@ -1097,6 +1442,143 @@ select results_eq(
         :'replacementUserID'
     ),
     'Should retain expired history and create one replacement offer'
+);
+
+-- Should promote an external-ready paid queue without a Stripe provider
+select is(
+    reconcile_event_enrollment(:'externalReadyEventID'),
+    array[:'externalReadyUserID'::uuid],
+    'Should promote an external-ready paid queue without a Stripe provider'
+);
+
+-- Should leave an external-marked unready queue idle even with Stripe configured
+select is(
+    reconcile_event_enrollment(:'externalUnreadyEventID', null, 'stripe'),
+    array[]::uuid[],
+    'Should leave an external-marked unready queue idle even with Stripe configured'
+);
+
+-- Should keep the external-marked unready queue head in place
+select results_eq(
+    format(
+        $$
+            select user_id
+            from event_waitlist
+            where event_id = %L::uuid
+            order by created_at, user_id
+        $$,
+        :'externalUnreadyEventID'
+    ),
+    format($$ values (%L::uuid) $$, :'externalUnreadyUserID'),
+    'Should keep the external-marked unready queue head in place'
+);
+
+-- Should expire a due external pending hold
+select is(
+    reconcile_event_enrollment(:'externalExpiredEventID'),
+    array[]::uuid[],
+    'Should expire a due external pending hold'
+);
+
+-- Should mark the due external hold expired
+select is(
+    (
+        select status
+        from event_purchase
+        where event_purchase_id = :'externalExpiredPurchaseID'
+    ),
+    'expired',
+    'Should mark the due external hold expired'
+);
+
+-- Should enqueue one external payment expired notification
+select is(
+    (
+        select count(*)::int
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-external-payment-expired'
+        and n.user_id = :'externalExpiredUserID'
+        and (ntd.data->>'event_purchase_id')::uuid = :'externalExpiredPurchaseID'::uuid
+    ),
+    1,
+    'Should enqueue one external payment expired notification'
+);
+
+-- Should reconcile a reminder-due external hold
+select is(
+    reconcile_event_enrollment(:'externalReminderEventID'),
+    array[]::uuid[],
+    'Should reconcile a reminder-due external hold'
+);
+
+-- Should persist the reminder sent marker before retries
+select ok(
+    (
+        select external_payment_reminder_sent_at is not null
+        from event_purchase
+        where event_purchase_id = :'externalReminderPurchaseID'
+    ),
+    'Should persist the reminder sent marker before retries'
+);
+
+-- Should enqueue exactly one external payment reminder notification
+select is(
+    (
+        select count(*)::int
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-external-payment-reminder'
+        and n.user_id = :'externalReminderUserID'
+        and (ntd.data->>'event_purchase_id')::uuid = :'externalReminderPurchaseID'::uuid
+    ),
+    1,
+    'Should enqueue exactly one external payment reminder notification'
+);
+
+-- Should not enqueue a duplicate external payment reminder
+select is(
+    reconcile_event_enrollment(:'externalReminderEventID'),
+    array[]::uuid[],
+    'Should not enqueue a duplicate external payment reminder'
+);
+
+-- Should keep a single external payment reminder after repeated reconciliation
+select is(
+    (
+        select count(*)::int
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-external-payment-reminder'
+        and n.user_id = :'externalReminderUserID'
+        and (ntd.data->>'event_purchase_id')::uuid = :'externalReminderPurchaseID'::uuid
+    ),
+    1,
+    'Should keep a single external payment reminder after repeated reconciliation'
+);
+
+-- Should not mark a short external hold as reminder-sent
+select ok(
+    (
+        select external_payment_reminder_sent_at is null
+        from event_purchase
+        where event_purchase_id = :'externalShortPurchaseID'
+    ),
+    'Should not mark a short external hold as reminder-sent'
+);
+
+-- Should not enqueue a closing-soon reminder for a hold shorter than 24 hours
+select is(
+    (
+        select count(*)::int
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-external-payment-reminder'
+        and n.user_id = :'externalShortUserID'
+        and (ntd.data->>'event_purchase_id')::uuid = :'externalShortPurchaseID'::uuid
+    ),
+    0,
+    'Should not enqueue a closing-soon reminder for a hold shorter than 24 hours'
 );
 
 -- ============================================================================

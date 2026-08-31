@@ -102,6 +102,9 @@ pub(crate) struct PurchaseDocument {
     /// Event start timestamp, including past events.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub event_starts_at: Option<DateTime<Utc>>,
+    /// Whether this purchase was collected and documented outside OCG.
+    #[serde(default)]
+    pub externally_managed: bool,
     /// Admin-managed group slug.
     pub group_slug_pretty: Option<String>,
     /// Durable provider invoice identifier.
@@ -240,6 +243,7 @@ mod tests {
             completed_at: Some(Utc.with_ymd_and_hms(2026, 6, 1, 10, 0, 0).single().unwrap()),
             credit_notes: Vec::new(),
             event_starts_at: Some(Utc.with_ymd_and_hms(2026, 7, 1, 10, 0, 0).single().unwrap()),
+            externally_managed: false,
             group_slug_pretty: None,
             provider_invoice_id: None,
             seller_display_name: Some("Fiscal Sponsor".to_string()),

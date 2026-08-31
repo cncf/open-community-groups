@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,6 +22,9 @@ select plan(13);
 \set conflictUserID 'd4050000-0000-0000-0000-000000000009'
 \set eventCategoryID 'd4050000-0000-0000-0000-000000000010'
 \set eventID 'd4050000-0000-0000-0000-000000000011'
+\set externalPurchaseID 'd4050000-0000-0000-0000-00000000002a'
+\set externalRequestID 'd4050000-0000-0000-0000-00000000002b'
+\set externalUserID 'd4050000-0000-0000-0000-00000000002c'
 \set freePurchaseID 'd4050000-0000-0000-0000-000000000012'
 \set freeRequestID 'd4050000-0000-0000-0000-000000000013'
 \set freeUserID 'd4050000-0000-0000-0000-000000000014'
@@ -80,6 +83,7 @@ insert into "user" (auth_hash, email, user_id, username) values
     ('actor', 'actor@example.test', :'actorID', 'actor'),
     ('blank', 'blank@example.test', :'blankUserID', 'blank'),
     ('conflict', 'conflict@example.test', :'conflictUserID', 'conflict'),
+    ('external', 'external@example.test', :'externalUserID', 'external'),
     ('free', 'free@example.test', :'freeUserID', 'free'),
     ('happy', 'happy@example.test', :'happyUserID', 'happy'),
     ('missing-request', 'missing-request@example.test', :'missingRequestUserID', 'missing-request'),
@@ -189,6 +193,33 @@ from (values
     provider_payment_reference
 );
 
+-- External purchase that must be approved locally instead of queued
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'external',
+    'USD',
+    :'eventID',
+    :'externalPurchaseID',
+    :'ticketTypeID',
+    0,
+    0,
+    'refund-requested',
+    'General admission',
+    :'externalUserID'
+);
+
 -- Refund requests covering successful, blank-note, conflicting, free, and missing-reference states
 insert into event_refund_request (
     event_purchase_id,
@@ -198,6 +229,7 @@ insert into event_refund_request (
 ) values
     (:'blankPurchaseID', :'blankRequestID', :'blankUserID', 'pending'),
     (:'conflictPurchaseID', :'conflictRequestID', :'conflictUserID', 'pending'),
+    (:'externalPurchaseID', :'externalRequestID', :'externalUserID', 'pending'),
     (:'freePurchaseID', :'freeRequestID', :'freeUserID', 'pending'),
     (:'happyPurchaseID', :'happyRequestID', :'happyUserID', 'pending');
 
@@ -327,6 +359,16 @@ select is(
     (select count(*)::int from event_purchase_refund where event_purchase_id = :'happyPurchaseID'),
     1,
     'Should keep one durable refund after an idempotent replay'
+);
+
+-- Should reject an external purchase that must be approved locally
+select throws_ok(
+    format(
+        $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
+        :'actorID', :'groupID', :'externalPurchaseID'
+    ),
+    'external purchases must be approved locally',
+    'Should reject an external purchase that must be approved locally'
 );
 
 -- Should reject a free purchase

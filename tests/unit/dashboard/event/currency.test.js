@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  formatMinorUnitsForDisplay,
   formatMinorUnitsForInput,
   parseCurrencyInputToMinorUnits,
   resolveCurrencyInputPlaceholder,
@@ -55,6 +56,14 @@ describe("ticketing currency helpers", () => {
     expect(resolveStripeMinimumChargeInput("JPY")).to.equal("50");
     expect(resolveStripeMinimumChargeMinor("GBP")).to.equal(30);
     expect(resolveStripeMinimumChargeMinor("VND")).to.equal(null);
+  });
+
+  it("formats display amounts with currency-aware fraction digits", () => {
+    // Zero-decimal currencies keep whole units; decimal currencies divide by 100.
+    expect(formatMinorUnitsForDisplay(50000, "KRW")).to.include("50,000");
+    expect(formatMinorUnitsForDisplay(5000, "JPY")).to.include("5,000");
+    expect(formatMinorUnitsForDisplay(2500, "USD")).to.include("25.00");
+    expect(formatMinorUnitsForDisplay(Number.NaN, "USD")).to.equal("");
   });
 
   it("formats and parses minor units for different currencies", () => {

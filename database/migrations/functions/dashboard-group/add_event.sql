@@ -11,6 +11,16 @@ declare
     v_discount_codes jsonb := nullif(p_event->'discount_codes', 'null'::jsonb);
     v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
     v_event_id uuid;
+    v_external_mode boolean := false;
+    v_external_payment_instructions text := nullif(
+        btrim(p_event->>'external_payment_instructions'),
+        ''
+    );
+    v_external_payment_url text := nullif(btrim(p_event->>'external_payment_url'), '');
+    v_external_payment_window_hours int := nullif(
+        p_event->>'external_payment_window_hours',
+        ''
+    )::int;
     v_manual_tax_rate_ids text[] := coalesce(
         jsonb_text_array(p_event->'manual_tax_rate_ids'),
         '{}'::text[]
@@ -46,14 +56,36 @@ begin
     perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
 
     -- Lock group payment state through paid-capable ticket validation and insertion
-    select g.payment_recipient into v_payment_recipient
+    select
+        is_group_external_payments_ready(g.group_id),
+        g.payment_recipient
+    into
+        v_external_mode,
+        v_payment_recipient
     from "group" g
     where g.group_id = p_group_id
     for update of g;
 
+    -- Reject a submitted payment URL when the group cannot collect externally
+    if v_external_payment_url is not null and not v_external_mode then
+        raise exception 'external payments are not available for this event';
+    end if;
+
+    -- Normalize external paid events onto organizer-managed tax
+    if v_external_mode and is_event_ticketing_payload_paid_capable(v_ticket_types) then
+        v_manual_tax_rate_ids := '{}'::text[];
+        v_tax_calculation_mode := 'none';
+    -- Clear external fields when the group is not in paid external mode
+    else
+        v_external_payment_instructions := null;
+        v_external_payment_url := null;
+        v_external_payment_window_hours := null;
+    end if;
+
     -- Bind provider validation to the recipient protected by the group lock
     if p_configured_provider is not null
        and is_event_ticketing_payload_paid_capable(v_ticket_types)
+       and not v_external_mode
        and (
            v_payment_validation is null
            or not (v_payment_validation ? 'expected_payment_recipient')
@@ -102,7 +134,13 @@ begin
         v_ticket_types,
         true,
         null,
-        p_event
+        p_event || jsonb_build_object(
+            'external_mode', v_external_mode,
+            'external_payment_url', v_external_payment_url,
+            'external_payment_window_hours', v_external_payment_window_hours,
+            'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
+            'tax_calculation_mode', v_tax_calculation_mode
+        )
     );
 
     -- Validate add-specific event and session date rules
@@ -143,6 +181,9 @@ begin
                 description_short,
                 ends_at,
                 event_reminder_enabled,
+                external_payment_instructions,
+                external_payment_url,
+                external_payment_window_hours,
                 location,
                 logo_url,
                 luma_url,
@@ -197,6 +238,9 @@ begin
                 nullif(p_event->>'description_short', ''),
                 (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                 coalesce((p_event->>'event_reminder_enabled')::boolean, true),
+                v_external_payment_instructions,
+                v_external_payment_url,
+                v_external_payment_window_hours,
                 jsonb_geography_point(p_event),
                 nullif(p_event->>'logo_url', ''),
                 nullif(p_event->>'luma_url', ''),

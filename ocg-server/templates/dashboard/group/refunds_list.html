@@ -341,6 +341,11 @@
                 {% else -%}
                   {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
                 {% endif -%}
+                {% if refund.external -%}
+                  <div class="mt-1.5">
+                    {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
+                  </div>
+                {% endif -%}
               </div>
             </td>
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
@@ -351,6 +356,11 @@
                 </span>
               {% else -%}
                 {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
+              {% endif -%}
+              {% if refund.external -%}
+                <div class="mt-1.5">
+                  {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
+                </div>
               {% endif -%}
             </td>
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
@@ -375,6 +385,7 @@
                                   data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
                                   data-refund-event="{{ refund.event_name }}"
                                   data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
+                                  {% if refund.external %}data-refund-external="true"{% endif %}
                                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
                             <div class="svg-icon size-4 icon-check shrink-0 bg-stone-600"></div>
                             <span>Approve refund</span>

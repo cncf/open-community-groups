@@ -7,7 +7,9 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{DynDB, payments::CompletedEventPurchase},
+    db::{
+        DynDB, notifications::serialize_notification_attachments, payments::CompletedEventPurchase,
+    },
     services::notifications::{
         DynNotificationsManager, NewNotification, load_event_notification_context,
         payloads::{
@@ -47,17 +49,49 @@ impl PaymentsNotificationComposer {
         }
     }
 
+    /// Builds the welcome notification payload stored with an external completion.
+    pub(super) async fn build_event_welcome_notification_payload(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<(Value, Value)> {
+        // Load the event summary and site theme used by the welcome template
+        let (event, site_settings) =
+            load_event_notification_context(self.db.as_ref(), community_id, event_id).await?;
+
+        // Recipients are supplied by the SQL completion function
+        let notification = build_event_welcome_notification(
+            &event,
+            Uuid::nil(),
+            &self.server_cfg,
+            &site_settings,
+            true,
+        )?;
+        let template_data = notification
+            .template_data
+            .ok_or_else(|| anyhow::anyhow!("event welcome notification requires template data"))?;
+        let attachments = serialize_notification_attachments(&notification.attachments)?;
+
+        Ok((template_data, attachments))
+    }
+
     /// Builds the notification template payload for an approved refund.
     pub(super) async fn build_refund_approval_template_data(
         &self,
         community_id: Uuid,
         event_id: Uuid,
+        external_payment: bool,
     ) -> Result<Value> {
         // Load the event summary and site theme used by the approval template
         let (event, site_settings) =
             load_event_notification_context(self.db.as_ref(), community_id, event_id).await?;
 
-        build_event_refund_approved_template_data(&event, &self.server_cfg, &site_settings)
+        build_event_refund_approved_template_data(
+            &event,
+            external_payment,
+            &self.server_cfg,
+            &site_settings,
+        )
     }
 
     /// Build the notification template payload for a refund request.

@@ -76,6 +76,33 @@ const resolveCurrencyFractionDigits = (currencyCode) => {
 };
 
 /**
+ * Formats a minor-unit amount for display with currency-aware fraction digits.
+ * @param {number} amountMinor Amount in minor units
+ * @param {string} currencyCode ISO currency code
+ * @returns {string}
+ */
+export const formatMinorUnitsForDisplay = (amountMinor, currencyCode) => {
+  if (!Number.isFinite(amountMinor) || typeof currencyCode !== "string") {
+    return "";
+  }
+
+  const fractionDigits = resolveCurrencyFractionDigits(currencyCode);
+  const divisor = 10 ** fractionDigits;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      currency: currencyCode,
+      style: "currency",
+    }).format(amountMinor / divisor);
+  } catch (_) {
+    if (fractionDigits === 0) {
+      return `${currencyCode} ${amountMinor}`;
+    }
+
+    return `${currencyCode} ${(amountMinor / divisor).toFixed(fractionDigits)}`;
+  }
+};
+
+/**
  * Formats a minor-unit amount for a currency input.
  * @param {number} amountMinor Amount in minor units
  * @param {string} currencyCode ISO currency code

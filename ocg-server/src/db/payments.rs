@@ -2,7 +2,7 @@
 
 use std::ops::{Deref, DerefMut};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -23,6 +23,16 @@ use crate::{
 /// Database operations for payments.
 #[async_trait]
 pub(crate) trait DBPayments {
+    /// Approves an external-purchase refund request and refunds it locally.
+    async fn approve_external_event_refund_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        review_note: Option<String>,
+        notification_template_data: Option<serde_json::Value>,
+    ) -> Result<CompletedEventPurchase>;
+
     /// Attaches an asynchronously created application fee to its direct-charge purchase.
     async fn attach_application_fee_to_event_purchase(
         &self,
@@ -96,6 +106,17 @@ pub(crate) trait DBPayments {
         input: &CompleteEventPurchaseRefundRecoveryInput,
     ) -> Result<()>;
 
+    /// Completes a pending external purchase after an organizer marks it paid.
+    async fn complete_external_event_purchase(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        details: Option<String>,
+        notification_attachments: Option<serde_json::Value>,
+        notification_template_data: Option<serde_json::Value>,
+    ) -> Result<CompletedEventPurchase>;
+
     /// Completes a free purchase locally without a provider checkout.
     async fn complete_free_event_purchase(
         &self,
@@ -118,6 +139,19 @@ pub(crate) trait DBPayments {
         notification_template_data: serde_json::Value,
         payment_provider: Option<PaymentProvider>,
     ) -> Result<()>;
+
+    /// Loads the charge model recorded on a purchase.
+    async fn get_event_purchase_charge_model(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<crate::types::payments::EventPurchaseChargeModel>;
+
+    /// Loads identifiers used to compose purchase completion notifications.
+    async fn get_event_purchase_notification_context(
+        &self,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+    ) -> Result<Option<EventPurchaseNotificationContext>>;
 
     /// Loads the durable refund record for a purchase.
     async fn get_event_purchase_refund(
@@ -301,6 +335,12 @@ pub(crate) trait DBPayments {
     /// Releases stale claims left by interrupted refund workers.
     async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
 
+    /// Upserts or deletes the singleton external-payments configuration row.
+    async fn sync_external_payments_config(
+        &self,
+        config: Option<crate::config::ExternalPaymentsConfig>,
+    ) -> Result<()>;
+
     /// Persists an account-scoped performance location for future reuse.
     async fn upsert_payment_provider_tax_location(
         &self,
@@ -317,6 +357,29 @@ impl<T> DBPayments for T
 where
     T: PgExecutor + Send + Sync,
 {
+    /// [`DBPayments::approve_external_event_refund_request`].
+    #[instrument(skip(self), err)]
+    async fn approve_external_event_refund_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        review_note: Option<String>,
+        notification_template_data: Option<serde_json::Value>,
+    ) -> Result<CompletedEventPurchase> {
+        self.fetch_json_one(
+            "select approve_external_event_refund_request($1::uuid, $2::uuid, $3::uuid, $4::text, $5::jsonb)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_purchase_id,
+                &review_note,
+                &notification_template_data.as_ref().map(Json),
+            ],
+        )
+        .await
+    }
+
     /// [`DBPayments::attach_application_fee_to_event_purchase`].
     #[instrument(skip(self), err)]
     async fn attach_application_fee_to_event_purchase(
@@ -557,6 +620,31 @@ where
         .await
     }
 
+    /// [`DBPayments::complete_external_event_purchase`].
+    #[instrument(skip(self), err)]
+    async fn complete_external_event_purchase(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        details: Option<String>,
+        notification_attachments: Option<serde_json::Value>,
+        notification_template_data: Option<serde_json::Value>,
+    ) -> Result<CompletedEventPurchase> {
+        self.fetch_json_one(
+            "select complete_external_event_purchase($1::uuid, $2::uuid, $3::uuid, $4::text, $5::jsonb, $6::jsonb)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_purchase_id,
+                &details,
+                &notification_attachments.as_ref().map(Json),
+                &notification_template_data.as_ref().map(Json),
+            ],
+        )
+        .await
+    }
+
     /// [`DBPayments::complete_free_event_purchase`].
     #[instrument(skip(self), err)]
     async fn complete_free_event_purchase(
@@ -613,6 +701,42 @@ where
                 &Json(&notification_template_data),
                 &payment_provider.map(|provider| provider.to_string()),
             ],
+        )
+        .await
+    }
+
+    /// [`DBPayments::get_event_purchase_charge_model`].
+    #[instrument(skip(self), err)]
+    async fn get_event_purchase_charge_model(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<crate::types::payments::EventPurchaseChargeModel> {
+        let charge_model: String = self
+            .fetch_scalar_one(
+                "
+                select charge_model
+                from event_purchase
+                where event_purchase_id = $1::uuid
+                ",
+                &[&event_purchase_id],
+            )
+            .await?;
+
+        charge_model
+            .parse()
+            .map_err(|err| anyhow!("unsupported event purchase charge model: {err}"))
+    }
+
+    /// [`DBPayments::get_event_purchase_notification_context`].
+    #[instrument(skip(self), err)]
+    async fn get_event_purchase_notification_context(
+        &self,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+    ) -> Result<Option<EventPurchaseNotificationContext>> {
+        self.fetch_json_opt(
+            "select get_event_purchase_notification_context($1::uuid, $2::uuid)",
+            &[&group_id, &event_purchase_id],
         )
         .await
     }
@@ -1076,6 +1200,36 @@ where
             .await
     }
 
+    /// [`DBPayments::sync_external_payments_config`].
+    #[instrument(skip(self, config), err)]
+    async fn sync_external_payments_config(
+        &self,
+        config: Option<crate::config::ExternalPaymentsConfig>,
+    ) -> Result<()> {
+        let allowed_countries = config
+            .as_ref()
+            .map(crate::config::ExternalPaymentsConfig::allowed_countries_normalized);
+        let default_payment_window_hours =
+            config.as_ref().map(|cfg| cfg.default_payment_window_hours);
+        let max_payment_window_hours = config.as_ref().map(|cfg| cfg.max_payment_window_hours);
+
+        self.execute(
+            "
+            select sync_external_payments_config(
+                $1::text[],
+                $2::int,
+                $3::int
+            )
+            ",
+            &[
+                &allowed_countries,
+                &default_payment_window_hours,
+                &max_payment_window_hours,
+            ],
+        )
+        .await
+    }
+
     /// [`DBPayments::upsert_payment_provider_tax_location`].
     #[instrument(skip(self, venue), err)]
     async fn upsert_payment_provider_tax_location(
@@ -1195,6 +1349,11 @@ pub(crate) struct CompletedEventPurchase {
     pub event_id: Uuid,
     /// User identifier.
     pub user_id: Uuid,
+
+    /// Whether this call performed the state transition.
+    #[allow(dead_code)]
+    #[serde(default)]
+    pub transitioned: Option<bool>,
 }
 
 /// Input used to complete exhausted financial work outside OCG.
@@ -1232,6 +1391,15 @@ pub(crate) struct CompleteEventPurchaseRefundRecoveryInput {
     pub notification_template_data: Option<serde_json::Value>,
     /// Payment provider configured for queue reconciliation.
     pub payment_provider: Option<PaymentProvider>,
+}
+
+/// Identifiers used to compose purchase completion notifications.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct EventPurchaseNotificationContext {
+    /// Community containing the event.
+    pub community_id: Uuid,
+    /// Event whose purchase needs a notification.
+    pub event_id: Uuid,
 }
 
 /// Durable provider refund record used to reconcile local and provider state.
@@ -1331,6 +1499,8 @@ pub(crate) enum PrepareEventCheckoutPurchaseConflict {
     AdmissionOfferUnavailable,
     /// The selected ticket requires payment setup that is currently unavailable.
     PaymentSetupUnavailable,
+    /// The selected ticket cannot open a confirmation window before it expires.
+    PaymentWindowUnavailable,
     /// The selected ticket tier is no longer active.
     TicketTypeInactive,
     /// The selected ticket tier has no current price.
@@ -1457,6 +1627,8 @@ impl From<ReconcileEventPurchaseForCheckoutSessionOutput> for ReconcileEventPurc
                 community_id,
                 event_id,
                 user_id,
+
+                transitioned: None,
             }),
             ReconcileEventPurchaseForCheckoutSessionOutput::Noop => Self::Noop,
             ReconcileEventPurchaseForCheckoutSessionOutput::RefundQueued => Self::RefundQueued,
@@ -1503,6 +1675,10 @@ mod tests {
             (
                 "payment-setup-unavailable",
                 PrepareEventCheckoutPurchaseConflict::PaymentSetupUnavailable,
+            ),
+            (
+                "payment-window-unavailable",
+                PrepareEventCheckoutPurchaseConflict::PaymentWindowUnavailable,
             ),
             (
                 "ticket-type-inactive",

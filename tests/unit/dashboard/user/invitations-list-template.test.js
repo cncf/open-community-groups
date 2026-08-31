@@ -113,6 +113,22 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include('name="event_ticket_type_id"');
   });
 
+  it("renders Open payment page for externally pending invitation checkouts", async () => {
+    // Load the invitations template before checking external payment actions.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      "{% if let Some(external_payment) = &invitation.external_payment -%}",
+    );
+    expect(template).to.include('href="{{ external_payment.url }}"');
+    expect(template).to.include('target="_blank"');
+    expect(template).to.include('rel="noopener noreferrer"');
+    expect(template).to.include("<span>Open payment page</span>");
+    expect(template).to.include(
+      "{% else if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}",
+    );
+  });
+
   it("collects registration answers in the offer claim modal", async () => {
     // Load the invitations template before checking question fields.
     const template = normalizeWhitespace(await loadTemplate());

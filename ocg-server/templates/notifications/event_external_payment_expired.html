@@ -1,0 +1,50 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event External Payment Expired Notification -#}
+{% block subject -%}
+  {% if do_not_pay -%}
+    Do not send payment for {{ event_name }}
+  {% else -%}
+    Payment window expired for {{ event_name }}
+  {% endif -%}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {% if do_not_pay -%}
+    This reservation is no longer available. Do not send payment.
+  {% else -%}
+    Your reservation for {{ event_name }} was released.
+  {% endif -%}
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    {% if do_not_pay -%}
+      Your reservation for <strong>{{ event_name }}</strong> with
+      <strong>{{ group_name }}</strong> is no longer available.
+      Do not send payment for this reservation.
+      If you already paid, the organizer will return the money outside this
+      platform.
+    {% else -%}
+      The payment window for your
+      {% if let Some(title) = ticket_title -%}
+        <strong>{{ title }}</strong>
+      {% else -%}
+        ticket
+      {% endif -%}
+      reservation for <strong>{{ event_name }}</strong> with
+      <strong>{{ group_name }}</strong> has ended.
+      The place was released.
+      If you still want to attend, register again or ask the organizer for an
+      invitation.
+    {% endif -%}
+  </p>
+
+  {{ email::button(link = dashboard_url, text = "View your events", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you had a pending payment for {{ event_name }}.
+{% endblock footer -%}
+{# End event external payment expired notification -#}

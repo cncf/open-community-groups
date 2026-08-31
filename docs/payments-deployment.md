@@ -116,6 +116,65 @@ error.
 `platform_fee_bps` cannot exceed `9999`, because an application fee must remain
 strictly below a positive charge.
 
+### External Payments
+
+Groups whose country is not served by Stripe Connect can collect paid tickets
+outside OCG. The operator allowlists ISO 3166-1 alpha-2 country codes; groups
+in those countries can then opt in from group settings. Payments happen at an
+event-specific URL with optional instructions. Organizers mark purchases paid
+by purchase ID. Unpaid holds expire through the existing enrollment reconcile
+path.
+
+Helm values:
+
+```yaml
+externalPayments:
+  enabled: true
+  allowedCountries: [KR, NG, AR]
+  defaultPaymentWindowHours: 72
+  maxPaymentWindowHours: 336
+```
+
+Notes:
+
+- `enabled: false` (the default) omits the `external_payments` section and
+  removes the synced `external_payments_config` row at startup.
+- `enabled: true` requires a non-empty allowlist of unique ISO 3166-1 alpha-2
+  country codes. An empty allowlist is invalid and the server refuses to start.
+- Country codes are normalized to uppercase.
+- Window hours must be at least `1`, and the default cannot exceed the max.
+  SQL enforces the max at event validation and hold creation.
+- Values are never accepted from dashboard form fields.
+
+Equivalent `server.yml` section:
+
+```yaml
+external_payments:
+  allowed_countries: [KR, NG, AR]
+  default_payment_window_hours: 72
+  max_payment_window_hours: 336
+```
+
+Omitting the section, or setting Helm `enabled: false`, is the kill switch:
+the server deletes the config row and new external activity stops immediately.
+Existing pending purchases stay confirmable, cancelable, and refundable, and
+they keep using the live event payment URL until they complete, expire, or
+are canceled.
+
+Runtime revalidation uses the synced table. Every new hold, offer claim, paid
+invitation, and waitlist promotion calls
+`is_event_external_payments_ready(event_id)` (config row present, group toggle
+on, event URL set, group country allowlisted). An external-marked event that
+loses eligibility returns `payment-setup-unavailable` and never falls back to
+Stripe.
+
+Editing or publishing an event that still has an external payment URL is
+rejected while the group is ineligible (toggle off, country delisted, or
+operator config absent). Organizers can clear the URL to move the event onto
+Stripe validation only after every pending external purchase has completed,
+expired, or been canceled. Changing the URL or instructions while holds are
+open updates the live copy shown to those attendees.
+
 ### Platform Fee
 
 OCG can collect a deployment-wide platform fee on every paid event purchase.

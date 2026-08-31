@@ -5,7 +5,22 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Operator allowlist used by external-mode payload scenarios
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
 
 -- ============================================================================
 -- TESTS
@@ -79,6 +94,43 @@ select lives_ok(
     'Should accept waitlists for ticketed events'
 );
 
+-- Should accept paid-capable external mode without a Stripe recipient
+select lives_ok(
+    $$select validate_event_ticketing_payload(
+        null,
+        null,
+        'KRW',
+        null,
+        '[
+            {
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 5000,
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        true,
+        null,
+        '{
+            "external_mode": true,
+            "external_payment_url": "https://pay.example.test/ready",
+            "kind_id": "in-person",
+            "venue_address": "1 Test Street",
+            "venue_city": "Seoul",
+            "venue_country_code": "KR",
+            "venue_name": "Test Hall",
+            "venue_zip_code": "00000"
+        }'::jsonb
+    )$$,
+    'Should accept paid-capable external mode without a Stripe recipient'
+);
+
 -- Should require a payment currency for ticketed events
 select throws_ok(
     $$select validate_event_ticketing_payload(
@@ -103,6 +155,43 @@ select throws_ok(
     )$$,
     'paid-capable events require payment_currency_code',
     'Should require a payment currency for paid-capable events'
+);
+
+-- Should reject a paid-capable external event without a payment URL
+select throws_ok(
+    $$select validate_event_ticketing_payload(
+        null,
+        null,
+        'KRW',
+        null,
+        '[
+            {
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 5000,
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        true,
+        null,
+        '{
+            "external_mode": true,
+            "kind_id": "in-person",
+            "venue_address": "1 Test Street",
+            "venue_city": "Seoul",
+            "venue_country_code": "KR",
+            "venue_name": "Test Hall",
+            "venue_zip_code": "00000"
+        }'::jsonb
+    )$$,
+    'paid-capable events require a valid external payment url',
+    'Should reject a paid-capable external event without a payment URL'
 );
 
 -- Should reject unsupported payment currencies for ticketed events

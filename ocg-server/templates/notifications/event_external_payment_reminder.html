@@ -1,0 +1,42 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event External Payment Reminder Notification -#}
+{% block subject -%}
+  Payment window closing for {{ event_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Pay {{ self.price_label() }} by {{ deadline.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    Your <strong>{{ ticket_title }}</strong> reservation for
+    <strong>{{ event_name }}</strong> still needs organizer confirmation.
+    Pay <strong>{{ self.price_label() }}</strong> using the payment page and
+    include reference <strong>{{ event_purchase_id }}</strong>.
+    The organizer must mark the payment received by
+    <strong>{{ deadline.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
+    After that deadline the reservation is released.
+    {% if let Some(instructions) = external_payment_instructions -%}
+      <br />
+      <br />
+      {{ instructions }}
+    {% endif -%}
+  </p>
+
+  {{ email::button(link = external_payment_url, text = "Open payment page", color = theme.primary_color) }}
+
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">
+    You can also review this reservation from your
+    <a href="{{ dashboard_url }}">dashboard</a>.
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you have an unpaid reservation for {{ event_name }}.
+{% endblock footer -%}
+{# End event external payment reminder notification -#}

@@ -51,6 +51,9 @@ returns json as $$
             'ends_at', floor(extract(epoch from e.ends_at)),
             'event_reminder_enabled', e.event_reminder_enabled,
             'event_series_id', e.event_series_id,
+            'external_payment_instructions', e.external_payment_instructions,
+            'external_payment_url', e.external_payment_url,
+            'external_payment_window_hours', e.external_payment_window_hours,
             'has_related_events', exists (
                 select 1
                 from event related_event

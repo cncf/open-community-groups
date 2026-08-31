@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(39);
+select plan(51);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,26 @@ select plan(39);
 \set category2ID '3a390000-0000-0000-0000-000000000002'
 \set community1ID '3a390000-0000-0000-0000-000000000003'
 \set event1ID '3a390000-0000-0000-0000-000000000004'
+\set eventExternalClearID '3a390000-0000-0000-0000-000000000050'
+\set eventExternalClearPriceWindowID '3a390000-0000-0000-0000-000000000051'
+\set eventExternalClearPurchaseID '3a390000-0000-0000-0000-000000000062'
+\set eventExternalClearTicketTypeID '3a390000-0000-0000-0000-000000000052'
+\set eventExternalDelistedID '3a390000-0000-0000-0000-00000000005a'
+\set eventExternalDelistedPriceWindowID '3a390000-0000-0000-0000-00000000005b'
+\set eventExternalDelistedTicketTypeID '3a390000-0000-0000-0000-00000000005c'
+\set eventExternalPaidID '3a390000-0000-0000-0000-000000000053'
+\set eventExternalPaidPriceWindowID '3a390000-0000-0000-0000-000000000054'
+\set eventExternalPaidPurchaseID '3a390000-0000-0000-0000-000000000063'
+\set eventExternalPaidTicketTypeID '3a390000-0000-0000-0000-000000000055'
+\set eventExternalPendingClearID '3a390000-0000-0000-0000-00000000005e'
+\set eventExternalPendingClearPriceWindowID '3a390000-0000-0000-0000-00000000005f'
+\set eventExternalPendingClearPurchaseID '3a390000-0000-0000-0000-000000000060'
+\set eventExternalPendingClearTicketTypeID '3a390000-0000-0000-0000-000000000061'
+\set eventExternalStripeID '3a390000-0000-0000-0000-000000000056'
+\set eventExternalStripePriceWindowID '3a390000-0000-0000-0000-000000000057'
+\set eventExternalStripeTicketTypeID '3a390000-0000-0000-0000-000000000058'
+\set groupDelistedID '3a390000-0000-0000-0000-00000000005d'
+\set groupExternalID '3a390000-0000-0000-0000-000000000059'
 \set event4ID '3a390000-0000-0000-0000-000000000005'
 \set event10ID '3a390000-0000-0000-0000-000000000006'
 \set event11ID '3a390000-0000-0000-0000-000000000007'
@@ -54,6 +74,17 @@ select plan(39);
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Operator allowlist and window limits used by external update scenarios
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
 
 -- Community
 insert into community (
@@ -108,6 +139,44 @@ insert into "group" (
     'A test group',
     '3a390000-0000-0000-0000-000000000006',
     '{"provider": "stripe", "recipient_id": "acct_update_event", "seller_display_name": "Update Event Fiscal Sponsor"}'::jsonb
+);
+
+-- Allowlisted group with external payments enabled for external update scenarios
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'community1ID',
+    'KR',
+    true,
+    '3a390000-0000-0000-0000-000000000006',
+    :'groupExternalID',
+    'External Update Group',
+    'external-update-group'
+);
+
+-- Delisted-country group used to reject a preserved external URL
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'community1ID',
+    'US',
+    true,
+    '3a390000-0000-0000-0000-000000000006',
+    :'groupDelistedID',
+    'Delisted External Group',
+    'delisted-external-group'
 );
 
 -- Events used for paid-capability transition results
@@ -533,6 +602,334 @@ select
     ),
     :'waitlistUserID',
     current_timestamp - interval '30 minutes';
+
+-- Paid Stripe-shaped event on the non-external group used to prove leftover URLs clear
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    external_payment_window_hours,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Paid event that still carries leftover external fields',
+    :'category1ID',
+    :'eventExternalClearID',
+    'in-person',
+    'https://pay.example.test/leftover',
+    48,
+    :'group1ID',
+    'External Clear Event',
+    'USD',
+    false,
+    'external-clear-event',
+    'automatic',
+    'UTC',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'Community Hall',
+    '94105'
+);
+
+-- Paid leftover-URL event whose pending hold must keep the live event URL
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    external_payment_window_hours,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Paid event whose pending external hold keeps the live URL',
+    :'category1ID',
+    :'eventExternalPendingClearID',
+    'in-person',
+    'https://pay.example.test/pending-clear',
+    48,
+    :'group1ID',
+    'External Pending Clear Event',
+    'USD',
+    false,
+    'external-pending-clear-event',
+    'automatic',
+    'UTC',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'Community Hall',
+    '94105'
+);
+
+-- Paid event that keeps an external URL after the country leaves the allowlist
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    external_payment_window_hours,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Paid event whose group country is no longer allowlisted',
+    :'category1ID',
+    :'eventExternalDelistedID',
+    'in-person',
+    'https://pay.example.test/delisted',
+    48,
+    :'groupDelistedID',
+    'External Delisted Event',
+    'USD',
+    false,
+    'external-delisted-event',
+    'none',
+    'UTC',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'Community Hall',
+    '94105'
+);
+
+-- Paid external-group event without a URL that stays Stripe until URL is set
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    tax_behavior,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Published Stripe event waiting for an external URL',
+    :'category1ID',
+    :'eventExternalStripeID',
+    'in-person',
+    :'groupExternalID',
+    'External Stripe Event',
+    'KRW',
+    true,
+    'external-stripe-event',
+    current_timestamp + interval '7 days',
+    'inclusive',
+    'automatic',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- Paid external-group event already marked with a URL for window and tax updates
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    tax_behavior,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'External event updated for window and tax normalization',
+    :'category1ID',
+    :'eventExternalPaidID',
+    'in-person',
+    'https://pay.example.test/update',
+    :'groupExternalID',
+    'External Paid Event',
+    'KRW',
+    false,
+    'external-paid-event',
+    'exclusive',
+    'automatic',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- Ticket types for the external update fixtures
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values
+    (:'eventExternalClearTicketTypeID', :'eventExternalClearID', 1, 50, 'General Admission'),
+    (:'eventExternalDelistedTicketTypeID', :'eventExternalDelistedID', 1, 50, 'General Admission'),
+    (:'eventExternalPaidTicketTypeID', :'eventExternalPaidID', 1, 50, 'General Admission'),
+    (
+        :'eventExternalPendingClearTicketTypeID',
+        :'eventExternalPendingClearID',
+        1,
+        50,
+        'General Admission'
+    ),
+    (:'eventExternalStripeTicketTypeID', :'eventExternalStripeID', 1, 50, 'General Admission');
+
+-- Price windows for the external update fixtures
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values
+    (:'eventExternalClearPriceWindowID', 2500, :'eventExternalClearTicketTypeID'),
+    (:'eventExternalDelistedPriceWindowID', 2500, :'eventExternalDelistedTicketTypeID'),
+    (:'eventExternalPaidPriceWindowID', 5000, :'eventExternalPaidTicketTypeID'),
+    (
+        :'eventExternalPendingClearPriceWindowID',
+        2500,
+        :'eventExternalPendingClearTicketTypeID'
+    ),
+    (:'eventExternalStripePriceWindowID', 5000, :'eventExternalStripeTicketTypeID');
+
+-- Completed leftover external purchase that must not block clearing the URL
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'external',
+    current_timestamp - interval '1 hour',
+    'USD',
+    :'eventExternalClearID',
+    :'eventExternalClearPurchaseID',
+    :'eventExternalClearTicketTypeID',
+    0,
+    0,
+    'completed',
+    'General Admission',
+    :'user1ID'
+);
+
+-- Pending leftover external hold that must keep the live event URL
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    2500,
+    'external',
+    'USD',
+    :'eventExternalPendingClearID',
+    :'eventExternalPendingClearPurchaseID',
+    :'eventExternalPendingClearTicketTypeID',
+    current_timestamp + interval '2 days',
+    0,
+    0,
+    'pending',
+    'General Admission',
+    :'user1ID'
+);
+
+-- Pending external hold on an eligible event whose URL may still change
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'KRW',
+    :'eventExternalPaidID',
+    :'eventExternalPaidPurchaseID',
+    :'eventExternalPaidTicketTypeID',
+    current_timestamp + interval '2 days',
+    0,
+    0,
+    'pending',
+    'General Admission',
+    :'user1ID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -1558,6 +1955,557 @@ select is(
     ),
     format('["%s"]', :'waitlistUserID')::jsonb,
     'Should keep waitlist entries queued after an open-only registration window reaches the event start'
+);
+
+-- Should reject a persisted external URL when the group toggle is off
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "External Clear Event",
+                "description": "Paid event that still carries leftover external fields",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/leftover",
+                "external_payment_window_hours": 48,
+                "payment_currency_code": "USD",
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_name": "Community Hall",
+                "venue_zip_code": "94105",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            'stripe'
+        )$$,
+        :'group1ID',
+        :'eventExternalClearID',
+        :'category1ID',
+        :'eventExternalClearTicketTypeID',
+        :'eventExternalClearPriceWindowID'
+    ),
+    'external payments are not available for this event',
+    'Should reject a persisted external URL when the group toggle is off'
+);
+
+-- Should reject a persisted external URL when the group country is delisted
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "External Delisted Event",
+                "description": "Paid event whose group country is no longer allowlisted",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/delisted",
+                "external_payment_window_hours": 48,
+                "payment_currency_code": "USD",
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_name": "Community Hall",
+                "venue_zip_code": "94105",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            'stripe'
+        )$$,
+        :'groupDelistedID',
+        :'eventExternalDelistedID',
+        :'category1ID',
+        :'eventExternalDelistedTicketTypeID',
+        :'eventExternalDelistedPriceWindowID'
+    ),
+    'external payments are not available for this event',
+    'Should reject a persisted external URL when the group country is delisted'
+);
+
+-- Should clear a persisted external URL onto Stripe when a recipient is ready
+select lives_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "_payment_validation": {
+                    "expected_payment_recipient": {
+                        "provider": "stripe",
+                        "recipient_id": "acct_update_event",
+                        "seller_display_name": "Update Event Fiscal Sponsor"
+                    },
+                    "require_automatic_tax": true,
+                    "validated_payment_recipient": {
+                        "provider": "stripe",
+                        "recipient_id": "acct_update_event",
+                        "seller_display_name": "Update Event Fiscal Sponsor"
+                    }
+                },
+                "name": "External Clear Event",
+                "description": "Paid event that still carries leftover external fields",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "",
+                "external_payment_instructions": "",
+                "external_payment_window_hours": "",
+                "payment_currency_code": "USD",
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_name": "Community Hall",
+                "venue_zip_code": "94105",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            'stripe'
+        )$$,
+        :'group1ID',
+        :'eventExternalClearID',
+        :'category1ID',
+        :'eventExternalClearTicketTypeID',
+        :'eventExternalClearPriceWindowID'
+    ),
+    'Should clear a persisted external URL onto Stripe when a recipient is ready'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'external_payment_instructions', external_payment_instructions,
+            'external_payment_url', external_payment_url,
+            'external_payment_window_hours', external_payment_window_hours
+        )
+        from event
+        where event_id = :'eventExternalClearID'::uuid
+    ),
+    '{
+        "external_payment_instructions": null,
+        "external_payment_url": null,
+        "external_payment_window_hours": null
+    }'::jsonb,
+    'Should clear a persisted external URL onto Stripe when a recipient is ready'
+);
+
+-- Should reject clearing an external payment URL while a pending external purchase exists
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "_payment_validation": {
+                    "expected_payment_recipient": {
+                        "provider": "stripe",
+                        "recipient_id": "acct_update_event",
+                        "seller_display_name": "Update Event Fiscal Sponsor"
+                    },
+                    "require_automatic_tax": true,
+                    "validated_payment_recipient": {
+                        "provider": "stripe",
+                        "recipient_id": "acct_update_event",
+                        "seller_display_name": "Update Event Fiscal Sponsor"
+                    }
+                },
+                "name": "External Pending Clear Event",
+                "description": "Paid event whose pending external hold keeps the live URL",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "",
+                "external_payment_instructions": "",
+                "external_payment_window_hours": "",
+                "payment_currency_code": "USD",
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_name": "Community Hall",
+                "venue_zip_code": "94105",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            'stripe'
+        )$$,
+        :'group1ID',
+        :'eventExternalPendingClearID',
+        :'category1ID',
+        :'eventExternalPendingClearTicketTypeID',
+        :'eventExternalPendingClearPriceWindowID'
+    ),
+    'external payment url cannot be cleared while pending external purchases exist',
+    'Should reject clearing an external payment URL while a pending external purchase exists'
+);
+
+-- Should reject clearing an external URL when Stripe is not ready
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "External Delisted Event",
+                "description": "Paid event whose group country is no longer allowlisted",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "",
+                "payment_currency_code": "USD",
+                "venue_address": "123 Main St",
+                "venue_city": "San Francisco",
+                "venue_country_code": "US",
+                "venue_name": "Community Hall",
+                "venue_zip_code": "94105",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 2500,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            'stripe'
+        )$$,
+        :'groupDelistedID',
+        :'eventExternalDelistedID',
+        :'category1ID',
+        :'eventExternalDelistedTicketTypeID',
+        :'eventExternalDelistedPriceWindowID'
+    ),
+    'payment configuration changed during provider validation',
+    'Should reject clearing an external URL when Stripe is not ready'
+);
+
+-- Should reject updating a paid external event without a payment URL
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            jsonb_build_object(
+                'name', 'External Stripe Event',
+                'description', 'Published Stripe event waiting for an external URL',
+                'timezone', 'UTC',
+                'category_id', %L::uuid,
+                'kind_id', 'in-person',
+                'payment_currency_code', 'KRW',
+                'starts_at', to_char(
+                    (
+                        select starts_at
+                        from event
+                        where event_id = %L::uuid
+                    ) at time zone 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS'
+                ),
+                'venue_address', '1 Test Street',
+                'venue_city', 'Seoul',
+                'venue_country_code', 'KR',
+                'venue_name', 'Test Hall',
+                'venue_zip_code', '00000',
+                'ticket_types', jsonb_build_array(jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', %L::uuid,
+                    'order', 1,
+                    'price_windows', jsonb_build_array(jsonb_build_object(
+                        'amount_minor', 5500,
+                        'event_ticket_price_window_id', %L::uuid
+                    )),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                ))
+            ),
+            null::jsonb,
+            'stripe'
+        )$$,
+        :'groupExternalID',
+        :'eventExternalStripeID',
+        :'category1ID',
+        :'eventExternalStripeID',
+        :'eventExternalStripeTicketTypeID',
+        :'eventExternalStripePriceWindowID'
+    ),
+    'paid-capable events require a valid external payment url',
+    'Should reject updating a paid external event without a payment URL'
+);
+
+-- Should mark a published Stripe event external when this update sets a payment URL
+select lives_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            jsonb_build_object(
+                'name', 'External Stripe Event',
+                'description', 'Published Stripe event waiting for an external URL',
+                'timezone', 'UTC',
+                'category_id', %L::uuid,
+                'kind_id', 'in-person',
+                'external_payment_url', 'https://pay.example.test/converted',
+                'external_payment_window_hours', 120,
+                'payment_currency_code', 'KRW',
+                'tax_behavior', 'exclusive',
+                'tax_calculation_mode', 'automatic',
+                'starts_at', to_char(
+                    (
+                        select starts_at
+                        from event
+                        where event_id = %L::uuid
+                    ) at time zone 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS'
+                ),
+                'venue_address', '1 Test Street',
+                'venue_city', 'Seoul',
+                'venue_country_code', 'KR',
+                'venue_name', 'Test Hall',
+                'venue_zip_code', '00000',
+                'ticket_types', jsonb_build_array(jsonb_build_object(
+                    'active', true,
+                    'availability', 'public',
+                    'event_ticket_type_id', %L::uuid,
+                    'order', 1,
+                    'price_windows', jsonb_build_array(jsonb_build_object(
+                        'amount_minor', 5000,
+                        'event_ticket_price_window_id', %L::uuid
+                    )),
+                    'seats_total', 50,
+                    'title', 'General Admission'
+                ))
+            ),
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID',
+        :'eventExternalStripeID',
+        :'category1ID',
+        :'eventExternalStripeID',
+        :'eventExternalStripeTicketTypeID',
+        :'eventExternalStripePriceWindowID'
+    ),
+    'Should mark a published Stripe event external when this update sets a payment URL'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'external_payment_url', external_payment_url,
+            'external_payment_window_hours', external_payment_window_hours,
+            'tax_behavior', tax_behavior,
+            'tax_calculation_mode', tax_calculation_mode
+        )
+        from event
+        where event_id = :'eventExternalStripeID'::uuid
+    ),
+    '{
+        "external_payment_url": "https://pay.example.test/converted",
+        "external_payment_window_hours": 120,
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "none"
+    }'::jsonb,
+    'Should persist external URL and normalized tax after converting a Stripe event'
+);
+
+-- Should normalize tax and accept an overridden window on an external paid update
+select lives_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "External Paid Event",
+                "description": "External event updated for window and tax normalization",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/update",
+                "external_payment_window_hours": 96,
+                "payment_currency_code": "KRW",
+                "tax_behavior": "exclusive",
+                "tax_calculation_mode": "automatic",
+                "venue_address": "1 Test Street",
+                "venue_city": "Seoul",
+                "venue_country_code": "KR",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "00000",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID',
+        :'eventExternalPaidID',
+        :'category1ID',
+        :'eventExternalPaidTicketTypeID',
+        :'eventExternalPaidPriceWindowID'
+    ),
+    'Should normalize tax and accept an overridden window on an external paid update'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'external_payment_window_hours', external_payment_window_hours,
+            'tax_behavior', tax_behavior,
+            'tax_calculation_mode', tax_calculation_mode
+        )
+        from event
+        where event_id = :'eventExternalPaidID'::uuid
+    ),
+    '{
+        "external_payment_window_hours": 96,
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "none"
+    }'::jsonb,
+    'Should persist normalized tax and the overridden external window'
+);
+
+-- Should reject an external payment window above the configured maximum on update
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "External Paid Event",
+                "description": "External event updated for window and tax normalization",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/update",
+                "external_payment_window_hours": 337,
+                "payment_currency_code": "KRW",
+                "venue_address": "1 Test Street",
+                "venue_city": "Seoul",
+                "venue_country_code": "KR",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "00000",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID',
+        :'eventExternalPaidID',
+        :'category1ID',
+        :'eventExternalPaidTicketTypeID',
+        :'eventExternalPaidPriceWindowID'
+    ),
+    'external payment window exceeds the configured maximum',
+    'Should reject an external payment window above the configured maximum on update'
 );
 
 -- ============================================================================

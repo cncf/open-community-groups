@@ -29,6 +29,7 @@ returns json as $$
                         'invitation-declined',
                         'invitation-expired',
                         'invitation-pending',
+                        'payment-pending',
                         'registration-pending'
                     ) then lower(p_filters->>'status')
                     else null
@@ -102,6 +103,57 @@ returns json as $$
 
             union all
 
+            -- Include external holds without a questionnaire or offer row
+            select
+                null::uuid as admission_offer_id,
+                null::text as admission_offer_source,
+                null::text as admission_offer_status,
+                false as checked_in,
+                null::timestamptz as checked_in_at,
+                ep.created_at,
+                ep.event_id,
+                ep.event_ticket_type_id,
+                false as manually_invited,
+                null::timestamptz as offer_expires_at,
+                null::jsonb as registration_answers,
+                0 as source_priority,
+                'registration-pending' as enrollment_status,
+                ep.ticket_title,
+                ep.user_id
+            from event_purchase ep
+            where ep.status = 'pending'
+            and ep.charge_model = 'external'
+            and not exists (
+                select 1
+                from event_attendee ea
+                where ea.event_id = ep.event_id
+                and ea.user_id = ep.user_id
+                and ea.status in (
+                    'attendance-canceled',
+                    'confirmed',
+                    'invitation-canceled',
+                    'invitation-pending',
+                    'invitation-rejected',
+                    'registration-questions-pending'
+                )
+            )
+            and not exists (
+                select 1
+                from admission_offer ao
+                where ao.event_id = ep.event_id
+                and ao.user_id = ep.user_id
+                and ao.source = 'organizer_invitation'
+                and ao.status in (
+                    'canceled',
+                    'checkout_pending',
+                    'declined',
+                    'expired',
+                    'pending'
+                )
+            )
+
+            union all
+
             select
                 ao.admission_offer_id,
                 ao.source as admission_offer_source,
@@ -171,6 +223,11 @@ returns json as $$
                 er.created_at as created_at_sort,
                 u.email,
                 case
+                    when ep.purchase_status = 'pending'
+                        and ep.charge_model = 'external'
+                        and ep.hold_expires_at > current_timestamp
+                        and er.enrollment_status is distinct from 'confirmed'
+                        then 'payment-pending'
                     when er.enrollment_status = 'registration-pending'
                         and ep.purchase_status = 'pending' then 'checkout-pending'
                     else er.enrollment_status
@@ -183,10 +240,25 @@ returns json as $$
 
                 extract(epoch from er.checked_in_at)::bigint as checked_in_at,
                 ep.amount_minor,
+                ep.charge_model,
+                extract(epoch from ep.completed_at)::bigint as completed_at,
                 u.company,
                 ep.currency_code,
                 ep.discount_code,
+                case
+                    when ep.charge_model = 'external'
+                    then extract(epoch from ep.hold_expires_at)::bigint
+                end as external_payment_deadline,
+                ep.external_payment_details,
+                marked_by.username as external_payment_marked_by,
+                case
+                    when ep.charge_model = 'external' then ep.event_purchase_id
+                end as external_payment_reference,
                 ep.event_purchase_id,
+                coalesce(
+                    ep.charge_model = 'external' and ep.purchase_status = 'completed',
+                    false
+                ) as externally_paid,
                 coalesce(ep.event_ticket_type_id, er.event_ticket_type_id)
                     as event_ticket_type_id,
                 extract(epoch from er.offer_expires_at)::bigint as offer_expires_at,
@@ -240,12 +312,16 @@ returns json as $$
                 select
                     event_purchase_id,
                     amount_minor,
+                    charge_model,
                     currency_code,
                     event_ticket_type_id,
                     status as purchase_status,
                     ticket_title,
 
+                    completed_at,
                     discount_code,
+                    external_payment_details,
+                    external_payment_marked_by_user_id,
                     hold_expires_at,
                     provider_checkout_session_id
                 from event_purchase
@@ -280,6 +356,8 @@ returns json as $$
                 order by created_at desc, event_purchase_id desc
                 limit 1
             ) pending_ep on true
+            left join "user" marked_by
+                on marked_by.user_id = ep.external_payment_marked_by_user_id
             where e.group_id = p_group_id
             and er.event_id = p_event_id
         ),
@@ -309,6 +387,7 @@ returns json as $$
                         'checkout-pending',
                         'confirmed',
                         'invitation-pending',
+                        'payment-pending',
                         'registration-pending'
                     )
                 )
@@ -374,11 +453,18 @@ returns json as $$
                 admission_offer_source,
                 admission_offer_status,
                 amount_minor,
+                charge_model,
                 checked_in_at,
+                completed_at,
                 currency_code,
                 discount_code,
                 event_purchase_id,
                 event_ticket_type_id,
+                external_payment_deadline,
+                external_payment_details,
+                external_payment_marked_by,
+                external_payment_reference,
+                externally_paid,
                 offer_expires_at,
                 refund_progress,
                 refund_request_status,

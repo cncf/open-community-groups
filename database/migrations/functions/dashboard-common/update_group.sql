@@ -7,20 +7,29 @@ create or replace function update_group(
 )
 returns void as $$
 declare
+    v_current_country_code text;
+    v_current_external_payments_enabled boolean;
     v_current_parent_group_id uuid;
-    v_payment_recipient_changed boolean := false;
-    v_payment_validation jsonb;
-    v_parent_group_id_present boolean := false;
-    v_provider_account_changed boolean := false;
+    v_external_payments_enabled_changed boolean := false;
+    v_new_country_code text;
+    v_new_external_payments_enabled boolean;
     v_new_parent_group_id uuid;
     v_new_payment_recipient jsonb;
+    v_parent_group_id_present boolean := false;
+    v_payment_recipient_changed boolean := false;
+    v_payment_validation jsonb;
     v_previous_payment_recipient jsonb;
+    v_provider_account_changed boolean := false;
 begin
     -- Retrieve existing values to compare against the update payload
     select
+        country_code,
+        external_payments_enabled,
         parent_group_id,
         payment_recipient
     into
+        v_current_country_code,
+        v_current_external_payments_enabled,
         v_current_parent_group_id,
         v_previous_payment_recipient
     from "group"
@@ -135,6 +144,7 @@ begin
            and e.canceled = false
            and e.deleted = false
            and e.published = true
+           and e.external_payment_url is null
            and is_event_paid_capable(e.event_id)
            and (
                coalesce(e.ends_at, e.starts_at) is null
@@ -154,6 +164,7 @@ begin
             and e.canceled = false
             and e.deleted = false
             and e.published = true
+            and e.external_payment_url is null
             and e.tax_calculation_mode = 'manual'
             and is_event_paid_capable(e.event_id)
             and (
@@ -162,6 +173,29 @@ begin
             )
        ) then
         raise exception 'fiscal sponsor cannot be replaced while published manual-tax events are upcoming';
+    end if;
+
+    -- Resolve the final country and external-payments toggle together
+    v_new_country_code := case
+        when p_group ? 'country_code' then nullif(p_group->>'country_code', '')
+        else v_current_country_code
+    end;
+    v_new_external_payments_enabled := case
+        when p_group ? 'external_payments_enabled' then
+            coalesce((p_group->>'external_payments_enabled')::boolean, false)
+        else v_current_external_payments_enabled
+    end;
+    v_external_payments_enabled_changed :=
+        v_new_external_payments_enabled is distinct from v_current_external_payments_enabled;
+
+    -- Reject enabling the toggle or moving off the allowlist while it stays on
+    if v_new_external_payments_enabled
+       and (
+           not v_current_external_payments_enabled
+           or v_new_country_code is distinct from v_current_country_code
+       )
+       and not is_country_external_payments_allowlisted(v_new_country_code) then
+        raise exception 'external payments are not available for this group country';
     end if;
 
     -- Require draft manual-tax events to reselect rates in the new account
@@ -190,11 +224,17 @@ begin
         banner_url = nullif(p_group->>'banner_url', ''),
         bluesky_url = nullif(p_group->>'bluesky_url', ''),
         city = nullif(p_group->>'city', ''),
-        country_code = nullif(p_group->>'country_code', ''),
+        country_code = case
+            -- Use an explicitly submitted country
+            when p_group ? 'country_code' then nullif(p_group->>'country_code', '')
+            -- Preserve the country omitted from a partial payload
+            else country_code
+        end,
         country_name = nullif(p_group->>'country_name', ''),
         description = nullif(p_group->>'description', ''),
         description_short = nullif(p_group->>'description_short', ''),
         extra_links = p_group->'extra_links',
+        external_payments_enabled = v_new_external_payments_enabled,
         facebook_url = nullif(p_group->>'facebook_url', ''),
         flickr_url = nullif(p_group->>'flickr_url', ''),
         github_url = nullif(p_group->>'github_url', ''),
@@ -249,6 +289,22 @@ begin
             p_group_id,
             p_community_id,
             p_group_id
+        );
+    end if;
+
+    -- Track external-payments toggle changes after the group update succeeds
+    if v_external_payments_enabled_changed then
+        perform insert_audit_log(
+            'group_external_payments_updated',
+            p_actor_user_id,
+            'group',
+            p_group_id,
+            p_community_id,
+            p_group_id,
+            null,
+            jsonb_build_object(
+                'external_payments_enabled', v_new_external_payments_enabled
+            )
         );
     end if;
 end;

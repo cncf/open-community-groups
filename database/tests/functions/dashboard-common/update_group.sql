@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(34);
+select plan(53);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(34);
 \set communityID '1c020000-0000-0000-0000-000000000001'
 \set eventAutomaticTaxID '1c020000-0000-0000-0000-00000000001c'
 \set eventCategoryID '1c020000-0000-0000-0000-000000000002'
+\set eventExternalPaidID '1c020000-0000-0000-0000-000000000038'
 \set eventFreeID '1c020000-0000-0000-0000-000000000014'
 \set eventID '1c020000-0000-0000-0000-000000000003'
 \set eventUnpublishedID '1c020000-0000-0000-0000-000000000004'
@@ -27,17 +28,27 @@ select plan(34);
 \set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
 \set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
+\set groupDelistedID '1c020000-0000-0000-0000-000000000036'
+\set groupDisableID '1c020000-0000-0000-0000-000000000030'
+\set groupEnableID '1c020000-0000-0000-0000-000000000031'
+\set groupExternalPaidID '1c020000-0000-0000-0000-000000000037'
+\set groupFinalCountryID '1c020000-0000-0000-0000-000000000032'
 \set groupID '1c020000-0000-0000-0000-00000000000c'
+\set groupMoveCountryDisableID '1c020000-0000-0000-0000-000000000033'
+\set groupMoveCountryID '1c020000-0000-0000-0000-000000000034'
+\set groupRejectEnableID '1c020000-0000-0000-0000-000000000035'
 \set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
 \set inactiveParentedGroupID '1c020000-0000-0000-0000-00000000001b'
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
 \set priceWindowAutomaticTaxID '1c020000-0000-0000-0000-00000000001e'
+\set priceWindowExternalPaidID '1c020000-0000-0000-0000-00000000003a'
 \set priceWindowFreeID '1c020000-0000-0000-0000-000000000017'
 \set priceWindowID '1c020000-0000-0000-0000-000000000016'
 \set priceWindowUnpublishedID '1c020000-0000-0000-0000-000000000018'
 \set ticketTypeAutomaticTaxID '1c020000-0000-0000-0000-00000000001f'
+\set ticketTypeExternalPaidID '1c020000-0000-0000-0000-000000000039'
 \set ticketTypeFreeID '1c020000-0000-0000-0000-000000000019'
 \set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
 \set ticketTypeUnpublishedID '1c020000-0000-0000-0000-00000000000f'
@@ -46,6 +57,17 @@ select plan(34);
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Operator allowlist used by external-payments toggle scenarios
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
 
 -- Community
 insert into community (
@@ -427,6 +449,62 @@ insert into event (
     'UTC'
 );
 
+-- Group whose only paid event is collected outside Stripe
+insert into "group" (
+    community_id,
+    country_code,
+    created_at,
+    description,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    payment_recipient,
+    slug
+) values (
+    :'communityID'::uuid,
+    'KR',
+    '2024-01-15 10:00:00+00',
+    'External paid event recipient coverage',
+    true,
+    :'groupCategory1ID'::uuid,
+    :'groupExternalPaidID'::uuid,
+    'Group With External Paid Event',
+    '{"provider": "stripe", "recipient_id": "acct_external", "seller_display_name": "External Event Fiscal Sponsor"}'::jsonb,
+    'external-paid-event-group'
+);
+
+-- Published external paid event that must not lock the Stripe recipient
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    tax_calculation_mode,
+    timezone
+) values (
+    'Published external paid event for recipient guards',
+    :'eventCategoryID'::uuid,
+    :'eventExternalPaidID'::uuid,
+    'in-person',
+    'https://pay.example.test/group',
+    :'groupExternalPaidID'::uuid,
+    'External Paid Event',
+    'KRW',
+    true,
+    'external-paid-event',
+    current_timestamp + interval '7 days',
+    'manual',
+    'UTC'
+);
+
 -- Ticket type for the published automatic-tax event
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -440,6 +518,21 @@ insert into event_ticket_type (
     1,
     50,
     'Automatic tax admission'
+);
+
+-- Ticket type for the published external paid event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeExternalPaidID'::uuid,
+    :'eventExternalPaidID'::uuid,
+    1,
+    50,
+    'External admission'
 );
 
 -- Ticket type for the published all-zero ticketed event
@@ -523,9 +616,143 @@ insert into event_ticket_price_window (
     event_ticket_type_id
 ) values
     (:'priceWindowAutomaticTaxID', 2500, :'ticketTypeAutomaticTaxID'),
+    (:'priceWindowExternalPaidID', 5000, :'ticketTypeExternalPaidID'),
     (:'priceWindowFreeID', 0, :'ticketTypeFreeID'),
     (:'priceWindowID', 2500, :'ticketTypeID'),
     (:'priceWindowUnpublishedID', 2500, :'ticketTypeUnpublishedID');
+
+-- Allowlisted group used to disable external payments as a kill switch
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    true,
+    :'groupCategory1ID',
+    :'groupDisableID',
+    'External Disable Group',
+    'external-disable-group'
+);
+
+-- Allowlisted group used by the successful enable scenario
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    false,
+    :'groupCategory1ID',
+    :'groupEnableID',
+    'External Enable Group',
+    'external-enable-group'
+);
+
+-- Non-allowlisted group enabled by changing country in the same update
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'US',
+    false,
+    :'groupCategory1ID',
+    :'groupFinalCountryID',
+    'External Final Country Group',
+    'external-final-country-group'
+);
+
+-- Allowlisted enabled group that disables while leaving the allowlist
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    true,
+    :'groupCategory1ID',
+    :'groupMoveCountryDisableID',
+    'External Move Country Disable Group',
+    'external-move-country-disable-group'
+);
+
+-- Allowlisted enabled group rejected when moving country while staying enabled
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    true,
+    :'groupCategory1ID',
+    :'groupMoveCountryID',
+    'External Move Country Group',
+    'external-move-country-group'
+);
+
+-- Non-allowlisted group rejected when enabling external payments
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'US',
+    false,
+    :'groupCategory1ID',
+    :'groupRejectEnableID',
+    'External Reject Enable Group',
+    'external-reject-enable-group'
+);
+
+-- Enabled group whose country is no longer allowlisted
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'US',
+    true,
+    :'groupCategory1ID',
+    :'groupDelistedID',
+    'External Delisted Group',
+    'external-delisted-group'
+);
 
 -- ============================================================================
 -- TESTS
@@ -600,6 +827,7 @@ select is(
         "tags": ["updated", "test"],
         "logo_url": "https://example.com/updated-logo.png",
         "og_image_url": "https://example.com/updated-og.png",
+        "external_payments_enabled": false,
         "organizers": [],
         "sponsors": [],
         "subgroups": []
@@ -763,7 +991,8 @@ select is(
     '{
         "name": "Updated Group Empty Strings",
         "slug": "pqr4jkl",
-        "logo_url": "https://example.com/logo.png"
+        "logo_url": "https://example.com/logo.png",
+        "external_payments_enabled": false
     }'::jsonb,
     'Should persist nulls after empty-string conversion'
 );
@@ -814,7 +1043,8 @@ select is(
         "name": "Updated Group Null Arrays",
         "slug": "mno3ghi",
         "description": "Updated description",
-        "logo_url": "https://example.com/logo.png"
+        "logo_url": "https://example.com/logo.png",
+        "external_payments_enabled": false
     }'::jsonb,
     'Should handle explicit null values for array fields (tags, photos_urls)'
 );
@@ -1309,6 +1539,346 @@ select throws_ok(
     ),
     'you must be able to manage the selected parent group',
     'Should reject changing to a parent the actor cannot manage'
+);
+
+-- Should allow disabling external payments as a kill switch
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Disable Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "external_payments_enabled": false
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupDisableID',
+        :'groupCategory1ID'
+    ),
+    'Should allow disabling external payments as a kill switch'
+);
+
+-- Should persist the disabled external-payments toggle
+select is(
+    (
+        select external_payments_enabled
+        from "group"
+        where group_id = :'groupDisableID'::uuid
+    ),
+    false,
+    'Should persist the disabled external-payments toggle'
+);
+
+-- Should allow enabling external payments when the final country is allowlisted
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Enable Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "external_payments_enabled": true
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupEnableID',
+        :'groupCategory1ID'
+    ),
+    'Should allow enabling external payments when the final country is allowlisted'
+);
+
+-- Should persist the enabled external-payments toggle for an allowlisted country
+select is(
+    (
+        select external_payments_enabled
+        from "group"
+        where group_id = :'groupEnableID'::uuid
+    ),
+    true,
+    'Should persist the enabled external-payments toggle for an allowlisted country'
+);
+
+-- Should create the external-payments audit row when the toggle changes
+select ok(
+    exists(
+        select 1
+        from audit_log
+        where action = 'group_external_payments_updated'
+        and group_id = :'groupEnableID'::uuid
+        and details = '{"external_payments_enabled": true}'::jsonb
+    ),
+    'Should create the external-payments audit row when the toggle changes'
+);
+
+-- Should enable external payments when the same update moves onto the allowlist
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Final Country Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "country_name": "Korea",
+            "external_payments_enabled": true
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupFinalCountryID',
+        :'groupCategory1ID'
+    ),
+    'Should enable external payments when the same update moves onto the allowlist'
+);
+
+-- Should persist the allowlisted country and enabled toggle together
+select is(
+    (
+        select jsonb_build_object(
+            'country_code', country_code,
+            'external_payments_enabled', external_payments_enabled
+        )
+        from "group"
+        where group_id = :'groupFinalCountryID'::uuid
+    ),
+    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
+    'Should persist the allowlisted country and enabled toggle together'
+);
+
+-- Should allow leaving the allowlist when the same update disables external payments
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Move Country Disable Group",
+            "category_id": "%s",
+            "country_code": "US",
+            "country_name": "United States",
+            "external_payments_enabled": false
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupMoveCountryDisableID',
+        :'groupCategory1ID'
+    ),
+    'Should allow leaving the allowlist when the same update disables external payments'
+);
+
+-- Should reject changing country off the allowlist while external payments stay enabled
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Move Country Group",
+            "category_id": "%s",
+            "country_code": "US",
+            "country_name": "United States"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupMoveCountryID',
+        :'groupCategory1ID'
+    ),
+    'external payments are not available for this group country',
+    'Should reject changing country off the allowlist while external payments stay enabled'
+);
+
+-- Should keep the allowlisted country after rejecting the country move
+select is(
+    (
+        select jsonb_build_object(
+            'country_code', country_code,
+            'external_payments_enabled', external_payments_enabled
+        )
+        from "group"
+        where group_id = :'groupMoveCountryID'::uuid
+    ),
+    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
+    'Should keep the allowlisted country after rejecting the country move'
+);
+
+-- Should accept a partial payload that omits country_code while the toggle stays on
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Move Country Group",
+            "category_id": "%s"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupMoveCountryID',
+        :'groupCategory1ID'
+    ),
+    'Should accept a partial payload that omits country_code while the toggle stays on'
+);
+
+-- Should preserve country when a partial payload omits country_code while the toggle stays on
+select is(
+    (
+        select jsonb_build_object(
+            'country_code', country_code,
+            'external_payments_enabled', external_payments_enabled
+        )
+        from "group"
+        where group_id = :'groupMoveCountryID'::uuid
+    ),
+    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
+    'Should preserve country when a partial payload omits country_code while the toggle stays on'
+);
+
+-- Should reject enabling external payments when the country is not allowlisted
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Reject Enable Group",
+            "category_id": "%s",
+            "country_code": "US",
+            "external_payments_enabled": true
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupRejectEnableID',
+        :'groupCategory1ID'
+    ),
+    'external payments are not available for this group country',
+    'Should reject enabling external payments when the country is not allowlisted'
+);
+
+-- Should allow unrelated group updates after the country leaves the allowlist
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Delisted Group Updated",
+            "category_id": "%s",
+            "country_code": "US",
+            "country_name": "United States"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupDelistedID',
+        :'groupCategory1ID'
+    ),
+    'Should allow unrelated group updates after the country leaves the allowlist'
+);
+
+-- Should keep the toggle enabled after an unrelated save on a delisted country
+select is(
+    (
+        select jsonb_build_object(
+            'external_payments_enabled', external_payments_enabled,
+            'name', name
+        )
+        from "group"
+        where group_id = :'groupDelistedID'::uuid
+    ),
+    '{"external_payments_enabled": true, "name": "External Delisted Group Updated"}'::jsonb,
+    'Should keep the toggle enabled after an unrelated save on a delisted country'
+);
+
+-- Should replace the fiscal sponsor when only external paid events are published
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Group With External Paid Event",
+            "category_id": "%s",
+            "description": "External paid event recipient coverage",
+            "_payment_validation": {
+                "expected_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_external",
+                    "seller_display_name": "External Event Fiscal Sponsor"
+                },
+                "require_automatic_tax": false,
+                "validated_payment_recipient": {
+                    "provider": "stripe",
+                    "recipient_id": "acct_external_replacement",
+                    "seller_display_name": "Replacement External Sponsor"
+                }
+            },
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "acct_external_replacement",
+                "seller_display_name": "Replacement External Sponsor"
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupExternalPaidID',
+        :'groupCategory1ID'
+    ),
+    'Should replace the fiscal sponsor when only external paid events are published'
+);
+
+-- Should persist the replaced fiscal sponsor for an external-only group
+select is(
+    (select get_group_full(:'communityID'::uuid, :'groupExternalPaidID'::uuid)::jsonb->'payment_recipient'),
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_external_replacement",
+        "seller_display_name": "Replacement External Sponsor"
+    }'::jsonb,
+    'Should persist the replaced fiscal sponsor for an external-only group'
+);
+
+-- Should clear the fiscal sponsor when only external paid events are published
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Group With External Paid Event",
+            "category_id": "%s",
+            "description": "External paid event recipient coverage",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "   "
+            }
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupExternalPaidID',
+        :'groupCategory1ID'
+    ),
+    'Should clear the fiscal sponsor when only external paid events are published'
+);
+
+-- Should persist a cleared recipient for an external-only group
+select is(
+    (select get_group_full(:'communityID'::uuid, :'groupExternalPaidID'::uuid)::jsonb->'payment_recipient'),
+    null::jsonb,
+    'Should persist a cleared recipient for an external-only group'
 );
 
 -- ============================================================================

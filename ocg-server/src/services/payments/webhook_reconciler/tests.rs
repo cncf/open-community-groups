@@ -90,6 +90,8 @@ async fn handle_webhook_event_completes_checkout_and_enqueues_notification() {
                     community_id,
                     event_id,
                     user_id,
+
+                    transitioned: None,
                 },
             ))
         });
@@ -676,6 +678,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),
         group_slug: "group".to_string(),
+        has_external_payment: false,
         has_registration_questions: false,
         has_related_events: false,
         kind: EventKind::default(),

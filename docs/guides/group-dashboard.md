@@ -175,6 +175,39 @@ Permission-wise, configuring the fiscal sponsor requires settings write access, 
 creating paid events and approving/rejecting refund requests require events write access.
 Organizers with read access can still view attendee refund status in `Event -> Attendees`.
 
+### External payments
+
+When the operator allowlists the group's country, `Settings` shows an
+`External payments` toggle next to the fiscal-sponsor section. Enabling it is
+an explicit opt-in: paid events then require a payment URL instead of Stripe
+Connect readiness.
+
+Rules:
+
+- The group's `country_code` must match the server allowlist. Missing or
+  delisted countries keep the toggle disabled.
+- Changing the group country away from an allowlisted country while the toggle
+  stays on is rejected unless the same save disables the toggle.
+- Disabling the toggle is always allowed and stops new external sales
+  immediately. Existing pending purchases remain manageable.
+- Updating or publishing an event that still has an external payment URL is
+  rejected while the group is ineligible. Clear the URL to move the event onto
+  Stripe only after every pending external purchase has completed, expired, or
+  been canceled. Open holds keep using the live event payment URL.
+- Group country governs eligibility, not the event venue country.
+
+When the toggle is on, the event `Tickets` tab asks for:
+
+- A required absolute `http(s)` payment URL.
+- Optional payment instructions shown to attendees as plain text.
+- An optional payment window in hours (the form shows the operator default and
+  max). The confirmation deadline is
+  `least(now + window, registration end, event start)` and is computed once
+  when the hold is created.
+
+Organizers remain responsible for tax, receipts, and returning money outside
+OCG. Paid events still require in-person or hybrid plus a complete venue.
+
 ## Team: Organizer Capacity
 
 `Team` supports invitation-driven organizer management with role updates for existing members.

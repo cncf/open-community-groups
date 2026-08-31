@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -45,6 +45,8 @@ select plan(17);
 \set eventQuestionsID '4a0c0000-0000-0000-0000-000000000017'
 \set eventQuestionsTicketTypeID '4a0c0000-0000-0000-0000-000000000018'
 \set eventUnpublishedID '4a0c0000-0000-0000-0000-000000000019'
+\set externalCheckoutPurchaseID '4a0c0000-0000-0000-0000-000000000051'
+\set externalCheckoutUserID '4a0c0000-0000-0000-0000-000000000052'
 \set groupCategoryID '4a0c0000-0000-0000-0000-000000000020'
 \set groupDeletedID '4a0c0000-0000-0000-0000-000000000021'
 \set groupID '4a0c0000-0000-0000-0000-000000000022'
@@ -121,6 +123,13 @@ insert into "user" (
     true,
     'checkout',
     'Checkout User'
+), (
+    :'externalCheckoutUserID',
+    'external-checkout-auth-hash',
+    'external-checkout@test.com',
+    true,
+    'external-checkout',
+    'External Checkout'
 ), (
     :'userID',
     'auth-hash',
@@ -415,22 +424,42 @@ insert into event (
         'event-deleted-group',
         '2099-01-17 10:00:00+00',
         'UTC'
-    ),
-    (
-        :'eventPaidID',
-        false,
-        false,
-        'Event Paid',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Event Paid',
-        'USD',
-        true,
-        'event-paid',
-        '2099-01-18 10:00:00+00',
-        'UTC'
     );
+
+-- Paid event that also hosts a pending external checkout
+insert into event (
+    event_id,
+    canceled,
+    deleted,
+    description,
+    event_category_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    :'eventPaidID',
+    false,
+    false,
+    'Event Paid',
+    :'eventCategoryID',
+    'in-person',
+    'Wire the fee to the organizer bank account',
+    'https://pay.example.test/external-checkout',
+    :'groupID',
+    'Event Paid',
+    'USD',
+    true,
+    'event-paid',
+    '2099-01-18 10:00:00+00',
+    'UTC'
+);
 
 -- Event whose ticket sales window has ended
 insert into event (
@@ -983,6 +1012,37 @@ from (values
     user_id
 );
 
+-- Pending external checkout that exposes payment details instead of a resume URL
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provider_checkout_url,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    1500,
+    'external',
+    'USD',
+    :'eventPaidID',
+    :'externalCheckoutPurchaseID',
+    :'eventPaidTicketTypeID',
+    '2099-01-18 09:00:00+00',
+    0,
+    'https://example.test/checkout/should-not-resume',
+    0,
+    'pending',
+    'Paid admission',
+    :'externalCheckoutUserID'
+);
+
 -- Refund-pending purchase that suppresses its linked invitation offer
 insert into event_purchase (
     admission_offer_id,
@@ -1057,8 +1117,6 @@ select is(
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventAID'::uuid)::jsonb,
-                'resume_checkout_url',
-                null,
                 'roles',
                 jsonb_build_array('attendee', 'host', 'speaker')
             ),
@@ -1073,8 +1131,6 @@ select is(
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
-                'resume_checkout_url',
-                null,
                 'roles',
                 jsonb_build_array('attendee')
             ),
@@ -1089,8 +1145,6 @@ select is(
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventCID'::uuid)::jsonb,
-                'resume_checkout_url',
-                null,
                 'roles',
                 jsonb_build_array('speaker')
             ),
@@ -1126,8 +1180,6 @@ select is(
                     :'communityID'::uuid,
                     :'eventPendingInvitationID'::uuid
                 )::jsonb,
-                'resume_checkout_url',
-                null,
                 'roles',
                 jsonb_build_array('offer'),
                 'ticket_title',
@@ -1169,8 +1221,6 @@ select is(
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
-                'resume_checkout_url',
-                null,
                 'roles',
                 jsonb_build_array('attendee')
             )
@@ -1202,8 +1252,6 @@ select is(
                 'Outside the refund policy window',
                 'refund_request_status',
                 'rejected',
-                'resume_checkout_url',
-                null,
                 'roles',
                 jsonb_build_array('attendee')
             )
@@ -1256,8 +1304,6 @@ select is(
         null,
         'registration_questions',
         get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
-        'resume_checkout_url',
-        null,
         'roles',
         jsonb_build_array('offer'),
         'ticket_title',
@@ -1402,6 +1448,54 @@ select is(
     'Should include active direct checkout without labeling the user as an attendee'
 );
 
+-- Should include active external checkout with payment details and without a resume URL
+select is(
+    (
+        list_user_events(
+            :'externalCheckoutUserID'::uuid,
+            '{"limit": 10, "offset": 0}'::jsonb
+        )::jsonb
+        -> 'events'
+        -> 0
+    ) - 'event',
+    jsonb_build_object(
+        'enrollment_status',
+        'pending-payment',
+        'has_paid_purchase',
+        false,
+        'registration_answers',
+        null,
+        'registration_questions',
+        get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
+        'roles',
+        '[]'::jsonb,
+        'amount_minor',
+        1500,
+        'currency_code',
+        'USD',
+        'event_ticket_type_id',
+        :'eventPaidTicketTypeID',
+        'external_payment',
+        jsonb_build_object(
+            'amount_minor',
+            1500,
+            'currency_code',
+            'USD',
+            'deadline',
+            4072410000,
+            'reference',
+            :'externalCheckoutPurchaseID',
+            'url',
+            'https://pay.example.test/external-checkout',
+            'instructions',
+            'Wire the fee to the organizer bank account'
+        ),
+        'ticket_title',
+        'Paid admission'
+    ),
+    'Should include active external checkout with payment details and without a resume URL'
+);
+
 -- Should return registration questions for pending users
 select is(
     jsonb_array_length(
@@ -1433,8 +1527,6 @@ select is(
         )::jsonb,
         'registration_questions',
         get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
-        'resume_checkout_url',
-        null,
         'roles',
         jsonb_build_array('attendee')
     ),

@@ -183,6 +183,24 @@ describe("dashboard user events list template", () => {
     expect(template).to.include("<span>Cancel checkout</span>");
   });
 
+  it("renders external payment details and Open payment page actions", async () => {
+    // Load the user events template before checking external payment recovery.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("{% if let Some(external_payment) = &item.external_payment -%}");
+    expect(template).to.include(
+      "Confirm by {{ external_payment.deadline.format(\"%b %d, %Y at %H:%M UTC\") }}",
+    );
+    expect(template).to.include('<div class="font-mono">{{ external_payment.reference }}</div>');
+    expect(template).to.include(
+      "{% if let Some(instructions) = &external_payment.instructions -%}",
+    );
+    expect(template).to.include('href="{{ external_payment.url }}"');
+    expect(template).to.include('target="_blank"');
+    expect(template).to.include('rel="noopener noreferrer"');
+    expect(template).to.include("<span>Open payment page</span>");
+  });
+
   it("links eligible paid attendees to the event refund control", async () => {
     // Load the user events menu before checking paid-attendee actions.
     const template = normalizeWhitespace(await loadTemplate());

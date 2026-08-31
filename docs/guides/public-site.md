@@ -92,7 +92,10 @@ one of these states:
 
 - `Get free ticket` completes an intrinsically free ticket inside OCG.
 - `Get ticket` opens public ticket selection and starts hosted checkout only
-  when the final price is positive.
+  when the final price is positive. External-mode paid events instead show
+  `Open payment page` with the organizer URL, instructions, amount, payment
+  reference, and confirmation deadline, plus `Cancel checkout`. Attendance
+  stays pending until the organizer marks the payment received.
 - `Request ticket` submits an approval request for a selectable public tier.
 - `Tickets are available by invitation only` means public enrollment is not
   available.

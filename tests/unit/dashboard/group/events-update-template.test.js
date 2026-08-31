@@ -184,6 +184,37 @@ describe("dashboard group event update template", () => {
     expect(template).not.to.include("{{ payment_recipient.recipient_id }}");
   });
 
+  it("renders external payment fields when eligible or already configured", async () => {
+    // Load the event update template before checking external payment controls.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      "{% if self.uses_external_ticketing() || event.external_payment_url.is_some() -%}",
+    );
+    expect(template).to.include('name="external_payment_url_present"');
+    expect(template).to.include('id="external_payment_url"');
+    expect(template).to.include('name="external_payment_url"');
+    expect(template).to.include("{% if let Some(url) = event.external_payment_url %}value=\"{{ url }}\"{% endif %}");
+    expect(template).to.include('name="external_payment_instructions_present"');
+    expect(template).to.include('id="external_payment_instructions"');
+    expect(template).to.include('name="external_payment_instructions"');
+    expect(template).to.include(
+      "{% if let Some(instructions) = event.external_payment_instructions %}{{ instructions }}{% endif %}",
+    );
+    expect(template).to.include('name="external_payment_window_hours_present"');
+    expect(template).to.include('id="external_payment_window_hours"');
+    expect(template).to.include('name="external_payment_window_hours"');
+    expect(template).to.include(
+      "{% if let Some(hours) = event.external_payment_window_hours %}value=\"{{ hours }}\"{% endif %}",
+    );
+    expect(template).to.include(
+      "{% if event_read_only || (ticketing_read_only && self.uses_external_ticketing()) %}disabled{% endif %}",
+    );
+    expect(template).to.include("{% if !self.uses_external_ticketing() -%}");
+    expect(template).to.include("External payments are no longer available for this group.");
+    expect(template).to.include("Clear the external payment URL to save changes; paid tickets");
+  });
+
   it("explains the event and venue requirements for paid tickets", async () => {
     const template = normalizeWhitespace(await loadTemplate());
 
@@ -240,7 +271,7 @@ describe("dashboard group event update template", () => {
     );
 
     expect(ticketForm).to.include(
-      '{% if payments_ready || event.is_paid_capable() -%} <div> {{ dashboard::form_title(title = "Tickets"',
+      '{% if paid_ticketing_available || event.is_paid_capable() -%} <div> {{ dashboard::form_title(title = "Tickets"',
     );
     expect(ticketForm).to.include("{% if paid_ticketing_read_only -%}");
     expect(ticketForm).to.include(

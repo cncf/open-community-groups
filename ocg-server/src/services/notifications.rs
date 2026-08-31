@@ -39,6 +39,7 @@ use crate::{
             BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
             EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
             EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCustom,
+            EventExternalPaymentExpired, EventExternalPaymentPending, EventExternalPaymentReminder,
             EventInvitation, EventPaidConfigured, EventPublished, EventRefundApproved,
             EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
             EventSeriesCanceled, EventSeriesPublished, EventTicketRequestApproved,
@@ -285,6 +286,15 @@ impl DeliveryWorker {
         .await;
     }
 
+    /// Completes a root-relative path with the deployment base URL.
+    ///
+    /// Already-absolute URLs are left unchanged.
+    fn complete_local_url(url: &mut String, base_url: &str) {
+        if url.starts_with('/') {
+            *url = helpers::absolute_url(base_url, url);
+        }
+    }
+
     /// Attempt to deliver a pending notification, if available.
     #[instrument(skip(self), err)]
     async fn deliver_notification(&self) -> Result<bool> {
@@ -330,10 +340,7 @@ impl DeliveryWorker {
             NotificationKind::BadgeAwarded => {
                 // Complete deployment-specific URLs after typed deserialization
                 let mut template: BadgeAwarded = serde_json::from_value(template_data)?;
-                if template.dashboard_url.starts_with('/') {
-                    template.dashboard_url =
-                        helpers::absolute_url(base_url, &template.dashboard_url);
-                }
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
                 template.base_url = base_url.to_string();
                 let base_subject = format!("You earned the {} badge", template.badge.name);
                 let subject =
@@ -342,12 +349,8 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::BadgeRevoked => {
-                // Complete the deployment-specific dashboard URL after typed deserialization
                 let mut template: BadgeRevoked = serde_json::from_value(template_data)?;
-                if template.dashboard_url.starts_with('/') {
-                    template.dashboard_url =
-                        helpers::absolute_url(base_url, &template.dashboard_url);
-                }
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
                 let base_subject = format!("Your {} badge was revoked", template.badge_name);
                 let subject = Self::scoped_subject(&template.group_name, &base_subject);
                 let body = template.render()?;
@@ -376,39 +379,27 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::EventAdmissionOfferCanceled => {
-                // Complete the deployment-specific dashboard URL after typed deserialization
                 let mut template: EventAdmissionOfferCanceled =
                     serde_json::from_value(template_data)?;
-                if template.dashboard_url.starts_with('/') {
-                    template.dashboard_url =
-                        helpers::absolute_url(base_url, &template.dashboard_url);
-                }
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
                 let subject =
                     Self::scoped_subject(&template.group_name, "Your event offer was canceled");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventAdmissionOfferCreated => {
-                // Complete the deployment-specific dashboard URL after typed deserialization
                 let mut template: EventAdmissionOfferCreated =
                     serde_json::from_value(template_data)?;
-                if template.dashboard_url.starts_with('/') {
-                    template.dashboard_url =
-                        helpers::absolute_url(base_url, &template.dashboard_url);
-                }
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
                 let subject =
                     Self::scoped_subject(&template.group_name, "You have a new event offer");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventAdmissionOfferDeclined => {
-                // Complete the deployment-specific dashboard URL after typed deserialization
                 let mut template: EventAdmissionOfferDeclined =
                     serde_json::from_value(template_data)?;
-                if template.dashboard_url.starts_with('/') {
-                    template.dashboard_url =
-                        helpers::absolute_url(base_url, &template.dashboard_url);
-                }
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
                 let subject = Self::scoped_subject(&template.group_name, "Event offer declined");
                 let body = template.render()?;
                 (subject, body)
@@ -429,6 +420,39 @@ impl DeliveryWorker {
             NotificationKind::EventCustom => {
                 let template: EventCustom = serde_json::from_value(template_data)?;
                 let subject = template.subject.clone();
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventExternalPaymentExpired => {
+                let mut template: EventExternalPaymentExpired =
+                    serde_json::from_value(template_data)?;
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
+                let subject = Self::scoped_subject(
+                    &template.group_name,
+                    if template.do_not_pay {
+                        "Do not send payment for this event"
+                    } else {
+                        "Your payment window expired"
+                    },
+                );
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventExternalPaymentPending => {
+                let mut template: EventExternalPaymentPending =
+                    serde_json::from_value(template_data)?;
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
+                let subject =
+                    Self::scoped_subject(&template.group_name, "Complete your event payment");
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventExternalPaymentReminder => {
+                let mut template: EventExternalPaymentReminder =
+                    serde_json::from_value(template_data)?;
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
+                let subject =
+                    Self::scoped_subject(&template.group_name, "Your payment window is closing");
                 let body = template.render()?;
                 (subject, body)
             }
@@ -504,25 +528,17 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::EventTicketRequestApproved => {
-                // Complete the deployment-specific dashboard URL after typed deserialization
                 let mut template: EventTicketRequestApproved =
                     serde_json::from_value(template_data)?;
-                if template.dashboard_url.starts_with('/') {
-                    template.dashboard_url =
-                        helpers::absolute_url(base_url, &template.dashboard_url);
-                }
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
                 let subject =
                     Self::scoped_subject(&template.group_name, "Your event request was approved");
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventTicketWaitlistOffer => {
-                // Complete the deployment-specific dashboard URL after typed deserialization
                 let mut template: EventTicketWaitlistOffer = serde_json::from_value(template_data)?;
-                if template.dashboard_url.starts_with('/') {
-                    template.dashboard_url =
-                        helpers::absolute_url(base_url, &template.dashboard_url);
-                }
+                Self::complete_local_url(&mut template.dashboard_url, base_url);
                 let subject =
                     Self::scoped_subject(&template.group_name, "A place is available for you");
                 let body = template.render()?;
@@ -922,6 +938,12 @@ pub(crate) enum NotificationKind {
     EventCanceled,
     /// Notification for a custom event message.
     EventCustom,
+    /// Notification that an external payment window expired.
+    EventExternalPaymentExpired,
+    /// Notification with instructions for a pending external payment.
+    EventExternalPaymentPending,
+    /// Notification reminding an attendee that an external payment is due.
+    EventExternalPaymentReminder,
     /// Notification for an organizer-created event invitation.
     EventInvitation,
     /// Notification for paid events configured by an organizer.

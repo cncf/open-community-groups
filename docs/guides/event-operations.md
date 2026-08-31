@@ -139,8 +139,12 @@ These are the ticketing rules to keep in mind:
   waiting lists according to event mode.
 - Invitation-only tiers are disclosed only to the recipient of an assigned
   offer.
-- Positive prices require server payment configuration, a matching group
-  recipient, and event currency.
+- Positive prices require either Stripe payment configuration with a matching
+  group recipient, or an external payment URL when the group has opted into
+  external payments.
+- External-mode paid events skip Stripe recipient and tax-rate checks, keep
+  tax as none or inclusive, and still require in-person or hybrid with a
+  complete venue.
 - Every paid hybrid ticket must include physical admission. Its description may
   also promise virtual access, but it must not describe a paid tier as
   virtual-only.
@@ -150,8 +154,10 @@ Deployments upgrading legacy RSVP events automatically create a free, public
 capacity is preserved or raised to cover occupied seats; previously unlimited
 events receive 500 seats.
 
-If your group is not payment-ready, keep every price window at zero. Complete
-[Payments Setup](payments-setup.md) before configuring a positive price.
+If your group is not payment-ready through Stripe and has not opted into
+external payments, keep every price window at zero. Complete
+[Payments Setup](payments-setup.md) or enable external payments in group
+settings before configuring a positive price.
 
 ?> Accepted community admins with verified email addresses receive an email when a non-test paid
 event or paid recurring series is created, and whenever an existing event becomes both non-test and
@@ -332,9 +338,12 @@ Public ticket flow:
 2. Optional discount code is entered on the event page.
 3. OCG creates a short seat hold.
 4. Free tickets are completed immediately.
-5. A positive final price redirects to hosted payment checkout.
-6. Attendance is created immediately for free tickets, or after the payment provider confirms
-   payment for paid tickets.
+5. A positive final price either redirects to hosted payment checkout or, for
+   external-mode events, opens the organizer payment page and holds the seat
+   until the organizer marks the purchase paid.
+6. Attendance is created immediately for free tickets, after the payment
+   provider confirms payment for Stripe tickets, or after an organizer marks
+   an external purchase paid.
 
 Paid ticketing is available only for in-person or hybrid events with a complete
 physical venue and a configured fiscal sponsor. Virtual events remain
@@ -377,7 +386,10 @@ Refunds follow a request-and-review model. Paid attendees do not use `Leave even
 requests must be submitted before the event starts, though organizers can still approve or reject
 a request later if it was submitted before the start time. Organizers can also select
 `Cancel attendance and refund` on a confirmed paid attendee without waiting for an attendee
-request. Both paths queue a full provider refund. Paid attendance and its capacity remain active
+request. Both paths queue a full provider refund for Stripe purchases. External
+purchases are marked refunded locally after the organizer confirms the money
+was returned outside OCG; the refunds table labels those rows `External`. Paid
+attendance and its capacity remain active
 until the refund is confirmed or manual recovery is recorded, then OCG marks the attendance as
 canceled. Rejecting an attendee request leaves the attendee and ticket unchanged. A rejection
 requires a reason; the attendee sees the same reason in their notification, on the event page,
@@ -393,7 +405,9 @@ linked to the same customer refund. Partial customer refunds are not
 supported.
 
 Canceling the whole event is another way a refund begins. OCG immediately cancels active attendance,
-completes free-ticket refunds locally, and queues every paid ticket for a full provider refund.
+completes free-ticket refunds locally, expires pending external holds with a
+do-not-pay notice, marks completed external purchases refunded locally, and
+queues every Stripe paid ticket for a full provider refund.
 The event remains canceled even if a provider attempt later needs retry or manual recovery.
 After arranging an external refund for a terminal provider failure, an organizer with events write
 access can complete that recovery from the group dashboard `Refunds` tab. Other roles see the
@@ -487,7 +501,13 @@ Paid attendance behaves differently in a few ways:
 - Checkout can only start while registration is open. If registration closes before a pending
   payment is completed, an active ticket hold can still be fulfilled until the hold expires.
 - If checkout is interrupted, the public event page and user dashboard show
-  `Continue to checkout` while the hold is active.
+  `Continue to checkout` (Stripe) or `Open payment page` (external) while the
+  hold is active.
+- External holds last until the organizer-confirmation deadline. Mark payment
+  received from the attendee row by purchase ID before that deadline; include
+  review margin in the payment instructions. After expiry the seat, discount,
+  and answers are released and mark-paid is rejected. Recover by inviting the
+  attendee or asking them to register again.
 - Attendees can use `Cancel checkout` before payment completes to release the hold and choose a
   different ticket or discount code.
 - Free ticket attendees can still leave the event themselves.
@@ -574,15 +594,20 @@ SSO identity. Active offers show their tier, state, and deadline and can be
 canceled. Expired organizer invitations can be reissued when eligible.
 
 The same attendee actions menu includes two CSV exports: `Attendees list CSV` exports attendee name,
-company, title, and whether the confirmed attendee was manually invited; `Attendees list CSV
+company, title, whether the confirmed attendee was manually invited, payment
+method, amount, payment deadline, paid-at time, who marked the payment, and
+payment details; `Attendees list CSV
 (including answers)` adds one column per registration question. Row actions also include
-`View answers` when an attendee has submitted registration answers.
+`View answers` when an attendee has submitted registration answers. Pending
+external payments use the `Payment pending` status. `Mark payment received`
+confirms the transfer against the purchase reference and is not reversible;
+corrections use attendance cancellation.
 
 The attendees table can be searched by attendee identity and visible profile details, including
 company and title. It can also be sorted by attendee name or enrollment date, and filtered by
 enrollment status, check-in status, title presence, or ticket type. The `Enrollment status` selector
 groups broad views separately from exact statuses. `Current enrollments` includes confirmed,
-checkout-pending, invitation-pending, and registration-pending enrollments. `Enrollment history`
+checkout-pending, payment-pending, invitation-pending, and registration-pending enrollments. `Enrollment history`
 includes canceled attendance plus canceled, declined, and expired invitations. Select an exact
 status or `All enrollments` when you need a narrower or complete audit. Check-in filters apply only
 to confirmed attendees. Canceled events open on `All enrollments` so organizers can see the full

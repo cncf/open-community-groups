@@ -244,6 +244,86 @@
   {# End payments section -#}
 {% endif -%}
 
+{# External payments section -#}
+<div class="border-b border-stone-900/10 pb-12">
+  {{ dashboard::form_title(title = "External payments", description = "Collect ticket payments outside this platform when Stripe Connect is not available.") -}}
+
+  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+    <div class="col-span-full">
+      {% if !external_payments.configured -%}
+        <p class="max-w-3xl text-sm/6 text-stone-600">External payments are not configured for this deployment.</p>
+        {% if group.external_payments_enabled -%}
+          <div class="mt-4 flex items-start gap-3">
+            <input type="hidden" name="external_payments_enabled" value="false">
+            <input type="checkbox"
+                   class="checkbox-primary mt-1"
+                   id="external_payments_enabled"
+                   name="external_payments_enabled"
+                   value="true"
+                   checked>
+            <label for="external_payments_enabled" class="text-sm/6 text-stone-900">
+              Collect paid tickets outside this platform
+            </label>
+          </div>
+          <p class="form-legend mt-2">
+            External payments are no longer available for this deployment. New
+            external sales are already stopped. Uncheck to turn the setting off.
+          </p>
+        {% endif -%}
+      {% else if !external_payments.eligible -%}
+        <p class="max-w-3xl text-sm/6 text-stone-600">
+          External payments can be enabled only for groups whose country is on the
+          operator allowlist and that have a country set.
+          {% if let Some(country_code) = &external_payments.country_code -%}
+            This group's country is {{ country_code }}.
+          {% else -%}
+            This group does not have a country yet.
+          {% endif -%}
+        </p>
+        {% if group.external_payments_enabled -%}
+          <div class="mt-4 flex items-start gap-3">
+            <input type="hidden" name="external_payments_enabled" value="false">
+            <input type="checkbox"
+                   class="checkbox-primary mt-1"
+                   id="external_payments_enabled"
+                   name="external_payments_enabled"
+                   value="true"
+                   checked>
+            <label for="external_payments_enabled" class="text-sm/6 text-stone-900">
+              Collect paid tickets outside this platform
+            </label>
+          </div>
+          <p class="form-legend mt-2">
+            This group's country is no longer on the operator allowlist. New
+            external sales are already stopped. Uncheck to turn the setting off.
+          </p>
+        {% endif -%}
+      {% else -%}
+        <div class="flex items-start gap-3">
+          <input type="hidden" name="external_payments_enabled" value="false">
+          <input type="checkbox"
+                 class="checkbox-primary mt-1"
+                 id="external_payments_enabled"
+                 name="external_payments_enabled"
+                 value="true"
+                 {% if group.external_payments_enabled %}checked{% endif %}>
+          <label for="external_payments_enabled" class="text-sm/6 text-stone-900">
+            Collect paid tickets outside this platform
+          </label>
+        </div>
+        <p class="form-legend mt-2">
+          When enabled, paid events require a payment URL instead of Stripe.
+          Disabling this immediately stops new external sales. Existing unpaid
+          reservations stay open until they expire or are marked paid.
+          Changing the group country away from an allowlisted country while this
+          remains enabled is rejected.
+        </p>
+      {% endif -%}
+    </div>
+  </div>
+</div>
+{# End external payments section -#}
+
 {# Social links section -#}
 <div class="border-b border-stone-900/10 pb-12">
   {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}

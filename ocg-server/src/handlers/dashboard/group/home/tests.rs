@@ -11,7 +11,10 @@ use crate::{
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
     templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, audit::AuditLogSort},
-    types::permissions::GroupPermission::{self, CheckInsWrite},
+    types::{
+        payments::GroupExternalPaymentsContext,
+        permissions::GroupPermission::{self, CheckInsWrite},
+    },
 };
 
 #[tokio::test]
@@ -590,6 +593,7 @@ async fn test_page_members_tab_success() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_page_settings_tab_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -678,6 +682,19 @@ async fn test_page_settings_tab_success() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![region.clone()]));
+    db.expect_get_group_external_payments_context()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| {
+            Ok(GroupExternalPaymentsContext {
+                configured: false,
+                eligible: false,
+                enabled: false,
+                country_code: None,
+                default_payment_window_hours: None,
+                max_payment_window_hours: None,
+            })
+        });
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
