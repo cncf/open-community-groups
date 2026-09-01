@@ -28,7 +28,7 @@ axum = { version = "0.8.9", features = ["macros", "multipart"] }
 axum-login = "0.18.0"
 axum-messages = "0.8.0"
 bytes = "1.12.1"
-cached = { version = "2.0.2", features = ["async"] }
+cached = { version = "3.1.1", features = ["async"] }
 clap = { version = "4.6.6", features = ["derive"] }
 chrono = { version = "0.4.45", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
@@ -46,7 +46,7 @@ hex = "0.4"
 hmac = "0.13.0"
 icalendar = "0.17.13"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
-iref = "3.2.2"
+iref = "4.2.0"
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
 markdown = "1.0.0"
 mime_guess = "2.0.5"
@@ -60,12 +60,12 @@ openssl = { version = "0.10.81", features = ["vendored"] }
 password-auth = "1.0.0"
 percent-encoding = "2.3.2"
 postgres-openssl = "0.5.3"
-quick-xml = "0.41.0"
+quick-xml = "0.42.0"
 qrcode = { version = "0.14.1", features = ["svg"] }
 reqwest = { version = "0.13.4", features = ["json"] }
 # Keep this exact pin so the workspace resolves to patched rkyv 0.7.46.
 # parcel_sourcemap otherwise pulls vulnerable rkyv 0.7.45 (RUSTSEC-2026-0001).
-rkyv = "=0.7.46"
+rkyv = "=0.8.18"
 rust-embed = "8.12.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
@@ -102,7 +102,7 @@ tokio-postgres = { version = "0.7.18", features = [
 tokio-util = { version = "0.7.19", features = ["full"] }
 tower = "0.5.3"
 tower-http = { version = "0.7.0", features = ["auth", "fs", "set-header", "trace"] }
-tower-sessions = { version = "0.14.0", features = ["signed"] }
+tower-sessions = { version = "0.15.0", features = ["signed"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 unicode-segmentation = "1.13.3"
