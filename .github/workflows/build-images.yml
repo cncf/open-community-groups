@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Login to OCI Registry
         id: login-ocir
         uses: oracle-actions/login-ocir@v1.3.0
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Login to OCI Registry
         id: login-ocir
         uses: oracle-actions/login-ocir@v1.3.0
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Login to OCI Registry
         id: login-ocir
         uses: oracle-actions/login-ocir@v1.3.0
