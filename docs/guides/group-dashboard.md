@@ -144,8 +144,9 @@ the parent/child links connected to that group.
 ## Payments: Fiscal Sponsor Setup
 
 Every event uses ticket inventory. Payment setup is unnecessary when every
-configured ticket price is zero. Positive pricing requires server-side Stripe configuration
-and a fiscal-sponsor connected account in `Settings`.
+configured ticket price is zero. Positive pricing requires either server-side Stripe configuration
+and a fiscal-sponsor connected account in `Settings`, or the
+[external payments](#external-payments) opt-in described below.
 
 To set up the group side, open [Settings](/dashboard/group?tab=settings ':ignore'), enter the
 fiscal sponsor's legal name and Stripe connected account ID in the payments section, and save the
@@ -168,43 +169,61 @@ hybrid ticket includes physical admission; it may also include virtual access,
 but cannot be virtual-only.
 
 If the deployment has no payment provider, the event editor still shows the
-`Tickets` tab for free configuration. Positive prices remain unavailable,
-and group settings do not show a Stripe fiscal-sponsor field.
+`Tickets` tab for free configuration. Positive prices remain unavailable unless
+the group has opted into external payments, and group settings do not show a
+Stripe fiscal-sponsor field.
 
-Permission-wise, configuring the fiscal sponsor requires settings write access, while
-creating paid events and approving/rejecting refund requests require events write access.
+Permission-wise, configuring the fiscal sponsor or the external payments toggle requires settings
+write access, while creating paid events, marking external payments received, and
+approving/rejecting refund requests require events write access.
 Organizers with read access can still view attendee refund status in `Event -> Attendees`.
 
 ### External payments
 
-When the operator allowlists the group's country, `Settings` shows an
-`External payments` toggle next to the fiscal-sponsor section. Enabling it is
-an explicit opt-in: paid events then require a payment URL instead of Stripe
-Connect readiness.
+Groups in countries that Stripe Connect does not serve can collect ticket
+payments outside OCG when the operator has allowlisted the group's country.
+When that is the case, `Settings` shows an `External payments` section next to
+the fiscal-sponsor section with a `Collect paid tickets outside this platform`
+checkbox. Enabling it is an explicit, group-wide opt-in: every paid event in
+the group then requires a payment URL instead of Stripe Connect readiness, even
+if a fiscal sponsor is also configured.
 
 Rules:
 
-- The group's `country_code` must match the server allowlist. Missing or
-  delisted countries keep the toggle disabled.
-- Changing the group country away from an allowlisted country while the toggle
-  stays on is rejected unless the same save disables the toggle.
-- Disabling the toggle is always allowed and stops new external sales
-  immediately. Existing pending purchases remain manageable.
+- The group's country, taken from the location field in `Settings`, must be on
+  the operator allowlist. When the group has no country or its country is not
+  allowlisted, the checkbox is not offered unless it is already on, in which
+  case it stays visible so it can be turned off.
+- Changing the group country away from an allowlisted country while the
+  checkbox stays on is rejected unless the same save turns it off.
+- Turning it off is always allowed and stops new external sales immediately.
+  Existing pending purchases can still be marked paid, canceled, or refunded.
 - Updating or publishing an event that still has an external payment URL is
   rejected while the group is ineligible. Clear the URL to move the event onto
   Stripe only after every pending external purchase has completed, expired, or
   been canceled. Open holds keep using the live event payment URL.
 - Group country governs eligibility, not the event venue country.
 
-When the toggle is on, the event `Tickets` tab asks for:
+When the checkbox is on, the event `Tickets` tab asks for:
 
 - A required absolute `http(s)` payment URL.
 - Optional payment instructions shown to attendees as plain text.
-- An optional payment window in hours (the form shows the operator default and
-  max). The confirmation deadline is
-  `least(now + window, registration end, event start)` and is computed once
-  when the hold is created.
+- An optional payment window in hours; the form shows the operator default and
+  maximum. The organizer-confirmation deadline is computed once when a hold is
+  created and is the earliest of: hold creation plus the window (capped by the
+  operator maximum), the registration close for public checkouts, and the
+  event start. Invitation and approval claims are not capped by registration
+  close.
 
+Attendees who reserve a ticket receive an email with the payment page link,
+their payment reference (the purchase ID), the instructions, and the
+confirmation deadline. Holds longer than a day also get one reminder when the
+deadline is 24 hours away. When a hold expires or the event is canceled or
+unpublished, OCG emails them that the reservation was released and, for
+cancellations and unpublishes, not to send payment.
+
+The event `Tickets` tab does not offer a ticket-tax mode for external events:
+OCG does not calculate tax, and ticket prices are treated as tax-inclusive.
 Organizers remain responsible for tax, receipts, and returning money outside
 OCG. Paid events still require in-person or hybrid plus a complete venue.
 
@@ -407,12 +426,20 @@ refund for a confirmed paid attendee by selecting `Cancel attendance and refund`
 recovery, then OCG cancels it and reconciles the released capacity. Read-only
 roles can inspect every state but cannot use those actions.
 
+Purchases collected outside OCG through [external payments](#external-payments)
+carry an `External` badge in the refunds table. They never involve a payment
+provider: approving such a request, or selecting `Cancel attendance and refund`
+on the attendee, asks the organizer to confirm that the money was returned
+outside OCG, then marks the purchase refunded and cancels the attendance
+immediately. Retry and recovery actions do not apply to them.
+
 The `Financial work needs attention` panel appears when automatic attempts for
 an application-fee refund, tax fee correction, or credit note are exhausted.
 An organizer with events write access can start another bounded retry cycle or
-record work completed directly in Stripe. External completion requires the
-Stripe object ID, an external reference, and a note describing the evidence
-reviewed. OCG stores that evidence and adds the completion to the audit log.
+record work completed directly in Stripe. Recording that out-of-band completion
+requires the Stripe object ID, a reference for the action taken, and a note
+describing the evidence reviewed. OCG stores that evidence and adds the
+completion to the audit log.
 
 Rejecting a request requires a reason. The modal identifies it as attendee-visible because the
 same reason appears in the attendee's email, `My Events`, and the public event page. Approval notes
@@ -421,10 +448,10 @@ remain optional and are kept for organizer review.
 When a provider outcome requires recovery, the refund row also offers
 `Complete recovery`. Organizers with events write access can use it. Other
 roles see the action disabled with an explanation of the requirement. After
-arranging the attendee's refund outside OCG, the organizer records the external
-refund reference and the evidence reviewed. OCG then completes any pending
-local state, sends the completion notification when needed, and records the
-recovery in the audit log.
+arranging the attendee's refund outside OCG, the organizer records the
+out-of-band refund reference and the evidence reviewed. OCG then completes any
+pending local state, sends the completion notification when needed, and records
+the recovery in the audit log.
 
 The event `Attendees` tab shows refund status and the applicable request-review
 and retry actions for attendees in that event. Recovery completion is available

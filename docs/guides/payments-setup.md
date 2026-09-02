@@ -5,12 +5,18 @@
 Use this guide when your group wants to configure ticket prices that may require
 payment in OCG. Events with only free ticket types do not require Stripe.
 
-In OCG, a group is ready for paid events only when both of these are true:
+In OCG, a group is ready for paid events through Stripe only when both of these
+are true:
 
 1. The OCG deployment has Stripe payments enabled.
 2. The group has selected a fiscal sponsor or steward through a compatible
    Stripe connected account saved in
    [Group Dashboard -> Settings](/guides/group-dashboard.md#payments-fiscal-sponsor-setup).
+
+?> If your group is in a country that Stripe Connect does not serve and the
+operator has allowlisted that country, the group can instead collect ticket
+payments outside OCG. That path does not use this guide; see
+[External payments](/guides/group-dashboard.md#external-payments).
 
 OCG does not create or onboard Stripe accounts from the group dashboard. The
 group dashboard stores the connected-account identifier for the legal entity
@@ -48,8 +54,8 @@ setup.
 Before you configure payments for a group, confirm these points:
 
 - The OCG deployment has Stripe payments enabled. If the payments section does
-  not appear in group settings, paid ticketing is unavailable, but free-only
-  events with free ticket types still work.
+  not appear in group settings, Stripe paid ticketing is unavailable, but
+  free-only events with free ticket types still work.
 - You have permission to edit the group in
   [Group Dashboard -> Settings](/guides/group-dashboard.md#settings-group-identity).
 - Your event is in-person or hybrid and has a complete physical venue. Virtual
@@ -343,7 +349,8 @@ That setting applies at the group level. New purchases snapshot the sponsor so
 later group-setting changes cannot redirect refunds or financial documents.
 
 If you leave both fields blank, the group can run events with free ticket types.
-Positive ticket prices cannot be configured or published.
+Positive ticket prices cannot be configured or published unless the group has
+opted into [external payments](/guides/group-dashboard.md#external-payments).
 
 ## What Happens After Setup
 
