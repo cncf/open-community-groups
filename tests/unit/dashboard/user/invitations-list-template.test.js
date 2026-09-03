@@ -125,6 +125,15 @@ describe("dashboard user invitations list template", () => {
     expect(template).to.include('rel="noopener noreferrer"');
     expect(template).to.include("<span>Open payment page</span>");
     expect(template).to.include(
+      'external_payment.deadline.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z")',
+    );
+    expect(template).to.include(
+      '<div>Reference: <span class="font-mono">{{ external_payment.reference }}</span></div>',
+    );
+    expect(template).to.include(
+      "{% if let Some(instructions) = &external_payment.instructions -%}",
+    );
+    expect(template).to.include(
       "{% else if let Some(resume_checkout_url) = &invitation.resume_checkout_url -%}",
     );
   });

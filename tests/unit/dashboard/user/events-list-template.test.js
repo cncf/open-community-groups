@@ -195,6 +195,11 @@ describe("dashboard user events list template", () => {
     expect(template).to.include(
       "{% if let Some(instructions) = &external_payment.instructions -%}",
     );
+    expect(template).to.include("{% macro external_payment_details(external_payment) -%}");
+    expect(template).to.include(
+      '<div class="xl:hidden">{{ external_payment_details(external_payment) -}}</div>',
+    );
+    expect(template).to.include("{{ external_payment_details(external_payment) -}}");
     expect(template).to.include('href="{{ external_payment.url }}"');
     expect(template).to.include('target="_blank"');
     expect(template).to.include('rel="noopener noreferrer"');

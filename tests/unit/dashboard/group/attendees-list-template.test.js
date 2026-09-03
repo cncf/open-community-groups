@@ -86,6 +86,9 @@ describe("dashboard group attendees list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include("AttendeeEnrollmentStatus::PaymentPending");
+    expect(template).to.include(
+      "|| (!event.canceled && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending && attendee.event_purchase_id.is_some())",
+    );
     expect(template).to.include("data-external-payment-open");
     expect(template).to.include(
       'data-external-payment-url="/dashboard/group/events/{{ event.event_id }}/purchases/{{ event_purchase_id }}/external-payment"',

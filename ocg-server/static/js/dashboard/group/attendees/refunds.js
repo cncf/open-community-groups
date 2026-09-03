@@ -15,6 +15,7 @@ const refundReviewConfigs = [
     eventId: "attendee-refund-approve-event",
     formId: "attendee-refund-approve-form",
     modalId: "attendee-refund-approve-modal",
+    externalSuccessMessage: "Refund recorded. Attendance canceled.",
     reviewNoteId: "attendee-refund-approve-review-note",
     triggerSelector: "[data-attendee-refund-approve-open]",
     urlDataKey: "refundApproveUrl",
@@ -169,6 +170,7 @@ const openRefundReviewModal = (trigger, config, root = document) => {
     trigger,
     `${config.modalId.replace(/-modal$/, "")}-external-note`,
     root,
+    config.externalSuccessMessage,
   );
 
   const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");

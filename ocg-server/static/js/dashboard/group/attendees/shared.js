@@ -77,9 +77,10 @@ export const bindScopedModalEscape = (root, closeModal) => {
  * @param {HTMLElement} trigger Refund review trigger button.
  * @param {string} noteId External-note element id.
  * @param {Document|Element} root Query root.
+ * @param {string} [externalSuccessMessage=""] Success copy for an external approval.
  * @returns {void}
  */
-export const applyExternalRefundReviewCopy = (form, trigger, noteId, root) => {
+export const applyExternalRefundReviewCopy = (form, trigger, noteId, root, externalSuccessMessage = "") => {
   const externalNote = getElementById(root, noteId);
   const isExternal = trigger.dataset.refundExternal === "true";
   if (externalNote instanceof HTMLElement) {
@@ -87,9 +88,10 @@ export const applyExternalRefundReviewCopy = (form, trigger, noteId, root) => {
     externalNote.classList.toggle("hidden", !isExternal);
   }
 
-  if (isExternal) {
-    form.dataset.successMessage = "Refund recorded. Attendance canceled.";
-  } else {
-    form.dataset.successMessage = "Refund queued.";
+  if (!("defaultSuccessMessage" in form.dataset)) {
+    form.dataset.defaultSuccessMessage = form.dataset.successMessage || "";
   }
+
+  form.dataset.successMessage =
+    isExternal && externalSuccessMessage ? externalSuccessMessage : form.dataset.defaultSuccessMessage;
 };

@@ -103,6 +103,14 @@ const handleAfterRequest = (event) => {
       return;
     }
 
+    if (response?.status === "pending-payment") {
+      showInfoAlert(
+        "Your reservation is awaiting organizer confirmation. Use the payment details shown in this invitation.",
+      );
+      refreshInvitations();
+      return;
+    }
+
     // Non-redirect claims finish locally and then refresh the invitation list.
     showInfoAlert(
       target.dataset.isSimpleRsvp === "true"

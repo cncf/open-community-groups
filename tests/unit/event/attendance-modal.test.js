@@ -1889,6 +1889,65 @@ describe("event attendance paid modal", () => {
     expect(checkoutButtonLabel.classList.contains("invisible")).to.equal(false);
   });
 
+  for (const [conflict, message] of [
+    ["ticket-type-sold-out", "This ticket has just sold out. Event availability has been updated."],
+    [
+      "payment-setup-unavailable",
+      "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
+    ],
+  ]) {
+    it(`refreshes availability after the ${conflict} checkout conflict`, async () => {
+      // Render checkout controls with an authoritative availability endpoint.
+      const { checker, attendButton, container, ticketModal, ticketTypeOptions, checkoutForm } =
+        renderPaidAttendanceDom({ availabilityUrl: "/events/test-event/availability" });
+      const fetchMock = mockFetch({
+        response: {
+          ok: true,
+          json: async () => ({
+            attendee_approval_required: false,
+            canceled: false,
+            capacity: 1,
+            has_sellable_ticket_types: false,
+            has_sold_out_ticket_types: true,
+            has_visible_ticket_types: true,
+            is_live: false,
+            is_past: false,
+            is_simple_rsvp: false,
+            paid_capable: true,
+            registration_window_open: true,
+            remaining_capacity: 0,
+            ticket_types: [],
+            waitlist_count: 0,
+            waitlist_enabled: false,
+          }),
+        },
+      });
+      await initializeAttendanceDom();
+
+      try {
+        dispatchHtmxAfterRequest(checker, {
+          responseText: JSON.stringify({ status: "guest" }),
+        });
+        attendButton.click();
+        ticketTypeOptions[1].checked = true;
+        dispatchHtmxBeforeRequest(checkoutForm);
+        dispatchHtmxAfterRequest(checkoutForm, {
+          status: 409,
+          responseText: JSON.stringify({ conflict }),
+        });
+        await waitForMicrotask();
+        await waitForMicrotask();
+
+        expect(ticketModal.classList.contains("hidden")).to.equal(true);
+        expect(env.current.swal.calls.at(-1)).to.include({ icon: "error", text: message });
+        expect(fetchMock.calls[0]?.[0]).to.equal("/events/test-event/availability");
+        expect(container.dataset.remainingCapacity).to.equal("0");
+      } finally {
+        fetchMock.restore();
+      }
+    });
+  }
+
   it("reports approval request failures without checkout language", async () => {
     // Render approval ticket controls before simulating a request failure.
     const { checker, attendButton, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom({

@@ -13,6 +13,7 @@ import {
   initializeEventUpdatePage,
   initializeEventUpdatePageRoots,
 } from "/static/js/dashboard/group/event-update.js";
+import { initializeEventEnrollmentState } from "/static/js/dashboard/event/ticketing.js";
 import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
@@ -147,6 +148,44 @@ describe("event page modules", () => {
     // Verify initializes the add page and syncs boolean hidden fields.
     expect(document.getElementById("test_event").value).to.equal("true");
     expect(document.getElementById("event_reminder_enabled").value).to.equal("true");
+  });
+
+  it("requires the external payment URL only while a positive ticket price exists", () => {
+    // Render the external payment field with a lightweight ticket editor contract.
+    document.body.innerHTML = `
+      <div id="event-ticketing-root">
+        <select id="kind_id"><option value="hybrid" selected>Hybrid</option></select>
+        <input id="payment_currency_code" value="EUR" />
+        <input id="external_payment_url" type="url" data-external-ticketing-enabled="true" />
+        <div id="ticket-types-ui"></div>
+      </div>
+    `;
+    const root = document.getElementById("event-ticketing-root");
+    const ticketTypesEditor = document.getElementById("ticket-types-ui");
+    const externalPaymentUrlInput = document.getElementById("external_payment_url");
+    let hasPositivePrices = true;
+    ticketTypesEditor.hasConfiguredPositivePrices = () => hasPositivePrices;
+    ticketTypesEditor.hasConfiguredTicketTypes = () => true;
+
+    initializeEventEnrollmentState(root);
+    expect(externalPaymentUrlInput.required).to.equal(true);
+    expect(externalPaymentUrlInput.validationMessage).to.equal(
+      "Paid tickets require an external payment URL.",
+    );
+
+    externalPaymentUrlInput.value = "https://pay.example.com/event";
+    externalPaymentUrlInput.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(externalPaymentUrlInput.validationMessage).to.equal("");
+
+    hasPositivePrices = false;
+    ticketTypesEditor.dispatchEvent(new CustomEvent("ticket-types-changed", { bubbles: true }));
+    expect(externalPaymentUrlInput.required).to.equal(false);
+    expect(externalPaymentUrlInput.validationMessage).to.equal("");
+
+    externalPaymentUrlInput.dataset.externalTicketingEnabled = "false";
+    hasPositivePrices = true;
+    ticketTypesEditor.dispatchEvent(new CustomEvent("ticket-types-changed", { bubbles: true }));
+    expect(externalPaymentUrlInput.required).to.equal(false);
   });
 
   it("updates the add page draft event reminder from event fields", () => {

@@ -23,6 +23,7 @@ const REFUND_REVIEW_CONFIGS = [
     contextPrefix: "refund-approve",
     formId: "refund-approve-form",
     modalId: "refund-approve-modal",
+    externalSuccessMessage: "Refund recorded. Attendance canceled.",
     reviewNoteId: "refund-approve-review-note",
     triggerSelector: "[data-refund-approve-open]",
     urlDataKey: "refundApproveUrl",
@@ -356,7 +357,13 @@ const openRefundReviewModal = (root, trigger, config) => {
     reason.textContent = trigger.dataset.refundReason || "No reason provided.";
   }
 
-  applyExternalRefundReviewCopy(form, trigger, `${config.contextPrefix}-external-note`, root);
+  applyExternalRefundReviewCopy(
+    form,
+    trigger,
+    `${config.contextPrefix}-external-note`,
+    root,
+    config.externalSuccessMessage,
+  );
 
   const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");
   const focusOrigin = actionsMenuSummary instanceof HTMLElement ? actionsMenuSummary : trigger;

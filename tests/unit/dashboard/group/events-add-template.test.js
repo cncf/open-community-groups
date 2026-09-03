@@ -175,6 +175,7 @@ describe("dashboard group event add template", () => {
     expect(template).to.include("{% if self.uses_external_ticketing() -%}");
     expect(template).to.include('id="external_payment_url"');
     expect(template).to.include('name="external_payment_url"');
+    expect(template).to.include('data-external-ticketing-enabled="true"');
     expect(template).to.include("External payment URL");
     expect(template).to.include('id="external_payment_instructions"');
     expect(template).to.include('name="external_payment_instructions"');

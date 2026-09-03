@@ -919,6 +919,7 @@
                   <input type="url"
                          id="external_payment_url"
                          name="external_payment_url"
+                         data-external-ticketing-enabled="{{ self.uses_external_ticketing() }}"
                          class="input-primary"
                          maxlength="{{ crate::validation::MAX_LEN_L }}"
                          placeholder="https://"

@@ -79,6 +79,17 @@
             <div class="font-medium text-stone-700">{{ invitation.ticket_title }}</div>
             <div class="text-xs text-stone-500">{{ invitation.source_label() }}</div>
           {% endif -%}
+          {% if let Some(external_payment) = &invitation.external_payment -%}
+            <div class="mt-2 space-y-0.5 text-xs text-stone-500">
+              <div>
+                Confirm by {{ external_payment.deadline.with_timezone(invitation.timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
+              </div>
+              <div>Reference: <span class="font-mono">{{ external_payment.reference }}</span></div>
+              {% if let Some(instructions) = &external_payment.instructions -%}
+                <div class="whitespace-pre-wrap">{{ instructions }}</div>
+              {% endif -%}
+            </div>
+          {% endif -%}
           </td>
           {# End offer -#}
           {# Starts date -#}

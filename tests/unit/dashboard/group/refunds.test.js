@@ -69,10 +69,11 @@ describe("dashboard group refunds", () => {
         <div id="refund-approve-modal" class="hidden" aria-hidden="true">
           <button id="close-refund-approve-modal" type="button">Close</button>
           <div id="overlay-refund-approve-modal"></div>
-          <form id="refund-approve-form">
+          <form id="refund-approve-form" data-success-message="Refund queued.">
             <div id="refund-approve-attendee"></div>
             <div id="refund-approve-event"></div>
             <div id="refund-approve-reason"></div>
+            <div id="refund-approve-external-note" class="hidden" hidden></div>
             <textarea id="refund-approve-review-note" name="review_note" autofocus></textarea>
             <button id="cancel-refund-approve-modal" type="button">Cancel</button>
           </form>
@@ -80,10 +81,11 @@ describe("dashboard group refunds", () => {
         <div id="refund-reject-modal" class="hidden" aria-hidden="true">
           <button id="close-refund-reject-modal" type="button">Close</button>
           <div id="overlay-refund-reject-modal"></div>
-          <form id="refund-reject-form">
+          <form id="refund-reject-form" data-success-message="Refund request rejected.">
             <div id="refund-reject-attendee"></div>
             <div id="refund-reject-event"></div>
             <div id="refund-reject-reason"></div>
+            <div id="refund-reject-external-note" class="hidden" hidden></div>
             <textarea id="refund-review-note" name="review_note" autofocus></textarea>
             <button id="cancel-refund-reject-modal" type="button">Cancel</button>
           </form>
@@ -199,6 +201,26 @@ describe("dashboard group refunds", () => {
     } finally {
       window.htmx = originalHtmx;
     }
+  });
+
+  it("uses external completion feedback only for refund approval", () => {
+    // Mark both review actions as external before opening their forms.
+    renderRecoveryFixture();
+    const approveTrigger = document.querySelector("[data-refund-approve-open]");
+    const rejectTrigger = document.querySelector("[data-refund-reject-open]");
+    approveTrigger.dataset.refundExternal = "true";
+    rejectTrigger.dataset.refundExternal = "true";
+
+    approveTrigger.click();
+    expect(document.getElementById("refund-approve-form")?.dataset.successMessage).to.equal(
+      "Refund recorded. Attendance canceled.",
+    );
+
+    document.getElementById("close-refund-approve-modal")?.click();
+    rejectTrigger.click();
+    expect(document.getElementById("refund-reject-form")?.dataset.successMessage).to.equal(
+      "Refund request rejected.",
+    );
   });
 
   it("explains when the refund request has no reason", () => {

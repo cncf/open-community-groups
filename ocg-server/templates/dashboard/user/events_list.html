@@ -3,6 +3,18 @@
 {% import "macros/pagination.html" as pagination -%}
 {% import "macros/question_answers.html" as question_answers -%}
 
+{# External payment deadline, reference, and organizer instructions. #}
+{% macro external_payment_details(external_payment) -%}
+  <div class="mt-1.5 space-y-0.5 text-xs text-stone-500">
+    <div>Confirm by {{ external_payment.deadline.format("%b %d, %Y at %H:%M UTC") }}</div>
+    <div class="font-mono">{{ external_payment.reference }}</div>
+    {% if let Some(instructions) = &external_payment.instructions -%}
+      <div class="whitespace-pre-wrap">{{ instructions }}</div>
+    {% endif -%}
+  </div>
+{% endmacro external_payment_details -%}
+{# End external payment details. #}
+
 {# Refund status badge and rejection reason tooltip. #}
 {% macro refund_status_badge(item, status_instance) -%}
   {% if item.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
@@ -167,6 +179,9 @@
                 {% endif -%}
                 {{ refund_status_badge(item, "mobile") -}}
               </div>
+              {% if let Some(external_payment) = &item.external_payment -%}
+                <div class="xl:hidden">{{ external_payment_details(external_payment) -}}</div>
+              {% endif -%}
             </td>
             {# End role -#}
 
@@ -179,13 +194,7 @@
                 {{ refund_status_badge(item, "desktop") -}}
               </div>
               {% if let Some(external_payment) = &item.external_payment -%}
-                <div class="mt-1.5 space-y-0.5 text-xs text-stone-500">
-                  <div>Confirm by {{ external_payment.deadline.format("%b %d, %Y at %H:%M UTC") }}</div>
-                  <div class="font-mono">{{ external_payment.reference }}</div>
-                  {% if let Some(instructions) = &external_payment.instructions -%}
-                    <div class="whitespace-pre-wrap">{{ instructions }}</div>
-                  {% endif -%}
-                </div>
+                {{ external_payment_details(external_payment) -}}
               {% endif -%}
             </td>
             {# End status -#}

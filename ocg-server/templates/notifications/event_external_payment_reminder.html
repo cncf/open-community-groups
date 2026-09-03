@@ -22,7 +22,7 @@
     {% if let Some(instructions) = external_payment_instructions -%}
       <br />
       <br />
-      {{ instructions }}
+      <span style="white-space: pre-wrap; overflow-wrap: anywhere">{{ instructions }}</span>
     {% endif -%}
   </p>
 

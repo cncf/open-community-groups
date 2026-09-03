@@ -4,7 +4,11 @@ import "/static/js/dashboard/group/attendees.js";
 import { resolveAttendeesRoot } from "/static/js/dashboard/group/attendees/shared.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxAfterRequest, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
+import {
+  dispatchHtmxAfterRequest,
+  dispatchHtmxBeforeRequest,
+  dispatchHtmxLoad,
+} from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("dashboard group attendees", () => {
@@ -75,9 +79,10 @@ describe("dashboard group attendees", () => {
       <div id="attendee-refund-reject-modal" class="hidden" aria-hidden="true">
         <button id="close-attendee-refund-reject-modal" type="button">Close</button>
         <div id="overlay-attendee-refund-reject-modal"></div>
-        <form id="attendee-refund-reject-form">
+        <form id="attendee-refund-reject-form" data-success-message="Refund request rejected.">
           <div id="attendee-refund-reject-name"></div>
           <div id="attendee-refund-reject-event"></div>
+          <div id="attendee-refund-reject-external-note" class="hidden" hidden></div>
           <textarea id="attendee-refund-review-note" name="review_note" autofocus></textarea>
           <button id="cancel-attendee-refund-reject-modal" type="button">Cancel</button>
           <button type="submit">Reject refund</button>
@@ -103,9 +108,10 @@ describe("dashboard group attendees", () => {
       <div id="attendee-refund-approve-modal" class="hidden" aria-hidden="true">
         <button id="close-attendee-refund-approve-modal" type="button">Close</button>
         <div id="overlay-attendee-refund-approve-modal"></div>
-        <form id="attendee-refund-approve-form">
+        <form id="attendee-refund-approve-form" data-success-message="Refund queued.">
           <div id="attendee-refund-approve-name"></div>
           <div id="attendee-refund-approve-event"></div>
+          <div id="attendee-refund-approve-external-note" class="hidden" hidden></div>
           <textarea
             id="attendee-refund-approve-review-note"
             name="review_note"
@@ -924,7 +930,7 @@ describe("dashboard group attendees", () => {
     expect(requestsRoot.dataset.attendeeActionsMenuReady).to.equal(undefined);
   });
 
-  it("closes the external payment modal after a successful mark-paid request", () => {
+  it("reports mark-paid failures and closes the modal after success", () => {
     // Open the mark-paid modal, then complete the HTMX request.
     const originalHtmx = window.htmx;
     window.htmx = { process: () => {} };
@@ -940,16 +946,88 @@ describe("dashboard group attendees", () => {
       details.value = "Bank ref 123";
       submit.disabled = true;
 
-      dispatchHtmxAfterRequest(form, { status: 422 });
+      dispatchHtmxAfterRequest(form, {
+        status: 422,
+        responseText: "purchase hold has expired",
+      });
       expect(modal?.classList.contains("hidden")).to.equal(false);
       expect(details.value).to.equal("Bank ref 123");
-      expect(submit.disabled).to.equal(true);
+      expect(submit.disabled).to.equal(false);
+      expect(env.current.swal.calls.at(-1)?.icon).to.equal("error");
+      expect(env.current.swal.calls.at(-1)?.html).to.include("purchase hold has expired");
 
       dispatchHtmxAfterRequest(form, { status: 204 });
       expect(modal?.classList.contains("hidden")).to.equal(true);
       expect(form?.hasAttribute("hx-post")).to.equal(false);
       expect(details.value).to.equal("");
       expect(submit.disabled).to.equal(false);
+    } finally {
+      window.htmx = originalHtmx;
+    }
+  });
+
+  it("keeps a newer mark-paid modal open when an earlier response arrives", () => {
+    // Start one request before selecting a different purchase in the shared modal.
+    const originalHtmx = window.htmx;
+    window.htmx = { process: () => {} };
+    document.body.innerHTML = attendeeExternalPaymentMarkup();
+    const firstTrigger = document.querySelector("[data-external-payment-open]");
+    const secondTrigger = firstTrigger.cloneNode(true);
+    secondTrigger.dataset.externalPaymentUrl =
+      "/dashboard/group/events/event-1/purchases/purchase-2/external-payment";
+    secondTrigger.dataset.externalPaymentAttendee = "Ada Morgan";
+    firstTrigger.after(secondTrigger);
+    initializeAttendeesUi();
+
+    try {
+      firstTrigger.click();
+      const form = document.getElementById("attendee-external-payment-form");
+      const firstRequest = {};
+      dispatchHtmxBeforeRequest(form, { xhr: firstRequest });
+      secondTrigger.click();
+
+      form.dispatchEvent(
+        new CustomEvent("htmx:afterRequest", {
+          bubbles: true,
+          detail: { xhr: Object.assign(firstRequest, { status: 204 }) },
+        }),
+      );
+
+      expect(document.getElementById("attendee-external-payment-modal")?.classList.contains("hidden"))
+        .to.equal(false);
+      expect(form.getAttribute("hx-post")).to.equal(
+        "/dashboard/group/events/event-1/purchases/purchase-2/external-payment",
+      );
+      expect(document.getElementById("attendee-external-payment-summary")?.textContent).to.include(
+        "Ada Morgan",
+      );
+    } finally {
+      window.htmx = originalHtmx;
+    }
+  });
+
+  it("traps keyboard focus inside the open mark-paid modal", () => {
+    // Open the modal and move forward from its final focus target.
+    const originalHtmx = window.htmx;
+    window.htmx = { process: () => {} };
+    document.body.innerHTML = attendeeExternalPaymentMarkup();
+    initializeAttendeesUi();
+
+    try {
+      document.querySelector("[data-external-payment-open]")?.click();
+      const submit = document.getElementById("submit-attendee-external-payment");
+      submit.focus();
+      const tabEvent = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "Tab",
+      });
+      document.getElementById("attendees-content")?.dispatchEvent(tabEvent);
+
+      expect(tabEvent.defaultPrevented).to.equal(true);
+      expect(document.activeElement).to.equal(
+        document.getElementById("close-attendee-external-payment-modal"),
+      );
     } finally {
       window.htmx = originalHtmx;
     }
@@ -1034,6 +1112,34 @@ describe("dashboard group attendees", () => {
       expect(document.getElementById("attendee-refund-review-note")?.value).to.equal("");
       expect(document.activeElement).to.equal(document.getElementById("attendee-refund-review-note"));
       expect(processCalls).to.deep.equal(["attendee-refund-reject-form"]);
+    } finally {
+      window.htmx = originalHtmx;
+    }
+  });
+
+  it("keeps rejection feedback distinct from external refund approval feedback", () => {
+    // Open external approval and rejection forms for the same refund workflow.
+    const originalHtmx = window.htmx;
+    window.htmx = { process: () => {} };
+
+    try {
+      document.body.innerHTML = attendeeRefundApproveMarkup();
+      initializeAttendeesUi();
+      const approveTrigger = document.querySelector("[data-attendee-refund-approve-open]");
+      approveTrigger.dataset.refundExternal = "true";
+      approveTrigger.click();
+      expect(document.getElementById("attendee-refund-approve-form")?.dataset.successMessage).to.equal(
+        "Refund recorded. Attendance canceled.",
+      );
+
+      document.body.innerHTML = attendeeRefundRejectMarkup();
+      initializeAttendeesUi();
+      const rejectTrigger = document.querySelector("[data-attendee-refund-reject-open]");
+      rejectTrigger.dataset.refundExternal = "true";
+      rejectTrigger.click();
+      expect(document.getElementById("attendee-refund-reject-form")?.dataset.successMessage).to.equal(
+        "Refund request rejected.",
+      );
     } finally {
       window.htmx = originalHtmx;
     }

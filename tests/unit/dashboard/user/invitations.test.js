@@ -187,6 +187,26 @@ describe("dashboard user invitations", () => {
     });
   }
 
+  it("shows external payment guidance after claiming a paid offer", () => {
+    // Open a paid offer before the server creates its external payment hold.
+    const { form, modal, openButton } = renderOfferDom();
+    openButton.click();
+
+    dispatchHtmxAfterRequest(form, {
+      responseText: JSON.stringify({ status: "pending-payment" }),
+      status: 200,
+    });
+
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(env.current.swal.calls.at(-1)).to.include({
+      icon: "info",
+      text: "Your reservation is awaiting organizer confirmation. Use the payment details shown in this invitation.",
+    });
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      ["#dashboard-content", "refresh-user-dashboard-content"],
+    ]);
+  });
+
   it("removes a stale offer after an expired claim", () => {
     // Open the claim modal for an offer that expires before submission.
     const { form, modal, openButton } = renderOfferDom();

@@ -41,6 +41,11 @@ const CHECKOUT_ACTION_ERROR_MESSAGES = {
   request: "Something went wrong requesting this ticket. Please try again later.",
   waitlist: "Something went wrong joining the ticket waiting list. Please try again later.",
 };
+const CHECKOUT_CONFLICT_MESSAGES = {
+  "payment-setup-unavailable":
+    "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
+  "ticket-type-sold-out": "This ticket has just sold out. Event availability has been updated.",
+};
 
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
@@ -112,6 +117,29 @@ const notifyAdmissionOfferRequired = (xhr) => {
   }
 
   showErrorAlert(ADMISSION_OFFER_REQUIRED_MESSAGE);
+  return true;
+};
+
+/**
+ * Handles checkout conflicts that require fresh event availability.
+ * @param {HTMLElement} container Attendance container element.
+ * @param {XMLHttpRequest|undefined} xhr HTMX request object.
+ * @returns {boolean} Whether the conflict was handled.
+ */
+const notifyCheckoutConflict = (container, xhr) => {
+  if (xhr?.status !== 409) {
+    return false;
+  }
+
+  const conflictMessage = CHECKOUT_CONFLICT_MESSAGES[parseJsonResponse(xhr)?.conflict];
+  if (!conflictMessage) {
+    return false;
+  }
+
+  restoreCheckoutModalControls(container);
+  closeTicketModal(container);
+  showErrorAlert(conflictMessage);
+  refreshAvailabilityAndRenderAttendance(container);
   return true;
 };
 
@@ -350,6 +378,9 @@ const handleCheckoutAfterRequest = (event) => {
   if (notifyAdmissionOfferRequired(xhr)) {
     restoreCheckoutModalControls(container);
     closeTicketModal(container);
+    return;
+  }
+  if (notifyCheckoutConflict(container, xhr)) {
     return;
   }
   const ok = handleHtmxResponse({

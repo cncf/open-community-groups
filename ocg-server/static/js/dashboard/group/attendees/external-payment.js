@@ -1,4 +1,6 @@
+import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { closestElementWithinRoot, getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import {
   bindScopedModalEscape,
@@ -14,6 +16,7 @@ const MODAL_ID = "attendee-external-payment-modal";
 const SUBMIT_ID = "submit-attendee-external-payment";
 const SUMMARY_ID = "attendee-external-payment-summary";
 const TRIGGER_SELECTOR = "[data-external-payment-open]";
+const requestUrls = new WeakMap();
 
 /**
  * Initialize the mark-paid confirmation modal for external purchases.
@@ -41,10 +44,55 @@ export const initializeExternalPaymentModal = (root = document) => {
     closeExternalPaymentModal(modalRoot);
   });
 
-  root.addEventListener("htmx:afterRequest", (event) => {
-    if (event.target === getElementById(root, FORM_ID) && isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
-      closeExternalPaymentModal(root);
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") {
+      return;
     }
+
+    const modal = getElementById(root, MODAL_ID);
+    if (modal instanceof HTMLElement) {
+      trapModalFocus(event, modal);
+    }
+  });
+
+  root.addEventListener("htmx:beforeRequest", (event) => {
+    const form = getElementById(root, FORM_ID);
+    const xhr = event.detail?.xhr;
+    if (event.target === form && xhr && typeof xhr === "object") {
+      requestUrls.set(xhr, form.getAttribute("hx-post") || "");
+    }
+  });
+
+  root.addEventListener("htmx:afterRequest", (event) => {
+    const form = getElementById(root, FORM_ID);
+    if (event.target !== form || !(form instanceof HTMLFormElement)) {
+      return;
+    }
+
+    const xhr = event.detail?.xhr;
+    const requestUrl =
+      (xhr && typeof xhr === "object" ? requestUrls.get(xhr) : "") ||
+      event.detail?.requestConfig?.path ||
+      form.getAttribute("hx-post") ||
+      "";
+    if (requestUrl !== form.getAttribute("hx-post")) {
+      return;
+    }
+
+    if (isSuccessfulXHRStatus(xhr?.status)) {
+      closeExternalPaymentModal(root);
+      return;
+    }
+
+    const submit = getElementById(root, SUBMIT_ID);
+    if (submit instanceof HTMLButtonElement) {
+      submit.disabled = false;
+    }
+    handleHtmxResponse({
+      xhr,
+      successMessage: "",
+      errorMessage: "Payment could not be marked as received. Check its status and try again.",
+    });
   });
 };
 
