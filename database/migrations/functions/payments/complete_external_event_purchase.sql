@@ -227,8 +227,8 @@ begin
     perform insert_audit_log(
         'event_purchase_external_payment_completed',
         p_actor_user_id,
-        'event_purchase',
-        p_event_purchase_id,
+        'event',
+        v_event_id,
         v_community_id,
         p_group_id,
         v_event_id,

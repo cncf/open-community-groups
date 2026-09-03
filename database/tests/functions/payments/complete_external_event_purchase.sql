@@ -368,14 +368,50 @@ select results_eq(
 );
 
 -- Should write an audit log entry after marking an external purchase paid
-select is(
-    (
-        select count(*)::int
-        from audit_log
-        where action = 'event_purchase_external_payment_completed'
-        and resource_id = :'pendingPurchaseID'::uuid
+select results_eq(
+    format(
+        $$
+            select
+                action,
+                actor_user_id,
+                actor_username,
+                community_id,
+                details,
+                event_id,
+                group_id,
+                resource_id,
+                resource_type
+            from audit_log
+            where action = 'event_purchase_external_payment_completed'
+            and details->>'event_purchase_id' = %L
+        $$,
+        :'pendingPurchaseID'
     ),
-    1,
+    format(
+        $$
+            values (
+                'event_purchase_external_payment_completed'::text,
+                %L::uuid,
+                'external-actor'::text,
+                %L::uuid,
+                jsonb_build_object(
+                    'event_purchase_id', %L::uuid,
+                    'user_id', %L::uuid
+                ),
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                'event'::text
+            )
+        $$,
+        :'actorID',
+        :'communityID',
+        :'pendingPurchaseID',
+        :'attendeeID',
+        :'eventID',
+        :'groupID',
+        :'eventID'
+    ),
     'Should write an audit log entry after marking an external purchase paid'
 );
 

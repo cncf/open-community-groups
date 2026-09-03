@@ -467,11 +467,13 @@ group dashboard activity for the selected group.
 
 Coverage in this view includes:
 
-- Group settings updates.
+- Group settings updates, including payment recipient and external payments changes.
 - Group team changes.
 - Sponsor changes.
 - Event lifecycle actions such as add, update, publish, unpublish, cancel, and delete.
 - Check-ins, CFS submission reviews, and custom notification sends.
+- Payment actions such as refund requests, approvals, rejections, recoveries, and external
+  payments marked as received.
 
 Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
 can filter by `Action`, `Actor`, and date range, and pagination keeps the active filters applied.
