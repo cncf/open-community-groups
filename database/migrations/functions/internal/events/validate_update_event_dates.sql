@@ -1,47 +1,36 @@
--- validate_update_event_dates validates update-specific event and session dates.
+-- Validates the event, registration and session dates of an update payload
+-- against the locked prior event row and its stored sessions. Past events
+-- cannot move into the future, live events cannot move earlier than their
+-- current schedule, and future events cannot move into the past. Prior
+-- timestamps are compared at the whole-second precision the payload carries.
 create or replace function validate_update_event_dates(
     p_event jsonb,
-    p_event_before jsonb
+    p_before event
 )
 returns void as $$
 declare
-    v_event_before_ends_at timestamptz := to_timestamp((p_event_before->>'ends_at')::bigint);
-    v_event_before_starts_at timestamptz := to_timestamp((p_event_before->>'starts_at')::bigint);
+    v_before_ends_at timestamptz := date_trunc('second', p_before.ends_at);
+    v_before_starts_at timestamptz := date_trunc('second', p_before.starts_at);
     v_is_past_event boolean;
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
     v_registration_ends_at timestamptz;
     v_registration_starts_at timestamptz;
     v_session jsonb;
-    v_session_before jsonb;
     v_session_before_ends_at timestamptz;
     v_session_before_starts_at timestamptz;
     v_session_ends_at timestamptz;
     v_session_starts_at timestamptz;
     v_timezone text := p_event->>'timezone';
 begin
-    -- Keep timestamp parsing aligned with update_event row updates
-    if p_event->>'ends_at' is not null then
-        v_new_ends_at := (p_event->>'ends_at')::timestamp at time zone v_timezone;
-    end if;
-
-    if p_event->>'starts_at' is not null then
-        v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
-    end if;
-
-    -- Parse an optional registration opening date using the event timezone
-    if p_event->>'registration_starts_at' is not null then
-        v_registration_starts_at := (p_event->>'registration_starts_at')::timestamp at time zone v_timezone;
-    end if;
-
-    -- Parse an optional registration close date independently to allow close-only windows
-    if p_event->>'registration_ends_at' is not null then
-        v_registration_ends_at := (p_event->>'registration_ends_at')::timestamp at time zone v_timezone;
-    end if;
+    -- Parse the submitted schedule in the payload timezone
+    v_new_ends_at := (p_event->>'ends_at')::timestamp at time zone v_timezone;
+    v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
+    v_registration_ends_at := (p_event->>'registration_ends_at')::timestamp at time zone v_timezone;
+    v_registration_starts_at := (p_event->>'registration_starts_at')::timestamp at time zone v_timezone;
 
     -- Published events must keep the start date required by publish_event
-    if (p_event_before->>'published')::boolean = true
-       and v_new_starts_at is null then
+    if p_before.published = true and v_new_starts_at is null then
         raise exception 'published event must have a start date' using errcode = 'OCG01';
     end if;
 
@@ -66,106 +55,95 @@ begin
         raise exception 'registration ends_at cannot be after event starts_at' using errcode = 'OCG01';
     end if;
 
-    -- Detect whether the current event snapshot is already in the past,
-    -- treating dateless events as non-past
-    v_is_past_event := coalesce(
-        coalesce(
-            v_event_before_ends_at,
-            v_event_before_starts_at
-        ) < current_timestamp,
-        false
-    );
+    -- Detect whether the current event is already over, treating dateless events as non-past
+    v_is_past_event := coalesce(coalesce(v_before_ends_at, v_before_starts_at) < current_timestamp, false);
 
-    -- Prevent past events from being moved back into the future
+    -- Keep past events in the past
     if v_is_past_event then
-        if p_event->>'starts_at' is not null and v_new_starts_at > current_timestamp then
+        -- Reject a start moved into the future
+        if v_new_starts_at > current_timestamp then
             raise exception 'event starts_at cannot be in the future' using errcode = 'OCG01';
         end if;
 
-        if p_event->>'ends_at' is not null and v_new_ends_at > current_timestamp then
+        -- Reject an end moved into the future
+        if v_new_ends_at > current_timestamp then
             raise exception 'event ends_at cannot be in the future' using errcode = 'OCG01';
         end if;
 
-        if p_event->'sessions' is not null then
-            for v_session in select jsonb_array_elements(p_event->'sessions')
-            loop
-                v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
-                if v_session_starts_at > current_timestamp then
-                    raise exception 'session starts_at cannot be in the future' using errcode = 'OCG01';
-                end if;
+        -- Reject sessions moved into the future
+        for v_session in select jsonb_array_elements(p_event->'sessions')
+        loop
+            v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
+            v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
 
-                if v_session->>'ends_at' is not null then
-                    v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
-                    if v_session_ends_at > current_timestamp then
-                        raise exception 'session ends_at cannot be in the future' using errcode = 'OCG01';
-                    end if;
-                end if;
-            end loop;
+            -- Reject a session start in the future
+            if v_session_starts_at > current_timestamp then
+                raise exception 'session starts_at cannot be in the future' using errcode = 'OCG01';
+            end if;
+
+            -- Reject a session end in the future
+            if v_session_ends_at > current_timestamp then
+                raise exception 'session ends_at cannot be in the future' using errcode = 'OCG01';
+            end if;
+        end loop;
+
+        return;
+    end if;
+
+    -- Reject a start moved into the past unless a live event keeps or delays its current start
+    if v_new_starts_at < current_timestamp then
+        -- Reject future or dateless events moving into the past
+        if v_before_starts_at is null or v_before_starts_at >= current_timestamp then
+            raise exception 'event starts_at cannot be in the past' using errcode = 'OCG01';
+        -- Reject live events moving earlier than their current start
+        elsif v_new_starts_at < v_before_starts_at then
+            raise exception 'event starts_at cannot be earlier than current value' using errcode = 'OCG01';
         end if;
     end if;
 
-    -- Prevent non-past events from moving into invalid past dates
-    if not v_is_past_event then
-        if p_event->>'starts_at' is not null and v_new_starts_at < current_timestamp then
-            if v_event_before_starts_at is null
-               or v_event_before_starts_at >= current_timestamp then
-                raise exception 'event starts_at cannot be in the past' using errcode = 'OCG01';
-            elsif v_new_starts_at < v_event_before_starts_at then
-                raise exception 'event starts_at cannot be earlier than current value' using errcode = 'OCG01';
+    -- Reject an end moved into the past
+    if v_new_ends_at < current_timestamp then
+        raise exception 'event ends_at cannot be in the past' using errcode = 'OCG01';
+    end if;
+
+    -- Apply the same rules to each submitted session against its stored row
+    for v_session in select jsonb_array_elements(p_event->'sessions')
+    loop
+        v_session_before_ends_at := null;
+        v_session_before_starts_at := null;
+        v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
+        v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
+
+        -- Load the stored schedule of an existing session
+        if v_session->>'session_id' is not null then
+            select date_trunc('second', s.ends_at), date_trunc('second', s.starts_at)
+            into v_session_before_ends_at, v_session_before_starts_at
+            from session s
+            where s.session_id = (v_session->>'session_id')::uuid
+            and s.event_id = p_before.event_id;
+        end if;
+
+        -- Reject a session start moved into the past unless a live session keeps or delays it
+        if v_session_starts_at < current_timestamp then
+            -- Reject new or future sessions moving into the past
+            if v_session_before_starts_at is null or v_session_before_starts_at >= current_timestamp then
+                raise exception 'session starts_at cannot be in the past' using errcode = 'OCG01';
+            -- Reject live sessions moving earlier than their current start
+            elsif v_session_starts_at < v_session_before_starts_at then
+                raise exception 'session starts_at cannot be earlier than current value' using errcode = 'OCG01';
             end if;
         end if;
 
-        if p_event->>'ends_at' is not null and v_new_ends_at < current_timestamp then
-            raise exception 'event ends_at cannot be in the past' using errcode = 'OCG01';
+        -- Reject a session end moved into the past unless a finished session keeps or delays it
+        if v_session_ends_at < current_timestamp then
+            -- Reject new or unfinished sessions ending in the past
+            if v_session_before_ends_at is null or v_session_before_ends_at >= current_timestamp then
+                raise exception 'session ends_at cannot be in the past' using errcode = 'OCG01';
+            -- Reject finished sessions moving earlier than their current end
+            elsif v_session_ends_at < v_session_before_ends_at then
+                raise exception 'session ends_at cannot be earlier than current value' using errcode = 'OCG01';
+            end if;
         end if;
-
-        if p_event->'sessions' is not null then
-            for v_session in select jsonb_array_elements(p_event->'sessions')
-            loop
-                v_session_before := null;
-                v_session_before_ends_at := null;
-                v_session_before_starts_at := null;
-                v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
-
-                if v_session->>'session_id' is not null then
-                    select sess
-                    into v_session_before
-                    from jsonb_each(p_event_before->'sessions') as day(day, sessions)
-                    cross join lateral jsonb_array_elements(sessions) as sess
-                    where sess->>'session_id' = v_session->>'session_id'
-                    limit 1;
-
-                    if v_session_before->>'ends_at' is not null then
-                        v_session_before_ends_at := to_timestamp((v_session_before->>'ends_at')::bigint);
-                    end if;
-
-                    if v_session_before->>'starts_at' is not null then
-                        v_session_before_starts_at := to_timestamp((v_session_before->>'starts_at')::bigint);
-                    end if;
-                end if;
-
-                if v_session_starts_at < current_timestamp then
-                    if v_session_before_starts_at is null
-                       or v_session_before_starts_at >= current_timestamp then
-                        raise exception 'session starts_at cannot be in the past' using errcode = 'OCG01';
-                    elsif v_session_starts_at < v_session_before_starts_at then
-                        raise exception 'session starts_at cannot be earlier than current value' using errcode = 'OCG01';
-                    end if;
-                end if;
-
-                if v_session->>'ends_at' is not null then
-                    v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
-                    if v_session_ends_at < current_timestamp then
-                        if v_session_before_ends_at is null
-                           or v_session_before_ends_at >= current_timestamp then
-                            raise exception 'session ends_at cannot be in the past' using errcode = 'OCG01';
-                        elsif v_session_ends_at < v_session_before_ends_at then
-                            raise exception 'session ends_at cannot be earlier than current value' using errcode = 'OCG01';
-                        end if;
-                    end if;
-                end if;
-            end loop;
-        end if;
-    end if;
+    end loop;
 end;
 $$ language plpgsql;

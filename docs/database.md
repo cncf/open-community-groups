@@ -241,10 +241,75 @@ The rule-owning helpers are:
 - `release_meeting_sync(p_event_id, p_session_id, p_sync_claimed_at,
   p_sync_state_hash, p_error)`: completes a meeting sync claim for the
   `add/update/delete_meeting` and `set_meeting_error` workers.
+- `event_accepts_enrollment(event, "group")`: the row-based form of the
+  `lock_active_event` predicate (active group; published, not deleted, not
+  canceled, not over) for callers that already hold the rows.
+- `lock_event_enrollment_rows(p_event_id, p_event_ticket_type_id, p_user_id)`:
+  the global enrollment lock order after the event row (ticket tiers, one
+  advisory lock per affected user, active offers, pending purchases), shared
+  by the reconciliation functions.
+- Event payload resolution: `resolve_event_payload(p_event, p_before,
+  p_group_external_ready)` parses, merges and normalizes the event columns,
+  ticket types and discount codes written by `add_event` (null prior row) and
+  `update_event` (locked prior row), delegating rail selection to
+  `resolve_event_payment_rail`; `validate_event_payment_validation` binds the
+  server's provider validation snapshot to the locked group recipient.
+- Organizer offers: `resolve_organizer_offer_expiry(event)`,
+  `validate_admission_offer_payment_readiness(event, "group", amount,
+  provider)` and `admission_offer_capacity_conflict(event_ticket_type,
+  promoted_user_ids)` are shared by `invite_event_attendee` and
+  `accept_event_invitation_request`.
+- Purchase completion: `complete_event_purchase_admission_offer`,
+  `confirm_event_purchase_attendee` and `mark_event_purchase_refund_pending`
+  are the single homes of the offer, attendee and refund-pending transitions
+  used by the checkout webhook and the free and external completion flows.
 
 When a repeated predicate, status set or projection is found while changing a
 function, extract it into a named helper here and delegate from every
 occurrence in the same change.
+
+## Prior state, row types and phases
+
+- **Write paths read prior state from rows.** A mutation locks the rows it
+  changes (`select e.* into v_event from event e ... for update of e`) and
+  passes `%rowtype` values (`event`, `"group"`, `session`, `event_purchase`,
+  `admission_offer`, `event_ticket_type`) to its helpers. Public JSON
+  projections (`get_event_full`, ...) are read models for Rust and are never
+  used as the prior state of a write. A Rust-facing function that needs prior
+  state takes identifiers and reads the row itself
+  (`event_ticketing_configuration_changed(p_community_id, p_group_id,
+  p_event_id, p_event)`).
+  Association rows read as prior state (`event_host`, `event_speaker`,
+  `session_speaker`) must still be unchanged when the comparison runs:
+  `update_event` derives the event meeting sync inside its row update and
+  synchronizes sessions before `sync_event_hosts_speakers_sponsors` replaces
+  the hosts.
+- **Payload timestamps are compared at whole seconds.** Helpers that compare
+  a stored timestamp with one parsed from a payload
+  (`is_event_meeting_in_sync`, `is_session_meeting_in_sync`,
+  `validate_update_event_dates`) truncate the stored value with
+  `date_trunc('second', ...)`, the precision `epoch_seconds` gives the
+  dashboard, so a round-tripped value never reads as a change.
+- **Composites use `returns table`.** No named composite types exist; a
+  helper returning several values declares `returns table (...)` and callers
+  `select * into v_record` and copy composite columns into `%rowtype` locals
+  (`v_event := v_payload.resolved`). A column of a row type is read with
+  parentheses in SQL (`(r.resolved).name`).
+- **Large mutations are split on phase boundaries.** An orchestrator keeps
+  the lock order and the decisions; each phase (validate, protect, mutate,
+  confirm, audit, return) that spans more than a few statements lives in an
+  `internal/` helper that takes the locked rows: `reconcile_event_enrollment`
+  delegates to `lock_event_enrollment_rows`, `expire_event_checkout_holds`,
+  `remind_event_external_payment_holds`, `reconcile_event_admission_offers`
+  and `promote_event_waitlist_entries`;
+  `reconcile_event_purchase_for_checkout_session` to
+  `validate_direct_charge_checkout_amounts`,
+  `record_direct_charge_checkout_amounts` and the purchase completion helpers;
+  `prepare_event_checkout_purchase` to `load_checkout_context`,
+  `prepare_event_checkout_resolve_offer_pricing` and
+  `prepare_event_checkout_lookup_tax_cache`. Helpers that build notification
+  data shared by several phases (`external_payment_notification_payload`)
+  live next to them.
 
 ### Test ownership when extracting helpers
 

@@ -7,20 +7,30 @@
 
 {{ template "internal/enrollment/admission_offer_is_active.sql" }}
 {{ template "internal/enrollment/close_event_enrollment.sql" }}
+{{ template "internal/enrollment/complete_event_purchase_admission_offer.sql" }}
+{{ template "internal/enrollment/confirm_event_purchase_attendee.sql" }}
 {{ template "internal/enrollment/event_purchase_holds_seat.sql" }}
 {{ template "internal/enrollment/event_user_enrollment.sql" }}
 {{ template "internal/enrollment/get_event_occupied_seat_count.sql" }}
 {{ template "internal/enrollment/is_registration_window_open.sql" }}
+{{ template "internal/enrollment/lock_event_enrollment_rows.sql" }}
+{{ template "internal/enrollment/promote_event_waitlist_entries.sql" }}
 {{ template "internal/enrollment/questionnaire_answers_exist_for_event.sql" }}
+{{ template "internal/enrollment/reconcile_event_admission_offers.sql" }}
 {{ template "internal/enrollment/reconcile_event_enrollment.sql" }}
 {{ template "internal/enrollment/release_event_checkout_attendee_hold.sql" }}
+{{ template "internal/enrollment/resolve_organizer_offer_expiry.sql" }}
 {{ template "internal/enrollment/upsert_pending_registration_answers.sql" }}
+{{ template "internal/enrollment/validate_admission_offer_payment_readiness.sql" }}
 {{ template "internal/enrollment/validate_questionnaire_answers_payload.sql" }}
 
 {{ template "internal/events/event_effective_ends_at.sql" }}
+{{ template "internal/enrollment/event_accepts_enrollment.sql" }} -- Depends on event_effective_ends_at
 {{ template "internal/events/event_venue_snapshot.sql" }}
 {{ template "internal/events/get_event_delete_eligibility.sql" }}
 {{ template "internal/events/lock_active_event.sql" }}
+{{ template "internal/events/resolve_event_payload.sql" }}
+{{ template "internal/events/resolve_event_payment_rail.sql" }}
 {{ template "internal/events/sync_cfs_submission_labels.sql" }}
 {{ template "internal/events/sync_event_cfs_labels.sql" }}
 {{ template "internal/events/sync_event_hosts_speakers_sponsors.sql" }}
@@ -49,17 +59,26 @@
 
 {{ template "internal/payments/event_has_pending_refund_recovery.sql" }}
 {{ template "internal/payments/event_purchase_refund_to_json.sql" }}
+{{ template "internal/payments/expire_event_checkout_holds.sql" }}
+{{ template "internal/payments/external_payment_notification_payload.sql" }}
 {{ template "internal/payments/is_country_external_payments_allowlisted.sql" }}
 {{ template "internal/payments/is_group_external_payments_ready.sql" }} -- Dependency for is_event_external_payments_ready
 {{ template "internal/payments/is_event_external_payments_ready.sql" }}
+{{ template "internal/payments/load_checkout_context.sql" }}
+{{ template "internal/payments/mark_event_purchase_refund_pending.sql" }}
 {{ template "internal/payments/prepare_event_checkout_expire_previous_hold.sql" }}
-{{ template "internal/payments/prepare_event_checkout_expire_stale_holds.sql" }}
 {{ template "internal/payments/prepare_event_checkout_find_existing_purchase.sql" }}
+{{ template "internal/payments/prepare_event_checkout_lookup_tax_cache.sql" }}
 {{ template "internal/payments/prepare_event_checkout_reserve_discount_code_availability.sql" }}
+{{ template "internal/payments/prepare_event_checkout_resolve_offer_pricing.sql" }}
 {{ template "internal/payments/prepare_event_checkout_validate_and_resolve_pricing.sql" }}
 {{ template "internal/payments/prepare_event_checkout_validate_attendee_state.sql" }}
 {{ template "internal/payments/prepare_event_checkout_validate_event.sql" }}
+{{ template "internal/payments/record_direct_charge_checkout_amounts.sql" }}
 {{ template "internal/payments/refund_free_event_purchase.sql" }}
+{{ template "internal/payments/remind_event_external_payment_holds.sql" }}
+{{ template "internal/payments/validate_direct_charge_checkout_amounts.sql" }}
+{{ template "internal/payments/validate_event_payment_validation.sql" }}
 {{ template "internal/payments/validate_event_ticketing_payment_readiness.sql" }}
 {{ template "internal/payments/validate_payment_amount.sql" }}
 {{ template "internal/payments/validate_payment_currency_code.sql" }}
@@ -79,6 +98,7 @@
 {{ template "internal/ticketing/event_ticket_type_current_price.sql" }}
 {{ template "internal/ticketing/get_event_ticket_capacity.sql" }}
 {{ template "internal/ticketing/get_event_ticket_type_allocated_seat_count.sql" }}
+{{ template "internal/enrollment/admission_offer_capacity_conflict.sql" }} -- Depends on get_event_ticket_type_allocated_seat_count
 {{ template "internal/ticketing/is_event_paid_capable.sql" }}
 {{ template "internal/ticketing/is_event_simple_rsvp.sql" }}
 {{ template "internal/ticketing/is_event_ticketing_payload_paid_capable.sql" }}

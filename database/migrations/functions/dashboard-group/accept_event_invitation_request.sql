@@ -9,22 +9,17 @@ create or replace function accept_event_invitation_request(
 )
 returns jsonb as $$
 declare
-    v_community_id uuid;
+    v_capacity_conflict text;
     v_event event;
-    v_group_name text;
+    v_group "group";
     v_is_simple_rsvp boolean;
     v_offer_expires_at timestamptz;
     v_offer_id uuid;
-    v_payment_recipient jsonb;
     v_promoted_user_ids uuid[];
-    v_requested_ticket_type_id uuid;
-    v_request_status text;
+    v_request event_invitation_request;
     v_target_price bigint;
-    v_target_seats_total int;
-    v_target_ticket_availability text;
-    v_target_ticket_title text;
     v_theme jsonb;
-    v_ticket_allocated_count int;
+    v_ticket_type event_ticket_type;
 begin
     -- Lock the event and load the enrollment context for organizer review
     v_event := lock_active_event(null, p_group_id, p_event_id, true);
@@ -35,14 +30,8 @@ begin
     end if;
 
     -- Load group context needed for notifications and audit
-    select
-        g.community_id,
-        g.name,
-        g.payment_recipient
-    into
-        v_community_id,
-        v_group_name,
-        v_payment_recipient
+    select g.*
+    into v_group
     from "group" g
     where g.group_id = v_event.group_id;
 
@@ -57,12 +46,8 @@ begin
     for update of ett;
 
     -- Resolve and lock the request tier before capacity allocation
-    select
-        eir.event_ticket_type_id,
-        eir.status
-    into
-        v_requested_ticket_type_id,
-        v_request_status
+    select eir.*
+    into v_request
     from event_invitation_request eir
     where eir.event_id = p_event_id
     and eir.user_id = p_user_id
@@ -75,14 +60,14 @@ begin
     end if;
 
     -- Preserve public requests or require an organizer-assigned private tier
-    if v_requested_ticket_type_id is not null then
+    if v_request.event_ticket_type_id is not null then
         -- Reject organizer overrides of a requester-selected public tier
         if p_event_ticket_type_id is not null
-           and p_event_ticket_type_id <> v_requested_ticket_type_id then
+           and p_event_ticket_type_id <> v_request.event_ticket_type_id then
             raise exception 'requested ticket type cannot be changed' using errcode = 'OCG01';
         end if;
 
-        p_event_ticket_type_id := v_requested_ticket_type_id;
+        p_event_ticket_type_id := v_request.event_ticket_type_id;
 
     -- Require a private-tier assignment for generic invitation-only requests
     elsif p_event_ticket_type_id is null then
@@ -90,37 +75,35 @@ begin
     end if;
 
     -- Load the requested public tier or organizer-assigned private tier
-    select
-        event_ticket_type_current_price(ett.event_ticket_type_id),
-        ett.availability,
-        ett.seats_total,
-        ett.title
-    into
-        v_target_price,
-        v_target_ticket_availability,
-        v_target_seats_total,
-        v_target_ticket_title
+    select ett.*
+    into v_ticket_type
     from event_ticket_type ett
     where ett.event_id = p_event_id
     and ett.event_ticket_type_id = p_event_ticket_type_id
     and ett.active = true
     and (
-        v_requested_ticket_type_id is not null
+        v_request.event_ticket_type_id is not null
         or ett.availability = 'invitation_only'
     );
 
-    -- Reject inactive, unpriced, or ineligible ticket assignments
-    if not found or v_target_price is null then
+    -- Reject inactive or ineligible ticket assignments
+    if not found then
+        raise exception 'ticket type is not available' using errcode = 'OCG01';
+    end if;
+
+    -- Reject tiers without a current price
+    v_target_price := event_ticket_type_current_price(v_ticket_type.event_ticket_type_id);
+    if v_target_price is null then
         raise exception 'ticket type is not available' using errcode = 'OCG01';
     end if;
 
     -- Keep RSVP wording only for the event's free public tier
     v_is_simple_rsvp := v_is_simple_rsvp
-        and v_target_ticket_availability = 'public'
+        and v_ticket_type.availability = 'public'
         and v_target_price = 0;
 
     -- Reject request reissue while another enrollment state still blocks it
-    if v_request_status = 'accepted'
+    if v_request.status = 'accepted'
        and exists (
             select 1
             from admission_offer ao
@@ -132,7 +115,7 @@ begin
     end if;
 
     -- Reject request reissue while an active purchase still occupies the seat
-    if v_request_status = 'accepted'
+    if v_request.status = 'accepted'
        and exists (
             select 1
             from event_purchase ep
@@ -161,7 +144,7 @@ begin
     from event_invitation_request eir
     where eir.event_id = p_event_id
     and eir.user_id = p_user_id
-    and eir.status = v_request_status
+    and eir.status = v_request.status
     for update of eir;
 
     -- Reject review when reconciliation removed the request
@@ -169,68 +152,25 @@ begin
         raise exception 'pending invitation request not found' using errcode = 'OCG01';
     end if;
 
-    -- Recheck tier capacity now that stale reservations are settled
-    select get_event_ticket_type_allocated_seat_count(
-        p_event_id,
-        p_event_ticket_type_id
-    )
-    into v_ticket_allocated_count;
-
-    -- Surface a conflict instead of overselling the target tier
-    if v_target_seats_total is not null
-       and v_ticket_allocated_count >= v_target_seats_total then
-        return jsonb_build_object(
-            'conflict',
-            case
-                -- Prefer queue-priority when reconciliation already promoted waitlist users
-                when cardinality(v_promoted_user_ids) > 0
-                    then 'queue-has-priority'
-                -- Report a sold-out tier when no waitlist promotion consumed the seat
-                else 'ticket-type-sold-out'
-            end
-        );
+    -- Surface a conflict instead of overselling the target tier now that stale reservations are settled
+    v_capacity_conflict := admission_offer_capacity_conflict(v_ticket_type, v_promoted_user_ids);
+    if v_capacity_conflict is not null then
+        return jsonb_build_object('conflict', v_capacity_conflict);
     end if;
 
     -- Ensure payments can be collected before reserving a paid seat
-    if v_event.external_payment_url is not null then
-        -- Reject paid approvals when the external event is no longer eligible
-        if v_target_price > 0
-           and not is_event_external_payments_ready(p_event_id) then
-            raise exception 'external payments are not available for this event' using errcode = 'OCG01';
-        end if;
-    -- Keep the Stripe provider requirement for non-external events
-    else
-        perform validate_event_ticketing_payment_readiness(
-            p_configured_provider,
-            v_target_price > 0,
-            v_event.payment_currency_code,
-            v_payment_recipient,
-            p_event_id
-        );
-    end if;
+    perform validate_admission_offer_payment_readiness(
+        v_event,
+        v_group,
+        v_target_price,
+        p_configured_provider
+    );
 
     -- Bound the invitation expiry to the remaining event window
-    if v_event.starts_at is not null and v_event.starts_at > current_timestamp then
-        v_offer_expires_at := least(
-            current_timestamp + interval '24 hours',
-            v_event.starts_at
-        );
-
-    -- Bound in-progress offers by event end when the start has already passed
-    else
-        v_offer_expires_at := least(
-            current_timestamp + interval '24 hours',
-            coalesce(v_event.ends_at, 'infinity'::timestamptz)
-        );
-    end if;
-
-    -- Reject offers that would expire immediately
-    if v_offer_expires_at <= current_timestamp then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    v_offer_expires_at := resolve_organizer_offer_expiry(v_event);
 
     -- Record the first organizer approval while preserving reviewed reissues
-    if v_request_status = 'pending' then
+    if v_request.status = 'pending' then
         update event_invitation_request
         set
             reviewed_at = current_timestamp,
@@ -269,7 +209,7 @@ begin
         p_actor_user_id,
         'approval',
         'pending',
-        v_target_ticket_title,
+        v_ticket_type.title,
         p_user_id
     )
     returning admission_offer_id into v_offer_id;
@@ -294,10 +234,10 @@ begin
             'event_name', v_event.name,
             'event_ticket_type_id', p_event_ticket_type_id,
             'expires_at', epoch_seconds(v_offer_expires_at),
-            'group_name', v_group_name,
+            'group_name', v_group.name,
             'is_simple_rsvp', v_is_simple_rsvp,
             'theme', v_theme,
-            'ticket_title', v_target_ticket_title,
+            'ticket_title', v_ticket_type.title,
             'timezone', v_event.timezone,
             'user_id', p_user_id
         ),
@@ -309,14 +249,14 @@ begin
     perform insert_audit_log(
         case
             -- Reissues keep the original approval and record a new offer
-            when v_request_status = 'accepted' then 'event_admission_offer_reissued'
+            when v_request.status = 'accepted' then 'event_admission_offer_reissued'
             -- First reviews record the organizer acceptance
             else 'event_invitation_request_accepted'
         end,
         p_actor_user_id,
         'user',
         p_user_id,
-        v_community_id,
+        v_group.community_id,
         p_group_id,
         p_event_id,
         jsonb_strip_nulls(jsonb_build_object(

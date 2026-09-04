@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(423);
+select plan(434);
 
 -- ============================================================================
 -- VARIABLES
@@ -216,7 +216,7 @@ select has_function('event_has_pending_refund_recovery', array['uuid', 'uuid', '
 select has_function('event_purchase_holds_seat', array['text']::name[]);
 select has_function('event_purchase_refund_to_json', array['event_purchase_refund']::name[]);
 select has_function('event_ticket_type_current_price', array['uuid']::name[]);
-select has_function('event_ticketing_configuration_changed', array['jsonb', 'jsonb']::name[]);
+select has_function('event_ticketing_configuration_changed', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function(
     'expire_event_purchase_for_checkout_session',
     array['text', 'text', 'text']::name[]
@@ -227,6 +227,8 @@ select has_function(
 );
 select has_function('event_user_enrollment', array['uuid', 'uuid']::name[]);
 select has_function('event_venue_snapshot', array['event']::name[]);
+select has_function('expire_event_checkout_holds', array['event', '"group"', 'jsonb']::name[]);
+select has_function('external_payment_notification_payload', array['event', '"group"', 'event_purchase', 'jsonb']::name[]);
 select has_function('generate_slug', array['integer']::name[]);
 select has_function('generate_slug_from_source', array['text', 'integer']::name[]);
 select has_function('get_badge_status_list', array['uuid']::name[]);
@@ -301,7 +303,7 @@ select has_function('is_badge_image', array['text']::name[]);
 select has_function('is_country_external_payments_allowlisted', array['text']::name[]);
 select hasnt_function('is_event_check_in_window_open', array['uuid', 'uuid']::name[]);
 select has_function('is_event_external_payments_ready', array['uuid']::name[]);
-select has_function('is_event_meeting_in_sync', array['jsonb', 'jsonb']::name[]);
+select has_function('is_event_meeting_in_sync', array['event', 'jsonb']::name[]);
 select has_function('is_event_paid_capable', array['uuid']::name[]);
 select has_function('is_event_simple_rsvp', array['uuid']::name[]);
 select has_function('is_event_ticketing_payload_paid_capable', array['jsonb']::name[]);
@@ -312,7 +314,7 @@ select has_function(
     'is_registration_window_open',
     array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone']::name[]
 );
-select has_function('is_session_meeting_in_sync', array['jsonb', 'jsonb', 'jsonb', 'jsonb']::name[]);
+select has_function('is_session_meeting_in_sync', array['session', 'jsonb', 'event', 'jsonb']::name[]);
 select has_function('join_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('jsonb_geography_point', array['jsonb']::name[]);
 select has_function('jsonb_text_array', array['jsonb']::name[]);
@@ -375,8 +377,10 @@ select has_function('list_user_pending_session_proposal_co_speaker_invitations',
 select has_function('list_user_public_badges', array['text', 'integer', 'integer']::name[]);
 select has_function('list_user_session_proposals', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_session_proposals_for_cfs_event', array['uuid', 'uuid']::name[]);
+select has_function('load_checkout_context', array['uuid']::name[]);
 select has_function('lock_active_event', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
 select has_function('lock_active_group', array['uuid', 'uuid']::name[]);
+select has_function('lock_event_enrollment_rows', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('lock_events_for_cancellation', array['uuid', 'uuid[]']::name[]);
 select has_function('lock_group_events', array['uuid', 'uuid[]']::name[]);
 select hasnt_function('manual_check_in_event', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
@@ -391,23 +395,25 @@ select has_function('mark_stale_processing_notifications_unknown', array['bigint
 select has_function('parse_search_filters', array['jsonb']::name[]);
 select has_function('prefix_tsquery', array['regconfig', 'text']::name[]);
 select has_function('prepare_event_checkout_expire_previous_hold', array['uuid']::name[]);
-select has_function('prepare_event_checkout_expire_stale_holds', array['uuid']::name[]);
 select has_function(
     'prepare_event_checkout_find_existing_purchase',
     array['uuid', 'uuid', 'uuid', 'text', 'uuid']::name[]
 );
 select has_function('prepare_event_checkout_get_purchase_summary', array['uuid']::name[]);
+select has_function('prepare_event_checkout_lookup_tax_cache', array['text', 'text', 'jsonb', 'text']::name[]);
 select has_function(
     'prepare_event_checkout_purchase',
     array['uuid', 'uuid', 'uuid', 'uuid', 'text', 'text', 'jsonb', 'uuid', 'integer']::name[]
 );
 select has_function('prepare_event_checkout_reserve_discount_code_availability', array['uuid']::name[]);
+select has_function('prepare_event_checkout_resolve_offer_pricing', array['admission_offer', 'text']::name[]);
 select has_function(
     'prepare_event_checkout_validate_and_resolve_pricing',
     array['uuid', 'uuid', 'uuid', 'text', 'uuid']::name[]
 );
 select has_function('prepare_event_checkout_validate_attendee_state', array['uuid', 'uuid']::name[]);
 select has_function('prepare_event_checkout_validate_event', array['uuid', 'uuid']::name[]);
+select has_function('promote_event_waitlist_entries', array['event', '"group"', 'uuid', 'text', 'jsonb']::name[]);
 select has_function(
     'process_badge_award_job_batch',
     array['uuid', 'uuid', 'integer', 'integer']::name[]
@@ -428,6 +434,7 @@ select has_function(
     'queue_event_refund_request_approval',
     array['uuid', 'uuid', 'uuid', 'text']::name[]
 );
+select has_function('reconcile_event_admission_offers', array['event', '"group"']::name[]);
 select has_function(
     'reconcile_event_enrollment',
     array['uuid', 'uuid', 'text']::name[]
@@ -483,6 +490,7 @@ select has_function('reject_group_team_invitation', array['uuid', 'uuid']::name[
 select has_function('reject_session_proposal_co_speaker_invitation', array['uuid', 'uuid']::name[]);
 select has_function('release_event_checkout_attendee_hold', array['uuid', 'uuid']::name[]);
 select has_function('release_event_discount_code_availability', array['uuid', 'integer']::name[]);
+select has_function('remind_event_external_payment_holds', array['event', '"group"', 'jsonb']::name[]);
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync', array['uuid', 'uuid', 'timestamp with time zone', 'text', 'text']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
@@ -508,6 +516,8 @@ select has_function(
 select has_function('requeue_stale_event_purchase_credit_note_claims', '{}'::name[]);
 select has_function('requeue_stale_event_purchase_refund_claims', '{}'::name[]);
 select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
+select has_function('resolve_event_payload', array['jsonb', 'event', 'boolean']::name[]);
+select has_function('resolve_event_payment_rail', array['event', 'jsonb', 'boolean']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revoke_group_user_badge', array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]);
@@ -530,7 +540,7 @@ select has_function('sync_cfs_submission_labels', array['uuid', 'uuid', 'uuid[]'
 select has_function('sync_event_cfs_labels', array['uuid', 'jsonb']::name[]);
 select has_function('sync_event_discount_codes', array['uuid', 'jsonb']::name[]);
 select has_function('sync_event_hosts_speakers_sponsors', array['uuid', 'jsonb']::name[]);
-select has_function('sync_event_sessions', array['uuid', 'jsonb', 'jsonb']::name[]);
+select has_function('sync_event_sessions', array['uuid', 'jsonb', 'event']::name[]);
 select has_function('sync_event_ticket_types', array['uuid', 'jsonb']::name[]);
 select has_function(
     'sync_external_payments_config',
@@ -584,6 +594,7 @@ select has_function('validate_event_capacity', array['jsonb', 'jsonb', 'uuid', '
 select has_function('validate_event_cfs_labels_payload', array['jsonb']::name[]);
 select has_function('validate_event_discount_codes_payload', array['jsonb']::name[]);
 select has_function('validate_event_enrollment_payload', array['boolean', 'boolean']::name[]);
+select has_function('validate_event_payment_validation', array['jsonb', 'jsonb', 'text[]', 'text', 'text']::name[]);
 select has_function('validate_event_series_action_event_ids', array['uuid', 'uuid[]', 'boolean']::name[]);
 select has_function('validate_event_ticket_types_payload', array['jsonb']::name[]);
 select has_function(
@@ -602,7 +613,7 @@ select has_function('validate_payment_amount', array['text', 'bigint']::name[]);
 select has_function('validate_payment_currency_code', array['text']::name[]);
 select has_function('validate_questionnaire_answers_payload', array['jsonb', 'jsonb']::name[]);
 select has_function('validate_questionnaire_questions_payload', array['jsonb']::name[]);
-select has_function('validate_update_event_dates', array['jsonb', 'jsonb']::name[]);
+select has_function('validate_update_event_dates', array['jsonb', 'event']::name[]);
 select has_function('verify_email', array['uuid']::name[]);
 select has_function('withdraw_cfs_submission', array['uuid', 'uuid']::name[]);
 

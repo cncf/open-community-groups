@@ -186,7 +186,7 @@ jobs:
         run: for file in fixtures/*.sql; do PGPASSWORD=tests psql -h postgres -p ${{ job.services.postgres.ports[5432] }} -U tests tests -q -v ON_ERROR_STOP=1 -f "$file" || exit 1; done
       - name: Run database tests
         working-directory: ./database/tests
-        run: PGPASSWORD=tests pg_prove --host postgres --dbname tests --username tests --jobs 4 --verbose schema/*.sql functions/*/*.sql
+        run: PGPASSWORD=tests pg_prove --host postgres --dbname tests --username tests --jobs 4 --verbose $(find schema functions -type f -name '*.sql' | sort)
       - name: Check database test seed keys
         run: PGPASSWORD=tests sh database/scripts/check-seed-keys.sh -h postgres -p ${{ job.services.postgres.ports[5432] }} -U tests tests
 

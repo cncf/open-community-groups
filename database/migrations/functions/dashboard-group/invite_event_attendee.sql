@@ -11,27 +11,22 @@ create or replace function invite_event_attendee(
 returns jsonb as $$
 declare
     v_admission_offer_id uuid;
-    v_community_id uuid;
+    v_capacity_conflict text;
     v_create_pre_registered_user boolean := false;
     v_event event;
     v_existing_status text;
-    v_existing_user_email_verified boolean;
-    v_existing_user_registration_status text;
-    v_group_name text;
+    v_group "group";
     v_has_registration_questions boolean;
     v_is_simple_rsvp boolean;
     v_normalized_email text := lower(nullif(btrim(p_email), ''));
     v_offer_expires_at timestamptz;
-    v_payment_recipient jsonb;
     v_promoted_user_ids uuid[];
     v_selectable_ticket_type_count int;
+    v_target_user "user";
     v_target_user_id uuid;
     v_theme jsonb;
-    v_ticket_allocated_count int;
-    v_ticket_availability text;
     v_ticket_current_price bigint;
-    v_ticket_seats_total int;
-    v_ticket_title text;
+    v_ticket_type event_ticket_type;
 begin
     -- Validate invitation target shape
     if (p_user_id is null and v_normalized_email is null)
@@ -43,14 +38,8 @@ begin
     v_event := lock_active_event(null, p_group_id, p_event_id, true);
 
     -- Load group context needed for payment validation, notifications and audit
-    select
-        g.community_id,
-        g.name,
-        g.payment_recipient
-    into
-        v_community_id,
-        v_group_name,
-        v_payment_recipient
+    select g.*
+    into v_group
     from "group" g
     where g.group_id = v_event.group_id;
 
@@ -65,10 +54,10 @@ begin
         jsonb_array_length(coalesce(v_event.registration_questions, '[]'::jsonb)) > 0;
     v_is_simple_rsvp := is_event_simple_rsvp(p_event_id);
 
-    -- Resolve registered or pre-register email invitee
+    -- Resolve a registered invitee by identifier
     if p_user_id is not null then
-        select u.user_id
-        into v_target_user_id
+        select u.*
+        into v_target_user
         from "user" u
         where u.user_id = p_user_id
         and u.registration_status = 'registered'
@@ -79,6 +68,8 @@ begin
             raise exception 'registered user not found' using errcode = 'OCG01';
         end if;
 
+        v_target_user_id := v_target_user.user_id;
+
     -- Resolve or pre-register the email invitee
     else
         -- Serialize pre-registration by normalized email across different events
@@ -88,14 +79,8 @@ begin
         );
 
         -- Recheck the user catalog after acquiring the email lock
-        select
-            u.email_verified,
-            u.registration_status,
-            u.user_id
-        into
-            v_existing_user_email_verified,
-            v_existing_user_registration_status,
-            v_target_user_id
+        select u.*
+        into v_target_user
         from "user" u
         where lower(u.email) = v_normalized_email;
 
@@ -105,9 +90,13 @@ begin
             v_target_user_id := gen_random_uuid();
 
         -- Reject registered accounts whose email is still unverified
-        elsif v_existing_user_registration_status = 'registered'
-              and v_existing_user_email_verified = false then
+        elsif v_target_user.registration_status = 'registered'
+              and v_target_user.email_verified = false then
             raise exception 'registered user email is not verified' using errcode = 'OCG01';
+
+        -- Invite the existing account behind the email
+        else
+            v_target_user_id := v_target_user.user_id;
         end if;
     end if;
 
@@ -134,29 +123,27 @@ begin
     end if;
 
     -- Resolve the organizer-selected ticket tier and current base price
-    select
-        event_ticket_type_current_price(ett.event_ticket_type_id),
-        ett.availability,
-        ett.seats_total,
-        ett.title
-    into
-        v_ticket_current_price,
-        v_ticket_availability,
-        v_ticket_seats_total,
-        v_ticket_title
+    select ett.*
+    into v_ticket_type
     from event_ticket_type ett
     where ett.event_id = p_event_id
     and ett.event_ticket_type_id = p_event_ticket_type_id
     and ett.active = true;
 
-    -- Reject missing, inactive, or currently unpriced invitation tiers
-    if not found or v_ticket_current_price is null then
+    -- Reject missing or inactive invitation tiers
+    if not found then
+        raise exception 'ticket type is not available' using errcode = 'OCG01';
+    end if;
+
+    -- Reject tiers without a current price
+    v_ticket_current_price := event_ticket_type_current_price(v_ticket_type.event_ticket_type_id);
+    if v_ticket_current_price is null then
         raise exception 'ticket type is not available' using errcode = 'OCG01';
     end if;
 
     -- Keep RSVP wording only for the event's free public tier
     v_is_simple_rsvp := v_is_simple_rsvp
-        and v_ticket_availability = 'public'
+        and v_ticket_type.availability = 'public'
         and v_ticket_current_price = 0;
 
     -- Reconcile stale reservations and public queue priority before allocation
@@ -190,48 +177,21 @@ begin
         hashtext(v_target_user_id::text)
     );
 
-    -- Recheck tier capacity now that stale reservations are settled
-    select get_event_ticket_type_allocated_seat_count(
-        p_event_id,
-        p_event_ticket_type_id
-    )
-    into v_ticket_allocated_count;
-
-    -- Surface a conflict instead of overselling the target tier
-    if v_ticket_seats_total is not null
-       and v_ticket_allocated_count >= v_ticket_seats_total then
-        return jsonb_build_object(
-            'conflict',
-            case
-                -- Keep queue heads ahead of organizer invitations
-                when cardinality(v_promoted_user_ids) > 0
-                    then 'queue-has-priority'
-                -- Report a full tier when no queued user was promoted
-                else 'ticket-type-sold-out'
-            end
-        );
+    -- Surface a conflict instead of overselling the target tier now that stale reservations are settled
+    v_capacity_conflict := admission_offer_capacity_conflict(v_ticket_type, v_promoted_user_ids);
+    if v_capacity_conflict is not null then
+        return jsonb_build_object('conflict', v_capacity_conflict);
     end if;
 
     -- Ensure payments can be collected before reserving a paid seat
-    if v_event.external_payment_url is not null then
-        -- Reject paid invitations when the external event is no longer eligible
-        if v_ticket_current_price > 0
-           and not is_event_external_payments_ready(p_event_id) then
-            raise exception 'external payments are not available for this event' using errcode = 'OCG01';
-        end if;
+    perform validate_admission_offer_payment_readiness(
+        v_event,
+        v_group,
+        v_ticket_current_price,
+        p_configured_provider
+    );
 
-    -- Keep the Stripe provider requirement for non-external events
-    else
-        perform validate_event_ticketing_payment_readiness(
-            p_configured_provider,
-            v_ticket_current_price > 0,
-            v_event.payment_currency_code,
-            v_payment_recipient,
-            p_event_id
-        );
-    end if;
-
-    -- Reject attendee and offer states that should not be invited again
+    -- Lock the attendee row whose state decides whether the user can be invited again
     select ea.status
     into v_existing_status
     from event_attendee ea
@@ -294,24 +254,7 @@ begin
     and user_id = v_target_user_id;
 
     -- Bound the invitation expiry to the remaining event window
-    if v_event.starts_at is not null and v_event.starts_at > current_timestamp then
-        v_offer_expires_at := least(
-            current_timestamp + interval '24 hours',
-            v_event.starts_at
-        );
-
-    -- Bound in-progress events by end time instead of start time
-    else
-        v_offer_expires_at := least(
-            current_timestamp + interval '24 hours',
-            coalesce(v_event.ends_at, 'infinity'::timestamptz)
-        );
-    end if;
-
-    -- Reject invitations that cannot reserve any remaining claim window
-    if v_offer_expires_at <= current_timestamp then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    v_offer_expires_at := resolve_organizer_offer_expiry(v_event);
 
     -- Create the time-limited organizer invitation reservation
     insert into admission_offer (
@@ -341,7 +284,7 @@ begin
         p_actor_user_id,
         'organizer_invitation',
         'pending',
-        v_ticket_title,
+        v_ticket_type.title,
         v_target_user_id
     )
     returning admission_offer_id into v_admission_offer_id;
@@ -366,11 +309,11 @@ begin
             'event_name', v_event.name,
             'event_ticket_type_id', p_event_ticket_type_id,
             'expires_at', epoch_seconds(v_offer_expires_at),
-            'group_name', v_group_name,
+            'group_name', v_group.name,
             'is_simple_rsvp', v_is_simple_rsvp,
             'registration_questions_required', v_has_registration_questions,
             'theme', v_theme,
-            'ticket_title', v_ticket_title,
+            'ticket_title', v_ticket_type.title,
             'timezone', v_event.timezone,
             'user_id', v_target_user_id
         )),
@@ -384,7 +327,7 @@ begin
         p_actor_user_id,
         'user',
         v_target_user_id,
-        v_community_id,
+        v_group.community_id,
         p_group_id,
         p_event_id,
         jsonb_strip_nulls(jsonb_build_object(

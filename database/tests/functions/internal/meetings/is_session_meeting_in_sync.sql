@@ -1,16 +1,104 @@
+-- Tests deriving the session meeting sync state from the stored rows and an update payload.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set communityID '3a150000-0000-0000-0000-000000000003'
+\set eventCategoryID '3a150000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a150000-0000-0000-0000-000000000005'
+\set groupID '3a150000-0000-0000-0000-000000000006'
+\set hostedEventID '3a150000-0000-0000-0000-000000000007'
+\set hostedSessionID '3a150000-0000-0000-0000-000000000008'
+\set spokenEventID '3a150000-0000-0000-0000-000000000009'
+\set spokenSessionID '3a150000-0000-0000-0000-000000000010'
 \set user1ID '3a150000-0000-0000-0000-000000000001'
 \set user2ID '3a150000-0000-0000-0000-000000000002'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Baseline community, categories, group and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+
+-- Event whose host rows are compared with the payload
+select fx_event(:'hostedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2025-06-01 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'starts_at', '2025-06-01 10:00:00-04',
+    'timezone', 'America/New_York'
+));
+
+-- Event whose session speaker rows are compared with the payload
+select fx_event(:'spokenEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2025-06-01 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'starts_at', '2025-06-01 10:00:00-04',
+    'timezone', 'America/New_York'
+));
+
+-- Host of the hosted event
+insert into event_host (event_id, user_id)
+values (:'hostedEventID', :'user1ID');
+
+-- Synced meeting session of the hosted event
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'hostedSessionID',
+    :'hostedEventID',
+    'Session One',
+    'virtual',
+    '2025-06-01 10:15:00-04',
+    '2025-06-01 10:45:00-04',
+    'zoom',
+    true
+);
+
+-- Synced meeting session of the spoken event
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'spokenSessionID',
+    :'spokenEventID',
+    'Session One',
+    'virtual',
+    '2025-06-01 10:15:00-04',
+    '2025-06-01 10:45:00-04',
+    'zoom',
+    true
+);
+
+-- Speaker of the spoken session
+insert into session_speaker (session_id, user_id, featured)
+values (:'spokenSessionID', :'user1ID', false);
 
 -- ============================================================================
 -- TESTS
@@ -19,13 +107,13 @@ select plan(20);
 -- All fields remain in sync so meeting_in_sync stays true
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
@@ -33,23 +121,47 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     true,
     'Session all fields in sync returns true'
 );
 
+-- Sub-second precision in the stored row does not desync a payload with whole seconds
+select is(
+    is_session_meeting_in_sync(
+        jsonb_populate_record(null::session, '{
+            "name": "Session One",
+            "session_kind_id": "virtual",
+            "starts_at": "2025-06-01T10:15:00.250-04:00",
+            "ends_at": "2025-06-01T10:45:00.750-04:00",
+            "meeting_requested": true
+        }'::jsonb),
+        '{
+            "name": "Session One",
+            "kind": "virtual",
+            "starts_at": "2025-06-01T10:15:00",
+            "ends_at": "2025-06-01T10:45:00",
+            "meeting_requested": true
+        }'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
+        '{"timezone": "America/New_York"}'::jsonb
+    ),
+    true,
+    'Session stored sub-second precision keeps sync'
+);
+
 -- Meeting disabled after being enabled returns false to trigger deletion
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
@@ -57,7 +169,7 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": false
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
@@ -67,13 +179,13 @@ select is(
 -- Re-enabling meeting after it was disabled desyncs meeting_in_sync
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": false
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
@@ -81,7 +193,7 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
@@ -91,44 +203,66 @@ select is(
 -- Missing meeting_requested with previously enabled meeting returns false
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00"
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
     'Session meeting requested missing with previous enabled returns false'
 );
 
+-- Missing meeting_requested without a previous meeting returns null
+select is(
+    is_session_meeting_in_sync(
+        jsonb_populate_record(null::session, '{
+            "name": "Session One",
+            "session_kind_id": "virtual",
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00"
+        }'::jsonb),
+        '{
+            "name": "Session One",
+            "kind": "virtual",
+            "starts_at": "2025-06-01T10:15:00",
+            "ends_at": "2025-06-01T10:45:00"
+        }'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
+        '{"timezone": "America/New_York"}'::jsonb
+    ),
+    null::boolean,
+    'Session without a meeting before or after returns null'
+);
+
 -- Name change causes meeting to be out of sync
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
-            "name": "Session One Updated",
+            "name": "Renamed Session",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
@@ -138,21 +272,21 @@ select is(
 -- Schedule change (start or end) desyncs meeting
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
-            "starts_at": "2025-06-01T10:30:00",
+            "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
@@ -162,22 +296,22 @@ select is(
 -- Event timezone change desyncs session meeting
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
-            "starts_at": "2025-06-01T10:15:00",
-            "ends_at": "2025-06-01T10:45:00",
+            "starts_at": "2025-06-01T16:15:00",
+            "ends_at": "2025-06-01T16:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
-        '{"timezone": "America/Chicago"}'::jsonb
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
+        '{"timezone": "Europe/Madrid"}'::jsonb
     ),
     false,
     'Event timezone change desyncs session meeting'
@@ -186,14 +320,14 @@ select is(
 -- Started synced session changes stay archived instead of creating provider update work
 select is(
     is_session_meeting_in_sync(
-        jsonb_build_object(
-            'ends_at', floor(extract(epoch from current_timestamp - interval '1 hour')),
+        jsonb_populate_record(null::session, jsonb_build_object(
+            'ends_at', current_timestamp - interval '1 hour',
             'meeting_in_sync', true,
             'meeting_requested', true,
             'name', 'Started Session',
             'session_kind_id', 'virtual',
-            'starts_at', floor(extract(epoch from current_timestamp - interval '2 hours'))
-        ),
+            'starts_at', current_timestamp - interval '2 hours'
+        )),
         jsonb_build_object(
             'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
             'kind', 'virtual',
@@ -201,7 +335,7 @@ select is(
             'name', 'Started Session Updated',
             'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS')
         ),
-        '{"timezone": "UTC"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "UTC"}'::jsonb),
         '{"timezone": "UTC"}'::jsonb
     ),
     true,
@@ -211,14 +345,14 @@ select is(
 -- Started session meeting disabled after being enabled still triggers deletion
 select is(
     is_session_meeting_in_sync(
-        jsonb_build_object(
-            'ends_at', floor(extract(epoch from current_timestamp - interval '1 hour')),
+        jsonb_populate_record(null::session, jsonb_build_object(
+            'ends_at', current_timestamp - interval '1 hour',
             'meeting_in_sync', true,
             'meeting_requested', true,
             'name', 'Started Session',
             'session_kind_id', 'virtual',
-            'starts_at', floor(extract(epoch from current_timestamp - interval '2 hours'))
-        ),
+            'starts_at', current_timestamp - interval '2 hours'
+        )),
         jsonb_build_object(
             'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
             'kind', 'virtual',
@@ -226,7 +360,7 @@ select is(
             'name', 'Started Session',
             'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS')
         ),
-        '{"timezone": "UTC"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "UTC"}'::jsonb),
         '{"timezone": "UTC"}'::jsonb
     ),
     false,
@@ -236,14 +370,14 @@ select is(
 -- Started pending session remains out of sync
 select is(
     is_session_meeting_in_sync(
-        jsonb_build_object(
-            'ends_at', floor(extract(epoch from current_timestamp - interval '1 hour')),
+        jsonb_populate_record(null::session, jsonb_build_object(
+            'ends_at', current_timestamp - interval '1 hour',
             'meeting_in_sync', false,
             'meeting_requested', true,
             'name', 'Started Pending Session',
             'session_kind_id', 'virtual',
-            'starts_at', floor(extract(epoch from current_timestamp - interval '2 hours'))
-        ),
+            'starts_at', current_timestamp - interval '2 hours'
+        )),
         jsonb_build_object(
             'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
             'kind', 'virtual',
@@ -251,7 +385,7 @@ select is(
             'name', 'Started Pending Session Updated',
             'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS')
         ),
-        '{"timezone": "UTC"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "UTC"}'::jsonb),
         '{"timezone": "UTC"}'::jsonb
     ),
     false,
@@ -261,13 +395,13 @@ select is(
 -- Parent event recording preference change desyncs session meeting
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
@@ -275,10 +409,10 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{
+        jsonb_populate_record(null::event, '{
             "timezone": "America/New_York",
             "meeting_recording_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "timezone": "America/New_York",
             "meeting_recording_requested": false
@@ -291,13 +425,13 @@ select is(
 -- Kind change from hybrid to in-person desyncs meeting
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "hybrid",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "in-person",
@@ -305,7 +439,7 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
@@ -315,13 +449,13 @@ select is(
 -- Kind change from virtual to in-person desyncs meeting
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "in-person",
@@ -329,7 +463,7 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
@@ -339,23 +473,23 @@ select is(
 -- meeting_hosts unchanged keeps sync
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true,
-            "meeting_hosts": ["host1@example.com"]
-        }'::jsonb,
+            "meeting_hosts": ["host1@example.com", "host2@example.com"]
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true,
-            "meeting_hosts": ["host1@example.com"]
+            "meeting_hosts": ["host1@example.com", "host2@example.com"]
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     true,
@@ -365,14 +499,14 @@ select is(
 -- meeting_hosts change desyncs meeting
 select is(
     is_session_meeting_in_sync(
-        '{
+        jsonb_populate_record(null::session, '{
             "name": "Session One",
             "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
+            "starts_at": "2025-06-01T10:15:00-04:00",
+            "ends_at": "2025-06-01T10:45:00-04:00",
             "meeting_requested": true,
             "meeting_hosts": ["host1@example.com"]
-        }'::jsonb,
+        }'::jsonb),
         '{
             "name": "Session One",
             "kind": "virtual",
@@ -381,59 +515,26 @@ select is(
             "meeting_requested": true,
             "meeting_hosts": ["host1@example.com", "host2@example.com"]
         }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        jsonb_populate_record(null::event, '{"timezone": "America/New_York"}'::jsonb),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,
     'Session meeting_hosts change desyncs meeting'
 );
 
--- meeting_hosts added desyncs meeting
-select is(
-    is_session_meeting_in_sync(
-        '{
-            "name": "Session One",
-            "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
-            "meeting_requested": true
-        }'::jsonb,
-        '{
-            "name": "Session One",
-            "kind": "virtual",
-            "starts_at": "2025-06-01T10:15:00",
-            "ends_at": "2025-06-01T10:45:00",
-            "meeting_requested": true,
-            "meeting_hosts": ["host1@example.com"]
-        }'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb
-    ),
-    false,
-    'Session meeting_hosts added desyncs meeting'
-);
-
 -- Event hosts unchanged keeps sync
 select is(
     is_session_meeting_in_sync(
-        '{
-            "name": "Session One",
-            "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
-            "meeting_requested": true
-        }'::jsonb,
+        (select s from session s where s.session_id = :'hostedSessionID'),
         '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
+            "meeting_provider_id": "zoom",
             "meeting_requested": true
         }'::jsonb,
-        format(
-            '{"timezone": "America/New_York", "hosts": [{"user_id": "%s"}]}',
-            :'user1ID'
-        )::jsonb,
+        (select e from event e where e.event_id = :'hostedEventID'),
         format(
             '{"timezone": "America/New_York", "hosts": ["%s"]}',
             :'user1ID'
@@ -446,24 +547,16 @@ select is(
 -- Event hosts change desyncs session meeting
 select is(
     is_session_meeting_in_sync(
-        '{
-            "name": "Session One",
-            "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
-            "meeting_requested": true
-        }'::jsonb,
+        (select s from session s where s.session_id = :'hostedSessionID'),
         '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
+            "meeting_provider_id": "zoom",
             "meeting_requested": true
         }'::jsonb,
-        format(
-            '{"timezone": "America/New_York", "hosts": [{"user_id": "%s"}]}',
-            :'user1ID'
-        )::jsonb,
+        (select e from event e where e.event_id = :'hostedEventID'),
         format(
             '{"timezone": "America/New_York", "hosts": ["%s"]}',
             :'user2ID'
@@ -476,29 +569,20 @@ select is(
 -- Session speakers unchanged keeps sync
 select is(
     is_session_meeting_in_sync(
-        format(
-            '{
-            "name": "Session One",
-            "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
-            "meeting_requested": true,
-            "speakers": [{"user_id": "%s", "featured": false}]
-        }',
-            :'user1ID'
-        )::jsonb,
+        (select s from session s where s.session_id = :'spokenSessionID'),
         format(
             '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
+            "meeting_provider_id": "zoom",
             "meeting_requested": true,
             "speakers": [{"user_id": "%s", "featured": false}]
         }',
             :'user1ID'
         )::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        (select e from event e where e.event_id = :'spokenEventID'),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     true,
@@ -508,29 +592,20 @@ select is(
 -- Session speakers change desyncs meeting
 select is(
     is_session_meeting_in_sync(
-        format(
-            '{
-            "name": "Session One",
-            "session_kind_id": "virtual",
-            "starts_at": 1748787300,
-            "ends_at": 1748789100,
-            "meeting_requested": true,
-            "speakers": [{"user_id": "%s", "featured": false}]
-        }',
-            :'user1ID'
-        )::jsonb,
+        (select s from session s where s.session_id = :'spokenSessionID'),
         format(
             '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
+            "meeting_provider_id": "zoom",
             "meeting_requested": true,
             "speakers": [{"user_id": "%s", "featured": false}]
         }',
             :'user2ID'
         )::jsonb,
-        '{"timezone": "America/New_York"}'::jsonb,
+        (select e from event e where e.event_id = :'spokenEventID'),
         '{"timezone": "America/New_York"}'::jsonb
     ),
     false,

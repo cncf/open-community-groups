@@ -12,52 +12,29 @@ create or replace function prepare_event_checkout_purchase(
 )
 returns jsonb as $$
 declare
-    v_admission_offer_expires_at timestamptz;
-    v_admission_offer_snapshot_amount_minor bigint;
-    v_admission_offer_snapshot_currency_code text;
-    v_admission_offer_snapshot_discount_amount_minor bigint;
-    v_admission_offer_snapshot_discount_code text;
-    v_admission_offer_snapshot_event_discount_code_id uuid;
-    v_admission_offer_snapshot_ticket_title text;
-    v_admission_offer_source text;
-    v_admission_offer_status text;
+    v_admission_offer admission_offer;
     v_cached_performance_location_fingerprint text;
     v_cached_product_fingerprint text;
     v_cached_provider_tax_location_id text;
     v_cached_provider_tax_product_id text;
     v_charge_model text;
-    v_community_display_name text;
-    v_community_name text;
+    v_community community;
+    v_context record;
     v_currency_code text;
     v_discount_amount_minor bigint;
+    v_event event;
     v_event_discount_code_id uuid;
-    v_event_external_payment_instructions text;
-    v_event_external_payment_url text;
-    v_event_external_payment_window_hours int;
-    v_event_name text;
-    v_event_registration_ends_at timestamptz;
-    v_event_registration_starts_at timestamptz;
-    v_event_slug text;
-    v_event_starts_at timestamptz;
-    v_event_timezone text;
-    v_existing_purchase_id uuid;
-    v_existing_purchase_matches_selection boolean;
-    v_existing_purchase_status text;
+    v_existing_purchase record;
     v_final_amount_minor bigint;
-    v_group_name text;
-    v_group_slug text;
-    v_group_slug_pretty text;
+    v_group "group";
     v_hold_expires_at timestamptz := current_timestamp + interval '15 minutes';
     v_is_external_paid boolean := false;
-    v_manual_tax_rate_ids text[];
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
-    v_provisional_platform_fee_amount_minor bigint;
+    v_offer_pricing record;
     v_purchase_id uuid;
     v_recipient jsonb;
-    v_registration_questions jsonb;
+    v_route_summary jsonb;
     v_seller_snapshot jsonb;
-    v_tax_behavior text;
-    v_tax_calculation_mode text;
     v_theme jsonb;
     v_ticket_title text;
     v_use_offer_snapshot boolean := false;
@@ -71,10 +48,18 @@ begin
 
     -- Lock the event first to keep a consistent event -> purchase -> attendee
     -- lock order with attend_event, then validate its current state
-    v_currency_code := prepare_event_checkout_validate_event(
-        p_community_id,
-        p_event_id
-    );
+    v_event := prepare_event_checkout_validate_event(p_community_id, p_event_id);
+    v_currency_code := v_event.payment_currency_code;
+
+    -- Report stale ticket selections before reconciliation scopes to the tier
+    if not exists (
+        select 1
+        from event_ticket_type ett
+        where ett.event_id = p_event_id
+        and ett.event_ticket_type_id = p_event_ticket_type_id
+    ) then
+        return jsonb_build_object('conflict', 'ticket-type-unavailable');
+    end if;
 
     -- Reconcile the selected tier before direct checkout can reserve capacity
     perform reconcile_event_enrollment(
@@ -86,77 +71,31 @@ begin
     -- Serialize this attendee after the event and ticket-tier locks
     perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(p_user_id::text));
 
-    -- Load the route and recipient details needed by the checkout provider
-    select
-        c.display_name,
-        c.name,
-        e.external_payment_instructions,
-        e.external_payment_url,
-        e.external_payment_window_hours,
-        e.manual_tax_rate_ids,
-        e.name,
-        e.registration_ends_at,
-        e.registration_questions,
-        e.registration_starts_at,
-        e.slug,
-        e.starts_at,
-        e.tax_behavior,
-        e.tax_calculation_mode,
-        e.timezone,
-        event_venue_snapshot(e),
-        g.name,
-        g.slug,
-        g.slug_pretty,
-        g.payment_recipient
-    into
-        v_community_display_name,
-        v_community_name,
-        v_event_external_payment_instructions,
-        v_event_external_payment_url,
-        v_event_external_payment_window_hours,
-        v_manual_tax_rate_ids,
-        v_event_name,
-        v_event_registration_ends_at,
-        v_registration_questions,
-        v_event_registration_starts_at,
-        v_event_slug,
-        v_event_starts_at,
-        v_tax_behavior,
-        v_tax_calculation_mode,
-        v_event_timezone,
-        v_venue_snapshot,
-        v_group_name,
-        v_group_slug,
-        v_group_slug_pretty,
-        v_recipient
-    from event e
-    join "group" g on g.group_id = e.group_id
-    join community c on c.community_id = g.community_id
-    where e.event_id = p_event_id
-    and g.community_id = p_community_id;
+    -- Load the group and community details needed by the checkout provider
+    select *
+    into v_context
+    from load_checkout_context(p_event_id);
+    v_community := v_context.community_row;
+    v_group := v_context.group_row;
+    v_recipient := v_group.payment_recipient;
+    v_venue_snapshot := event_venue_snapshot(v_event);
+    v_route_summary := jsonb_build_object(
+        'community_display_name', v_community.display_name,
+        'community_name', v_community.name,
+        'event_id', p_event_id,
+        'event_name', v_event.name,
+        'event_slug', v_event.slug,
+        'event_starts_at', epoch_seconds(v_event.starts_at),
+        'event_timezone', v_event.timezone,
+        'group_name', v_group.name,
+        'group_slug', v_group.slug,
+        'group_slug_pretty', v_group.slug_pretty
+    );
 
     -- Lock and validate the owned offer before selecting or reusing a purchase
     if p_admission_offer_id is not null then
-        select
-            ao.amount_minor,
-            ao.currency_code,
-            ao.discount_amount_minor,
-            ao.discount_code,
-            ao.event_discount_code_id,
-            ao.expires_at,
-            ao.source,
-            ao.status,
-            ao.ticket_title
-        into
-            v_admission_offer_snapshot_amount_minor,
-            v_admission_offer_snapshot_currency_code,
-            v_admission_offer_snapshot_discount_amount_minor,
-            v_admission_offer_snapshot_discount_code,
-            v_admission_offer_snapshot_event_discount_code_id,
-            v_admission_offer_expires_at,
-            v_admission_offer_source,
-            v_admission_offer_status,
-            v_admission_offer_snapshot_ticket_title
+        select ao.*
+        into v_admission_offer
         from admission_offer ao
         where ao.admission_offer_id = p_admission_offer_id
         and ao.event_id = p_event_id
@@ -166,38 +105,35 @@ begin
 
         -- Reject missing, inactive, or expired admission offers
         if not found
-           or not admission_offer_is_active(v_admission_offer_status)
+           or not admission_offer_is_active(v_admission_offer.status)
            or (
-                v_admission_offer_expires_at is not null
-                and v_admission_offer_expires_at <= current_timestamp
+                v_admission_offer.expires_at is not null
+                and v_admission_offer.expires_at <= current_timestamp
            ) then
             return jsonb_build_object('conflict', 'admission-offer-unavailable');
         end if;
 
         -- Freeze in-progress holds and prior discounted claims
         v_use_offer_snapshot :=
-            v_admission_offer_snapshot_amount_minor is not null
+            v_admission_offer.amount_minor is not null
             and (
-                v_admission_offer_status = 'checkout_pending'
-                or v_admission_offer_snapshot_discount_code is not null
+                v_admission_offer.status = 'checkout_pending'
+                or v_admission_offer.discount_code is not null
             );
 
         -- Honor the immutable pricing snapshot for frozen offer claims
         if v_use_offer_snapshot then
+            select *
+            into v_offer_pricing
+            from prepare_event_checkout_resolve_offer_pricing(v_admission_offer, v_normalized_discount_code);
+
             -- Reject attempts to replace the snapshotted discount code
-            if v_normalized_discount_code is not null
-               and upper(nullif(btrim(v_admission_offer_snapshot_discount_code), ''))
-                   is distinct from v_normalized_discount_code then
-                return jsonb_build_object(
-                    'conflict',
-                    'admission-offer-price-locked'
-                );
+            if v_offer_pricing.price_locked then
+                return jsonb_build_object('conflict', 'admission-offer-price-locked');
             end if;
 
             -- Omitted codes reuse the immutable offer pricing snapshot
-            v_normalized_discount_code := upper(
-                nullif(btrim(v_admission_offer_snapshot_discount_code), '')
-            );
+            v_normalized_discount_code := v_offer_pricing.discount_code;
         end if;
     end if;
 
@@ -214,14 +150,8 @@ begin
     end if;
 
     -- Reuse an equivalent purchase or return an active completed purchase
-    select
-        event_purchase_id,
-        matches_selection,
-        status
-    into
-        v_existing_purchase_id,
-        v_existing_purchase_matches_selection,
-        v_existing_purchase_status
+    select *
+    into v_existing_purchase
     from prepare_event_checkout_find_existing_purchase(
         p_event_id,
         p_event_ticket_type_id,
@@ -231,60 +161,50 @@ begin
     );
 
     -- Return completed or selection-compatible purchases without replacing them
-    if found then
-        -- Reuse terminal purchases or pending purchases with the same selection
-        if v_existing_purchase_status <> 'pending'
-           or v_existing_purchase_matches_selection then
-            -- Refresh questionnaire answers before returning a reused pending checkout
-            if v_existing_purchase_status = 'pending' then
-                -- Reject attendee states that checkout completion cannot confirm
-                perform prepare_event_checkout_validate_attendee_state(p_event_id, p_user_id);
+    if found
+       and (
+            v_existing_purchase.status <> 'pending'
+            or v_existing_purchase.matches_selection
+       ) then
+        -- Refresh questionnaire answers before returning a reused pending checkout
+        if v_existing_purchase.status = 'pending' then
+            -- Reject attendee states that checkout completion cannot confirm
+            perform prepare_event_checkout_validate_attendee_state(p_event_id, p_user_id);
 
-                perform upsert_pending_registration_answers(
-                    p_event_id,
-                    p_user_id,
-                    v_registration_questions,
-                    p_registration_answers
-                );
-            end if;
-
-            return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id)
-                || jsonb_build_object(
-                    'community_display_name', v_community_display_name,
-                    'community_name', v_community_name,
-                    'event_id', p_event_id,
-                    'event_name', v_event_name,
-                    'event_slug', v_event_slug,
-                    'event_starts_at', epoch_seconds(v_event_starts_at),
-                    'event_timezone', v_event_timezone,
-                    'group_name', v_group_name,
-                    'group_slug', v_group_slug,
-                    'group_slug_pretty', v_group_slug_pretty
-                );
+            perform upsert_pending_registration_answers(
+                p_event_id,
+                p_user_id,
+                v_event.registration_questions,
+                p_registration_answers
+            );
         end if;
+
+        return prepare_event_checkout_get_purchase_summary(v_existing_purchase.event_purchase_id)
+            || v_route_summary;
     end if;
 
     -- Reject new or replacement checkout holds outside the registration window
     if p_admission_offer_id is null
        and not is_registration_window_open(
-            v_event_registration_starts_at,
-            v_event_registration_ends_at,
-            v_event_starts_at
+            v_event.registration_starts_at,
+            v_event.registration_ends_at,
+            v_event.starts_at
         ) then
         raise exception 'event registration is not open' using errcode = 'OCG01';
     end if;
 
-    -- Resolve pricing without rolling back queue reconciliation on sold-out conflicts
     -- Use the immutable snapshot for a frozen offer claim
     if v_use_offer_snapshot then
-        v_currency_code := v_admission_offer_snapshot_currency_code;
-        v_discount_amount_minor := v_admission_offer_snapshot_discount_amount_minor;
-        v_event_discount_code_id := v_admission_offer_snapshot_event_discount_code_id;
-        v_final_amount_minor := v_admission_offer_snapshot_amount_minor;
-        v_ticket_title := v_admission_offer_snapshot_ticket_title;
-    -- Resolve current ticket pricing for pending offers and direct checkout
+        v_currency_code := v_offer_pricing.currency_code;
+        v_discount_amount_minor := v_offer_pricing.discount_amount_minor;
+        v_event_discount_code_id := v_offer_pricing.event_discount_code_id;
+        v_final_amount_minor := v_offer_pricing.final_amount_minor;
+        v_ticket_title := v_offer_pricing.ticket_title;
+
+    -- Resolve current ticket pricing for pending offers and direct checkout,
+    -- translating expected failures into stable conflicts without rolling
+    -- back the queue reconciliation
     else
-        -- Translate live pricing outcomes into stable checkout conflicts
         begin
             select
                 discount_amount_minor,
@@ -311,48 +231,29 @@ begin
                     return jsonb_build_object('conflict', 'admission-offer-unavailable');
                 -- Fall back to a stored offer snapshot when live pricing is gone
                 elsif sqlerrm = 'ticket type does not have an active price window' then
-                    -- Use stored approval and organizer-invitation snapshots
-                    if p_admission_offer_id is not null
-                       and v_admission_offer_snapshot_amount_minor is not null
-                       and v_admission_offer_source in (
-                            'approval',
-                            'organizer_invitation'
-                       ) then
-                        -- Reject attempts to replace the snapshotted discount code
-                        if v_normalized_discount_code is not null
-                           and upper(
-                                nullif(
-                                    btrim(v_admission_offer_snapshot_discount_code),
-                                    ''
-                                )
-                           ) is distinct from v_normalized_discount_code then
-                            return jsonb_build_object(
-                                'conflict',
-                                'admission-offer-price-locked'
-                            );
-                        end if;
-
-                        -- Omitted codes reuse the stored offer pricing snapshot
-                        v_normalized_discount_code := upper(
-                            nullif(
-                                btrim(v_admission_offer_snapshot_discount_code),
-                                ''
-                            )
-                        );
-                        v_currency_code := v_admission_offer_snapshot_currency_code;
-                        v_discount_amount_minor :=
-                            v_admission_offer_snapshot_discount_amount_minor;
-                        v_event_discount_code_id :=
-                            v_admission_offer_snapshot_event_discount_code_id;
-                        v_final_amount_minor := v_admission_offer_snapshot_amount_minor;
-                        v_ticket_title := v_admission_offer_snapshot_ticket_title;
                     -- Report ticket types without an active price or stored snapshot
-                    else
-                        return jsonb_build_object(
-                            'conflict',
-                            'ticket-type-price-unavailable'
-                        );
+                    if p_admission_offer_id is null
+                       or v_admission_offer.amount_minor is null
+                       or v_admission_offer.source not in ('approval', 'organizer_invitation') then
+                        return jsonb_build_object('conflict', 'ticket-type-price-unavailable');
                     end if;
+
+                    -- Use stored approval and organizer-invitation snapshots
+                    select *
+                    into v_offer_pricing
+                    from prepare_event_checkout_resolve_offer_pricing(v_admission_offer, v_normalized_discount_code);
+
+                    -- Reject attempts to replace the snapshotted discount code
+                    if v_offer_pricing.price_locked then
+                        return jsonb_build_object('conflict', 'admission-offer-price-locked');
+                    end if;
+
+                    v_currency_code := v_offer_pricing.currency_code;
+                    v_discount_amount_minor := v_offer_pricing.discount_amount_minor;
+                    v_event_discount_code_id := v_offer_pricing.event_discount_code_id;
+                    v_final_amount_minor := v_offer_pricing.final_amount_minor;
+                    v_normalized_discount_code := v_offer_pricing.discount_code;
+                    v_ticket_title := v_offer_pricing.ticket_title;
                 -- Report inactive ticket types
                 elsif sqlerrm = 'ticket type is not active' then
                     return jsonb_build_object('conflict', 'ticket-type-inactive');
@@ -362,22 +263,11 @@ begin
                     'ticket type not found'
                 ) then
                     return jsonb_build_object('conflict', 'ticket-type-unavailable');
-                -- Report exhausted ticket inventory
-                elsif sqlerrm = 'ticket type is sold out' then
+                -- Report exhausted ticket inventory and queued-user priority over direct checkout
+                elsif sqlerrm in ('ticket type is sold out', 'ticket type has queued users') then
                     return jsonb_build_object('conflict', 'ticket-type-sold-out');
-                -- Preserve queued-user priority over direct checkout
-                elsif sqlerrm = 'ticket type has queued users' then
-                    return jsonb_build_object('conflict', 'ticket-type-sold-out');
-                end if;
-
-                -- Propagate unexpected pricing failures after the known conflicts
-                if sqlerrm <> 'ticket type does not have an active price window'
-                   or p_admission_offer_id is null
-                   or v_admission_offer_snapshot_amount_minor is null
-                   or v_admission_offer_source not in (
-                        'approval',
-                        'organizer_invitation'
-                   ) then
+                -- Propagate unexpected pricing failures
+                else
                     raise;
                 end if;
         end;
@@ -386,7 +276,7 @@ begin
     -- Require payment configuration only when the final amount needs a provider
     if v_final_amount_minor > 0 then
         -- Never fall through to Stripe for events marked with an external payment URL
-        if v_event_external_payment_url is not null then
+        if v_event.external_payment_url is not null then
             -- Reject new external holds when the group is no longer eligible
             if not is_event_external_payments_ready(p_event_id) then
                 return jsonb_build_object('conflict', 'payment-setup-unavailable');
@@ -398,7 +288,7 @@ begin
 
             -- Compute the organizer-confirmation deadline once at hold creation
             select least(
-                coalesce(v_event_external_payment_window_hours, cfg.default_payment_window_hours),
+                coalesce(v_event.external_payment_window_hours, cfg.default_payment_window_hours),
                 cfg.max_payment_window_hours
             )
             into v_window_hours
@@ -415,11 +305,11 @@ begin
                 case
                     -- Cap direct checkout by the public registration window
                     when p_admission_offer_id is null then
-                        coalesce(v_event_registration_ends_at, 'infinity'::timestamptz)
+                        coalesce(v_event.registration_ends_at, 'infinity'::timestamptz)
                     -- Invitation and approval claims skip the public registration window
                     else 'infinity'::timestamptz
                 end,
-                coalesce(v_event_starts_at, 'infinity'::timestamptz)
+                coalesce(v_event.starts_at, 'infinity'::timestamptz)
             );
 
             -- Reject holds that would expire immediately
@@ -448,6 +338,7 @@ begin
     -- Retain the configured currency for discounted-to-zero purchases
     elsif v_discount_amount_minor > 0 then
         v_charge_model := 'ocg-free';
+
         -- Discounted-to-zero purchases retain the event currency snapshot
         if v_currency_code is null then
             return jsonb_build_object('conflict', 'payment-setup-unavailable');
@@ -468,8 +359,8 @@ begin
         v_recipient := null;
     end if;
 
-    -- Snapshot the immutable seller and selected manual-rate components
-    if v_final_amount_minor > 0 and not v_is_external_paid then
+    -- Snapshot the immutable seller and reuse cached automatic-tax resources for Stripe purchases
+    if v_charge_model = 'direct-charge' then
         v_seller_snapshot := jsonb_build_object(
             'connected_account_id', v_recipient->>'recipient_id',
             'display_name', v_recipient->>'seller_display_name',
@@ -477,53 +368,25 @@ begin
         );
 
         -- Reuse immutable automatic-tax resources within the seller account
-        if v_tax_calculation_mode = 'automatic' then
-            v_cached_performance_location_fingerprint := encode(
-                digest(
-                    convert_to(v_venue_snapshot->>'address', 'UTF8') || decode('00', 'hex')
-                    || convert_to(v_venue_snapshot->>'city', 'UTF8') || decode('00', 'hex')
-                    || convert_to(v_venue_snapshot->>'country_code', 'UTF8') || decode('00', 'hex')
-                    || convert_to(v_venue_snapshot->>'name', 'UTF8') || decode('00', 'hex')
-                    || convert_to(coalesce(v_venue_snapshot->>'state_code', ''), 'UTF8')
-                        || decode('00', 'hex')
-                    || convert_to(v_venue_snapshot->>'zip_code', 'UTF8') || decode('00', 'hex'),
-                    'sha256'
-                ),
-                'hex'
+        if v_event.tax_calculation_mode = 'automatic' then
+            select *
+            into
+                v_cached_performance_location_fingerprint,
+                v_cached_product_fingerprint,
+                v_cached_provider_tax_location_id,
+                v_cached_provider_tax_product_id
+            from prepare_event_checkout_lookup_tax_cache(
+                p_configured_provider,
+                v_recipient->>'recipient_id',
+                v_venue_snapshot,
+                v_ticket_title
             );
-
-            select pptl.provider_tax_location_id
-            into v_cached_provider_tax_location_id
-            from payment_provider_tax_location pptl
-            where pptl.payment_provider_id = p_configured_provider
-            and pptl.connected_seller_id = v_recipient->>'recipient_id'
-            and pptl.fingerprint = v_cached_performance_location_fingerprint;
-
-            -- Reuse a cached ticket product for the resolved performance location
-            if v_cached_provider_tax_location_id is not null then
-                v_cached_product_fingerprint := encode(
-                    digest(
-                        convert_to(left(v_ticket_title, 250), 'UTF8') || decode('00', 'hex')
-                        || convert_to(v_cached_provider_tax_location_id, 'UTF8') || decode('00', 'hex')
-                        || convert_to('txcd_50013001', 'UTF8') || decode('00', 'hex'),
-                        'sha256'
-                    ),
-                    'hex'
-                );
-
-                select pptp.provider_tax_product_id
-                into v_cached_provider_tax_product_id
-                from payment_provider_tax_product pptp
-                where pptp.payment_provider_id = p_configured_provider
-                and pptp.connected_seller_id = v_recipient->>'recipient_id'
-                and pptp.fingerprint = v_cached_product_fingerprint;
-            end if;
         end if;
     end if;
 
     -- Release any replaced pending selection before creating the new hold
-    if v_existing_purchase_id is not null and v_existing_purchase_status = 'pending' then
-        perform prepare_event_checkout_expire_previous_hold(v_existing_purchase_id);
+    if v_existing_purchase.event_purchase_id is not null and v_existing_purchase.status = 'pending' then
+        perform prepare_event_checkout_expire_previous_hold(v_existing_purchase.event_purchase_id);
     end if;
 
     -- Snapshot the pending offer claim and move its reservation into checkout
@@ -532,12 +395,12 @@ begin
         if not v_is_external_paid then
             v_hold_expires_at := least(
                 v_hold_expires_at,
-                coalesce(v_admission_offer_expires_at, 'infinity'::timestamptz)
+                coalesce(v_admission_offer.expires_at, 'infinity'::timestamptz)
             );
         end if;
 
         -- Replace the issue snapshot with the claimed price on first checkout
-        if v_admission_offer_status = 'pending' then
+        if v_admission_offer.status = 'pending' then
             update admission_offer
             set
                 amount_minor = v_final_amount_minor,
@@ -585,7 +448,7 @@ begin
     perform upsert_pending_registration_answers(
         p_event_id,
         p_user_id,
-        v_registration_questions,
+        v_event.registration_questions,
         p_registration_answers
     );
 
@@ -594,15 +457,9 @@ begin
         perform prepare_event_checkout_reserve_discount_code_availability(v_event_discount_code_id);
     end if;
 
-    -- Snapshot the platform fee deducted from the group's proceeds, rounding down
-    v_provisional_platform_fee_amount_minor := case
-        -- External purchases never collect a platform fee
-        when v_is_external_paid then 0
-        -- Stripe purchases apply the configured basis-point fee
-        else (v_final_amount_minor * p_platform_fee_bps) / 10000
-    end;
-
-    -- Insert the new pending purchase and return the attendee-facing summary
+    -- Insert the new pending purchase, snapshotting provider settings for
+    -- Stripe purchases only and deducting the platform fee (rounded down)
+    -- from the group's proceeds
     insert into event_purchase (
         admission_offer_id,
         amount_minor,
@@ -646,7 +503,7 @@ begin
         v_hold_expires_at,
         case
             -- Snapshot manual Tax Rate identifiers for Stripe purchases
-            when v_charge_model = 'direct-charge' then v_manual_tax_rate_ids
+            when v_charge_model = 'direct-charge' then v_event.manual_tax_rate_ids
         end,
         case
             -- Snapshot the payment provider for Stripe purchases
@@ -664,19 +521,24 @@ begin
         end,
         case
             -- Classify automatic-tax Stripe purchases as professional event admission
-            when v_charge_model = 'direct-charge' and v_tax_calculation_mode = 'automatic'
+            when v_charge_model = 'direct-charge' and v_event.tax_calculation_mode = 'automatic'
                 then 'txcd_50013001'
         end,
-        v_provisional_platform_fee_amount_minor,
+        case
+            -- External purchases never collect a platform fee
+            when v_is_external_paid then 0
+            -- Stripe purchases apply the configured basis-point fee
+            else (v_final_amount_minor * p_platform_fee_bps) / 10000
+        end,
         v_seller_snapshot,
         'pending',
         case
             -- Snapshot the tax display behavior for Stripe purchases
-            when v_charge_model = 'direct-charge' then v_tax_behavior
+            when v_charge_model = 'direct-charge' then v_event.tax_behavior
         end,
         case
             -- Snapshot the tax calculation mode for Stripe purchases
-            when v_charge_model = 'direct-charge' then v_tax_calculation_mode
+            when v_charge_model = 'direct-charge' then v_event.tax_calculation_mode
         end,
         case
             -- Snapshot the admission tax classification for Stripe purchases
@@ -706,14 +568,14 @@ begin
                 'dashboard_url', '/dashboard/user?tab=events',
                 'deadline', epoch_seconds(v_hold_expires_at),
                 'event_id', p_event_id,
-                'event_name', v_event_name,
+                'event_name', v_event.name,
                 'event_purchase_id', v_purchase_id,
-                'external_payment_instructions', v_event_external_payment_instructions,
-                'external_payment_url', v_event_external_payment_url,
-                'group_name', v_group_name,
+                'external_payment_instructions', v_event.external_payment_instructions,
+                'external_payment_url', v_event.external_payment_url,
+                'group_name', v_group.name,
                 'theme', v_theme,
                 'ticket_title', v_ticket_title,
-                'timezone', v_event_timezone
+                'timezone', v_event.timezone
             )),
             '[]'::jsonb,
             array[p_user_id]
@@ -722,21 +584,9 @@ begin
 
     -- Return the pending purchase summary used by the checkout flow
     return prepare_event_checkout_get_purchase_summary(v_purchase_id)
-        || jsonb_build_object(
-            'community_display_name', v_community_display_name,
-            'community_name', v_community_name,
-            'event_id', p_event_id,
-            'event_name', v_event_name,
-            'event_slug', v_event_slug,
-            'event_starts_at', epoch_seconds(v_event_starts_at),
-            'event_timezone', v_event_timezone,
-            'group_name', v_group_name,
-            'group_slug', v_group_slug,
-            'group_slug_pretty', v_group_slug_pretty
-        )
+        || v_route_summary
         || jsonb_strip_nulls(jsonb_build_object(
-            'cached_performance_location_fingerprint',
-                v_cached_performance_location_fingerprint,
+            'cached_performance_location_fingerprint', v_cached_performance_location_fingerprint,
             'cached_product_fingerprint', v_cached_product_fingerprint,
             'cached_provider_tax_location_id', v_cached_provider_tax_location_id,
             'cached_provider_tax_product_id', v_cached_provider_tax_product_id

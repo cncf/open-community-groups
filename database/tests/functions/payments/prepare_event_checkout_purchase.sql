@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(78);
+select plan(80);
 
 -- ============================================================================
 -- VARIABLES
@@ -106,6 +106,7 @@ select plan(78);
 \set soldOutPurchaseID '79100000-0000-0000-0000-000000000021'
 \set soldOutTicketTypeID '79100000-0000-0000-0000-000000000008'
 \set soldOutUserID '79100000-0000-0000-0000-000000000029'
+\set staleTicketUserID '79100000-0000-0000-0000-0000000000a1'
 \set ticketTypeAID '79100000-0000-0000-0000-000000000006'
 \set ticketTypeBID '79100000-0000-0000-0000-000000000007'
 \set unavailableDiscountUserID '79100000-0000-0000-0000-000000000026'
@@ -218,6 +219,7 @@ select fx_user(:'redeemedUserID');
 select fx_user(:'soldOutHolderUserID');
 select fx_user(:'soldOutPendingUserID');
 select fx_user(:'soldOutUserID');
+select fx_user(:'staleTicketUserID');
 select fx_user(:'unavailableDiscountUserID');
 select fx_user(:'underMinimumUserID');
 select fx_group(:'freeGroupID', :'communityID', :'groupCategoryID');
@@ -2285,6 +2287,32 @@ select is(
     ),
     '{"conflict":"ticket-type-inactive"}'::jsonb,
     'Should return a typed conflict for an inactive ticket type'
+);
+
+-- Should return a typed conflict for a ticket type owned by another event
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'mainEventID'::uuid,
+        :'freeTicketTypeID'::uuid,
+        :'staleTicketUserID'::uuid,
+        null,
+        'stripe'
+    ),
+    '{"conflict":"ticket-type-unavailable"}'::jsonb,
+    'Should return a typed conflict for a ticket type owned by another event'
+);
+
+-- Should not create a purchase for a ticket type owned by another event
+select is(
+    (
+        select count(*)::int
+        from event_purchase ep
+        where ep.event_id = :'mainEventID'::uuid
+        and ep.user_id = :'staleTicketUserID'::uuid
+    ),
+    0,
+    'Should not create a purchase for a ticket type owned by another event'
 );
 
 -- Should return a typed conflict when a ticket type has no current price

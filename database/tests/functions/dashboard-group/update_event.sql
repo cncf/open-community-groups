@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(52);
+select plan(54);
 
 -- ============================================================================
 -- VARIABLES
@@ -49,6 +49,7 @@ select plan(52);
 \set eventPaidToPaidID '3a390000-0000-0000-0000-000000000025'
 \set eventPaidToPaidPriceWindowID '3a390000-0000-0000-0000-000000000030'
 \set eventPaidToPaidTicketTypeID '3a390000-0000-0000-0000-000000000031'
+\set eventSessionHostsID '3a390000-0000-0000-0000-000000000064'
 \set eventTestFreeToPaidID '3a390000-0000-0000-0000-000000000032'
 \set eventTestFreeToPaidPriceWindowID '3a390000-0000-0000-0000-000000000033'
 \set eventTestFreeToPaidTicketTypeID '3a390000-0000-0000-0000-000000000034'
@@ -64,6 +65,7 @@ select plan(52);
 \set label2ID '3a390000-0000-0000-0000-000000000012'
 \set label3ID '3a390000-0000-0000-0000-000000000013'
 \set label4ID '3a390000-0000-0000-0000-000000000014'
+\set sessionHostsID '3a390000-0000-0000-0000-000000000065'
 \set sponsorNewID '3a390000-0000-0000-0000-000000000015'
 \set sponsorOrigID '3a390000-0000-0000-0000-000000000016'
 \set user1ID '3a390000-0000-0000-0000-000000000009'
@@ -220,6 +222,15 @@ select fx_event(:'event4ID', :'group1ID', :'category1ID', jsonb_build_object(
     'timezone', 'America/New_York'
 ));
 
+-- Event with a synced session meeting used for host change checks
+select fx_event(:'eventSessionHostsID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', '2030-03-01 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Session Hosts Event',
+    'starts_at', '2030-03-01 10:00:00+00',
+    'timezone', 'UTC'
+));
+
 -- Published event used for reminder evaluation checks
 select fx_event(:'event10ID', :'group1ID', :'category1ID', jsonb_build_object(
     'ends_at', current_timestamp + interval '2 days 2 hours',
@@ -294,6 +305,9 @@ values (:'event10ID', :'user1ID');
 insert into event_attendee (event_id, user_id)
 values (:'eventWaitlistWindowID', :'user2ID');
 
+-- Initial host of the session hosts event
+insert into event_host (event_id, user_id) values (:'eventSessionHostsID', :'user1ID');
+
 -- Every update fixture uses the unified ticket inventory
 select fx_event_ticket_type(
     case e.event_id
@@ -355,6 +369,29 @@ select
     ),
     :'waitlistUserID',
     current_timestamp - interval '30 minutes';
+
+-- Session whose provider meeting is in sync with the initial host
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionHostsID',
+    :'eventSessionHostsID',
+    'Hosted Session',
+    'virtual',
+    '2030-03-01 10:30:00+00',
+    '2030-03-01 11:00:00+00',
+    true,
+    'zoom',
+    true
+);
 
 -- Paid Stripe-shaped event on the non-external group used to prove leftover URLs clear
 select fx_event(:'eventExternalClearID', :'group1ID', :'category1ID', jsonb_build_object(
@@ -1293,6 +1330,50 @@ select is(
         }
     }'::jsonb,
     'Should set meeting_in_sync=false when meeting disabled to trigger deletion'
+);
+
+-- Should desync a session meeting when only the event hosts change
+select lives_ok(
+    format(
+        $$select update_event(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            jsonb_build_object(
+                'category_id', %L,
+                'description', 'Session hosts event',
+                'ends_at', '2030-03-01T12:00:00',
+                'hosts', jsonb_build_array(%L),
+                'kind_id', 'virtual',
+                'name', 'Session Hosts Event',
+                'sessions', jsonb_build_array(jsonb_build_object(
+                    'ends_at', '2030-03-01T11:00:00',
+                    'kind', 'virtual',
+                    'meeting_provider_id', 'zoom',
+                    'meeting_requested', true,
+                    'name', 'Hosted Session',
+                    'session_id', %L,
+                    'starts_at', '2030-03-01T10:30:00'
+                )),
+                'starts_at', '2030-03-01T10:00:00',
+                'timezone', 'UTC'
+            )
+        )$$,
+        :'user1ID',
+        :'group1ID',
+        :'eventSessionHostsID',
+        :'category1ID',
+        :'user2ID',
+        :'sessionHostsID'
+    ),
+    'Should desync a session meeting when only the event hosts change'
+);
+
+-- Should mark the unchanged session out of sync after the host change
+select is(
+    (select meeting_in_sync from session where session_id = :'sessionHostsID'::uuid),
+    false,
+    'Should mark the unchanged session out of sync after the host change'
 );
 
 -- Should clear CFS labels when payload omits cfs_labels

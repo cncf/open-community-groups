@@ -991,7 +991,7 @@ where
         event: &serde_json::Value,
     ) -> Result<bool> {
         self.fetch_scalar_one(
-            "select event_ticketing_configuration_changed(get_event_full($1::uuid, $2::uuid, $3::uuid)::jsonb, $4::jsonb)::boolean",
+            "select event_ticketing_configuration_changed($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::boolean",
             &[&community_id, &group_id, &event_id, &Json(event)],
         )
         .await

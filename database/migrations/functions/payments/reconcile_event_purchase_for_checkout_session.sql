@@ -1,4 +1,8 @@
--- Reconciles a completed provider checkout session with its local purchase.
+-- Reconciles a completed provider checkout session with its local purchase:
+-- validates and records the authoritative amounts, then either completes the
+-- purchase and confirms attendance or, when the purchase can no longer be
+-- fulfilled, queues an automatic refund. Sessions without a matching or
+-- reconcilable purchase are a noop.
 create or replace function reconcile_event_purchase_for_checkout_session(
     p_provider text,
     p_provider_object_account_id text,
@@ -11,365 +15,151 @@ create or replace function reconcile_event_purchase_for_checkout_session(
 )
 returns jsonb as $$
 declare
-    v_admission_offer_id uuid;
-    v_amount_minor bigint;
-    v_community_id uuid;
-    v_currency_code text;
-    v_event_discount_code_id uuid;
-    v_event_id uuid;
-    v_event_ticket_type_id uuid;
-    v_final_platform_fee_amount_minor bigint;
+    v_admission_offer admission_offer;
+    v_event event;
+    v_group "group";
     v_hold_expired boolean;
-    v_lock_user_id uuid;
     v_manually_invited boolean;
-    v_provider_application_fee_id text;
     v_provider_payment_reference text;
-    v_provider_total_minor bigint;
-    v_purchase_id uuid;
-    v_recovery_pending boolean;
+    v_purchase event_purchase;
     v_requires_refund boolean;
-    v_status text;
-    v_subtotal_excluding_tax_minor bigint;
-    v_tax_amount_minor bigint;
     v_unfulfillable boolean;
-    v_user_id uuid;
 begin
     -- Validate the required direct-charge provider context
     if nullif(btrim(p_provider_object_account_id), '') is null then
         raise exception 'connected seller account is required';
     end if;
 
+    -- Require the payment references a refund or charge lookup would need
     if nullif(btrim(p_provider_payment_reference), '') is null
        or nullif(btrim(p_provider_charge_id), '') is null then
         raise exception 'direct-charge payment references are required';
     end if;
 
     -- Resolve immutable enrollment identifiers before taking lifecycle locks
-    select
-        ep.admission_offer_id,
-        ep.event_id,
-        ep.event_ticket_type_id,
-        ep.user_id
-    into
-        v_admission_offer_id,
-        v_event_id,
-        v_event_ticket_type_id,
-        v_user_id
+    select ep.*
+    into v_purchase
     from event_purchase ep
     where ep.payment_provider_id = p_provider
     and ep.provider_object_account_id = p_provider_object_account_id
     and ep.provider_checkout_session_id = p_provider_session_id;
-
-    if not found then
-        return jsonb_build_object('outcome', 'noop');
-    end if;
-
-    perform 1
-    from event
-    where event_id = v_event_id
-    for update;
-
-    -- Lock ticket tiers before the enrollment rows used by reconciliation
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = v_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
-
-    -- Acquire affected event-user locks in stable order
-    for v_lock_user_id in
-        select affected_user.user_id
-        from (
-            select ao.user_id
-            from admission_offer ao
-            where ao.event_id = v_event_id
-            and admission_offer_is_active(ao.status)
-
-            union
-
-            select ep.user_id
-            from event_purchase ep
-            where ep.event_id = v_event_id
-            and ep.status = 'pending'
-
-            union
-
-            select ew.user_id
-            from event_waitlist ew
-            where ew.event_id = v_event_id
-
-            union
-
-            select v_user_id
-        ) affected_user
-        order by affected_user.user_id
-    loop
-        perform pg_advisory_xact_lock(
-            hashtext(v_event_id::text),
-            hashtext(v_lock_user_id::text)
-        );
-    end loop;
-
-    -- Lock active offers and pending purchases in stable identifier order
-    perform 1
-    from admission_offer ao
-    where ao.event_id = v_event_id
-    and admission_offer_is_active(ao.status)
-    order by ao.admission_offer_id
-    for update of ao;
-
-    perform 1
-    from event_purchase ep
-    where ep.event_id = v_event_id
-    and ep.status = 'pending'
-    order by ep.event_purchase_id
-    for update of ep;
-
-    -- Lock the purchase before deciding how to reconcile the provider checkout
-    select
-        ep.admission_offer_id,
-        ep.amount_minor,
-        g.community_id,
-        ep.currency_code,
-        ep.event_discount_code_id,
-        ep.event_id,
-        ep.hold_expires_at is not null
-            and ep.hold_expires_at <= current_timestamp,
-        coalesce(ao.source = 'organizer_invitation', false),
-        ep.provider_application_fee_id,
-        coalesce(p_provider_payment_reference, ep.provider_payment_reference),
-        p_provider_total_minor,
-        ep.event_purchase_id,
-        event_has_pending_refund_recovery(
-            ep.event_id,
-            ep.user_id,
-            ep.event_purchase_id
-        ),
-        ep.status,
-        p_provider_total_minor - p_tax_amount_minor,
-        p_tax_amount_minor,
-        e.canceled
-            or e.deleted
-            or not e.published
-            or not g.active
-            or (
-                event_effective_ends_at(e) is not null
-                and event_effective_ends_at(e) <= current_timestamp
-            )
-            or (
-                ep.admission_offer_id is not null
-                and (
-                    ao.status <> 'checkout_pending'
-                    or (
-                        ao.expires_at is not null
-                        and ao.expires_at <= current_timestamp
-                    )
-                )
-            ),
-        ep.user_id
-    into
-        v_admission_offer_id,
-        v_amount_minor,
-        v_community_id,
-        v_currency_code,
-        v_event_discount_code_id,
-        v_event_id,
-        v_hold_expired,
-        v_manually_invited,
-        v_provider_application_fee_id,
-        v_provider_payment_reference,
-        v_provider_total_minor,
-        v_purchase_id,
-        v_recovery_pending,
-        v_status,
-        v_subtotal_excluding_tax_minor,
-        v_tax_amount_minor,
-        v_unfulfillable,
-        v_user_id
-    from event_purchase ep
-    join event e on e.event_id = ep.event_id
-    join "group" g on g.group_id = e.group_id
-    left join admission_offer ao
-        on ao.admission_offer_id = ep.admission_offer_id
-    where ep.payment_provider_id = p_provider
-    and ep.provider_object_account_id = p_provider_object_account_id
-    and ep.provider_checkout_session_id = p_provider_session_id
-    for update of ep;
 
     -- Return a noop when the checkout session does not match any purchase
     if not found then
         return jsonb_build_object('outcome', 'noop');
     end if;
 
+    -- Lock the event, then the tiers, users, offers and purchases in the global order
+    select e.*
+    into v_event
+    from event e
+    where e.event_id = v_purchase.event_id
+    for update of e;
+
+    perform lock_event_enrollment_rows(v_purchase.event_id, null, v_purchase.user_id);
+
+    -- Lock the purchase before deciding how to reconcile the provider checkout
+    select ep.*
+    into v_purchase
+    from event_purchase ep
+    where ep.payment_provider_id = p_provider
+    and ep.provider_object_account_id = p_provider_object_account_id
+    and ep.provider_checkout_session_id = p_provider_session_id
+    for update of ep;
+
+    -- Return a noop when the purchase disappeared while waiting for the lock
+    if not found then
+        return jsonb_build_object('outcome', 'noop');
+    end if;
+
+    -- Load the group and linked offer that decide whether the seat can be fulfilled
+    select g.*
+    into v_group
+    from "group" g
+    where g.group_id = v_event.group_id;
+
+    -- Load the reservation the purchase claims
+    if v_purchase.admission_offer_id is not null then
+        select ao.*
+        into v_admission_offer
+        from admission_offer ao
+        where ao.admission_offer_id = v_purchase.admission_offer_id;
+    end if;
+
+    -- Derive the fulfilment facts from the locked rows
+    v_hold_expired := v_purchase.hold_expires_at is not null
+        and v_purchase.hold_expires_at <= current_timestamp;
+    v_manually_invited := coalesce(v_admission_offer.source = 'organizer_invitation', false);
+    v_provider_payment_reference := coalesce(p_provider_payment_reference, v_purchase.provider_payment_reference);
+    v_unfulfillable := not event_accepts_enrollment(v_event, v_group)
+        or (
+            v_purchase.admission_offer_id is not null
+            and (
+                v_admission_offer.status <> 'checkout_pending'
+                or (
+                    v_admission_offer.expires_at is not null
+                    and v_admission_offer.expires_at <= current_timestamp
+                )
+            )
+        );
+
     -- Ignore purchases that are already reconciled
     if not (
-        v_status in ('pending', 'refund-pending')
-        or (
-            v_status = 'expired'
-            and v_hold_expired
-        )
+        v_purchase.status in ('pending', 'refund-pending')
+        or (v_purchase.status = 'expired' and v_hold_expired)
     ) then
         return jsonb_build_object('outcome', 'noop');
     end if;
 
-    -- Validate and snapshot authoritative direct-charge financial amounts
-    if v_provider_total_minor is null
-       or v_tax_amount_minor is null
-       or v_provider_total_minor <= 0
-       or v_tax_amount_minor < 0
-       or v_subtotal_excluding_tax_minor < 0 then
-        raise exception 'direct-charge checkout is missing authoritative amounts';
-    end if;
-
-    -- Enforce the zero-tax contract for events that do not collect tax
-    if v_tax_amount_minor <> 0
-       and exists (
-            select 1
-            from event_purchase ep
-            where ep.event_purchase_id = v_purchase_id
-            and ep.tax_calculation_mode = 'none'
-       ) then
-        raise exception 'no-tax checkout must have zero tax';
-    end if;
-
-    -- Validate authoritative amounts against the snapshotted display behavior
-    if exists (
-        select 1
-        from event_purchase ep
-        where ep.event_purchase_id = v_purchase_id
-        and (
-            (
-                ep.tax_behavior = 'inclusive'
-                and v_provider_total_minor <> ep.amount_minor
-            )
-            or (
-                ep.tax_behavior = 'exclusive'
-                and v_subtotal_excluding_tax_minor <> ep.amount_minor
-            )
-        )
-    ) then
-        raise exception 'provider total does not match the ticket tax behavior';
-    end if;
-
-    select (v_subtotal_excluding_tax_minor * ep.platform_fee_bps) / 10000
-    into v_final_platform_fee_amount_minor
-    from event_purchase ep
-    where ep.event_purchase_id = v_purchase_id;
-
-    if v_provider_application_fee_id is not null
-       and p_provider_application_fee_id is not null
-       and v_provider_application_fee_id <> p_provider_application_fee_id then
-        raise exception 'provider application fee does not match the purchase';
-    end if;
-
-    -- Persist authoritative amounts and reconcile purchases with unchanged fees
-    update event_purchase
-    set
-        final_platform_fee_amount_minor = v_final_platform_fee_amount_minor,
-        financially_reconciled_at = case
-            when provisional_platform_fee_amount_minor =
-                v_final_platform_fee_amount_minor
-            then coalesce(financially_reconciled_at, current_timestamp)
-            else financially_reconciled_at
-        end,
-        provider_application_fee_id = coalesce(
-            p_provider_application_fee_id,
-            v_provider_application_fee_id
-        ),
-        provider_charge_id = p_provider_charge_id,
-        provider_total_minor = v_provider_total_minor,
-        subtotal_excluding_tax_minor = v_subtotal_excluding_tax_minor,
-        tax_amount_minor = v_tax_amount_minor,
-        updated_at = current_timestamp
-    where event_purchase_id = v_purchase_id;
-
-    -- Persist tax-related fee work before acknowledging successful payment
-    insert into event_purchase_application_fee_adjustment (
-        amount_minor,
-        event_purchase_id,
-        idempotency_key,
-        kind
-    )
-    select
-        ep.provisional_platform_fee_amount_minor
-            - v_final_platform_fee_amount_minor,
-        ep.event_purchase_id,
-        format('event-purchase-tax-fee-adjustment-%s', ep.event_purchase_id),
-        'tax-reconciliation'
-    from event_purchase ep
-    where ep.event_purchase_id = v_purchase_id
-    and ep.provisional_platform_fee_amount_minor >
-        v_final_platform_fee_amount_minor
-    on conflict (event_purchase_id, kind) do nothing;
+    -- Validate and persist the authoritative direct-charge amounts before acknowledging payment
+    perform validate_direct_charge_checkout_amounts(
+        v_purchase,
+        p_provider_total_minor,
+        p_tax_amount_minor,
+        p_provider_application_fee_id
+    );
+    perform record_direct_charge_checkout_amounts(
+        v_purchase,
+        p_provider_charge_id,
+        p_provider_application_fee_id,
+        p_provider_total_minor,
+        p_tax_amount_minor
+    );
 
     -- Reserve inventory for paid checkouts that can no longer be fulfilled
-    v_requires_refund := v_status = 'refund-pending'
+    v_requires_refund := v_purchase.status = 'refund-pending'
         or v_hold_expired
-        or v_recovery_pending
+        or event_has_pending_refund_recovery(v_purchase.event_id, v_purchase.user_id, v_purchase.event_purchase_id)
         or v_unfulfillable;
 
+    -- Require the payment reference the refund handoff needs
     if v_requires_refund and v_provider_payment_reference is null then
         raise exception 'provider payment reference is required for refund';
     end if;
 
-    if v_requires_refund and v_status <> 'refund-pending' then
-        update event_purchase
-        set
-            hold_expires_at = null,
-            provider_payment_reference = v_provider_payment_reference,
-            status = 'refund-pending',
-            updated_at = current_timestamp
-        where event_purchase_id = v_purchase_id;
-
-        if v_status = 'pending' and v_event_discount_code_id is not null then
-            perform release_event_discount_code_availability(v_event_discount_code_id);
-        end if;
-
-        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
-        v_status := 'refund-pending';
+    -- Persist the refund-pending state before reconciling the queues
+    if v_requires_refund and v_purchase.status <> 'refund-pending' then
+        perform mark_event_purchase_refund_pending(v_purchase, v_provider_payment_reference);
+        v_purchase.status := 'refund-pending';
     end if;
 
     -- Reconcile due reservations only after paid inventory remains reserved
     perform reconcile_event_enrollment(
-        v_event_id,
-        v_event_ticket_type_id,
+        v_purchase.event_id,
+        v_purchase.event_ticket_type_id,
         p_provider
     );
 
     -- Complete active holds even if public registration has closed since checkout started
     if not v_requires_refund then
         -- Complete the linked reservation before creating active attendance
-        if v_admission_offer_id is not null then
-            update admission_offer
-            set
-                status = 'completed',
-                updated_at = current_timestamp
-            where admission_offer_id = v_admission_offer_id
-            and status = 'checkout_pending';
-
-            if not found then
-                raise exception 'admission offer is no longer available';
-            end if;
+        if v_purchase.admission_offer_id is not null
+           and not complete_event_purchase_admission_offer(v_purchase.admission_offer_id) then
+            raise exception 'admission offer is no longer available';
         end if;
 
-        -- Add the attendee, reviving only checkout-compatible states
-        insert into event_attendee (event_id, user_id, manually_invited)
-        values (v_event_id, v_user_id, v_manually_invited)
-        on conflict (event_id, user_id) do update
-        set
-            attendance_canceled_at = null,
-            attendance_canceled_by_user_id = null,
-            manually_invited = excluded.manually_invited,
-            status = 'confirmed'
-        where event_attendee.status in (
-            'attendance-canceled',
-            'confirmed',
-            'invitation-canceled',
-            'registration-questions-pending'
-        );
-
-        if found then
-            -- Persist the completed purchase state after the attendee is recorded
+        -- Persist the completed purchase once the attendee is recorded
+        if confirm_event_purchase_attendee(v_purchase.event_id, v_purchase.user_id, v_manually_invited) then
             update event_purchase
             set
                 completed_at = current_timestamp,
@@ -377,14 +167,14 @@ begin
                 provider_payment_reference = v_provider_payment_reference,
                 status = 'completed',
                 updated_at = current_timestamp
-            where event_purchase_id = v_purchase_id;
+            where event_purchase_id = v_purchase.event_purchase_id;
 
             -- Return the identifiers needed by downstream notification flows
             return jsonb_build_object(
-                'community_id', v_community_id,
-                'event_id', v_event_id,
+                'community_id', v_group.community_id,
+                'event_id', v_purchase.event_id,
                 'outcome', 'completed',
-                'user_id', v_user_id
+                'user_id', v_purchase.user_id
             );
         end if;
     end if;
@@ -395,23 +185,9 @@ begin
         raise exception 'provider payment reference is required for refund';
     end if;
 
-    -- Persist the refund-pending state before the provider refund step
-    if v_status <> 'refund-pending' then
-        update event_purchase
-        set
-            hold_expires_at = null,
-                provider_payment_reference = v_provider_payment_reference,
-            status = 'refund-pending',
-            updated_at = current_timestamp
-        where event_purchase_id = v_purchase_id;
-
-        -- Release the discount reservation only when expiring a pending hold
-        if v_status = 'pending' and v_event_discount_code_id is not null then
-            perform release_event_discount_code_availability(v_event_discount_code_id);
-        end if;
-
-        -- Release the pending attendee row created for checkout answers
-        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
+    -- Persist the refund-pending state for attendees that could not be confirmed
+    if v_purchase.status <> 'refund-pending' then
+        perform mark_event_purchase_refund_pending(v_purchase, v_provider_payment_reference);
     end if;
 
     -- Queue the provider refund for workers before acknowledging the webhook
@@ -424,10 +200,10 @@ begin
         payment_provider_id,
         status
     ) values (
-        v_provider_total_minor,
-        v_currency_code,
-        v_purchase_id,
-        format('event-purchase-refund-%s', v_purchase_id),
+        p_provider_total_minor,
+        v_purchase.currency_code,
+        v_purchase.event_purchase_id,
+        format('event-purchase-refund-%s', v_purchase.event_purchase_id),
         'automatic-unfulfillable-checkout',
         p_provider,
         'provider-pending'

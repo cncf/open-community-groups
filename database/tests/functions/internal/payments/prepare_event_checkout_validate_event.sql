@@ -1,11 +1,11 @@
--- Tests validating events before checkout.
+-- Tests locking and validating events before checkout.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -96,37 +96,44 @@ select fx_event(:'openUntilStartEventID', :'validGroupID', :'eventCategoryID', j
 
 -- Should return the payment currency for a valid event context
 select is(
-    prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid),
+    (prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid)).payment_currency_code,
     'USD',
     'Should return the payment currency for a valid event context'
 );
 
+-- Should return the locked event row
+select is(
+    (prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid)).event_id,
+    :'validEventID'::uuid,
+    'Should return the locked event row'
+);
+
 -- Should allow groups without a configured payments recipient
 select is(
-    prepare_event_checkout_validate_event(
+    (prepare_event_checkout_validate_event(
         :'communityID'::uuid,
         :'missingRecipientEventID'::uuid
-    ),
+    )).payment_currency_code,
     'USD',
     'Should leave payment recipient validation until after pricing'
 );
 
 -- Should allow recipients for another provider during state validation
 select is(
-    prepare_event_checkout_validate_event(
+    (prepare_event_checkout_validate_event(
         :'communityID'::uuid,
         :'nonStripeEventID'::uuid
-    ),
+    )).payment_currency_code,
     'USD',
     'Should leave provider compatibility validation until after pricing'
 );
 
 -- Should return a null currency for intrinsically free event checkout
 select is(
-    prepare_event_checkout_validate_event(
+    (prepare_event_checkout_validate_event(
         :'communityID'::uuid,
         :'missingCurrencyEventID'::uuid
-    ),
+    )).payment_currency_code,
     null::text,
     'Should leave currency requirements until after pricing'
 );
@@ -144,20 +151,20 @@ select throws_ok(
 
 -- Should return the payment currency after an open-only registration window reaches the event start
 select is(
-    prepare_event_checkout_validate_event(
+    (prepare_event_checkout_validate_event(
         :'communityID'::uuid,
         :'openUntilStartEventID'::uuid
-    ),
+    )).payment_currency_code,
     'USD',
     'Should return the payment currency after an open-only registration window reaches the event start'
 );
 
 -- Should return unsupported currency unchanged until a paid price is resolved
 select is(
-    prepare_event_checkout_validate_event(
+    (prepare_event_checkout_validate_event(
         :'communityID'::uuid,
         :'invalidCurrencyEventID'::uuid
-    ),
+    )).payment_currency_code,
     'USDD',
     'Should leave currency validation until after pricing'
 );

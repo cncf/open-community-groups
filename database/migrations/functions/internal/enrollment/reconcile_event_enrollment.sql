@@ -1,4 +1,9 @@
--- Expires stale enrollment reservations and promotes eligible waitlist entries.
+-- Reconciles the enrollment state of an event under the global lock order:
+-- expires stale checkout holds and due admission offers, reminds external
+-- payment holders, returns abandoned checkout offers to pending and, while
+-- the event accepts public registration, promotes waitlist entries into
+-- admission offers. Returns the promoted user identifiers. A scoped ticket
+-- type limits the queues that are promoted.
 create or replace function reconcile_event_enrollment(
     p_event_id uuid,
     p_event_ticket_type_id uuid default null,
@@ -6,141 +11,30 @@ create or replace function reconcile_event_enrollment(
 )
 returns uuid[] as $$
 declare
-    v_admission_offer record;
-    v_allocated_seat_count int;
-    v_community_id uuid;
-    v_event_active boolean;
-    v_event_external_payment_instructions text;
-    v_event_external_payment_url text;
-    v_event_name text;
-    v_event_purchase record;
-    v_event_registration_open boolean;
-    v_group_id uuid;
-    v_group_name text;
-    v_group_payment_recipient jsonb;
-    v_is_simple_rsvp boolean;
-    v_offer_expires_at timestamptz;
-    v_offer_id uuid;
-    v_payment_currency_code text;
-    v_price_amount_minor bigint;
-    v_promoted_user_ids uuid[] := array[]::uuid[];
-    v_registration_ends_at timestamptz;
-    v_registration_starts_at timestamptz;
-    v_starts_at timestamptz;
+    v_event event;
+    v_group "group";
     v_theme jsonb;
-    v_ticket_type record;
-    v_timezone text;
-    v_user_id uuid;
-    v_waitlist_entry record;
 begin
     -- Lock the event before every tier and enrollment row touched below
-    select
-        g.community_id,
-        g.active = true
-            and e.canceled = false
-            and e.deleted = false
-            and e.published = true
-            and (e.starts_at is null or e.starts_at > current_timestamp),
-        e.external_payment_instructions,
-        e.external_payment_url,
-        e.name,
-        e.group_id,
-        g.name,
-        g.payment_recipient,
-        e.payment_currency_code,
-        e.registration_ends_at,
-        e.registration_starts_at,
-        e.starts_at,
-        e.timezone
-    into
-        v_community_id,
-        v_event_active,
-        v_event_external_payment_instructions,
-        v_event_external_payment_url,
-        v_event_name,
-        v_group_id,
-        v_group_name,
-        v_group_payment_recipient,
-        v_payment_currency_code,
-        v_registration_ends_at,
-        v_registration_starts_at,
-        v_starts_at,
-        v_timezone
+    select e.*
+    into v_event
     from event e
-    join "group" g using (group_id)
     where e.event_id = p_event_id
     for update of e;
 
+    -- Nothing to reconcile for an unknown event
     if not found then
         return array[]::uuid[];
     end if;
 
-    -- Resolve attendee wording from the event's public ticket shape
-    v_is_simple_rsvp := is_event_simple_rsvp(p_event_id);
+    -- Load the group whose state and payment recipient gate promotions
+    select g.*
+    into v_group
+    from "group" g
+    where g.group_id = v_event.group_id;
 
-    -- Lock affected ticket tiers in stable identifier order
-    perform 1
-    from event_ticket_type ett
-    where ett.event_id = p_event_id
-    order by ett.event_ticket_type_id
-    for update of ett;
-
-    -- Reject a scoped ticket type that does not belong to the locked event
-    if p_event_ticket_type_id is not null
-       and not exists (
-            select 1
-            from event_ticket_type ett
-            where ett.event_id = p_event_id
-            and ett.event_ticket_type_id = p_event_ticket_type_id
-       ) then
-        raise exception 'ticket type not found';
-    end if;
-
-    -- Acquire every affected event-user lock before enrollment row locks
-    for v_user_id in
-        select affected_user.user_id
-        from (
-            select ao.user_id
-            from admission_offer ao
-            where ao.event_id = p_event_id
-            and admission_offer_is_active(ao.status)
-
-            union
-
-            select ep.user_id
-            from event_purchase ep
-            where ep.event_id = p_event_id
-            and ep.status = 'pending'
-
-            union
-
-            select ew.user_id
-            from event_waitlist ew
-            where ew.event_id = p_event_id
-            and (
-                p_event_ticket_type_id is null
-                or ew.event_ticket_type_id = p_event_ticket_type_id
-            )
-        ) affected_user
-        order by affected_user.user_id
-    loop
-        perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(v_user_id::text));
-    end loop;
-
-    -- Lock active offers and pending purchases in stable identifier order
-    perform 1
-    from admission_offer ao
-    where ao.event_id = p_event_id
-    and admission_offer_is_active(ao.status)
-    order by ao.admission_offer_id
-    for update of ao;
-
-    perform 1
-    from event_purchase ep
-    where ep.event_id = p_event_id
-    and ep.status = 'pending'
-    order by ep.event_purchase_id
-    for update of ep;
+    -- Take the tier, user, offer and purchase locks in the global order
+    perform lock_event_enrollment_rows(p_event_id, p_event_ticket_type_id, null);
 
     -- Load the site theme once for enrollment notifications
     select s.theme
@@ -148,373 +42,34 @@ begin
     from site s
     limit 1;
 
-    -- Expire stale checkout holds, including holds that outlive their offer
-    for v_event_purchase in
-        select
-            ep.admission_offer_id,
-            ep.amount_minor,
-            ep.charge_model,
-            ep.currency_code,
-            ep.event_discount_code_id,
-            ep.event_purchase_id,
-            ep.hold_expires_at,
-            ep.ticket_title,
-            ep.user_id
-        from event_purchase ep
-        left join admission_offer ao
-            on ao.admission_offer_id = ep.admission_offer_id
-        where ep.event_id = p_event_id
-        and ep.status = 'pending'
-        and (
-            ep.hold_expires_at <= current_timestamp
-            or (
-                admission_offer_is_active(ao.status)
-                and ao.expires_at is not null
-                and ao.expires_at <= current_timestamp
-            )
-        )
-        order by ep.event_purchase_id
-    loop
-        update event_purchase
-        set
-            hold_expires_at = least(hold_expires_at, current_timestamp),
-            status = 'expired',
-            updated_at = current_timestamp
-        where event_purchase_id = v_event_purchase.event_purchase_id
-        and status = 'pending';
+    -- Settle expired holds, reminders and due offers before allocating capacity
+    perform expire_event_checkout_holds(v_event, v_group, v_theme);
+    perform remind_event_external_payment_holds(v_event, v_group, v_theme);
+    perform reconcile_event_admission_offers(v_event, v_group);
 
-        if not found then
-            continue;
-        end if;
-
-        if v_event_purchase.event_discount_code_id is not null then
-            perform release_event_discount_code_availability(
-                v_event_purchase.event_discount_code_id
-            );
-        end if;
-
-        perform release_event_checkout_attendee_hold(
-            p_event_id,
-            v_event_purchase.user_id
-        );
-
-        -- Notify attendees whose external payment window expired
-        if v_event_purchase.charge_model = 'external' then
-            perform enqueue_notification(
-                'event-external-payment-expired',
-                jsonb_strip_nulls(jsonb_build_object(
-                    'amount_minor', v_event_purchase.amount_minor,
-                    'currency_code', v_event_purchase.currency_code,
-                    'dashboard_url', '/dashboard/user?tab=events',
-                    'deadline', epoch_seconds(v_event_purchase.hold_expires_at),
-                    'event_id', p_event_id,
-                    'event_name', v_event_name,
-                    'event_purchase_id', v_event_purchase.event_purchase_id,
-                    'external_payment_instructions',
-                        v_event_external_payment_instructions,
-                    'external_payment_url', v_event_external_payment_url,
-                    'group_name', v_group_name,
-                    'theme', v_theme,
-                    'ticket_title', v_event_purchase.ticket_title,
-                    'timezone', v_timezone
-                )),
-                '[]'::jsonb,
-                array[v_event_purchase.user_id]
-            );
-        end if;
-    end loop;
-
-    -- Send one reminder for external holds that expire within 24 hours
-    for v_event_purchase in
-        select
-            ep.amount_minor,
-            ep.currency_code,
-            ep.event_purchase_id,
-            ep.hold_expires_at,
-            ep.ticket_title,
-            ep.user_id
-        from event_purchase ep
-        where ep.event_id = p_event_id
-        and ep.status = 'pending'
-        and ep.charge_model = 'external'
-        and ep.external_payment_reminder_sent_at is null
-        and ep.hold_expires_at is not null
-        and ep.created_at <= ep.hold_expires_at - interval '24 hours'
-        and ep.hold_expires_at - interval '24 hours' <= current_timestamp
-        and ep.hold_expires_at > current_timestamp
-        order by ep.event_purchase_id
-    loop
-        -- Mark the reminder before enqueueing so retries cannot duplicate it
-        update event_purchase
-        set
-            external_payment_reminder_sent_at = current_timestamp,
-            updated_at = current_timestamp
-        where event_purchase_id = v_event_purchase.event_purchase_id
-        and external_payment_reminder_sent_at is null
-        and status = 'pending';
-
-        -- Skip purchases claimed by a concurrent reminder
-        if not found then
-            continue;
-        end if;
-
-        perform enqueue_notification(
-            'event-external-payment-reminder',
-            jsonb_strip_nulls(jsonb_build_object(
-                'amount_minor', v_event_purchase.amount_minor,
-                'currency_code', v_event_purchase.currency_code,
-                'dashboard_url', '/dashboard/user?tab=events',
-                'deadline', epoch_seconds(v_event_purchase.hold_expires_at),
-                'event_id', p_event_id,
-                'event_name', v_event_name,
-                'event_purchase_id', v_event_purchase.event_purchase_id,
-                'external_payment_instructions',
-                    v_event_external_payment_instructions,
-                'external_payment_url', v_event_external_payment_url,
-                'group_name', v_group_name,
-                'theme', v_theme,
-                'ticket_title', v_event_purchase.ticket_title,
-                'timezone', v_timezone
-            )),
-            '[]'::jsonb,
-            array[v_event_purchase.user_id]
-        );
-    end loop;
-
-    -- Expire due offers or return abandoned checkout offers to pending
-    for v_admission_offer in
-        select
-            ao.admission_offer_id,
-            ao.expires_at,
-            ao.status,
-            ao.user_id
-        from admission_offer ao
-        where ao.event_id = p_event_id
-        and admission_offer_is_active(ao.status)
-        order by ao.admission_offer_id
-    loop
-        if v_admission_offer.expires_at is not null
-           and v_admission_offer.expires_at <= current_timestamp then
-            update admission_offer
-            set
-                status = 'expired',
-                updated_at = current_timestamp
-            where admission_offer_id = v_admission_offer.admission_offer_id
-            and status = v_admission_offer.status;
-
-            if found then
-                perform insert_audit_log(
-                    'admission_offer_expired',
-                    null,
-                    'admission_offer',
-                    v_admission_offer.admission_offer_id,
-                    v_community_id,
-                    v_group_id,
-                    p_event_id,
-                    jsonb_build_object(
-                        'admission_offer_id',
-                        v_admission_offer.admission_offer_id,
-                        'user_id',
-                        v_admission_offer.user_id
-                    )
-                );
-            end if;
-        elsif v_admission_offer.status = 'checkout_pending'
-              and not exists (
-                    select 1
-                    from event_purchase ep
-                    where ep.admission_offer_id = v_admission_offer.admission_offer_id
-                    and (
-                        event_purchase_holds_seat(ep.status)
-                        or (
-                            ep.status = 'pending'
-                            and ep.hold_expires_at > current_timestamp
-                        )
-                    )
-              ) then
-            update admission_offer
-            set
-                status = 'pending',
-                updated_at = current_timestamp
-            where admission_offer_id = v_admission_offer.admission_offer_id
-            and status = 'checkout_pending';
-        end if;
-    end loop;
-
-    -- Stop ticket offer creation when the public registration window is closed
-    v_event_registration_open := is_registration_window_open(
-        v_registration_starts_at,
-        v_registration_ends_at,
-        v_starts_at
-    );
-
-    if not v_event_active or not v_event_registration_open then
-        return coalesce(v_promoted_user_ids, array[]::uuid[]);
+    -- Stop ticket offer creation when the event is not open or public registration is closed
+    if not (
+        v_group.active
+        and not v_event.canceled
+        and not v_event.deleted
+        and v_event.published
+        and (v_event.starts_at is null or v_event.starts_at > current_timestamp)
+    )
+    or not is_registration_window_open(
+        v_event.registration_starts_at,
+        v_event.registration_ends_at,
+        v_event.starts_at
+    ) then
+        return array[]::uuid[];
     end if;
 
-    -- Fill public tier capacity from each FIFO queue without skipping blocked heads
-    for v_ticket_type in
-        select
-            ett.event_ticket_type_id,
-            ett.seats_total,
-            ett.title
-        from event_ticket_type ett
-        where ett.event_id = p_event_id
-        and ett.active = true
-        and ett.availability = 'public'
-        and (
-            p_event_ticket_type_id is null
-            or ett.event_ticket_type_id = p_event_ticket_type_id
-        )
-        order by ett.event_ticket_type_id
-    loop
-        loop
-            -- Stop when the tier has no remaining seats
-            select get_event_ticket_type_allocated_seat_count(
-                p_event_id,
-                v_ticket_type.event_ticket_type_id
-            )
-            into v_allocated_seat_count;
-
-            if v_allocated_seat_count >= v_ticket_type.seats_total then
-                exit;
-            end if;
-
-            -- Lock the FIFO queue head for this tier
-            select
-                ew.created_at,
-                ew.user_id
-            into v_waitlist_entry
-            from event_waitlist ew
-            where ew.event_id = p_event_id
-            and ew.event_ticket_type_id = v_ticket_type.event_ticket_type_id
-            order by ew.created_at, ew.user_id
-            for update of ew
-            limit 1;
-
-            if not found then
-                exit;
-            end if;
-
-            -- Resolve current pricing before moving the queue head
-            v_price_amount_minor := event_ticket_type_current_price(
-                v_ticket_type.event_ticket_type_id
-            );
-
-            if v_price_amount_minor is null then
-                exit;
-            end if;
-
-            -- Keep a paid queue head in place until payment configuration is ready
-            if v_price_amount_minor > 0 then
-                -- External-marked events promote only while external payments remain ready
-                if v_event_external_payment_url is not null then
-                    -- Pause the queue head when the group is no longer eligible
-                    if not is_event_external_payments_ready(p_event_id) then
-                        exit;
-                    end if;
-
-                -- Stripe-marked events keep the provider-readiness gate
-                elsif p_configured_provider is null
-                   or v_payment_currency_code is null
-                   or v_group_payment_recipient is null
-                   or coalesce(v_group_payment_recipient->>'provider', '')
-                        <> p_configured_provider
-                   or nullif(
-                        btrim(v_group_payment_recipient->>'recipient_id'),
-                        ''
-                   ) is null then
-                    exit;
-                end if;
-            end if;
-
-            -- Bound the offer lifetime by registration close and event start
-            v_offer_expires_at := least(
-                current_timestamp + interval '24 hours',
-                coalesce(v_registration_ends_at, 'infinity'::timestamptz),
-                coalesce(v_starts_at, 'infinity'::timestamptz)
-            );
-
-            if v_offer_expires_at <= current_timestamp then
-                exit;
-            end if;
-
-            -- Move the queue head into a capacity-reserving offer
-            delete from event_waitlist
-            where event_id = p_event_id
-            and user_id = v_waitlist_entry.user_id
-            and event_ticket_type_id = v_ticket_type.event_ticket_type_id;
-
-            if not found then
-                continue;
-            end if;
-
-            insert into admission_offer (
-                event_id,
-                event_ticket_type_id,
-                expires_at,
-                source,
-                status,
-                user_id
-            ) values (
-                p_event_id,
-                v_ticket_type.event_ticket_type_id,
-                v_offer_expires_at,
-                'waitlist',
-                'pending',
-                v_waitlist_entry.user_id
-            )
-            returning admission_offer_id into v_offer_id;
-
-            -- Track and notify the promoted ticket recipient atomically
-            perform insert_audit_log(
-                'event_ticket_waitlist_offer_created',
-                null,
-                'admission_offer',
-                v_offer_id,
-                v_community_id,
-                v_group_id,
-                p_event_id,
-                jsonb_build_object(
-                    'admission_offer_id', v_offer_id,
-                    'event_ticket_type_id', v_ticket_type.event_ticket_type_id,
-                    'user_id', v_waitlist_entry.user_id
-                )
-            );
-
-            perform enqueue_notification(
-                'event-ticket-waitlist-offer',
-                jsonb_build_object(
-                    'admission_offer_id', v_offer_id,
-                    'amount_minor', v_price_amount_minor,
-                    'currency_code', v_payment_currency_code,
-                    'dashboard_url', format(
-                        '/dashboard/user?tab=invitations#event-offer-%s',
-                        v_offer_id
-                    ),
-                    'event_id', p_event_id,
-                    'event_name', v_event_name,
-                    'event_ticket_type_id', v_ticket_type.event_ticket_type_id,
-                    'expires_at', epoch_seconds(v_offer_expires_at),
-                    'group_name', v_group_name,
-                    'is_simple_rsvp', v_is_simple_rsvp,
-                    'theme', v_theme,
-                    'ticket_title', v_ticket_type.title,
-                    'timezone', v_timezone,
-                    'user_id', v_waitlist_entry.user_id
-                ),
-                '[]'::jsonb,
-                array[v_waitlist_entry.user_id]
-            );
-
-            v_promoted_user_ids := array_append(
-                v_promoted_user_ids,
-                v_waitlist_entry.user_id
-            );
-        end loop;
-    end loop;
-
-    -- Return the users promoted from the queues
-    return coalesce(v_promoted_user_ids, array[]::uuid[]);
+    -- Fill public tier capacity from the waitlists
+    return promote_event_waitlist_entries(
+        v_event,
+        v_group,
+        p_event_ticket_type_id,
+        p_configured_provider,
+        v_theme
+    );
 end;
 $$ language plpgsql;

@@ -613,6 +613,76 @@ async fn db_contracts_check_in_event_serializes_concurrent_transitions() -> Resu
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_event_ticketing_configuration_changed_deserializes() -> Result<()> {
+    // Setup the contract database and the seeded paid event
+    let db = contract_tests_db()?;
+
+    // A venue change on the paid event governs its tax readiness
+    let changed = db
+        .event_ticketing_configuration_changed(
+            community_id(),
+            group_id(),
+            paid_event_id(),
+            &serde_json::json!({
+                "kind_id": "in-person",
+                "venue_city": "Oakland"
+            }),
+        )
+        .await?;
+    assert!(changed);
+
+    // Dropping every ticket type makes the event free, so nothing to validate
+    let unchanged = db
+        .event_ticketing_configuration_changed(
+            community_id(),
+            group_id(),
+            paid_event_id(),
+            &serde_json::json!({
+                "kind_id": "in-person",
+                "ticket_types": [],
+                "venue_city": "Oakland"
+            }),
+        )
+        .await?;
+    assert!(!unchanged);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_event_ticketing_configuration_changed_rejects_foreign_event() -> Result<()> {
+    // Setup a direct connection to observe the SQLSTATE of the scope check
+    let pool = contract_tests_pool()?;
+    let client = pool.get().await?;
+
+    // An event outside the group scope is rejected with the user-facing SQLSTATE
+    let scope_err = client
+        .query_one(
+            "select event_ticketing_configuration_changed($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[
+                &community_id(),
+                &subgroup_id(),
+                &paid_event_id(),
+                &Json(serde_json::json!({ "kind_id": "in-person" })),
+            ],
+        )
+        .await
+        .expect_err("events outside the group scope should be rejected");
+    assert_eq!(
+        scope_err.as_db_error().map(DbError::message),
+        Some("event not found or inactive")
+    );
+    assert_eq!(
+        scope_err.code(),
+        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_cfs_submission_notification_data_deserializes() -> Result<()> {
     // Setup the contract database and submission fixture
     let db = contract_tests_db()?;

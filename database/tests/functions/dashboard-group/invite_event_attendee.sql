@@ -1248,7 +1248,7 @@ select is(
             'event_id', :'ticketedEventID',
             'event_name', 'Ticketed Event',
             'event_ticket_type_id', :'ticketTypeID',
-            'expires_at', extract(epoch from ao.expires_at)::bigint,
+            'expires_at', epoch_seconds(ao.expires_at),
             'group_name', 'Test Group',
             'is_simple_rsvp', false,
             'registration_questions_required', false,

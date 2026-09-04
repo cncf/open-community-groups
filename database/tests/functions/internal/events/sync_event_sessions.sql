@@ -1,3 +1,5 @@
+-- Tests synchronizing event sessions and speakers from an update payload.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -113,14 +115,12 @@ select lives_ok(
                     )
                 )
             ),
-            get_event_full('%s'::uuid, '%s'::uuid, '%s'::uuid)::jsonb
+            (select e from event e where e.event_id = '%s'::uuid)
         )$$,
         :'eventID',
         :'session1ID',
         :'user3ID',
         :'user2ID',
-        :'communityID',
-        :'groupID',
         :'eventID'
     ),
     'Should update existing sessions, insert new ones, and remove omitted ones'
@@ -194,11 +194,9 @@ select lives_ok(
         $$select sync_event_sessions(
             '%s'::uuid,
             '{"timezone": "UTC"}'::jsonb,
-            get_event_full('%s'::uuid, '%s'::uuid, '%s'::uuid)::jsonb
+            (select e from event e where e.event_id = '%s'::uuid)
         )$$,
         :'eventID',
-        :'communityID',
-        :'groupID',
         :'eventID'
     ),
     'Should delete all sessions when the payload omits them'
@@ -228,12 +226,10 @@ select throws_ok(
                     )
                 )
             ),
-            get_event_full('%s'::uuid, '%s'::uuid, '%s'::uuid)::jsonb
+            (select e from event e where e.event_id = '%s'::uuid)
         )$$,
         :'eventID',
         :'missingSessionID',
-        :'communityID',
-        :'groupID',
         :'eventID'
     ),
     format('session %s not found for event %s', :'missingSessionID', :'eventID'),
