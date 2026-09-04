@@ -129,4 +129,44 @@ describe("event attendance button template", () => {
     );
     expect(macros).to.include("+ tax");
   });
+
+  it("attaches pending external payment details to the payment action", async () => {
+    // Load the payment action and its shared tooltip structure.
+    const template = normalizeWhitespace(await loadTemplate());
+    const macros = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/event/attendance_macros.html"),
+    );
+
+    // Hover and keyboard focus expose an amber-indicated, labeled summary.
+    expect(template).to.include(
+      '<span class="group/external-payment-details relative inline-flex">',
+    );
+    expect(template).to.include(
+      'data-attendance-role="external-payment-details-indicator"',
+    );
+    expect(template).to.include(
+      "-end-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-primary-500",
+    );
+    expect(template).to.include(
+      'data-attendance-role="refund-rejection-trigger"',
+    );
+    expect(template.match(/-end-0\.5 -top-0\.5[^"]*size-3[^"]*bg-primary-500/gu) ?? []).to.have.lengthOf(2);
+    expect(template).to.include(
+      "attendance::external_payment_tooltip(attendance_instance = attendance_instance)",
+    );
+    expect(macros).to.include(
+      'visibility_classes = "group-hover/external-payment-details:visible group-hover/external-payment-details:opacity-100 group-focus-within/external-payment-details:visible group-focus-within/external-payment-details:opacity-100"',
+    );
+    expect(macros).to.include('title = "Payment details"');
+    expect(macros).to.include('width_classes = "w-80"');
+    expect(macros).to.include(
+      'class="mt-0.5 block text-sm font-medium text-stone-900"',
+    );
+    expect(macros).to.include(
+      'class="mt-0.5 block whitespace-nowrap font-mono text-stone-900"',
+    );
+    ["Status", "Amount due", "Confirm by", "Reference", "Instructions"].forEach(
+      (label) => expect(macros).to.include(`>${label}</span>`),
+    );
+  });
 });

@@ -188,6 +188,15 @@ describe("dashboard group event update template", () => {
     // Load the event update template before checking external payment controls.
     const template = normalizeWhitespace(await loadTemplate());
 
+    const currencyIndex = template.indexOf('id="payment_currency_code"');
+    const paymentUrlIndex = template.indexOf('id="external_payment_url"');
+    const paymentWindowIndex = template.indexOf(
+      'id="external_payment_window_hours"',
+    );
+    const paymentInstructionsIndex = template.indexOf(
+      'id="external_payment_instructions"',
+    );
+
     expect(template).to.include(
       "{% if self.uses_external_ticketing() || event.external_payment_url.is_some() -%}",
     );
@@ -213,6 +222,15 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       "{% if event_read_only || (ticketing_read_only && self.uses_external_ticketing()) %}disabled{% endif %}",
     );
+    expect(template).to.include(
+      'class="col-span-full 2xl:col-span-4 2xl:col-start-1"> <input type="hidden" name="external_payment_url_present"',
+    );
+    expect(template).to.include(
+      'class="col-span-full"> <input type="hidden" name="external_payment_instructions_present"',
+    );
+    expect(paymentUrlIndex).to.be.greaterThan(currencyIndex);
+    expect(paymentWindowIndex).to.be.greaterThan(paymentUrlIndex);
+    expect(paymentInstructionsIndex).to.be.greaterThan(paymentWindowIndex);
     expect(template).to.include("{% if !self.uses_external_ticketing() -%}");
     expect(template).to.include("External payments are no longer available for this group.");
     expect(template).to.include("Clear the external payment URL to save changes; paid tickets");

@@ -510,7 +510,7 @@
           <span class="whitespace-nowrap">Enrollment Date</span>
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5 w-30">
-          {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right", dropdown_classes = "end-0") -%}
+          {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), dropdown_classes = "end-0") -%}
           <div class="py-2">
             <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
                   hx-target="#attendees-content"
@@ -956,43 +956,67 @@
        class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
     <div id="overlay-attendee-external-payment-modal"
          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-    <div class="modal-panel p-4 max-w-lg">
+    <div class="modal-panel p-4 max-w-2xl">
       <div class="modal-card rounded-lg">
         {{ dashboard::modal_header(title_id = "attendee-external-payment-modal-title",
           title = "Mark payment received",
           close_id = "close-attendee-external-payment-modal") -}}
-        <div class="modal-body p-4 md:p-8">
-          <p id="attendee-external-payment-summary"
-             class="text-sm/6 text-stone-700"></p>
-          <form id="attendee-external-payment-form"
-                hx-post=""
-                hx-ext="no-empty-vals"
-                hx-indicator="#dashboard-spinner"
-                hx-disabled-elt="#submit-attendee-external-payment"
-                class="mt-6 flex flex-col gap-4">
-            <div>
+        <form id="attendee-external-payment-form"
+              hx-post=""
+              hx-ext="no-empty-vals"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="#submit-attendee-external-payment">
+          <div class="modal-body p-4 md:px-6 md:py-5">
+            <dl id="attendee-external-payment-summary"
+                class="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt class="text-stone-500">Attendee</dt>
+                <dd id="attendee-external-payment-attendee"
+                    class="mt-1 font-medium text-stone-900">
+                </dd>
+              </div>
+              <div>
+                <dt class="text-stone-500">Ticket</dt>
+                <dd id="attendee-external-payment-ticket"
+                    class="mt-1 font-medium text-stone-900">
+                </dd>
+              </div>
+              <div>
+                <dt class="text-stone-500">Amount</dt>
+                <dd id="attendee-external-payment-amount"
+                    class="mt-1 font-medium text-stone-900">
+                </dd>
+              </div>
+              <div>
+                <dt class="text-stone-500">Reference</dt>
+                <dd id="attendee-external-payment-reference"
+                    class="mt-1 break-all font-mono text-xs text-stone-900">
+                </dd>
+              </div>
+            </dl>
+            <div class="mt-5">
               <label for="attendee-external-payment-details" class="form-label">Payment details</label>
               <textarea id="attendee-external-payment-details"
                         name="details"
-                        class="input-primary mt-2"
-                        rows="3"
+                        class="input-primary mt-2 min-h-28"
                         maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                        aria-describedby="attendee-external-payment-details-help"
                         placeholder="Optional note, such as a bank reference"></textarea>
+              <p id="attendee-external-payment-details-help" class="form-legend">
+                Confirm the payment was received outside this platform. This cannot be undone except
+                by canceling attendance.
+              </p>
             </div>
-            <p class="text-sm/6 text-stone-600">
-              Confirm the payment was received outside this platform. This cannot be undone except
-              by canceling attendance.
-            </p>
-            <div class="flex justify-end gap-3">
-              <button type="button"
-                      id="cancel-attendee-external-payment-modal"
-                      class="btn-primary-outline">Cancel</button>
-              <button type="submit"
-                      id="submit-attendee-external-payment"
-                      class="btn-primary">Mark paid</button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+            <button type="button"
+                    id="cancel-attendee-external-payment-modal"
+                    class="btn-primary-outline">Cancel</button>
+            <button type="submit"
+                    id="submit-attendee-external-payment"
+                    class="btn-primary">Mark paid</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -1218,6 +1242,44 @@
 {% endmacro attendee_offer_status_badge -%}
 {# End active offer badge. #}
 
+{# External payment status badge and details tooltip. #}
+{% macro attendee_external_payment_status_badge(attendee, status_instance) -%}
+  {% if attendee.external_payment_deadline.is_some() || attendee.external_payment_reference.is_some() -%}
+    {% let external_payment_tooltip_id -%}attendee-external-payment-details-{{ attendee.user.user_id }}-{{ status_instance }}{%- endlet %}
+  <span class="group/external-payment-details relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            aria-describedby="{{ external_payment_tooltip_id }}">
+      {{ badges::status_badge(label = "Payment pending") -}}
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-amber-800"
+            aria-hidden="true"></span>
+    </button>
+    {% call dashboard::tooltip_panel(
+      id = external_payment_tooltip_id,
+      title = "External payment",
+      visibility_classes = "group-hover/external-payment-details:visible group-hover/external-payment-details:opacity-100 group-focus-within/external-payment-details:visible group-focus-within/external-payment-details:opacity-100",
+      width_classes = "w-80"
+    ) -%}
+    {% if let Some(deadline) = attendee.external_payment_deadline -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">Confirm by</span>
+        <span class="mt-0.5 block text-stone-900">{{ deadline.format("%b %d, %Y at %H:%M UTC") }}</span>
+      </span>
+    {% endif -%}
+    {% if let Some(reference) = attendee.external_payment_reference -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">Reference</span>
+        <span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>
+      </span>
+    {% endif -%}
+    {% endcall -%}
+  </span>
+{% else -%}
+  {{ badges::status_badge(label = "Payment pending") -}}
+{% endif -%}
+{% endmacro attendee_external_payment_status_badge -%}
+{# End external payment status badge. #}
+
 {# Attendee status badge and active offer deadline. #}
 {% macro attendee_status(attendee, event, status_instance) -%}
   <div class="flex min-w-0 items-center gap-1.5">
@@ -1264,7 +1326,7 @@
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending -%}
       {{ badges::status_badge(label = "Checkout pending") -}}
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending -%}
-      {{ badges::status_badge(label = "Payment pending") -}}
+      {{ attendee_external_payment_status_badge(attendee, status_instance) -}}
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled -%}
       {{ badges::status_badge(label = "Invitation canceled", canceled = true) -}}
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined -%}
@@ -1280,17 +1342,9 @@
 {% endmacro attendee_status -%}
 {# End attendee status. #}
 
-{# External payment deadline, reference, and paid marker. #}
+{# External payment paid marker. #}
 {% macro attendee_external_payment_detail(attendee) -%}
-  {% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending -%}
-    {% if let Some(deadline) = attendee.external_payment_deadline -%}
-      <div class="text-xs text-stone-500">Due {{ deadline.format("%b %d, %Y at %H:%M UTC") }}</div>
-    {% endif -%}
-    {% if let Some(reference) = attendee.external_payment_reference -%}
-      <div class="truncate font-mono text-xs text-stone-500"
-           title="{{ reference }}">{{ reference }}</div>
-    {% endif -%}
-  {% else if attendee.externally_paid -%}
+  {% if attendee.externally_paid -%}
     <div class="text-xs text-stone-500">
       Paid externally
       {% if let Some(paid_at) = attendee.completed_at -%}

@@ -6,6 +6,7 @@ import "/static/js/common/users/user-search-field.js";
 import {
   initializeAttendeeActionsMenu,
   initializeAttendeeOutsideClickListener,
+  closeAttendeeRowActionMenus,
 } from "/static/js/dashboard/group/attendees/actions-menu.js";
 import { initializeAnswersModal } from "/static/js/dashboard/group/attendees/answers.js";
 import { initializeAttendeeBadgeAwards } from "/static/js/dashboard/group/attendees/badge-awards.js";
@@ -19,6 +20,18 @@ import {
 import { initializeRefundReviewModal } from "/static/js/dashboard/group/attendees/refunds.js";
 import { resolveAttendeesRoot } from "/static/js/dashboard/group/attendees/shared.js";
 
+/**
+ * Close the attendee row menu before opening its answers modal.
+ * @param {HTMLElement} trigger Answers modal trigger.
+ * @param {Document|Element} root Attendees page root.
+ * @returns {HTMLElement} Element that should regain focus when the modal closes.
+ */
+const prepareAttendeeAnswersOpen = (trigger, root) => {
+  const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");
+  closeAttendeeRowActionMenus(root);
+  return actionsMenuSummary instanceof HTMLElement ? actionsMenuSummary : trigger;
+};
+
 const initializeAttendeesFeatures = (root = document) => {
   const attendeesRoot = resolveAttendeesRoot(root);
   if (!attendeesRoot) {
@@ -28,7 +41,7 @@ const initializeAttendeesFeatures = (root = document) => {
   initializeAttendeeActionsMenu(attendeesRoot);
   initializeAttendeeBadgeAwards(attendeesRoot);
   initializeAttendeeEmailSelection(attendeesRoot);
-  initializeAnswersModal(attendeesRoot);
+  initializeAnswersModal(attendeesRoot, undefined, prepareAttendeeAnswersOpen);
   initializeExternalPaymentModal(attendeesRoot);
   initializeInvitationModal(attendeesRoot);
   initializeAttendeeNotification(attendeesRoot);

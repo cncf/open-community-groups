@@ -909,7 +909,7 @@
                   will then require the group's Stripe configuration.
                 </p>
               {% endif -%}
-              <div class="col-span-full 2xl:col-span-4">
+              <div class="col-span-full 2xl:col-span-4 2xl:col-start-1">
                 <input type="hidden" name="external_payment_url_present" value="true">
                 <label for="external_payment_url" class="form-label">
                   External payment URL
@@ -930,22 +930,6 @@
                   Attendees open this page to pay outside the platform. Include the purchase
                   reference shown after they reserve a ticket.
                 </p>
-              </div>
-
-              <div class="col-span-full 2xl:col-span-4">
-                <input type="hidden"
-                       name="external_payment_instructions_present"
-                       value="true">
-                <label for="external_payment_instructions" class="form-label">Payment instructions</label>
-                <div class="mt-2">
-                  <textarea id="external_payment_instructions"
-                            name="external_payment_instructions"
-                            class="input-primary"
-                            rows="4"
-                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                            {% if ticketing_read_only %}disabled{% endif %}>{% if let Some(instructions) = event.external_payment_instructions %}{{ instructions }}{% endif %}</textarea>
-                </div>
-                <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
               </div>
 
               <div class="col-span-full 2xl:col-span-2">
@@ -970,6 +954,22 @@
                     Maximum {{ max_hours }} hours.
                   {% endif -%}
                 </p>
+              </div>
+
+              <div class="col-span-full">
+                <input type="hidden"
+                       name="external_payment_instructions_present"
+                       value="true">
+                <label for="external_payment_instructions" class="form-label">Payment instructions</label>
+                <div class="mt-2">
+                  <textarea id="external_payment_instructions"
+                            name="external_payment_instructions"
+                            class="input-primary"
+                            rows="4"
+                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                            {% if ticketing_read_only %}disabled{% endif %}>{% if let Some(instructions) = event.external_payment_instructions %}{{ instructions }}{% endif %}</textarea>
+                </div>
+                <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
               </div>
 
               <input type="hidden" name="tax_calculation_mode" value="none">

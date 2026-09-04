@@ -30,7 +30,6 @@ import {
 } from "/static/js/event/attendance-dom.js";
 import { initializeTicketModalControls } from "/static/js/event/attendance-ticket-view.js";
 
-const AWAITING_ORGANIZER_CONFIRMATION_LABEL = "Awaiting organizer confirmation";
 const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 const OPEN_PAYMENT_PAGE_LABEL = "Open payment page";
 const CLAIM_TICKET_LABEL = "Claim ticket";
@@ -413,7 +412,6 @@ export const showPendingPaymentState = (container, meta, response) => {
       icon: "icon-ticket",
       label: externalPayment ? OPEN_PAYMENT_PAGE_LABEL : CONTINUE_CHECKOUT_LABEL,
       resumeUrl: externalPayment?.url || response.resume_checkout_url || "",
-      title: externalPayment ? AWAITING_ORGANIZER_CONFIRMATION_LABEL : null,
     }),
   );
   renderControl(checkoutCancelButton, {
@@ -834,7 +832,9 @@ const hideControl = (control) => {
  * @returns {void}
  */
 const hideExternalPaymentDetails = (container) => {
+  const attendButton = getAttendanceControl(container, "attend-btn");
   const details = getAttendanceControl(container, "external-payment-details");
+  const indicator = getAttendanceControl(container, "external-payment-details-indicator");
   if (!(details instanceof HTMLElement)) {
     return;
   }
@@ -847,10 +847,17 @@ const hideExternalPaymentDetails = (container) => {
   ].forEach((role) => {
     const element = getAttendanceControl(container, role);
     if (element instanceof HTMLElement) {
-      element.textContent = "";
+      const value = element.querySelector("[data-attendance-detail-value]");
+      if (value instanceof HTMLElement) {
+        value.textContent = "";
+      }
       setElementHidden(element, true);
     }
   });
+  if (attendButton instanceof HTMLElement) {
+    attendButton.removeAttribute("aria-describedby");
+  }
+  setElementHidden(indicator, true);
   setElementHidden(details, true);
 };
 
@@ -954,8 +961,10 @@ const renderControl = (control, state = {}) => {
  * @returns {void}
  */
 const renderExternalPaymentDetails = (container, externalPayment) => {
+  const attendButton = getAttendanceControl(container, "attend-btn");
   const details = getAttendanceControl(container, "external-payment-details");
-  if (!(details instanceof HTMLElement) || !externalPayment) {
+  const indicator = getAttendanceControl(container, "external-payment-details-indicator");
+  if (!(attendButton instanceof HTMLElement) || !(details instanceof HTMLElement) || !externalPayment) {
     hideExternalPaymentDetails(container);
     return;
   }
@@ -964,13 +973,17 @@ const renderExternalPaymentDetails = (container, externalPayment) => {
   const deadline = getAttendanceControl(container, "external-payment-deadline");
   const instructions = getAttendanceControl(container, "external-payment-instructions");
   const reference = getAttendanceControl(container, "external-payment-reference");
+  const tooltip = details.querySelector("[data-tooltip-panel]");
 
   if (amount instanceof HTMLElement) {
     const formattedAmount = formatExternalPaymentAmount(
       externalPayment.amount_minor,
       externalPayment.currency_code,
     );
-    amount.textContent = formattedAmount ? `Amount due: ${formattedAmount}` : "";
+    const value = amount.querySelector("[data-attendance-detail-value]");
+    if (value instanceof HTMLElement) {
+      value.textContent = formattedAmount;
+    }
     setElementHidden(amount, !formattedAmount);
   }
   if (deadline instanceof HTMLElement) {
@@ -978,21 +991,34 @@ const renderExternalPaymentDetails = (container, externalPayment) => {
       externalPayment.deadline,
       container.dataset.eventTimezone,
     );
-    deadline.textContent = formattedDeadline ? `Confirm by ${formattedDeadline}` : "";
+    const value = deadline.querySelector("[data-attendance-detail-value]");
+    if (value instanceof HTMLElement) {
+      value.textContent = formattedDeadline;
+    }
     setElementHidden(deadline, !formattedDeadline);
   }
   if (reference instanceof HTMLElement) {
     const paymentReference = externalPayment.reference ? String(externalPayment.reference) : "";
-    reference.textContent = paymentReference ? `Reference: ${paymentReference}` : "";
+    const value = reference.querySelector("[data-attendance-detail-value]");
+    if (value instanceof HTMLElement) {
+      value.textContent = paymentReference;
+    }
     setElementHidden(reference, !paymentReference);
   }
   if (instructions instanceof HTMLElement) {
     const paymentInstructions =
       typeof externalPayment.instructions === "string" ? externalPayment.instructions.trim() : "";
-    instructions.textContent = paymentInstructions;
+    const value = instructions.querySelector("[data-attendance-detail-value]");
+    if (value instanceof HTMLElement) {
+      value.textContent = paymentInstructions;
+    }
     setElementHidden(instructions, !paymentInstructions);
   }
 
+  if (tooltip instanceof HTMLElement && tooltip.id) {
+    attendButton.setAttribute("aria-describedby", tooltip.id);
+  }
+  setElementHidden(indicator, false);
   setElementHidden(details, false);
 };
 

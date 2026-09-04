@@ -102,11 +102,45 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("<span>Mark payment received</span>");
     expect(template).to.include('id="attendee-external-payment-modal"');
     expect(template).to.include('title = "Mark payment received"');
+    expect(template).to.include('class="modal-panel p-4 max-w-2xl"');
     expect(template).to.include('id="attendee-external-payment-form"');
     expect(template).to.include('hx-ext="no-empty-vals"');
+    expect(template).to.include(
+      'id="attendee-external-payment-summary" class="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm sm:grid-cols-2"',
+    );
+    expect(template).to.include('id="attendee-external-payment-attendee"');
+    expect(template).to.include('id="attendee-external-payment-ticket"');
+    expect(template).to.include('id="attendee-external-payment-amount"');
+    expect(template).to.include('id="attendee-external-payment-reference"');
     expect(template).to.include('id="attendee-external-payment-details"');
+    expect(template).to.include(
+      'aria-describedby="attendee-external-payment-details-help"',
+    );
+    expect(template).to.include(
+      'id="attendee-external-payment-details-help" class="form-legend"',
+    );
+    expect(template).to.include(
+      'class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5"',
+    );
     expect(template).to.include('id="submit-attendee-external-payment"');
     expect(template).to.include("attendee_external_payment_detail(attendee)");
+    expect(template).to.include("attendee_external_payment_status_badge(attendee, status_instance)");
+    expect(template).to.include(
+      'class="group/external-payment-details relative inline-flex shrink-0"',
+    );
+    expect(template).to.include(
+      'class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-amber-800"',
+    );
+    expect(template).to.include('title = "External payment"');
+    expect(template).to.include('width_classes = "w-80"');
+    expect(template).to.include(
+      'class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>',
+    );
+    expect(template).to.include("group-hover/external-payment-details:visible");
+    expect(template).to.include("group-focus-within/external-payment-details:visible");
+    expect(template).to.include(">Confirm by</span>");
+    expect(template).to.include(">Reference</span>");
+    expect(template).to.not.include(">Due {{ deadline.format");
     expect(template).to.include("Paid externally");
     expect(template).to.include("{% if let Some(paid_at) = attendee.completed_at -%}");
     expect(template).to.include('on {{ paid_at.format("%b %d, %Y at %H:%M UTC") }}');
@@ -594,7 +628,7 @@ describe("dashboard group attendees list template", () => {
       'dashboard::table_filter_menu(id = "attendees-ticket-filter", label = "Ticket type"',
     );
     expect(template).to.include(
-      'dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right", dropdown_classes = "end-0")',
+      'dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), dropdown_classes = "end-0")',
     );
     expect(template).to.include(
       'dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true)',

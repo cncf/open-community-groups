@@ -90,6 +90,10 @@ const renderPaidAttendanceDom = ({
             : ""
         }
         <span data-attendance-label>Get ticket</span>
+        <span
+          data-attendance-role="external-payment-details-indicator"
+          class="hidden"
+        ></span>
       </button>
       ${
         includeRegistrationQuestions
@@ -235,11 +239,20 @@ const renderPaidAttendanceDom = ({
         data-attendance-role="external-payment-details"
         class="hidden"
       >
+        <span id="external-payment-details-tooltip" data-tooltip-panel></span>
         <p data-attendance-role="external-payment-awaiting">Awaiting organizer confirmation</p>
-        <p data-attendance-role="external-payment-amount" class="hidden"></p>
-        <p data-attendance-role="external-payment-deadline" class="hidden"></p>
-        <p data-attendance-role="external-payment-reference" class="hidden"></p>
-        <p data-attendance-role="external-payment-instructions" class="hidden"></p>
+        <p data-attendance-role="external-payment-amount" class="hidden">
+          <span data-attendance-detail-value></span>
+        </p>
+        <p data-attendance-role="external-payment-deadline" class="hidden">
+          <span data-attendance-detail-value></span>
+        </p>
+        <p data-attendance-role="external-payment-reference" class="hidden">
+          <span data-attendance-detail-value></span>
+        </p>
+        <p data-attendance-role="external-payment-instructions" class="hidden">
+          <span data-attendance-detail-value></span>
+        </p>
       </div>
       <details data-attendance-role="actions-menu" data-event-actions-menu class="hidden">
         <button
@@ -298,6 +311,9 @@ const renderPaidAttendanceDom = ({
     externalPaymentAmount: document.querySelector('[data-attendance-role="external-payment-amount"]'),
     externalPaymentDeadline: document.querySelector('[data-attendance-role="external-payment-deadline"]'),
     externalPaymentDetails: document.querySelector('[data-attendance-role="external-payment-details"]'),
+    externalPaymentDetailsIndicator: document.querySelector(
+      '[data-attendance-role="external-payment-details-indicator"]',
+    ),
     externalPaymentInstructions: document.querySelector(
       '[data-attendance-role="external-payment-instructions"]',
     ),
@@ -1416,6 +1432,7 @@ describe("event attendance paid modal", () => {
       externalPaymentAmount,
       externalPaymentDeadline,
       externalPaymentDetails,
+      externalPaymentDetailsIndicator,
       externalPaymentInstructions,
       externalPaymentReference,
     } = renderPaidAttendanceDom();
@@ -1443,10 +1460,16 @@ describe("event attendance paid modal", () => {
     });
 
     expect(externalPaymentDetails.classList.contains("hidden")).to.equal(true);
-    expect(externalPaymentAmount.textContent).to.equal("");
-    expect(externalPaymentDeadline.textContent).to.equal("");
-    expect(externalPaymentInstructions.textContent).to.equal("");
-    expect(externalPaymentReference.textContent).to.equal("");
+    [
+      externalPaymentAmount,
+      externalPaymentDeadline,
+      externalPaymentInstructions,
+      externalPaymentReference,
+    ].forEach((detail) => {
+      expect(detail.querySelector("[data-attendance-detail-value]")?.textContent).to.equal("");
+    });
+    expect(externalPaymentDetailsIndicator.classList.contains("hidden")).to.equal(true);
+    expect(attendButton.hasAttribute("aria-describedby")).to.equal(false);
     expect(attendButton.dataset.openInNewTab).to.equal(undefined);
     expect(attendButton.hasAttribute("rel")).to.equal(false);
     expect(attendButton.hasAttribute("data-resume-url")).to.equal(false);
@@ -1497,6 +1520,7 @@ describe("event attendance paid modal", () => {
       externalPaymentAmount,
       externalPaymentDeadline,
       externalPaymentDetails,
+      externalPaymentDetailsIndicator,
       externalPaymentInstructions,
       externalPaymentReference,
       ticketModal,
@@ -1537,19 +1561,31 @@ describe("event attendance paid modal", () => {
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
       "Open payment page",
     );
-    expect(attendButton.title).to.equal("Awaiting organizer confirmation");
+    expect(attendButton.title).to.equal("");
+    expect(attendButton.getAttribute("aria-describedby")).to.equal(
+      "external-payment-details-tooltip",
+    );
     expect(attendButton.dataset.resumeUrl).to.equal("https://pay.example.test/event");
     expect(attendButton.dataset.openInNewTab).to.equal("true");
     expect(externalPaymentDetails.classList.contains("hidden")).to.equal(false);
-    expect(externalPaymentAmount.textContent).to.equal(`Amount due: ${expectedAmount}`);
+    expect(externalPaymentDetailsIndicator.classList.contains("hidden")).to.equal(false);
+    expect(
+      externalPaymentAmount.querySelector("[data-attendance-detail-value]")?.textContent,
+    ).to.equal(expectedAmount);
     expect(externalPaymentAmount.classList.contains("hidden")).to.equal(false);
-    expect(externalPaymentDeadline.textContent).to.equal(`Confirm by ${expectedDeadline}`);
+    expect(
+      externalPaymentDeadline.querySelector("[data-attendance-detail-value]")?.textContent,
+    ).to.equal(expectedDeadline);
     expect(externalPaymentDeadline.classList.contains("hidden")).to.equal(false);
-    expect(externalPaymentReference.textContent).to.equal(
-      "Reference: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    expect(
+      externalPaymentReference.querySelector("[data-attendance-detail-value]")?.textContent,
+    ).to.equal(
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
     );
     expect(externalPaymentReference.classList.contains("hidden")).to.equal(false);
-    expect(externalPaymentInstructions.textContent).to.equal(
+    expect(
+      externalPaymentInstructions.querySelector("[data-attendance-detail-value]")?.textContent,
+    ).to.equal(
       "Use the reference on your bank transfer.",
     );
     expect(externalPaymentInstructions.classList.contains("hidden")).to.equal(false);

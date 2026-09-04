@@ -52,7 +52,12 @@ describe("dashboard group attendees", () => {
       <div id="attendee-external-payment-modal" class="hidden" aria-hidden="true">
         <button id="close-attendee-external-payment-modal" type="button">Close</button>
         <div id="overlay-attendee-external-payment-modal"></div>
-        <p id="attendee-external-payment-summary"></p>
+        <dl id="attendee-external-payment-summary">
+          <dd id="attendee-external-payment-attendee"></dd>
+          <dd id="attendee-external-payment-ticket"></dd>
+          <dd id="attendee-external-payment-amount"></dd>
+          <dd id="attendee-external-payment-reference"></dd>
+        </dl>
         <form id="attendee-external-payment-form">
           <textarea id="attendee-external-payment-details" name="details" autofocus></textarea>
           <button id="cancel-attendee-external-payment-modal" type="button">Cancel</button>
@@ -867,23 +872,26 @@ describe("dashboard group attendees", () => {
     // Render the attendee answers trigger and modal.
     document.body.innerHTML = `
       <div id="attendees-content">
-        <button
-          type="button"
-          data-answers-open
-          data-answers-source="attendee-answers-user-1"
-          data-answers-name="Ana Lopez"
-        >
-          View answers
-        </button>
-        <div id="attendee-answers-user-1" hidden>
-          <ol>
-            <li>
-              <h4>Tell us about your experience</h4>
-              <div>Free text</div>
-              <div>Very positive.</div>
-            </li>
-          </ol>
-        </div>
+        <details data-actions-menu open>
+          <summary>Attendee actions</summary>
+          <button
+            type="button"
+            data-answers-open
+            data-answers-source="attendee-answers-user-1"
+            data-answers-name="Ana Lopez"
+          >
+            View answers
+          </button>
+          <div id="attendee-answers-user-1" hidden>
+            <ol>
+              <li>
+                <h4>Tell us about your experience</h4>
+                <div>Free text</div>
+                <div>Very positive.</div>
+              </li>
+            </ol>
+          </div>
+        </details>
         <div id="attendee-answers-modal" class="hidden">
           <button id="close-attendee-answers-modal" type="button">Close</button>
           <button id="cancel-attendee-answers-modal" type="button">Cancel</button>
@@ -900,9 +908,11 @@ describe("dashboard group attendees", () => {
     // Set up modal.
     const modal = document.getElementById("attendee-answers-modal");
     const content = document.getElementById("attendee-answers-content");
+    const actionsMenu = document.querySelector("[data-actions-menu]");
 
     // Verify opens the attendee answers modal with copied answers.
     expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(actionsMenu.open).to.equal(false);
     expect(document.getElementById("attendee-answers-name")?.textContent).to.equal("Ana Lopez");
     expect(content.textContent).to.include("Tell us about your experience");
     expect(content.textContent).to.include("Very positive.");
@@ -998,7 +1008,7 @@ describe("dashboard group attendees", () => {
       expect(form.getAttribute("hx-post")).to.equal(
         "/dashboard/group/events/event-1/purchases/purchase-2/external-payment",
       );
-      expect(document.getElementById("attendee-external-payment-summary")?.textContent).to.include(
+      expect(document.getElementById("attendee-external-payment-attendee")?.textContent).to.equal(
         "Ada Morgan",
       );
     } finally {
@@ -1077,8 +1087,17 @@ describe("dashboard group attendees", () => {
         currency: "KRW",
         style: "currency",
       }).format(50000);
-      expect(document.getElementById("attendee-external-payment-summary")?.textContent).to.equal(
-        `Mark General admission for Ana Lopez as paid (${expectedAmount}). Reference: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.`,
+      expect(document.getElementById("attendee-external-payment-attendee")?.textContent).to.equal(
+        "Ana Lopez",
+      );
+      expect(document.getElementById("attendee-external-payment-ticket")?.textContent).to.equal(
+        "General admission",
+      );
+      expect(document.getElementById("attendee-external-payment-amount")?.textContent).to.equal(
+        expectedAmount,
+      );
+      expect(document.getElementById("attendee-external-payment-reference")?.textContent).to.equal(
+        "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       );
       expect(document.getElementById("attendee-external-payment-details")?.value).to.equal("");
       expect(document.activeElement).to.equal(document.getElementById("attendee-external-payment-details"));

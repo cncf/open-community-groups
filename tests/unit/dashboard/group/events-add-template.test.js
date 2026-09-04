@@ -172,6 +172,15 @@ describe("dashboard group event add template", () => {
     // Load the event add template before checking external payment controls.
     const template = normalizeWhitespace(await loadTemplate());
 
+    const currencyIndex = template.indexOf('id="payment_currency_code"');
+    const paymentUrlIndex = template.indexOf('id="external_payment_url"');
+    const paymentWindowIndex = template.indexOf(
+      'id="external_payment_window_hours"',
+    );
+    const paymentInstructionsIndex = template.indexOf(
+      'id="external_payment_instructions"',
+    );
+
     expect(template).to.include("{% if self.uses_external_ticketing() -%}");
     expect(template).to.include('id="external_payment_url"');
     expect(template).to.include('name="external_payment_url"');
@@ -183,6 +192,15 @@ describe("dashboard group event add template", () => {
     expect(template).to.include('id="external_payment_window_hours"');
     expect(template).to.include('name="external_payment_window_hours"');
     expect(template).to.include("Payment window (hours)");
+    expect(template).to.include(
+      'class="col-span-full 2xl:col-span-4 2xl:col-start-1"> <label for="external_payment_url"',
+    );
+    expect(template).to.include(
+      'class="col-span-full"> <label for="external_payment_instructions"',
+    );
+    expect(paymentUrlIndex).to.be.greaterThan(currencyIndex);
+    expect(paymentWindowIndex).to.be.greaterThan(paymentUrlIndex);
+    expect(paymentInstructionsIndex).to.be.greaterThan(paymentWindowIndex);
     expect(template).to.include(
       "Organizers are responsible for tax and receipts for payments collected outside",
     );

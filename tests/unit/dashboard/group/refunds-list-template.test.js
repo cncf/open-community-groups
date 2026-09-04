@@ -110,6 +110,17 @@ describe("dashboard group refunds list template", () => {
     // Load the refunds list template before checking refund detail placement.
     const template = normalizeWhitespace(await loadTemplate());
 
+    const refundAmountIndex = template.indexOf(
+      "data-localized-currency>{{ refund.formatted_amount() }}</span>",
+    );
+    const externalBadgeIndex = template.indexOf(
+      'badges::common_badge(content = "External"',
+    );
+    const statusColumnIndex = template.indexOf(
+      '<td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">',
+      refundAmountIndex,
+    );
+
     // Verify the stone price badge owns an accessible details tooltip.
     expect(template).to.include(
       "data-localized-currency>{{ refund.formatted_amount() }}</span>",
@@ -171,6 +182,19 @@ describe("dashboard group refunds list template", () => {
     );
     expect(template).to.include("group-hover/refund-details:visible");
     expect(template).to.include("group-focus-within/refund-details:visible");
+
+    // Keep the payment source visually attached to the refund amount.
+    expect(template).to.include(
+      'class="flex flex-wrap items-center gap-1.5"',
+    );
+    expect(template).to.include(
+      'badges::common_badge(content = "External", extra_styles = Some("border-primary-200 bg-primary-50 px-2.5 py-0.5 text-primary-700"))',
+    );
+    expect(
+      template.match(/badges::common_badge\(content = "External"/gu) ?? [],
+    ).to.have.lengthOf(1);
+    expect(externalBadgeIndex).to.be.greaterThan(refundAmountIndex);
+    expect(externalBadgeIndex).to.be.lessThan(statusColumnIndex);
   });
 
   it("keeps refund details visible without a narrow-table scrollbar", async () => {

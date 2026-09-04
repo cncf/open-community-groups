@@ -266,7 +266,7 @@
               <td class="px-3 xl:px-5 py-4 max-w-72">
                 <div class="mb-2 truncate font-medium text-stone-900 xl:hidden"
                      title="{{ refund.event_name }}">{{ refund.event_name }}</div>
-                <div class="inline-flex items-center">
+                <div class="flex flex-wrap items-center gap-1.5">
                   {% let refund_details_tooltip_id -%}refund-details-{{ refund.event_purchase_id }}{%- endlet %}
                 <span class="group/refund-details relative inline-flex shrink-0">
                   <button type="button"
@@ -331,6 +331,9 @@
                   {% endif -%}
                   {% endcall -%}
                 </span>
+                {% if refund.external -%}
+                  {{ badges::common_badge(content = "External", extra_styles = Some("border-primary-200 bg-primary-50 px-2.5 py-0.5 text-primary-700")) -}}
+                {% endif -%}
               </div>
               <div class="mt-2 xl:hidden">
                 {% let attempt_count = refund.attempt_count.unwrap_or(0) -%}
@@ -340,11 +343,6 @@
                   </span>
                 {% else -%}
                   {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
-                {% endif -%}
-                {% if refund.external -%}
-                  <div class="mt-1.5">
-                    {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
-                  </div>
                 {% endif -%}
               </div>
             </td>
@@ -356,11 +354,6 @@
                 </span>
               {% else -%}
                 {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
-              {% endif -%}
-              {% if refund.external -%}
-                <div class="mt-1.5">
-                  {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
-                </div>
               {% endif -%}
             </td>
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">

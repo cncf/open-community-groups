@@ -729,7 +729,7 @@
                 </div>
 
                 {% if self.uses_external_ticketing() -%}
-                  <div class="col-span-full 2xl:col-span-4">
+                  <div class="col-span-full 2xl:col-span-4 2xl:col-start-1">
                     <label for="external_payment_url" class="form-label">
                       External payment URL
                       <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
@@ -749,18 +749,6 @@
                     </p>
                   </div>
 
-                  <div class="col-span-full 2xl:col-span-4">
-                    <label for="external_payment_instructions" class="form-label">Payment instructions</label>
-                    <div class="mt-2">
-                      <textarea id="external_payment_instructions"
-                                name="external_payment_instructions"
-                                class="input-primary"
-                                rows="4"
-                                maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
-                    </div>
-                    <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
-                  </div>
-
                   <div class="col-span-full 2xl:col-span-2">
                     <label for="external_payment_window_hours" class="form-label">Payment window (hours)</label>
                     <div class="mt-2">
@@ -778,6 +766,18 @@
                         Maximum {{ max_hours }} hours.
                       {% endif -%}
                     </p>
+                  </div>
+
+                  <div class="col-span-full">
+                    <label for="external_payment_instructions" class="form-label">Payment instructions</label>
+                    <div class="mt-2">
+                      <textarea id="external_payment_instructions"
+                                name="external_payment_instructions"
+                                class="input-primary"
+                                rows="4"
+                                maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
+                    </div>
+                    <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
                   </div>
 
                   <input type="hidden" name="tax_calculation_mode" value="none">

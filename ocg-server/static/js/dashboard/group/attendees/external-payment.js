@@ -11,11 +11,14 @@ import {
 
 const CLOSE_SELECTOR =
   "#close-attendee-external-payment-modal, #cancel-attendee-external-payment-modal, #overlay-attendee-external-payment-modal";
+const AMOUNT_ID = "attendee-external-payment-amount";
+const ATTENDEE_ID = "attendee-external-payment-attendee";
 const DETAILS_ID = "attendee-external-payment-details";
 const FORM_ID = "attendee-external-payment-form";
 const MODAL_ID = "attendee-external-payment-modal";
+const REFERENCE_ID = "attendee-external-payment-reference";
 const SUBMIT_ID = "submit-attendee-external-payment";
-const SUMMARY_ID = "attendee-external-payment-summary";
+const TICKET_ID = "attendee-external-payment-ticket";
 const TRIGGER_SELECTOR = "[data-external-payment-open]";
 const requestUrls = new WeakMap();
 
@@ -128,7 +131,6 @@ const closeExternalPaymentModal = (root) => {
 const openExternalPaymentModal = (trigger, root) => {
   const modal = getElementById(root, MODAL_ID);
   const form = getElementById(root, FORM_ID);
-  const summary = getElementById(root, SUMMARY_ID);
   const details = getElementById(root, DETAILS_ID);
   const url = trigger.dataset.externalPaymentUrl;
   if (!(modal instanceof HTMLElement) || !(form instanceof HTMLFormElement) || !url) {
@@ -139,10 +141,18 @@ const openExternalPaymentModal = (trigger, root) => {
   const ticket = trigger.dataset.externalPaymentTicket || "ticket";
   const amount = localizeCurrencyLabel(trigger.dataset.externalPaymentAmount);
   const reference = trigger.dataset.externalPaymentReference || "";
-  if (summary instanceof HTMLElement) {
-    const amountText = amount ? ` (${amount})` : "";
-    summary.textContent = `Mark ${ticket} for ${attendee} as paid${amountText}. Reference: ${reference}.`;
-  }
+  const paymentSummary = new Map([
+    [ATTENDEE_ID, attendee],
+    [TICKET_ID, ticket],
+    [AMOUNT_ID, amount],
+    [REFERENCE_ID, reference],
+  ]);
+  paymentSummary.forEach((value, fieldId) => {
+    const field = getElementById(root, fieldId);
+    if (field instanceof HTMLElement) {
+      field.textContent = value;
+    }
+  });
   if (details instanceof HTMLTextAreaElement) {
     details.value = "";
   }

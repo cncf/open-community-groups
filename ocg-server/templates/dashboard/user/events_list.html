@@ -3,19 +3,43 @@
 {% import "macros/pagination.html" as pagination -%}
 {% import "macros/question_answers.html" as question_answers -%}
 
-{# External payment deadline, reference, and organizer instructions. #}
-{% macro external_payment_details(external_payment, timezone) -%}
-  <div class="mt-1.5 space-y-0.5 text-xs text-stone-500">
-    <div>
-      Confirm by {{ external_payment.deadline.with_timezone(timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
-    </div>
-    <div class="font-mono">{{ external_payment.reference }}</div>
-    {% if let Some(instructions) = &external_payment.instructions -%}
-      <div class="whitespace-pre-wrap">{{ instructions }}</div>
-    {% endif -%}
-  </div>
-{% endmacro external_payment_details -%}
-{# End external payment details. #}
+{# External payment status badge and payment details tooltip. #}
+{% macro external_payment_status_badge(external_payment, timezone, status_instance) -%}
+  {% let external_payment_tooltip_id -%}external-payment-details-{{ external_payment.reference }}-{{ status_instance }}{%- endlet %}
+<span class="group/external-payment-details relative inline-flex shrink-0">
+  <button type="button"
+          class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          aria-describedby="{{ external_payment_tooltip_id }}">
+    {{ badges::payment_status_badge(label = "Payment pending") -}}
+    <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500"
+          aria-hidden="true"></span>
+  </button>
+  {% call dashboard::tooltip_panel(
+    id = external_payment_tooltip_id,
+    title = "Payment details",
+    visibility_classes = "group-hover/external-payment-details:visible group-hover/external-payment-details:opacity-100 group-focus-within/external-payment-details:visible group-focus-within/external-payment-details:opacity-100",
+    width_classes = "w-80"
+  ) -%}
+  <span class="block">
+    <span class="block font-semibold text-stone-500">Deadline</span>
+    <span class="mt-0.5 block text-stone-900">
+      {{ external_payment.deadline.with_timezone(timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
+    </span>
+  </span>
+  <span class="block">
+    <span class="block font-semibold text-stone-500">Reference</span>
+    <span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ external_payment.reference }}</span>
+  </span>
+  {% if let Some(instructions) = &external_payment.instructions -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Instructions</span>
+      <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ instructions }}</span>
+    </span>
+  {% endif -%}
+  {% endcall -%}
+</span>
+{% endmacro external_payment_status_badge -%}
+{# End external payment status badge. #}
 
 {# Refund status badge and rejection reason tooltip. #}
 {% macro refund_status_badge(item, status_instance) -%}
@@ -176,28 +200,26 @@
                 {% endfor -%}
               </div>
               <div class="mt-1.5 flex flex-wrap items-center gap-1.5 xl:hidden">
-                {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
+                {% if let Some(external_payment) = &item.external_payment -%}
+                  {{ external_payment_status_badge(external_payment, item.event.timezone, "mobile") -}}
+                {% else if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
                   {{ badges::payment_status_badge(label = enrollment_status_label) -}}
                 {% endif -%}
                 {{ refund_status_badge(item, "mobile") -}}
               </div>
-              {% if let Some(external_payment) = &item.external_payment -%}
-                <div class="xl:hidden">{{ external_payment_details(external_payment, item.event.timezone) -}}</div>
-              {% endif -%}
             </td>
             {# End role -#}
 
             {# Status -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 w-56">
               <div class="flex flex-wrap items-center gap-1.5">
-                {% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
+                {% if let Some(external_payment) = &item.external_payment -%}
+                  {{ external_payment_status_badge(external_payment, item.event.timezone, "desktop") -}}
+                {% else if let Some(enrollment_status_label) = item.enrollment_status_label() -%}
                   {{ badges::payment_status_badge(label = enrollment_status_label) -}}
                 {% endif -%}
                 {{ refund_status_badge(item, "desktop") -}}
               </div>
-              {% if let Some(external_payment) = &item.external_payment -%}
-                {{ external_payment_details(external_payment, item.event.timezone) -}}
-              {% endif -%}
             </td>
             {# End status -#}
 
