@@ -34,151 +34,60 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'ticket-type-community',
-    'Ticket Type Community',
-    'Community for ticket type tests',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'user1ID', 'test_hash', 'user1@example.test', true, 'user1'),
-    (:'user2ID', 'test_hash', 'user2@example.test', true, 'user2'),
-    (:'user3ID', 'test_hash', 'user3@example.test', true, 'user3'),
-    (:'user4ID', 'test_hash', 'user4@example.test', true, 'user4'),
-    (:'user5ID', 'test_hash', 'user5@example.test', true, 'user5'),
-    (:'user6ID', 'test_hash', 'user6@example.test', true, 'user6');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (
-        :'groupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Ticket Type Group',
-        'ticket-type-group'
-    );
+select fx_user(:'user1ID', jsonb_build_object('username', 'user1'));
+select fx_user(:'user2ID', jsonb_build_object('username', 'user2'));
+select fx_user(:'user3ID', jsonb_build_object('username', 'user3'));
+select fx_user(:'user4ID', jsonb_build_object('username', 'user4'));
+select fx_user(:'user5ID', jsonb_build_object('username', 'user5'));
+select fx_user(:'user6ID', jsonb_build_object('username', 'user6'));
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'eventID',
-    :'groupID',
-    'Event with ticket types',
-    'event-with-ticket-types',
-    'Event with ticket types',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    true
-), (
-    :'eventNoTicketTypesID',
-    :'groupID',
-    'Event without ticket types',
-    'event-without-ticket-types',
-    'Event without ticket types',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true
+));
+select fx_event(:'eventNoTicketTypesID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true
+));
 
 -- Event ticket types
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'ticketTypeAlphaID', :'eventID', 1, 5, 'Alpha pass');
+select fx_event_ticket_type(:'ticketTypeAlphaID', :'eventID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'Alpha pass'
+));
 
 -- Second ticket type used to verify stable listing order
-insert into event_ticket_type (
-    event_ticket_type_id,
-    availability,
-    description,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        :'ticketTypeWorkshopID',
-        'invitation_only',
-        'Workshop access',
-        :'eventID',
-        2,
-        5,
-        'Workshop pass'
-    );
+select fx_event_ticket_type(:'ticketTypeWorkshopID', :'eventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'description', 'Workshop access',
+    'order', 2,
+    'seats_total', 5,
+    'title', 'Workshop pass'
+));
 
 -- Event ticket price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    ends_at,
-    event_ticket_type_id,
-    starts_at
-) values
-    (
-        :'windowAlphaExpiredID',
-        3000,
-        current_timestamp - interval '2 days',
-        :'ticketTypeAlphaID',
-        null
-    ),
-    (
-        :'windowAlphaCurrentID',
-        2500,
-        current_timestamp + interval '1 day',
-        :'ticketTypeAlphaID',
-        current_timestamp - interval '1 day'
-    ),
-    (
-        :'windowAlphaFutureID',
-        3500,
-        null,
-        :'ticketTypeAlphaID',
-        current_timestamp + interval '2 days'
-    ),
-    (
-        :'windowWorkshopID',
-        1500,
-        null,
-        :'ticketTypeWorkshopID',
-        null
-    );
+select fx_event_ticket_price_window(:'windowAlphaExpiredID', :'ticketTypeAlphaID', jsonb_build_object(
+    'amount_minor', 3000,
+    'ends_at', current_timestamp - interval '2 days'
+));
+select fx_event_ticket_price_window(:'windowAlphaCurrentID', :'ticketTypeAlphaID', jsonb_build_object(
+    'amount_minor', 2500,
+    'ends_at', current_timestamp + interval '1 day',
+    'starts_at', current_timestamp - interval '1 day'
+));
+select fx_event_ticket_price_window(:'windowAlphaFutureID', :'ticketTypeAlphaID', jsonb_build_object(
+    'amount_minor', 3500,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event_ticket_price_window(:'windowWorkshopID', :'ticketTypeWorkshopID', jsonb_build_object('amount_minor', 1500));
 
 -- Event purchases
 insert into event_purchase (

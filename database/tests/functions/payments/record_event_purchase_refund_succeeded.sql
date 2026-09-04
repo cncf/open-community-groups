@@ -42,128 +42,32 @@ select plan(15);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'record-refund-success-community',
-    'Record Refund Success Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Buyers for claimed, pending, finalized, and invalid recovery scenarios
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'claimedUserID',
-        'hash-claimed',
-        'claimed-buyer@example.com',
-        true,
-        'claimed-buyer'
-    ),
-    (
-        :'finalizedUserID',
-        'hash-finalized',
-        'finalized-buyer@example.com',
-        true,
-        'finalized-buyer'
-    ),
-    (
-        :'invalidUserID',
-        'hash-invalid',
-        'invalid-buyer@example.com',
-        true,
-        'invalid-buyer'
-    ),
-    (
-        :'terminalUserID',
-        'hash-terminal',
-        'terminal-buyer@example.com',
-        true,
-        'terminal-buyer'
-    ),
-    (:'userID', 'hash', 'success-buyer@example.com', true, 'success-buyer');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Record Refund Success Group',
-    'record-refund-success-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'claimedUserID');
+select fx_user(:'finalizedUserID');
+select fx_user(:'invalidUserID');
+select fx_user(:'terminalUserID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Record Refund Success Event',
-    'record-refund-success-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    2500,
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Purchases for claimed, pending, finalized, and invalid recovery scenarios
 insert into event_purchase (
@@ -383,9 +287,9 @@ insert into event_purchase_refund (
     null,
     null,
     null,
-    'provider refund failed: re_terminal_123',
+    'provider refund failed: re_terminal_123_refund_succeeded',
     null,
-    're_terminal_123',
+    're_terminal_123_refund_succeeded',
     null
 );
 
@@ -398,7 +302,7 @@ select throws_ok(
     format($$select record_event_purchase_refund_succeeded(
         %L::uuid,
         '   ',
-        're_success_123'
+        're_success_123_refund_succeeded'
     )$$, :'refundID'),
     'expected idempotency key is required',
     'Should reject empty expected idempotency keys'
@@ -420,7 +324,7 @@ select is(
     record_event_purchase_refund_succeeded(
         :'refundID'::uuid,
         'event-purchase-refund-' || :'purchaseID',
-        're_success_123'
+        're_success_123_refund_succeeded'
     ) - 'event_purchase_refund_id' - 'provider_refunded_at',
     jsonb_build_object(
         'amount_minor', 2500,
@@ -430,7 +334,7 @@ select is(
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
         'payment_provider', 'stripe',
-        'provider_refund_id', 're_success_123',
+        'provider_refund_id', 're_success_123_refund_succeeded',
         'status', 'provider-succeeded',
         'terminal_failure', false
     ),
@@ -442,7 +346,7 @@ select is(
     record_event_purchase_refund_succeeded(
         :'refundID'::uuid,
         'event-purchase-refund-' || :'purchaseID',
-        're_success_123'
+        're_success_123_refund_succeeded'
     ) - 'event_purchase_refund_id' - 'provider_refunded_at',
     jsonb_build_object(
         'amount_minor', 2500,
@@ -452,7 +356,7 @@ select is(
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
         'payment_provider', 'stripe',
-        'provider_refund_id', 're_success_123',
+        'provider_refund_id', 're_success_123_refund_succeeded',
         'status', 'provider-succeeded',
         'terminal_failure', false
     ),
@@ -485,7 +389,7 @@ select results_eq(
         cross join stale_success
         where event_purchase_refund_id = %L::uuid
     $$, :'refundID', :'refundID'),
-    $$ values ('re_success_123'::text, 'provider-succeeded'::text) $$,
+    $$ values ('re_success_123_refund_succeeded'::text, 'provider-succeeded'::text) $$,
     'Should ignore a successful result from a superseded attempt'
 );
 
@@ -496,7 +400,7 @@ select results_eq(
             select record_event_purchase_refund_succeeded(
                 %L::uuid,
                 %L,
-                're_terminal_123'
+                're_terminal_123_refund_succeeded'
             )
         )
         select failure_message, provider_refund_id, status
@@ -509,8 +413,8 @@ select results_eq(
         :'terminalRefundID'
     ),
     $$ values (
-        'provider refund failed: re_terminal_123'::text,
-        're_terminal_123'::text,
+        'provider refund failed: re_terminal_123_refund_succeeded'::text,
+        're_terminal_123_refund_succeeded'::text,
         'provider-failed'::text
     ) $$,
     'Should not revive a terminal provider refund with delayed success'

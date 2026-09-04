@@ -18,59 +18,22 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'team-members-community',
-    'Team Members Community',
-    'Community for listing team members',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community
+select fx_community(:'communityID');
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    company,
-    name,
-    photo_url,
-    title
-) values
-    (
-        :'user1ID',
-        gen_random_bytes(32),
-        'alice@example.com',
-        true,
-        'alice',
-        'Cloud Corp',
-        'Alice',
-        'https://example.com/users/alice.png',
-        'Principal Engineer'
-    ),
-    (
-        :'user2ID',
-        gen_random_bytes(32),
-        'bob@example.com',
-        true,
-        'bob',
-        null,
-        'Bob',
-        'https://example.com/users/bob.png',
-        null
-    );
+select fx_user(:'user1ID', jsonb_build_object(
+    'company', 'Cloud Corp',
+    'name', 'Alice',
+    'photo_url', 'https://example.com/users/alice.png',
+    'title', 'Principal Engineer',
+    'username', 'alice-team-members'
+));
+-- user
+select fx_user(:'user2ID', jsonb_build_object(
+    'name', 'Bob',
+    'photo_url', 'https://example.com/users/bob.png',
+    'username', 'bob-team-members'
+));
 
 -- Community team
 insert into community_team (community_id, user_id, accepted, role) values
@@ -95,7 +58,7 @@ select is(
                     "accepted": true,
                     "role": "admin",
                     "user_id": "%s",
-                    "username": "alice",
+                    "username": "alice-team-members",
                     "company": "Cloud Corp",
                     "name": "Alice",
                     "photo_url": "https://example.com/users/alice.png",
@@ -105,7 +68,7 @@ select is(
                     "accepted": true,
                     "role": "viewer",
                     "user_id": "%s",
-                    "username": "bob",
+                    "username": "bob-team-members",
                     "company": null,
                     "name": "Bob",
                     "photo_url": "https://example.com/users/bob.png",
@@ -137,7 +100,7 @@ select is(
                     "accepted": true,
                     "role": "viewer",
                     "user_id": "%s",
-                    "username": "bob",
+                    "username": "bob-team-members",
                     "company": null,
                     "name": "Bob",
                     "photo_url": "https://example.com/users/bob.png",

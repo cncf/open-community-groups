@@ -20,50 +20,13 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'alpha-community',
-    'Alpha Community',
-    'First community',
-    'https://example.com/alpha-banner-mobile.png',
-    'https://example.com/alpha-banner.png',
-    'https://example.com/alpha.png'
-), (
-    :'community2ID',
-    'beta-community',
-    'Beta Community',
-    'Second community',
-    'https://example.com/beta-banner-mobile.png',
-    'https://example.com/beta-banner.png',
-    'https://example.com/beta.png'
-);
+-- Baseline community and users
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice', 'Alice'),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob', 'Bob'),
-    (:'user3ID', gen_random_bytes(32), 'charlie@example.com', true, 'charlie', 'Charlie');
-
--- Team memberships
--- User 1 is team member of both communities (accepted)
--- User 2 is team member of community1 only (accepted)
--- User 3 is pending team member of community1 (not accepted)
 insert into community_team (community_id, user_id, accepted, role) values
     (:'community1ID', :'user1ID', true, 'admin'),
     (:'community2ID', :'user1ID', true, 'admin'),

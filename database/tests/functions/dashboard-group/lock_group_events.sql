@@ -29,74 +29,52 @@ select plan(7);
 -- ============================================================================
 
 -- Community owning the group event lock fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'group-event-lock-community'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'description', 'Community',
+    'display_name', 'Community Lock Group Events'
+));
 
 -- Event category shared by the group event lock targets
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Events'));
 
 -- Group category shared by the group event lock owners
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Groups'));
+
+-- Baseline groups
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Groups used to verify event ownership
-insert into "group" (community_id, group_category_id, group_id, name, slug) values
-    (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group'),
-    (:'communityID', :'groupCategoryID', :'otherGroupID', 'Other Group', 'other-group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
 
 -- Deleted group rejected as an inactive event owner
-insert into "group" (
-    group_id,
-    active,
-    community_id,
-    deleted,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'deletedGroupID',
-    false,
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    'Deleted Group',
-    'deleted-group'
-);
+select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
 
 -- Events covering active, deleted, and cross-group targets
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone,
-
-    deleted,
-    deleted_at
-) values
-    ('Active', :'eventCategoryID', :'activeEventID', 'virtual', :'groupID', 'Active', 'active', 'UTC', false, null),
-    ('Deleted', :'eventCategoryID', :'deletedEventID', 'virtual', :'groupID', 'Deleted', 'deleted', 'UTC', true, current_timestamp),
-    ('Other', :'eventCategoryID', :'otherEventID', 'virtual', :'otherGroupID', 'Other', 'other', 'UTC', false, null),
-    ('Second active', :'eventCategoryID', :'secondActiveEventID', 'virtual', :'groupID', 'Second active', 'second-active', 'UTC', false, null);
+select fx_event(:'activeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Active',
+    'event_kind_id', 'virtual',
+    'name', 'Active',
+    'slug', 'active'
+));
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', current_timestamp,
+    'description', 'Deleted',
+    'event_kind_id', 'virtual',
+    'name', 'Deleted',
+    'slug', 'deleted'
+));
+select fx_event(:'otherEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'slug', 'other'
+));
+select fx_event(:'secondActiveEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- ============================================================================
 -- TESTS

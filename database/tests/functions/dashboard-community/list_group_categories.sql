@@ -24,77 +24,35 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner-mobile-1.png',
-    'https://example.com/banner-1.png',
-    'https://example.com/logo-1.png'
-), (
-    :'community2ID',
-    'devops-vancouver',
-    'DevOps Vancouver',
-    'Building DevOps expertise and community in Vancouver',
-    'https://example.com/banner-mobile-2.png',
-    'https://example.com/banner-2.png',
-    'https://example.com/logo-2.png'
-), (
-    :'community3ID',
-    'golang-austin',
-    'Golang Austin',
-    'Go programming language enthusiasts in Austin',
-    'https://example.com/banner-mobile-3.png',
-    'https://example.com/banner-3.png',
-    'https://example.com/logo-3.png'
-);
+select fx_community(:'community1ID', jsonb_build_object(
+    'display_name', 'Cloud Native Seattle List Group Categories',
+    'name', 'cloud-native-seattle-list-group-categories'
+));
 
 -- Group categories
-insert into group_category (group_category_id, community_id, name, "order") values
-    (:'groupCategory1ID', :'community1ID', 'Technology', 2),
-    (:'groupCategory2ID', :'community1ID', 'Business', 1);
+select fx_group_category(:'groupCategory1ID', :'community1ID', jsonb_build_object(
+    'name', 'Technology',
+    'order', 2
+));
+-- group category
+select fx_group_category(:'groupCategory2ID', :'community1ID', jsonb_build_object(
+    'name', 'Business',
+    'order', 1
+));
 
--- Group categories (other community)
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategory3ID', :'community2ID', 'Education');
+-- Baseline community, group category and groups
+select fx_community(:'community2ID');
+select fx_community(:'community3ID');
+select fx_group_category(:'groupCategory3ID', :'community2ID');
+select fx_group(:'group2ID', :'community1ID', :'groupCategory2ID');
+select fx_group(:'group3ID', :'community1ID', :'groupCategory2ID');
+select fx_group(:'group4ID', :'community2ID', :'groupCategory3ID');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'group1ID',
-    :'community1ID',
-    :'groupCategory1ID',
-    'Cloud Native Seattle',
-    'cloud-native-seattle'
-), (
-    :'group2ID',
-    :'community1ID',
-    :'groupCategory2ID',
-    'Business Builders',
-    'business-builders'
-), (
-    :'group3ID',
-    :'community1ID',
-    :'groupCategory2ID',
-    'Startup Founders',
-    'startup-founders'
-), (
-    :'group4ID',
-    :'community2ID',
-    :'groupCategory3ID',
-    'Education Collective',
-    'education-collective'
-);
+select fx_group(:'group1ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'Cloud Native Seattle List Group Categories',
+    'slug', 'cloud-native-seattle-list-group-categories'
+));
 
 -- ============================================================================
 -- TESTS

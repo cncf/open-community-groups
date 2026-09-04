@@ -24,109 +24,35 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A community for cloud native technologies',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+-- Baseline community, categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
 
 -- User
-insert into "user" (user_id, email, username, auth_hash, name)
-values (:'user1ID', 'creator@example.com', 'creator', 'hash', 'Creator User');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Conference', :'communityID');
-
--- Group
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    active
-) values (
-    :'groupID',
-    'Seattle Kubernetes Meetup',
-    'seattle-kubernetes',
-    :'communityID',
-    :'groupCategoryID',
-    true
-);
+select fx_user(:'user1ID', jsonb_build_object(
+    'name', 'Creator User',
+    'username', 'creator'
+));
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    event_category_id,
-    event_kind_id,
-    timezone,
-
-    created_by,
-    payment_currency_code
-) values (
-    :'event1ID',
-    :'groupID',
-    'Created Event',
-    'created-event',
-    'An event with creator metadata',
-    :'eventCategoryID',
-    'in-person',
-    'America/New_York',
-
-    :'user1ID',
-    'USD'
-), (
-    :'event2ID',
-    :'groupID',
-    'Untracked Event',
-    'untracked-event',
-    'An event without creator metadata',
-    :'eventCategoryID',
-    'virtual',
-    'America/New_York',
-
-    null,
-    null
-);
+select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'created_by', :'user1ID',
+    'payment_currency_code', 'USD',
+    'timezone', 'America/New_York'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'timezone', 'America/New_York'
+));
 
 -- Invitation-only ticket type included in organizer summaries
-insert into event_ticket_type (
-    event_ticket_type_id,
-    availability,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    'invitation_only',
-    :'event1ID',
-    1,
-    5,
-    'Sponsor pass'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'event1ID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 5
+));
 
 -- Confirmed attendee for the created event
 insert into event_attendee (event_id, user_id)

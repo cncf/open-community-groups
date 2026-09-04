@@ -27,110 +27,36 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community for paid-capability scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'paid-capability-community',
-    'Paid Capability Community',
-    'Community for paid-capability tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category for paid-capability scenarios
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category for paid-capability scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group for paid-capability scenarios
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Paid Capability Group',
-    'paid-capability-group'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events without tickets, with free tickets, and with paid tickets
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values
-    (
-        :'eventFreeID',
-        'Event with free tickets',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Free Ticket Event',
-        'USD',
-        'free-ticket-event',
-        'UTC'
-    ),
-    (
-        :'eventNoTicketsID',
-        'Event without tickets',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'No Tickets Event',
-        null,
-        'no-tickets-event',
-        'UTC'
-    ),
-    (
-        :'eventPaidID',
-        'Event with paid tickets',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Paid Ticket Event',
-        'USD',
-        'paid-ticket-event',
-        'UTC'
-    );
+select fx_event(:'eventFreeID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'eventNoTicketsID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
 
 -- Free and inactive paid ticket types
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'freeTicketTypeID', true, :'eventFreeID', 1, 10, 'Free pass'),
-    (:'paidTicketTypeID', false, :'eventPaidID', 1, 10, 'Future paid pass');
+select fx_event_ticket_type(:'freeTicketTypeID', :'eventFreeID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'paidTicketTypeID', :'eventPaidID', jsonb_build_object(
+    'active', false,
+    'seats_total', 10
+));
 
 -- Zero and future positive price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id,
-    starts_at
-) values
-    (:'freeWindowID', 0, :'freeTicketTypeID', null),
-    (:'paidWindowID', 2500, :'paidTicketTypeID', current_timestamp + interval '30 days');
+select fx_event_ticket_price_window(:'freeWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'paidWindowID', :'paidTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'starts_at', current_timestamp + interval '30 days'
+));
 
 -- ============================================================================
 -- TESTS

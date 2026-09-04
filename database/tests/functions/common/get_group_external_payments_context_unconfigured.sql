@@ -19,47 +19,15 @@ select plan(1);
 -- SEED DATA
 -- ============================================================================
 
--- Community for the unconfigured settings-context scenario
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'unconfigured-context-community',
-    'Unconfigured Context Community',
-    'Community for unconfigured external context tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category for the unconfigured settings-context scenario
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Baseline communities and group categories
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group whose operator config row is absent
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'groupID',
-    'Unconfigured External Group',
-    'unconfigured-external-group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- ============================================================================
 -- TESTS

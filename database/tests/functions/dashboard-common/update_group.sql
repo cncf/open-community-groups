@@ -75,7 +75,6 @@ select plan(61);
 -- SEED DATA
 -- ============================================================================
 
--- Operator allowlist used by external-payments toggle scenarios
 insert into external_payments_config (
     allowed_countries,
     default_payment_window_hours,
@@ -87,119 +86,36 @@ insert into external_payments_config (
 );
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'banner_mobile_url', 'https://example.com/banner_mobile.png',
+    'banner_url', 'https://example.com/banner.png',
+    'display_name', 'Cloud Native Seattle Update Group',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-update-group'
+));
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategory1ID', :'communityID', 'Technology'),
-    (:'groupCategory2ID', :'communityID', 'Business');
+-- Baseline categories, users and groups
+select fx_group_category(:'groupCategory1ID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'groupAdminID');
+select fx_user(:'noPermissionUserID');
+select fx_group(:'inactiveParentGroupID', :'communityID', :'groupCategory1ID');
 
--- Users
-insert into "user" (user_id, auth_hash, email, username) values
-    (:'groupAdminID', 'hash-1', 'group-admin@example.com', 'group-admin'),
-    (:'noPermissionUserID', 'hash-2', 'no-permission@example.com', 'no-permission');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+-- group category
+select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object('name', 'Business'));
 
 -- Group
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    created_at
-) values (
-    :'groupID',
-    'Original Group',
-    'abc1234',
-    :'communityID',
-    :'groupCategory1ID',
-    'Original description',
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'created_at', '2024-01-15 10:00:00+00',
+    'slug', 'abc1234'
+));
 
 -- Groups used for parent relationship updates
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    created_at
-) values
-    (
-        :'parentGroupID'::uuid,
-        'Parent Group',
-        'parent-group',
-        :'communityID',
-        :'groupCategory1ID',
-        'Parent group for hierarchy tests',
-        '2024-01-15 10:00:00+00'
-    ),
-    (
-        :'unauthorizedParentGroupID'::uuid,
-        'Unauthorized Parent Group',
-        'unauthorized-parent-group',
-        :'communityID',
-        :'groupCategory1ID',
-        'Parent group without actor permissions',
-        '2024-01-15 10:00:00+00'
-    );
-
--- Inactive parent and its existing child used by the no-op parent scenario
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    slug,
-
-    active,
-    description,
-    parent_group_id
-) values (
-    :'communityID',
-    :'groupCategory1ID',
-    :'inactiveParentGroupID',
-    'Inactive Parent Group',
-    'inactive-parent-group',
-
-    true,
-    'Inactive parent for hierarchy tests',
-    null
-), (
-    :'communityID',
-    :'groupCategory1ID',
-    :'inactiveParentedGroupID',
-    'Inactive Parented Group',
-    'inactive-parented-group',
-
-    true,
-    'Group with an inactive existing parent',
-    :'inactiveParentGroupID'
-);
+select fx_group(:'parentGroupID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-15 10:00:00+00'));
+-- group
+select fx_group(:'unauthorizedParentGroupID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object('created_at', '2024-01-15 10:00:00+00'));
+-- group
+select fx_group(:'inactiveParentedGroupID', :'communityID', :'groupCategory1ID', jsonb_build_object('parent_group_id', :'inactiveParentGroupID'));
 
 -- Inactivate the established parent without changing the existing relationship
 update "group"
@@ -211,852 +127,321 @@ insert into group_team (group_id, user_id, role, accepted)
 values (:'parentGroupID', :'groupAdminID', 'admin', true);
 
 -- Group (deleted)
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    active,
-    deleted,
-    deleted_at,
-    created_at
-) values (
-    :'groupDeletedID',
-    'Deleted Group',
-    'xyz9876',
-    :'communityID',
-    :'groupCategory1ID',
-    'Deleted group description',
-    false,
-    true,
-    '2024-02-15 10:00:00+00',
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'groupDeletedID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'active', false,
+    'created_at', '2024-01-15 10:00:00+00',
+    'deleted', true,
+    'deleted_at', '2024-02-15 10:00:00+00'
+));
 
 -- Group with array fields
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    tags,
-    photos_urls,
-    created_at
-) values (
-    :'group3ID'::uuid,
-    'Test Group for Null Arrays',
-    'mno3ghi',
-    :'communityID',
-    :'groupCategory1ID',
-    'Has array fields',
-    array['original', 'tags'],
-    array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'group3ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'created_at', '2024-01-15 10:00:00+00',
+    'photos_urls', array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+    'slug', 'mno3ghi',
+    'tags', array['original', 'tags']
+));
 
 -- Group used to verify empty strings convert to null
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    banner_url,
-    city,
-    state,
-    country_code,
-    country_name,
-    website_url,
-    created_at
-) values (
-    :'group2ID'::uuid,
-    'Test Group for Empty Strings',
-    'pqr4jkl',
-    :'communityID',
-    :'groupCategory1ID',
-    'Has some values',
-    'https://example.com/banner.jpg',
-    'San Francisco',
-    'CA',
-    'US',
-    'United States',
-    'https://example.com',
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'group2ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'San Francisco',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'created_at', '2024-01-15 10:00:00+00',
+    'slug', 'pqr4jkl',
+    'state', 'CA',
+    'website_url', 'https://example.com'
+));
 
 -- Group for payment recipient audit coverage
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    created_at
-) values (
-    :'group4ID'::uuid,
-    'Group With Payment Recipient',
-    'stu5nop',
-    :'communityID',
-    :'groupCategory1ID',
-    'Payment recipient audit coverage',
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'group4ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'created_at', '2024-01-15 10:00:00+00',
+    'description', 'Payment recipient audit coverage',
+    'name', 'Group With Payment Recipient'
+));
 
 -- Group with an unpublished ticketed event for payment recipient guards
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    payment_recipient,
-    created_at
-) values (
-    :'group5ID'::uuid,
-    'Group With Unpublished Ticketed Event',
-    'vwx6qrs',
-    :'communityID',
-    :'groupCategory1ID',
-    'Unpublished ticketed event coverage',
-    '{"provider": "stripe", "recipient_id": "acct_456", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb,
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'group5ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'created_at', '2024-01-15 10:00:00+00',
+    'description', 'Unpublished ticketed event coverage',
+    'name', 'Group With Unpublished Ticketed Event',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_456", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb
+));
 
 -- Published ticketed event used for payment recipient guards
-insert into event (
-    description,
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    manual_tax_rate_ids,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    tax_behavior,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_state_code,
-    venue_state_name,
-    venue_zip_code
-) values (
-    'Published ticketed event for payment recipient validation',
-    :'eventID'::uuid,
-    :'eventCategoryID'::uuid,
-    'in-person',
-    :'group4ID'::uuid,
-    array['txr_update_group']::text[],
-    'Ticketed Group Event',
-    'USD',
-    true,
-    'ticketed-group-event',
-    'inclusive',
-    'manual',
-    'UTC',
-    '123 Main St',
-    'Portland',
-    'US',
-    'Community Hall',
-    'OR',
-    'Oregon',
-    '97201'
-);
+select fx_event(:'eventID'::uuid, :'group4ID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'manual_tax_rate_ids', array['txr_update_group']::text[],
+    'payment_currency_code', 'USD',
+    'published', true,
+    'tax_calculation_mode', 'manual',
+    'venue_address', '123 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Community Hall',
+    'venue_state_code', 'OR',
+    'venue_state_name', 'Oregon',
+    'venue_zip_code', '97201'
+));
 
 -- Group with a published all-zero ticketed event
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    community_id,
-    group_category_id,
-    description,
-    payment_recipient,
-    created_at
-) values (
-    :'group6ID'::uuid,
-    'Group With Free Ticketed Event',
-    'yz17tuv',
-    :'communityID',
-    :'groupCategory1ID',
-    'Free ticketed event coverage',
-    '{"provider": "stripe", "recipient_id": "acct_free", "seller_display_name": "Free Event Fiscal Sponsor"}'::jsonb,
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'group6ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'created_at', '2024-01-15 10:00:00+00',
+    'description', 'Free ticketed event coverage',
+    'name', 'Group With Free Ticketed Event',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_free", "seller_display_name": "Free Event Fiscal Sponsor"}'::jsonb
+));
 
 -- Group with a published automatic-tax event for validation freshness checks
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    description,
-    payment_recipient
-) values (
-    :'groupAutomaticTaxID'::uuid,
-    :'communityID'::uuid,
-    :'groupCategory1ID'::uuid,
-    'Group With Automatic Tax Event',
-    'automatic-tax-event-group',
-
-    'Automatic-tax validation freshness coverage',
-    '{"provider": "stripe", "recipient_id": "acct_automatic", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb
-);
+select fx_group(:'groupAutomaticTaxID'::uuid, :'communityID'::uuid, :'groupCategory1ID'::uuid, jsonb_build_object(
+    'description', 'Automatic-tax validation freshness coverage',
+    'name', 'Group With Automatic Tax Event',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_automatic", "seller_display_name": "Existing Fiscal Sponsor"}'::jsonb
+));
 
 -- Published all-zero ticketed event used for payment recipient guards
-insert into event (
-    description,
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    timezone
-) values (
-    'Published free ticketed event for payment recipient validation',
-    :'eventFreeID'::uuid,
-    :'eventCategoryID'::uuid,
-    'virtual',
-    :'group6ID'::uuid,
-    'Free Ticketed Group Event',
-    true,
-    'free-ticketed-group-event',
-    'UTC'
-);
+select fx_event(:'eventFreeID'::uuid, :'group6ID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true
+));
 
 -- Published automatic-tax event used to reject stale provider validation
-insert into event (
-    description,
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    tax_calculation_mode,
-    timezone
-) values (
-    'Published automatic-tax event for validation freshness checks',
-    :'eventAutomaticTaxID'::uuid,
-    :'eventCategoryID'::uuid,
-    'virtual',
-    :'groupAutomaticTaxID'::uuid,
-    'Automatic Tax Event',
-    'USD',
-    true,
-    'automatic-tax-event',
-    'automatic',
-    'UTC'
-);
+select fx_event(:'eventAutomaticTaxID'::uuid, :'groupAutomaticTaxID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'name', 'Automatic Tax Event',
+    'payment_currency_code', 'USD',
+    'published', true
+));
 
 -- Group whose only paid event is collected outside Stripe
-insert into "group" (
-    community_id,
-    country_code,
-    created_at,
-    description,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    payment_recipient,
-    slug
-) values (
-    :'communityID'::uuid,
-    'KR',
-    '2024-01-15 10:00:00+00',
-    'External paid event recipient coverage',
-    true,
-    :'groupCategory1ID'::uuid,
-    :'groupExternalPaidID'::uuid,
-    'Group With External Paid Event',
-    '{"provider": "stripe", "recipient_id": "acct_external", "seller_display_name": "External Event Fiscal Sponsor"}'::jsonb,
-    'external-paid-event-group'
-);
+select fx_group(:'groupExternalPaidID'::uuid, :'communityID'::uuid, :'groupCategory1ID'::uuid, jsonb_build_object(
+    'country_code', 'KR',
+    'created_at', '2024-01-15 10:00:00+00',
+    'description', 'External paid event recipient coverage',
+    'external_payments_enabled', true,
+    'name', 'Group With External Paid Event',
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_external", "seller_display_name": "External Event Fiscal Sponsor"}'::jsonb
+));
 
 -- Published external paid event that must not lock the Stripe recipient
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_calculation_mode,
-    timezone
-) values (
-    'Published external paid event for recipient guards',
-    :'eventCategoryID'::uuid,
-    :'eventExternalPaidID'::uuid,
-    'in-person',
-    'https://pay.example.test/group',
-    :'groupExternalPaidID'::uuid,
-    'External Paid Event',
-    'KRW',
-    true,
-    'external-paid-event',
-    current_timestamp + interval '7 days',
-    'manual',
-    'UTC'
-);
+select fx_event(:'eventExternalPaidID'::uuid, :'groupExternalPaidID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/group',
+    'name', 'External Paid Event',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days',
+    'tax_calculation_mode', 'manual'
+));
 
 -- Ticket type for the published automatic-tax event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeAutomaticTaxID'::uuid,
-    :'eventAutomaticTaxID'::uuid,
-    1,
-    50,
-    'Automatic tax admission'
-);
+select fx_event_ticket_type(:'ticketTypeAutomaticTaxID'::uuid, :'eventAutomaticTaxID'::uuid, jsonb_build_object('seats_total', 50));
 
 -- Ticket type for the published external paid event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeExternalPaidID'::uuid,
-    :'eventExternalPaidID'::uuid,
-    1,
-    50,
-    'External admission'
-);
+select fx_event_ticket_type(:'ticketTypeExternalPaidID'::uuid, :'eventExternalPaidID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
 
 -- Ticket type for the published all-zero ticketed event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeFreeID'::uuid,
-    :'eventFreeID'::uuid,
-    1,
-    50,
-    'Free admission'
-);
+select fx_event_ticket_type(:'ticketTypeFreeID'::uuid, :'eventFreeID'::uuid, jsonb_build_object('seats_total', 50));
 
 -- Ticket type for the published ticketed event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID'::uuid,
-    :'eventID'::uuid,
-    1,
-    50,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID'::uuid, :'eventID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General admission'
+));
 
 -- Unpublished ticketed event used for payment recipient guards
-insert into event (
-    description,
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    manual_tax_rate_ids,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    tax_calculation_mode,
-    timezone
-) values (
-    'Unpublished ticketed event for payment recipient validation',
-    :'eventUnpublishedID'::uuid,
-    :'eventCategoryID'::uuid,
-    'virtual',
-    :'group5ID'::uuid,
-    array['txr_draft']::text[],
-    'Draft Ticketed Group Event',
-    'USD',
-    false,
-    'draft-ticketed-group-event',
-    'manual',
-    'UTC'
-);
+select fx_event(:'eventUnpublishedID'::uuid, :'group5ID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'manual_tax_rate_ids', array['txr_draft']::text[],
+    'payment_currency_code', 'USD',
+    'tax_calculation_mode', 'manual'
+));
 
 -- Ticket type for the unpublished ticketed event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeUnpublishedID'::uuid,
-    :'eventUnpublishedID'::uuid,
-    1,
-    50,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeUnpublishedID'::uuid, :'eventUnpublishedID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General admission'
+));
 
 -- Ticket prices define the paid capability of each ticketed event
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'priceWindowAutomaticTaxID', 2500, :'ticketTypeAutomaticTaxID'),
-    (:'priceWindowExternalPaidID', 5000, :'ticketTypeExternalPaidID'),
-    (:'priceWindowFreeID', 0, :'ticketTypeFreeID'),
-    (:'priceWindowID', 2500, :'ticketTypeID'),
-    (:'priceWindowUnpublishedID', 2500, :'ticketTypeUnpublishedID');
+select fx_event_ticket_price_window(:'priceWindowAutomaticTaxID', :'ticketTypeAutomaticTaxID', jsonb_build_object('amount_minor', 2500));
+-- event ticket price window
+select fx_event_ticket_price_window(:'priceWindowExternalPaidID', :'ticketTypeExternalPaidID', jsonb_build_object('amount_minor', 5000));
+-- event ticket price window
+select fx_event_ticket_price_window(:'priceWindowFreeID', :'ticketTypeFreeID', jsonb_build_object('amount_minor', 0));
+-- event ticket price window
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 2500));
+-- event ticket price window
+select fx_event_ticket_price_window(:'priceWindowUnpublishedID', :'ticketTypeUnpublishedID', jsonb_build_object('amount_minor', 2500));
 
 -- Allowlisted group disabling external payments with only past or unpublished external events
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategory1ID',
-    :'groupDisableID',
-    'External Disable Group',
-    'external-disable-group'
-);
+select fx_group(:'groupDisableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'name', 'External Disable Group'
+));
 
 -- Allowlisted group used by the successful enable scenario
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    false,
-    :'groupCategory1ID',
-    :'groupEnableID',
-    'External Enable Group',
-    'external-enable-group'
-);
+select fx_group(:'groupEnableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'name', 'External Enable Group'
+));
 
 -- Non-allowlisted group enabled by changing country in the same update
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'US',
-    false,
-    :'groupCategory1ID',
-    :'groupFinalCountryID',
-    'External Final Country Group',
-    'external-final-country-group'
-);
+select fx_group(:'groupFinalCountryID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'US',
+    'name', 'External Final Country Group'
+));
 
 -- Allowlisted enabled group that disables while leaving the allowlist
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategory1ID',
-    :'groupMoveCountryDisableID',
-    'External Move Country Disable Group',
-    'external-move-country-disable-group'
-);
+select fx_group(:'groupMoveCountryDisableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'name', 'External Move Country Disable Group'
+));
 
 -- Allowlisted enabled group rejected when moving country while staying enabled
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategory1ID',
-    :'groupMoveCountryID',
-    'External Move Country Group',
-    'external-move-country-group'
-);
+select fx_group(:'groupMoveCountryID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'name', 'External Move Country Group'
+));
 
 -- Non-allowlisted group rejected when enabling external payments
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'US',
-    false,
-    :'groupCategory1ID',
-    :'groupRejectEnableID',
-    'External Reject Enable Group',
-    'external-reject-enable-group'
-);
+select fx_group(:'groupRejectEnableID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'US',
+    'name', 'External Reject Enable Group'
+));
 
 -- Enabled group whose country is no longer allowlisted despite an upcoming external event
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'US',
-    true,
-    :'groupCategory1ID',
-    :'groupDelistedID',
-    'External Delisted Group',
-    'external-delisted-group'
-);
+select fx_group(:'groupDelistedID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'US',
+    'external_payments_enabled', true,
+    'name', 'External Delisted Group'
+));
 
 -- Allowlisted group blocked from enabling external payments by an event venue abroad
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'JP',
-    false,
-    :'groupCategory1ID',
-    :'groupEnableAbroadID',
-    'External Enable Abroad Group',
-    'external-enable-abroad-group'
-);
+select fx_group(:'groupEnableAbroadID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'JP',
+    'name', 'External Enable Abroad Group'
+));
 
 -- Allowlisted enabled group blocked from moving country by an upcoming external event
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategory1ID',
-    :'groupVenueCountryID',
-    'External Venue Country Group',
-    'external-venue-country-group'
-);
+select fx_group(:'groupVenueCountryID', :'communityID', :'groupCategory1ID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'name', 'External Venue Country Group'
+));
 
 -- Published external paid event whose venue is outside its disabled group's country
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Published external paid event held outside the group country',
-    :'eventCategoryID'::uuid,
-    :'eventEnableAbroadID'::uuid,
-    'in-person',
-    'https://pay.example.test/enable-abroad',
-    :'groupEnableAbroadID'::uuid,
-    'External Enable Abroad Event',
-    'KRW',
-    true,
-    'external-enable-abroad-event',
-    current_timestamp + interval '7 days',
-    'none',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventEnableAbroadID'::uuid, :'groupEnableAbroadID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/enable-abroad',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days',
+    'tax_calculation_mode', 'none',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Published external paid event anchoring its group to the venue country
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Published external paid event held in the group country',
-    :'eventCategoryID'::uuid,
-    :'eventVenueCountryID'::uuid,
-    'in-person',
-    'https://pay.example.test/venue-country',
-    :'groupVenueCountryID'::uuid,
-    'External Venue Country Event',
-    'KRW',
-    true,
-    'external-venue-country-event',
-    current_timestamp + interval '7 days',
-    'none',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventVenueCountryID'::uuid, :'groupVenueCountryID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/venue-country',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days',
+    'tax_calculation_mode', 'none',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Ticket types for the external venue-country events
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'ticketTypeEnableAbroadID'::uuid, :'eventEnableAbroadID'::uuid, 1, 50, 'External admission'),
-    (:'ticketTypeVenueCountryID'::uuid, :'eventVenueCountryID'::uuid, 1, 50, 'External admission');
+select fx_event_ticket_type(:'ticketTypeEnableAbroadID'::uuid, :'eventEnableAbroadID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
+-- event ticket type
+select fx_event_ticket_type(:'ticketTypeVenueCountryID'::uuid, :'eventVenueCountryID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
 
 -- Ticket prices making the external venue-country events paid
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'priceWindowEnableAbroadID', 5000, :'ticketTypeEnableAbroadID'),
-    (:'priceWindowVenueCountryID', 5000, :'ticketTypeVenueCountryID');
+select fx_event_ticket_price_window(:'priceWindowEnableAbroadID', :'ticketTypeEnableAbroadID', jsonb_build_object('amount_minor', 5000));
+-- event ticket price window
+select fx_event_ticket_price_window(:'priceWindowVenueCountryID', :'ticketTypeVenueCountryID', jsonb_build_object('amount_minor', 5000));
 
 -- Upcoming published external paid event in the delisted group
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Published external paid event left unsellable by the delisted country',
-    :'eventCategoryID'::uuid,
-    :'eventDelistedID'::uuid,
-    'in-person',
-    'https://pay.example.test/delisted',
-    :'groupDelistedID'::uuid,
-    'External Delisted Event',
-    'USD',
-    true,
-    'external-delisted-event',
-    current_timestamp + interval '7 days',
-    'none',
-    'UTC',
-    '1 Test Street',
-    'Austin',
-    'US',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventDelistedID'::uuid, :'groupDelistedID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/delisted',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days',
+    'tax_calculation_mode', 'none',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Austin',
+    'venue_country_code', 'US',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Past published external paid event that must not block disabling the toggle
-insert into event (
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Published external paid event that already ended',
-    current_timestamp - interval '6 days',
-    :'eventCategoryID'::uuid,
-    :'eventDisablePastID'::uuid,
-    'in-person',
-    'https://pay.example.test/disable-past',
-    :'groupDisableID'::uuid,
-    'External Disable Past Event',
-    'KRW',
-    true,
-    'external-disable-past-event',
-    current_timestamp - interval '7 days',
-    'none',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventDisablePastID'::uuid, :'groupDisableID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'ends_at', current_timestamp - interval '6 days',
+    'external_payment_url', 'https://pay.example.test/disable-past',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp - interval '7 days',
+    'tax_calculation_mode', 'none',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Unpublished upcoming external paid event that must not block disabling the toggle
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_calculation_mode,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Draft external paid event awaiting publication',
-    :'eventCategoryID'::uuid,
-    :'eventDisableUnpublishedID'::uuid,
-    'in-person',
-    'https://pay.example.test/disable-draft',
-    :'groupDisableID'::uuid,
-    'External Disable Draft Event',
-    'KRW',
-    false,
-    'external-disable-draft-event',
-    current_timestamp + interval '7 days',
-    'none',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventDisableUnpublishedID'::uuid, :'groupDisableID'::uuid, :'eventCategoryID'::uuid, jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/disable-draft',
+    'payment_currency_code', 'KRW',
+    'starts_at', current_timestamp + interval '7 days',
+    'tax_calculation_mode', 'none',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Ticket types for the toggle-disable external events
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'ticketTypeDelistedID'::uuid, :'eventDelistedID'::uuid, 1, 50, 'External admission'),
-    (:'ticketTypeDisablePastID'::uuid, :'eventDisablePastID'::uuid, 1, 50, 'External admission'),
-    (:'ticketTypeDisableUnpublishedID'::uuid, :'eventDisableUnpublishedID'::uuid, 1, 50, 'External admission');
+select fx_event_ticket_type(:'ticketTypeDelistedID'::uuid, :'eventDelistedID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
+-- event ticket type
+select fx_event_ticket_type(:'ticketTypeDisablePastID'::uuid, :'eventDisablePastID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
+-- event ticket type
+select fx_event_ticket_type(:'ticketTypeDisableUnpublishedID'::uuid, :'eventDisableUnpublishedID'::uuid, jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
 
 -- Ticket prices making the toggle-disable external events paid
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'priceWindowDelistedID', 5000, :'ticketTypeDelistedID'),
-    (:'priceWindowDisablePastID', 5000, :'ticketTypeDisablePastID'),
-    (:'priceWindowDisableUnpublishedID', 5000, :'ticketTypeDisableUnpublishedID');
+select fx_event_ticket_price_window(:'priceWindowDelistedID', :'ticketTypeDelistedID', jsonb_build_object('amount_minor', 5000));
+-- event ticket price window
+select fx_event_ticket_price_window(:'priceWindowDisablePastID', :'ticketTypeDisablePastID', jsonb_build_object('amount_minor', 5000));
+-- event ticket price window
+select fx_event_ticket_price_window(:'priceWindowDisableUnpublishedID', :'ticketTypeDisableUnpublishedID', jsonb_build_object('amount_minor', 5000));
 
 -- ============================================================================
 -- TESTS
@@ -1113,9 +498,9 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "community_id": "%s",
-            "display_name": "Cloud Native Seattle",
+            "display_name": "Cloud Native Seattle Update Group",
             "logo_url": "https://example.com/logo.png",
-            "name": "cloud-native-seattle"
+            "name": "cloud-native-seattle-update-group"
         },
         "group_id": "%s",
         "description": "Updated description",

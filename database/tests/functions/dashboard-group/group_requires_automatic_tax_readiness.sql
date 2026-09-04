@@ -34,226 +34,79 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Communities used to verify ownership scoping
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    :'communityID',
-    'Automatic tax readiness tests',
-    'Automatic Tax Readiness',
-    'https://example.com/logo.png',
-    'automatic-tax-readiness'
-), (
-    'https://example.com/other-banner-mobile.png',
-    'https://example.com/other-banner.png',
-    :'otherCommunityID',
-    'Other community',
-    'Other Community',
-    'https://example.com/other-logo.png',
-    'other-automatic-tax-readiness'
-);
+-- Baseline community, categories and groups
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'manualGroupID', :'communityID', :'groupCategoryID');
+select fx_group(:'freeGroupID', :'communityID', :'groupCategoryID');
+select fx_group(:'unpublishedGroupID', :'communityID', :'groupCategoryID');
+select fx_group(:'canceledGroupID', :'communityID', :'groupCategoryID');
+select fx_group(:'pastGroupID', :'communityID', :'groupCategoryID');
+select fx_group(:'openGroupID', :'communityID', :'groupCategoryID');
 
--- Group category shared by the readiness fixture groups
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Event category shared by the readiness fixture events
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Conference');
-
--- Group whose current event set is inspected
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Future Automatic Tax Group',
-    'future-automatic-tax-group'
-), (
-    :'communityID', :'groupCategoryID', :'manualGroupID',
-    'Manual Tax Group', 'manual-tax-group'
-), (
-    :'communityID', :'groupCategoryID', :'freeGroupID',
-    'Free Event Group', 'free-event-group'
-), (
-    :'communityID', :'groupCategoryID', :'unpublishedGroupID',
-    'Unpublished Event Group', 'unpublished-event-group'
-), (
-    :'communityID', :'groupCategoryID', :'canceledGroupID',
-    'Canceled Event Group', 'canceled-event-group'
-), (
-    :'communityID', :'groupCategoryID', :'pastGroupID',
-    'Past Event Group', 'past-event-group'
-), (
-    :'communityID', :'groupCategoryID', :'openGroupID',
-    'Undated Event Group', 'undated-event-group'
-);
 
 -- Purpose-built event rows for each readiness branch
-insert into event (
-    canceled,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    tax_calculation_mode,
-    timezone
-) values (
-    false,
-    'Paid event requiring automatic tax',
-    current_timestamp + interval '1 day',
-    :'eventCategoryID',
-    :'futureEventID',
-    'in-person',
-    :'groupID',
-    'Automatic Tax Event',
-    'USD',
-    true,
-    'automatic-tax-event',
-    current_timestamp,
-    'automatic',
-    'UTC'
-), (
-    false,
-    'Manual-tax paid event',
-    current_timestamp + interval '1 day',
-    :'eventCategoryID',
-    :'manualEventID',
-    'in-person',
-    :'manualGroupID',
-    'Manual Tax Event',
-    'USD',
-    true,
-    'manual-tax-event',
-    current_timestamp,
-    'manual',
-    'UTC'
-), (
-    false,
-    'Free automatic-tax event',
-    current_timestamp + interval '1 day',
-    :'eventCategoryID',
-    :'freeEventID',
-    'in-person',
-    :'freeGroupID',
-    'Free Event',
-    null,
-    true,
-    'free-event',
-    current_timestamp,
-    'automatic',
-    'UTC'
-), (
-    false,
-    'Unpublished automatic-tax paid event',
-    current_timestamp + interval '1 day',
-    :'eventCategoryID',
-    :'unpublishedEventID',
-    'in-person',
-    :'unpublishedGroupID',
-    'Unpublished Event',
-    'USD',
-    false,
-    'unpublished-event',
-    current_timestamp,
-    'automatic',
-    'UTC'
-), (
-    true,
-    'Canceled automatic-tax paid event',
-    current_timestamp + interval '1 day',
-    :'eventCategoryID',
-    :'canceledEventID',
-    'in-person',
-    :'canceledGroupID',
-    'Canceled Event',
-    'USD',
-    true,
-    'canceled-event',
-    current_timestamp,
-    'automatic',
-    'UTC'
-), (
-    false,
-    'Past automatic-tax paid event',
-    current_timestamp - interval '1 day',
-    :'eventCategoryID',
-    :'pastEventID',
-    'in-person',
-    :'pastGroupID',
-    'Past Event',
-    'USD',
-    true,
-    'past-event',
-    current_timestamp - interval '2 days',
-    'automatic',
-    'UTC'
-), (
-    false,
-    'Undated automatic-tax paid event',
-    null,
-    :'eventCategoryID',
-    :'openEventID',
-    'in-person',
-    :'openGroupID',
-    'Undated Event',
-    'USD',
-    true,
-    'undated-event',
-    null,
-    'automatic',
-    'UTC'
-);
+select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 day',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp
+));
+select fx_event(:'manualEventID', :'manualGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 day',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp,
+    'tax_calculation_mode', 'manual'
+));
+select fx_event(:'freeEventID', :'freeGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 day',
+    'published', true,
+    'starts_at', current_timestamp
+));
+select fx_event(:'unpublishedEventID', :'unpublishedGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 day',
+    'payment_currency_code', 'USD',
+    'starts_at', current_timestamp
+));
+select fx_event(:'canceledEventID', :'canceledGroupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', current_timestamp + interval '1 day',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp
+));
+select fx_event(:'pastEventID', :'pastGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp - interval '1 day',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp - interval '2 days'
+));
+select fx_event(:'openEventID', :'openGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true
+));
 
 -- Ticket tiers that make every row except the free event paid-capable
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'futureEventID', '5f030000-0000-0000-0000-000000000020', 1, 10, 'General'),
-    (:'manualEventID', '5f030000-0000-0000-0000-000000000021', 1, 10, 'General'),
-    (:'freeEventID', '5f030000-0000-0000-0000-000000000022', 1, 10, 'General'),
-    (:'unpublishedEventID', '5f030000-0000-0000-0000-000000000023', 1, 10, 'General'),
-    (:'canceledEventID', '5f030000-0000-0000-0000-000000000024', 1, 10, 'General'),
-    (:'pastEventID', '5f030000-0000-0000-0000-000000000025', 1, 10, 'General'),
-    (:'openEventID', '5f030000-0000-0000-0000-000000000026', 1, 10, 'General');
+select fx_event_ticket_type('5f030000-0000-0000-0000-000000000020', :'futureEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type('5f030000-0000-0000-0000-000000000021', :'manualEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type('5f030000-0000-0000-0000-000000000022', :'freeEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type('5f030000-0000-0000-0000-000000000023', :'unpublishedEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type('5f030000-0000-0000-0000-000000000024', :'canceledEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type('5f030000-0000-0000-0000-000000000025', :'pastEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type('5f030000-0000-0000-0000-000000000026', :'openEventID', jsonb_build_object('seats_total', 10));
 
 -- Price windows that make every ticket tier except the free event paid-capable
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values
-    (2500, '5f030000-0000-0000-0000-000000000030', '5f030000-0000-0000-0000-000000000020'),
-    (2500, '5f030000-0000-0000-0000-000000000031', '5f030000-0000-0000-0000-000000000021'),
-    (0, '5f030000-0000-0000-0000-000000000032', '5f030000-0000-0000-0000-000000000022'),
-    (2500, '5f030000-0000-0000-0000-000000000033', '5f030000-0000-0000-0000-000000000023'),
-    (2500, '5f030000-0000-0000-0000-000000000034', '5f030000-0000-0000-0000-000000000024'),
-    (2500, '5f030000-0000-0000-0000-000000000035', '5f030000-0000-0000-0000-000000000025'),
-    (2500, '5f030000-0000-0000-0000-000000000036', '5f030000-0000-0000-0000-000000000026');
+select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000030', '5f030000-0000-0000-0000-000000000020', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000031', '5f030000-0000-0000-0000-000000000021', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000032', '5f030000-0000-0000-0000-000000000022', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000033', '5f030000-0000-0000-0000-000000000023', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000034', '5f030000-0000-0000-0000-000000000024', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000035', '5f030000-0000-0000-0000-000000000025', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window('5f030000-0000-0000-0000-000000000036', '5f030000-0000-0000-0000-000000000026', jsonb_build_object('amount_minor', 2500));
 
 -- ============================================================================
 -- TESTS

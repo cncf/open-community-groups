@@ -24,71 +24,24 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'invitation-community',
-    'Invitation Community',
-    'A test community for invitations',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
-values
-    (:'actorID', 'actor-hash', 'actor@test.com', 'actor'),
-    (:'requesterID', 'requester-hash', 'requester@test.com', 'requester');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Invite Group', 'invite-group');
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-reject-event-invitation-request'));
+select fx_user(:'requesterID', jsonb_build_object('username', 'requester-reject-event-invitation-request'));
 
 -- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    attendee_approval_required
-) values (
-    :'eventID',
-    'Invite Event',
-    'invite-event',
-    'An event for invitation requests',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    true,
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
 
 -- Ticket tier requested by the invitation requester
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
 
 -- Invitation request
 insert into event_invitation_request (event_id, event_ticket_type_id, user_id)

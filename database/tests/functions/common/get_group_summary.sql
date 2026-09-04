@@ -23,118 +23,49 @@ select plan(6);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'display_name', 'Cloud Native Seattle Group Summary',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-group-summary'
+));
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
 -- Region
 insert into region (region_id, community_id, name)
 values (:'regionID', :'communityID', 'North America');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    region_id,
-    active,
-    banner_url,
-    city,
-    state,
-    country_code,
-    country_name,
-    logo_url,
-    og_image_url,
-    description_short,
-    location,
-    created_at
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Seattle Kubernetes Meetup',
-    'abc1234',
-
-    :'regionID',
-    true,
-    'https://example.com/group-banner.png',
-    'New York',
-    'NY',
-    'US',
-    'United States',
-    'https://example.com/group-logo.png',
-    'https://example.com/group-og.png',
-    'Seattle Kubernetes Meetup is the Seattle chapter for K8s enthusiasts',
-    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
-    '2024-01-15 10:00:00+00'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'banner_url', 'https://example.com/group-banner.png',
+    'city', 'New York',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'created_at', '2024-01-15 10:00:00+00',
+    'description_short', 'Seattle Kubernetes Meetup is the Seattle chapter for K8s enthusiasts',
+    'location', ST_GeogFromText('POINT(-74.006 40.7128)'),
+    'logo_url', 'https://example.com/group-logo.png',
+    'name', 'Seattle Kubernetes Meetup',
+    'og_image_url', 'https://example.com/group-og.png',
+    'region_id', :'regionID',
+    'slug', 'abc1234',
+    'state', 'NY'
+));
 
 -- Group (inactive)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    active,
-    created_at
-) values (
-    :'groupInactiveID',
-    :'communityID',
-    :'groupCategoryID',
-    'Inactive DevOps Group',
-    'xyz9876',
-
-    false,
-    '2024-02-15 10:00:00+00'
-);
+select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'created_at', '2024-02-15 10:00:00+00'
+));
 
 -- Group (deleted)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    active,
-    deleted,
-    deleted_at,
-    created_at
-) values (
-    :'groupDeletedID',
-    :'communityID',
-    :'groupCategoryID',
-    'Deleted DevOps Group',
-    'mno3ghi',
-
-    false,
-    true,
-    '2024-03-15 10:00:00+00',
-    '2024-02-15 10:00:00+00'
-);
+select fx_group(:'groupDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'created_at', '2024-02-15 10:00:00+00',
+    'deleted', true,
+    'deleted_at', '2024-03-15 10:00:00+00'
+));
 
 -- ============================================================================
 -- TESTS
@@ -153,8 +84,8 @@ select is(
             "name": "Technology",
             "normalized_name": "technology"
         },
-        "community_display_name": "Cloud Native Seattle",
-        "community_name": "cloud-native-seattle",
+        "community_display_name": "Cloud Native Seattle Group Summary",
+        "community_name": "cloud-native-seattle-group-summary",
         "created_at": 1705312800,
         "group_id": "%s",
         "name": "Seattle Kubernetes Meetup",

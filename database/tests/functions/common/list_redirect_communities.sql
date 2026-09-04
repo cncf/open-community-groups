@@ -9,52 +9,21 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set activeCommunityID '0c130000-0000-0000-0000-000000000001'
-\set fallbackCommunityID '0c130000-0000-0000-0000-000000000002'
-\set inactiveCommunityID '0c130000-0000-0000-0000-000000000003'
+\set activeCommunityID '0c000000-0000-0000-0000-000000000001'
+\set fallbackCommunityID '0c000000-0000-0000-0000-000000000002'
+\set inactiveCommunityID '0c000000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Communities
-insert into community (
-    community_id,
-    active,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'activeCommunityID',
-    true,
-    'https://example.com/banner-mobile-active.png',
-    'https://example.com/banner-active.png',
-    'An active community',
-    'Active Community',
-    'https://example.com/logo-active.png',
-    'active-community'
-), (
-    :'fallbackCommunityID',
-    true,
-    'https://example.com/banner-mobile-fallback.png',
-    'https://example.com/banner-fallback.png',
-    'A community with a fallback URL',
-    'Fallback Community',
-    'https://example.com/logo-fallback.png',
-    'fallback-community'
-), (
-    :'inactiveCommunityID',
-    false,
-    'https://example.com/banner-mobile-inactive.png',
-    'https://example.com/banner-inactive.png',
-    'A disabled community',
-    'Inactive Community',
-    'https://example.com/logo-inactive.png',
-    'inactive-community'
-);
+select fx_community(:'activeCommunityID', jsonb_build_object('name', 'active-community-list-redirect-communities'));
+select fx_community(:'fallbackCommunityID', jsonb_build_object('name', 'fallback-community'));
+select fx_community(:'inactiveCommunityID', jsonb_build_object(
+    'active', false,
+    'name', 'inactive-community-list-redirect-communities'
+));
 
 -- Redirect settings
 insert into community_redirect_settings (
@@ -76,7 +45,7 @@ select is(
         from list_redirect_communities() r
     ),
     '[
-        {"community_name": "active-community", "base_legacy_url": null},
+        {"community_name": "active-community-list-redirect-communities", "base_legacy_url": null},
         {"community_name": "fallback-community", "base_legacy_url": "https://legacy.example.org"}
     ]'::jsonb,
     'Should return active communities ordered by community name'
@@ -87,7 +56,7 @@ select ok(
     not exists(
         select 1
         from list_redirect_communities()
-        where community_name = 'inactive-community'
+        where community_name = 'inactive-community-list-redirect-communities'
     ),
     'Should exclude inactive communities'
 );

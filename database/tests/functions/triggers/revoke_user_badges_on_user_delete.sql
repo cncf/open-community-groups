@@ -22,36 +22,14 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline community, group categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
 -- Badge recipient account
 insert into "user" (auth_hash, email, email_verified, user_id, username)
 values ('account-delete-hash', 'account-delete@example.test', true, :'userID', 'account-delete-user');
-
--- Issuing community
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    '/mobile',
-    '/banner',
-    :'communityID',
-    'Description',
-    'Account Delete Community',
-    '/logo',
-    'account-delete-community'
-);
-
--- Issuing group category
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Issuing group retained by credential history
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Account Delete Group', 'account-delete-group');
 
 -- Stable status list retained after account deletion
 insert into badge_status_list (badge_status_list_id, group_id)

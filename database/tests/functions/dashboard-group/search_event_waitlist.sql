@@ -32,179 +32,62 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'waitlist-community',
-    'Waitlist Community',
-    'A test community for waitlist search',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+-- Baseline communities, group categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'group2ID', :'communityID', :'groupCategoryID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Waitlist Group', 'waitlist-group'),
-    (:'group2ID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
 -- Users
-insert into "user" (
-    auth_hash,
-    bio,
-    email,
-    github_url,
-    provider,
-    user_id,
-    username,
-    website_url,
-
-    company,
-    name,
-    photo_url,
-    title
-) values (
-    gen_random_bytes(32),
-    'Waits for event capacity',
-    'alice@example.com',
-    'https://github.com/alice',
-    '{"github": {"username": "alice-gh", "private": "secret"}, "linuxfoundation": {"username": "alice-lf", "subject": "secret"}}'::jsonb,
-    :'user1ID',
-    'alice',
-    'https://example.com/alice',
-
-    'Cloud Corp',
-    'Alice',
-    'https://example.com/alice.png',
-    'Principal Engineer'
-), (
-    gen_random_bytes(32),
-    null,
-    'bob@example.com',
-    null,
-    null,
-    :'user2ID',
-    'bob',
-    null,
-
-    null,
-    null,
-    'https://example.com/bob.png',
-    null
-), (
-    gen_random_bytes(32),
-    null,
-    'carol@example.com',
-    null,
-    null,
-    :'user3ID',
-    'carol',
-    null,
-
-    null,
-    'Carol',
-    null,
-    null
-);
+select fx_user(:'user1ID', jsonb_build_object(
+    'bio', 'Waits for event capacity',
+    'company', 'Cloud Corp',
+    'github_url', 'https://github.com/alice',
+    'name', 'Alice',
+    'photo_url', 'https://example.com/alice.png',
+    'provider', '{"github": {"username": "alice-gh", "private": "secret"}, "linuxfoundation": {"username": "alice-lf", "subject": "secret"}}'::jsonb,
+    'title', 'Principal Engineer',
+    'username', 'alice-search-event-waitlist',
+    'website_url', 'https://example.com/alice'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'photo_url', 'https://example.com/bob.png',
+    'username', 'bob-search-event-waitlist'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'name', 'Carol',
+    'username', 'carol-search-event-waitlist'
+));
 
 -- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    canceled,
-    deleted,
-    capacity,
-    waitlist_enabled
-) values
-(
-    :'event1ID',
-    'Waitlist Event',
-    'waitlist-event',
-    'An event for waitlist search',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    true,
-    false,
-    false,
-    1,
-    true
-), (
-    :'eventOfferID',
-    'Waitlist Offer Event',
-    'waitlist-offer-event',
-    'An event with a promoted waitlist offer',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    true,
-    false,
-    false,
-    1,
-    true
-);
+select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'waitlist_enabled', true
+));
+select fx_event(:'eventOfferID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'waitlist_enabled', true
+));
 
 -- Ticket type assigned to the promoted-offer event
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventOfferID',
-    :'ticketTypeID',
-    1,
-    1,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventOfferID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'General admission'
+));
 
 -- Free price window for the promoted-offer ticket type
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    0,
-    :'priceWindowID',
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Events without an explicit ticket fixture use default admission tiers
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select e.event_id, gen_random_uuid(), 1, 100, 'General Admission'
+select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General Admission'
+))
 from event e
 where not exists (
     select 1
@@ -289,8 +172,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'waitlist', format('[
-            {"created_at": 1704067200, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice", "bio": "Waits for event capacity", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "waitlist_position": 1},
-            {"created_at": 1704153600, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
+            {"created_at": 1704067200, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice-search-event-waitlist", "bio": "Waits for event capacity", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "waitlist_position": 1},
+            {"created_at": 1704153600, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob-search-event-waitlist", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
         ]', :'event1TicketTypeID', :'event1TicketTypeID')::jsonb,
         'total', 2
     ),
@@ -332,7 +215,7 @@ select is(
                         },
                         "title": "Principal Engineer",
                         "user_id": "%s",
-                        "username": "alice",
+                        "username": "alice-search-event-waitlist",
                         "website_url": "https://example.com/alice"
                     },
                     "waitlist_position": null
@@ -347,7 +230,7 @@ select is(
                     "user": {
                         "name": "Carol",
                         "user_id": "%s",
-                        "username": "carol"
+                        "username": "carol-search-event-waitlist"
                     },
                     "waitlist_position": null
                 },
@@ -361,7 +244,7 @@ select is(
                     "user": {
                         "photo_url": "https://example.com/bob.png",
                         "user_id": "%s",
-                        "username": "bob"
+                        "username": "bob-search-event-waitlist"
                     },
                     "waitlist_position": null
                 }
@@ -390,7 +273,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'waitlist', format('[
-            {"created_at": 1704153600, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
+            {"created_at": 1704153600, "event_ticket_type_id": "%s", "ticket_title": "General Admission", "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob-search-event-waitlist", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
         ]', :'event1TicketTypeID')::jsonb,
         'total', 2
     ),
@@ -516,7 +399,7 @@ select is(
             'sort', 'name-asc'
         )
     )::jsonb#>>'{waitlist,0,user,username}',
-    'alice',
+    'alice-search-event-waitlist',
     'Should sort waitlist entries by name ascending'
 );
 
@@ -531,7 +414,7 @@ select is(
             'sort', 'created-at-desc'
         )
     )::jsonb#>>'{waitlist,0,user,username}',
-    'bob',
+    'bob-search-event-waitlist',
     'Should sort waitlist entries by joined date descending'
 );
 
@@ -567,7 +450,7 @@ select ok(
                 jsonb_build_object(
                     'limit', 50,
                     'offset', 0,
-                    'ts_query', 'bob'
+                    'ts_query', 'bob-search-event-waitlist'
                 )
             )::jsonb as data
         )

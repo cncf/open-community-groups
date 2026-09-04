@@ -26,72 +26,16 @@ select plan(21);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'discount-code-community',
-    'Discount Code Community',
-    'A test community for discount codes',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified)
-values (:'userID', 'test_hash', 'discount-user@example.test', 'discount-user', true);
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Discount Group', 'discount-group');
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values
-    (
-        :'eventID',
-        :'groupID',
-        'Discount Codes Event',
-        'discount-codes-event',
-        'Event used for discount code sync tests',
-        'UTC',
-        :'eventCategoryID',
-        'virtual'
-    ),
-    (
-        :'eventProtectedID',
-        :'groupID',
-        'Protected Discount Codes Event',
-        'protected-discount-codes-event',
-        'Event used for protected discount code checks',
-        'UTC',
-        :'eventCategoryID',
-        'virtual'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventProtectedID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Event discount codes
 insert into event_discount_code (
@@ -114,19 +58,10 @@ insert into event_discount_code (
     );
 
 -- Protected ticket type and purchase
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'protectedTicketTypeID',
-    :'eventProtectedID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'protectedTicketTypeID', :'eventProtectedID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Event purchase
 insert into event_purchase (

@@ -25,17 +25,11 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns the queued jobs
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Claim Community', '/logo', 'claim-community');
+-- Baseline community, categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Category used by the queue group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the queued jobs
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Claim Group', 'claim-group');
 
 -- Pending, future, and already processing jobs used by claim ordering
 insert into badge_award_job (

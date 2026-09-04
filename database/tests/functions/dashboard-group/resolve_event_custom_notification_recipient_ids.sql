@@ -9,135 +9,59 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a190000-0000-0000-0000-000000000001'
-\set eventCategoryID '3a190000-0000-0000-0000-000000000002'
-\set eventID '3a190000-0000-0000-0000-000000000003'
-\set groupCategoryID '3a190000-0000-0000-0000-000000000004'
-\set groupID '3a190000-0000-0000-0000-000000000005'
-\set otherEventID '3a190000-0000-0000-0000-000000000006'
-\set otherGroupID '3a190000-0000-0000-0000-000000000007'
-\set eligibleUserID '3a190000-0000-0000-0000-000000000008'
-\set optedOutUserID '3a190000-0000-0000-0000-000000000009'
-\set otherEventUserID '3a190000-0000-0000-0000-000000000012'
-\set pendingCheckoutEventID '3a190000-0000-0000-0000-000000000014'
-\set pendingCheckoutPurchaseID '3a190000-0000-0000-0000-000000000016'
-\set pendingCheckoutTicketTypeID '3a190000-0000-0000-0000-000000000015'
-\set pendingCheckoutUserID '3a190000-0000-0000-0000-000000000017'
-\set pendingQuestionsUserID '3a190000-0000-0000-0000-000000000013'
-\set pendingUserID '3a190000-0000-0000-0000-000000000011'
-\set unverifiedUserID '3a190000-0000-0000-0000-000000000010'
+\set communityID '3a080000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a080000-0000-0000-0000-000000000002'
+\set eventID '3a080000-0000-0000-0000-000000000003'
+\set groupCategoryID '3a080000-0000-0000-0000-000000000004'
+\set groupID '3a080000-0000-0000-0000-000000000005'
+\set otherEventID '3a080000-0000-0000-0000-000000000006'
+\set otherGroupID '3a080000-0000-0000-0000-000000000007'
+\set eligibleUserID '3a080000-0000-0000-0000-000000000008'
+\set optedOutUserID '3a080000-0000-0000-0000-000000000009'
+\set otherEventUserID '3a080000-0000-0000-0000-000000000012'
+\set pendingCheckoutEventID '3a080000-0000-0000-0000-000000000014'
+\set pendingCheckoutPurchaseID '3a080000-0000-0000-0000-000000000016'
+\set pendingCheckoutTicketTypeID '3a080000-0000-0000-0000-000000000015'
+\set pendingCheckoutUserID '3a080000-0000-0000-0000-000000000017'
+\set pendingQuestionsUserID '3a080000-0000-0000-0000-000000000013'
+\set pendingUserID '3a080000-0000-0000-0000-000000000011'
+\set unverifiedUserID '3a080000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'custom-recipient-community',
-    'Custom Recipient Community',
-    'Community used for custom recipient tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Categories
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+-- Baseline communities, group categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'pendingCheckoutUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Event category owned by the notification event's community
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Custom Recipient Group', 'custom-recipient-group'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'General'));
 
 -- Events
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Custom Recipient Event',
-    'custom-recipient-event',
-    'Custom recipient test event',
-    'UTC',
-    true
-), (
-    :'otherEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'otherGroupID',
-    'Other Event',
-    'other-event',
-    'Other event',
-    'UTC',
-    true
-), (
-    :'pendingCheckoutEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Pending Checkout Event',
-    'pending-checkout-event',
-    'Pending checkout event',
-    'UTC',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+select fx_event(:'otherEventID', :'otherGroupID', :'eventCategoryID', jsonb_build_object('published', true));
+select fx_event(:'pendingCheckoutEventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Ticket types
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'pendingCheckoutTicketTypeID',
-    :'pendingCheckoutEventID',
-    1,
-    100,
-    'General admission'
-);
+select fx_event_ticket_type(:'pendingCheckoutTicketTypeID', :'pendingCheckoutEventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    optional_notifications_enabled,
-    username
-) values
-    (:'eligibleUserID', gen_random_bytes(32), 'eligible@example.com', true, true, 'eligible'),
-    (:'optedOutUserID', gen_random_bytes(32), 'opted-out@example.com', true, false, 'opted-out'),
-    (:'otherEventUserID', gen_random_bytes(32), 'other@example.com', true, true, 'other'),
-    (:'pendingCheckoutUserID', gen_random_bytes(32), 'pending-checkout@example.com', true, true, 'pending-checkout'),
-    (:'pendingQuestionsUserID', gen_random_bytes(32), 'questions-pending@example.com', true, true, 'questions-pending'),
-    (:'pendingUserID', gen_random_bytes(32), 'pending@example.com', true, true, 'pending'),
-    (:'unverifiedUserID', gen_random_bytes(32), 'unverified@example.com', false, true, 'unverified');
+select fx_user(:'eligibleUserID', jsonb_build_object('username', 'eligible'));
+select fx_user(:'optedOutUserID', jsonb_build_object('optional_notifications_enabled', false));
+select fx_user(:'otherEventUserID', jsonb_build_object('username', 'other'));
+select fx_user(:'pendingQuestionsUserID', jsonb_build_object('username', 'questions-pending'));
+select fx_user(:'pendingUserID', jsonb_build_object('username', 'pending'));
+select fx_user(:'unverifiedUserID', jsonb_build_object(
+    'email_verified', false,
+    'username', 'unverified-resolve-event-custom-notification-recipient-ids'
+));
 
 -- Attendees
 insert into event_attendee (event_id, user_id, status)

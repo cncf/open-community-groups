@@ -9,76 +9,39 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a2c0000-0000-0000-0000-000000000001'
-\set event1ID '3a2c0000-0000-0000-0000-000000000002'
-\set event2ID '3a2c0000-0000-0000-0000-000000000003'
-\set eventCategoryID '3a2c0000-0000-0000-0000-000000000004'
-\set eventMixedDraftID '3a2c0000-0000-0000-0000-000000000005'
-\set eventNoStartID '3a2c0000-0000-0000-0000-000000000006'
-\set eventPublishedID '3a2c0000-0000-0000-0000-000000000007'
-\set eventRollbackID '3a2c0000-0000-0000-0000-000000000008'
-\set eventSeriesID '3a2c0000-0000-0000-0000-000000000009'
-\set groupCategoryID '3a2c0000-0000-0000-0000-000000000010'
-\set groupID '3a2c0000-0000-0000-0000-000000000011'
-\set previousPublisherID '3a2c0000-0000-0000-0000-000000000012'
-\set sessionPublishedMeetingID '3a2c0000-0000-0000-0000-000000000013'
-\set userID '3a2c0000-0000-0000-0000-000000000014'
+\set communityID '3a0b0000-0000-0000-0000-000000000001'
+\set event1ID '3a0b0000-0000-0000-0000-000000000002'
+\set event2ID '3a0b0000-0000-0000-0000-000000000003'
+\set eventCategoryID '3a0b0000-0000-0000-0000-000000000004'
+\set eventMixedDraftID '3a0b0000-0000-0000-0000-000000000005'
+\set eventNoStartID '3a0b0000-0000-0000-0000-000000000006'
+\set eventPublishedID '3a0b0000-0000-0000-0000-000000000007'
+\set eventRollbackID '3a0b0000-0000-0000-0000-000000000008'
+\set eventSeriesID '3a0b0000-0000-0000-0000-000000000009'
+\set groupCategoryID '3a0b0000-0000-0000-0000-000000000010'
+\set groupID '3a0b0000-0000-0000-0000-000000000011'
+\set previousPublisherID '3a0b0000-0000-0000-0000-000000000012'
+\set sessionPublishedMeetingID '3a0b0000-0000-0000-0000-000000000013'
+\set userID '3a0b0000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- User
-insert into "user" (user_id, email, username, auth_hash)
-values (:'userID', 'organizer@example.com', 'organizer', 'hash');
+select fx_user(:'userID', jsonb_build_object('auth_hash', 'hash'));
 
 -- User (previous publisher)
-insert into "user" (user_id, email, username, auth_hash)
-values (:'previousPublisherID', 'publisher@example.com', 'publisher', 'hash');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Meetup', :'communityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id
-) values (
-    :'groupID',
-    :'communityID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategoryID'
-);
+select fx_user(:'previousPublisherID', jsonb_build_object(
+    'auth_hash', 'hash',
+    'username', 'publisher'
+));
 
 -- Event Series
 insert into event_series (
@@ -102,155 +65,51 @@ insert into event_series (
 );
 
 -- Events
-insert into event (
-    event_id,
-    event_series_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-
-    ends_at,
-    published,
-    starts_at
-) values
-    (
-        :'event1ID',
-        :'eventSeriesID',
-        :'groupID',
-        'First Series Event',
-        'first-series-event',
-        'First event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-
-        now() + interval '1 day 1 hour',
-        false,
-        now() + interval '1 day'
-    ),
-    (
-        :'event2ID',
-        :'eventSeriesID',
-        :'groupID',
-        'Second Series Event',
-        'second-series-event',
-        'Second event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-
-        now() + interval '8 days 1 hour',
-        false,
-        now() + interval '8 days'
-    ),
-    (
-        :'eventRollbackID',
-        :'eventSeriesID',
-        :'groupID',
-        'Rollback Series Event',
-        'rollback-series-event',
-        'Rollback event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-
-        now() + interval '15 days 1 hour',
-        false,
-        now() + interval '15 days'
-    ),
-    (
-        :'eventNoStartID',
-        :'eventSeriesID',
-        :'groupID',
-        'No Start Event',
-        'no-start-event',
-        'Invalid event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-
-        null,
-        false,
-        null
-    );
+select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '8 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'starts_at', now() + interval '8 days'
+));
+select fx_event(:'eventRollbackID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '15 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'starts_at', now() + interval '15 days'
+));
+select fx_event(:'eventNoStartID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID'
+));
 
 -- Mixed draft event
-insert into event (
-    event_id,
-    event_series_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-
-    ends_at,
-    published,
-    starts_at
-) values (
-    :'eventMixedDraftID',
-    :'eventSeriesID',
-    :'groupID',
-    'Mixed Draft Event',
-    'mixed-draft-event',
-    'Draft event',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-
-    now() + interval '22 days 1 hour',
-    false,
-    now() + interval '22 days'
-);
+select fx_event(:'eventMixedDraftID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '22 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'starts_at', now() + interval '22 days'
+));
 
 -- Already published event
-insert into event (
-    event_id,
-    event_series_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-
-    capacity,
-    ends_at,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    published,
-    published_at,
-    published_by,
-    starts_at
-) values (
-    :'eventPublishedID',
-    :'eventSeriesID',
-    :'groupID',
-    'Already Published Event',
-    'already-published-event',
-    'Published event',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-
-    100,
-    now() + interval '29 days 1 hour',
-    true,
-    'zoom',
-    true,
-    true,
-    '2025-01-01 10:00:00+00',
-    :'previousPublisherID',
-    now() + interval '29 days'
-);
+select fx_event(:'eventPublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', now() + interval '29 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'published_at', '2025-01-01 10:00:00+00',
+    'published_by', :'previousPublisherID',
+    'starts_at', now() + interval '29 days'
+));
 
 -- Session for the already published event
 insert into session (

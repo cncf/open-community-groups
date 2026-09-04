@@ -41,27 +41,20 @@ select plan(9);
 -- ============================================================================
 
 -- Users that receive or own award-processing fixtures
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'actorID', 'hash', 'process-actor@example.test', true, 'process-actor'),
-    (:'batchOneID', 'hash', 'process-one@example.test', true, 'process-one'),
-    (:'batchTwoID', 'hash', 'process-two@example.test', true, 'process-two'),
-    (:'completeUserID', 'hash', 'process-complete@example.test', true, 'process-complete'),
-    (:'duplicateUserID', 'hash', 'process-duplicate@example.test', true, 'process-duplicate'),
-    (:'rateUserID', 'hash', 'process-rate@example.test', true, 'process-rate'),
-    (:'recentAwardUserID', 'hash', 'process-recent@example.test', true, 'process-recent');
+select fx_user(:'actorID', jsonb_build_object('username', 'process-actor'));
 
 -- Community that owns the processing fixtures
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Process Community', '/logo', 'process-community');
+select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
 
--- Category used by the processing group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the processing fixtures
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Process Group', 'process-group');
+-- Baseline group categories, users and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'batchOneID');
+select fx_user(:'batchTwoID');
+select fx_user(:'completeUserID');
+select fx_user(:'duplicateUserID');
+select fx_user(:'rateUserID');
+select fx_user(:'recentAwardUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Badge definition used to detect duplicate active credentials
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)

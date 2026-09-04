@@ -61,259 +61,91 @@ select plan(25);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'approvalRefundAttendeeID');
+select fx_user(:'approvedRequestAttendeeID');
+select fx_user(:'conflictingRefundAttendeeID');
+select fx_user(:'externalAttendeeID');
+select fx_user(:'externalRequestedAttendeeID');
+select fx_user(:'freeTicketAttendeeID');
+select fx_user(:'freeTicketPromotedUserID');
+select fx_user(:'invalidProviderAttendeeID');
+select fx_user(:'rejectedRequestAttendeeID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Tech', :'communityID');
-
--- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Users
-insert into "user" (auth_hash, email, email_verified, name, user_id, username)
-values
-    ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
-    (
-        'hash-approval-refund',
-        'approval-refund@example.com',
-        true,
-        'Approval Refund',
-        :'approvalRefundAttendeeID',
-        'approval-refund'
-    ),
-    (
-        'hash-approved-request',
-        'approved-request@example.com',
-        true,
-        'Approved Request',
-        :'approvedRequestAttendeeID',
-        'approved-request'
-    ),
-    ('hash-attendee', 'attendee@example.com', true, 'Attendee', :'attendeeID', 'attendee'),
-    (
-        'hash-conflicting-refund',
-        'conflicting-refund@example.com',
-        true,
-        'Conflicting Refund',
-        :'conflictingRefundAttendeeID',
-        'conflicting-refund'
-    ),
-    (
-        'hash-external-attendee',
-        'external-attendee@example.com',
-        true,
-        'External Attendee',
-        :'externalAttendeeID',
-        'external-attendee'
-    ),
-    (
-        'hash-external-requested',
-        'external-requested@example.com',
-        true,
-        'External Requested',
-        :'externalRequestedAttendeeID',
-        'external-requested'
-    ),
-    (
-        'hash-free-attendee',
-        'free-attendee@example.com',
-        true,
-        'Free Attendee',
-        :'freeTicketAttendeeID',
-        'free-attendee'
-    ),
-    (
-        'hash-free-promoted',
-        'free-promoted@example.com',
-        true,
-        'Free Promoted',
-        :'freeTicketPromotedUserID',
-        'free-promoted'
-    ),
-    (
-        'hash-invalid-provider',
-        'invalid-provider@example.com',
-        true,
-        'Invalid Provider',
-        :'invalidProviderAttendeeID',
-        'invalid-provider'
-    ),
-    ('hash-limited', 'limited@example.com', true, 'Limited', :'limitedAttendeeID', 'limited'),
-    ('hash-paid', 'paid@example.com', true, 'Paid', :'paidAttendeeID', 'paid'),
-    ('hash-promoted', 'promoted@example.com', true, 'Promoted', :'promotedUserID', 'promoted'),
-    (
-        'hash-rejected-request',
-        'rejected-request@example.com',
-        true,
-        'Rejected Request',
-        :'rejectedRequestAttendeeID',
-        'rejected-request'
-    );
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-cancel-event-attendee-attendance'));
+
+select fx_user(:'attendeeID', jsonb_build_object(
+    'name', 'Attendee',
+    'username', 'attendee-cancel-event-attendee-attendance'
+));
+
+select fx_user(:'limitedAttendeeID', jsonb_build_object(
+    'name', 'Limited',
+    'username', 'limited'
+));
+select fx_user(:'paidAttendeeID', jsonb_build_object(
+    'name', 'Paid',
+    'username', 'paid'
+));
+select fx_user(:'promotedUserID', jsonb_build_object(
+    'name', 'Promoted',
+    'username', 'promoted'
+));
 
 -- Events
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    payment_currency_code,
-    published,
-    canceled,
-    capacity,
-    waitlist_enabled,
-    starts_at
-)
-values
-    (
-        :'eventID',
-        'Free Event',
-        'free-event',
-        'Test free event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        null,
-        true,
-        false,
-        null,
-        false,
-        now() + interval '7 days'
-    ), (
-        :'eventCanceledID',
-        'Canceled Event',
-        'canceled-event',
-        'Test canceled event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        null,
-        true,
-        true,
-        null,
-        false,
-        now() + interval '7 days'
-    ), (
-        :'eventLimitedID',
-        'Limited Event',
-        'limited-event',
-        'Test limited event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        null,
-        true,
-        false,
-        1,
-        true,
-        now() + interval '7 days'
-    ), (
-        :'eventPaidID',
-        'Paid Event',
-        'paid-event',
-        'Test paid event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'USD',
-        true,
-        false,
-        null,
-        false,
-        now() + interval '7 days'
-    ), (
-        :'eventTicketedFreeID',
-        'Ticketed Free Event',
-        'ticketed-free-event',
-        'Test ticketed free event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        null,
-        true,
-        false,
-        null,
-        true,
-        now() + interval '7 days'
-    ), (
-        :'eventUnpublishedID',
-        'Unpublished Event',
-        'unpublished-event',
-        'Test unpublished event',
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        null,
-        false,
-        false,
-        null,
-        false,
-        now() + interval '7 days'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', now() + interval '7 days'
+));
+select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'starts_at', now() + interval '7 days'
+));
+select fx_event(:'eventLimitedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'starts_at', now() + interval '7 days',
+    'waitlist_enabled', true
+));
+select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Paid Event',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', now() + interval '7 days'
+));
+select fx_event(:'eventTicketedFreeID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', now() + interval '7 days',
+    'waitlist_enabled', true
+));
+select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object('starts_at', now() + interval '7 days'));
 
 -- Ticket types
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values
-    (:'eventTicketTypeID', :'eventPaidID', 1, 10, 'Paid admission'),
-    (:'freeTicketTypeID', :'eventTicketedFreeID', 1, 1, 'Free admission');
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventPaidID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Paid admission'
+));
+select fx_event_ticket_type(:'freeTicketTypeID', :'eventTicketedFreeID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'Free admission'
+));
 
 -- Current intrinsic-free price used when the released ticket seat is offered
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'freeTicketPriceWindowID',
-    0,
-    :'freeTicketTypeID'
-);
+select fx_event_ticket_price_window(:'freeTicketPriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Events without a specialized ticket fixture use a default free tier
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select
-    e.event_id,
+select fx_event_ticket_type(
     gen_random_uuid(),
-    1,
-    greatest(coalesce(e.capacity, 100), 1),
-    'General Admission'
+    e.event_id,
+    jsonb_build_object('seats_total', greatest(coalesce(e.capacity, 100), 1))
+)
 from event e
 where not exists (
     select 1
@@ -322,12 +154,11 @@ where not exists (
 );
 
 -- Current free prices for the default ticket tiers
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
+select fx_event_ticket_price_window(
+    gen_random_uuid(),
+    ett.event_ticket_type_id,
+    jsonb_build_object('amount_minor', 0)
 )
-select 0, gen_random_uuid(), ett.event_ticket_type_id
 from event_ticket_type ett
 where not exists (
     select 1
@@ -530,50 +361,18 @@ values
     );
 
 -- External-marked event used by the local refund attendance branch
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    false,
-    'External attendance cancellation event',
-    :'eventCategoryID',
-    :'eventExternalID',
-    'in-person',
-    'https://pay.example.test/attendance-cancel',
-    :'groupID',
-    'External Attendance Event',
-    'KRW',
-    true,
-    'external-attendance-event',
-    now() + interval '7 days',
-    'UTC'
-);
+select fx_event(:'eventExternalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/attendance-cancel',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', now() + interval '7 days'
+));
 
 -- Ticket type for the external attendance event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'externalTicketTypeID',
-    :'eventExternalID',
-    1,
-    50,
-    'External admission'
-);
+select fx_event_ticket_type(:'externalTicketTypeID', :'eventExternalID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'External admission'
+));
 
 -- Completed external purchase refunded locally on attendance cancellation
 insert into event_purchase (

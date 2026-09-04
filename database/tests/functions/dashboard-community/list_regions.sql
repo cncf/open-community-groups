@@ -26,42 +26,13 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner-mobile-1.png',
-    'https://example.com/banner-1.png',
-    'https://example.com/logo-1.png'
-), (
-    :'community2ID',
-    'devops-vancouver',
-    'DevOps Vancouver',
-    'Building DevOps expertise and community in Vancouver',
-    'https://example.com/banner-mobile-2.png',
-    'https://example.com/banner-2.png',
-    'https://example.com/logo-2.png'
-), (
-    :'community3ID',
-    'rust-denver',
-    'Rust Denver',
-    'Building the Rust programming community in Denver',
-    'https://example.com/banner-mobile-3.png',
-    'https://example.com/banner-3.png',
-    'https://example.com/logo-3.png'
-);
+-- Baseline community and group category
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
+select fx_community(:'community3ID');
+select fx_group_category(:'groupCategory1ID', :'community1ID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 
--- Regions
 insert into region (region_id, community_id, name, "order") values
     (:'region1ID', :'community1ID', 'North America', 2),
     (:'region2ID', :'community1ID', 'Europe', 1);
@@ -70,48 +41,14 @@ insert into region (region_id, community_id, name, "order") values
 insert into region (region_id, community_id, name)
 values (:'region3ID', :'community2ID', 'Asia Pacific');
 
--- Group categories
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategory1ID', :'community1ID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Business');
-
 -- Groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    region_id
-) values (
-    :'group1ID',
-    :'community1ID',
-    :'groupCategory1ID',
-    'Europe JS',
-    'europe-js',
-    :'region2ID'
-), (
-    :'group2ID',
-    :'community1ID',
-    :'groupCategory1ID',
-    'Europe Rust',
-    'europe-rust',
-    :'region2ID'
-), (
-    :'group3ID',
-    :'community1ID',
-    :'groupCategory1ID',
-    'North America Go',
-    'north-america-go',
-    :'region1ID'
-), (
-    :'group4ID',
-    :'community2ID',
-    :'groupCategory2ID',
-    'APAC DevOps',
-    'apac-devops',
-    :'region3ID'
-);
+select fx_group(:'group1ID', :'community1ID', :'groupCategory1ID', jsonb_build_object('region_id', :'region2ID'));
+-- group
+select fx_group(:'group2ID', :'community1ID', :'groupCategory1ID', jsonb_build_object('region_id', :'region2ID'));
+-- group
+select fx_group(:'group3ID', :'community1ID', :'groupCategory1ID', jsonb_build_object('region_id', :'region1ID'));
+-- group
+select fx_group(:'group4ID', :'community2ID', :'groupCategory2ID', jsonb_build_object('region_id', :'region3ID'));
 
 -- ============================================================================
 -- TESTS

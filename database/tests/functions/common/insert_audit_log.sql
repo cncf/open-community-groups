@@ -20,61 +20,17 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- User
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'test_hash', 'user@example.com', true, 'user');
+select fx_user(:'userID', jsonb_build_object('username', 'user'));
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values (
-    :'eventID',
-    :'groupID',
-    'Test Event',
-    'test-event',
-    'A test event',
-    'UTC',
-    :'eventCategoryID',
-    'virtual'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- ============================================================================
 -- TESTS

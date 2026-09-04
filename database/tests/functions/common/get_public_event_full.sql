@@ -40,202 +40,65 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community for public full event scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'public-event-community',
-    'Public Event Community',
-    'Community for public full event tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category for public full event scenarios
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category for public full event scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group for public full event scenarios
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Public Event Group',
-    'public-event-group'
-);
-
--- Users covering public inventory allocation and exclusion states
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (
-        :'activeOfferUserID',
-        'active-offer-hash',
-        'active-offer@example.test',
-        true,
-        'active-offer-user'
-    ),
-    (
-        :'activeHoldUserID',
-        'active-hold-hash',
-        'active-hold@example.test',
-        true,
-        'active-hold-user'
-    ),
-    (
-        :'completedPurchaseUserID',
-        'completed-purchase-hash',
-        'completed-purchase@example.test',
-        true,
-        'completed-purchase-user'
-    ),
-    (
-        :'expiredHoldUserID',
-        'expired-hold-hash',
-        'expired-hold@example.test',
-        true,
-        'expired-hold-user'
-    ),
-    (
-        :'expiredOfferUserID',
-        'expired-offer-hash',
-        'expired-offer@example.test',
-        true,
-        'expired-offer-user'
-    ),
-    (
-        :'pendingRequestUserID',
-        'pending-request-hash',
-        'pending-request@example.test',
-        true,
-        'pending-request-user'
-    );
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'activeOfferUserID');
+select fx_user(:'activeHoldUserID');
+select fx_user(:'completedPurchaseUserID');
+select fx_user(:'expiredHoldUserID');
+select fx_user(:'expiredOfferUserID');
+select fx_user(:'pendingRequestUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events with mixed and fully invitation-only ticket inventory
-insert into event (
-    event_id,
-    capacity,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    timezone
-) values
-    (
-        :'eventID',
-        65,
-        'Event for public full event tests',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Public Event',
-        'USD',
-        true,
-        'public-event',
-        'UTC'
-    ),
-    (
-        :'eventPrivateID',
-        5,
-        'Fully private event for public full event tests',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Private Event',
-        'USD',
-        true,
-        'private-event',
-        'UTC'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 65,
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true
+));
+select fx_event(:'eventPrivateID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true
+));
 
 -- Public and invitation-only ticket types
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    availability,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        :'publicTicketTypeID',
-        true,
-        'public',
-        :'eventID',
-        1,
-        10,
-        'Public pass'
-    ),
-    (
-        :'privateTicketTypeID',
-        true,
-        'invitation_only',
-        :'eventID',
-        2,
-        5,
-        'Private pass'
-    ),
-    (
-        :'inactivePublicTicketTypeID',
-        false,
-        'public',
-        :'eventID',
-        3,
-        20,
-        'Inactive public pass'
-    ),
-    (
-        :'futurePublicTicketTypeID',
-        true,
-        'public',
-        :'eventID',
-        4,
-        30,
-        'Future public pass'
-    ),
-    (
-        :'privateOnlyTicketTypeID',
-        true,
-        'invitation_only',
-        :'eventPrivateID',
-        1,
-        5,
-        'Private-only pass'
-    );
+select fx_event_ticket_type(:'publicTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Public pass'
+));
+select fx_event_ticket_type(:'privateTicketTypeID', :'eventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 2,
+    'seats_total', 5
+));
+select fx_event_ticket_type(:'inactivePublicTicketTypeID', :'eventID', jsonb_build_object(
+    'active', false,
+    'order', 3,
+    'seats_total', 20
+));
+select fx_event_ticket_type(:'futurePublicTicketTypeID', :'eventID', jsonb_build_object(
+    'order', 4,
+    'seats_total', 30
+));
+select fx_event_ticket_type(:'privateOnlyTicketTypeID', :'eventPrivateID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 5
+));
 
 -- Current and future prices for public and invitation-only ticket types
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id,
-    starts_at
-) values
-    (
-        :'futurePublicWindowID',
-        2500,
-        :'futurePublicTicketTypeID',
-        current_timestamp + interval '1 day'
-    ),
-    (:'inactivePublicWindowID', 2500, :'inactivePublicTicketTypeID', null),
-    (:'privateOnlyWindowID', 5000, :'privateOnlyTicketTypeID', null),
-    (:'privateWindowID', 5000, :'privateTicketTypeID', null),
-    (:'publicWindowID', 2500, :'publicTicketTypeID', null);
+select fx_event_ticket_price_window(:'futurePublicWindowID', :'futurePublicTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event_ticket_price_window(:'inactivePublicWindowID', :'inactivePublicTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'privateOnlyWindowID', :'privateOnlyTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'privateWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'publicWindowID', :'publicTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Active and expired organizer invitations for public inventory
 insert into admission_offer (

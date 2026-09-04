@@ -22,25 +22,18 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns the groups
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Owner Community', '/logo', 'owner-community');
-
--- Community without groups
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'otherCommunityID', '/mobile', '/banner', 'Description', 'Other Community', '/logo', 'other-community');
-
--- Category used by the groups
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Active group owned by the community
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'activeGroupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group');
+-- Baseline communities, category and active group used by group ownership checks
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'activeGroupID', :'communityID', :'groupCategoryID');
 
 -- Soft-deleted group owned by the community
-insert into "group" (group_id, community_id, group_category_id, active, deleted, deleted_at, name, slug)
-values (:'deletedGroupID', :'communityID', :'groupCategoryID', false, true, current_timestamp, 'Deleted Group', 'deleted-group');
+select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true,
+    'deleted_at', current_timestamp
+));
 
 -- ============================================================================
 -- TESTS

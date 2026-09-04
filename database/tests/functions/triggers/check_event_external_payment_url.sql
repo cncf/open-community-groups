@@ -27,40 +27,12 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'external-url-community',
-    'External URL Community',
-    'Community for external payment url trigger tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Attendee holding the external purchases
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'attendeeID', 'hash-attendee', 'attendee@example.test', true, 'external-url-attendee');
-
--- Event category used by both events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category used by the hosting group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'External URL Group', 'external-url-group');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'attendeeID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event with a pending external hold
 insert into event (
@@ -113,12 +85,16 @@ insert into event (
 );
 
 -- Paid ticket tier for the pending event
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'pendingTicketTypeID', :'pendingEventID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'pendingTicketTypeID', :'pendingEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Paid ticket tier for the settled event
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'settledTicketTypeID', :'settledEventID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'settledTicketTypeID', :'settledEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Pending external purchase that blocks clearing the URL
 insert into event_purchase (
@@ -181,12 +157,10 @@ insert into event_purchase (
 );
 
 -- Positive price window for the pending event
-insert into event_ticket_price_window (amount_minor, event_ticket_price_window_id, event_ticket_type_id)
-values (5000, gen_random_uuid(), :'pendingTicketTypeID');
+select fx_event_ticket_price_window(gen_random_uuid(), :'pendingTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- Positive price window for the settled event
-insert into event_ticket_price_window (amount_minor, event_ticket_price_window_id, event_ticket_type_id)
-values (5000, gen_random_uuid(), :'settledTicketTypeID');
+select fx_event_ticket_price_window(gen_random_uuid(), :'settledTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- ============================================================================
 -- TESTS

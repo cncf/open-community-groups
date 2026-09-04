@@ -11,108 +11,44 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79530000-0000-0000-0000-000000000001'
-\set claimedClaimID '79530000-0000-0000-0000-000000000011'
-\set claimedPurchaseID '79530000-0000-0000-0000-000000000012'
-\set claimedRefundID '79530000-0000-0000-0000-000000000013'
-\set eventCategoryID '79530000-0000-0000-0000-000000000002'
-\set eventID '79530000-0000-0000-0000-000000000003'
-\set groupCategoryID '79530000-0000-0000-0000-000000000004'
-\set groupID '79530000-0000-0000-0000-000000000005'
-\set missingPurchaseID '79530000-0000-0000-0000-000000000010'
-\set purchaseID '79530000-0000-0000-0000-000000000008'
-\set refundID '79530000-0000-0000-0000-000000000009'
-\set ticketTypeID '79530000-0000-0000-0000-000000000006'
-\set userID '79530000-0000-0000-0000-000000000007'
+\set communityID '79010000-0000-0000-0000-000000000001'
+\set claimedClaimID '79010000-0000-0000-0000-000000000011'
+\set claimedPurchaseID '79010000-0000-0000-0000-000000000012'
+\set claimedRefundID '79010000-0000-0000-0000-000000000013'
+\set eventCategoryID '79010000-0000-0000-0000-000000000002'
+\set eventID '79010000-0000-0000-0000-000000000003'
+\set groupCategoryID '79010000-0000-0000-0000-000000000004'
+\set groupID '79010000-0000-0000-0000-000000000005'
+\set missingPurchaseID '79010000-0000-0000-0000-000000000010'
+\set purchaseID '79010000-0000-0000-0000-000000000008'
+\set refundID '79010000-0000-0000-0000-000000000009'
+\set ticketTypeID '79010000-0000-0000-0000-000000000006'
+\set userID '79010000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community containing the recovery purchase
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'Test community',
-    'Refund Recovery Community',
-    'https://example.com/logo.png',
-    'refund-recovery-community'
-);
-
--- Event category used by the recovery event
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Group category used by the recovery group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Buyer whose finalized refund requires recovery
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'recovery@example.com', true, 'recovery-user');
-
--- Group containing the recovery event
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Refund Recovery Group',
-    'refund-recovery-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Ticketed event containing the recovery purchase
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'eventID',
-    'Test event',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Refund Recovery Event',
-    'USD',
-    true,
-    current_timestamp,
-    'refund-recovery-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket type purchased before the refund
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Purchase waiting for manual refund recovery
 insert into event_purchase (

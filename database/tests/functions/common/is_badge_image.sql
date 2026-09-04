@@ -23,16 +23,16 @@ select plan(4);
 -- ============================================================================
 
 -- Community that owns the badge group
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Badge Community', '/logo', 'badge-community');
+select fx_community(:'communityID', jsonb_build_object(
+    'description', 'Description',
+    'display_name', 'Badge Community'
+));
 
--- Category used by the badge group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Baseline group categories
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group that retains badge images
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Badge Group', 'badge-group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Badge Group'));
 
 -- Gallery artwork retained without a definition
 insert into badge_artwork (file_name, group_id)

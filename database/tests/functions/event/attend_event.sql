@@ -101,913 +101,209 @@ select plan(65);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-), (
-    :'questionsCommunityID',
-    'attend-questions-community',
-    'Attend Questions Community',
-    'Community for registration-question attendance tests',
-    'https://example.com/questions-banner-mobile.png',
-    'https://example.com/questions-banner.png',
-    'https://example.com/questions-logo.png'
-);
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_community(:'questionsCommunityID');
+select fx_group_category(:'questionsGroupCategoryID', :'questionsCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_event_category(:'questionsEventCategoryID', :'questionsCommunityID');
+select fx_user(:'user5ID');
+select fx_user(:'user8ID');
+select fx_user(:'user9ID');
+select fx_user(:'questionsRejoinInsertUserID');
+select fx_user(:'questionsRejoinConflictUserID');
+select fx_user(:'questionsPendingUserID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
+select fx_user(:'user4ID');
+select fx_user(:'user6ID');
+select fx_user(:'user7ID');
+select fx_user(:'user10ID');
+select fx_user(:'duplicateWaitlistUserID');
+select fx_user(:'activeApprovalOfferUserID');
+select fx_user(:'activeApprovalPurchaseUserID');
+select fx_user(:'ticketAvailableUserID');
+select fx_user(:'ticketPrivateSelectionUserID');
+select fx_user(:'ticketSoldOutNoWaitlistHolderUserID');
+select fx_user(:'ticketSoldOutNoWaitlistUserID');
+select fx_user(:'ticketWaitlistActivePurchaseUserID');
+select fx_user(:'ticketExpiredPurchaseUserID');
+select fx_user(:'questionsWaitlistUserID');
+select fx_user(:'questionsSeatUserID');
+select fx_user(:'questionsRequestUserID');
+select fx_group(:'questionsGroupID', :'questionsCommunityID', :'questionsGroupCategoryID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'questionsGroupCategoryID', :'questionsCommunityID', 'Technology');
+select fx_user(:'questionsAttendeeUserID', jsonb_build_object('name', 'Attendee'));
 
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values
-    (:'eventCategoryID', :'communityID', 'General'),
-    (:'questionsEventCategoryID', :'questionsCommunityID', 'General');
+select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name,
-    registration_status
-) values (
-    :'user1ID',
-    'user-1-hash',
-    'user-1@example.com',
-    true,
-    'user-1',
-    'User One',
-    'registered'
-), (
-    :'user2ID',
-    'user-2-hash',
-    'user-2@example.com',
-    true,
-    'user-2',
-    'User Two',
-    'registered'
-), (
-    :'user3ID',
-    'user-3-hash',
-    'user-3@example.com',
-    true,
-    'user-3',
-    'User Three',
-    'registered'
-), (
-    :'user4ID',
-    'user-4-hash',
-    'user-4@example.com',
-    true,
-    'user-4',
-    'User Four',
-    'registered'
-), (
-    :'user5ID',
-    'user-5-hash',
-    'user-5@example.com',
-    true,
-    'user-5',
-    'User Five',
-    'registered'
-), (
-    :'user6ID',
-    'user-6-hash',
-    'user-6@example.com',
-    true,
-    'user-6',
-    'User Six',
-    'registered'
-), (
-    :'user7ID',
-    'user-7-hash',
-    'user-7@example.com',
-    true,
-    'user-7',
-    'User Seven',
-    'registered'
-), (
-    :'user8ID',
-    'user-8-hash',
-    'user-8@example.com',
-    true,
-    'user-8',
-    'User Eight',
-    'registered'
-), (
-    :'user9ID',
-    'user-9-hash',
-    'user-9@example.com',
-    true,
-    'user-9',
-    'User Nine',
-    'registered'
-), (
-    :'user10ID',
-    'user-10-hash',
-    'user-10@example.com',
-    true,
-    'user-10',
-    'User Ten',
-    'registered'
-), (
-    :'duplicateWaitlistUserID',
-    'duplicate-waitlist-hash',
-    'duplicate-waitlist@example.com',
-    true,
-    'duplicate-waitlist',
-    'Duplicate Waitlist',
-    'registered'
-), (
-    :'activeApprovalOfferUserID',
-    'active-approval-offer-hash',
-    'active-approval-offer@example.com',
-    true,
-    'active-approval-offer',
-    'Active Approval Offer',
-    'registered'
-), (
-    :'activeApprovalPurchaseUserID',
-    'active-approval-purchase-hash',
-    'active-approval-purchase@example.com',
-    true,
-    'active-approval-purchase',
-    'Active Approval Purchase',
-    'registered'
-), (
-    :'ticketAvailableUserID',
-    'ticket-available-hash',
-    'ticket-available@example.com',
-    true,
-    'ticket-available',
-    'Ticket Available',
-    'registered'
-), (
-    :'ticketPrivateSelectionUserID',
-    'ticket-private-selection-hash',
-    'ticket-private-selection@example.com',
-    true,
-    'ticket-private-selection',
-    'Ticket Private Selection',
-    'registered'
-), (
-    :'ticketSoldOutNoWaitlistHolderUserID',
-    'ticket-sold-out-holder-hash',
-    'ticket-sold-out-holder@example.com',
-    true,
-    'ticket-sold-out-holder',
-    'Ticket Sold Out Holder',
-    'registered'
-), (
-    :'ticketSoldOutNoWaitlistUserID',
-    'ticket-sold-out-user-hash',
-    'ticket-sold-out-user@example.com',
-    true,
-    'ticket-sold-out-user',
-    'Ticket Sold Out User',
-    'registered'
-), (
-    :'ticketWaitlistActivePurchaseUserID',
-    'ticket-waitlist-active-purchase-hash',
-    'ticket-waitlist-active-purchase@example.com',
-    true,
-    'ticket-waitlist-active-purchase',
-    'Ticket Waitlist Active Purchase',
-    'registered'
-), (
-    :'ticketExpiredPurchaseUserID',
-    'ticket-expired-purchase-hash',
-    'ticket-expired-purchase@example.com',
-    true,
-    'ticket-expired-purchase',
-    'Ticket Expired Purchase',
-    'registered'
-), (
-    :'questionsAttendeeUserID',
-    'rq-hash-1',
-    'rq-attend@example.com',
-    true,
-    'rq-attendee',
-    'Attendee',
-    'registered'
-), (
-    :'questionsWaitlistUserID',
-    'rq-hash-2',
-    'rq-waitlist@example.com',
-    true,
-    'rq-waitlist',
-    'Waitlist User',
-    'registered'
-), (
-    :'questionsSeatUserID',
-    'rq-hash-3',
-    'rq-seat@example.com',
-    true,
-    'rq-seat',
-    'Seat Holder',
-    'registered'
-), (
-    :'questionsRequestUserID',
-    'rq-hash-4',
-    'rq-request@example.com',
-    true,
-    'rq-requester',
-    'Requester',
-    'registered'
-), (
-    :'questionsRejoinInsertUserID',
-    'rq-hash-5',
-    'rq-rejoin-insert@example.com',
-    true,
-    'rq-rejoin-insert',
-    'Rejoin Insert',
-    'registered'
-), (
-    :'questionsRejoinConflictUserID',
-    'rq-hash-6',
-    'rq-rejoin-conflict@example.com',
-    true,
-    'rq-rejoin-conflict',
-    'Rejoin Conflict',
-    'registered'
-), (
-    :'questionsPendingUserID',
-    'rq-hash-7',
-    'rq-pending@example.com',
-    true,
-    'rq-pending',
-    'Pending Answers',
-    'registered'
-);
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Active Group',
-    'active-group',
-    true,
-    false
-), (
-    :'inactiveGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Inactive Group',
-    'inactive-group',
-    false,
-    false
-), (
-    :'questionsGroupID',
-    :'questionsCommunityID',
-    :'questionsGroupCategoryID',
-    'Attend Questions Group',
-    'attend-questions-group',
-    true,
-    false
-);
-
--- Events
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    attendee_approval_required,
-    canceled,
-    capacity,
-    deleted,
-    description,
-    ends_at,
-    published,
-    registration_ends_at,
-    registration_starts_at,
-    starts_at,
-    timezone,
-    waitlist_enabled
-)
-values
-    (
-        :'eventOKID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'OK',
-        'ok',
-        false,
-        false,
-        null,
-        false,
-        'Test event',
-        null,
-        true,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    ),
-    (
-        :'eventUnpublishedID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Unpublished',
-        'unpublished',
-        false,
-        false,
-        null,
-        false,
-        'Test event',
-        null,
-        false,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    ),
-    (
-        :'eventCanceledID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Canceled',
-        'canceled',
-        false,
-        true,
-        null,
-        false,
-        'Test event',
-        null,
-        false,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    ),
-    (
-        :'eventDeletedID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Deleted',
-        'deleted',
-        false,
-        false,
-        null,
-        true,
-        'Test event',
-        null,
-        false,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    ),
-    (
-        :'eventInactiveGroupID',
-        :'eventCategoryID',
-        'in-person',
-        :'inactiveGroupID',
-        'Inactive Group',
-        'inactive-group',
-        false,
-        false,
-        null,
-        false,
-        'Test event',
-        null,
-        true,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    ),
-    (
-        :'eventPastID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Past',
-        'past',
-        false,
-        false,
-        null,
-        false,
-        'Past event',
-        current_timestamp - interval '1 hour',
-        true,
-        null,
-        null,
-        current_timestamp - interval '2 hours',
-        'UTC',
-        false
-    ),
-    (
-        :'eventFullNoWaitlistID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Full No Waitlist',
-        'full-no-waitlist',
-        false,
-        false,
-        2,
-        false,
-        'Full event',
-        null,
-        true,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    ),
-    (
-        :'eventFullWaitlistID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Full Waitlist',
-        'full-waitlist',
-        false,
-        false,
-        1,
-        false,
-        'Waitlist event',
-        null,
-        true,
-        null,
-        null,
-        null,
-        'UTC',
-        true
-    ),
-    (
-        :'eventInviteOnlyID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Invite Only',
-        'invite-only',
-        true,
-        false,
-        1,
-        false,
-        'Invite-only event',
-        null,
-        true,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    ),
-    (
-        :'eventRegistrationClosedID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Registration Closed',
-        'registration-closed',
-        false,
-        false,
-        null,
-        false,
-        'Closed registration event',
-        null,
-        true,
-        current_timestamp - interval '1 hour',
-        null,
-        '2030-01-04 10:00:00+00',
-        'UTC',
-        false
-    ),
-    (
-        :'eventRegistrationUpcomingID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Registration Upcoming',
-        'registration-upcoming',
-        false,
-        false,
-        null,
-        false,
-        'Upcoming registration event',
-        null,
-        true,
-        current_timestamp + interval '2 days',
-        current_timestamp + interval '1 day',
-        '2030-01-05 10:00:00+00',
-        'UTC',
-        false
-    ),
-    (
-        :'eventRegistrationOpenUntilStartID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Registration Open Until Start',
-        'registration-open-until-start',
-        false,
-        false,
-        null,
-        false,
-        'Open-only registration event',
-        current_timestamp + interval '1 hour',
-        true,
-        null,
-        current_timestamp - interval '2 hours',
-        current_timestamp - interval '1 hour',
-        'UTC',
-        false
-    ),
-    (
-        :'eventReactivationID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Reactivation',
-        'reactivation',
-        false,
-        false,
-        null,
-        false,
-        'Canceled attendance reactivation event',
-        null,
-        true,
-        null,
-        null,
-        null,
-        'UTC',
-        false
-    );
+-- Events with scenario-specific state
+select fx_event(:'eventOKID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'OK',
+    'published', true,
+    'slug', 'ok'
+));
+select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Unpublished',
+    'slug', 'unpublished'
+));
+select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'name', 'Canceled',
+    'slug', 'canceled'
+));
+select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'name', 'Deleted',
+    'slug', 'deleted'
+));
+select fx_event(:'eventInactiveGroupID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object('published', true));
+select fx_event(:'eventPastID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp - interval '1 hour',
+    'name', 'Past',
+    'published', true,
+    'slug', 'past',
+    'starts_at', current_timestamp - interval '2 hours'
+));
+select fx_event(:'eventFullNoWaitlistID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 2,
+    'published', true
+));
+select fx_event(:'eventFullWaitlistID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'waitlist_enabled', true
+));
+select fx_event(:'eventInviteOnlyID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'capacity', 1,
+    'published', true
+));
+select fx_event(:'eventRegistrationClosedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'registration_ends_at', current_timestamp - interval '1 hour',
+    'starts_at', '2030-01-04 10:00:00+00'
+));
+select fx_event(:'eventRegistrationUpcomingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'registration_ends_at', current_timestamp + interval '2 days',
+    'registration_starts_at', current_timestamp + interval '1 day',
+    'starts_at', '2030-01-05 10:00:00+00'
+));
+select fx_event(:'eventRegistrationOpenUntilStartID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 hour',
+    'published', true,
+    'registration_starts_at', current_timestamp - interval '2 hours',
+    'starts_at', current_timestamp - interval '1 hour'
+));
+select fx_event(:'eventReactivationID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Reactivation',
+    'published', true
+));
 
 -- Ticketed event used to reject direct RSVP enrollment
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    timezone,
-    waitlist_enabled
-) values
-    (
-        false,
-        'Ticketed event',
-        :'eventCategoryID',
-        :'eventTicketedID',
-        'in-person',
-        :'groupID',
-        'Ticketed',
-        true,
-        'ticketed',
-        'UTC',
-        true
-    ),
-    (
-        true,
-        'Public ticket approval event',
-        :'eventCategoryID',
-        :'eventTicketApprovalID',
-        'in-person',
-        :'groupID',
-        'Public Ticket Approval',
-        true,
-        'public-ticket-approval',
-        'UTC',
-        false
-    ),
-    (
-        true,
-        'Private ticket approval event',
-        :'eventCategoryID',
-        :'eventTicketPrivateApprovalID',
-        'in-person',
-        :'groupID',
-        'Private Ticket Approval',
-        true,
-        'private-ticket-approval',
-        'UTC',
-        false
-    );
+select fx_event(:'eventTicketedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Ticketed',
+    'published', true,
+    'waitlist_enabled', true
+));
+select fx_event(:'eventTicketApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
+select fx_event(:'eventTicketPrivateApprovalID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
 
 -- Ticketed events used by private-request and waitlist failure branches
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    timezone,
-    waitlist_enabled
-) values
-    (
-        false,
-        'Ticketed event with remaining public seats',
-        :'eventCategoryID',
-        :'eventTicketAvailableID',
-        'in-person',
-        :'groupID',
-        'Ticket Still Available',
-        true,
-        'ticket-still-available',
-        'UTC',
-        true
-    ),
-    (
-        true,
-        'Private ticket approval event with no public tiers',
-        :'eventCategoryID',
-        :'eventTicketPrivateSelectionID',
-        'in-person',
-        :'groupID',
-        'Private Ticket Selection',
-        true,
-        'private-ticket-selection',
-        'UTC',
-        false
-    ),
-    (
-        false,
-        'Sold-out ticketed event without a waitlist',
-        :'eventCategoryID',
-        :'eventTicketSoldOutNoWaitlistID',
-        'in-person',
-        :'groupID',
-        'Sold Out No Waitlist',
-        true,
-        'sold-out-no-waitlist',
-        'UTC',
-        false
-    ),
-    (
-        false,
-        'Sold-out ticketed event with an active requester purchase',
-        :'eventCategoryID',
-        :'eventTicketWaitlistActivePurchaseID',
-        'in-person',
-        :'groupID',
-        'Waitlist Active Purchase',
-        true,
-        'waitlist-active-purchase',
-        'UTC',
-        true
-    );
+select fx_event(:'eventTicketAvailableID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'waitlist_enabled', true
+));
+select fx_event(:'eventTicketPrivateSelectionID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true
+));
+select fx_event(:'eventTicketSoldOutNoWaitlistID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+select fx_event(:'eventTicketWaitlistActivePurchaseID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'waitlist_enabled', true
+));
 
-insert into event_ticket_type (
-    active,
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        true,
-        'public',
-        :'eventTicketedID',
-        :'ticketTypeID',
-        1,
-        1,
-        'Free admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventTicketedID',
-        :'ticketSecondTypeID',
-        2,
-        1,
-        'Second admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventTicketApprovalID',
-        :'ticketApprovalTypeID',
-        1,
-        10,
-        'Approval admission'
-    ),
-    (
-        true,
-        'invitation_only',
-        :'eventTicketPrivateApprovalID',
-        :'ticketPrivateApprovalTypeID',
-        1,
-        10,
-        'Private approval admission'
-    ),
-    (
-        true,
-        'invitation_only',
-        :'eventTicketedID',
-        :'ticketPrivateTypeID',
-        3,
-        1,
-        'Private admission'
-    );
+select fx_event_ticket_type(:'ticketTypeID', :'eventTicketedID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'ticketSecondTypeID', :'eventTicketedID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 1
+));
+select fx_event_ticket_type(:'ticketApprovalTypeID', :'eventTicketApprovalID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'ticketPrivateApprovalTypeID', :'eventTicketPrivateApprovalID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketPrivateTypeID', :'eventTicketedID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 3,
+    'seats_total', 1
+));
 
 -- Ticket tiers used by private-request and waitlist failure branches
-insert into event_ticket_type (
-    active,
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        true,
-        'public',
-        :'eventTicketAvailableID',
-        :'ticketAvailableTypeID',
-        1,
-        2,
-        'Available admission'
-    ),
-    (
-        true,
-        'invitation_only',
-        :'eventTicketPrivateSelectionID',
-        :'ticketPrivateSelectionTypeID',
-        1,
-        10,
-        'Private selection admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventTicketSoldOutNoWaitlistID',
-        :'ticketSoldOutNoWaitlistTypeID',
-        1,
-        1,
-        'Sold out admission'
-    ),
-    (
-        true,
-        'public',
-        :'eventTicketWaitlistActivePurchaseID',
-        :'ticketWaitlistActivePurchaseTypeID',
-        1,
-        1,
-        'Active purchase admission'
-    );
+select fx_event_ticket_type(:'ticketAvailableTypeID', :'eventTicketAvailableID', jsonb_build_object('seats_total', 2));
+select fx_event_ticket_type(:'ticketPrivateSelectionTypeID', :'eventTicketPrivateSelectionID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketSoldOutNoWaitlistTypeID', :'eventTicketSoldOutNoWaitlistID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'ticketWaitlistActivePurchaseTypeID', :'eventTicketWaitlistActivePurchaseID', jsonb_build_object('seats_total', 1));
 
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values
-    (0, :'ticketPriceWindowID', :'ticketTypeID'),
-    (0, :'ticketApprovalPriceWindowID', :'ticketApprovalTypeID'),
-    (0, :'ticketPrivateApprovalPriceWindowID', :'ticketPrivateApprovalTypeID'),
-    (0, :'ticketSecondPriceWindowID', :'ticketSecondTypeID'),
-    (0, :'ticketPrivatePriceWindowID', :'ticketPrivateTypeID');
+select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ticketApprovalPriceWindowID', :'ticketApprovalTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ticketPrivateApprovalPriceWindowID', :'ticketPrivateApprovalTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ticketSecondPriceWindowID', :'ticketSecondTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ticketPrivatePriceWindowID', :'ticketPrivateTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Current prices used by private-request and waitlist failure branch tiers
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values
-    (0, :'ticketAvailablePriceWindowID', :'ticketAvailableTypeID'),
-    (0, :'ticketPrivateSelectionPriceWindowID', :'ticketPrivateSelectionTypeID'),
-    (0, :'ticketSoldOutNoWaitlistPriceWindowID', :'ticketSoldOutNoWaitlistTypeID'),
-    (0, :'ticketWaitlistActivePurchasePriceWindowID', :'ticketWaitlistActivePurchaseTypeID');
+select fx_event_ticket_price_window(:'ticketAvailablePriceWindowID', :'ticketAvailableTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ticketPrivateSelectionPriceWindowID', :'ticketPrivateSelectionTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ticketSoldOutNoWaitlistPriceWindowID', :'ticketSoldOutNoWaitlistTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ticketWaitlistActivePurchasePriceWindowID', :'ticketWaitlistActivePurchaseTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Events requiring registration answers during attendance
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    attendee_approval_required,
-    capacity,
-    description,
-    published,
-    registration_questions,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    :'eventQuestionsID',
-    :'questionsEventCategoryID',
-    'in-person',
-    :'questionsGroupID',
-    'Questions Event',
-    'questions-event',
-    false,
-    null,
-    'Event requiring registration answers',
-    true,
-    format(
+select fx_event(:'eventQuestionsID', :'questionsGroupID', :'questionsEventCategoryID', jsonb_build_object(
+    'published', true,
+    'registration_questions', format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
         :'questionID'
     )::jsonb,
-    '2030-01-01 10:00:00+00',
-    'UTC',
-    false
-), (
-    :'eventQuestionsApprovalID',
-    :'questionsEventCategoryID',
-    'in-person',
-    :'questionsGroupID',
-    'Approval Questions Event',
-    'approval-questions-event',
-    true,
-    null,
-    'Approval-required event with registration answers',
-    true,
-    format(
+    'starts_at', '2030-01-01 10:00:00+00'
+));
+select fx_event(:'eventQuestionsApprovalID', :'questionsGroupID', :'questionsEventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'published', true,
+    'registration_questions', format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
         :'questionID'
     )::jsonb,
-    '2030-01-02 10:00:00+00',
-    'UTC',
-    false
-), (
-    :'eventQuestionsFullWaitlistID',
-    :'questionsEventCategoryID',
-    'in-person',
-    :'questionsGroupID',
-    'Questions Full Waitlist Event',
-    'questions-full-waitlist-event',
-    false,
-    1,
-    'Full waitlist event with registration answers',
-    true,
-    format(
+    'starts_at', '2030-01-02 10:00:00+00'
+));
+select fx_event(:'eventQuestionsFullWaitlistID', :'questionsGroupID', :'questionsEventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'registration_questions', format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
         :'questionID'
     )::jsonb,
-    '2030-01-03 10:00:00+00',
-    'UTC',
-    true
-);
+    'starts_at', '2030-01-03 10:00:00+00',
+    'waitlist_enabled', true
+));
 
 -- Events without a specialized ticket fixture use a default free tier
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select
-    e.event_id,
-    gen_random_uuid(),
-    1,
-    greatest(coalesce(e.capacity, 100), 1),
-    'General Admission'
+select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object(
+    'seats_total', greatest(coalesce(e.capacity, 100), 1)
+))
 from event e
 where not exists (
     select 1
@@ -1016,12 +312,7 @@ where not exists (
 );
 
 -- Current free prices for the default ticket tiers
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-)
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select fx_event_ticket_price_window(gen_random_uuid(), ett.event_ticket_type_id, jsonb_build_object('amount_minor', 0))
 from event_ticket_type ett
 where not exists (
     select 1

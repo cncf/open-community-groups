@@ -60,108 +60,116 @@ select plan(20);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the eligibility scenarios
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'delete-eligibility-community'
-);
+-- Baseline community, categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
--- Event category shared by the eligibility scenarios
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category shared by the eligibility scenarios
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
 
 -- Groups used to verify ownership boundaries
-insert into "group" (community_id, group_category_id, group_id, name, slug) values
-    (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group'),
-    (:'communityID', :'groupCategoryID', :'otherGroupID', 'Other Group', 'other-group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
 
 -- Users referenced by attendance, purchase, and recovery fixtures
-insert into "user" (auth_hash, email, user_id, username) values
-    ('actor', 'actor@example.test', :'actorID', 'actor'),
-    ('user', 'user@example.test', :'userID', 'user');
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-get-event-delete-eligibility'));
+select fx_user(:'userID', jsonb_build_object('username', 'user-get-event-delete-eligibility'));
 
 -- Events representing every lifecycle and dependency eligibility branch
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone,
-
-    canceled,
-    ends_at
-) values
-    ('Active', :'eventCategoryID', :'activeEventID', 'virtual', :'groupID', 'Active', true, 'active', now() + interval '1 day', 'UTC', false, now() + interval '1 day 1 hour'),
-    ('Attendee draft', :'eventCategoryID', :'attendeeDraftEventID', 'virtual', :'groupID', 'Attendee Draft', false, 'attendee-draft', null, 'UTC', false, null),
-    ('Audit draft', :'eventCategoryID', :'auditDraftEventID', 'virtual', :'groupID', 'Audit Draft', false, 'audit-draft', null, 'UTC', false, null),
-    ('Canceled', :'eventCategoryID', :'canceledEventID', 'virtual', :'groupID', 'Canceled', true, 'canceled', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
-    ('Draft', :'eventCategoryID', :'draftEventID', 'virtual', :'groupID', 'Draft', false, 'draft', null, 'UTC', false, null),
-    ('Durable refund', :'eventCategoryID', :'durableEventID', 'virtual', :'groupID', 'Durable Refund', true, 'durable-refund', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
-    ('Expired checkout', :'eventCategoryID', :'expiredPendingEventID', 'virtual', :'groupID', 'Expired Checkout', true, 'expired-checkout', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
-    ('Invitation draft', :'eventCategoryID', :'invitationDraftEventID', 'virtual', :'groupID', 'Invitation Draft', false, 'invitation-draft', null, 'UTC', false, null),
-    ('Offer draft', :'eventCategoryID', :'offerDraftEventID', 'virtual', :'groupID', 'Offer Draft', false, 'offer-draft', null, 'UTC', false, null),
-    ('Past', :'eventCategoryID', :'pastEventID', 'virtual', :'groupID', 'Past', true, 'past', now() - interval '2 hours', 'UTC', false, now() - interval '1 hour'),
-    ('Pending purchase', :'eventCategoryID', :'pendingEventID', 'virtual', :'groupID', 'Pending Purchase', true, 'pending-purchase', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
-    ('Provider checkout', :'eventCategoryID', :'providerPendingEventID', 'virtual', :'groupID', 'Provider Checkout', true, 'provider-checkout', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
-    ('Purchase draft', :'eventCategoryID', :'purchaseDraftEventID', 'virtual', :'groupID', 'Purchase Draft', false, 'purchase-draft', null, 'UTC', false, null),
-    ('Recovered refund', :'eventCategoryID', :'recoveredEventID', 'virtual', :'groupID', 'Recovered Refund', true, 'recovered-refund', now() + interval '1 day', 'UTC', true, now() + interval '1 day 1 hour'),
-    ('Waitlist draft', :'eventCategoryID', :'waitlistDraftEventID', 'virtual', :'groupID', 'Waitlist Draft', false, 'waitlist-draft', null, 'UTC', false, null);
+select fx_event(:'activeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'slug', 'active',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'attendeeDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'auditDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'slug', 'canceled',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'draftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Draft',
+    'event_kind_id', 'virtual',
+    'name', 'Draft',
+    'slug', 'draft'
+));
+select fx_event(:'durableEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'expiredPendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'invitationDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'offerDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'pastEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'slug', 'past',
+    'starts_at', now() - interval '2 hours'
+));
+select fx_event(:'pendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'providerPendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'purchaseDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'recoveredEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'waitlistDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Events covering deleted, finalized-refund, and prior-publication eligibility
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone,
-
-    canceled,
-    deleted,
-    deleted_at,
-    ends_at,
-    published_at
-) values
-    ('Deleted', :'eventCategoryID', :'deletedEventID', 'virtual', :'groupID', 'Deleted', false, 'deleted', null, 'UTC', false, true, current_timestamp, null, null),
-    ('Finalized refund', :'eventCategoryID', :'finalizedEventID', 'virtual', :'groupID', 'Finalized Refund', true, 'finalized-refund', now() + interval '1 day', 'UTC', true, false, null, now() + interval '1 day 1 hour', current_timestamp),
-    ('Historical draft', :'eventCategoryID', :'historicalDraftEventID', 'virtual', :'groupID', 'Historical Draft', false, 'historical-draft', null, 'UTC', false, false, null, null, current_timestamp);
+select fx_event(:'deletedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', current_timestamp,
+    'event_kind_id', 'virtual',
+    'slug', 'deleted'
+));
+select fx_event(:'finalizedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'historicalDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published_at', current_timestamp
+));
 
 -- Every event uses a free tier with stable identifiers for purchase fixtures
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select
-    e.event_id,
+select fx_event_ticket_type(
     case e.event_id
         when :'durableEventID'::uuid then :'durableTicketTypeID'::uuid
         when :'expiredPendingEventID'::uuid then :'expiredPendingTicketTypeID'::uuid
@@ -172,9 +180,9 @@ select
         when :'recoveredEventID'::uuid then :'recoveredTicketTypeID'::uuid
         else gen_random_uuid()
     end,
-    1,
-    100,
-    'General Admission'
+    e.event_id,
+    jsonb_build_object('seats_total', 100)
+)
 from event e
 where not exists (
     select 1

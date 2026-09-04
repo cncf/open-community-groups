@@ -21,81 +21,18 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'deactivate-group-community',
-    'Deactivate Group Community',
-    'Community for deactivate group tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, group category and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Active Group',
-    'active-group'
-);
-
--- Group (deleted)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values (
-    :'groupAlreadyDeletedID',
-    :'communityID',
-    :'groupCategoryID',
-    'Deleted Group',
-    'deleted-group',
-    false,
-    true
-);
+select fx_group(:'groupAlreadyDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
 
 -- Group (inactive)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values (
-    :'groupAlreadyInactiveID',
-    :'communityID',
-    :'groupCategoryID',
-    'Inactive Group',
-    'inactive-group',
-    false,
-    false
-);
+select fx_group(:'groupAlreadyInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- ============================================================================
 -- TESTS

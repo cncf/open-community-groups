@@ -17,37 +17,11 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    active,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'activeCommunityID',
-        'update-community-views',
-        'Update Community Views',
-        'Community for update community views tests',
-        true,
-        'https://example.com/update-community-views-banner-mobile.png',
-        'https://example.com/update-community-views-banner.png',
-        'https://example.com/update-community-views-logo.png'
-    ),
-    (
-        :'inactiveCommunityID',
-        'inactive-update-community-views',
-        'Inactive Update Community Views',
-        'Inactive community for update community views tests',
-        false,
-        'https://example.com/inactive-update-community-views-banner-mobile.png',
-        'https://example.com/inactive-update-community-views-banner.png',
-        'https://example.com/inactive-update-community-views-logo.png'
-    );
+-- Active community that accepts view counters
+select fx_community(:'activeCommunityID');
+
+-- Inactive community ignored by view counters
+select fx_community(:'inactiveCommunityID', jsonb_build_object('active', false));
 
 -- ============================================================================
 -- TESTS

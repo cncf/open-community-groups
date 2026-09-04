@@ -11,289 +11,86 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set actorUserID '4a170000-0000-0000-0000-000000000001'
-\set checkoutOfferID '4a170000-0000-0000-0000-000000000002'
-\set checkoutPurchaseID '4a170000-0000-0000-0000-000000000003'
-\set checkoutUserID '4a170000-0000-0000-0000-000000000004'
-\set communityID '4a170000-0000-0000-0000-000000000005'
-\set confirmedPurchaseID '4a170000-0000-0000-0000-000000000015'
-\set confirmedUserID '4a170000-0000-0000-0000-000000000016'
-\set directPurchaseID '4a170000-0000-0000-0000-000000000006'
-\set directUserID '4a170000-0000-0000-0000-000000000007'
-\set discountCodeID '4a170000-0000-0000-0000-000000000008'
-\set eventCategoryID '4a170000-0000-0000-0000-000000000009'
-\set externalEventID '4a170000-0000-0000-0000-000000000017'
-\set externalPurchaseID '4a170000-0000-0000-0000-000000000018'
-\set externalTicketTypeID '4a170000-0000-0000-0000-000000000019'
-\set externalUserID '4a170000-0000-0000-0000-00000000001a'
-\set groupCategoryID '4a170000-0000-0000-0000-00000000000a'
-\set groupID '4a170000-0000-0000-0000-00000000000b'
-\set offerID '4a170000-0000-0000-0000-00000000000c'
-\set offerUserID '4a170000-0000-0000-0000-00000000000d'
-\set priceWindowID '4a170000-0000-0000-0000-00000000000e'
-\set queueEventID '4a170000-0000-0000-0000-00000000000f'
-\set queueTicketTypeID '4a170000-0000-0000-0000-000000000010'
-\set requestEventID '4a170000-0000-0000-0000-000000000011'
-\set requestTicketTypeID '4a170000-0000-0000-0000-000000000012'
-\set requestUserID '4a170000-0000-0000-0000-000000000013'
-\set waitlistUserID '4a170000-0000-0000-0000-000000000014'
+\set actorUserID '5e030000-0000-0000-0000-000000000001'
+\set checkoutOfferID '5e030000-0000-0000-0000-000000000002'
+\set checkoutPurchaseID '5e030000-0000-0000-0000-000000000003'
+\set checkoutUserID '5e030000-0000-0000-0000-000000000004'
+\set communityID '5e030000-0000-0000-0000-000000000005'
+\set confirmedPurchaseID '5e030000-0000-0000-0000-000000000015'
+\set confirmedUserID '5e030000-0000-0000-0000-000000000016'
+\set directPurchaseID '5e030000-0000-0000-0000-000000000006'
+\set directUserID '5e030000-0000-0000-0000-000000000007'
+\set discountCodeID '5e030000-0000-0000-0000-000000000008'
+\set eventCategoryID '5e030000-0000-0000-0000-000000000009'
+\set externalEventID '5e030000-0000-0000-0000-000000000017'
+\set externalPurchaseID '5e030000-0000-0000-0000-000000000018'
+\set externalTicketTypeID '5e030000-0000-0000-0000-000000000019'
+\set externalUserID '5e030000-0000-0000-0000-00000000001a'
+\set groupCategoryID '5e030000-0000-0000-0000-00000000000a'
+\set groupID '5e030000-0000-0000-0000-00000000000b'
+\set offerID '5e030000-0000-0000-0000-00000000000c'
+\set offerUserID '5e030000-0000-0000-0000-00000000000d'
+\set priceWindowID '5e030000-0000-0000-0000-00000000000e'
+\set queueEventID '5e030000-0000-0000-0000-00000000000f'
+\set queueTicketTypeID '5e030000-0000-0000-0000-000000000010'
+\set requestEventID '5e030000-0000-0000-0000-000000000011'
+\set requestTicketTypeID '5e030000-0000-0000-0000-000000000012'
+\set requestUserID '5e030000-0000-0000-0000-000000000013'
+\set waitlistUserID '5e030000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns both enrollment closure scenarios
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.test/banner-mobile.png',
-    'https://example.test/banner.png',
-    'Community for enrollment closure tests',
-    'Enrollment Closure Community',
-    'https://example.test/logo.png',
-    'enrollment-closure-community'
-);
-
--- Event category used by both enrollment closure scenarios
-insert into event_category (
-    event_category_id,
-    community_id,
-    name
-) values (
-    :'eventCategoryID',
-    :'communityID',
-    'Meetup'
-);
-
--- Group category used by the enrollment closure group
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values (
-    :'groupCategoryID',
-    :'communityID',
-    'Technology'
-);
+-- Baseline communities, group categories, event categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorUserID');
+select fx_user(:'checkoutUserID');
+select fx_user(:'confirmedUserID');
+select fx_user(:'directUserID');
+select fx_user(:'externalUserID');
+select fx_user(:'offerUserID');
+select fx_user(:'requestUserID');
+select fx_user(:'waitlistUserID');
 
 -- Group that owns both enrollment closure events
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    payment_recipient,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Enrollment Closure Group',
-    '{"provider": "stripe", "recipient_id": "acct_close", "seller_display_name": "Close Event Fiscal Sponsor"}'::jsonb,
-    'enrollment-closure-group'
-);
-
--- Users participating in the enrollment closure scenarios
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values
-    (
-        :'actorUserID',
-        'hash-actor',
-        'actor@example.test',
-        true,
-        'close-actor'
-    ),
-    (
-        :'checkoutUserID',
-        'hash-checkout',
-        'checkout@example.test',
-        true,
-        'close-checkout'
-    ),
-    (
-        :'confirmedUserID',
-        'hash-confirmed',
-        'confirmed@example.test',
-        true,
-        'close-confirmed'
-    ),
-    (
-        :'directUserID',
-        'hash-direct',
-        'direct@example.test',
-        true,
-        'close-direct'
-    ),
-    (
-        :'externalUserID',
-        'hash-external',
-        'external@example.test',
-        true,
-        'close-external'
-    ),
-    (
-        :'offerUserID',
-        'hash-offer',
-        'offer@example.test',
-        true,
-        'close-offer'
-    ),
-    (
-        :'requestUserID',
-        'hash-request',
-        'request@example.test',
-        true,
-        'close-request'
-    ),
-    (
-        :'waitlistUserID',
-        'hash-waitlist',
-        'waitlist@example.test',
-        true,
-        'close-waitlist'
-    );
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_close", "seller_display_name": "Close Event Fiscal Sponsor"}'::jsonb));
 
 -- Ticketed waitlist event with active offers and checkouts
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    :'queueEventID',
-    'Event with active enrollment reservations',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Queue Closure Event',
-    'USD',
-    true,
-    'queue-closure-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-);
+select fx_event(:'queueEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
 
 -- Approval event with a pending ticket request
-insert into event (
-    event_id,
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'requestEventID',
-    true,
-    'Event with a pending approval request',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Request Closure Event',
-    'USD',
-    true,
-    'request-closure-event',
-    current_timestamp + interval '2 days',
-    'UTC'
-);
+select fx_event(:'requestEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- External-payment event with a pending hold
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-
-    external_payment_url
-) values (
-    :'externalEventID',
-    'Event with a pending external payment hold',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'External Closure Event',
-    'KRW',
-    true,
-    'external-closure-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-
-    'https://pay.example.test/close'
-);
+select fx_event(:'externalEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/close',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Ticket tiers used by the queue and request events
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        :'queueTicketTypeID',
-        :'queueEventID',
-        1,
-        10,
-        'Queue admission'
-    ),
-    (
-        :'requestTicketTypeID',
-        :'requestEventID',
-        1,
-        10,
-        'Request admission'
-    ),
-    (
-        :'externalTicketTypeID',
-        :'externalEventID',
-        1,
-        10,
-        'External admission'
-    );
+select fx_event_ticket_type(:'queueTicketTypeID', :'queueEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'requestTicketTypeID', :'requestEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'externalTicketTypeID', :'externalEventID', jsonb_build_object('seats_total', 10));
 
 -- Current price used by the active checkout snapshots
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    1000,
-    :'queueTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'queueTicketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- Discount reserved by both active checkout purchases
 insert into event_discount_code (
@@ -670,8 +467,8 @@ select is(
 -- Should reject a missing event
 select throws_ok(
     $$select close_event_enrollment(
-        '4a170000-0000-0000-0000-000000000001'::uuid,
-        '4a170000-0000-0000-0000-000000000099'::uuid
+        '5e030000-0000-0000-0000-000000000001'::uuid,
+        '5e030000-0000-0000-0000-000000000099'::uuid
     )$$,
     'event not found',
     'Should reject a missing event'

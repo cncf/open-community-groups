@@ -39,71 +39,25 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the administrator retry fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'requeue-refund-community'
-);
-
--- Event category used by the administrator retry event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the administrator retry group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the administrator retry event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Users isolating every administrator retry scenario
-insert into "user" (auth_hash, email, user_id, username) values
-    ('failed', 'failed@example.test', :'failedUserID', 'failed'),
-    ('pending', 'pending@example.test', :'pendingUserID', 'pending'),
-    ('scope', 'scope@example.test', :'scopeUserID', 'scope'),
-    ('terminal', 'terminal@example.test', :'terminalUserID', 'terminal'),
-    ('under-budget', 'under-budget@example.test', :'underBudgetUserID', 'under-budget');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'failedUserID');
+select fx_user(:'pendingUserID');
+select fx_user(:'scopeUserID');
+select fx_user(:'terminalUserID');
+select fx_user(:'underBudgetUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event owning every administrator retry purchase
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    'Event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Event',
-    'USD',
-    'event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type referenced by every administrator retry purchase
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 100, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
 
 -- Purchases backing retryable, terminal, under-budget, and scope fixtures
 insert into event_purchase (
@@ -135,7 +89,7 @@ insert into event_purchase (
     venue_snapshot
 ) values
     (2500, 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'failedUserID', 'stripe', 'pi_failed', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_failed', 'cs_requeue_failed', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'pendingUserID', 'stripe', 'pi_pending', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_pending', 'cs_requeue_pending', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'pendingUserID', 'stripe', 'pi_pending_refund_requeue', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_pending', 'cs_requeue_pending', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'scopePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'scopeUserID', 'stripe', 'pi_scope', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_scope', 'cs_requeue_scope', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'terminalPurchaseID', :'ticketTypeID', 'refund-recovery-pending', 'General admission', :'terminalUserID', 'stripe', 'pi_terminal', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_terminal', 'cs_requeue_terminal', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'underBudgetPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'underBudgetUserID', 'stripe', 'pi_under_budget', 'direct-charge', 'acct_refunds', 0, 'ch_requeue_under', 'cs_requeue_under', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb);
@@ -157,10 +111,10 @@ insert into event_purchase_refund (
     failure_message,
     provider_refund_id
 ) values
-    (2500, 10, 'USD', :'failedPurchaseID', :'failedRefundID', 'refund-failed', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-failed', false, 'provider unavailable', null),
-    (2500, 10, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-pending', false, 'provider unavailable', null),
+    (2500, 10, 'USD', :'failedPurchaseID', :'failedRefundID', 'refund-failed-refund-requeue', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-failed', false, 'provider unavailable', null),
+    (2500, 10, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending-refund-requeue', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-pending', false, 'provider unavailable', null),
     (2500, 10, 'USD', :'scopePurchaseID', :'scopeRefundID', 'refund-scope', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-failed', false, 'provider unavailable', null),
-    (2500, 10, 'USD', :'terminalPurchaseID', :'terminalRefundID', 'refund-terminal', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-failed', true, 'terminal', 're_terminal'),
+    (2500, 10, 'USD', :'terminalPurchaseID', :'terminalRefundID', 'refund-terminal-refund-requeue', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-failed', true, 'terminal', 're_terminal_refund_requeue'),
     (2500, 9, 'USD', :'underBudgetPurchaseID', :'underBudgetRefundID', 'refund-under-budget', 'event-cancellation', '2099-01-01 00:00:00+00', 'stripe', 'provider-failed', false, 'provider unavailable', null);
 
 -- ============================================================================

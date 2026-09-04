@@ -23,83 +23,25 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'reserve-discount-community',
-    'Reserve Discount Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline community and categories
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient
-)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Reserve Discount Group',
-    'reserve-discount-group',
-    jsonb_build_object(
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_reserve_discount',
         'seller_display_name', 'Reserve Discount Fiscal Sponsor'
-    )
-);
+    )));
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Reserve Discount Event',
-    'reserve-discount-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    'USD',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Discount codes
 insert into event_discount_code (

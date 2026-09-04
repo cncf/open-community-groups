@@ -12,12 +12,22 @@
 #     loader copy only.
 #   - create trigger statements live in schema migrations, never in loader
 #     function files.
+#
+# Test rules:
+#   - pgTAP function tests run in parallel against one database, so they must
+#     not take table-level locks (alter table, lock table, truncate).
+#   - Fixture functions (fx_*) are installed by the test recipes only; nothing
+#     under migrations/ may reference them.
+#   - Each function test owns its UUID prefix (the first segment of its \set
+#     identifiers); two files sharing a prefix would insert the same primary
+#     keys and block or deadlock each other when run in parallel.
 
 set -u
 
 database_dir=$(cd "$(dirname "$0")/.." && pwd)
 functions_dir="$database_dir/migrations/functions"
 schema_dir="$database_dir/migrations/schema"
+tests_dir="$database_dir/tests"
 loader_file="$functions_dir/001_load_functions.sql"
 triggers_dir="$functions_dir/triggers"
 sweep_migration=0079
@@ -91,6 +101,29 @@ fi
 # Loader function files must not create triggers
 for file in $(find "$functions_dir" -name '*.sql' -exec grep -lE 'create (constraint )?trigger ' {} +); do
     fail "$file creates a trigger; create trigger statements belong to schema migrations"
+done
+
+# Function tests run in parallel and must not take table-level locks
+for file in $(find "$tests_dir/functions" -name '*.sql' -exec grep -liE '^[[:space:]]*(alter table|lock table|truncate) ' {} +); do
+    fail "$file takes a table-level lock; function tests run in parallel and must stay transactional"
+done
+
+# Function tests must not share UUID prefixes
+shared_prefixes=$(grep -rHoE '\\set [A-Za-z0-9_]+ '"'"'[0-9a-f]{8}-0000-0000-0000-' "$tests_dir/functions" --include='*.sql' \
+    | sed -E "s/^([^:]+):.*'([0-9a-f]{8})-.*/\2 \1/" \
+    | sort -u \
+    | awk '{ files[$1] = files[$1] " " $2; count[$1]++ } END { for (p in count) if (count[p] > 1) print p ":" files[p] }' \
+    | sort)
+if [ -n "$shared_prefixes" ]; then
+    printf '%s\n' "$shared_prefixes" | while read -r line; do
+        echo "error: UUID prefix ${line%%:*} is used by more than one function test:${line#*:}" >&2
+    done
+    status=1
+fi
+
+# Fixture functions are test-only
+for file in $(find "$database_dir/migrations" -name '*.sql' -exec grep -lE '\bfx_[a-z_]+\(' {} +); do
+    fail "$file references a test fixture function; fx_* functions are installed by the test recipes only"
 done
 
 if [ "$status" -eq 0 ]; then

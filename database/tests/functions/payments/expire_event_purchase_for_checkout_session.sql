@@ -29,127 +29,36 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'expire-community',
-    'Expire Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'completedUserID',
-        'hash-2',
-        'completed@example.com',
-        true,
-        'completed-buyer'
-    ),
-    (
-        :'userID',
-        'hash',
-        'user@example.com',
-        true,
-        'buyer'
-    );
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'completedUserID');
+select fx_user(:'userID');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient
-)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Expire Group',
-    'expire-group',
-    jsonb_build_object(
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_test_group',
         'seller_display_name', 'Expire Checkout Fiscal Sponsor'
-    )
-);
+    )));
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Expire Event',
-    'expire-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    'USD',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    2500,
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Discount code
 insert into event_discount_code (

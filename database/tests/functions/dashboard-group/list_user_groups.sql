@@ -29,171 +29,76 @@ select plan(5);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url,
-    og_image_url
-) values (
-    :'community1ID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png',
-    'https://example.com/community-og.png'
-), (
-    :'community2ID',
-    'devops-nyc',
-    'DevOps NYC',
-    'DevOps practitioners in New York City',
-    'https://example.com/banner_mobile2.png',
-    'https://example.com/banner2.png',
-    'https://example.com/logo2.png',
-    'https://example.com/community-og2.png'
-);
+select fx_community(:'community1ID', jsonb_build_object(
+    'banner_mobile_url', 'https://example.com/banner_mobile.png',
+    'banner_url', 'https://example.com/banner.png',
+    'display_name', 'Cloud Native Seattle List User Groups',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-list-user-groups',
+    'og_image_url', 'https://example.com/community-og.png'
+));
+select fx_community(:'community2ID', jsonb_build_object(
+    'banner_mobile_url', 'https://example.com/banner_mobile2.png',
+    'banner_url', 'https://example.com/banner2.png',
+    'display_name', 'DevOps NYC',
+    'logo_url', 'https://example.com/logo2.png',
+    'name', 'devops-nyc',
+    'og_image_url', 'https://example.com/community-og2.png'
+));
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'communityAdminUserID',
-    gen_random_bytes(32),
-    'communityadmin@example.com',
-    true,
-    'communityadmin',
-    'Community Admin User'
-), (
-    :'dualRoleUserID',
-    gen_random_bytes(32),
-    'dualrole@example.com',
-    true,
-    'dualrole',
-    'Dual Role User'
-), (
-    :'groupMemberUserID',
-    gen_random_bytes(32),
-    'groupmember@example.com',
-    true,
-    'groupmember',
-    'Group Member User'
-), (
-    :'multiCommunityUserID',
-    gen_random_bytes(32),
-    'multicommunity@example.com',
-    true,
-    'multicommunity',
-    'Multi Community User'
-), (
-    :'regularUserID',
-    gen_random_bytes(32),
-    'regular@example.com',
-    true,
-    'regularuser',
-    'Regular User'
-);
+-- Baseline users
+select fx_user(:'communityAdminUserID');
+select fx_user(:'dualRoleUserID');
+select fx_user(:'groupMemberUserID');
+select fx_user(:'multiCommunityUserID');
+select fx_user(:'regularUserID');
 
 -- Group categories
-insert into group_category (
-    group_category_id,
-    community_id,
-    name,
-    "order"
-) values
-    (:'groupCategory1ID', :'community1ID', 'Test Category', 1),
-    (:'groupCategory2ID', :'community2ID', 'DevOps Category', 1);
+select fx_group_category(:'groupCategory1ID', :'community1ID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 
 -- Groups
-insert into "group" (
-    group_id,
-    active,
-    community_id,
-    created_at,
-    deleted,
-    group_category_id,
-    name,
-    slug,
-
-    city,
-    country_code,
-    country_name,
-    slug_pretty
-) values (
-    :'group1ID',
-    true,
-    :'community1ID',
-    '2024-01-01 10:00:00+00',
-    false,
-    :'groupCategory1ID',
-    'Group A',
-    'abc1234',
-    'Test City',
-    'US',
-    'United States',
-    'group-a'
-), (
-    :'group2ID',
-    true,
-    :'community1ID',
-    '2024-01-02 10:00:00+00',
-    false,
-    :'groupCategory1ID',
-    'Group B',
-    'def5678',
-    'Test City',
-    'US',
-    'United States',
-    null
-), (
-    :'group3ID',
-    true,
-    :'community1ID',
-    '2024-01-03 10:00:00+00',
-    false,
-    :'groupCategory1ID',
-    'Group C',
-    'ghi9abc',
-    'Test City',
-    'US',
-    'United States',
-    null
-), (
-    :'group4ID',
-    false,
-    :'community1ID',
-    '2024-01-04 10:00:00+00',
-    true,
-    :'groupCategory1ID',
-    'Group D (Deleted)',
-    'jkl2def',
-    'Test City',
-    'US',
-    'United States',
-    null
-), (
-    :'group5ID',
-    true,
-    :'community2ID',
-    '2024-01-05 10:00:00+00',
-    false,
-    :'groupCategory2ID',
-    'NYC DevOps Meetup',
-    'mno3ghi',
-    'New York',
-    'US',
-    'United States',
-    null
-);
+select fx_group(:'group1ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'Test City',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'created_at', '2024-01-01 10:00:00+00',
+    'name', 'Group A',
+    'slug', 'abc1234',
+    'slug_pretty', 'group-a'
+));
+select fx_group(:'group2ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'Test City',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'created_at', '2024-01-02 10:00:00+00',
+    'name', 'Group B',
+    'slug', 'def5678'
+));
+select fx_group(:'group3ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'Test City',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'created_at', '2024-01-03 10:00:00+00',
+    'name', 'Group C',
+    'slug', 'ghi9abc'
+));
+select fx_group(:'group4ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'active', false,
+    'city', 'Test City',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'created_at', '2024-01-04 10:00:00+00',
+    'deleted', true
+));
+select fx_group(:'group5ID', :'community2ID', :'groupCategory2ID', jsonb_build_object(
+    'city', 'New York',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'created_at', '2024-01-05 10:00:00+00',
+    'name', 'NYC DevOps Meetup',
+    'slug', 'mno3ghi'
+));
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted) values
@@ -235,9 +140,9 @@ select is(
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
                 "community_id": "3a290000-0000-0000-0000-000000000001",
-                "display_name": "Cloud Native Seattle",
+                "display_name": "Cloud Native Seattle List User Groups",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle",
+                "name": "cloud-native-seattle-list-user-groups",
                 "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [
@@ -269,9 +174,9 @@ select is(
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
                 "community_id": "3a290000-0000-0000-0000-000000000001",
-                "display_name": "Cloud Native Seattle",
+                "display_name": "Cloud Native Seattle List User Groups",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle",
+                "name": "cloud-native-seattle-list-user-groups",
                 "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [
@@ -309,9 +214,9 @@ select is(
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
                 "community_id": "3a290000-0000-0000-0000-000000000001",
-                "display_name": "Cloud Native Seattle",
+                "display_name": "Cloud Native Seattle List User Groups",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle",
+                "name": "cloud-native-seattle-list-user-groups",
                 "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [
@@ -349,9 +254,9 @@ select is(
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
                 "community_id": "3a290000-0000-0000-0000-000000000001",
-                "display_name": "Cloud Native Seattle",
+                "display_name": "Cloud Native Seattle List User Groups",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle",
+                "name": "cloud-native-seattle-list-user-groups",
                 "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [

@@ -18,26 +18,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cncf-seattle',
-    'CNCF Seattle',
-    'Community for region update tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community
+select fx_community(:'communityID');
 
--- Regions
 insert into region (
     region_id,
     community_id,

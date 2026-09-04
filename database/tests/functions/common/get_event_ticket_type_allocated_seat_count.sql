@@ -37,108 +37,38 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community for allocated seat count scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'allocated-seat-community',
-    'Allocated Seat Community',
-    'Community for allocated ticket seat tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category for allocated seat count scenarios
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category for allocated seat count scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group for allocated seat count scenarios
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Allocated Seat Group',
-    'allocated-seat-group'
-);
-
--- Users covering every purchase lifecycle state
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'userCompletedID', 'hash-1', 'completed@example.test', true, 'completed-user'),
-    (
-        :'userCheckoutOfferID',
-        'hash-offer-checkout',
-        'offer-checkout@example.test',
-        true,
-        'offer-checkout-user'
-    ),
-    (:'userExpiredHoldID', 'hash-2', 'expired-hold@example.test', true, 'expired-hold-user'),
-    (:'userExpiredID', 'hash-3', 'expired@example.test', true, 'expired-user'),
-    (
-        :'userExpiredOfferID',
-        'hash-expired-offer',
-        'expired-offer@example.test',
-        true,
-        'expired-offer-user'
-    ),
-    (:'userPendingID', 'hash-4', 'pending@example.test', true, 'pending-user'),
-    (
-        :'userPendingOfferID',
-        'hash-offer-pending',
-        'offer-pending@example.test',
-        true,
-        'offer-pending-user'
-    ),
-    (:'userRefundPendingID', 'hash-5', 'refund-pending@example.test', true, 'refund-pending-user'),
-    (:'userRefundRecoveryID', 'hash-6', 'refund-recovery@example.test', true, 'refund-recovery-user'),
-    (:'userRefundRequestedID', 'hash-7', 'refund-requested@example.test', true, 'refund-requested-user'),
-    (:'userRefundedID', 'hash-8', 'refunded@example.test', true, 'refunded-user');
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userCompletedID');
+select fx_user(:'userCheckoutOfferID');
+select fx_user(:'userExpiredHoldID');
+select fx_user(:'userExpiredID');
+select fx_user(:'userExpiredOfferID');
+select fx_user(:'userPendingID');
+select fx_user(:'userPendingOfferID');
+select fx_user(:'userRefundPendingID');
+select fx_user(:'userRefundRecoveryID');
+select fx_user(:'userRefundRequestedID');
+select fx_user(:'userRefundedID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event for allocated seat count scenarios
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    :'eventID',
-    'Event for allocated ticket seat tests',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Allocated Seat Event',
-    'USD',
-    'allocated-seat-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
 
 -- Ticket types with allocated and empty inventory
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'ticketTypeAllocatedID', :'eventID', 1, 8, 'Allocated pass'),
-    (:'ticketTypeEmptyID', :'eventID', 2, 8, 'Empty pass');
+select fx_event_ticket_type(:'ticketTypeAllocatedID', :'eventID', jsonb_build_object(
+    'seats_total', 8,
+    'title', 'Allocated pass'
+));
+select fx_event_ticket_type(:'ticketTypeEmptyID', :'eventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 8
+));
 
 -- Offers covering unclaimed and checkout-pending reservations
 insert into admission_offer (

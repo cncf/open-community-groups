@@ -67,208 +67,119 @@ select plan(19);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'resolve-pricing-community',
-    'Resolve Pricing Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'attendeeUserID', 'hash-1', 'attendee@example.com', true, 'attendee'),
-    (:'invalidDiscountUserID', 'hash-2', 'invalid@example.com', true, 'invalid-user'),
-    (:'unavailableDiscountUserID', 'hash-3', 'unavailable@example.com', true, 'unavailable-user'),
-    (:'exhaustedDiscountUserID', 'hash-4', 'exhausted@example.com', true, 'exhausted-user'),
-    (:'fixedDiscountUserID', 'hash-5', 'fixed@example.com', true, 'fixed-user'),
-    (:'percentageDiscountUserID', 'hash-6', 'percentage@example.com', true, 'percentage-user'),
-    (:'truncationDiscountUserID', 'hash-13', 'truncation@example.com', true, 'truncation-user'),
-    (:'soldOutUserID', 'hash-7', 'soldout@example.com', true, 'soldout-user'),
-    (:'inactiveUserID', 'hash-8', 'inactive@example.com', true, 'inactive-user'),
-    (:'redeemedUserID', 'hash-9', 'redeemed@example.com', true, 'redeemed-user'),
-    (:'soldOutHolderUserID', 'hash-10', 'holder@example.com', true, 'holder-user'),
-    (:'invitedUserID', 'hash-11', 'invited@example.com', true, 'invited-user'),
-    (:'offerUserID', 'hash-14', 'offer@example.com', true, 'offer-user'),
-    (:'queueUserID', 'hash-15', 'queue@example.com', true, 'queue-user'),
-    (:'rejectedUserID', 'hash-12', 'rejected@example.com', true, 'rejected-user');
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'attendeeUserID');
+select fx_user(:'invalidDiscountUserID');
+select fx_user(:'unavailableDiscountUserID');
+select fx_user(:'exhaustedDiscountUserID');
+select fx_user(:'fixedDiscountUserID');
+select fx_user(:'percentageDiscountUserID');
+select fx_user(:'truncationDiscountUserID');
+select fx_user(:'soldOutUserID');
+select fx_user(:'inactiveUserID');
+select fx_user(:'redeemedUserID');
+select fx_user(:'soldOutHolderUserID');
+select fx_user(:'invitedUserID');
+select fx_user(:'offerUserID');
+select fx_user(:'queueUserID');
+select fx_user(:'rejectedUserID');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient
-)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Resolve Pricing Group',
-    'resolve-pricing-group',
-    jsonb_build_object(
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_resolve_pricing',
         'seller_display_name', 'Resolve Pricing Fiscal Sponsor'
-    )
-);
+    )));
 
 -- Events
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at
-) values (
-    :'mainEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Main Event',
-    'main-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now()
-), (
-    :'soldOutEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Sold Out Event',
-    'sold-out-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now()
-), (
-    :'inactiveEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Inactive Ticket Event',
-    'inactive-ticket-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now()
-);
+select fx_event(:'mainEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
+select fx_event(:'soldOutEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
+select fx_event(:'inactiveEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
 
 -- Ticket types
-insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
-values
-    (:'ticketTypeAID', true, :'mainEventID', 1, 10, 'General admission'),
-    (:'ticketTypeBID', true, :'mainEventID', 2, 10, 'VIP'),
-    (:'noActivePriceTicketTypeID', true, :'mainEventID', 3, 10, 'Expired price'),
-    (:'queueTicketTypeID', true, :'mainEventID', 4, 10, 'Queued admission'),
-    (:'truncationTicketTypeID', true, :'mainEventID', 5, 10, 'Truncated percent'),
-    (:'soldOutTicketTypeID', true, :'soldOutEventID', 1, 1, 'General admission'),
-    (:'inactiveTicketTypeID', false, :'inactiveEventID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeAID', :'mainEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'ticketTypeBID', :'mainEventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 10,
+    'title', 'VIP'
+));
+select fx_event_ticket_type(:'noActivePriceTicketTypeID', :'mainEventID', jsonb_build_object(
+    'order', 3,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'queueTicketTypeID', :'mainEventID', jsonb_build_object(
+    'order', 4,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'truncationTicketTypeID', :'mainEventID', jsonb_build_object(
+    'order', 5,
+    'seats_total', 10,
+    'title', 'Truncated percent'
+));
+select fx_event_ticket_type(:'soldOutTicketTypeID', :'soldOutEventID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'inactiveTicketTypeID', :'inactiveEventID', jsonb_build_object(
+    'active', false,
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Ticket types for direct-checkout pricing edge cases
-insert into event_ticket_type (
-    active,
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        true,
-        'public',
-        :'mainEventID',
-        :'ineffectiveDiscountTicketTypeID',
-        7,
-        10,
-        'Minor-unit admission'
-    ),
-    (true, 'invitation_only', :'mainEventID', :'privateTicketTypeID', 5, 10, 'Private pass'),
-    (true, 'public', :'mainEventID', :'zeroTicketTypeID', 6, 10, 'Free admission');
+select fx_event_ticket_type(:'ineffectiveDiscountTicketTypeID', :'mainEventID', jsonb_build_object(
+    'order', 7,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'privateTicketTypeID', :'mainEventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 5,
+    'seats_total', 10,
+    'title', 'Private pass'
+));
+select fx_event_ticket_type(:'zeroTicketTypeID', :'mainEventID', jsonb_build_object(
+    'order', 6,
+    'seats_total', 10
+));
 
 -- Price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'priceWindowAID', 2500, :'ticketTypeAID'),
-    (:'priceWindowBID', 4000, :'ticketTypeBID'),
-    (:'soldOutPriceWindowID', 2500, :'soldOutTicketTypeID'),
-    (:'inactivePriceWindowID', 2500, :'inactiveTicketTypeID');
-
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values
-    (1, :'ineffectiveDiscountPriceWindowID', :'ineffectiveDiscountTicketTypeID'),
-    (2500, :'privatePriceWindowID', :'privateTicketTypeID'),
-    (0, :'zeroPriceWindowID', :'zeroTicketTypeID');
+select fx_event_ticket_price_window(:'priceWindowAID', :'ticketTypeAID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowBID', :'ticketTypeBID', jsonb_build_object('amount_minor', 4000));
+select fx_event_ticket_price_window(:'soldOutPriceWindowID', :'soldOutTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'inactivePriceWindowID', :'inactiveTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'ineffectiveDiscountPriceWindowID', :'ineffectiveDiscountTicketTypeID', jsonb_build_object('amount_minor', 1));
+select fx_event_ticket_price_window(:'privatePriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'zeroPriceWindowID', :'zeroTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Price windows for edge cases
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id,
-    ends_at,
-    starts_at
-) values (
-    :'expiredPriceWindowID',
-    2500,
-    :'noActivePriceTicketTypeID',
-    now() - interval '1 day',
-    now() - interval '2 days'
-), (
-    :'truncationPriceWindowID',
-    99,
-    :'truncationTicketTypeID',
-    null,
-    null
-),
-(
-    :'queuePriceWindowID',
-    2500,
-    :'queueTicketTypeID',
-    null,
-    null
-);
+select fx_event_ticket_price_window(:'expiredPriceWindowID', :'noActivePriceTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'ends_at', now() - interval '1 day',
+    'starts_at', now() - interval '2 days'
+));
+select fx_event_ticket_price_window(:'truncationPriceWindowID', :'truncationTicketTypeID', jsonb_build_object('amount_minor', 99));
+select fx_event_ticket_price_window(:'queuePriceWindowID', :'queueTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Discount codes
 insert into event_discount_code (

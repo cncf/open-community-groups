@@ -23,68 +23,13 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cfs-label-community',
-    'CFS Label Community',
-    'A test community for CFS labels',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'CFS Label Group', 'cfs-label-group');
-
--- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values
-    (
-        :'eventID',
-        :'groupID',
-        'Labels Event',
-        'labels-event',
-        'Event used for CFS label sync tests',
-        'UTC',
-        :'eventCategoryID',
-        'in-person'
-    ),
-    (
-        :'event2ID',
-        :'groupID',
-        'Other Labels Event',
-        'other-labels-event',
-        'Other event used for invalid label lookups',
-        'UTC',
-        :'eventCategoryID',
-        'in-person'
-    );
+-- Baseline communities, group categories, event categories, groups and events
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_event(:'eventID', :'groupID', :'eventCategoryID');
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID');
 
 -- Event CFS labels
 insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values

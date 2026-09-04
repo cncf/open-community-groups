@@ -30,180 +30,62 @@ select plan(17);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, description)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event used for selection-only calls without persisting a reservation
-insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    'Selection owner event',
-    '2099-06-01 09:30:00-04',
-    :'eventCategoryID',
-    :'eventSelectionID',
-    'virtual',
-    :'groupID',
-    false,
-    'zoom',
-    true,
-    'Selection Owner Event',
-    true,
-    'selection-owner-event',
-    '2099-06-01 09:00:00-04',
-    'America/New_York'
-);
+select fx_event(:'eventSelectionID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2099-06-01 09:30:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', '2099-06-01 09:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Claimed event meeting requiring host assignment
-insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    meeting_sync_claimed_at,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    'Claimed event',
-    '2026-06-01 11:00:00+00',
-    :'eventCategoryID',
-    :'eventClaimedID',
-    'virtual',
-    :'groupID',
-    false,
-    'zoom',
-    true,
-    current_timestamp,
-    'Claimed Event',
-    true,
-    'claimed-event',
-    '2026-06-01 10:00:00+00',
-    'UTC'
-);
+select fx_event(:'eventClaimedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2026-06-01 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'published', true,
+    'starts_at', '2026-06-01 10:00:00+00'
+));
 
 -- Event with newer claim than the worker attempting host assignment
-insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    meeting_sync_claimed_at,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    'Stale claimed event',
-    '2026-06-03 11:00:00+00',
-    :'eventCategoryID',
-    :'eventStaleClaimID',
-    'virtual',
-    :'groupID',
-    false,
-    'zoom',
-    true,
-    current_timestamp,
-    'Stale Claimed Event',
-    true,
-    'stale-claimed-event',
-    '2026-06-03 10:00:00+00',
-    'UTC'
-);
+select fx_event(:'eventStaleClaimID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2026-06-03 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'published', true,
+    'starts_at', '2026-06-03 10:00:00+00'
+));
 
 -- Parent event for claimed session assignment
-insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    'Parent event for session assignment',
-    '2026-06-02 11:00:00+00',
-    :'eventCategoryID',
-    :'eventSessionParentID',
-    'virtual',
-    :'groupID',
-    true,
-    'zoom',
-    true,
-    'Session Parent Event',
-    true,
-    'session-parent-event',
-    '2026-06-02 10:00:00+00',
-    'UTC'
-);
+select fx_event(:'eventSessionParentID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2026-06-02 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', '2026-06-02 10:00:00+00'
+));
 
 -- Session with newer claim than the worker attempting host assignment
 insert into session (
@@ -256,91 +138,34 @@ insert into session (
 );
 
 -- Event linked to host1 overlap meeting
-insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    'Event used for host1 overlap load',
-    '2099-06-01 11:00:00-04',
-    :'eventCategoryID',
-    :'eventHost1OverlapID',
-    'virtual',
-    :'groupID',
-    'Event Host1 Overlap',
-    true,
-    'event-host1-overlap',
-    '2099-06-01 10:00:00-04',
-    'America/New_York'
-);
+select fx_event(:'eventHost1OverlapID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2099-06-01 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-06-01 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Event linked to host2 non-overlap meeting
-insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    'Event used for host2 non-overlap load',
-    '2099-06-01 13:00:00-04',
-    :'eventCategoryID',
-    :'eventHost2NonOverlapID',
-    'virtual',
-    :'groupID',
-    'Event Host2 Non Overlap',
-    true,
-    'event-host2-non-overlap',
-    '2099-06-01 12:00:00-04',
-    'America/New_York'
-);
+select fx_event(:'eventHost2NonOverlapID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2099-06-01 13:00:00-04',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-06-01 12:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Event linked to initially unassigned host2 overlap meeting
-insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    100,
-    'Event used for host2 overlap load',
-    '2099-06-01 11:00:00-04',
-    :'eventCategoryID',
-    :'eventHost2OverlapID',
-    'virtual',
-    :'groupID',
-    'Event Host2 Overlap',
-    true,
-    'event-host2-overlap',
-    '2099-06-01 10:00:00-04',
-    'America/New_York'
-);
+select fx_event(:'eventHost2OverlapID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2099-06-01 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2099-06-01 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Existing Zoom meetings used for host load calculations
 insert into meeting (

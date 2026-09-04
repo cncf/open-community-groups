@@ -21,64 +21,22 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, category, users and active group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Inactive group rejected by membership mutations
+select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'user1ID', 'hash1', 'user1@test.com', true, 'testuser1'),
-    (:'user2ID', 'hash2', 'user2@test.com', true, 'testuser2');
+-- Deleted group rejected by membership mutations
+select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
 
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
-    (
-        :'inactiveGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Inactive Group',
-        'inactive-group',
-        false,
-        false
-    ),
-    (
-        :'deletedGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Deleted Group',
-        'deleted-group',
-        false,
-        true
-    );
 
 -- Group Member
 insert into group_member (group_id, user_id)

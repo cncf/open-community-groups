@@ -19,42 +19,12 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'delete-team-member-community',
-    'Delete Team Member Community',
-    'Community for deleting team members',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community and users
+select fx_community(:'communityID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'user1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice', 'Alice'
-), (
-    :'user2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob', 'Bob'
-), (
-    :'user3ID', gen_random_bytes(32), 'charlie@example.com', true, 'charlie', 'Charlie'
-);
-
--- Community team
 insert into community_team (community_id, user_id, accepted, role) values
     (:'communityID', :'user1ID', true, 'admin'),
     (:'communityID', :'user2ID', true, 'admin'),

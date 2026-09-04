@@ -28,87 +28,25 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'offer-trigger-community',
-    'Offer Trigger Community',
-    'Community for admission offer trigger tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Categories
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Offer Trigger Group',
-    'offer-trigger-group'
-);
-
--- Enrollment users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'attendeeUserID', 'hash-attendee', 'attendee@example.test', true, 'attendee-user'),
-    (:'purchaseUserID', 'hash-purchase', 'purchase@example.test', true, 'purchase-user'),
-    (:'requestUserID', 'hash-request', 'request@example.test', true, 'request-user'),
-    (:'terminalUserID', 'hash-terminal', 'terminal@example.test', true, 'terminal-user'),
-    (:'validUserID', 'hash-valid', 'valid@example.test', true, 'valid-user'),
-    (:'waitlistUserID', 'hash-waitlist', 'waitlist@example.test', true, 'waitlist-user');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'attendeeUserID');
+select fx_user(:'purchaseUserID');
+select fx_user(:'requestUserID');
+select fx_user(:'terminalUserID');
+select fx_user(:'validUserID');
+select fx_user(:'waitlistUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Ticketed event
-insert into event (
-    event_id,
-    capacity,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    :'eventID',
-    20,
-    'Event for admission offer trigger tests',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Offer Trigger Event',
-    'offer-trigger-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('capacity', 20));
 
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventID',
-    1,
-    20,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 20,
+    'title', 'General admission'
+));
 
 -- Confirmed attendee conflicting with new offers
 insert into event_attendee (event_id, user_id, status)

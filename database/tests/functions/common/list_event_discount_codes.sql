@@ -22,75 +22,21 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'discount-code-community',
-    'Discount Code Community',
-    'Community for discount code tests',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (
-        :'groupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Discount Code Group',
-        'discount-code-group'
-    );
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'eventID',
-    :'groupID',
-    'Event with discount codes',
-    'event-with-discount-codes',
-    'Event with discount codes',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    true
-), (
-    :'eventNoDiscountCodesID',
-    :'groupID',
-    'Event without discount codes',
-    'event-without-discount-codes',
-    'Event without discount codes',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true
+));
+select fx_event(:'eventNoDiscountCodesID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true
+));
 
 -- Event discount codes
 insert into event_discount_code (

@@ -27,40 +27,23 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns the event
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Check-In Community', '/logo', 'check-in-community');
-
--- Confirmed, canceled, and unregistered users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'canceledUserID', 'hash', 'canceled@example.test', true, 'check-in-canceled'),
-    (:'confirmedUserID', 'hash', 'confirmed@example.test', true, 'check-in-confirmed'),
-    (:'otherUserID', 'hash', 'other@example.test', true, 'check-in-other');
-
--- Event category used by the events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Category used by the hosting group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group hosting the events
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Check-In Group', 'check-in-group');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'canceledUserID');
+select fx_user(:'confirmedUserID');
+select fx_user(:'otherUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event with the attendee credentials
-insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
-values (:'eventID', 'Event with attendees', :'eventCategoryID', 'virtual', :'groupID', 'Attended Event', 'attended-event', 'UTC');
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Event without attendees
-insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
-values (:'otherEventID', 'Event without attendees', :'eventCategoryID', 'virtual', :'groupID', 'Empty Event', 'empty-event', 'UTC');
+select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Ticket tier of the attended event
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
 
 -- Confirmed attendance holding the credential
 insert into event_attendee (event_id, check_in_code, status, user_id)

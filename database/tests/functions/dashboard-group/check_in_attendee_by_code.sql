@@ -31,108 +31,40 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community containing the scanned event
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'A test community',
-    'Test Community',
-    'https://example.com/logo.png',
-    'test-community'
-);
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'canceledAttendeeUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category used by the scanner group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category used by the scanned event
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
 
 -- Organizer and attendee identities used by scanner scenarios
-insert into "user" (user_id, auth_hash, email, email_verified, name, photo_url, username) values
-    (:'actorUserID', 'hash-1', 'actor@example.com', true, 'Actor User', null, 'actor'),
-    (
-        :'canceledAttendeeUserID',
-        'hash-3',
-        'canceled@example.com',
-        true,
-        'Canceled Attendee',
-        null,
-        'canceled-attendee'
-    ),
-    (
-        :'attendeeUserID',
-        'hash-2',
-        'attendee@example.com',
-        true,
-        'Attendee User',
-        'https://example.com/attendee.png',
-        'attendee'
-    );
+select fx_user(:'actorUserID', jsonb_build_object('username', 'actor-check-in-attendee-by-code'));
 
--- Group owning the scanned event
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+select fx_user(:'attendeeUserID', jsonb_build_object(
+    'name', 'Attendee User',
+    'photo_url', 'https://example.com/attendee.png',
+    'username', 'attendee-check-in-attendee-by-code'
+));
 
 -- Published events used by available and explicitly ended scan scenarios
-insert into event (
-    event_id,
-    description,
-    ends_at,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        :'eventID',
-        'An event for scanner tests',
-        null,
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Scanner Event',
-        true,
-        current_timestamp,
-        'scanner-event',
-        current_timestamp + interval '3 hours',
-        'UTC'
-    ),
-    (
-        :'endedEventID',
-        'An event that ended earlier on its local day',
-        date_trunc('day', current_timestamp at time zone 'UTC') at time zone 'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Ended Scanner Event',
-        true,
-        current_timestamp - interval '1 day',
-        'ended-scanner-event',
-        (
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '3 hours'
+));
+select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', date_trunc('day', current_timestamp at time zone 'UTC') at time zone 'UTC',
+    'published', true,
+    'published_at', current_timestamp - interval '1 day',
+    'starts_at', (
             date_trunc('day', current_timestamp at time zone 'UTC') - interval '1 hour'
-        ) at time zone 'UTC',
-        'UTC'
-    );
+        ) at time zone 'UTC'
+));
 
 -- Ticket type used by the completed organizer offer fallback
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 10, 'Ticket type fallback');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
 
 -- Completed organizer offer providing the attendee ticket snapshot
 insert into admission_offer (
@@ -200,7 +132,7 @@ select is(
     ),
     jsonb_build_object(
         'attendee', jsonb_build_object(
-            'username', 'attendee',
+            'username', 'attendee-check-in-attendee-by-code',
 
             'name', 'Attendee User',
             'photo_url', 'https://example.com/attendee.png'

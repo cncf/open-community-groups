@@ -24,88 +24,25 @@ select plan(17);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event Category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Group Category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'A test group'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event: needs meeting
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'eventID',
-    :'groupID',
-    'Event Test',
-    'event-test',
-    'Test event for meeting',
-    'America/New_York',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-01 10:00:00-04',
-    '2025-06-01 11:00:00-04',
-
-    100,
-    false,
-    'zoom',
-    'event-claim-host@example.com',
-    true,
-    current_timestamp
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2025-06-01 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-claim-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-01 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Session: needs meeting
 insert into session (
@@ -135,123 +72,47 @@ insert into session (
 );
 
 -- Event with previous error: needs meeting
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    capacity,
-    meeting_error,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'eventWithErrorID',
-    :'groupID',
-    'Event With Error',
-    'event-with-error',
-    'Test event with previous error',
-    'America/New_York',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-02 10:00:00-04',
-    '2025-06-02 11:00:00-04',
-
-    100,
-    'Previous sync error',
-    false,
-    'zoom',
-    'event-error-claim-host@example.com',
-    true,
-    current_timestamp
-);
+select fx_event(:'eventWithErrorID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2025-06-02 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_error', 'Previous sync error',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-error-claim-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-02 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Event with stale claim: edited after the worker claims it
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'eventStaleClaimID',
-    :'groupID',
-    'Event Stale Claim',
-    'event-stale-claim',
-    'Test event changed after claim',
-    'America/New_York',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-03 10:00:00-04',
-    '2025-06-03 11:00:00-04',
-
-    100,
-    false,
-    'zoom',
-    'event-stale-claim-host@example.com',
-    true,
-    current_timestamp
-);
+select fx_event(:'eventStaleClaimID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2025-06-03 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-stale-claim-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-03 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Event with reassigned claim: worker token no longer matches
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'eventReassignedClaimID',
-    :'groupID',
-    'Event Reassigned Claim',
-    'event-reassigned-claim',
-    'Test event reclaimed by another worker',
-    'America/New_York',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-04 10:00:00-04',
-    '2025-06-04 11:00:00-04',
-
-    100,
-    false,
-    'zoom',
-    'event-reassigned-claim-host@example.com',
-    true,
-    current_timestamp
-);
+select fx_event(:'eventReassignedClaimID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2025-06-04 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-reassigned-claim-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-04 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Session with previous error: needs meeting
 insert into session (
@@ -291,7 +152,7 @@ insert into session (
 -- Should create meeting record when linked to event
 select lives_ok(
     format(
-        'select add_meeting(''zoom'', ''123456789'', ''host-event@example.com'', ''https://zoom.us/j/123456789'', ''pass123'', %L, null, (select meeting_sync_claimed_at from event where event_id = %L::uuid), get_event_meeting_sync_state_hash(%L::uuid))',
+        'select add_meeting(''zoom'', ''123456789-add-meeting'', ''host-event@example.com'', ''https://zoom.us/j/123456789-add-meeting'', ''pass123'', %L, null, (select meeting_sync_claimed_at from event where event_id = %L::uuid), get_event_meeting_sync_state_hash(%L::uuid))',
         :'eventID',
         :'eventID',
         :'eventID'
@@ -324,10 +185,10 @@ select results_eq(
         $expected$
         values (
             %L::uuid,
-            'https://zoom.us/j/123456789',
+            'https://zoom.us/j/123456789-add-meeting',
             'zoom',
             'host-event@example.com',
-            '123456789',
+            '123456789-add-meeting',
 
             'pass123',
             array[]::text[],

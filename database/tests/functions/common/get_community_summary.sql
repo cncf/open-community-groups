@@ -17,31 +17,16 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url,
-
-    ad_banner_link_url,
-    ad_banner_url,
-    og_image_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png',
-
-    'https://example.com/ad-banner-link',
-    'https://example.com/ad-banner.png',
-    'https://example.com/community-og.png'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'ad_banner_link_url', 'https://example.com/ad-banner-link',
+    'ad_banner_url', 'https://example.com/ad-banner.png',
+    'banner_mobile_url', 'https://example.com/banner_mobile.png',
+    'banner_url', 'https://example.com/banner.png',
+    'display_name', 'Cloud Native Seattle Community Summary',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-community-summary',
+    'og_image_url', 'https://example.com/community-og.png'
+));
 
 -- ============================================================================
 -- TESTS
@@ -54,9 +39,9 @@ select is(
         "banner_mobile_url": "https://example.com/banner_mobile.png",
         "banner_url": "https://example.com/banner.png",
         "community_id": "%s",
-        "display_name": "Cloud Native Seattle",
+        "display_name": "Cloud Native Seattle Community Summary",
         "logo_url": "https://example.com/logo.png",
-        "name": "cloud-native-seattle",
+        "name": "cloud-native-seattle-community-summary",
         "ad_banner_link_url": "https://example.com/ad-banner-link",
         "ad_banner_url": "https://example.com/ad-banner.png",
         "og_image_url": "https://example.com/community-og.png"

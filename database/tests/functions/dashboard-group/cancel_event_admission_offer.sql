@@ -30,6 +30,13 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'approvalRecipientID');
+
+
 -- Site
 insert into site (description, site_id, theme, title)
 values (
@@ -39,102 +46,30 @@ values (
     'Offer Cancellation Site'
 );
 
--- Community
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    :'communityID',
-    'Offer cancellation tests',
-    'Offer Cancellation Community',
-    'https://example.com/logo.png',
-    'offer-cancellation-community'
-);
-
--- Event category
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'General');
-
--- Group category
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
 -- Users: organizer actor and both offer recipients
-insert into "user" (auth_hash, email, email_verified, user_id, username)
-values
-    ('hash-actor', 'actor@example.com', true, :'actorID', 'actor'),
-    ('hash-approval', 'approval@example.com', true, :'approvalRecipientID', 'approval-recipient'),
-    ('hash-recipient', 'recipient@example.com', true, :'recipientID', 'recipient');
+select fx_user(:'actorID', jsonb_build_object('username', 'actor-cancel-event-admission-offer'));
+
+select fx_user(:'recipientID', jsonb_build_object('username', 'recipient-cancel-event-admission-offer'));
 
 -- Group
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Offer Cancellation Group',
-    'offer-cancellation-group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Offer Cancellation Group'));
 
 -- Published event
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'Offer cancellation event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Offer Cancellation Event',
-    true,
-    'offer-cancellation-event',
-    current_timestamp + interval '1 day',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Offer Cancellation Event',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Invitation-only single-seat ticket type
-insert into event_ticket_type (
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    'invitation_only',
-    :'eventID',
-    :'ticketTypeID',
-    1,
-    1,
-    'Private admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 1,
+    'title', 'Private admission'
+));
 
 -- Free price window for the ticket type
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    0,
-    :'priceWindowID',
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Pending organizer-invitation and approval offers to cancel
 insert into admission_offer (

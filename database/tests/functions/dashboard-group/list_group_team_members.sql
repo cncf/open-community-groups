@@ -20,62 +20,19 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+-- Baseline communities, group categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    company,
-    name,
-    title
-) values (
-    :'user1ID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Cloud Corp',
-    'Alice',
-    'Organizer'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    null,
-    null,
-    null
-);
+select fx_user(:'user1ID', jsonb_build_object(
+    'company', 'Cloud Corp',
+    'name', 'Alice',
+    'title', 'Organizer',
+    'username', 'alice-list-group-team-members'
+));
+select fx_user(:'user2ID', jsonb_build_object('username', 'bob-list-group-team-members'));
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
@@ -103,7 +60,7 @@ select is(
                 'role', 'admin',
                 'title', 'Organizer',
                 'user_id', :'user1ID'::uuid,
-                'username', 'alice'
+                'username', 'alice-list-group-team-members'
             ),
             jsonb_build_object(
                 'accepted', false,
@@ -113,7 +70,7 @@ select is(
                 'role', 'admin',
                 'title', null,
                 'user_id', :'user2ID'::uuid,
-                'username', 'bob'
+                'username', 'bob-list-group-team-members'
             )
         ),
         'total', 2,
@@ -139,7 +96,7 @@ select is(
                 'role', 'admin',
                 'title', null,
                 'user_id', :'user2ID'::uuid,
-                'username', 'bob'
+                'username', 'bob-list-group-team-members'
             )
         ),
         'total', 2,

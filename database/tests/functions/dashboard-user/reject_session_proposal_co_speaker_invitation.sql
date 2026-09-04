@@ -19,32 +19,12 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline users
+select fx_user(:'speakerUserID');
+select fx_user(:'userID2');
+
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values (
-    :'coSpeakerUserID',
-    'hash-1',
-    'co-speaker@example.com',
-    true,
-    'co-speaker'
-), (
-    :'speakerUserID',
-    'hash-2',
-    'speaker@example.com',
-    true,
-    'speaker'
-), (
-    :'userID2',
-    'hash-3',
-    'user2@example.com',
-    true,
-    'user2'
-);
+select fx_user(:'coSpeakerUserID', jsonb_build_object('username', 'co-speaker-reject-proposal-invitation'));
 
 -- Session proposals
 insert into session_proposal (
@@ -117,7 +97,7 @@ select results_eq(
             values (
                 'session_proposal_co_speaker_invitation_rejected',
                 %L::uuid,
-                'co-speaker',
+                'co-speaker-reject-proposal-invitation',
                 'session_proposal',
                 %L::uuid
             )

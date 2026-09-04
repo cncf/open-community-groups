@@ -22,87 +22,25 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userHostID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'userHostID', 'hash-host', 'host@example.com', true, 'host'),
-    (:'userSpeakerID', 'hash-speaker', 'speaker@example.com', true, 'speaker');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'A test group'
-);
+select fx_user(:'userSpeakerID', jsonb_build_object('username', 'speaker'));
 
 -- Parent event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    capacity,
-    ends_at,
-    meeting_provider_id,
-    meeting_requested,
-    published,
-    starts_at,
-    timezone
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Parent Event',
-    'parent-event',
-    'Parent event for session hash',
-    100,
-    '2026-06-01 12:00:00+00',
-    'zoom',
-    true,
-    true,
-    '2026-06-01 10:00:00+00',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2026-06-01 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', '2026-06-01 10:00:00+00'
+));
 
 -- Session hash target
 insert into session (

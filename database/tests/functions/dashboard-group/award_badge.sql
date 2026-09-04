@@ -36,53 +36,26 @@ select plan(30);
 -- SEED DATA
 -- ============================================================================
 
--- Verified users representing every supported and unsupported award role
-insert into "user" (auth_hash, email, email_verified, name, user_id, username)
-values
-    ('hash', 'award-admin@example.test', true, 'Award Admin', :'actorID', 'award-admin'),
-    ('hash', 'award-attendee@example.test', true, 'Award Attendee', :'attendeeID', 'award-attendee'),
-    ('hash', 'award-checked-in@example.test', true, 'Award Checked In', :'checkedInID', 'award-checked-in'),
-    ('hash', 'award-host@example.test', true, 'Award Host', :'eventHostID', 'award-host'),
-    ('hash', 'award-organizer@example.test', true, 'Award Organizer', :'eventOrganizerID', 'award-organizer'),
-    ('hash', 'award-speaker@example.test', true, 'Award Speaker', :'eventSpeakerID', 'award-speaker'),
-    ('hash', 'award-member@example.test', true, 'Award Member', :'groupMemberID', 'award-member'),
-    ('hash', 'award-outsider@example.test', true, 'Award Outsider', :'outsiderID', 'award-outsider'),
-    ('hash', 'award-session-speaker@example.test', true, 'Award Session Speaker', :'sessionSpeakerID', 'award-session-speaker');
 
 -- Unverified checked-in attendee excluded from every award scope
-insert into "user" (auth_hash, email, email_verified, name, user_id, username)
-values ('hash', 'award-unverified@example.test', false, 'Award Unverified', :'unverifiedID', 'award-unverified');
+select fx_user(:'unverifiedID', jsonb_build_object('email_verified', false));
 
 -- Community containing the issuing group
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    '/mobile',
-    '/banner',
-    :'communityID',
-    'Description',
-    'Award Community',
-    '/logo',
-    'award-community'
-);
+select fx_community(:'communityID', jsonb_build_object('description', 'Description'));
 
--- Event category used by award fixtures
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Conference');
-
--- Group category used by the issuer
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Group issuing the badge
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Award Group', 'award-group');
+-- Baseline categories, users and groups
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'attendeeID');
+select fx_user(:'checkedInID');
+select fx_user(:'eventHostID');
+select fx_user(:'eventOrganizerID');
+select fx_user(:'eventSpeakerID');
+select fx_user(:'groupMemberID');
+select fx_user(:'outsiderID');
+select fx_user(:'sessionSpeakerID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Badge manager, accepted team recipient, and pending recipient roles
 insert into group_team (accepted, group_id, role, user_id)
@@ -92,69 +65,19 @@ values
     (false, :'groupID', 'viewer', :'outsiderID');
 
 -- Active event providing the recipient context
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Description',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Award Event',
-    'award-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'description', 'Description',
+    'name', 'Award Event'
+));
 
 -- Canceled event rejected by award validation
-insert into event (
-    canceled,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    true,
-    'Description',
-    :'eventCategoryID',
-    :'canceledEventID',
-    'in-person',
-    :'groupID',
-    'Canceled Award Event',
-    'canceled-award-event',
-    'UTC'
-);
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'description', 'Description'
+));
 
 -- Active event with no eligible recipients
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Description',
-    :'eventCategoryID',
-    :'emptyEventID',
-    'in-person',
-    :'groupID',
-    'Empty Award Event',
-    'empty-award-event',
-    'UTC'
-);
+select fx_event(:'emptyEventID', :'groupID', :'eventCategoryID', jsonb_build_object('description', 'Description'));
 
 -- Confirmed attendees covering registered, checked-in, and unverified states
 insert into event_attendee (checked_in, event_id, status, user_id)

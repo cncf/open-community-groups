@@ -20,43 +20,9 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community 1
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'community-1',
-    'Community 1',
-    'Test community 1',
-    'https://example.com/banner-mobile-1.png',
-    'https://example.com/banner-1.png',
-    'https://example.com/logo-1.png'
-);
-
--- Community 2
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community2ID',
-    'community-2',
-    'Community 2',
-    'Test community 2',
-    'https://example.com/banner-mobile-2.png',
-    'https://example.com/banner-2.png',
-    'https://example.com/logo-2.png'
-);
+-- Baseline community
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
 
 -- Group Category 1 (belongs to community 1)
 insert into group_category (group_category_id, community_id, name)

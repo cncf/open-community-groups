@@ -23,72 +23,13 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cfs-label-validation-community',
-    'CFS Label Validation Community',
-    'Community for CFS label validation tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'CFS Label Validation Group',
-    'cfs-label-validation-group'
-);
-
--- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values (
-    :'eventID',
-    :'groupID',
-    'Labels Event',
-    'labels-event',
-    'Test event',
-    'UTC',
-    :'eventCategoryID',
-    'in-person'
-), (
-    :'eventOtherID',
-    :'groupID',
-    'Other Labels Event',
-    'other-labels-event',
-    'Test event',
-    'UTC',
-    :'eventCategoryID',
-    'in-person'
-);
+-- Baseline communities, group categories, event categories, groups and events
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_event(:'eventID', :'groupID', :'eventCategoryID');
+select fx_event(:'eventOtherID', :'groupID', :'eventCategoryID');
 
 -- Event CFS labels
 insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values

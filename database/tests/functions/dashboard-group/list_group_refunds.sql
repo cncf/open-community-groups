@@ -44,101 +44,76 @@ select plan(15);
 -- ============================================================================
 
 -- Community owning the refund list fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'refund-list-community'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'description', 'Community',
+    'display_name', 'Community List Group Refunds'
+));
 
 -- Event category used by the refund list events
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Events'));
 
--- Group category used by the refund list group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
+-- Baseline group categories
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Group owning the refund history
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'name', 'Group',
+    'slug', 'group'
+));
 
 -- Users representing every operational view
-insert into "user" (auth_hash, email, name, photo_url, user_id, username) values
-    (
-        'needs',
-        'requester@example.test',
-        'Requesting Attendee',
-        'https://example.test/requester.png',
-        :'needsUserID',
-        'requester'
-    ),
-    ('external', 'external@example.test', null, null, :'externalUserID', 'external'),
-    ('refunded', 'refunded@example.test', null, null, :'refundedUserID', 'refunded'),
-    ('rejected', 'rejected@example.test', null, null, :'rejectedUserID', 'rejected'),
-    ('retry', 'retry@example.test', null, null, :'retryUserID', 'retry'),
-    ('waiting', 'waiting@example.test', null, null, :'waitingUserID', 'waiting');
+select fx_user(:'needsUserID', jsonb_build_object(
+    'auth_hash', 'needs',
+    'email', 'requester@example.test',
+    'name', 'Requesting Attendee',
+    'photo_url', 'https://example.test/requester.png',
+    'username', 'requester-list-group-refunds'
+));
+select fx_user(:'externalUserID', jsonb_build_object(
+    'auth_hash', 'external',
+    'email', 'external@example.test',
+    'username', 'external'
+));
+select fx_user(:'refundedUserID', jsonb_build_object(
+    'auth_hash', 'refunded',
+    'username', 'refunded'
+));
+select fx_user(:'rejectedUserID', jsonb_build_object(
+    'auth_hash', 'rejected',
+    'username', 'rejected-list-group-refunds'
+));
+select fx_user(:'retryUserID', jsonb_build_object(
+    'auth_hash', 'retry',
+    'email', 'retry@example.test',
+    'username', 'retry'
+));
+select fx_user(:'waitingUserID', jsonb_build_object(
+    'auth_hash', 'waiting',
+    'username', 'waiting'
+));
 
 -- Events represented in the group refund history
-insert into event (
-    canceled,
-    deleted,
-    deleted_at,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values
-    (
-        true,
-        false,
-        null,
-        'Primary event',
-        :'eventCategoryID',
-        :'eventID',
-        'in-person',
-        :'groupID',
-        'Primary event',
-        'USD',
-        'primary-event',
-        'UTC'
-    ),
-    (
-        false,
-        true,
-        '2024-02-01 00:00:00+00',
-        'Historical event',
-        :'eventCategoryID',
-        :'event2ID',
-        'in-person',
-        :'groupID',
-        'Historical event',
-        'USD',
-        'historical-event',
-        'UTC'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'description', 'Primary event',
+    'name', 'Primary event',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'deleted', true,
+    'deleted_at', '2024-02-01 00:00:00+00',
+    'payment_currency_code', 'USD'
+));
 
 -- Ticket types referenced by the refund purchases
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values
-    (:'eventID', :'ticketTypeID', 1, 100, 'General admission'),
-    (:'event2ID', :'ticketType2ID', 1, 100, 'Workshop');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'ticketType2ID', :'event2ID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'Workshop'
+));
 
 -- Purchases covering review, retry, live checkout, refunded, and rejected states
 insert into event_purchase (
@@ -598,7 +573,7 @@ select is(
         'ticket_title', 'General admission',
         'updated_at', 1704078000,
         'user_id', :'needsUserID'::uuid,
-        'username', 'requester',
+        'username', 'requester-list-group-refunds',
         'attempt_count', null,
         'failure_message', null,
         'kind', 'refund-request-approval',

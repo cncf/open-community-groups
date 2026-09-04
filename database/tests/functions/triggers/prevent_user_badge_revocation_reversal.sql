@@ -25,65 +25,17 @@ select plan(23);
 -- SEED DATA
 -- ============================================================================
 
--- Badge recipient account
-insert into "user" (auth_hash, email, email_verified, user_id, username)
-values ('revocation-hash', 'revocation@example.test', true, :'userID', 'revocation-user');
-
--- Issuing community
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    '/mobile',
-    '/banner',
-    :'communityID',
-    'Description',
-    'Revocation Community',
-    '/logo',
-    'revocation-community'
-);
-
--- Issuing group category
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Issuing group retained by credential history
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Revocation Group', 'revocation-group');
+-- Baseline community, group categories, event categories, users, groups and events
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_event(:'eventID', :'groupID', :'eventCategoryID');
 
 -- Badge definition retained while it remains available
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)
 values (:'badgeID', 'Attend', 'Revocation badge', :'groupID', 'revocation.png', 'Revocation Badge');
-
--- Event category for the original award source
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Conferences');
-
--- Event retained while its original award association remains available
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Revocation event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Revocation Event',
-    'revocation-event',
-    'UTC'
-);
 
 -- Stable status list for the test award
 insert into badge_status_list (badge_status_list_id, group_id)

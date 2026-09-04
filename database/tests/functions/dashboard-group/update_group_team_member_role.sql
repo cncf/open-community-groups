@@ -21,40 +21,13 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group'),
-    (:'pendingGroupID', :'communityID', :'groupCategoryID', 'Pending Group', 'pending-group');
-
--- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified)
-values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true);
+-- Baseline communities, group categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'pendingGroupID', :'communityID', :'groupCategoryID');
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)

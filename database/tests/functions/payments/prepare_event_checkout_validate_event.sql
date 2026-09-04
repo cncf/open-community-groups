@@ -29,206 +29,66 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'validate-context-community',
-    'Validate Context Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline community, categories and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'missingRecipientGroupID', :'communityID', :'groupCategoryID');
 
 -- Groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient
-)
-values
-    (
-        :'missingRecipientGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Missing Recipient Group',
-        'missing-recipient-group',
-        null
-    ),
-    (
-        :'nonStripeGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Non Stripe Group',
-        'non-stripe-group',
-        jsonb_build_object(
+select fx_group(:'nonStripeGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
             'provider', 'paypal',
             'recipient_id', 'merchant_non_stripe',
             'seller_display_name', 'Non-Stripe Fiscal Sponsor'
-        )
-    ),
-    (
-        :'validGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Valid Group',
-        'valid-group',
-        jsonb_build_object(
+        )));
+select fx_group(:'validGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
             'provider', 'stripe',
             'recipient_id', 'acct_validate_context',
             'seller_display_name', 'Validate Context Fiscal Sponsor'
-        )
-    );
+        )));
 
 -- Events
-insert into event (
-    canceled,
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    ends_at,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at,
-    registration_starts_at
-) values (
-    false,
-    :'inactiveEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'validGroupID',
-    'Inactive Event',
-    'inactive-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    'USD',
-    false,
-    null,
-    null
-), (
-    false,
-    :'missingCurrencyEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'validGroupID',
-    'Missing Currency Event',
-    'missing-currency-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    null,
-    true,
-    now(),
-    null
-), (
-    false,
-    :'missingRecipientEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'missingRecipientGroupID',
-    'Missing Recipient Event',
-    'missing-recipient-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    'USD',
-    true,
-    now(),
-    null
-), (
-    false,
-    :'nonStripeEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'nonStripeGroupID',
-    'Non Stripe Event',
-    'non-stripe-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    'USD',
-    true,
-    now(),
-    null
-), (
-    false,
-    :'validEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'validGroupID',
-    'Valid Event',
-    'valid-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    'USD',
-    true,
-    now(),
-    null
-), (
-    false,
-    :'invalidCurrencyEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'validGroupID',
-    'Invalid Currency Event',
-    'invalid-currency-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    'USDD',
-    true,
-    now(),
-    null
-), (
-    false,
-    :'openUntilStartEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'validGroupID',
-    'Open Until Start Event',
-    'open-until-start-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 hour',
-    now() - interval '1 hour',
-    'USD',
-    true,
-    now(),
-    now() - interval '2 hours'
-);
+select fx_event(:'inactiveEventID', :'validGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'missingCurrencyEventID', :'validGroupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'missingRecipientEventID', :'missingRecipientGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'nonStripeEventID', :'nonStripeGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'validEventID', :'validGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'invalidCurrencyEventID', :'validGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USDD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'openUntilStartEventID', :'validGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 hour',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'registration_starts_at', now() - interval '2 hours',
+    'starts_at', now() - interval '1 hour'
+));
 
 -- ============================================================================
 -- TESTS

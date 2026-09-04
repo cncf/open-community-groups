@@ -20,21 +20,11 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Actor recorded by the gallery audit entries
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'actorID', 'hash', 'art-admin@example.test', true, 'art-admin');
-
--- Community that owns the gallery
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Artwork Community', '/logo', 'artwork-community');
-
--- Category used by the gallery group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the gallery
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Artwork Group', 'artwork-group');
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- ============================================================================
 -- TESTS

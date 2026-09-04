@@ -22,40 +22,18 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline users
+select fx_user(:'userOtherID');
+
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name,
-    photo_url
-) values (
-    :'coSpeakerID',
-    gen_random_bytes(32),
-    'co-speaker@example.com',
-    true,
-    'co-speaker',
-    'Co Speaker',
-    null
-), (
-    :'speakerID',
-    gen_random_bytes(32),
-    'speaker@example.com',
-    true,
-    'speaker',
-    'Speaker',
-    'https://example.test/speaker.png'
-), (
-    :'userOtherID',
-    gen_random_bytes(32),
-    'other@example.com',
-    true,
-    'other-user',
-    'Other User',
-    null
-);
+select fx_user(:'coSpeakerID', jsonb_build_object(
+    'name', 'Co Speaker',
+    'username', 'co-speaker-pending-proposal-invitations'
+));
+select fx_user(:'speakerID', jsonb_build_object(
+    'name', 'Speaker',
+    'photo_url', 'https://example.test/speaker.png'
+));
 
 -- Session proposals
 insert into session_proposal (
@@ -131,7 +109,7 @@ select is(
             'co_speaker', jsonb_build_object(
                 'name', 'Co Speaker',
                 'user_id', :'coSpeakerID'::uuid,
-                'username', 'co-speaker'
+                'username', 'co-speaker-pending-proposal-invitations'
             ),
             'created_at', (
                 select extract(epoch from created_at)::bigint
@@ -168,7 +146,7 @@ select is(
             'co_speaker', jsonb_build_object(
                 'name', 'Co Speaker',
                 'user_id', :'coSpeakerID'::uuid,
-                'username', 'co-speaker'
+                'username', 'co-speaker-pending-proposal-invitations'
             ),
             'created_at', (
                 select extract(epoch from created_at)::bigint

@@ -23,23 +23,12 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Badge owner and another dashboard user
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'otherUserID', 'hash', 'self-revoke-other@example.test', true, 'self-revoke-other'),
-    (:'userID', 'hash', 'self-revoke-owner@example.test', true, 'self-revoke-owner');
-
--- Community that owns the issuing group
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Self Revoke Community', '/logo', 'self-revoke-community');
-
--- Category used by the issuing group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that issued the badge
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Self Revoke Group', 'self-revoke-group');
+-- Baseline community, group categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'otherUserID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Status list containing the active award
 insert into badge_status_list (badge_status_list_id, group_id)

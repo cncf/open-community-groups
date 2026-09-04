@@ -11,75 +11,100 @@ select plan(38);
 -- VARIABLES
 -- ============================================================================
 
-\set closedEventID '4a160000-0000-0000-0000-000000000027'
-\set closedExpiredOfferID '4a160000-0000-0000-0000-000000000028'
-\set closedExpiredUserID '4a160000-0000-0000-0000-000000000029'
-\set closedQueueUserID '4a160000-0000-0000-0000-00000000002a'
-\set closedTicketTypeID '4a160000-0000-0000-0000-00000000002b'
-\set communityID '4a160000-0000-0000-0000-000000000001'
-\set discountCodeID '4a160000-0000-0000-0000-000000000002'
-\set dueDiscountCodeID '4a160000-0000-0000-0000-000000000023'
-\set dueEventID '4a160000-0000-0000-0000-000000000003'
-\set dueOfferID '4a160000-0000-0000-0000-000000000004'
-\set duePurchaseID '4a160000-0000-0000-0000-000000000005'
-\set dueTicketTypeID '4a160000-0000-0000-0000-000000000006'
-\set dueUserID '4a160000-0000-0000-0000-000000000007'
-\set eventCategoryID '4a160000-0000-0000-0000-000000000008'
-\set externalExpiredEventID '4a160000-0000-0000-0000-000000000031'
-\set externalExpiredPurchaseID '4a160000-0000-0000-0000-000000000032'
-\set externalExpiredTicketTypeID '4a160000-0000-0000-0000-000000000033'
-\set externalExpiredUserID '4a160000-0000-0000-0000-000000000034'
-\set externalGroupID '4a160000-0000-0000-0000-000000000035'
-\set externalReadyEventID '4a160000-0000-0000-0000-000000000036'
-\set externalReadyTicketTypeID '4a160000-0000-0000-0000-000000000037'
-\set externalReadyUserID '4a160000-0000-0000-0000-000000000038'
-\set externalReminderEventID '4a160000-0000-0000-0000-000000000039'
-\set externalReminderPurchaseID '4a160000-0000-0000-0000-00000000003a'
-\set externalReminderTicketTypeID '4a160000-0000-0000-0000-00000000003b'
-\set externalReminderUserID '4a160000-0000-0000-0000-00000000003c'
-\set externalShortPurchaseID '4a160000-0000-0000-0000-000000000040'
-\set externalShortUserID '4a160000-0000-0000-0000-000000000041'
-\set externalUnreadyEventID '4a160000-0000-0000-0000-00000000003d'
-\set externalUnreadyTicketTypeID '4a160000-0000-0000-0000-00000000003e'
-\set externalUnreadyUserID '4a160000-0000-0000-0000-00000000003f'
-\set freeEventID '4a160000-0000-0000-0000-000000000009'
-\set freeTicketTypeID '4a160000-0000-0000-0000-00000000000a'
-\set freeUser1ID '4a160000-0000-0000-0000-00000000000b'
-\set freeUser2ID '4a160000-0000-0000-0000-00000000000c'
-\set freeUser3ID '4a160000-0000-0000-0000-00000000000d'
-\set groupCategoryID '4a160000-0000-0000-0000-00000000000e'
-\set groupID '4a160000-0000-0000-0000-00000000000f'
-\set noPriceEventID '4a160000-0000-0000-0000-000000000010'
-\set noPriceTicketTypeID '4a160000-0000-0000-0000-000000000011'
-\set noPriceUser1ID '4a160000-0000-0000-0000-000000000012'
-\set noPriceUser2ID '4a160000-0000-0000-0000-000000000013'
-\set paidEventID '4a160000-0000-0000-0000-000000000014'
-\set paidTicketTypeID '4a160000-0000-0000-0000-000000000015'
-\set paidUserID '4a160000-0000-0000-0000-000000000016'
-\set refundPendingEventID '4a160000-0000-0000-0000-00000000002c'
-\set refundPendingOfferID '4a160000-0000-0000-0000-00000000002d'
-\set refundPendingPurchaseID '4a160000-0000-0000-0000-00000000002e'
-\set refundPendingTicketTypeID '4a160000-0000-0000-0000-00000000002f'
-\set refundPendingUserID '4a160000-0000-0000-0000-000000000030'
-\set replacementEventID '4a160000-0000-0000-0000-000000000017'
-\set replacementExpiredOfferID '4a160000-0000-0000-0000-000000000018'
-\set replacementExpiredUserID '4a160000-0000-0000-0000-000000000019'
-\set replacementTicketTypeID '4a160000-0000-0000-0000-00000000001a'
-\set replacementUserID '4a160000-0000-0000-0000-00000000001b'
-\set retryEventID '4a160000-0000-0000-0000-00000000001c'
-\set retryOfferID '4a160000-0000-0000-0000-00000000001d'
-\set retryPurchaseID '4a160000-0000-0000-0000-00000000001e'
-\set retryTicketTypeID '4a160000-0000-0000-0000-00000000001f'
-\set retryUserID '4a160000-0000-0000-0000-000000000020'
-\set rsvpEventID '4a160000-0000-0000-0000-000000000021'
-\set rsvpUserID '4a160000-0000-0000-0000-000000000022'
-\set scopedTicketTypeID '4a160000-0000-0000-0000-000000000024'
-\set scopedUserID '4a160000-0000-0000-0000-000000000025'
-\set siteID '4a160000-0000-0000-0000-000000000026'
+\set closedEventID '5e000000-0000-0000-0000-000000000027'
+\set closedExpiredOfferID '5e000000-0000-0000-0000-000000000028'
+\set closedExpiredUserID '5e000000-0000-0000-0000-000000000029'
+\set closedQueueUserID '5e000000-0000-0000-0000-00000000002a'
+\set closedTicketTypeID '5e000000-0000-0000-0000-00000000002b'
+\set communityID '5e000000-0000-0000-0000-000000000001'
+\set discountCodeID '5e000000-0000-0000-0000-000000000002'
+\set dueDiscountCodeID '5e000000-0000-0000-0000-000000000023'
+\set dueEventID '5e000000-0000-0000-0000-000000000003'
+\set dueOfferID '5e000000-0000-0000-0000-000000000004'
+\set duePurchaseID '5e000000-0000-0000-0000-000000000005'
+\set dueTicketTypeID '5e000000-0000-0000-0000-000000000006'
+\set dueUserID '5e000000-0000-0000-0000-000000000007'
+\set eventCategoryID '5e000000-0000-0000-0000-000000000008'
+\set externalExpiredEventID '5e000000-0000-0000-0000-000000000031'
+\set externalExpiredPurchaseID '5e000000-0000-0000-0000-000000000032'
+\set externalExpiredTicketTypeID '5e000000-0000-0000-0000-000000000033'
+\set externalExpiredUserID '5e000000-0000-0000-0000-000000000034'
+\set externalGroupID '5e000000-0000-0000-0000-000000000035'
+\set externalReadyEventID '5e000000-0000-0000-0000-000000000036'
+\set externalReadyTicketTypeID '5e000000-0000-0000-0000-000000000037'
+\set externalReadyUserID '5e000000-0000-0000-0000-000000000038'
+\set externalReminderEventID '5e000000-0000-0000-0000-000000000039'
+\set externalReminderPurchaseID '5e000000-0000-0000-0000-00000000003a'
+\set externalReminderTicketTypeID '5e000000-0000-0000-0000-00000000003b'
+\set externalReminderUserID '5e000000-0000-0000-0000-00000000003c'
+\set externalShortPurchaseID '5e000000-0000-0000-0000-000000000040'
+\set externalShortUserID '5e000000-0000-0000-0000-000000000041'
+\set externalUnreadyEventID '5e000000-0000-0000-0000-00000000003d'
+\set externalUnreadyTicketTypeID '5e000000-0000-0000-0000-00000000003e'
+\set externalUnreadyUserID '5e000000-0000-0000-0000-00000000003f'
+\set freeEventID '5e000000-0000-0000-0000-000000000009'
+\set freeTicketTypeID '5e000000-0000-0000-0000-00000000000a'
+\set freeUser1ID '5e000000-0000-0000-0000-00000000000b'
+\set freeUser2ID '5e000000-0000-0000-0000-00000000000c'
+\set freeUser3ID '5e000000-0000-0000-0000-00000000000d'
+\set groupCategoryID '5e000000-0000-0000-0000-00000000000e'
+\set groupID '5e000000-0000-0000-0000-00000000000f'
+\set noPriceEventID '5e000000-0000-0000-0000-000000000010'
+\set noPriceTicketTypeID '5e000000-0000-0000-0000-000000000011'
+\set noPriceUser1ID '5e000000-0000-0000-0000-000000000012'
+\set noPriceUser2ID '5e000000-0000-0000-0000-000000000013'
+\set paidEventID '5e000000-0000-0000-0000-000000000014'
+\set paidTicketTypeID '5e000000-0000-0000-0000-000000000015'
+\set paidUserID '5e000000-0000-0000-0000-000000000016'
+\set refundPendingEventID '5e000000-0000-0000-0000-00000000002c'
+\set refundPendingOfferID '5e000000-0000-0000-0000-00000000002d'
+\set refundPendingPurchaseID '5e000000-0000-0000-0000-00000000002e'
+\set refundPendingTicketTypeID '5e000000-0000-0000-0000-00000000002f'
+\set refundPendingUserID '5e000000-0000-0000-0000-000000000030'
+\set replacementEventID '5e000000-0000-0000-0000-000000000017'
+\set replacementExpiredOfferID '5e000000-0000-0000-0000-000000000018'
+\set replacementExpiredUserID '5e000000-0000-0000-0000-000000000019'
+\set replacementTicketTypeID '5e000000-0000-0000-0000-00000000001a'
+\set replacementUserID '5e000000-0000-0000-0000-00000000001b'
+\set retryEventID '5e000000-0000-0000-0000-00000000001c'
+\set retryOfferID '5e000000-0000-0000-0000-00000000001d'
+\set retryPurchaseID '5e000000-0000-0000-0000-00000000001e'
+\set retryTicketTypeID '5e000000-0000-0000-0000-00000000001f'
+\set retryUserID '5e000000-0000-0000-0000-000000000020'
+\set rsvpEventID '5e000000-0000-0000-0000-000000000021'
+\set rsvpUserID '5e000000-0000-0000-0000-000000000022'
+\set scopedTicketTypeID '5e000000-0000-0000-0000-000000000024'
+\set scopedUserID '5e000000-0000-0000-0000-000000000025'
+\set siteID '5e000000-0000-0000-0000-000000000026'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Baseline communities, group categories, event categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'dueUserID');
+select fx_user(:'freeUser1ID');
+select fx_user(:'freeUser2ID');
+select fx_user(:'freeUser3ID');
+select fx_user(:'noPriceUser1ID');
+select fx_user(:'noPriceUser2ID');
+select fx_user(:'paidUserID');
+select fx_user(:'refundPendingUserID');
+select fx_user(:'replacementExpiredUserID');
+select fx_user(:'replacementUserID');
+select fx_user(:'retryUserID');
+select fx_user(:'rsvpUserID');
+select fx_user(:'scopedUserID');
+select fx_user(:'closedExpiredUserID');
+select fx_user(:'closedQueueUserID');
+select fx_user(:'externalExpiredUserID');
+select fx_user(:'externalReadyUserID');
+select fx_user(:'externalReminderUserID');
+select fx_user(:'externalShortUserID');
+select fx_user(:'externalUnreadyUserID');
 
 -- Community
 insert into site (description, site_id, theme, title)
@@ -101,568 +126,152 @@ insert into external_payments_config (
     336
 );
 
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'reconciliation-community',
-    'Reconciliation Community',
-    'Community for event enrollment reconciliation tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Categories
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
 -- Payment-ready group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    payment_recipient,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Reconciliation Group',
-    '{"provider": "stripe", "recipient_id": "acct_reconciliation", "seller_display_name": "Reconciliation Fiscal Sponsor"}'::jsonb,
-    'reconciliation-group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_reconciliation", "seller_display_name": "Reconciliation Fiscal Sponsor"}'::jsonb));
 
 -- Allowlisted group with external payments enabled for ready-event promotion
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    payment_recipient,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'externalGroupID',
-    'External Reconciliation Group',
-    '{"provider": "stripe", "recipient_id": "acct_external_reconcile", "seller_display_name": "External Fiscal Sponsor"}'::jsonb,
-    'external-reconciliation-group'
-);
-
--- Enrollment users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'dueUserID', 'hash-due', 'due@example.test', true, 'due-user'),
-    (:'freeUser1ID', 'hash-free-1', 'free-1@example.test', true, 'free-user-1'),
-    (:'freeUser2ID', 'hash-free-2', 'free-2@example.test', true, 'free-user-2'),
-    (:'freeUser3ID', 'hash-free-3', 'free-3@example.test', true, 'free-user-3'),
-    (
-        :'noPriceUser1ID',
-        'hash-no-price-1',
-        'no-price-1@example.test',
-        true,
-        'no-price-user-1'
-    ),
-    (
-        :'noPriceUser2ID',
-        'hash-no-price-2',
-        'no-price-2@example.test',
-        true,
-        'no-price-user-2'
-    ),
-    (:'paidUserID', 'hash-paid', 'paid@example.test', true, 'paid-user'),
-    (
-        :'refundPendingUserID',
-        'hash-refund-pending',
-        'refund-pending@example.test',
-        true,
-        'refund-pending-user'
-    ),
-    (
-        :'replacementExpiredUserID',
-        'hash-expired',
-        'expired@example.test',
-        true,
-        'expired-user'
-    ),
-    (
-        :'replacementUserID',
-        'hash-replacement',
-        'replacement@example.test',
-        true,
-        'replacement-user'
-    ),
-    (:'retryUserID', 'hash-retry', 'retry@example.test', true, 'retry-user'),
-    (:'rsvpUserID', 'hash-rsvp', 'rsvp@example.test', true, 'rsvp-user'),
-    (:'scopedUserID', 'hash-scoped', 'scoped@example.test', true, 'scoped-user'),
-    (
-        :'closedExpiredUserID',
-        'hash-closed-expired',
-        'closed-expired@example.test',
-        true,
-        'closed-expired-user'
-    ),
-    (
-        :'closedQueueUserID',
-        'hash-closed-queue',
-        'closed-queue@example.test',
-        true,
-        'closed-queue-user'
-    ),
-    (
-        :'externalExpiredUserID',
-        'hash-external-expired',
-        'external-expired@example.test',
-        true,
-        'external-expired-user'
-    ),
-    (
-        :'externalReadyUserID',
-        'hash-external-ready',
-        'external-ready@example.test',
-        true,
-        'external-ready-user'
-    ),
-    (
-        :'externalReminderUserID',
-        'hash-external-reminder',
-        'external-reminder@example.test',
-        true,
-        'external-reminder-user'
-    ),
-    (
-        :'externalShortUserID',
-        'hash-external-short',
-        'external-short@example.test',
-        true,
-        'external-short-user'
-    ),
-    (
-        :'externalUnreadyUserID',
-        'hash-external-unready',
-        'external-unready@example.test',
-        true,
-        'external-unready-user'
-    );
+select fx_group(:'externalGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true,
+    'payment_recipient', '{"provider": "stripe", "recipient_id": "acct_external_reconcile", "seller_display_name": "External Fiscal Sponsor"}'::jsonb
+));
 
 -- Active events covering RSVP and ticket reconciliation paths
-insert into event (
-    event_id,
-    capacity,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    registration_ends_at,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    :'rsvpEventID',
-    1,
-    'RSVP event for reconciliation',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'RSVP Reconciliation Event',
-    null,
-    true,
-    null,
-    'rsvp-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-), (
-    :'freeEventID',
-    null,
-    'Free ticket event for FIFO promotion',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Due Reconciliation Event',
-    'USD',
-    true,
-    null,
-    'free-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-), (
-    :'noPriceEventID',
-    null,
-    'Ticket event without a current price',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'No Price Reconciliation Event',
-    null,
-    true,
-    null,
-    'no-price-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-), (
-    :'paidEventID',
-    null,
-    'Paid ticket event for readiness blocking',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Paid Reconciliation Event',
-    'USD',
-    true,
-    null,
-    'paid-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-), (
-    :'refundPendingEventID',
-    null,
-    'Paid ticket event with an automatic refund in progress',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Refund-Pending Reconciliation Event',
-    'USD',
-    true,
-    null,
-    'refund-pending-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    false
-), (
-    :'retryEventID',
-    null,
-    'Paid ticket event with an expired checkout hold',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Retry Reconciliation Event',
-    'USD',
-    true,
-    null,
-    'retry-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    false
-), (
-    :'dueEventID',
-    null,
-    'Discounted ticket event with an expired offer deadline',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Due Reconciliation Event',
-    null,
-    true,
-    null,
-    'due-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    false
-), (
-    :'replacementEventID',
-    null,
-    'Free ticket event requiring a replacement offer',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Replacement Reconciliation Event',
-    null,
-    true,
-    null,
-    'replacement-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-), (
-    :'closedEventID',
-    null,
-    'Ticket event with closed registration',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Closed Registration Reconciliation Event',
-    null,
-    true,
-    current_timestamp - interval '1 hour',
-    'closed-registration-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-);
+select fx_event(:'rsvpEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
+select fx_event(:'freeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
+select fx_event(:'noPriceEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
+select fx_event(:'paidEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
+select fx_event(:'refundPendingEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event(:'retryEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event(:'dueEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event(:'replacementEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
+select fx_event(:'closedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'registration_ends_at', current_timestamp - interval '1 hour',
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
 
 -- External-ready paid event that promotes without a Stripe provider gate
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    'External-ready paid queue event',
-    :'eventCategoryID',
-    :'externalReadyEventID',
-    'virtual',
-    null,
-    'https://pay.example.test/ready-queue',
-    :'externalGroupID',
-    'External Ready Reconciliation Event',
-    'KRW',
-    true,
-    'external-ready-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-);
+select fx_event(:'externalReadyEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'external_payment_url', 'https://pay.example.test/ready-queue',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
 
 -- External-marked event on a Stripe-ready group that is not externally eligible
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    'External-marked unready paid queue event',
-    :'eventCategoryID',
-    :'externalUnreadyEventID',
-    'virtual',
-    null,
-    'https://pay.example.test/unready-queue',
-    :'groupID',
-    'External Unready Reconciliation Event',
-    'USD',
-    true,
-    'external-unready-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    true
-);
+select fx_event(:'externalUnreadyEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'external_payment_url', 'https://pay.example.test/unready-queue',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days',
+    'waitlist_enabled', true
+));
 
 -- Event hosting an expired external pending hold
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    'External expired hold event',
-    :'eventCategoryID',
-    :'externalExpiredEventID',
-    'virtual',
-    'Pay by bank transfer',
-    'https://pay.example.test/expired-hold',
-    :'externalGroupID',
-    'External Expired Reconciliation Event',
-    'KRW',
-    true,
-    'external-expired-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    false
-);
+select fx_event(:'externalExpiredEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'external_payment_instructions', 'Pay by bank transfer',
+    'external_payment_url', 'https://pay.example.test/expired-hold',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Event hosting a reminder-due external pending hold
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    waitlist_enabled
-) values (
-    'External reminder-due hold event',
-    :'eventCategoryID',
-    :'externalReminderEventID',
-    'virtual',
-    'Pay by bank transfer',
-    'https://pay.example.test/reminder-hold',
-    :'externalGroupID',
-    'External Reminder Reconciliation Event',
-    'KRW',
-    true,
-    'external-reminder-reconciliation-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    false
-);
+select fx_event(:'externalReminderEventID', :'externalGroupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'external_payment_instructions', 'Pay by bank transfer',
+    'external_payment_url', 'https://pay.example.test/reminder-hold',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Ticket tiers
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'freeTicketTypeID',
-    :'freeEventID',
-    1,
-    2,
-    'Free admission'
-), (
-    :'noPriceTicketTypeID',
-    :'noPriceEventID',
-    1,
-    2,
-    'No price admission'
-), (
-    :'scopedTicketTypeID',
-    :'noPriceEventID',
-    2,
-    1,
-    'Scoped admission'
-), (
-    :'paidTicketTypeID',
-    :'paidEventID',
-    1,
-    1,
-    'Paid admission'
-), (
-    :'refundPendingTicketTypeID',
-    :'refundPendingEventID',
-    1,
-    1,
-    'Refund-pending admission'
-), (
-    :'retryTicketTypeID',
-    :'retryEventID',
-    1,
-    1,
-    'Retry admission'
-), (
-    :'dueTicketTypeID',
-    :'dueEventID',
-    1,
-    1,
-    'Due admission'
-), (
-    :'replacementTicketTypeID',
-    :'replacementEventID',
-    1,
-    1,
-    'Replacement admission'
-), (
-    :'closedTicketTypeID',
-    :'closedEventID',
-    1,
-    1,
-    'Closed registration admission'
-), (
-    :'externalReadyTicketTypeID',
-    :'externalReadyEventID',
-    1,
-    1,
-    'External ready admission'
-), (
-    :'externalUnreadyTicketTypeID',
-    :'externalUnreadyEventID',
-    1,
-    1,
-    'External unready admission'
-), (
-    :'externalExpiredTicketTypeID',
-    :'externalExpiredEventID',
-    1,
-    1,
-    'External expired admission'
-), (
-    :'externalReminderTicketTypeID',
-    :'externalReminderEventID',
-    1,
-    1,
-    'External reminder admission'
-);
+select fx_event_ticket_type(:'freeTicketTypeID', :'freeEventID', jsonb_build_object(
+    'seats_total', 2,
+    'title', 'Free admission'
+));
+select fx_event_ticket_type(:'noPriceTicketTypeID', :'noPriceEventID', jsonb_build_object('seats_total', 2));
+select fx_event_ticket_type(:'scopedTicketTypeID', :'noPriceEventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 1
+));
+select fx_event_ticket_type(:'paidTicketTypeID', :'paidEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'refundPendingTicketTypeID', :'refundPendingEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'retryTicketTypeID', :'retryEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'dueTicketTypeID', :'dueEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'replacementTicketTypeID', :'replacementEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'closedTicketTypeID', :'closedEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'externalReadyTicketTypeID', :'externalReadyEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'externalUnreadyTicketTypeID', :'externalUnreadyEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'externalExpiredTicketTypeID', :'externalExpiredEventID', jsonb_build_object('seats_total', 1));
+select fx_event_ticket_type(:'externalReminderTicketTypeID', :'externalReminderEventID', jsonb_build_object('seats_total', 1));
 
 -- Current prices, excluding the intentionally blocked no-price tier
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (gen_random_uuid(), 0, :'freeTicketTypeID'),
-    (gen_random_uuid(), 0, :'scopedTicketTypeID'),
-    (gen_random_uuid(), 1000, :'paidTicketTypeID'),
-    (gen_random_uuid(), 1000, :'retryTicketTypeID'),
-    (gen_random_uuid(), 1000, :'dueTicketTypeID'),
-    (gen_random_uuid(), 0, :'replacementTicketTypeID'),
-    (gen_random_uuid(), 0, :'closedTicketTypeID'),
-    (gen_random_uuid(), 5000, :'externalReadyTicketTypeID'),
-    (gen_random_uuid(), 5000, :'externalUnreadyTicketTypeID'),
-    (gen_random_uuid(), 5000, :'externalExpiredTicketTypeID'),
-    (gen_random_uuid(), 5000, :'externalReminderTicketTypeID');
+select fx_event_ticket_price_window(gen_random_uuid(), :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(gen_random_uuid(), :'scopedTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(gen_random_uuid(), :'paidTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(gen_random_uuid(), :'retryTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(gen_random_uuid(), :'dueTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(gen_random_uuid(), :'replacementTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(gen_random_uuid(), :'closedTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(gen_random_uuid(), :'externalReadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(gen_random_uuid(), :'externalUnreadyTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(gen_random_uuid(), :'externalExpiredTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(gen_random_uuid(), :'externalReminderTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- RSVP events without a specialized ticket fixture use a default tier
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-select
-    e.event_id,
-    gen_random_uuid(),
-    1,
-    greatest(coalesce(e.capacity, 100), 1),
-    'General Admission'
+select fx_event_ticket_type(gen_random_uuid(), e.event_id, jsonb_build_object(
+    'seats_total', greatest(coalesce(e.capacity, 100), 1)
+))
 from event e
 where not exists (
     select 1
@@ -671,12 +280,7 @@ where not exists (
 );
 
 -- Current free price for the RSVP event's default tier
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-)
-select 0, gen_random_uuid(), ett.event_ticket_type_id
+select fx_event_ticket_price_window(gen_random_uuid(), ett.event_ticket_type_id, jsonb_build_object('amount_minor', 0))
 from event_ticket_type ett
 where ett.event_id = :'rsvpEventID'
 and not exists (

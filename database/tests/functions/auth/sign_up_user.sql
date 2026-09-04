@@ -9,9 +9,9 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set defaultVerificationCodeID '0a020000-0000-0000-0000-000000000001'
-\set missingTemplateVerificationCodeID '0a020000-0000-0000-0000-000000000002'
-\set unverifiedVerificationCodeID '0a020000-0000-0000-0000-000000000003'
+\set defaultVerificationCodeID '0a000000-0000-0000-0000-000000000001'
+\set missingTemplateVerificationCodeID '0a000000-0000-0000-0000-000000000002'
+\set unverifiedVerificationCodeID '0a000000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- TESTS
@@ -21,7 +21,7 @@ select plan(11);
 with verified_user_result as (
     select * from sign_up_user(
         jsonb_build_object(
-            'email', 'verified@example.com',
+            'email', 'verified-sign-up@example.com',
             'username', 'verifieduser',
             'name', 'Verified User',
             'password', 'hashedpassword123',
@@ -38,7 +38,7 @@ with verified_user_result as (
 )
 select ok(
     ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
-        "email": "verified@example.com",
+        "email": "verified-sign-up@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,
         "name": "Verified User",
@@ -59,7 +59,7 @@ select ok(
 with unverified_user_result as (
     select * from sign_up_user(
         jsonb_build_object(
-            'email', 'unverified@example.com',
+            'email', 'unverified-sign-up@example.com',
             'username', 'unverifieduser',
             'name', 'Unverified User',
             'password', 'hashedpassword456'
@@ -74,7 +74,7 @@ with unverified_user_result as (
 )
 select ok(
     ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
-        "email": "unverified@example.com",
+        "email": "unverified-sign-up@example.com",
         "email_verified": false,
         "optional_notifications_enabled": true,
         "name": "Unverified User",
@@ -94,7 +94,7 @@ select ok(
         join notification_template_data ntd using (notification_template_data_id)
         join "user" u using (user_id)
         where n.kind = 'email-verification'
-        and u.email = 'unverified@example.com'
+        and u.email = 'unverified-sign-up@example.com'
         and ntd.data = jsonb_build_object(
             'link',
             'https://example.test/verify-email/' || :'unverifiedVerificationCodeID',
@@ -286,7 +286,7 @@ select throws_ok(
     $$
         select * from sign_up_user(
             jsonb_build_object(
-                'email', 'VERIFIED@example.com',
+                'email', 'VERIFIED-SIGN-UP@example.com',
                 'username', 'anotheruser',
                 'name', 'Another User',
                 'password', 'hashedpassword666'

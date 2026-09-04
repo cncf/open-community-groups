@@ -47,75 +47,29 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the refund approval fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'queue-refund-community'
-);
-
--- Event category used by the refund approval event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the refund approval group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the refund approval event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Users covering every approval queue validation and normalization branch
-insert into "user" (auth_hash, email, user_id, username) values
-    ('actor', 'actor@example.test', :'actorID', 'actor'),
-    ('blank', 'blank@example.test', :'blankUserID', 'blank'),
-    ('conflict', 'conflict@example.test', :'conflictUserID', 'conflict'),
-    ('external', 'external@example.test', :'externalUserID', 'external'),
-    ('free', 'free@example.test', :'freeUserID', 'free'),
-    ('happy', 'happy@example.test', :'happyUserID', 'happy'),
-    ('missing-request', 'missing-request@example.test', :'missingRequestUserID', 'missing-request'),
-    ('no-reference', 'no-reference@example.test', :'noReferenceUserID', 'no-reference'),
-    ('replay-actor', 'replay-actor@example.test', :'replayActorID', 'replay-actor');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'blankUserID');
+select fx_user(:'conflictUserID');
+select fx_user(:'externalUserID');
+select fx_user(:'freeUserID');
+select fx_user(:'happyUserID');
+select fx_user(:'missingRequestUserID');
+select fx_user(:'noReferenceUserID');
+select fx_user(:'replayActorID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event owning every approval queue purchase
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    'Event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Event',
-    'USD',
-    'event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type referenced by every approval queue purchase
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 100, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
 
 -- Purchases covering successful, blank-note, conflicting, free, missing-request, and missing-reference states
 insert into event_purchase (
@@ -178,7 +132,7 @@ from (values
     (2500, 'USD', :'eventID', :'blankPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'blankUserID', 'stripe', 'pi_blank'),
     (2500, 'USD', :'eventID', :'conflictPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'conflictUserID', 'stripe', 'pi_conflict'),
     (0, 'USD', :'eventID', :'freePurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'freeUserID', null, null),
-    (2500, 'USD', :'eventID', :'happyPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'happyUserID', 'stripe', 'pi_happy'),
+    (2500, 'USD', :'eventID', :'happyPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'happyUserID', 'stripe', 'pi_happy_queue_event_refund_request_approval'),
     (2500, 'USD', :'eventID', :'missingRequestPurchaseID', :'ticketTypeID', 'refund-requested', 'General admission', :'missingRequestUserID', 'stripe', 'pi_missing_request')
 ) as fixtures (
     amount_minor,

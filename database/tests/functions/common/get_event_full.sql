@@ -55,124 +55,77 @@ select plan(15);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url,
-
-    ad_banner_link_url,
-    ad_banner_url,
-    og_image_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png',
-
-    'https://example.com/ad-banner-link',
-    'https://example.com/ad-banner.png',
-    'https://example.com/community-og.png'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'ad_banner_link_url', 'https://example.com/ad-banner-link',
+    'ad_banner_url', 'https://example.com/ad-banner.png',
+    'banner_mobile_url', 'https://example.com/banner_mobile.png',
+    'banner_url', 'https://example.com/banner.png',
+    'display_name', 'Cloud Native Seattle Event Full',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-event-full',
+    'og_image_url', 'https://example.com/community-og.png'
+));
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Tech Talks');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Tech Talks'));
+
+-- Baseline groups
+select fx_group(:'groupNoLogoID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-
-    bio,
-    bluesky_url,
-    company,
-    facebook_url,
-    github_url,
-    linkedin_url,
-    name,
-    photo_url,
-    provider,
-    title,
-    twitter_url,
-    website_url
-) values (
-    :'user1ID',
-    'test_hash',
-    'host@seattle.cloudnative.org',
-    false,
-    'sarah-host',
-
-    'Cloud native community leader',
-    'https://bsky.app/profile/sarahchen',
-    'Microsoft',
-    'https://facebook.com/sarahchen',
-    'https://github.com/sarahchen',
-    'https://linkedin.com/in/sarahchen',
-    'Sarah Chen',
-    'https://example.com/sarah.png',
-    jsonb_build_object(
+select fx_user(:'user1ID', jsonb_build_object(
+    'bio', 'Cloud native community leader',
+    'bluesky_url', 'https://bsky.app/profile/sarahchen',
+    'company', 'Microsoft',
+    'email_verified', false,
+    'facebook_url', 'https://facebook.com/sarahchen',
+    'github_url', 'https://github.com/sarahchen',
+    'linkedin_url', 'https://linkedin.com/in/sarahchen',
+    'name', 'Sarah Chen',
+    'photo_url', 'https://example.com/sarah.png',
+    'provider', jsonb_build_object(
         'linuxfoundation', jsonb_build_object(
             'issuer', 'https://issuer.example.com',
             'subject', 'auth0|sarah',
             'username', 'sarah-lf'
         )
     ),
-    'Principal Engineer',
-    'https://twitter.com/sarahchen',
-    'https://sarahchen.dev'
-), (
-    :'user2ID',
-    'test_hash',
-    'organizer@seattle.cloudnative.org',
-    false,
-    'mike-organizer',
-
-    'Event organizer and speaker',
-    'https://bsky.app/profile/mikerod',
-    'AWS',
-    'https://facebook.com/mikerod',
-    'https://github.com/mikerod',
-    'https://linkedin.com/in/mikerod',
-    'Mike Rodriguez',
-    'https://example.com/mike.png',
-    jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')),
-    'Solutions Architect',
-    'https://twitter.com/mikerod',
-    'https://mikerodriguez.io'
-), (
-    :'user3ID',
-    'test_hash',
-    'speaker@seattle.cloudnative.org',
-    false,
-    'alex-speaker',
-
-    'Kubernetes expert and speaker',
-    'https://bsky.app/profile/alexthompson',
-    'Google',
-    null,
-    'https://github.com/alexthompson',
-    'https://linkedin.com/in/alexthompson',
-    'Alex Thompson',
-    'https://example.com/alex.png',
-    null,
-    'Staff Engineer',
-    null,
-    null
-);
+    'title', 'Principal Engineer',
+    'twitter_url', 'https://twitter.com/sarahchen',
+    'username', 'sarah-host',
+    'website_url', 'https://sarahchen.dev'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'bio', 'Event organizer and speaker',
+    'bluesky_url', 'https://bsky.app/profile/mikerod',
+    'company', 'AWS',
+    'email_verified', false,
+    'facebook_url', 'https://facebook.com/mikerod',
+    'github_url', 'https://github.com/mikerod',
+    'linkedin_url', 'https://linkedin.com/in/mikerod',
+    'name', 'Mike Rodriguez',
+    'photo_url', 'https://example.com/mike.png',
+    'provider', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')),
+    'title', 'Solutions Architect',
+    'twitter_url', 'https://twitter.com/mikerod',
+    'username', 'mike-organizer',
+    'website_url', 'https://mikerodriguez.io'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'bio', 'Kubernetes expert and speaker',
+    'bluesky_url', 'https://bsky.app/profile/alexthompson',
+    'company', 'Google',
+    'email_verified', false,
+    'github_url', 'https://github.com/alexthompson',
+    'linkedin_url', 'https://linkedin.com/in/alexthompson',
+    'name', 'Alex Thompson',
+    'photo_url', 'https://example.com/alex.png',
+    'title', 'Staff Engineer',
+    'username', 'alex-speaker'
+));
 
 -- Group
 insert into "group" (
@@ -210,42 +163,7 @@ insert into "group" (
 );
 
 -- Group (inactive)
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    active
-) values (
-    :'groupInactiveID',
-    :'communityID',
-    :'groupCategoryID',
-    'Inactive DevOps Group',
-    'xyz9876',
-
-    false
-);
-
--- Group without logo
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    active
-) values (
-    :'groupNoLogoID',
-    :'communityID',
-    :'groupCategoryID',
-    'Seattle Kubernetes Meetup No Logo',
-    'abc5678',
-
-    true
-);
+select fx_group(:'groupInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- Event Series
 insert into event_series (
@@ -361,27 +279,11 @@ insert into event (
 );
 
 -- Related event in the same series
-insert into event (
-    event_id,
-    event_series_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone
-) values (
-    :'eventRelatedID',
-    :'eventSeriesID',
-    :'eventCategoryID',
-    'hybrid',
-    :'groupID',
-    'KubeCon Seattle 2024 Follow-up',
-    'kubecon-seattle-2024-follow-up',
-    'A related event in the same series',
-    'America/New_York'
-);
+select fx_event(:'eventRelatedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'hybrid',
+    'event_series_id', :'eventSeriesID',
+    'timezone', 'America/New_York'
+));
 
 -- Event (unpublished)
 insert into event (
@@ -817,110 +719,38 @@ insert into legacy_event_speaker (
 );
 
 -- Event (inactive group)
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    event_kind_id,
-    event_category_id,
-    group_id,
-    published,
-    starts_at,
-    timezone
-) values (
-    :'eventInactiveGroupID',
-    'Legacy Event',
-    'jkl2def',
-    'An event from an inactive group that should not appear in normal listings',
-    'virtual',
-    :'eventCategoryID',
-    :'groupInactiveID',
-    true,
-    '2024-08-15 09:00:00+00',
-    'America/New_York'
-);
+select fx_event(:'eventInactiveGroupID', :'groupInactiveID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'name', 'Legacy Event',
+    'published', true,
+    'starts_at', '2024-08-15 09:00:00+00',
+    'timezone', 'America/New_York'
+));
 
 -- Event with no logo for group-logo fallback checks
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    event_kind_id,
-    event_category_id,
-    group_id,
-    published,
-    starts_at,
-    timezone,
-    logo_url
-) values (
-    :'eventGroupLogoFallbackID',
-    'Logo Fallback Event',
-    'logo-fallback-event',
-    'An event with no logo that should fall back to the group logo',
-    'virtual',
-    :'eventCategoryID',
-    :'groupID',
-    true,
-    '2024-09-15 09:00:00+00',
-    'America/New_York',
-    null
-);
+select fx_event(:'eventGroupLogoFallbackID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2024-09-15 09:00:00+00',
+    'timezone', 'America/New_York'
+));
 
 -- Event with no logo for community-logo fallback checks
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    event_kind_id,
-    event_category_id,
-    group_id,
-    published,
-    starts_at,
-    timezone,
-    logo_url
-) values (
-    :'eventCommunityLogoFallbackID',
-    'Community Logo Fallback Event',
-    'community-logo-fallback-event',
-    'An event with no logo in a group with no logo that should fall back to the community logo',
-    'virtual',
-    :'eventCategoryID',
-    :'groupNoLogoID',
-    true,
-    '2024-10-15 09:00:00+00',
-    'America/New_York',
-    null
-);
+select fx_event(:'eventCommunityLogoFallbackID', :'groupNoLogoID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', '2024-10-15 09:00:00+00',
+    'timezone', 'America/New_York'
+));
 
 -- Ticketed event for normalized payment payload checks
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    event_kind_id,
-    event_category_id,
-    group_id,
-    payment_currency_code,
-    published,
-    starts_at,
-    timezone
-) values (
-    :'eventPaidID',
-    'Paid KubeCon Seattle 2024',
-    'paid-kubecon-seattle-2024',
-    'A paid event used to verify normalized payment fields',
-    'virtual',
-    :'eventCategoryID',
-    :'groupID',
-    'USD',
-    true,
-    '2024-06-20 09:00:00+00',
-    'America/New_York'
-);
+select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2024-06-20 09:00:00+00',
+    'timezone', 'America/New_York'
+));
 
 -- Paid event organizers for order checks
 insert into event_organizer (event_id, user_id, "order")
@@ -947,30 +777,13 @@ insert into event_discount_code (
 );
 
 -- Event ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventPaidID',
-    1,
-    25,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventPaidID', jsonb_build_object(
+    'seats_total', 25,
+    'title', 'General admission'
+));
 
 -- Event ticket price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'ticketPriceWindowID',
-    2500,
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- ============================================================================
 -- TESTS
@@ -1061,9 +874,9 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "community_id": "0c060000-0000-0000-0000-000000000002",
-            "display_name": "Cloud Native Seattle",
+            "display_name": "Cloud Native Seattle Event Full",
             "logo_url": "https://example.com/logo.png",
-            "name": "cloud-native-seattle",
+            "name": "cloud-native-seattle-event-full",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
             "og_image_url": "https://example.com/community-og.png"
@@ -1079,8 +892,8 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
-            "community_display_name": "Cloud Native Seattle",
-            "community_name": "cloud-native-seattle",
+            "community_display_name": "Cloud Native Seattle Event Full",
+            "community_name": "cloud-native-seattle-event-full",
             "group_id": "0c060000-0000-0000-0000-00000000000e",
             "latitude": 40.73061,
             "logo_url": "https://example.com/group-logo.png",

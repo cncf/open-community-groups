@@ -28,100 +28,27 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user0ID');
+select fx_user(:'user1ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'user0ID',
-    gen_random_bytes(32),
-    'u0@example.com',
-    true,
-    'u0',
-    'U0'
-), (
-    :'user1ID',
-    gen_random_bytes(32),
-    'u1@example.com',
-    true,
-    'u1',
-    'U1'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'u2@example.com',
-    false,
-    'u2',
-    'U2'
-);
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+select fx_user(:'user2ID', jsonb_build_object('email_verified', false));
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published,
-    capacity,
-    waitlist_enabled
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Test Event',
-    'test-event',
-    'Test event description',
-    'UTC',
-    true,
-    1,
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 1,
+    'published', true,
+    'waitlist_enabled', true
+));
 
 -- Ticket tier shared by the event waitlist
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'eventID', 1, 1, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 1));
 
 -- Waitlist entries
 insert into event_waitlist (event_id, event_ticket_type_id, user_id)

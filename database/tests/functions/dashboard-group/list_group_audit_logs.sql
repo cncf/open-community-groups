@@ -44,66 +44,25 @@ select plan(11);
 -- ============================================================================
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, name, username)
-values
-    (:'actor1ID', gen_random_bytes(32), 'alice@example.com', true, 'Alice', 'alice'),
-    (:'actor2ID', gen_random_bytes(32), 'bob@example.com', true, 'Bob', 'bob'),
-    (:'wildcardActorID', gen_random_bytes(32), 'userx1@example.com', true, 'User X1', 'userx1'),
-    (:'targetUserID', gen_random_bytes(32), 'sara@example.com', true, 'Sara', 'sara');
+select fx_user(:'actor1ID', jsonb_build_object('username', 'alice-list-group-audit-logs'));
+select fx_user(:'actor2ID', jsonb_build_object('username', 'bob-list-group-audit-logs'));
+select fx_user(:'wildcardActorID', jsonb_build_object('username', 'userx1-list-group-audit-logs'));
+select fx_user(:'targetUserID', jsonb_build_object(
+    'name', 'Sara',
+    'username', 'sara'
+));
 
--- Community
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://e/community-mobile.png',
-    'https://e/community.png',
-    'Community 1',
-    'Community One',
-    'https://e/community-logo.png',
-    'community-one'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Platform', 'platform'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Infra', 'infra');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Platform'));
 
 -- Event
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Test event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Recovery Event',
-    'recovery-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('name', 'Recovery Event'));
 
 -- Audit log rows
 insert into audit_log (
@@ -122,7 +81,7 @@ insert into audit_log (
         :'audit1ID',
         'group_updated',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-01 10:00:00+00',
         '{}'::jsonb,
@@ -134,7 +93,7 @@ insert into audit_log (
         :'audit2ID',
         'group_team_member_added',
         :'actor2ID',
-        'bob',
+        'bob-list-group-audit-logs',
         :'communityID',
         '2024-03-02 10:00:00+00',
         '{"role": "admin"}',
@@ -146,7 +105,7 @@ insert into audit_log (
         :'audit5ID',
         'event_invitation_request_accepted',
         :'actor2ID',
-        'bob',
+        'bob-list-group-audit-logs',
         :'communityID',
         '2024-03-02 11:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000051"}',
@@ -158,7 +117,7 @@ insert into audit_log (
         :'audit6ID',
         'event_invitation_request_rejected',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-02 12:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000052"}',
@@ -194,7 +153,7 @@ insert into audit_log (
         :'audit9ID',
         'event_attendee_invitation_sent',
         :'actor2ID',
-        'bob',
+        'bob-list-group-audit-logs',
         :'communityID',
         '2024-03-02 15:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000055"}',
@@ -206,7 +165,7 @@ insert into audit_log (
         :'audit10ID',
         'event_attendee_invitation_canceled',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-02 16:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000056"}',
@@ -218,7 +177,7 @@ insert into audit_log (
         :'audit11ID',
         'event_attendee_attendance_canceled',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-02 16:30:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000057"}',
@@ -230,7 +189,7 @@ insert into audit_log (
         :'audit3ID',
         'event_added',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-03 10:00:00+00',
         '{}'::jsonb,
@@ -242,7 +201,7 @@ insert into audit_log (
         :'audit4ID',
         'community_updated',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-04 10:00:00+00',
         '{}'::jsonb,
@@ -254,7 +213,7 @@ insert into audit_log (
         :'audit15ID',
         'event_purchase_external_payment_completed',
         :'actor2ID',
-        'bob',
+        'bob-list-group-audit-logs',
         :'communityID',
         '2024-03-03 11:00:00+00',
         '{"event_purchase_id": "3a1f0000-0000-0000-0000-000000000061", "user_id": "3a1f0000-0000-0000-0000-000000000041"}',
@@ -266,7 +225,7 @@ insert into audit_log (
         :'audit16ID',
         'group_external_payments_updated',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-04 11:00:00+00',
         '{"external_payments_enabled": true}',
@@ -278,7 +237,7 @@ insert into audit_log (
         :'audit12ID',
         'event_refund_recovery_completed',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-06 10:00:00+00',
         '{"recovery_reference": "bank-transfer-123"}',
@@ -290,7 +249,7 @@ insert into audit_log (
         :'audit13ID',
         'event_application_fee_adjustment_recovery_completed',
         :'actor1ID',
-        'alice',
+        'alice-list-group-audit-logs',
         :'communityID',
         '2024-03-07 10:00:00+00',
         '{"recovery_reference": "fee-case-123"}',
@@ -302,7 +261,7 @@ insert into audit_log (
         :'audit14ID',
         'event_credit_note_recovery_completed',
         :'actor2ID',
-        'bob',
+        'bob-list-group-audit-logs',
         :'communityID',
         '2024-03-08 10:00:00+00',
         '{"recovery_reference": "credit-case-456"}',
@@ -314,7 +273,7 @@ insert into audit_log (
         :'wildcardAuditID',
         'group_updated',
         :'wildcardActorID',
-        'userx1',
+        'userx1-list-group-audit-logs',
         :'communityID',
         '2024-03-05 10:00:00+00',
         '{}'::jsonb,
@@ -338,7 +297,7 @@ select is(
         '[
             {
                 "action": "event_credit_note_recovery_completed",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000115",
                 "created_at": 1709892000,
                 "details": {"recovery_reference": "credit-case-456"},
@@ -348,7 +307,7 @@ select is(
             },
             {
                 "action": "event_application_fee_adjustment_recovery_completed",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000114",
                 "created_at": 1709805600,
                 "details": {"recovery_reference": "fee-case-123"},
@@ -358,7 +317,7 @@ select is(
             },
             {
                 "action": "event_refund_recovery_completed",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000113",
                 "created_at": 1709719200,
                 "details": {"recovery_reference": "bank-transfer-123"},
@@ -368,7 +327,7 @@ select is(
             },
             {
                 "action": "group_updated",
-                "actor_username": "userx1",
+                "actor_username": "userx1-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000105",
                 "created_at": 1709632800,
                 "details": {},
@@ -378,7 +337,7 @@ select is(
             },
             {
                 "action": "group_external_payments_updated",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000117",
                 "created_at": 1709550000,
                 "details": {"external_payments_enabled": true},
@@ -388,7 +347,7 @@ select is(
             },
             {
                 "action": "event_purchase_external_payment_completed",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000116",
                 "created_at": 1709463600,
                 "details": {"event_purchase_id": "3a1f0000-0000-0000-0000-000000000061", "user_id": "3a1f0000-0000-0000-0000-000000000041"},
@@ -398,7 +357,7 @@ select is(
             },
             {
                 "action": "event_attendee_attendance_canceled",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000112",
                 "created_at": 1709397000,
                 "details": {"event_id": "3a1f0000-0000-0000-0000-000000000057"},
@@ -408,7 +367,7 @@ select is(
             },
             {
                 "action": "event_attendee_invitation_canceled",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000111",
                 "created_at": 1709395200,
                 "details": {"event_id": "3a1f0000-0000-0000-0000-000000000056"},
@@ -418,7 +377,7 @@ select is(
             },
             {
                 "action": "event_attendee_invitation_sent",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000110",
                 "created_at": 1709391600,
                 "details": {"event_id": "3a1f0000-0000-0000-0000-000000000055"},
@@ -448,7 +407,7 @@ select is(
             },
             {
                 "action": "event_invitation_request_rejected",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000107",
                 "created_at": 1709380800,
                 "details": {"event_id": "3a1f0000-0000-0000-0000-000000000052"},
@@ -458,7 +417,7 @@ select is(
             },
             {
                 "action": "event_invitation_request_accepted",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000106",
                 "created_at": 1709377200,
                 "details": {"event_id": "3a1f0000-0000-0000-0000-000000000051"},
@@ -468,7 +427,7 @@ select is(
             },
             {
                 "action": "group_team_member_added",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000102",
                 "created_at": 1709373600,
                 "details": {"role": "admin"},
@@ -478,7 +437,7 @@ select is(
             },
             {
                 "action": "group_updated",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000101",
                 "created_at": 1709287200,
                 "details": {},
@@ -504,7 +463,7 @@ select is(
         '[
             {
                 "action": "event_refund_recovery_completed",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000113",
                 "created_at": 1709719200,
                 "details": {"recovery_reference": "bank-transfer-123"},
@@ -550,7 +509,7 @@ select is(
         '[
             {
                 "action": "event_purchase_external_payment_completed",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000116",
                 "created_at": 1709463600,
                 "details": {"event_purchase_id": "3a1f0000-0000-0000-0000-000000000061", "user_id": "3a1f0000-0000-0000-0000-000000000041"},
@@ -576,7 +535,7 @@ select is(
         '[
             {
                 "action": "group_external_payments_updated",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000117",
                 "created_at": 1709550000,
                 "details": {"external_payments_enabled": true},
@@ -602,7 +561,7 @@ select is(
         '[
             {
                 "action": "event_invitation_request_accepted",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000106",
                 "created_at": 1709377200,
                 "details": {"event_id": "3a1f0000-0000-0000-0000-000000000051"},
@@ -628,7 +587,7 @@ select is(
         '[
             {
                 "action": "event_attendee_attendance_canceled",
-                "actor_username": "alice",
+                "actor_username": "alice-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000112",
                 "created_at": 1709397000,
                 "details": {"event_id": "3a1f0000-0000-0000-0000-000000000057"},
@@ -654,7 +613,7 @@ select is(
         '[
             {
                 "action": "group_team_member_added",
-                "actor_username": "bob",
+                "actor_username": "bob-list-group-audit-logs",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000102",
                 "created_at": 1709373600,
                 "details": {"role": "admin"},

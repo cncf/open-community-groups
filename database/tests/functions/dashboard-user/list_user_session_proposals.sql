@@ -18,22 +18,8 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-);
+-- Baseline users
+select fx_user(:'userID');
 
 -- Session proposal
 insert into session_proposal (

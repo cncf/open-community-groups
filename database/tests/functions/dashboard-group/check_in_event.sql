@@ -25,98 +25,30 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community containing the check-in event
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'A test community',
-    'Test Community',
-    'https://example.com/logo.png',
-    'test-community'
-);
+-- Baseline community, categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category used by the check-in group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category used by the check-in events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
 
 -- Organizer and attendee identities used by check-in scenarios
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'actorUserID', 'hash-1', 'actor@example.com', true, 'actor'),
-    (:'attendeeUserID', 'hash-2', 'attendee@example.com', true, 'attendee'),
-    (:'missingUserID', 'hash-3', 'missing@example.com', true, 'missing');
-
--- Group owning the check-in events
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+select fx_user(:'actorUserID', jsonb_build_object('username', 'actor-check-in-event'));
+select fx_user(:'attendeeUserID', jsonb_build_object('username', 'attendee-check-in-event'));
+select fx_user(:'missingUserID', jsonb_build_object('username', 'missing'));
 
 -- Published event accepting organizer check-in at any time
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'eventID',
-    'An event for check-in tests',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Check-In Event',
-    true,
-    current_timestamp,
-    'check-in-event',
-    current_timestamp + interval '3 hours',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '3 hours'
+));
 
 -- Canceled event unavailable for check-in
-insert into event (
-    event_id,
-    canceled,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'canceledEventID',
-    true,
-    'A canceled event',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Canceled Event',
-    false,
-    null,
-    'canceled-event',
-    current_timestamp + interval '3 hours',
-    'UTC'
-);
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'starts_at', current_timestamp + interval '3 hours'
+));
 
 -- Confirmed attendee eligible for organizer check-in
 insert into event_attendee (event_id, user_id, status)
@@ -171,7 +103,7 @@ select results_eq(
         $$ values (
             'event_attendee_checked_in',
             %L::uuid,
-            'actor',
+            'actor-check-in-event',
             %L::uuid,
             %L::uuid,
             %L::uuid,

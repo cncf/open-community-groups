@@ -16,29 +16,11 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline users
+select fx_user(:'coSpeakerUserID');
+
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice'
-), (
-    :'coSpeakerUserID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    'Bob'
-);
+select fx_user(:'userID', jsonb_build_object('username', 'alice-add-session-proposal'));
 
 -- ============================================================================
 -- TESTS
@@ -110,7 +92,7 @@ select results_eq(
             select
                 'session_proposal_added',
                 %L::uuid,
-                'alice',
+                'alice-add-session-proposal',
                 'session_proposal',
                 session_proposal_id
             from session_proposal

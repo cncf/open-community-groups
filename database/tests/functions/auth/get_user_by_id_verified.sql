@@ -18,36 +18,14 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    registration_status,
-    username
-) values (
-    :'userPreRegisteredID',
-    'pre-registered-hash',
-    'pre-registered@example.com',
-    true,
-    'pre-registered',
-    'pre-registered-user'
-), (
-    :'userUnverifiedID',
-    'unverified-hash',
-    'unverified@example.com',
-    false,
-    'registered',
-    'unverified-user'
-), (
-    :'userVerifiedID',
-    'verified-hash',
-    'verified@example.com',
-    true,
-    'registered',
-    'verified-user'
-);
+-- Pre-registered user excluded from verified lookup
+select fx_user(:'userPreRegisteredID', jsonb_build_object('registration_status', 'pre-registered'));
+
+-- Unverified registered user excluded from verified lookup
+select fx_user(:'userUnverifiedID', jsonb_build_object('email_verified', false));
+
+-- Verified registered user returned by identifier
+select fx_user(:'userVerifiedID');
 
 -- ============================================================================
 -- TESTS

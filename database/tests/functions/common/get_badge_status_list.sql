@@ -23,21 +23,11 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Active recipient used to distinguish the unrevoked bit
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'status@example.test', true, 'status-user');
-
--- Community that owns the status list
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Status Community', '/logo', 'status-community');
-
--- Category used by the status group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the status list
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Status Group', 'status-group');
+-- Baseline communities, group categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Stable group status list
 insert into badge_status_list (badge_status_list_id, group_id)

@@ -37,67 +37,21 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the stale claim fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'stale-refund-community'
-);
-
--- Event category used by the stale claim event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the stale claim group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the stale claim event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- User owning all stale claim purchases
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event owning all stale claim purchases
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    'Event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Event',
-    'USD',
-    'event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type referenced by all stale claim purchases
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 100, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
 
 -- Purchases backing recent, stale, succeeded, and non-processing refunds
 insert into event_purchase (
@@ -128,10 +82,10 @@ insert into event_purchase (
     tax_classification,
     venue_snapshot
 ) values
-    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending', 'direct-charge', 'acct_refunds', 0, 'ch_stale_pending', 'cs_stale_pending', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending_stale_refund_claims', 'direct-charge', 'acct_refunds', 0, 'ch_stale_pending', 'cs_stale_pending', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'recentPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_recent', 'direct-charge', 'acct_refunds', 0, 'ch_stale_recent', 'cs_stale_recent', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'staleFailedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_failed', 'direct-charge', 'acct_refunds', 0, 'ch_stale_failed', 'cs_stale_failed', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
-    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale', 'direct-charge', 'acct_refunds', 0, 'ch_stale', 'cs_stale', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_stale_refund_claims', 'direct-charge', 'acct_refunds', 0, 'ch_stale', 'cs_stale', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'staleSucceededPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_stale_succeeded', 'direct-charge', 'acct_refunds', 0, 'ch_stale_succeeded', 'cs_stale_succeeded', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb);
 
 -- Refund rows covering prior failure, stale outcomes, recent, and non-processing states
@@ -152,10 +106,10 @@ insert into event_purchase_refund (
     provider_refund_id,
     provider_refunded_at
 ) values
-    (2500, 0, null, null, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending', 'event-cancellation', 'stripe', 'provider-pending', null, null, null),
+    (2500, 0, null, null, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending-stale-refund-claims', 'event-cancellation', 'stripe', 'provider-pending', null, null, null),
     (2500, 1, :'recentClaimID', current_timestamp - interval '14 minutes', 'USD', :'recentPurchaseID', :'recentRefundID', 'refund-recent', 'event-cancellation', 'stripe', 'processing', null, null, null),
     (2500, 2, :'staleFailedClaimID', current_timestamp - interval '16 minutes', 'USD', :'staleFailedPurchaseID', :'staleFailedRefundID', 'refund-stale-failed', 'event-cancellation', 'stripe', 'processing', 'provider unavailable', null, null),
-    (2500, 1, :'staleClaimID', current_timestamp - interval '16 minutes', 'USD', :'stalePurchaseID', :'staleRefundID', 'refund-stale', 'event-cancellation', 'stripe', 'processing', null, null, null),
+    (2500, 1, :'staleClaimID', current_timestamp - interval '16 minutes', 'USD', :'stalePurchaseID', :'staleRefundID', 'refund-stale-stale-refund-claims', 'event-cancellation', 'stripe', 'processing', null, null, null),
     (2500, 1, :'staleSucceededClaimID', current_timestamp - interval '16 minutes', 'USD', :'staleSucceededPurchaseID', :'staleSucceededRefundID', 'refund-stale-succeeded', 'event-cancellation', 'stripe', 'processing', null, 're_stale_succeeded', current_timestamp);
 
 -- ============================================================================

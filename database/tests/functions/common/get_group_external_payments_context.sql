@@ -20,6 +20,10 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline communities and group categories
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+
 -- Operator allowlist used by the eligible-group scenario
 insert into external_payments_config (
     allowed_countries,
@@ -31,66 +35,16 @@ insert into external_payments_config (
     336
 );
 
--- Community for settings-context scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'external-context-community',
-    'External Context Community',
-    'Community for external context tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category for settings-context scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
 -- Allowlisted group with the toggle enabled
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'groupEligibleID',
-    'Eligible External Group',
-    'eligible-external-group'
-);
+select fx_group(:'groupEligibleID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Group whose country is not allowlisted
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'US',
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    :'groupIneligibleID',
-    'Ineligible External Group',
-    'ineligible-external-group'
-);
+select fx_group(:'groupIneligibleID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'US'
+));
 
 -- ============================================================================
 -- TESTS

@@ -22,6 +22,8 @@ database/
     schema/       pgTAP catalog tests (tables, columns, keys, indexes,
                   functions, triggers, constraints, reference data)
     functions/    pgTAP tests mirroring migrations/functions one to one
+    fixtures/     fx_* fixture functions installed into the test database
+                  by the test recipes, never by the application loader
     data/         Deterministic seeds for contract (contract.sql) and
                   end-to-end (e2e.sql) databases
     migrations/   Representative-data upgrade tests
@@ -136,7 +138,9 @@ contract.
 - `database/scripts/lint.sh` (`just db-lint`, also run in CI) enforces these
   rules: every schema-defined trigger function has a loader file and a
   loader entry, no trigger function is defined by more than one schema
-  migration after `0079`, and no loader file creates a trigger.
+  migration after `0079`, and no loader file creates a trigger. It also
+  checks the test rules below: no table-level locks in function tests and no
+  `fx_*` references under `migrations/`.
 
 ## Job lifecycles
 
@@ -188,15 +192,70 @@ function with a mirrored pgTAP test.
   wrapped in `begin; ... rollback;` with an exact `plan` count.
 - Variables use deterministic UUIDs with a per-file prefix and are
   alphabetized.
-- `SEED DATA` builds prerequisite state with commented `insert` statements,
-  ordered by foreign-key dependency and then by table name; each scenario gets
-  its own rows rather than mutating shared ones.
+- `SEED DATA` builds prerequisite state with commented `fx_*` fixture calls
+  and `insert` statements, ordered by foreign-key dependency and then by
+  table name; each scenario gets its own rows rather than mutating shared
+  ones.
 - `TESTS` only invokes the behavior under test and asserts persisted state.
   Direct writes appear in `TESTS` only when the write itself is the behavior
   under test (constraints and triggers).
-- A test asserts only values it wrote itself.
+- A test asserts only values it wrote itself. Any value a scenario depends on
+  (a published flag, a date, a capacity, a name that is looked up) is written
+  explicitly by the test, never inherited from a fixture default.
 - Rejections assert the SQLSTATE and message as described in the
   [error contract](#error-contract).
+- Files never take table-level locks (`alter table`, `lock table`,
+  `truncate`): the suite runs in parallel against one database, and every
+  file must stay an independent `begin ... rollback` transaction.
+- Each file owns its identifiers and unique key values. The UUID prefix of
+  its `\set` variables is used by no other file (`just db-lint`), and no two
+  files seed the same value into a unique index: usernames, emails, community
+  names, provider references, idempotency keys, meeting ids
+  (`just db-tests-seed-keys`, also run in CI). Two files inserting the same
+  unique value block each other and can deadlock under `pg_prove -j`.
+
+### Fixture functions
+
+`tests/fixtures/` defines one `fx_<table>` function per baseline table:
+`fx_community`, `fx_group_category`, `fx_event_category`, `fx_group`,
+`fx_user`, `fx_event`, `fx_event_ticket_type`, and
+`fx_event_ticket_price_window`, plus the `fx_insert_row` helper they share.
+
+- The signature takes the row identifier and its foreign keys as positional
+  parameters followed by one optional `jsonb` overrides argument:
+  `fx_event(p_event_id, p_group_id, p_event_category_id, p_overrides)`.
+  Override keys are column names, written alphabetized with
+  `jsonb_build_object(...)`; unknown keys fail as unknown columns.
+- Fixtures set only the required plumbing with placeholder values
+  (`'Fixture Group'`, `'fixture-user-<uuid>'`, `'https://fixture.test/...'`)
+  and never set interesting state: no published flags, dates, capacity,
+  payment recipients, or meeting fields. Values that must be unique derive
+  from the identifier, so files with distinct UUID prefixes never collide.
+- Fixtures insert rows directly and never call domain functions. There is one
+  fixture per table and no graph builders.
+- Entity-under-test rows and scenario-specific rows (attendees, purchases,
+  offers, team memberships, ...) stay as inline `insert` statements.
+- Fixture calls without overrides are grouped under one `-- Baseline ...`
+  comment in foreign-key order with no blank lines between them; a fixture
+  call whose overrides encode scenario state gets its own descriptive comment.
+- `just db-tests` and `just db-tests-file` install the fixtures after the
+  migrations (`just db-install-tests-fixtures`); the application loader never
+  loads them.
+
+```sql
+-- Baseline community, categories, group and attendee
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_user(:'attendeeID');
+
+-- Event open for registration
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', now() + interval '1 day'
+));
+```
 
 ### Schema tests
 
@@ -206,11 +265,16 @@ migration updates the relevant file.
 
 ### Rust contract tests
 
-`ocg-server/src/db/contract_tests.rs` runs the ignored `db_contracts` tests
+`ocg-server/src/db/contract_tests/` runs the ignored `db_contracts` tests
 against a real database migrated and seeded with `tests/data/contract.sql`.
 They guard the JSON boundary between functions and Rust DTOs, lock ordering,
-and the error SQLSTATEs. A change to a JSON-returning function, a DTO, a
-wrapper, or `contract.sql` runs `just db-contract-tests`.
+and the error SQLSTATEs. One module per database trait (`auth.rs`,
+`badges.rs`, `common.rs`, `community.rs`, `dashboard_*.rs`, `event.rs`,
+`group.rs`, `meetings.rs`, `notifications.rs`, `payments.rs`, `site.rs`)
+holds the tests for that trait's functions; `helpers.rs` holds the seeded
+identifiers, connection helpers, and shared assertions. A change to a
+JSON-returning function, a DTO, a wrapper, or `contract.sql` runs
+`just db-contract-tests`.
 
 ### Commands
 
@@ -218,6 +282,10 @@ wrapper, or `contract.sql` runs `just db-contract-tests`.
 just db-lint
 just db-tests
 just db-tests-file database/tests/functions/<folder>/<function>.sql
+just db-tests-seed-keys
 just db-contract-tests
 just db-migration-tests
 ```
+
+`just db-tests` recreates the test database, installs the fixtures, and runs
+`pg_prove` with one job per CPU; CI runs the same suite with `--jobs 4`.

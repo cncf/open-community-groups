@@ -11,125 +11,58 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set admissionOfferID '3a2d0000-0000-0000-0000-000000000014'
-\set canceledEventID '3a2d0000-0000-0000-0000-000000000010'
-\set communityID '3a2d0000-0000-0000-0000-000000000001'
-\set currentEventID '3a2d0000-0000-0000-0000-000000000002'
-\set endedEventID '3a2d0000-0000-0000-0000-000000000009'
-\set eventCategoryID '3a2d0000-0000-0000-0000-000000000003'
-\set futureEventID '3a2d0000-0000-0000-0000-000000000004'
-\set groupCategoryID '3a2d0000-0000-0000-0000-000000000005'
-\set groupID '3a2d0000-0000-0000-0000-000000000006'
-\set nonConfirmedEventID '3a2d0000-0000-0000-0000-000000000013'
-\set otherUserID '3a2d0000-0000-0000-0000-000000000007'
-\set ticketTypeID '3a2d0000-0000-0000-0000-000000000015'
-\set unpublishedEventID '3a2d0000-0000-0000-0000-000000000011'
-\set unscheduledEventID '3a2d0000-0000-0000-0000-000000000012'
-\set userID '3a2d0000-0000-0000-0000-000000000008'
+\set admissionOfferID '4a000000-0000-0000-0000-000000000014'
+\set canceledEventID '4a000000-0000-0000-0000-000000000010'
+\set communityID '4a000000-0000-0000-0000-000000000001'
+\set currentEventID '4a000000-0000-0000-0000-000000000002'
+\set endedEventID '4a000000-0000-0000-0000-000000000009'
+\set eventCategoryID '4a000000-0000-0000-0000-000000000003'
+\set futureEventID '4a000000-0000-0000-0000-000000000004'
+\set groupCategoryID '4a000000-0000-0000-0000-000000000005'
+\set groupID '4a000000-0000-0000-0000-000000000006'
+\set nonConfirmedEventID '4a000000-0000-0000-0000-000000000013'
+\set otherUserID '4a000000-0000-0000-0000-000000000007'
+\set ticketTypeID '4a000000-0000-0000-0000-000000000015'
+\set unpublishedEventID '4a000000-0000-0000-0000-000000000011'
+\set unscheduledEventID '4a000000-0000-0000-0000-000000000012'
+\set userID '4a000000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community containing the attendee events
-insert into community (
-    community_id,
-    banner_mobile_url,
-    banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    :'communityID',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'A test community',
-    'Test Community',
-    'https://example.com/logo.png',
-    'test-community'
-);
-
--- Group category used by the attendee group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category used by attendee events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Attendee and unrelated user identities
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'otherUserID', 'hash-1', 'other@example.com', true, 'other'),
-    (:'userID', 'hash-2', 'attendee@example.com', true, 'attendee');
-
--- Group owning the attendee events
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'otherUserID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Current, future, and explicitly ended events used by attendee ordering scenarios
-insert into event (
-    event_id,
-    description,
-    ends_at,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        :'currentEventID',
-        'A current event',
-        current_timestamp + interval '1 hour',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Current Event',
-        true,
-        current_timestamp - interval '2 hours',
-        'current-event',
-        current_timestamp - interval '1 hour',
-        'UTC'
-    ),
-    (
-        :'endedEventID',
-        'An event that ended earlier on its local day',
-        date_trunc('day', current_timestamp at time zone 'UTC') at time zone 'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Ended Event',
-        true,
-        current_timestamp - interval '1 day',
-        'ended-event',
-        (
+select fx_event(:'currentEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 hour',
+    'published', true,
+    'published_at', current_timestamp - interval '2 hours',
+    'starts_at', current_timestamp - interval '1 hour'
+));
+select fx_event(:'endedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', date_trunc('day', current_timestamp at time zone 'UTC') at time zone 'UTC',
+    'published', true,
+    'published_at', current_timestamp - interval '1 day',
+    'starts_at', (
             date_trunc('day', current_timestamp at time zone 'UTC') - interval '1 hour'
-        ) at time zone 'UTC',
-        'UTC'
-    ),
-    (
-        :'futureEventID',
-        'A future event',
-        null,
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        'Future Event',
-        true,
-        current_timestamp,
-        'future-event',
-        current_timestamp + interval '1 day',
-        'UTC'
-    );
+        ) at time zone 'UTC'
+));
+select fx_event(:'futureEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '1 day'
+));
 
 -- Ticket type used by the completed admission offer fallback
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'futureEventID', :'ticketTypeID', 1, 10, 'Ticket type fallback');
+select fx_event_ticket_type(:'ticketTypeID', :'futureEventID', jsonb_build_object('seats_total', 10));
 
 -- Completed admission offer used by the ticket-title fallback
 insert into admission_offer (
@@ -159,76 +92,22 @@ insert into admission_offer (
 );
 
 -- Events used by attendee and event visibility exclusions
-insert into event (
-    event_id,
-    canceled,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values
-    (
-        :'canceledEventID',
-        true,
-        'A canceled event',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Canceled Event',
-        true,
-        current_timestamp,
-        'canceled-event',
-        current_timestamp + interval '2 days',
-        'UTC'
-    ),
-    (
-        :'nonConfirmedEventID',
-        false,
-        'An event with non-confirmed attendance',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Non-confirmed Event',
-        true,
-        current_timestamp,
-        'non-confirmed-event',
-        current_timestamp + interval '2 days',
-        'UTC'
-    ),
-    (
-        :'unpublishedEventID',
-        false,
-        'An unpublished event',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Unpublished Event',
-        false,
-        null,
-        'unpublished-event',
-        current_timestamp + interval '2 days',
-        'UTC'
-    ),
-    (
-        :'unscheduledEventID',
-        false,
-        'An unscheduled event',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Unscheduled Event',
-        true,
-        current_timestamp,
-        'unscheduled-event',
-        null,
-        'UTC'
-    );
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event(:'nonConfirmedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', current_timestamp,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event(:'unpublishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object('starts_at', current_timestamp + interval '2 days'));
+select fx_event(:'unscheduledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', current_timestamp
+));
 
 -- Attendee rows for current, future, and excluded-event scenarios
 insert into event_attendee (

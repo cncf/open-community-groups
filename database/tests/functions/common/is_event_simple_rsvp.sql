@@ -44,158 +44,87 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community for RSVP-shape scenarios
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    :'communityID',
-    'Community for RSVP-shape tests',
-    'RSVP Shape Community',
-    'https://example.com/logo.png',
-    'rsvp-shape-community'
-);
-
--- Event category for RSVP-shape scenarios
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Meetup');
-
--- Group category for RSVP-shape scenarios
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Technology');
-
--- Group for RSVP-shape scenarios
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'RSVP Shape Group',
-    'rsvp-shape-group'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events covering each public ticket shape
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values
-    (
-        'Event with an inactive secondary public tier',
-        :'eventCategoryID',
-        :'eventInactiveID',
-        'virtual',
-        :'groupID',
-        'Inactive Secondary Tier Event',
-        'USD',
-        'inactive-secondary-tier-event',
-        'UTC'
-    ),
-    (
-        'Event with multiple public tiers',
-        :'eventCategoryID',
-        :'eventMultipleID',
-        'virtual',
-        :'groupID',
-        'Multiple Public Tiers Event',
-        'USD',
-        'multiple-public-tiers-event',
-        'UTC'
-    ),
-    (
-        'Event without a current public price',
-        :'eventCategoryID',
-        :'eventNoCurrentPriceID',
-        'virtual',
-        :'groupID',
-        'No Current Price Event',
-        'USD',
-        'no-current-price-event',
-        'UTC'
-    ),
-    (
-        'Event with one paid public tier',
-        :'eventCategoryID',
-        :'eventPaidID',
-        'virtual',
-        :'groupID',
-        'Paid Public Tier Event',
-        'USD',
-        'paid-public-tier-event',
-        'UTC'
-    ),
-    (
-        'Event with only a private tier',
-        :'eventCategoryID',
-        :'eventPrivateOnlyID',
-        'virtual',
-        :'groupID',
-        'Private Only Event',
-        'USD',
-        'private-only-event',
-        'UTC'
-    ),
-    (
-        'Event with one free public tier and one private tier',
-        :'eventCategoryID',
-        :'eventSimpleID',
-        'virtual',
-        :'groupID',
-        'Simple RSVP Event',
-        'USD',
-        'simple-rsvp-event',
-        'UTC'
-    );
+select fx_event(:'eventInactiveID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'eventMultipleID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'eventNoCurrentPriceID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'eventPrivateOnlyID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
+select fx_event(:'eventSimpleID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
 
 -- Ticket tiers covering active, inactive, public, and private shapes
-insert into event_ticket_type (
-    active,
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (true, 'public', :'eventInactiveID', :'ticketInactiveActiveID', 1, 10, 'Active free'),
-    (false, 'public', :'eventInactiveID', :'ticketInactiveDisabledID', 2, 10, 'Inactive free'),
-    (true, 'public', :'eventMultipleID', :'ticketMultipleFirstID', 1, 10, 'Free one'),
-    (true, 'public', :'eventMultipleID', :'ticketMultipleSecondID', 2, 10, 'Free two'),
-    (true, 'public', :'eventNoCurrentPriceID', :'ticketNoCurrentPriceID', 1, 10, 'Expired free'),
-    (true, 'public', :'eventPaidID', :'ticketPaidID', 1, 10, 'Paid'),
-    (true, 'invitation_only', :'eventPrivateOnlyID', :'ticketPrivateOnlyID', 1, 10, 'Private free'),
-    (true, 'public', :'eventSimpleID', :'ticketSimplePublicID', 1, 10, 'General admission'),
-    (true, 'invitation_only', :'eventSimpleID', :'ticketSimplePrivateID', 2, 10, 'Private paid');
+select fx_event_ticket_type(:'ticketInactiveActiveID', :'eventInactiveID', jsonb_build_object(
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketInactiveDisabledID', :'eventInactiveID', jsonb_build_object(
+    'active', false,
+    'order', 2,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketMultipleFirstID', :'eventMultipleID', jsonb_build_object(
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketMultipleSecondID', :'eventMultipleID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketNoCurrentPriceID', :'eventNoCurrentPriceID', jsonb_build_object(
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketPaidID', :'eventPaidID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Paid'
+));
+select fx_event_ticket_type(:'ticketPrivateOnlyID', :'eventPrivateOnlyID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketSimplePublicID', :'eventSimpleID', jsonb_build_object(
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ticketSimplePrivateID', :'eventSimpleID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 2,
+    'seats_total', 10
+));
 
 -- Price windows covering current free, current paid, and expired prices
-insert into event_ticket_price_window (
-    amount_minor,
-    ends_at,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values
-    (0, null, :'windowInactiveActiveID', :'ticketInactiveActiveID'),
-    (0, null, :'windowInactiveDisabledID', :'ticketInactiveDisabledID'),
-    (0, null, :'windowMultipleFirstID', :'ticketMultipleFirstID'),
-    (0, null, :'windowMultipleSecondID', :'ticketMultipleSecondID'),
-    (0, current_timestamp - interval '1 hour', :'windowNoCurrentPriceID', :'ticketNoCurrentPriceID'),
-    (2500, null, :'windowPaidID', :'ticketPaidID'),
-    (0, null, :'windowPrivateOnlyID', :'ticketPrivateOnlyID'),
-    (0, null, :'windowSimplePublicID', :'ticketSimplePublicID'),
-    (2500, null, :'windowSimplePrivateID', :'ticketSimplePrivateID');
+select fx_event_ticket_price_window(:'windowInactiveActiveID', :'ticketInactiveActiveID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'windowInactiveDisabledID', :'ticketInactiveDisabledID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'windowMultipleFirstID', :'ticketMultipleFirstID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'windowMultipleSecondID', :'ticketMultipleSecondID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'windowNoCurrentPriceID', :'ticketNoCurrentPriceID', jsonb_build_object(
+    'amount_minor', 0,
+    'ends_at', current_timestamp - interval '1 hour'
+));
+select fx_event_ticket_price_window(:'windowPaidID', :'ticketPaidID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'windowPrivateOnlyID', :'ticketPrivateOnlyID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'windowSimplePublicID', :'ticketSimplePublicID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'windowSimplePrivateID', :'ticketSimplePrivateID', jsonb_build_object('amount_minor', 2500));
 
 -- ============================================================================
 -- TESTS

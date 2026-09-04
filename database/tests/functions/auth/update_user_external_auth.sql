@@ -20,81 +20,41 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    name,
-    provider,
-    registration_status,
-    username
-) values (
-    :'conflictUserID',
-    'conflict-hash',
-    'conflict@example.com',
-    true,
-    'Conflict User',
-    null,
-    'registered',
-    'conflict-user'
-), (
-    :'identityConflictUserID',
-    'identity-conflict-hash',
-    'identity-conflict@example.com',
-    true,
-    'Identity Conflict User',
-    jsonb_build_object(
-        'linuxfoundation', jsonb_build_object(
-            'issuer', 'https://issuer.example.com',
-            'subject', 'auth0|conflict',
-            'username', 'lf-conflict'
-        )
-    ),
-    'registered',
-    'identity-conflict-user'
-), (
-    :'preRegisteredUserID',
-    'pre-registered-hash',
-    'pre-registered@example.com',
-    false,
-    'Pre Registered User',
-    null,
-    'pre-registered',
-    'pre-registered-user'
-), (
-    :'userID',
-    'test-hash',
-    'old@example.com',
-    true,
-    'Old Name',
-    jsonb_build_object(
+-- Registered user whose email conflicts with external auth sync
+select fx_user(:'conflictUserID', jsonb_build_object('email', 'conflict@example.com'));
+
+-- Registered user whose Linux Foundation identity conflicts with external auth sync
+select fx_user(:'identityConflictUserID', jsonb_build_object('provider', jsonb_build_object(
+    'linuxfoundation', jsonb_build_object(
+        'issuer', 'https://issuer.example.com',
+        'subject', 'auth0|conflict',
+        'username', 'lf-conflict'
+    )
+)));
+
+-- Pre-registered user rejected by external auth sync
+select fx_user(:'preRegisteredUserID', jsonb_build_object(
+    'email_verified', false,
+    'registration_status', 'pre-registered'
+));
+
+-- Registered user refreshed by external auth sync
+select fx_user(:'userID', jsonb_build_object(
+    'email', 'old@example.com',
+    'provider', jsonb_build_object(
         'github', jsonb_build_object(
             'username', 'octocat'
         )
-    ),
-    'registered',
-    'test-user'
-), (
-    :'userWithoutNameID',
-    'no-name-hash',
-    'no-name-old@example.com',
-    true,
-    null,
-    null,
-    'registered',
-    'no-name-user'
-), (
-    :'userWithoutProviderID',
-    'no-provider-hash',
-    'no-provider-old@example.com',
-    true,
-    'No Provider User',
-    null,
-    'registered',
-    'no-provider-user'
-);
+    )
+));
+
+-- Registered user without a name returned by external auth sync
+select fx_user(:'userWithoutNameID', jsonb_build_object('email', 'no-name-old@example.com'));
+
+-- Registered user without provider metadata refreshed by external auth sync
+select fx_user(:'userWithoutProviderID', jsonb_build_object(
+    'name', 'No Provider User'
+));
 
 -- ============================================================================
 -- TESTS

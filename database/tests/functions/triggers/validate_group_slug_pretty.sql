@@ -28,51 +28,11 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'community1ID',
-        'pretty-slug-validation',
-        'Pretty Slug Validation',
-        'A community for pretty slug validation tests',
-        'https://example.com/banner-mobile-pretty.png',
-        'https://example.com/banner-pretty.png',
-        'https://example.com/logo-pretty.png'
-    ),
-    (
-        :'community2ID',
-        'pretty-slug-validation-other',
-        'Pretty Slug Validation Other',
-        'Another community for pretty slug validation tests',
-        'https://example.com/banner-mobile-pretty-other.png',
-        'https://example.com/banner-pretty-other.png',
-        'https://example.com/logo-pretty-other.png'
-    );
-
--- Group categories
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values
-    (
-        :'groupCategory1ID',
-        :'community1ID',
-        'Pretty Slug Category'
-    ),
-    (
-        :'groupCategory2ID',
-        :'community2ID',
-        'Pretty Slug Category Other'
-    );
+-- Baseline community and group categories
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
+select fx_group_category(:'groupCategory1ID', :'community1ID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 
 -- ============================================================================
 -- TESTS

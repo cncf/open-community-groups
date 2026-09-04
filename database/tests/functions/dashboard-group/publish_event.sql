@@ -11,50 +11,57 @@ select plan(29);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a2b0000-0000-0000-0000-000000000001'
-\set eventCategoryID '3a2b0000-0000-0000-0000-000000000002'
-\set eventExternalAbroadID '3a2b0000-0000-0000-0000-00000000003a'
-\set eventExternalClearID '3a2b0000-0000-0000-0000-000000000030'
-\set eventExternalMissingUrlID '3a2b0000-0000-0000-0000-000000000031'
-\set eventExternalReadyID '3a2b0000-0000-0000-0000-000000000032'
-\set eventID '3a2b0000-0000-0000-0000-000000000003'
-\set eventNoMeetingID '3a2b0000-0000-0000-0000-000000000004'
-\set eventNoStartDateID '3a2b0000-0000-0000-0000-000000000005'
-\set eventPublishedID '3a2b0000-0000-0000-0000-000000000006'
-\set eventTicketedHybridID '3a2b0000-0000-0000-0000-00000000001f'
-\set eventTicketedInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000007'
-\set eventTicketedFreeID '3a2b0000-0000-0000-0000-00000000001a'
-\set eventTicketedNoRecipientID '3a2b0000-0000-0000-0000-000000000008'
-\set groupCategoryID '3a2b0000-0000-0000-0000-000000000009'
-\set groupExternalID '3a2b0000-0000-0000-0000-000000000033'
-\set groupID '3a2b0000-0000-0000-0000-000000000010'
-\set groupNoRecipientID '3a2b0000-0000-0000-0000-000000000011'
-\set missingGroupID '3a2b0000-0000-0000-0000-000000000012'
-\set previousPublisherID '3a2b0000-0000-0000-0000-000000000013'
-\set priceWindowExternalAbroadID '3a2b0000-0000-0000-0000-00000000003b'
-\set priceWindowExternalClearID '3a2b0000-0000-0000-0000-000000000034'
-\set priceWindowExternalMissingUrlID '3a2b0000-0000-0000-0000-000000000035'
-\set priceWindowExternalReadyID '3a2b0000-0000-0000-0000-000000000036'
-\set priceWindowFreeID '3a2b0000-0000-0000-0000-00000000001b'
-\set priceWindowHybridID '3a2b0000-0000-0000-0000-000000000021'
-\set priceWindowInvalidCurrencyID '3a2b0000-0000-0000-0000-00000000001c'
-\set priceWindowNoRecipientID '3a2b0000-0000-0000-0000-00000000001d'
-\set sessionMeetingID '3a2b0000-0000-0000-0000-000000000014'
-\set sessionNoMeetingID '3a2b0000-0000-0000-0000-000000000015'
-\set sessionPublishedMeetingID '3a2b0000-0000-0000-0000-000000000016'
-\set ticketTypeExternalAbroadID '3a2b0000-0000-0000-0000-00000000003c'
-\set ticketTypeExternalClearID '3a2b0000-0000-0000-0000-000000000037'
-\set ticketTypeExternalMissingUrlID '3a2b0000-0000-0000-0000-000000000038'
-\set ticketTypeExternalReadyID '3a2b0000-0000-0000-0000-000000000039'
-\set ticketTypeInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000017'
-\set ticketTypeFreeID '3a2b0000-0000-0000-0000-00000000001e'
-\set ticketTypeHybridID '3a2b0000-0000-0000-0000-000000000020'
-\set ticketTypeNoRecipientID '3a2b0000-0000-0000-0000-000000000018'
-\set userID '3a2b0000-0000-0000-0000-000000000019'
+\set communityID '3a0a0000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a0a0000-0000-0000-0000-000000000002'
+\set eventExternalAbroadID '3a0a0000-0000-0000-0000-00000000003a'
+\set eventExternalClearID '3a0a0000-0000-0000-0000-000000000030'
+\set eventExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000031'
+\set eventExternalReadyID '3a0a0000-0000-0000-0000-000000000032'
+\set eventID '3a0a0000-0000-0000-0000-000000000003'
+\set eventNoMeetingID '3a0a0000-0000-0000-0000-000000000004'
+\set eventNoStartDateID '3a0a0000-0000-0000-0000-000000000005'
+\set eventPublishedID '3a0a0000-0000-0000-0000-000000000006'
+\set eventTicketedHybridID '3a0a0000-0000-0000-0000-00000000001f'
+\set eventTicketedInvalidCurrencyID '3a0a0000-0000-0000-0000-000000000007'
+\set eventTicketedFreeID '3a0a0000-0000-0000-0000-00000000001a'
+\set eventTicketedNoRecipientID '3a0a0000-0000-0000-0000-000000000008'
+\set groupCategoryID '3a0a0000-0000-0000-0000-000000000009'
+\set groupExternalID '3a0a0000-0000-0000-0000-000000000033'
+\set groupID '3a0a0000-0000-0000-0000-000000000010'
+\set groupNoRecipientID '3a0a0000-0000-0000-0000-000000000011'
+\set missingGroupID '3a0a0000-0000-0000-0000-000000000012'
+\set previousPublisherID '3a0a0000-0000-0000-0000-000000000013'
+\set priceWindowExternalAbroadID '3a0a0000-0000-0000-0000-00000000003b'
+\set priceWindowExternalClearID '3a0a0000-0000-0000-0000-000000000034'
+\set priceWindowExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000035'
+\set priceWindowExternalReadyID '3a0a0000-0000-0000-0000-000000000036'
+\set priceWindowFreeID '3a0a0000-0000-0000-0000-00000000001b'
+\set priceWindowHybridID '3a0a0000-0000-0000-0000-000000000021'
+\set priceWindowInvalidCurrencyID '3a0a0000-0000-0000-0000-00000000001c'
+\set priceWindowNoRecipientID '3a0a0000-0000-0000-0000-00000000001d'
+\set sessionMeetingID '3a0a0000-0000-0000-0000-000000000014'
+\set sessionNoMeetingID '3a0a0000-0000-0000-0000-000000000015'
+\set sessionPublishedMeetingID '3a0a0000-0000-0000-0000-000000000016'
+\set ticketTypeExternalAbroadID '3a0a0000-0000-0000-0000-00000000003c'
+\set ticketTypeExternalClearID '3a0a0000-0000-0000-0000-000000000037'
+\set ticketTypeExternalMissingUrlID '3a0a0000-0000-0000-0000-000000000038'
+\set ticketTypeExternalReadyID '3a0a0000-0000-0000-0000-000000000039'
+\set ticketTypeInvalidCurrencyID '3a0a0000-0000-0000-0000-000000000017'
+\set ticketTypeFreeID '3a0a0000-0000-0000-0000-00000000001e'
+\set ticketTypeHybridID '3a0a0000-0000-0000-0000-000000000020'
+\set ticketTypeNoRecipientID '3a0a0000-0000-0000-0000-000000000018'
+\set userID '3a0a0000-0000-0000-0000-000000000019'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'previousPublisherID');
+select fx_group(:'groupNoRecipientID', :'communityID', :'groupCategoryID');
 
 -- Operator allowlist used by external publish scenarios
 insert into external_payments_config (
@@ -67,600 +74,174 @@ insert into external_payments_config (
     336
 );
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description,
-    payment_recipient
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    jsonb_build_object(
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_test_group',
         'seller_display_name', 'Test Fiscal Sponsor'
-    )
-);
-
--- Group without a payment recipient
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description
-) values (
-    :'groupNoRecipientID',
-    :'communityID',
-    :'groupCategoryID',
-    'No Recipient Group',
-    'no-recipient-group',
-    'A group without a payment recipient'
-);
+    )));
 
 -- Allowlisted group with external payments enabled for external publish scenarios
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategoryID',
-    :'groupExternalID',
-    'External Publish Group',
-    'external-publish-group'
-);
+select fx_group(:'groupExternalID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
-values
-    (:'userID', 'publisher-hash', 'user@test.local', 'user'),
-    (:'previousPublisherID', 'previous-publisher-hash', 'publisher@test.local', 'publisher');
+select fx_user(:'userID', jsonb_build_object('username', 'user-publish-event'));
 
 -- Event (unpublished, with meeting_in_sync=true to verify it gets set to false)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    published
-) values (
-    :'eventID',
-    :'groupID',
-    'Test Event',
-    'test-event',
-    'A test event',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-01 10:00:00+00',
-    '2025-06-01 11:00:00+00',
-
-    100,
-    true,
-    'zoom',
-    true,
-    false
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2025-06-01 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'starts_at', '2025-06-01 10:00:00+00'
+));
 
 -- Event without meeting_requested (to verify meeting_in_sync is not changed)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    meeting_in_sync,
-    meeting_requested,
-    published
-) values (
-    :'eventNoMeetingID',
-    :'groupID',
-    'Test Event No Meeting',
-    'test-event-no-meeting',
-    'A test event without meeting',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    current_timestamp + interval '12 hours',
-    current_timestamp + interval '13 hours',
-    null,
-    false,
-    false
-);
+select fx_event(:'eventNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '13 hours',
+    'meeting_requested', false,
+    'starts_at', current_timestamp + interval '12 hours'
+));
 
 -- Event already published (to verify publishing is idempotent)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    published,
-    published_at,
-    published_by
-) values (
-    :'eventPublishedID',
-    :'groupID',
-    'Already Published Event',
-    'already-published-event',
-    'An already published event',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    '2025-07-01 10:00:00+00',
-    '2025-07-01 11:00:00+00',
-
-    100,
-    true,
-    'zoom',
-    true,
-    true,
-    '2025-01-01 10:00:00+00',
-    :'previousPublisherID'
-);
+select fx_event(:'eventPublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2025-07-01 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'published_at', '2025-01-01 10:00:00+00',
+    'published_by', :'previousPublisherID',
+    'starts_at', '2025-07-01 10:00:00+00'
+));
 
 -- Event without start date (to verify it cannot be published)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'eventNoStartDateID',
-    :'groupID',
-    'Test Event No Start Date',
-    'test-event-no-start-date',
-    'A test event without start date',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    false
-);
+select fx_event(:'eventNoStartDateID', :'groupID', :'eventCategoryID');
 
 -- Ticketed event without a payment recipient on its group
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    payment_currency_code,
-    published
-) values (
-    :'eventTicketedNoRecipientID',
-    :'groupNoRecipientID',
-    'Ticketed Event No Recipient',
-    'ticketed-event-no-recipient',
-    'A ticketed event without a payment recipient',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    current_timestamp + interval '2 days',
-    'USD',
-    false
-);
+select fx_event(:'eventTicketedNoRecipientID', :'groupNoRecipientID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD',
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- All-zero ticketed event without a payment recipient on its group
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    published
-) values (
-    :'eventTicketedFreeID',
-    :'groupNoRecipientID',
-    'Free Ticketed Event',
-    'free-ticketed-event',
-    'An all-zero ticketed event without a payment recipient',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    current_timestamp + interval '2 days',
-    false
-);
+select fx_event(:'eventTicketedFreeID', :'groupNoRecipientID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Ticketed event with an invalid currency code
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    payment_currency_code,
-    published
-) values (
-    :'eventTicketedInvalidCurrencyID',
-    :'groupID',
-    'Ticketed Event Invalid Currency',
-    'ticketed-event-invalid-currency',
-    'A ticketed event with an invalid currency code',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    current_timestamp + interval '2 days',
-    'USDD',
-    false
-);
+select fx_event(:'eventTicketedInvalidCurrencyID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USDD',
+    'starts_at', current_timestamp + interval '2 days'
+));
 
 -- Paid-capable hybrid event with a complete physical venue
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    payment_currency_code,
-    published,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name,
-    venue_state_code,
-    venue_state_name,
-    venue_zip_code
-) values (
-    :'eventTicketedHybridID',
-    :'groupID',
-    'Paid Hybrid Event',
-    'paid-hybrid-event',
-    'A paid hybrid event with physical admission',
-    'UTC',
-    :'eventCategoryID',
-    'hybrid',
-    current_timestamp + interval '2 days',
-    'USD',
-    false,
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'United States',
-    'Community Hall',
-    'CA',
-    'California',
-    '94105'
-);
+select fx_event(:'eventTicketedHybridID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'hybrid',
+    'payment_currency_code', 'USD',
+    'starts_at', current_timestamp + interval '2 days',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Community Hall',
+    'venue_state_code', 'CA',
+    'venue_state_name', 'California',
+    'venue_zip_code', '94105'
+));
 
 -- Ticket type for the group without a payment recipient
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeNoRecipientID',
-    :'eventTicketedNoRecipientID',
-    1,
-    50,
-    'Paid ticket'
-);
+select fx_event_ticket_type(:'ticketTypeNoRecipientID', :'eventTicketedNoRecipientID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'Paid ticket'
+));
 
 -- Ticket type for the paid hybrid event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeHybridID',
-    :'eventTicketedHybridID',
-    1,
-    50,
-    'Hybrid admission'
-);
+select fx_event_ticket_type(:'ticketTypeHybridID', :'eventTicketedHybridID', jsonb_build_object('seats_total', 50));
 
 -- Ticket type for the all-zero event
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeFreeID',
-    :'eventTicketedFreeID',
-    1,
-    50,
-    'Free ticket'
-);
+select fx_event_ticket_type(:'ticketTypeFreeID', :'eventTicketedFreeID', jsonb_build_object('seats_total', 50));
 
 -- Ticket type for the event with an invalid currency code
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeInvalidCurrencyID',
-    :'eventTicketedInvalidCurrencyID',
-    1,
-    50,
-    'Paid ticket'
-);
+select fx_event_ticket_type(:'ticketTypeInvalidCurrencyID', :'eventTicketedInvalidCurrencyID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'Paid ticket'
+));
 
 -- Price windows determine whether each ticketed event is paid-capable.
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'priceWindowFreeID', 0, :'ticketTypeFreeID'),
-    (:'priceWindowHybridID', 2500, :'ticketTypeHybridID'),
-    (:'priceWindowInvalidCurrencyID', 2500, :'ticketTypeInvalidCurrencyID'),
-    (:'priceWindowNoRecipientID', 2500, :'ticketTypeNoRecipientID');
+select fx_event_ticket_price_window(:'priceWindowFreeID', :'ticketTypeFreeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'priceWindowHybridID', :'ticketTypeHybridID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowInvalidCurrencyID', :'ticketTypeInvalidCurrencyID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowNoRecipientID', :'ticketTypeNoRecipientID', jsonb_build_object('amount_minor', 2500));
 
 -- Paid external draft whose venue sits outside the group country
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Paid external draft with a venue abroad',
-    :'eventCategoryID',
-    :'eventExternalAbroadID',
-    'in-person',
-    'https://pay.example.test/abroad',
-    :'groupExternalID',
-    'External Abroad Publish Event',
-    'KRW',
-    false,
-    'external-abroad-publish-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    '1 Test Street',
-    'Tokyo',
-    'JP',
-    'Test Hall',
-    '100-0001'
-);
+select fx_event(:'eventExternalAbroadID', :'groupExternalID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/abroad',
+    'payment_currency_code', 'KRW',
+    'starts_at', current_timestamp + interval '2 days',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Tokyo',
+    'venue_country_code', 'JP',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '100-0001'
+));
 
 -- Paid non-external draft that still carries a leftover external URL
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Paid draft with leftover external URL on a Stripe group',
-    :'eventCategoryID',
-    :'eventExternalClearID',
-    'in-person',
-    'https://pay.example.test/leftover-publish',
-    :'groupID',
-    'External Clear Publish Event',
-    'USD',
-    false,
-    'external-clear-publish-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    '123 Main St',
-    'San Francisco',
-    'US',
-    'Community Hall',
-    '94105'
-);
+select fx_event(:'eventExternalClearID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/leftover-publish',
+    'payment_currency_code', 'USD',
+    'starts_at', current_timestamp + interval '2 days',
+    'venue_address', '123 Main St',
+    'venue_city', 'San Francisco',
+    'venue_country_code', 'US',
+    'venue_name', 'Community Hall',
+    'venue_zip_code', '94105'
+));
 
 -- Paid external draft missing the required payment URL
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Paid external draft missing a payment URL',
-    :'eventCategoryID',
-    :'eventExternalMissingUrlID',
-    'in-person',
-    :'groupExternalID',
-    'External Missing URL Event',
-    'KRW',
-    false,
-    'external-missing-url-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventExternalMissingUrlID', :'groupExternalID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'KRW',
+    'starts_at', current_timestamp + interval '2 days',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Paid external draft ready to publish without Stripe
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'Paid external draft ready for publish',
-    :'eventCategoryID',
-    :'eventExternalReadyID',
-    'in-person',
-    'https://pay.example.test/publish',
-    :'groupExternalID',
-    'External Ready Publish Event',
-    'KRW',
-    false,
-    'external-ready-publish-event',
-    current_timestamp + interval '2 days',
-    'UTC',
-    '1 Test Street',
-    'Seoul',
-    'KR',
-    'Test Hall',
-    '00000'
-);
+select fx_event(:'eventExternalReadyID', :'groupExternalID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/publish',
+    'payment_currency_code', 'KRW',
+    'starts_at', current_timestamp + interval '2 days',
+    'venue_address', '1 Test Street',
+    'venue_city', 'Seoul',
+    'venue_country_code', 'KR',
+    'venue_name', 'Test Hall',
+    'venue_zip_code', '00000'
+));
 
 -- Ticket types for the external publish fixtures
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'ticketTypeExternalAbroadID', :'eventExternalAbroadID', 1, 50, 'General admission'),
-    (:'ticketTypeExternalClearID', :'eventExternalClearID', 1, 50, 'General admission'),
-    (:'ticketTypeExternalMissingUrlID', :'eventExternalMissingUrlID', 1, 50, 'General admission'),
-    (:'ticketTypeExternalReadyID', :'eventExternalReadyID', 1, 50, 'General admission');
+select fx_event_ticket_type(:'ticketTypeExternalAbroadID', :'eventExternalAbroadID', jsonb_build_object('seats_total', 50));
+select fx_event_ticket_type(:'ticketTypeExternalClearID', :'eventExternalClearID', jsonb_build_object('seats_total', 50));
+select fx_event_ticket_type(:'ticketTypeExternalMissingUrlID', :'eventExternalMissingUrlID', jsonb_build_object('seats_total', 50));
+select fx_event_ticket_type(:'ticketTypeExternalReadyID', :'eventExternalReadyID', jsonb_build_object('seats_total', 50));
 
 -- Price windows for the external publish fixtures
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'priceWindowExternalAbroadID', 5000, :'ticketTypeExternalAbroadID'),
-    (:'priceWindowExternalClearID', 2500, :'ticketTypeExternalClearID'),
-    (:'priceWindowExternalMissingUrlID', 5000, :'ticketTypeExternalMissingUrlID'),
-    (:'priceWindowExternalReadyID', 5000, :'ticketTypeExternalReadyID');
+select fx_event_ticket_price_window(:'priceWindowExternalAbroadID', :'ticketTypeExternalAbroadID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'priceWindowExternalClearID', :'ticketTypeExternalClearID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowExternalMissingUrlID', :'ticketTypeExternalMissingUrlID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'priceWindowExternalReadyID', :'ticketTypeExternalReadyID', jsonb_build_object('amount_minor', 5000));
 
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
@@ -784,7 +365,7 @@ select results_eq(
         values (
             'event_published',
             %L::uuid,
-            'user',
+            'user-publish-event',
             %L::uuid,
             %L::uuid,
             %L::uuid,

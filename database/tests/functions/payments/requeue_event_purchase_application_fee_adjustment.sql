@@ -33,47 +33,23 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the adjustment event
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'requeue-fee-adjustment-community'
-);
-
--- Event category used by the adjustment event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the adjustment group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the adjustment event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Attendees owning the direct-charge purchases
-insert into "user" (auth_hash, email, user_id, username) values
-    ('user', 'user@example.test', :'userID', 'user'),
-    ('low-user', 'low-user@example.test', :'lowUserID', 'low-user'),
-    ('pending-user', 'pending-user@example.test', :'pendingUserID', 'pending-user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_user(:'lowUserID');
+select fx_user(:'pendingUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the direct-charge purchases
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by each purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Purchases owning exhausted and ineligible adjustments
 insert into event_purchase (
@@ -89,16 +65,16 @@ insert into event_purchase (
 ) values
     (
         2500, 'direct-charge', 'acct_fee', 'USD', :'eventID', :'purchaseID',
-        :'ticketTypeID', 80, 'stripe', 'fee_adjust', 'ch_adjust', 'cs_adjust',
-        'acct_fee', 'pi_adjust', 2500, 100,
+        :'ticketTypeID', 80, 'stripe', 'fee_adjust', 'ch_adjust_fee_adjustment_requeue', 'cs_adjust_fee_adjustment_requeue',
+        'acct_fee', 'pi_adjust_fee_adjustment_requeue', 2500, 100,
         '{"display_name":"Fiscal Sponsor"}'::jsonb, 'completed', 2300, 200,
         'inclusive', 'manual', 'professional-event-admission',
         'General admission', :'userID', '{}'::jsonb
     ),
     (
         2500, 'direct-charge', 'acct_fee', 'USD', :'eventID', :'lowPurchaseID',
-        :'ticketTypeID', 80, 'stripe', 'fee_low', 'ch_low', 'cs_low',
-        'acct_fee', 'pi_low', 2500, 100,
+        :'ticketTypeID', 80, 'stripe', 'fee_low', 'ch_low_fee_adjustment_requeue', 'cs_low_fee_adjustment_requeue',
+        'acct_fee', 'pi_low_fee_adjustment_requeue', 2500, 100,
         '{"display_name":"Fiscal Sponsor"}'::jsonb, 'completed', 2300, 200,
         'inclusive', 'manual', 'professional-event-admission',
         'General admission', :'lowUserID', '{}'::jsonb
@@ -106,7 +82,7 @@ insert into event_purchase (
     (
         2500, 'direct-charge', 'acct_fee', 'USD', :'eventID',
         :'pendingPurchaseID', :'ticketTypeID', 80, 'stripe', 'fee_pending',
-        'ch_pending', 'cs_pending', 'acct_fee', 'pi_pending', 2500, 100,
+        'ch_pending_fee_adjustment_requeue', 'cs_pending_fee_adjustment_requeue', 'acct_fee', 'pi_pending_fee_adjustment_requeue', 2500, 100,
         '{"display_name":"Fiscal Sponsor"}'::jsonb, 'completed', 2300, 200,
         'inclusive', 'manual', 'professional-event-admission',
         'General admission', :'pendingUserID', '{}'::jsonb

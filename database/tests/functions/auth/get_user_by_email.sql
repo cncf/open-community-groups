@@ -16,23 +16,14 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, password, username)
-values (
-    :'userUnverifiedID',
-    'unverified-hash',
-    'unverified@example.com',
-    false,
-    null,
-    'unverified-user'
-), (
-    :'userVerifiedID',
-    'verified-hash',
-    'verified@example.com',
-    true,
-    'hashed-password',
-    'verified-user'
-);
+-- Verified user matched by email
+select fx_user(:'userVerifiedID', jsonb_build_object('email', 'verified@example.com'));
+
+-- Unverified user excluded from email lookup
+select fx_user(:'userUnverifiedID', jsonb_build_object(
+    'email', 'unverified@example.com',
+    'email_verified', false
+));
 
 -- ============================================================================
 -- TESTS

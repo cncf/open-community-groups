@@ -35,67 +35,21 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the retryable refund fixtures
-insert into community (
-    banner_mobile_url,
-    banner_url,
-    community_id,
-    description,
-    display_name,
-    logo_url,
-    name
-) values (
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    :'communityID',
-    'Community',
-    'Community',
-    'https://example.test/logo.png',
-    'retryable-refund-community'
-);
-
--- Event category used by the retryable refund event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the retryable refund group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the retryable refund event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- User owning all retryable refund purchases
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event owning all retryable refund purchases
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    'Event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Event',
-    'USD',
-    'event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type referenced by all retryable refund purchases
-insert into event_ticket_type (event_id, event_ticket_type_id, "order", seats_total, title)
-values (:'eventID', :'ticketTypeID', 1, 100, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 100,
+    'title', 'General admission'
+));
 
 -- Purchases backing normal, blank-message, capped, and invalid-state refunds
 insert into event_purchase (
@@ -126,7 +80,7 @@ insert into event_purchase (
     tax_classification,
     venue_snapshot
 ) values
-    (2500, 'USD', :'eventID', :'blankPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_blank', 'direct-charge', 'acct_refunds', 0, 'ch_blank', 'cs_blank', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
+    (2500, 'USD', :'eventID', :'blankPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_blank_refund_retryable_failure', 'direct-charge', 'acct_refunds', 0, 'ch_blank', 'cs_blank', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'cappedPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_capped', 'direct-charge', 'acct_refunds', 0, 'ch_capped', 'cs_capped', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'normalPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_normal', 'direct-charge', 'acct_refunds', 0, 'ch_normal', 'cs_normal', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb),
     (2500, 'USD', :'eventID', :'pendingPurchaseID', :'ticketTypeID', 'refund-pending', 'General admission', :'userID', 'stripe', 'pi_pending', 'direct-charge', 'acct_refunds', 0, 'ch_pending', 'cs_pending_retry', 'acct_refunds', 2500, '{"connected_account_id":"acct_refunds","display_name":"Sponsor","provider":"stripe"}'::jsonb, 2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb);
@@ -148,7 +102,7 @@ insert into event_purchase_refund (
     (2500, 2, :'blankClaimID', current_timestamp, 'USD', :'blankPurchaseID', :'blankRefundID', 'refund-blank', 'event-cancellation', 'stripe', 'processing'),
     (2500, 10, :'cappedClaimID', current_timestamp, 'USD', :'cappedPurchaseID', :'cappedRefundID', 'refund-capped', 'event-cancellation', 'stripe', 'processing'),
     (2500, 1, :'normalClaimID', current_timestamp, 'USD', :'normalPurchaseID', :'normalRefundID', 'refund-normal', 'event-cancellation', 'stripe', 'processing'),
-    (2500, 1, null, null, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending', 'event-cancellation', 'stripe', 'provider-pending');
+    (2500, 1, null, null, 'USD', :'pendingPurchaseID', :'pendingRefundID', 'refund-pending-refund-retryable-failure', 'event-cancellation', 'stripe', 'provider-pending');
 
 -- ============================================================================
 -- TESTS

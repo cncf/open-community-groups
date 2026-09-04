@@ -22,102 +22,26 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'views-community',
-    'Views Community',
-    'Community for update_event_views tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Views Group',
-    'views-group',
-    true,
-    false
-);
-
--- Event category and events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event whose views are updated by the test scenarios
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    published,
-    canceled,
-    deleted,
-    starts_at
-) values
-    (
-        :'publishedEventID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Published Event',
-        'published-event',
-        'Published event',
-        'UTC',
-        true,
-        false,
-        false,
-        current_timestamp + interval '10 days'
-    ),
-    (
-        :'canceledEventID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Canceled Event',
-        'canceled-event',
-        'Canceled event',
-        'UTC',
-        true,
-        true,
-        false,
-        current_timestamp + interval '20 days'
-    ),
-    (
-        :'canceledDraftEventID',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        'Canceled Draft Event',
-        'canceled-draft-event',
-        'Canceled draft event',
-        'UTC',
-        false,
-        true,
-        false,
-        current_timestamp + interval '30 days'
-    );
+select fx_event(:'publishedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'starts_at', current_timestamp + interval '10 days'
+));
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '20 days'
+));
+select fx_event(:'canceledDraftEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'starts_at', current_timestamp + interval '30 days'
+));
 
 -- ============================================================================
 -- TESTS

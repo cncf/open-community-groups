@@ -128,6 +128,10 @@ db-init data_dir:
     mkdir -p "{{ data_dir }}"
     just pg initdb -U {{ db_user }} "{{ data_dir }}"
 
+# Install pgTAP fixture functions (fx_*) into the test database.
+db-install-tests-fixtures:
+    @for file in "{{ source_dir }}"/database/tests/fixtures/*.sql; do PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests }} -q -v ON_ERROR_STOP=1 -f "$file" || exit 1; done
+
 # Check database layer conventions (trigger function ownership).
 db-lint:
     sh "{{ source_dir }}/database/scripts/lint.sh"
@@ -173,13 +177,17 @@ db-recreate-tests-e2e: db-drop-tests-e2e db-create-tests-e2e db-migrate-tests-e2
 db-server data_dir:
     just pg postgres -D "{{ data_dir }}" -p {{ db_port }} {{ db_server_host_opt }}
 
-# Run database tests (recreates test db and runs pgTAP tests).
-db-tests: db-recreate-tests
-    @pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f $(find "{{ source_dir }}/database/tests/schema" "{{ source_dir }}/database/tests/functions" -type f -name '*.sql' | sort)
+# Run database tests (recreates test db, installs fixtures and runs pgTAP tests in parallel).
+db-tests: db-recreate-tests db-install-tests-fixtures
+    @pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -j {{ num_cpus() }} -f $(find "{{ source_dir }}/database/tests/schema" "{{ source_dir }}/database/tests/functions" -type f -name '*.sql' | sort)
 
 # Run database tests on a specific file.
-db-tests-file file: db-migrate-tests
+db-tests-file file: db-migrate-tests db-install-tests-fixtures
     @pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f {{ file }}
+
+# Check that function tests seed distinct unique key values (required for parallel runs).
+db-tests-seed-keys: db-migrate-tests db-install-tests-fixtures
+    @PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" sh "{{ source_dir }}/database/scripts/check-seed-keys.sh" {{ pg_conn }} {{ db_name_tests }}
 
 # Test upgrading representative schema-68 enrollment data to the latest schema.
 db-migration-tests: db-drop-tests-migration db-create-tests-migration

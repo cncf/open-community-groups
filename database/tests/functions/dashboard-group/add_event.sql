@@ -27,6 +27,7 @@ select plan(50);
 -- SEED DATA
 -- ============================================================================
 
+
 -- Operator allowlist and window limits used by external paid-event scenarios
 insert into external_payments_config (
     allowed_countries,
@@ -39,75 +40,38 @@ insert into external_payments_config (
 );
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+select fx_community(:'communityID', jsonb_build_object('logo_url', 'https://example.com/logo.png'));
+
+-- Baseline categories
+select fx_group_category(:'groupCategoryID', :'communityID');
 
 -- Users
-insert into "user" (user_id, email, username, auth_hash, name) values
-    (:'user1ID', 'host1@example.com', 'host1', 'hash1', 'Host One'),
-    (:'user2ID', 'host2@example.com', 'host2', 'hash2', 'Host Two'),
-    (:'user3ID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
+select fx_user(:'user1ID', jsonb_build_object(
+    'email', 'host1@example.com',
+    'name', 'Host One',
+    'username', 'host1'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'email', 'host2@example.com',
+    'name', 'Host Two',
+    'username', 'host2'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'name', 'Speaker One',
+    'username', 'speaker1'
+));
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Conference', :'communityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID', jsonb_build_object('name', 'Conference'));
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id,
-    payment_recipient
-) values (
-    :'groupID',
-    :'communityID',
-    'Kubernetes Study Group',
-    'abc1234',
-    'A study group focused on Kubernetes best practices and implementation',
-    :'groupCategoryID',
-    '{"provider": "stripe", "recipient_id": "acct_add_event", "seller_display_name": "Add Event Fiscal Sponsor"}'::jsonb
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', '{"provider": "stripe", "recipient_id": "acct_add_event", "seller_display_name": "Add Event Fiscal Sponsor"}'::jsonb));
 
 -- Allowlisted group with external payments enabled for paid external creates
-insert into "group" (
-    community_id,
-    country_code,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    'KR',
-    true,
-    :'groupCategoryID',
-    :'groupExternalID',
-    'External Payments Group',
-    'external-payments-group'
-);
+select fx_group(:'groupExternalID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
@@ -127,7 +91,6 @@ values
     (true, :'groupID', 'admin', :'user1ID', 2),
     (false, :'groupID', 'events-manager', :'user2ID', 1),
     (true, :'groupID', 'viewer', :'user3ID', null);
-
 
 -- ============================================================================
 -- TESTS

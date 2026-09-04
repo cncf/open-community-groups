@@ -26,101 +26,22 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'pending-answers-community',
-    'Pending Answers Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'canceledUserID',
-        'hash-4',
-        'canceled@example.com',
-        true,
-        'canceled-user'
-    ),
-    (
-        :'confirmedUserID',
-        'hash-3',
-        'confirmed@example.com',
-        true,
-        'confirmed-user'
-    ),
-    (
-        :'noQuestionsUserID',
-        'hash-1',
-        'no-questions@example.com',
-        true,
-        'no-questions-user'
-    ),
-    (
-        :'pendingUserID',
-        'hash-2',
-        'pending@example.com',
-        true,
-        'pending-user'
-    );
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Pending Answers Group',
-    'pending-answers-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'canceledUserID');
+select fx_user(:'confirmedUserID');
+select fx_user(:'noQuestionsUserID');
+select fx_user(:'pendingUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Pending Answers Event',
-    'pending-answers-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Existing confirmed attendee that must not be converted back to pending
 insert into event_attendee (event_id, user_id, registration_answers, status)

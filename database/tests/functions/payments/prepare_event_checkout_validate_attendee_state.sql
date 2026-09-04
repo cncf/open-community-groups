@@ -29,125 +29,27 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'attendee-state-community',
-    'Attendee State Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'canceledUserID',
-        'hash-3',
-        'canceled@example.com',
-        true,
-        'canceled-user'
-    ),
-    (
-        :'confirmedUserID',
-        'hash-2',
-        'confirmed@example.com',
-        true,
-        'confirmed-user'
-    ),
-    (
-        :'invitedUserID',
-        'hash-5',
-        'invited@example.com',
-        true,
-        'invited-user'
-    ),
-    (
-        :'newUserID',
-        'hash-1',
-        'new@example.com',
-        true,
-        'new-user'
-    ),
-    (
-        :'pendingAnswersUserID',
-        'hash-4',
-        'pending@example.com',
-        true,
-        'pending-user'
-    ),
-    (
-        :'rejectedUserID',
-        'hash-6',
-        'rejected@example.com',
-        true,
-        'rejected-user'
-    ),
-    (
-        :'waitlistedUserID',
-        'hash-7',
-        'waitlisted@example.com',
-        true,
-        'waitlisted-user'
-    );
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Attendee State Group',
-    'attendee-state-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'canceledUserID');
+select fx_user(:'confirmedUserID');
+select fx_user(:'invitedUserID');
+select fx_user(:'newUserID');
+select fx_user(:'pendingAnswersUserID');
+select fx_user(:'rejectedUserID');
+select fx_user(:'waitlistedUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Attendee State Event',
-    'attendee-state-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days'
+));
 
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
 
 -- Attendees covering every lifecycle state
 insert into event_attendee (event_id, user_id, manually_invited, status)

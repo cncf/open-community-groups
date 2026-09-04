@@ -22,53 +22,12 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- User
-insert into "user" (user_id, email, username, auth_hash)
-values (:'userID', 'organizer@example.com', 'organizer', 'hash');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Meetup', :'communityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id
-) values (
-    :'groupID',
-    :'communityID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategoryID'
-);
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event Series
 insert into event_series (
@@ -92,57 +51,24 @@ insert into event_series (
 );
 
 -- Events
-insert into event (
-    event_id,
-    event_series_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    published,
-    published_at,
-    published_by
-) values
-    (
-        :'event1ID',
-        :'eventSeriesID',
-        :'groupID',
-        'First Series Event',
-        'first-series-event',
-        'First event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        now() + interval '1 day',
-        now() + interval '1 day 1 hour',
-
-        true,
-        now(),
-        :'userID'
-    ),
-    (
-        :'event2ID',
-        :'eventSeriesID',
-        :'groupID',
-        'Second Series Event',
-        'second-series-event',
-        'Second event',
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        now() + interval '8 days',
-        now() + interval '8 days 1 hour',
-
-        true,
-        now(),
-        :'userID'
-    );
+select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'published', true,
+    'published_at', now(),
+    'published_by', :'userID',
+    'starts_at', now() + interval '1 day'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '8 days 1 hour',
+    'event_kind_id', 'virtual',
+    'event_series_id', :'eventSeriesID',
+    'published', true,
+    'published_at', now(),
+    'published_by', :'userID',
+    'starts_at', now() + interval '8 days'
+));
 
 -- ============================================================================
 -- TESTS

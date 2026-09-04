@@ -53,268 +53,99 @@ select plan(19);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'ticket-type-community',
-    'Ticket Type Community',
-    'A test community for ticket types',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Users with allocated protected ticket inventory
-insert into "user" (user_id, auth_hash, email, username, email_verified)
-values
-    (
-        :'userCompletedID',
-        'test_hash',
-        'completed-ticket-user@example.test',
-        'completed-ticket-user',
-        true
-    ),
-    (
-        :'userRefundPendingID',
-        'test_hash',
-        'refund-pending-ticket-user@example.test',
-        'refund-pending-ticket-user',
-        true
-    ),
-    (
-        :'userRefundRecoveryID',
-        'test_hash',
-        'refund-recovery-ticket-user@example.test',
-        'refund-recovery-ticket-user',
-        true
-    ),
-    (
-        :'userOfferGuardedID',
-        'test_hash',
-        'guarded-offer-user@example.test',
-        'guarded-offer-user',
-        true
-    ),
-    (
-        :'userQueueGuardedID',
-        'test_hash',
-        'guarded-queue-user@example.test',
-        'guarded-queue-user',
-        true
-    ),
-    (
-        :'userRequestGuardedID',
-        'test_hash',
-        'guarded-request-user@example.test',
-        'guarded-request-user',
-        true
-    );
-
--- Users with expired offer reservations ignored during seat reduction
-insert into "user" (user_id, auth_hash, email, username, email_verified)
-values
-    (
-        :'userExpiredCheckoutID',
-        'test_hash',
-        'expired-checkout-ticket-user@example.test',
-        'expired-checkout-ticket-user',
-        true
-    ),
-    (
-        :'userExpiredPendingID',
-        'test_hash',
-        'expired-pending-ticket-user@example.test',
-        'expired-pending-ticket-user',
-        true
-    );
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Ticket Group', 'ticket-group');
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userCompletedID');
+select fx_user(:'userRefundPendingID');
+select fx_user(:'userRefundRecoveryID');
+select fx_user(:'userOfferGuardedID');
+select fx_user(:'userQueueGuardedID');
+select fx_user(:'userRequestGuardedID');
+select fx_user(:'userExpiredCheckoutID');
+select fx_user(:'userExpiredPendingID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values
-    (
-        :'eventID',
-        :'groupID',
-        'Ticket Types Event',
-        'ticket-types-event',
-        'Event used for ticket type sync tests',
-        'UTC',
-        :'eventCategoryID',
-        'virtual'
-    ),
-    (
-        :'eventGuardedID',
-        :'groupID',
-        'Guarded Ticket Types Event',
-        'guarded-ticket-types-event',
-        'Event used for active enrollment state guards',
-        'UTC',
-        :'eventCategoryID',
-        'virtual'
-    ),
-    (
-        :'eventProtectedID',
-        :'groupID',
-        'Protected Ticket Types Event',
-        'protected-ticket-types-event',
-        'Event used for protected ticket type checks',
-        'UTC',
-        :'eventCategoryID',
-        'virtual'
-    ),
-    (
-        :'eventWaitlistRemovalID',
-        :'groupID',
-        'Waitlist Removal Ticket Types Event',
-        'waitlist-removal-ticket-types-event',
-        'Event used for waitlist removal guards',
-        'UTC',
-        :'eventCategoryID',
-        'virtual'
-    );
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventGuardedID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventProtectedID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
+select fx_event(:'eventWaitlistRemovalID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Event whose only allocated ticket inventory is expired offers
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Event used for expired offer seat reduction',
-    :'eventCategoryID',
-    :'eventExpiredOffersID',
-    'virtual',
-    :'groupID',
-    'Expired Offer Ticket Types Event',
-    'expired-offer-ticket-types-event',
-    'UTC'
-);
+select fx_event(:'eventExpiredOffersID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Approval event used for pending ticket request guards
-insert into event (
-    attendee_approval_required,
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    true,
-    'Event used for pending ticket request guards',
-    :'eventCategoryID',
-    :'eventRequestedID',
-    'virtual',
-    :'groupID',
-    'Requested Ticket Types Event',
-    'requested-ticket-types-event',
-    'UTC'
-);
+select fx_event(:'eventRequestedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'attendee_approval_required', true,
+    'event_kind_id', 'virtual'
+));
 
 -- Event ticket types
-insert into event_ticket_type (
-    availability,
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    ('invitation_only', :'ticketType1ID', :'eventID', 1, 10, 'General admission'),
-    ('public', :'ticketType2ID', :'eventID', 2, 5, 'VIP pass'),
-    ('public', :'ticketTypeGuardedID', :'eventGuardedID', 1, 5, 'Guarded pass'),
-    ('public', :'ticketTypeGuardedRetainedID', :'eventGuardedID', 2, 5, 'Retained pass'),
-    ('public', :'ticketTypeProtectedID', :'eventProtectedID', 1, 2, 'Protected pass'),
-    ('public', :'ticketTypeProtectedRetainedID', :'eventProtectedID', 2, 5, 'Retained pass'),
-    ('public', :'ticketTypeRequestedID', :'eventRequestedID', 1, 5, 'Requested pass'),
-    ('public', :'ticketTypeRequestedRetainedID', :'eventRequestedID', 2, 5, 'Retained pass'),
-    (
-        'public',
-        :'ticketTypeWaitlistRemovalID',
-        :'eventWaitlistRemovalID',
-        1,
-        5,
-        'Waitlist removal pass'
-    ),
-    (
-        'public',
-        :'ticketTypeWaitlistRetainedID',
-        :'eventWaitlistRemovalID',
-        2,
-        5,
-        'Retained pass'
-    );
+select fx_event_ticket_type(:'ticketType1ID', :'eventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'ticketType2ID', :'eventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 5
+));
+select fx_event_ticket_type(:'ticketTypeGuardedID', :'eventGuardedID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'Guarded pass'
+));
+select fx_event_ticket_type(:'ticketTypeGuardedRetainedID', :'eventGuardedID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 5,
+    'title', 'Retained pass'
+));
+select fx_event_ticket_type(:'ticketTypeProtectedID', :'eventProtectedID', jsonb_build_object(
+    'seats_total', 2,
+    'title', 'Protected pass'
+));
+select fx_event_ticket_type(:'ticketTypeProtectedRetainedID', :'eventProtectedID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 5,
+    'title', 'Retained pass'
+));
+select fx_event_ticket_type(:'ticketTypeRequestedID', :'eventRequestedID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'Requested pass'
+));
+select fx_event_ticket_type(:'ticketTypeRequestedRetainedID', :'eventRequestedID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 5,
+    'title', 'Retained pass'
+));
+select fx_event_ticket_type(:'ticketTypeWaitlistRemovalID', :'eventWaitlistRemovalID', jsonb_build_object(
+    'seats_total', 5
+));
+select fx_event_ticket_type(:'ticketTypeWaitlistRetainedID', :'eventWaitlistRemovalID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 5,
+    'title', 'Retained pass'
+));
 
 -- Ticket type whose expired offers should not block a seat reduction
-insert into event_ticket_type (
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    'public',
-    :'eventExpiredOffersID',
-    :'ticketTypeExpiredOffersID',
-    1,
-    2,
-    'Expired offer pass'
-);
+select fx_event_ticket_type(:'ticketTypeExpiredOffersID', :'eventExpiredOffersID', jsonb_build_object(
+    'seats_total', 2,
+    'title', 'Expired offer pass'
+));
 
 -- Ticket type owned by another event for cross-parent validation
-insert into event_ticket_type (
-    event_ticket_type_id,
-    description,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values
-    (:'ticketType3ID', 'Workshop access', :'eventID', 3, 8, 'Workshop pass');
+select fx_event_ticket_type(:'ticketType3ID', :'eventID', jsonb_build_object(
+    'description', 'Workshop access',
+    'order', 3,
+    'seats_total', 8,
+    'title', 'Workshop pass'
+));
 
 -- Event ticket price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'window1CurrentID', 2000, :'ticketType1ID'),
-    (:'window1OldID', 2500, :'ticketType1ID'),
-    (:'windowProtectedID', 3000, :'ticketTypeProtectedID');
+select fx_event_ticket_price_window(:'window1CurrentID', :'ticketType1ID', jsonb_build_object('amount_minor', 2000));
+select fx_event_ticket_price_window(:'window1OldID', :'ticketType1ID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'windowProtectedID', :'ticketTypeProtectedID', jsonb_build_object('amount_minor', 3000));
 
 -- Purchases allocating protected ticket inventory
 insert into event_purchase (

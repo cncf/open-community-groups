@@ -21,17 +21,10 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns the definitions
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'List Community', '/logo', 'list-community');
-
--- Category used by the definition group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the definitions
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'List Group', 'list-group');
+-- Baseline communities, group categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Searchable badge definitions
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)

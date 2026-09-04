@@ -42,19 +42,24 @@ select plan(20);
 -- ============================================================================
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    registration_status
-) values
-    (:'userVerifiedID', 'hash1', 'verified@example.com', true, 'verified', 'registered'),
-    (:'userUnverifiedID', 'hash2', 'unverified@example.com', false, 'unverified', 'registered'),
-    (:'userPreRegisteredID', 'hash3', 'invited@example.com', false, 'invited', 'pre-registered'),
-    (:'userPreRegisteredVerifiedID', 'hash4', 'verified-invited@example.com',
-        true, 'verified-invited', 'pre-registered');
+select fx_user(:'userVerifiedID', jsonb_build_object(
+    'email', 'verified-claim-pending-notification@example.com',
+    'username', 'verified'
+));
+-- user
+select fx_user(:'userUnverifiedID', jsonb_build_object(
+    'email_verified', false,
+    'username', 'unverified-claim-pending-notification'
+));
+-- user
+select fx_user(:'userPreRegisteredID', jsonb_build_object(
+    'email', 'invited-claim-pending-notification@example.com',
+    'email_verified', false,
+    'registration_status', 'pre-registered',
+    'username', 'invited'
+));
+-- user
+select fx_user(:'userPreRegisteredVerifiedID', jsonb_build_object('registration_status', 'pre-registered'));
 
 -- Notification templates
 insert into notification_template_data (data, hash, notification_template_data_id) values
@@ -303,7 +308,7 @@ select is(
     jsonb_build_object(
         'attachment_ids', null,
         'delivery_claimed_at', current_timestamp,
-        'email', 'verified@example.com',
+        'email', 'verified-claim-pending-notification@example.com',
         'kind', 'email-verification',
         'notification_id', :'notificationEmailVerificationID',
         'template_data', '{"link": "https://example.com/verify"}'::jsonb
@@ -335,7 +340,7 @@ select is(
     jsonb_build_object(
         'attachment_ids', null,
         'delivery_claimed_at', current_timestamp,
-        'email', 'verified@example.com',
+        'email', 'verified-claim-pending-notification@example.com',
         'kind', 'group-welcome',
         'notification_id', :'notificationGroupWelcomeID',
         'template_data', '{"group": "test"}'::jsonb
@@ -350,7 +355,7 @@ select is(
     jsonb_build_object(
         'attachment_ids', null,
         'delivery_claimed_at', current_timestamp,
-        'email', 'verified@example.com',
+        'email', 'verified-claim-pending-notification@example.com',
         'kind', 'event-published',
         'notification_id', :'notificationEventPublishedID',
         'template_data', '{"event": "test"}'::jsonb
@@ -365,7 +370,7 @@ select is(
     jsonb_build_object(
         'attachment_ids', array[:'attachmentID1', :'attachmentID2']::uuid[],
         'delivery_claimed_at', current_timestamp,
-        'email', 'verified@example.com',
+        'email', 'verified-claim-pending-notification@example.com',
         'kind', 'event-welcome',
         'notification_id', :'notificationAttachmentID',
         'template_data', null
@@ -412,7 +417,7 @@ select is(
     jsonb_build_object(
         'attachment_ids', null,
         'delivery_claimed_at', current_timestamp,
-        'email', 'invited@example.com',
+        'email', 'invited-claim-pending-notification@example.com',
         'kind', 'event-invitation',
         'notification_id', :'notificationPreRegisteredEventInvitationID',
         'template_data', '{"event": "test"}'::jsonb
@@ -426,7 +431,7 @@ select is(
     jsonb_build_object(
         'attachment_ids', null,
         'delivery_claimed_at', current_timestamp,
-        'email', 'invited@example.com',
+        'email', 'invited-claim-pending-notification@example.com',
         'kind', 'event-admission-offer-created',
         'notification_id', :'notificationPreRegisteredAdmissionOfferID',
         'template_data', '{"event": "test"}'::jsonb
@@ -440,7 +445,7 @@ select is(
     jsonb_build_object(
         'attachment_ids', null,
         'delivery_claimed_at', current_timestamp,
-        'email', 'invited@example.com',
+        'email', 'invited-claim-pending-notification@example.com',
         'kind', 'event-admission-offer-canceled',
         'notification_id', :'notificationPreRegisteredAdmissionOfferCanceledID',
         'template_data', '{"event": "test"}'::jsonb

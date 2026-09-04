@@ -170,753 +170,370 @@ insert into external_payments_config (
 );
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'prepare-community',
-    'Prepare Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
+select fx_community(:'communityID', jsonb_build_object('name', 'prepare-community'));
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+-- Baseline categories, users and group
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'attendeeUserID');
+select fx_user(:'cacheUserID');
+select fx_user(:'checkoutUserID');
+select fx_user(:'closedWindowMatchingUserID');
+select fx_user(:'closedWindowMismatchedUserID');
+select fx_user(:'closedWindowNewUserID');
+select fx_user(:'completedUserID');
+select fx_user(:'discountUserID');
+select fx_user(:'endedWindowDiscountUserID');
+select fx_user(:'endedWindowUserID');
+select fx_user(:'endedWindowWaitlistUserID');
+select fx_user(:'exhaustedDiscountUserID');
+select fx_user(:'externalCapUserID');
+select fx_user(:'externalClosedRegUserID');
+select fx_user(:'externalMaxUserID');
+select fx_user(:'externalOfferUserID');
+select fx_user(:'externalRetryUserID');
+select fx_user(:'externalUnreadyUserID');
+select fx_user(:'externalUserID');
+select fx_user(:'externalWindowUserID');
+select fx_user(:'freeUserID');
+select fx_user(:'inactiveUserID');
+select fx_user(:'ineffectiveDiscountUserID');
+select fx_user(:'invalidDiscountUserID');
+select fx_user(:'invitedUserID');
+select fx_user(:'liveSnapshotUserID');
+select fx_user(:'manualTaxUserID');
+select fx_user(:'offerDiscountUserID');
+select fx_user(:'offerFreeUserID');
+select fx_user(:'offerPaidUserID');
+select fx_user(:'offerWrongUserID');
+select fx_user(:'paymentSetupUnavailableUserID');
+select fx_user(:'platformFeeMaxUserID');
+select fx_user(:'platformFeeUserID');
+select fx_user(:'priceUnavailableUserID');
+select fx_user(:'questionsUserID');
+select fx_user(:'queueCheckoutUserID');
+select fx_user(:'queueHolderUserID');
+select fx_user(:'queueUserID');
+select fx_user(:'redeemedUserID');
+select fx_user(:'soldOutHolderUserID');
+select fx_user(:'soldOutPendingUserID');
+select fx_user(:'soldOutUserID');
+select fx_user(:'unavailableDiscountUserID');
+select fx_user(:'underMinimumUserID');
+select fx_group(:'freeGroupID', :'communityID', :'groupCategoryID');
 
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'attendeeUserID', 'hash-1', 'attendee@example.com', true, 'attendee'),
-    (:'checkoutUserID', 'hash-2', 'checkout@example.com', true, 'checkout-user'),
-    (:'closedWindowMatchingUserID', 'hash-15', 'closed-matching@example.com', true, 'closed-matching-user'),
-    (:'closedWindowMismatchedUserID', 'hash-16', 'closed-mismatched@example.com', true, 'closed-mismatched-user'),
-    (:'closedWindowNewUserID', 'hash-17', 'closed-new@example.com', true, 'closed-new-user'),
-    (:'completedUserID', 'hash-3', 'completed@example.com', true, 'completed-user'),
-    (:'ineffectiveDiscountUserID', 'hash-28', 'ineffective@example.com', true, 'ineffective-user'),
-    (:'platformFeeMaxUserID', 'hash-30', 'platform-fee-max@example.com', true, 'platform-fee-max-user'),
-    (:'platformFeeUserID', 'hash-29', 'platform-fee@example.com', true, 'platform-fee-user'),
-    (:'invalidDiscountUserID', 'hash-4', 'invalid@example.com', true, 'invalid-user'),
-    (:'unavailableDiscountUserID', 'hash-5', 'unavailable@example.com', true, 'unavailable-user'),
-    (:'exhaustedDiscountUserID', 'hash-6', 'exhausted@example.com', true, 'exhausted-user'),
-    (:'discountUserID', 'hash-7', 'discount@example.com', true, 'discount-user'),
-    (:'endedWindowDiscountUserID', 'hash-33', 'ended-window-discount@example.com', true, 'ended-window-discount-user'),
-    (:'endedWindowUserID', 'hash-34', 'ended-window@example.com', true, 'ended-window-user'),
-    (:'endedWindowWaitlistUserID', 'hash-36', 'ended-window-waitlist@example.com', true, 'ended-window-waitlist-user'),
-    (:'freeUserID', 'hash-19', 'free@example.com', true, 'free-user'),
-    (:'queueCheckoutUserID', 'hash-20', 'queue-checkout@example.com', true, 'queue-checkout-user'),
-    (:'queueHolderUserID', 'hash-21', 'queue-holder@example.com', true, 'queue-holder-user'),
-    (:'queueUserID', 'hash-22', 'queue-user@example.com', true, 'queue-user'),
-    (:'soldOutUserID', 'hash-8', 'soldout@example.com', true, 'soldout-user'),
-    (:'inactiveUserID', 'hash-9', 'inactive@example.com', true, 'inactive-user'),
-    (:'manualTaxUserID', 'hash-31', 'manual-tax@example.com', true, 'manual-tax-user'),
-    (:'redeemedUserID', 'hash-10', 'redeemed@example.com', true, 'redeemed-user'),
-    (:'soldOutHolderUserID', 'hash-11', 'holder@example.com', true, 'holder-user'),
-    (:'soldOutPendingUserID', 'hash-18', 'soldout-pending@example.com', true, 'soldout-pending-user'),
-    (:'underMinimumUserID', 'hash-12', 'under-minimum@example.com', true, 'under-minimum-user'),
-    (:'questionsUserID', 'hash-13', 'questions@example.com', true, 'questions-user'),
-    (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user'),
-    (:'liveSnapshotUserID', 'hash-35', 'live-snapshot@example.com', true, 'live-snapshot-user'),
-    (:'offerDiscountUserID', 'hash-23', 'offer-discount@example.com', true, 'offer-discount-user'),
-    (:'offerFreeUserID', 'hash-24', 'offer-free@example.com', true, 'offer-free-user'),
-    (:'offerPaidUserID', 'hash-25', 'offer-paid@example.com', true, 'offer-paid-user'),
-    (:'offerWrongUserID', 'hash-26', 'offer-wrong@example.com', true, 'offer-wrong-user'),
-    (:'paymentSetupUnavailableUserID', 'hash-27', 'payment-setup-unavailable@example.com', true, 'payment-setup-unavailable-user'),
-    (:'priceUnavailableUserID', 'hash-28', 'price-unavailable@example.com', true, 'price-unavailable-user'),
-    (:'externalClosedRegUserID', 'hash-44', 'external-closed-reg@example.com', true, 'external-closed-reg-user'),
-    (:'externalCapUserID', 'hash-37', 'external-cap@example.com', true, 'external-cap-user'),
-    (:'externalMaxUserID', 'hash-38', 'external-max@example.com', true, 'external-max-user'),
-    (:'externalOfferUserID', 'hash-39', 'external-offer@example.com', true, 'external-offer-user'),
-    (:'externalRetryUserID', 'hash-43', 'external-retry@example.com', true, 'external-retry-user'),
-    (:'externalUnreadyUserID', 'hash-40', 'external-unready@example.com', true, 'external-unready-user'),
-    (:'externalUserID', 'hash-41', 'external@example.com', true, 'external-user'),
-    (:'externalWindowUserID', 'hash-42', 'external-window@example.com', true, 'external-window-user');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient,
-    slug_pretty
-)
-values
-    (
-        :'freeGroupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Free Group',
-        'free-group',
-        null,
-        null
-    ),
-    (
-        :'groupID',
-        :'communityID',
-        :'groupCategoryID',
-        'Prepare Group',
-        'prepare-group',
-        jsonb_build_object(
+-- Group configured for Stripe checkout scenarios
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'payment_recipient', jsonb_build_object(
             'provider', 'stripe',
             'recipient_id', 'acct_prepare',
             'seller_display_name', 'Prepare Fiscal Sponsor'
         ),
-        'prepare-group-pretty'
-    );
+    'slug', 'prepare-group',
+    'slug_pretty', 'prepare-group-pretty'
+));
 
 -- Allowlisted group with external payments enabled for ready checkout
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'externalReadyGroupID',
-    'External Ready Prepare Group',
-    'external-ready-prepare-group'
-);
+select fx_group(:'externalReadyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Stripe-ready group with external payments disabled for no-fallback conflicts
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    payment_recipient,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    :'externalUnreadyGroupID',
-    'External Unready Prepare Group',
-    jsonb_build_object(
+select fx_group(:'externalUnreadyGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_external_unready',
         'seller_display_name', 'External Unready Fiscal Sponsor'
-    ),
-    'external-unready-prepare-group'
-);
+    )
+));
 
 -- Events
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at,
-    registration_questions,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name,
-    venue_state_code,
-    venue_zip_code
-) values (
-    :'freeEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'freeGroupID',
-    'Free Event',
-    'free-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    null,
-    true,
-    now(),
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
-), (
-    :'mainEventID',
-    :'eventCategoryID',
-    'hybrid',
-    :'groupID',
-    'Main Event',
-    'main-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now(),
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', 'United States', 'Venue', null, '97201'
-), (
-    :'soldOutEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Sold Out Event',
-    'sold-out-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now(),
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
-), (
-    :'inactiveEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Inactive Ticket Event',
-    'inactive-ticket-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now(),
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
-), (
-    :'queueEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Queue Priority Event',
-    'queue-priority-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now(),
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
-), (
-    -- Event that requires registration answers before checkout can proceed
-    :'questionsEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Questions Checkout Event',
-    'questions-checkout-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now(),
-    jsonb_build_array(jsonb_build_object(
+select fx_event(:'freeEventID', :'freeGroupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_state_code', 'OR',
+    'venue_zip_code', '97201'
+));
+select fx_event(:'mainEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'hybrid',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'slug', 'main-event',
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Venue',
+    'venue_zip_code', '97201'
+));
+select fx_event(:'soldOutEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_state_code', 'OR',
+    'venue_zip_code', '97201'
+));
+select fx_event(:'inactiveEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_state_code', 'OR',
+    'venue_zip_code', '97201'
+));
+select fx_event(:'queueEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_state_code', 'OR',
+    'venue_zip_code', '97201'
+));
+-- Event that requires registration answers before checkout can proceed
+select fx_event(:'questionsEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', :'registrationQuestionID',
         'kind', 'free-text',
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
     )),
-    '1 Main St', 'Portland', 'US', null, 'Venue', 'OR', '97201'
-);
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_state_code', 'OR',
+    'venue_zip_code', '97201'
+));
 
 -- Closed registration window event that is still active
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    ends_at,
-    payment_currency_code,
-    published,
-    published_at,
-    registration_starts_at,
-    registration_questions,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    :'closedWindowEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Closed Window Event',
-    'closed-window-event',
-    'Test event',
-    'UTC',
-    now() - interval '30 minutes',
-    now() + interval '90 minutes',
-    'USD',
-    true,
-    now(),
-    now() - interval '2 hours',
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', 'Venue', '97201'
-);
+select fx_event(:'closedWindowEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '90 minutes',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'registration_starts_at', now() - interval '2 hours',
+    'starts_at', now() - interval '30 minutes',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_zip_code', '97201'
+));
 
 -- Paid event without payment setup used by the readiness conflict
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at,
-    registration_questions,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    :'paymentSetupUnavailableEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'freeGroupID',
-    'Payment Setup Unavailable Event',
-    'payment-setup-unavailable-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now(),
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', 'Venue', '97201'
-);
+select fx_event(:'paymentSetupUnavailableEventID', :'freeGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_zip_code', '97201'
+));
 
 -- Event with a lapsed ticket price used by the price availability conflict
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at,
-    registration_questions,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    :'priceUnavailableEventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Price Unavailable Event',
-    'price-unavailable-event',
-    'Test event',
-    'UTC',
-    now() + interval '2 days',
-    'USD',
-    true,
-    now(),
-    '[]'::jsonb,
-    '1 Main St', 'Portland', 'US', 'Venue', '97201'
-);
+select fx_event(:'priceUnavailableEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_zip_code', '97201'
+));
 
 -- External-ready event with a 48-hour payment window
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    external_payment_window_hours,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'External ready checkout event',
-    :'eventCategoryID',
-    :'externalEventID',
-    'in-person',
-    'Wire to account 123',
-    'https://pay.example.test/prepare',
-    48,
-    :'externalReadyGroupID',
-    'External Prepare Event',
-    'KRW',
-    true,
-    now(),
-    'external-prepare-event',
-    now() + interval '7 days',
-    'UTC'
-);
+select fx_event(:'externalEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_instructions', 'Wire to account 123',
+    'external_payment_url', 'https://pay.example.test/prepare',
+    'external_payment_window_hours', 48,
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '7 days'
+));
 
 -- External-ready event whose hold is capped by a near starts_at
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'External hold-cap checkout event',
-    :'eventCategoryID',
-    :'externalCapEventID',
-    'in-person',
-    'https://pay.example.test/prepare-cap',
-    :'externalReadyGroupID',
-    'External Cap Prepare Event',
-    'KRW',
-    true,
-    now(),
-    'external-cap-prepare-event',
-    now() + interval '2 hours',
-    'UTC'
-);
+select fx_event(:'externalCapEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/prepare-cap',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 hours'
+));
 
 -- External-ready event whose window hours exceed the configured max
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    external_payment_window_hours,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'External max-window checkout event',
-    :'eventCategoryID',
-    :'externalMaxEventID',
-    'in-person',
-    'https://pay.example.test/prepare-max',
-    500,
-    :'externalReadyGroupID',
-    'External Max Prepare Event',
-    'KRW',
-    true,
-    now(),
-    'external-max-prepare-event',
-    now() + interval '60 days',
-    'UTC'
-);
+select fx_event(:'externalMaxEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/prepare-max',
+    'external_payment_window_hours', 500,
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '60 days'
+));
 
 -- Started event whose external hold would expire immediately on offer claim
-insert into event (
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'External payment-window unavailable event',
-    now() + interval '90 minutes',
-    :'eventCategoryID',
-    :'externalWindowEventID',
-    'in-person',
-    'https://pay.example.test/prepare-window',
-    :'externalReadyGroupID',
-    'External Window Prepare Event',
-    'KRW',
-    true,
-    now(),
-    'external-window-prepare-event',
-    now() - interval '30 minutes',
-    'UTC'
-);
+select fx_event(:'externalWindowEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '90 minutes',
+    'external_payment_url', 'https://pay.example.test/prepare-window',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() - interval '30 minutes'
+));
 
 -- External-ready event whose public registration window has already closed
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    registration_ends_at,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'External closed-registration claim event',
-    :'eventCategoryID',
-    :'externalClosedRegEventID',
-    'in-person',
-    'https://pay.example.test/prepare-closed-reg',
-    :'externalReadyGroupID',
-    'External Closed Registration Prepare Event',
-    'KRW',
-    true,
-    now(),
-    now() - interval '1 hour',
-    'external-closed-reg-prepare-event',
-    now() + interval '7 days',
-    'UTC'
-);
+select fx_event(:'externalClosedRegEventID', :'externalReadyGroupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/prepare-closed-reg',
+    'payment_currency_code', 'KRW',
+    'published', true,
+    'published_at', now(),
+    'registration_ends_at', now() - interval '1 hour',
+    'starts_at', now() + interval '7 days'
+));
 
 -- External-marked event on a Stripe-ready group that is not externally eligible
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    published_at,
-    slug,
-    starts_at,
-    timezone,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_name,
-    venue_zip_code
-) values (
-    'External unready no-fallback event',
-    :'eventCategoryID',
-    :'externalUnreadyEventID',
-    'in-person',
-    'https://pay.example.test/prepare-unready',
-    :'externalUnreadyGroupID',
-    'External Unready Prepare Event',
-    'USD',
-    true,
-    now(),
-    'external-unready-prepare-event',
-    now() + interval '2 days',
-    'UTC',
-    '1 Main St',
-    'Portland',
-    'US',
-    'Venue',
-    '97201'
-);
+select fx_event(:'externalUnreadyEventID', :'externalUnreadyGroupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/prepare-unready',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '2 days',
+    'venue_address', '1 Main St',
+    'venue_city', 'Portland',
+    'venue_country_code', 'US',
+    'venue_name', 'Venue',
+    'venue_zip_code', '97201'
+));
 
 -- Ticket types
-insert into event_ticket_type (
-    active,
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-)
-values
-    (true, 'public', :'freeEventID', :'freeTicketTypeID', 1, 10, 'Free admission'),
-    (true, 'public', :'mainEventID', :'ticketTypeAID', 1, 10, 'General admission'),
-    (true, 'public', :'mainEventID', :'ticketTypeBID', 2, 10, 'VIP'),
-    (
-        true,
-        'public',
-        :'mainEventID',
-        :'ineffectiveDiscountTicketTypeID',
-        4,
-        10,
-        'Minor-unit admission'
-    ),
-    (true, 'public', :'closedWindowEventID', :'closedWindowTicketTypeAID', 1, 10, 'General admission'),
-    (true, 'public', :'closedWindowEventID', :'closedWindowTicketTypeBID', 2, 10, 'VIP'),
-    (true, 'public', :'queueEventID', :'queueTicketTypeID', 1, 1, 'Queue admission'),
-    (true, 'public', :'soldOutEventID', :'soldOutTicketTypeID', 1, 1, 'General admission'),
-    (false, 'public', :'inactiveEventID', :'inactiveTicketTypeID', 1, 10, 'General admission'),
-    (
-        true,
-        'invitation_only',
-        :'mainEventID',
-        :'offerPrivateTicketTypeID',
-        3,
-        10,
-        'Invitation admission'
-    ),
-    (true, 'public', :'questionsEventID', :'questionsTicketTypeID', 1, 10, 'General admission'),
-    (true, 'public', :'externalEventID', :'externalTicketTypeID', 1, 10, 'External admission'),
-    (true, 'public', :'externalCapEventID', :'externalCapTicketTypeID', 1, 10, 'External cap admission'),
-    (true, 'public', :'externalMaxEventID', :'externalMaxTicketTypeID', 1, 10, 'External max admission'),
-    (
-        true,
-        'public',
-        :'externalWindowEventID',
-        :'externalWindowTicketTypeID',
-        1,
-        10,
-        'External window admission'
-    ),
-    (
-        true,
-        'public',
-        :'externalClosedRegEventID',
-        :'externalClosedRegTicketTypeID',
-        1,
-        10,
-        'External closed registration admission'
-    ),
-    (
-        true,
-        'public',
-        :'externalUnreadyEventID',
-        :'externalUnreadyTicketTypeID',
-        1,
-        10,
-        'External unready admission'
-    );
+select fx_event_ticket_type(:'freeTicketTypeID', :'freeEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'ticketTypeAID', :'mainEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'ticketTypeBID', :'mainEventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'ineffectiveDiscountTicketTypeID', :'mainEventID', jsonb_build_object(
+    'order', 4,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'closedWindowTicketTypeAID', :'closedWindowEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'closedWindowTicketTypeBID', :'closedWindowEventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'queueTicketTypeID', :'queueEventID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'Queue admission'
+));
+select fx_event_ticket_type(:'soldOutTicketTypeID', :'soldOutEventID', jsonb_build_object(
+    'seats_total', 1,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'inactiveTicketTypeID', :'inactiveEventID', jsonb_build_object(
+    'active', false,
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'offerPrivateTicketTypeID', :'mainEventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 3,
+    'seats_total', 10
+));
+select fx_event_ticket_type(:'questionsTicketTypeID', :'questionsEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'externalTicketTypeID', :'externalEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'External admission'
+));
+select fx_event_ticket_type(:'externalCapTicketTypeID', :'externalCapEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'externalMaxTicketTypeID', :'externalMaxEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'externalWindowTicketTypeID', :'externalWindowEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'External window admission'
+));
+select fx_event_ticket_type(:'externalClosedRegTicketTypeID', :'externalClosedRegEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'External closed registration admission'
+));
+select fx_event_ticket_type(:'externalUnreadyTicketTypeID', :'externalUnreadyEventID', jsonb_build_object('seats_total', 10));
 
 -- Ticket types dedicated to mutable configuration conflict scenarios
-insert into event_ticket_type (
-    active,
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values
-    (
-        true,
-        'public',
-        :'paymentSetupUnavailableEventID',
-        :'paymentSetupUnavailableTicketTypeID',
-        1,
-        10,
-        'Payment setup admission'
-    ),
-    (
-        true,
-        'public',
-        :'priceUnavailableEventID',
-        :'priceUnavailableTicketTypeID',
-        1,
-        10,
-        'Price unavailable admission'
-    );
+select fx_event_ticket_type(:'paymentSetupUnavailableTicketTypeID', :'paymentSetupUnavailableEventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'priceUnavailableTicketTypeID', :'priceUnavailableEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Price unavailable admission'
+));
 
 -- Price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'freePriceWindowID', 0, :'freeTicketTypeID'),
-    (:'ineffectiveDiscountPriceWindowID', 1, :'ineffectiveDiscountTicketTypeID'),
-    (:'priceWindowAID', 2500, :'ticketTypeAID'),
-    (:'priceWindowBID', 4000, :'ticketTypeBID'),
-    (:'closedWindowPriceWindowAID', 2500, :'closedWindowTicketTypeAID'),
-    (:'closedWindowPriceWindowBID', 4000, :'closedWindowTicketTypeBID'),
-    (:'queuePriceWindowID', 2500, :'queueTicketTypeID'),
-    (:'soldOutPriceWindowID', 2500, :'soldOutTicketTypeID'),
-    (:'inactivePriceWindowID', 2500, :'inactiveTicketTypeID'),
-    (:'offerPrivatePriceWindowID', 3000, :'offerPrivateTicketTypeID'),
-    (:'questionsPriceWindowID', 2500, :'questionsTicketTypeID');
+select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'ineffectiveDiscountPriceWindowID', :'ineffectiveDiscountTicketTypeID', jsonb_build_object('amount_minor', 1));
+select fx_event_ticket_price_window(:'priceWindowAID', :'ticketTypeAID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowBID', :'ticketTypeBID', jsonb_build_object('amount_minor', 4000));
+select fx_event_ticket_price_window(:'closedWindowPriceWindowAID', :'closedWindowTicketTypeAID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'closedWindowPriceWindowBID', :'closedWindowTicketTypeBID', jsonb_build_object('amount_minor', 4000));
+select fx_event_ticket_price_window(:'queuePriceWindowID', :'queueTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'soldOutPriceWindowID', :'soldOutTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'inactivePriceWindowID', :'inactiveTicketTypeID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'offerPrivatePriceWindowID', :'offerPrivateTicketTypeID', jsonb_build_object('amount_minor', 3000));
+select fx_event_ticket_price_window(:'questionsPriceWindowID', :'questionsTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Current paid price window used by the payment readiness conflict
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'paymentSetupUnavailablePriceWindowID',
-    2500,
-    :'paymentSetupUnavailableTicketTypeID'
-);
+select fx_event_ticket_price_window(:'paymentSetupUnavailablePriceWindowID', :'paymentSetupUnavailableTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Lapsed price window used by the price availability conflict
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id,
-    ends_at,
-    starts_at
-) values (
-    :'priceUnavailablePriceWindowID',
-    2500,
-    :'priceUnavailableTicketTypeID',
-    current_timestamp - interval '1 minute',
-    current_timestamp - interval '2 days'
-);
+select fx_event_ticket_price_window(:'priceUnavailablePriceWindowID', :'priceUnavailableTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'ends_at', current_timestamp - interval '1 minute',
+    'starts_at', current_timestamp - interval '2 days'
+));
 
 -- Positive price windows for external checkout scenarios
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'externalPriceWindowID', 5000, :'externalTicketTypeID'),
-    (:'externalCapPriceWindowID', 5000, :'externalCapTicketTypeID'),
-    (:'externalMaxPriceWindowID', 5000, :'externalMaxTicketTypeID'),
-    (:'externalWindowPriceWindowID', 5000, :'externalWindowTicketTypeID'),
-    (:'externalClosedRegPriceWindowID', 5000, :'externalClosedRegTicketTypeID'),
-    (:'externalUnreadyPriceWindowID', 2500, :'externalUnreadyTicketTypeID');
+select fx_event_ticket_price_window(:'externalPriceWindowID', :'externalTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalCapPriceWindowID', :'externalCapTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalMaxPriceWindowID', :'externalMaxTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalWindowPriceWindowID', :'externalWindowTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalClosedRegPriceWindowID', :'externalClosedRegTicketTypeID', jsonb_build_object('amount_minor', 5000));
+select fx_event_ticket_price_window(:'externalUnreadyPriceWindowID', :'externalUnreadyTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Pending offer claimed into a longer external payment window
 insert into admission_offer (
@@ -1520,10 +1137,6 @@ insert into admission_offer (
         'General admission',
         :'liveSnapshotUserID'
     );
-
--- Fresh attendee used by the automatic-tax cache-reuse scenario
-insert into "user" (user_id, auth_hash, email, username)
-values (:'cacheUserID', 'hash-cache', 'cache@example.com', 'cache-user');
 
 -- Account-scoped tax location reused by the cache-reuse scenario
 insert into payment_provider_tax_location (

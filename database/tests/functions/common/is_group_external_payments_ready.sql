@@ -21,6 +21,10 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline communities and group categories
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+
 -- Operator allowlist used by the group-readiness scenarios
 insert into external_payments_config (
     allowed_countries,
@@ -32,85 +36,22 @@ insert into external_payments_config (
     336
 );
 
--- Community for group-readiness scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'external-group-ready-community',
-    'External Group Ready Community',
-    'Community for group readiness tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category for readiness scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
 -- Allowlisted group with the external-payments toggle enabled
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'groupReadyID',
-    'External Ready Group',
-    'external-ready-group'
-);
+select fx_group(:'groupReadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Allowlisted group with the external-payments toggle off
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    false,
-    :'groupCategoryID',
-    :'groupDisabledID',
-    'External Disabled Group',
-    'external-disabled-group'
-);
+select fx_group(:'groupDisabledID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR'
+));
 
 -- Enabled group whose country is outside the allowlist
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'US',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'groupUnlistedID',
-    'External Unlisted Group',
-    'external-unlisted-group'
-);
+select fx_group(:'groupUnlistedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'US',
+    'external_payments_enabled', true
+));
 
 -- ============================================================================
 -- TESTS

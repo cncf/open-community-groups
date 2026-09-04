@@ -18,33 +18,11 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cncf-seattle',
-    'CNCF Seattle',
-    'Community for group category update tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community and group category
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategory1ID', :'communityID');
 
--- Group categories
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values
-    (:'groupCategory1ID', :'communityID', 'Meetup'),
-    (:'groupCategory2ID', :'communityID', 'Conference');
+select fx_group_category(:'groupCategory2ID', :'communityID', jsonb_build_object('name', 'Conference'));
 
 -- ============================================================================
 -- TESTS

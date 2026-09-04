@@ -22,111 +22,22 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'delete-group-community',
-    'Delete Group Community',
-    'Community for delete group tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, group category and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'groupWrongCommunityID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Active group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Active Group',
-    'active-group'
-);
-
--- Child group linked to the active group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    parent_group_id
-) values (
-    :'childGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Child Group',
-    'child-group',
-    :'groupID'
-);
+select fx_group(:'childGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupID'));
 
 -- Already deleted group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values (
-    :'groupAlreadyDeletedID',
-    :'communityID',
-    :'groupCategoryID',
-    'Deleted Group',
-    'deleted-group',
-    false,
-    true
-);
-
--- Active group used to exercise the cross-community guard
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupWrongCommunityID',
-    :'communityID',
-    :'groupCategoryID',
-    'Cross Community Guard Group',
-    'cross-community-guard-group'
-);
+select fx_group(:'groupAlreadyDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
 
 -- Group with its own parent link
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    parent_group_id
-) values (
-    :'linkedGroupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Linked Group',
-    'linked-group',
-    :'groupWrongCommunityID'
-);
+select fx_group(:'linkedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupWrongCommunityID'));
 
 -- ============================================================================
 -- TESTS

@@ -22,88 +22,24 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'questionnaire-community',
-    'Questionnaire Community',
-    'Community for registration question tests',
-    'https://example.test/mobile.png',
-    'https://example.test/banner.png',
-    'https://example.test/logo.png'
-), (
-    :'otherCommunityID',
-    'other-questionnaire-community',
-    'Other Questionnaire Community',
-    'Second community for mismatch tests',
-    'https://example.test/other-mobile.png',
-    'https://example.test/other-banner.png',
-    'https://example.test/other.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Meetup');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetups');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Questionnaire Group',
-    'questionnaire-group'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    registration_questions,
-    slug,
-    timezone
-) values (
-    :'eventID',
-    'Event with registration questions',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Questionnaire Event',
-    jsonb_build_array(jsonb_build_object(
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', :'questionID',
         'kind', 'free-text',
         'prompt', 'Dietary restrictions?',
         'required', true
-    )),
-    'questionnaire-event',
-    'UTC'
-), (
-    :'eventNoQuestionsID',
-    'Event without registration questions',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'No Questions Event',
-    '[]'::jsonb,
-    'no-questions-event',
-    'UTC'
-);
+    ))
+));
+select fx_event(:'eventNoQuestionsID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- ============================================================================
 -- TESTS

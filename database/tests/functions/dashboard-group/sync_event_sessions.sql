@@ -25,67 +25,23 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'session-sync-community',
-    'Session Sync Community',
-    'A test community for session sync',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
-    (:'user1ID', gen_random_bytes(32), 'user1@example.com', true, 'user1', 'User 1'),
-    (:'user2ID', gen_random_bytes(32), 'user2@example.com', true, 'user2', 'User 2'),
-    (:'user3ID', gen_random_bytes(32), 'user3@example.com', true, 'user3', 'User 3');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Session Group', 'session-group');
+select fx_user(:'user1ID', jsonb_build_object('username', 'user1-sync-event-sessions'));
+select fx_user(:'user2ID', jsonb_build_object('username', 'user2-sync-event-sessions'));
+select fx_user(:'user3ID', jsonb_build_object('username', 'user3-sync-event-sessions'));
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at
-) values (
-    :'eventID',
-    :'groupID',
-    'Sessions Event',
-    'sessions-event',
-    'Event used for session sync tests',
-    'UTC',
-    :'eventCategoryID',
-    'virtual',
-    '2030-01-01 09:00:00+00',
-    '2030-01-01 17:00:00+00'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', '2030-01-01 17:00:00+00',
+    'event_kind_id', 'virtual',
+    'starts_at', '2030-01-01 09:00:00+00'
+));
 
 -- Sessions
 insert into session (

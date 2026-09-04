@@ -20,21 +20,12 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Actor recorded by the badge audit entries
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'actorID', 'hash', 'badge-admin@example.test', true, 'badge-admin');
+-- Baseline community, categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Community that owns the badge
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Badge Definition Community', '/logo', 'badge-definition-community');
-
--- Category used by the badge group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the badge
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Badge Definition Group', 'badge-definition-group');
 
 -- Artwork available to the definition
 insert into badge_artwork (file_name, group_id)

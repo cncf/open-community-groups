@@ -9,100 +9,55 @@ select plan(25);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '0c160000-0000-0000-0000-000000000001'
-\set community2ID '0c160000-0000-0000-0000-000000000002'
-\set community3ID '0c160000-0000-0000-0000-000000000003'
-\set event1ID '0c160000-0000-0000-0000-000000000004'
-\set event2ID '0c160000-0000-0000-0000-000000000005'
-\set event3ID '0c160000-0000-0000-0000-000000000006'
-\set event4ID '0c160000-0000-0000-0000-000000000007'
-\set event5ID '0c160000-0000-0000-0000-000000000008'
-\set event6ID '0c160000-0000-0000-0000-000000000009'
-\set event7ID '0c160000-0000-0000-0000-00000000000a'
-\set event8ID '0c160000-0000-0000-0000-00000000000b'
-\set eventCategory1ID '0c160000-0000-0000-0000-00000000000c'
-\set eventCategory2ID '0c160000-0000-0000-0000-00000000000d'
-\set eventCategory3ID '0c160000-0000-0000-0000-00000000000e'
-\set group1ID '0c160000-0000-0000-0000-00000000000f'
-\set group2ID '0c160000-0000-0000-0000-000000000010'
-\set group3ID '0c160000-0000-0000-0000-000000000011'
-\set group4ID '0c160000-0000-0000-0000-000000000012'
-\set groupCategory1ID '0c160000-0000-0000-0000-000000000013'
-\set groupCategory2ID '0c160000-0000-0000-0000-000000000014'
-\set groupCategory3ID '0c160000-0000-0000-0000-000000000015'
-\set groupCategory4ID '0c160000-0000-0000-0000-000000000016'
-\set region1ID '0c160000-0000-0000-0000-000000000017'
+\set community1ID '0c0e0000-0000-0000-0000-000000000001'
+\set community2ID '0c0e0000-0000-0000-0000-000000000002'
+\set community3ID '0c0e0000-0000-0000-0000-000000000003'
+\set event1ID '0c0e0000-0000-0000-0000-000000000004'
+\set event2ID '0c0e0000-0000-0000-0000-000000000005'
+\set event3ID '0c0e0000-0000-0000-0000-000000000006'
+\set event4ID '0c0e0000-0000-0000-0000-000000000007'
+\set event5ID '0c0e0000-0000-0000-0000-000000000008'
+\set event6ID '0c0e0000-0000-0000-0000-000000000009'
+\set event7ID '0c0e0000-0000-0000-0000-00000000000a'
+\set event8ID '0c0e0000-0000-0000-0000-00000000000b'
+\set eventCategory1ID '0c0e0000-0000-0000-0000-00000000000c'
+\set eventCategory2ID '0c0e0000-0000-0000-0000-00000000000d'
+\set eventCategory3ID '0c0e0000-0000-0000-0000-00000000000e'
+\set group1ID '0c0e0000-0000-0000-0000-00000000000f'
+\set group2ID '0c0e0000-0000-0000-0000-000000000010'
+\set group3ID '0c0e0000-0000-0000-0000-000000000011'
+\set group4ID '0c0e0000-0000-0000-0000-000000000012'
+\set groupCategory1ID '0c0e0000-0000-0000-0000-000000000013'
+\set groupCategory2ID '0c0e0000-0000-0000-0000-000000000014'
+\set groupCategory3ID '0c0e0000-0000-0000-0000-000000000015'
+\set groupCategory4ID '0c0e0000-0000-0000-0000-000000000016'
+\set region1ID '0c0e0000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'community1ID',
-        'test-community',
-        'Test Community',
-        'A test community',
-        'https://example.com/banner_mobile.png',
-        'https://example.com/banner.png',
-        'https://example.com/logo.png'
-    ),
-    (
-        :'community2ID',
-        'other-community',
-        'Other Community',
-        'Another test community',
-        'https://example.com/banner_mobile2.png',
-        'https://example.com/banner2.png',
-        'https://example.com/logo2.png'
-    );
+select fx_community(:'community1ID', jsonb_build_object('name', 'test-community'));
 
 -- Inactive community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url,
+select fx_community(:'community3ID', jsonb_build_object(
+    'active', false,
+    'name', 'inactive-community-search-events'
+));
 
-    active
-) values (
-    :'community3ID',
-    'inactive-community',
-    'Inactive Community',
-    'An inactive test community',
-    'https://example.com/banner_mobile3.png',
-    'https://example.com/banner3.png',
-    'https://example.com/logo3.png',
+-- Baseline communities, group categories and event categories
+select fx_community(:'community2ID');
+select fx_group_category(:'groupCategory1ID', :'community1ID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
+select fx_group_category(:'groupCategory3ID', :'community3ID');
+select fx_event_category(:'eventCategory2ID', :'community2ID');
+select fx_event_category(:'eventCategory3ID', :'community3ID');
 
-    false
-);
+-- Group category used by group-category filtering
+select fx_group_category(:'groupCategory4ID', :'community1ID', jsonb_build_object('name', 'Business'));
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategory1ID', :'community1ID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Technology'),
-    (:'groupCategory3ID', :'community3ID', 'Technology'),
-    (:'groupCategory4ID', :'community1ID', 'Business');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values
-    (:'eventCategory1ID', :'community1ID', 'Tech Talks'),
-    (:'eventCategory2ID', :'community2ID', 'Workshops'),
-    (:'eventCategory3ID', :'community3ID', 'Workshops');
+-- Event category used by event-category filtering
+select fx_event_category(:'eventCategory1ID', :'community1ID', jsonb_build_object('name', 'Tech Talks'));
 
 -- Region
 insert into region (region_id, name, community_id)
@@ -110,281 +65,124 @@ values
     (:'region1ID', 'North America', :'community1ID');
 
 -- Group
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    slug_pretty,
-    community_id,
-    group_category_id,
-    city,
-    state,
-    country_code,
-    country_name,
-    logo_url,
-    location,
-    region_id
-)
-values (
-    :'group1ID',
-    'Test Group',
-    'test-group',
-    'test-group-pretty',
-    :'community1ID',
-    :'groupCategory1ID',
-    'San Francisco',
-    'CA',
-    'US',
-    'United States',
-    'https://example.com/group-logo.png',
-    ST_GeogFromText('POINT(-122.4194 37.7749)'),
-    :'region1ID'
-), (
-    :'group2ID',
-    'Cloud Group',
-    'cloud-group',
-    null,
-    :'community1ID',
-    :'groupCategory4ID',
-    'New York',
-    'NY',
-    'US',
-    'United States',
-    'https://example.com/cloud-group.png',
-    ST_GeogFromText('POINT(-73.935242 40.73061)'),
-    null
-), (
-    :'group3ID',
-    'Other Group',
-    'other-group',
-    null,
-    :'community2ID',
-    :'groupCategory2ID',
-    'Chicago',
-    'IL',
-    'US',
-    'United States',
-    'https://example.com/other-group.png',
-    ST_GeogFromText('POINT(-87.6298 41.8781)'),
-    null
-), (
-    :'group4ID',
-    'Inactive Community Group',
-    'inactive-community-group',
-    null,
-    :'community3ID',
-    :'groupCategory3ID',
-    'Denver',
-    'CO',
-    'US',
-    'United States',
-    'https://example.com/inactive-community-group.png',
-    ST_GeogFromText('POINT(-104.9903 39.7392)'),
-    null
-);
+select fx_group(:'group1ID', :'community1ID', :'groupCategory1ID', jsonb_build_object(
+    'city', 'San Francisco',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'location', ST_GeogFromText('POINT(-122.4194 37.7749)'),
+    'region_id', :'region1ID',
+    'slug', 'test-group',
+    'slug_pretty', 'test-group-pretty',
+    'state', 'CA'
+));
+select fx_group(:'group2ID', :'community1ID', :'groupCategory4ID', jsonb_build_object(
+    'city', 'New York',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'location', ST_GeogFromText('POINT(-73.935242 40.73061)'),
+    'state', 'NY'
+));
+select fx_group(:'group3ID', :'community2ID', :'groupCategory2ID', jsonb_build_object(
+    'city', 'Chicago',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'location', ST_GeogFromText('POINT(-87.6298 41.8781)'),
+    'state', 'IL'
+));
+select fx_group(:'group4ID', :'community3ID', :'groupCategory3ID', jsonb_build_object(
+    'city', 'Denver',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'location', ST_GeogFromText('POINT(-104.9903 39.7392)'),
+    'state', 'CO'
+));
 
 -- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    test_event,
-    description_short,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    starts_at,
-    ends_at,
-    tags,
-    venue_city,
-    venue_name,
-    venue_address,
-    logo_url,
-    canceled,
+select fx_event(:'event1ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'ends_at', now() + interval '1 day' + interval '2 hours',
+    'published', true,
+    'starts_at', now() + interval '1 day',
+    'tags', array['kubernetes', 'cloud'],
+    'venue_address', '123 Market St',
+    'venue_city', 'San Francisco',
+    'venue_name', 'Tech Hub'
+));
+select fx_event(:'event2ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'ends_at', now() + interval '2 days' + interval '3 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '2 days',
+    'tags', array['docker', 'containers'],
+    'venue_city', 'New York',
+    'venue_name', 'Online'
+));
+select fx_event(:'event3ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'ends_at', now() + interval '3 days' + interval '7 hours',
+    'event_kind_id', 'hybrid',
+    'published', true,
+    'starts_at', now() + interval '3 days',
+    'tags', array['cloud', 'aws'],
+    'venue_address', '456 Oxford St',
+    'venue_city', 'London',
+    'venue_name', 'Convention Center'
+));
 
-    location
-) values (
-    :'event1ID',
-    'Kubernetes Workshop',
-    'kubernetes-workshop',
-    'Learn Kubernetes',
-    false,
-    'K8s intro workshop',
-    'UTC',
-    :'eventCategory1ID',
-    'in-person',
-    :'group1ID',
-    true,
-    now() + interval '1 day',
-    now() + interval '1 day' + interval '2 hours',
-    array['kubernetes', 'cloud'],
-    'San Francisco',
-    'Tech Hub',
-    '123 Market St',
-    'https://example.com/k8s-workshop.png',
-    false,
-    null
-), (
-    :'event2ID',
-    'Docker Training',
-    'docker-training',
-    'Docker fundamentals',
-    false,
-    'Docker basics',
-    'UTC',
-    :'eventCategory1ID',
-    'virtual',
-    :'group1ID',
-    true,
-    now() + interval '2 days',
-    now() + interval '2 days' + interval '3 hours',
-    array['docker', 'containers'],
-    'New York',
-    'Online',
-    null,
-    'https://example.com/docker-training.png',
-    false,
-    null
-), (
-    :'event3ID',
-    'Cloud Summit',
-    'cloud-summit',
-    'Annual cloud conference',
-    false,
-    'Cloud conf 2026',
-    'UTC',
-    :'eventCategory1ID',
-    'hybrid',
-    :'group1ID',
-    true,
-    now() + interval '3 days',
-    now() + interval '3 days' + interval '7 hours',
-    array['cloud', 'aws'],
-    'London',
-    'Convention Center',
-    '456 Oxford St',
-    'https://example.com/cloud-summit.png',
-    false,
-    null
-),
--- Canceled event (should be filtered out from search results)
-(
-    :'event4ID',
-    'Canceled Tech Conference',
-    'canceled-tech-conf',
-    'This event was canceled',
-    false,
-    'Canceled conf',
-    'UTC',
-    :'eventCategory1ID',
-    'in-person',
-    :'group1ID',
-    false,
-    now() - interval '1 day',
-    now() - interval '1 day' + interval '9 hours',
-    array['tech', 'conference'],
-    'Boston',
-    'Convention Center',
-    '789 Congress St',
-    'https://example.com/canceled-conf.png',
-    true,
-    null
-),
--- Event with its own location (different from group location - group is in New York, event is in San Francisco)
-(
-    :'event5ID',
-    'Cloud Innovation Summit',
-    'cloud-innovation-summit',
-    'Cloud innovations',
-    false,
-    'Cloud summit',
-    'UTC',
-    :'eventCategory1ID',
-    'in-person',
-    :'group2ID',
-    true,
-    now() + interval '4 days',
-    now() + interval '4 days' + interval '7 hours',
-    array['cloud', 'innovation'],
-    'San Francisco',
-    'Innovation Center',
-    '123 Tech Ave',
-    'https://example.com/cloud-innovation.png',
-    false,
-    ST_GeogFromText('POINT(-122.4194 37.7749)')
-),
+-- Canceled event filtered out from search results
+select fx_event(:'event4ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'canceled', true,
+    'ends_at', now() - interval '1 day' + interval '9 hours',
+    'starts_at', now() - interval '1 day',
+    'tags', array['tech', 'conference'],
+    'venue_address', '789 Congress St',
+    'venue_city', 'Boston',
+    'venue_name', 'Convention Center'
+));
+
+-- Event with its own location
+select fx_event(:'event5ID', :'group2ID', :'eventCategory1ID', jsonb_build_object(
+    'ends_at', now() + interval '4 days' + interval '7 hours',
+    'location', ST_GeogFromText('POINT(-122.4194 37.7749)'),
+    'published', true,
+    'starts_at', now() + interval '4 days',
+    'tags', array['cloud', 'innovation'],
+    'venue_address', '123 Tech Ave',
+    'venue_city', 'San Francisco',
+    'venue_name', 'Innovation Center'
+));
+
 -- Event in community 2
-(
-    :'event6ID',
-    'Python Workshop',
-    'python-workshop',
-    'Learn Python',
-    false,
-    'Python basics',
-    'UTC',
-    :'eventCategory2ID',
-    'in-person',
-    :'group3ID',
-    true,
-    now() + interval '5 days',
-    now() + interval '5 days' + interval '4 hours',
-    array['python', 'programming'],
-    'Chicago',
-    'Tech Center',
-    '555 Lake St',
-    'https://example.com/python-workshop.png',
-    false,
-    null
-),
--- Test event (should be filtered out from search results)
-(
-    :'event7ID',
-    'Test Fixture Event',
-    'test-fixture-event',
-    'Internal test event',
-    true,
-    'Test fixture',
-    'UTC',
-    :'eventCategory1ID',
-    'virtual',
-    :'group1ID',
-    true,
-    now() + interval '6 days',
-    now() + interval '6 days' + interval '1 hour',
-    array['test'],
-    'Online',
-    'Online',
-    null,
-    'https://example.com/test-fixture.png',
-    false,
-    null
-),
--- Event in inactive community (should be filtered out from search results)
-(
-    :'event8ID',
-    'Inactive Community Event',
-    'inactive-community-event',
-    'Event in inactive community',
-    false,
-    'Inactive community event',
-    'UTC',
-    :'eventCategory3ID',
-    'in-person',
-    :'group4ID',
-    true,
-    now() + interval '7 days',
-    now() + interval '7 days' + interval '2 hours',
-    array['inactive'],
-    'Denver',
-    'Tech Hall',
-    '321 Main St',
-    'https://example.com/inactive-community-event.png',
-    false,
-    null
-);
+select fx_event(:'event6ID', :'group3ID', :'eventCategory2ID', jsonb_build_object(
+    'ends_at', now() + interval '5 days' + interval '4 hours',
+    'published', true,
+    'starts_at', now() + interval '5 days',
+    'tags', array['python', 'programming'],
+    'venue_address', '555 Lake St',
+    'venue_city', 'Chicago',
+    'venue_name', 'Tech Center'
+));
+
+-- Test event filtered out from search results
+select fx_event(:'event7ID', :'group1ID', :'eventCategory1ID', jsonb_build_object(
+    'ends_at', now() + interval '6 days' + interval '1 hour',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '6 days',
+    'tags', array['test'],
+    'test_event', true,
+    'venue_city', 'Online',
+    'venue_name', 'Online'
+));
+
+-- Event in inactive community filtered out from search results
+select fx_event(:'event8ID', :'group4ID', :'eventCategory3ID', jsonb_build_object(
+    'ends_at', now() + interval '7 days' + interval '2 hours',
+    'published', true,
+    'starts_at', now() + interval '7 days',
+    'tags', array['inactive'],
+    'venue_address', '321 Main St',
+    'venue_city', 'Denver',
+    'venue_name', 'Tech Hall'
+));
 
 -- ============================================================================
 -- TESTS

@@ -30,193 +30,53 @@ select plan(28);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Users
-insert into "user" (user_id, auth_hash, email, username, name) values
-    (:'user1ID', 'hash1', 'host1@example.com', 'host1', 'Host One'),
-    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values
-    (:'category1ID', 'Conference', :'community1ID'),
-    (:'category2ID', 'Workshop', :'community1ID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('3a3a0000-0000-0000-0000-000000000015', 'Technology', :'community1ID');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id
-) values (
-    :'group1ID',
-    :'community1ID',
-    'Test Group',
-    'abc1234',
-    'A test group',
-    '3a3a0000-0000-0000-0000-000000000015'
-);
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'community1ID');
+select fx_group_category('3a3a0000-0000-0000-0000-000000000015', :'community1ID');
+select fx_event_category(:'category1ID', :'community1ID');
+select fx_event_category(:'category2ID', :'community1ID');
+select fx_user(:'user1ID');
+select fx_user(:'user3ID');
+select fx_group(:'group1ID', :'community1ID', '3a3a0000-0000-0000-0000-000000000015');
 
 -- Group Sponsor
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values (:'sponsorOrigID', :'group1ID', 'Original Sponsor', 'https://example.com/sponsor.png', null);
 
 -- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values (
-    :'event1ID',
-    :'group1ID',
-    'Original Event',
-    'def5678',
-    'Original description',
-    'America/New_York',
-    :'category1ID',
-    'in-person'
-);
+select fx_event(:'event1ID', :'group1ID', :'category1ID', jsonb_build_object('timezone', 'America/New_York'));
 
 -- Published event used for attendee floor validation checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at
-) values (
-    :'event14ID',
-    :'group1ID',
-    'Capacity Validation Event',
-    'capacity-validation',
-    'Published event for attendee floor validation checks',
-    'America/New_York',
-    :'category1ID',
-    'in-person',
-    3,
-    true,
-    '2030-02-10 10:00:00-05'
-);
+select fx_event(:'event14ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 3,
+    'published', true,
+    'starts_at', '2030-02-10 10:00:00-05',
+    'timezone', 'America/New_York'
+));
 
 -- Past Event (for testing past updates)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    description_short,
-    photos_urls,
-    tags,
-    venue_name
-) values (
-    :'event8ID',
-    :'group1ID',
-    'Past Event',
-    'stu5mno',
-    'This event already happened',
-    'America/New_York',
-    :'category1ID',
-    'in-person',
-    '2020-01-01 10:00:00-05',
-    '2020-01-01 12:00:00-05',
-
-    'Original short description',
-    array['https://example.com/original-photo.jpg'],
-    array['original', 'tags'],
-    'Original Venue'
-);
+select fx_event(:'event8ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', '2020-01-01 12:00:00-05',
+    'name', 'Past Event',
+    'photos_urls', array['https://example.com/original-photo.jpg'],
+    'starts_at', '2020-01-01 10:00:00-05',
+    'tags', array['original', 'tags'],
+    'timezone', 'America/New_York',
+    'venue_name', 'Original Venue'
+));
 
 -- Live Event (started in the past, ends in the future)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at
-) values (
-    :'event9ID',
-    :'group1ID',
-    'Live Event',
-    'vwx6pqr',
-    'This event is currently live',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    current_timestamp - interval '1 hour',
-    current_timestamp + interval '2 hours'
-);
+select fx_event(:'event9ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '2 hours',
+    'name', 'Live Event',
+    'starts_at', current_timestamp - interval '1 hour'
+));
 
 -- Live event dedicated to the completed-session override scenario
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at
-) values (
-    :'eventLiveSessionID',
-    :'group1ID',
-    'Live Event With Session',
-    'live-event-with-session',
-    'Live event with a completed session',
-    'UTC',
-    :'category1ID',
-    'in-person',
-    current_timestamp - interval '1 hour',
-    current_timestamp + interval '2 hours'
-);
+select fx_event(:'eventLiveSessionID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '2 hours',
+    'starts_at', current_timestamp - interval '1 hour'
+));
 
 -- Completed session retained for the recording override scenario
 insert into session (
@@ -240,29 +100,12 @@ insert into session (
 );
 
 -- Event with session for bounds shrink checks
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at
-) values (
-    :'eventShrinkBoundsID',
-    :'group1ID',
-    'Shrink Bounds Event',
-    'shrink-bounds-event',
-    'This event has a session used for bounds shrink checks',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    '2030-05-01 09:00:00+00',
-    '2030-05-01 17:00:00+00'
-);
+select fx_event(:'eventShrinkBoundsID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', '2030-05-01 17:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Shrink Bounds Event',
+    'starts_at', '2030-05-01 09:00:00+00'
+));
 
 -- Session near the end of the event for bounds shrink checks
 insert into session (
@@ -284,18 +127,22 @@ insert into session (
 );
 
 -- Every update fixture uses the unified ticket inventory
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-select gen_random_uuid(), e.event_id, 1, coalesce(e.capacity, 100), 'General Admission'
+select fx_event_ticket_type(
+    gen_random_uuid(),
+    e.event_id,
+    jsonb_build_object(
+        'seats_total', coalesce(e.capacity, 100)
+    )
+)
 from event e
 where e.group_id = :'group1ID';
 
 -- Current free prices for the unified ticket inventory
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
+select fx_event_ticket_price_window(
+    gen_random_uuid(),
+    ett.event_ticket_type_id,
+    jsonb_build_object('amount_minor', 0)
 )
-select gen_random_uuid(), 0, ett.event_ticket_type_id
 from event_ticket_type ett
 join event e using (event_id)
 where e.group_id = :'group1ID';

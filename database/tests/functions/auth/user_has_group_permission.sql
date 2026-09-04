@@ -11,230 +11,65 @@ select plan(176);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0a0e0000-0000-0000-0000-000000000001'
-\set deletedGroupID '0a0e0000-0000-0000-0000-000000000002'
-\set groupCategoryID '0a0e0000-0000-0000-0000-000000000003'
-\set groupID '0a0e0000-0000-0000-0000-000000000004'
-\set otherCommunityGroupID '0a0e0000-0000-0000-0000-000000000005'
-\set otherCommunityID '0a0e0000-0000-0000-0000-000000000006'
-\set otherGroupCategoryID '0a0e0000-0000-0000-0000-000000000007'
-\set otherGroupID '0a0e0000-0000-0000-0000-000000000008'
-\set restrictedCommunityID '0a0e0000-0000-0000-0000-000000000009'
-\set restrictedGroupCategoryID '0a0e0000-0000-0000-0000-000000000010'
-\set restrictedGroupID '0a0e0000-0000-0000-0000-000000000011'
-\set userCheckInManagerID '0a0e0000-0000-0000-0000-000000000023'
-\set userCommunityAdminID '0a0e0000-0000-0000-0000-000000000012'
-\set userCommunityGroupsManagerID '0a0e0000-0000-0000-0000-000000000013'
-\set userCommunityPendingGroupsManagerID '0a0e0000-0000-0000-0000-000000000014'
-\set userCommunityViewerID '0a0e0000-0000-0000-0000-000000000015'
-\set userDualRoleID '0a0e0000-0000-0000-0000-000000000016'
-\set userEventsManagerID '0a0e0000-0000-0000-0000-000000000017'
-\set userGroupAdminID '0a0e0000-0000-0000-0000-000000000018'
-\set userGroupViewerID '0a0e0000-0000-0000-0000-000000000019'
-\set userOtherGroupAdminID '0a0e0000-0000-0000-0000-000000000020'
-\set userPendingGroupAdminID '0a0e0000-0000-0000-0000-000000000021'
-\set userRegularID '0a0e0000-0000-0000-0000-000000000022'
+\set communityID '0a100000-0000-0000-0000-000000000001'
+\set deletedGroupID '0a100000-0000-0000-0000-000000000002'
+\set groupCategoryID '0a100000-0000-0000-0000-000000000003'
+\set groupID '0a100000-0000-0000-0000-000000000004'
+\set otherCommunityGroupID '0a100000-0000-0000-0000-000000000005'
+\set otherCommunityID '0a100000-0000-0000-0000-000000000006'
+\set otherGroupCategoryID '0a100000-0000-0000-0000-000000000007'
+\set otherGroupID '0a100000-0000-0000-0000-000000000008'
+\set restrictedCommunityID '0a100000-0000-0000-0000-000000000009'
+\set restrictedGroupCategoryID '0a100000-0000-0000-0000-000000000010'
+\set restrictedGroupID '0a100000-0000-0000-0000-000000000011'
+\set userCheckInManagerID '0a100000-0000-0000-0000-000000000023'
+\set userCommunityAdminID '0a100000-0000-0000-0000-000000000012'
+\set userCommunityGroupsManagerID '0a100000-0000-0000-0000-000000000013'
+\set userCommunityPendingGroupsManagerID '0a100000-0000-0000-0000-000000000014'
+\set userCommunityViewerID '0a100000-0000-0000-0000-000000000015'
+\set userDualRoleID '0a100000-0000-0000-0000-000000000016'
+\set userEventsManagerID '0a100000-0000-0000-0000-000000000017'
+\set userGroupAdminID '0a100000-0000-0000-0000-000000000018'
+\set userGroupViewerID '0a100000-0000-0000-0000-000000000019'
+\set userOtherGroupAdminID '0a100000-0000-0000-0000-000000000020'
+\set userPendingGroupAdminID '0a100000-0000-0000-0000-000000000021'
+\set userRegularID '0a100000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    group_team_management_restricted,
-    logo_url
-) values (
-    :'communityID',
-    'group-permission-community',
-    'Group Permission Community',
-    'Test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    false,
-    'https://example.com/logo.png'
-), (
-    :'otherCommunityID',
-    'group-permission-other-community',
-    'Group Permission Other Community',
-    'Other test community',
-    'https://example.com/other-banner-mobile.png',
-    'https://example.com/other-banner.png',
-    false,
-    'https://example.com/other-logo.png'
-), (
-    :'restrictedCommunityID',
-    'group-permission-restricted-community',
-    'Group Permission Restricted Community',
-    'Restricted test community',
-    'https://example.com/restricted-banner-mobile.png',
-    'https://example.com/restricted-banner.png',
-    true,
-    'https://example.com/restricted-logo.png'
-);
+-- Baseline communities, categories, users and groups for permission checks
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'otherGroupCategoryID', :'otherCommunityID');
+select fx_user(:'userCheckInManagerID');
+select fx_user(:'userCommunityAdminID');
+select fx_user(:'userCommunityGroupsManagerID');
+select fx_user(:'userCommunityPendingGroupsManagerID');
+select fx_user(:'userCommunityViewerID');
+select fx_user(:'userDualRoleID');
+select fx_user(:'userEventsManagerID');
+select fx_user(:'userGroupAdminID');
+select fx_user(:'userGroupViewerID');
+select fx_user(:'userOtherGroupAdminID');
+select fx_user(:'userPendingGroupAdminID');
+select fx_user(:'userRegularID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherCommunityGroupID', :'otherCommunityID', :'otherGroupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'otherGroupCategoryID', :'otherCommunityID', 'Platform Engineering'),
-    (:'restrictedGroupCategoryID', :'restrictedCommunityID', 'Technology');
+-- Restricted community used for group-team management checks
+select fx_community(:'restrictedCommunityID', jsonb_build_object('group_team_management_restricted', true));
+select fx_group_category(:'restrictedGroupCategoryID', :'restrictedCommunityID');
+select fx_group(:'restrictedGroupID', :'restrictedCommunityID', :'restrictedGroupCategoryID');
 
--- Users
-insert into "user" (
-    user_id,
-    name,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values (
-    :'userCheckInManagerID',
-    'Check-In Manager',
-    gen_random_bytes(32),
-    'check-in-manager@example.com',
-    true,
-    'checkinmanager'
-), (
-    :'userGroupAdminID',
-    'Group Admin',
-    gen_random_bytes(32),
-    'group-admin@example.com',
-    true,
-    'groupadmin'
-), (
-    :'userEventsManagerID',
-    'Events Manager',
-    gen_random_bytes(32),
-    'events-manager@example.com',
-    true,
-    'eventsmanager'
-), (
-    :'userGroupViewerID',
-    'Group Viewer',
-    gen_random_bytes(32),
-    'group-viewer@example.com',
-    true,
-    'groupviewer'
-), (
-    :'userCommunityAdminID',
-    'Community Admin',
-    gen_random_bytes(32),
-    'community-admin@example.com',
-    true,
-    'communityadmin'
-), (
-    :'userCommunityGroupsManagerID',
-    'Community Groups Manager',
-    gen_random_bytes(32),
-    'community-groups-manager@example.com',
-    true,
-    'communitygroupsmanager'
-), (
-    :'userCommunityPendingGroupsManagerID',
-    'Community Pending Groups Manager',
-    gen_random_bytes(32),
-    'community-pending-groups-manager@example.com',
-    true,
-    'communitypendinggroupsmanager'
-), (
-    :'userCommunityViewerID',
-    'Community Viewer',
-    gen_random_bytes(32),
-    'community-viewer@example.com',
-    true,
-    'communityviewer'
-), (
-    :'userDualRoleID',
-    'Dual Role',
-    gen_random_bytes(32),
-    'dual-role@example.com',
-    true,
-    'dualrole'
-), (
-    :'userOtherGroupAdminID',
-    'Other Group Admin',
-    gen_random_bytes(32),
-    'other-group-admin@example.com',
-    true,
-    'othergroupadmin'
-), (
-    :'userPendingGroupAdminID',
-    'Pending Group Admin',
-    gen_random_bytes(32),
-    'pending-group-admin@example.com',
-    true,
-    'pendinggroupadmin'
-), (
-    :'userRegularID',
-    'Regular User',
-    gen_random_bytes(32),
-    'regular@example.com',
-    true,
-    'regularuser'
-);
-
--- Group
-insert into "group" (
-    group_id,
-    active,
-    community_id,
-    deleted,
-    description,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupID',
-    true,
-    :'communityID',
-    false,
-    'Weekly Kubernetes study and discussion group',
-    :'groupCategoryID',
-    'Kubernetes Study Group',
-    'kubernetes-study'
-), (
-    :'otherGroupID',
-    true,
-    :'communityID',
-    false,
-    'Weekly open source study and discussion group',
-    :'groupCategoryID',
-    'Open Source Study Group',
-    'open-source-study'
-), (
-    :'deletedGroupID',
-    false,
-    :'communityID',
-    true,
-    'Deleted group used for permission checks',
-    :'groupCategoryID',
-    'Deleted Study Group',
-    'deleted-study'
-), (
-    :'otherCommunityGroupID',
-    true,
-    :'otherCommunityID',
-    false,
-    'Platform engineering group in a different community',
-    :'otherGroupCategoryID',
-    'Internal Developer Platform',
-    'internal-developer-platform'
-), (
-    :'restrictedGroupID',
-    true,
-    :'restrictedCommunityID',
-    false,
-    'Weekly Kubernetes study and discussion group in a restricted community',
-    :'restrictedGroupCategoryID',
-    'Restricted Kubernetes Study Group',
-    'restricted-kubernetes-study'
-);
+-- Deleted group used for inactive permission checks
+select fx_group(:'deletedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true
+));
 
 -- Group team memberships
 insert into group_team (

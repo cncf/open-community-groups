@@ -38,134 +38,34 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community for external refund-approval scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'external-refund-community',
-    'External Refund Community',
-    'Community for external refund tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category for external refund-approval scenarios
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category for external refund-approval scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the purchases under test
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'External Refund Group',
-    'external-refund-group'
-);
-
--- Organizer and attendees used by refund-approval scenarios
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'actorID', 'hash-actor', 'refund-actor@example.test', true, 'refund-actor'),
-    (:'attendeeID', 'hash-attendee', 'refund-attendee@example.test', true, 'refund-attendee'),
-    (
-        :'leftoverAttendeeID',
-        'hash-leftover',
-        'leftover@example.test',
-        true,
-        'leftover-attendee'
-    ),
-    (
-        :'refundedAttendeeID',
-        'hash-refunded',
-        'refunded@example.test',
-        true,
-        'refunded-attendee'
-    ),
-    (
-        :'replacementUserID',
-        'hash-replacement',
-        'refund-replacement@example.test',
-        true,
-        'refund-replacement'
-    ),
-    (
-        :'stripeAttendeeID',
-        'hash-stripe',
-        'refund-stripe@example.test',
-        true,
-        'refund-stripe'
-    );
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'actorID');
+select fx_user(:'attendeeID');
+select fx_user(:'leftoverAttendeeID');
+select fx_user(:'refundedAttendeeID');
+select fx_user(:'replacementUserID');
+select fx_user(:'stripeAttendeeID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Published event used by refund-approval scenarios
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values (
-    'External refund event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    'https://pay.example.test/refund',
-    :'groupID',
-    'External Refund Event',
-    true,
-    'external-refund-event',
-    current_timestamp + interval '7 days',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/refund',
+    'name', 'External Refund Event',
+    'published', true,
+    'starts_at', current_timestamp + interval '7 days'
+));
 
 -- Paid ticket type for the refund event
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventID',
-    :'eventTicketTypeID',
-    1,
-    50,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General admission'
+));
 
 -- Positive price window for the refund event
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    5000,
-    :'priceWindowID',
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 5000));
 
 -- External purchase waiting for organizer refund approval
 insert into event_purchase (

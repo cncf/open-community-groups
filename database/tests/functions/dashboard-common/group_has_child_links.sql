@@ -27,112 +27,31 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'communityID',
-        'child-links-community',
-        'Child Links Community',
-        'Community for child link tests',
-        'https://example.com/banner-mobile.png',
-        'https://example.com/banner.png',
-        'https://example.com/logo.png'
-    ),
-    (
-        :'otherCommunityID',
-        'other-child-links-community',
-        'Other Child Links Community',
-        'Other community for child link tests',
-        'https://example.com/other-banner-mobile.png',
-        'https://example.com/other-banner.png',
-        'https://example.com/other-logo.png'
-    );
+-- Baseline community, group category and groups
+select fx_community(:'communityID');
+select fx_community(:'otherCommunityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group_category(:'otherCommunityGroupCategoryID', :'otherCommunityID');
+select fx_group(:'activeParentID', :'communityID', :'groupCategoryID');
+select fx_group(:'deletedOnlyParentID', :'communityID', :'groupCategoryID');
+select fx_group(:'inactiveOnlyParentID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherCommunityParentID', :'otherCommunityID', :'otherCommunityGroupCategoryID');
+select fx_group(:'unrelatedGroupID', :'communityID', :'groupCategoryID');
 
--- Group categories
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'otherCommunityGroupCategoryID', :'otherCommunityID', 'Technology');
-
--- Parent groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted
-) values
-    (:'activeParentID', :'communityID', :'groupCategoryID', 'Active Parent', 'active-parent', true, false),
-    (:'deletedOnlyParentID', :'communityID', :'groupCategoryID', 'Deleted Only Parent', 'deleted-only-parent', true, false),
-    (:'inactiveOnlyParentID', :'communityID', :'groupCategoryID', 'Inactive Only Parent', 'inactive-only-parent', true, false),
-    (:'otherCommunityParentID', :'otherCommunityID', :'otherCommunityGroupCategoryID', 'Other Community Parent', 'other-community-parent', true, false),
-    (:'unrelatedGroupID', :'communityID', :'groupCategoryID', 'Unrelated Group', 'unrelated-group', true, false);
-
--- Child groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted,
-
-    parent_group_id
-) values
-    (
-        :'activeChildID',
-        :'communityID',
-        :'groupCategoryID',
-        'Active Child',
-        'active-child',
-        true,
-        false,
-
-        :'activeParentID'
-    ),
-    (
-        :'deletedChildID',
-        :'communityID',
-        :'groupCategoryID',
-        'Deleted Child',
-        'deleted-child',
-        false,
-        true,
-
-        :'deletedOnlyParentID'
-    ),
-    (
-        :'inactiveChildID',
-        :'communityID',
-        :'groupCategoryID',
-        'Inactive Child',
-        'inactive-child',
-        false,
-        false,
-
-        :'inactiveOnlyParentID'
-    ),
-    (
-        :'otherCommunityChildID',
-        :'otherCommunityID',
-        :'otherCommunityGroupCategoryID',
-        'Other Community Child',
-        'other-community-child',
-        true,
-        false,
-
-        :'otherCommunityParentID'
-    );
+select fx_group(:'activeChildID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'activeParentID'));
+-- group
+select fx_group(:'deletedChildID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true,
+    'parent_group_id', :'deletedOnlyParentID'
+));
+-- group
+select fx_group(:'inactiveChildID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'parent_group_id', :'inactiveOnlyParentID'
+));
+-- group
+select fx_group(:'otherCommunityChildID', :'otherCommunityID', :'otherCommunityGroupCategoryID', jsonb_build_object('parent_group_id', :'otherCommunityParentID'));
 
 -- ============================================================================
 -- TESTS

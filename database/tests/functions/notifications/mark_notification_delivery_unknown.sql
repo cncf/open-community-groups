@@ -19,8 +19,7 @@ select plan(7);
 -- ============================================================================
 
 -- User who owns the delivery notifications
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'user@example.com', true, 'user');
+select fx_user(:'userID', jsonb_build_object('username', 'user-mark-notification-delivery-unknown'));
 
 -- Processed notification rejected by the invalid-state scenario
 insert into notification (

@@ -27,44 +27,18 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'event-association-community',
-    'Event Association Community',
-    'A test community for event associations',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+-- Baseline communities, group categories, event categories, groups and events
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
+select fx_event(:'eventID', :'groupID', :'eventCategoryID');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
-    (:'user1ID', gen_random_bytes(32), 'user1@example.com', true, 'user1', 'User 1'),
-    (:'user2ID', gen_random_bytes(32), 'user2@example.com', true, 'user2', 'User 2'),
-    (:'user3ID', gen_random_bytes(32), 'user3@example.com', true, 'user3', 'User 3');
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Association Group', 'association-group'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+select fx_user(:'user1ID', jsonb_build_object('username', 'user1-sync-event-hosts-speakers-sponsors'));
+select fx_user(:'user2ID', jsonb_build_object('username', 'user2-sync-event-hosts-speakers-sponsors'));
+select fx_user(:'user3ID', jsonb_build_object('username', 'user3-sync-event-hosts-speakers-sponsors'));
 
 -- Group sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url) values
@@ -80,27 +54,6 @@ values (
     'Other Group Sponsor',
     'https://e/sponsor-other.png',
     null
-);
-
--- Event
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id
-) values (
-    :'eventID',
-    :'groupID',
-    'Associations Event',
-    'associations-event',
-    'Event used for association sync tests',
-    'UTC',
-    :'eventCategoryID',
-    'in-person'
 );
 
 -- Existing event associations

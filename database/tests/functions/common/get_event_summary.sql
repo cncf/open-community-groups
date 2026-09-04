@@ -46,148 +46,42 @@ select plan(13);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'display_name', 'Cloud Native Seattle Event Summary',
+    'logo_url', 'https://example.com/logo.png',
+    'name', 'cloud-native-seattle-event-summary'
+));
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('name', 'Technology'));
 
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Tech Talks');
+-- Baseline event categories and groups
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupNoLogoID', :'communityID', :'groupCategoryID');
 
 -- Attendees for remaining capacity verification
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-
-    created_at
-) values (
-    :'attendee1ID',
-    'attendee-hash',
-    'attendee1@example.com',
-    true,
-    'attendee1',
-
-    '2024-01-01 00:00:00+00'
-), (
-    :'attendee2ID',
-    'attendee-hash',
-    'attendee2@example.com',
-    true,
-    'attendee2',
-
-    '2024-01-01 00:00:00+00'
-), (
-    :'waitlistUserID',
-    'attendee-hash',
-    'waitlist@example.com',
-    true,
-    'waitlist-user',
-
-    '2024-01-01 00:00:00+00'
-), (
-    :'pendingInviteID',
-    'attendee-hash',
-    'pending@example.com',
-    true,
-    'pending-invite',
-
-    '2024-01-01 00:00:00+00'
-), (
-    :'expiredCheckoutUserID',
-    'registration-hash',
-    'rq-expired-checkout@test.com',
-    true,
-    'rq-expired-checkout',
-
-    '2024-01-01 00:00:00+00'
-), (
-    :'activeCheckoutUserID',
-    'registration-hash',
-    'rq-active-checkout@test.com',
-    true,
-    'rq-active-checkout',
-
-    '2024-01-01 00:00:00+00'
-), (
-    :'questionsSeatedUserID',
-    'registration-hash',
-    'rq-seated@test.com',
-    true,
-    'rq-seated',
-
-    '2024-01-01 00:00:00+00'
-), (
-    :'questionsWaitlistUserID',
-    'registration-hash',
-    'rq-waitlist@test.com',
-    true,
-    'rq-waitlist',
-
-    '2024-01-01 00:00:00+00'
-);
+select fx_user(:'attendee1ID', jsonb_build_object(
+    'created_at', '2024-01-01 00:00:00+00',
+    'username', 'attendee1'
+));
+select fx_user(:'attendee2ID', jsonb_build_object(
+    'created_at', '2024-01-01 00:00:00+00',
+    'username', 'attendee2'
+));
+select fx_user(:'waitlistUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
+select fx_user(:'pendingInviteID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
+select fx_user(:'expiredCheckoutUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
+select fx_user(:'activeCheckoutUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
+select fx_user(:'questionsSeatedUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
+select fx_user(:'questionsWaitlistUserID', jsonb_build_object('created_at', '2024-01-01 00:00:00+00'));
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    active,
-    logo_url,
-    slug_pretty
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Seattle Kubernetes Meetup',
-    'abc1234',
-
-    true,
-    'https://example.com/group-logo.png',
-    'seattle-kubernetes'
-);
-
--- Group without logo
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-
-    active
-) values (
-    :'groupNoLogoID',
-    :'communityID',
-    :'groupCategoryID',
-    'Seattle Kubernetes Meetup No Logo',
-    'abc5678',
-
-    true
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'logo_url', 'https://example.com/group-logo.png',
+    'name', 'Seattle Kubernetes Meetup',
+    'slug', 'abc1234',
+    'slug_pretty', 'seattle-kubernetes'
+));
 
 -- Event Series
 insert into event_series (
@@ -211,308 +105,132 @@ insert into event_series (
 );
 
 -- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    description_short,
-    event_kind_id,
-    event_category_id,
-    group_id,
-    published,
-    starts_at,
-    ends_at,
-    timezone,
-    meeting_join_instructions,
-    meeting_join_url,
-    venue_address,
-    venue_city,
-    venue_country_code,
-    venue_country_name,
-    venue_name,
-    venue_state_code,
-    venue_state_name,
-    venue_zip_code,
-    capacity,
-    payment_currency_code,
-    waitlist_enabled,
-    location,
-    logo_url,
-
-    event_series_id
-) values (
-    :'eventID',
-    'KubeCon Seattle 2024',
-    'def5678',
-    'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
-    'Annual Kubernetes conference short summary',
-    'in-person',
-    :'eventCategoryID',
-    :'groupID',
-    true,
-    '2024-06-15 09:00:00+00',
-    '2024-06-15 17:00:00+00',
-    'America/New_York',
-    'Use your registration name when joining.',
-    null,
-    '123 Main St',
-    'New York',
-    'US',
-    'United States',
-    'Convention Center',
-    'NY',
-    'New York',
-    '10001',
-    5,
-    null,
-    true,
-    ST_SetSRID(
-        ST_MakePoint(-122.3321, 47.6062),
-        4326
-    ),  -- Seattle coordinates (different from group)
-    'https://example.com/event-logo.png',
-
-    :'eventSeriesID'
-), (
-    :'eventGroupLogoFallbackID',
-    'KubeCon Seattle 2024 Group Logo',
-    'def5679',
-    'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
-    'Annual Kubernetes conference short summary',
-    'in-person',
-    :'eventCategoryID',
-    :'groupID',
-    true,
-    '2024-06-15 09:00:00+00',
-    '2024-06-15 17:00:00+00',
-    'America/New_York',
-    null,
-    null,
-    '123 Main St',
-    'New York',
-    'US',
-    'United States',
-    'Convention Center',
-    'NY',
-    'New York',
-    '10001',
-    5,
-    null,
-    true,
-    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
-    null,
-
-    null
-), (
-    :'eventCommunityLogoFallbackID',
-    'KubeCon Seattle 2024 Community Logo',
-    'def5680',
-    'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
-    'Annual Kubernetes conference short summary',
-    'in-person',
-    :'eventCategoryID',
-    :'groupNoLogoID',
-    true,
-    '2024-06-15 09:00:00+00',
-    '2024-06-15 17:00:00+00',
-    'America/New_York',
-    null,
-    null,
-    '123 Main St',
-    'New York',
-    'US',
-    'United States',
-    'Convention Center',
-    'NY',
-    'New York',
-    '10001',
-    5,
-    null,
-    true,
-    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
-    null,
-
-    null
-), (
-    :'eventPaidID',
-    'KubeCon Seattle 2024 Paid',
-    'def5681',
-    'Paid summary event',
-    'Paid summary event short summary',
-    'virtual',
-    :'eventCategoryID',
-    :'groupID',
-    true,
-    '2024-06-16 09:00:00+00',
-    '2024-06-16 17:00:00+00',
-    'America/New_York',
-    null,
-    null,
-    '123 Main St',
-    'New York',
-    'US',
-    'United States',
-    'Convention Center',
-    'NY',
-    'New York',
-    '10001',
-    20,
-    'USD',
-    false,
-    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
-    null,
-
-    null
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'description_short', 'Annual Kubernetes conference short summary',
+    'ends_at', '2024-06-15 17:00:00+00',
+    'event_series_id', :'eventSeriesID',
+    'location', ST_GeogFromText('POINT(-122.3321 47.6062)'),
+    'logo_url', 'https://example.com/event-logo.png',
+    'meeting_join_instructions', 'Use your registration name when joining.',
+    'name', 'KubeCon Seattle 2024',
+    'published', true,
+    'slug', 'def5678',
+    'starts_at', '2024-06-15 09:00:00+00',
+    'timezone', 'America/New_York',
+    'venue_address', '123 Main St',
+    'venue_city', 'New York',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Convention Center',
+    'venue_state_code', 'NY',
+    'venue_state_name', 'New York',
+    'venue_zip_code', '10001',
+    'waitlist_enabled', true
+));
+select fx_event(:'eventGroupLogoFallbackID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'description_short', 'Annual Kubernetes conference short summary',
+    'ends_at', '2024-06-15 17:00:00+00',
+    'location', ST_GeogFromText('POINT(-122.3321 47.6062)'),
+    'published', true,
+    'starts_at', '2024-06-15 09:00:00+00',
+    'timezone', 'America/New_York',
+    'venue_address', '123 Main St',
+    'venue_city', 'New York',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Convention Center',
+    'venue_state_code', 'NY',
+    'venue_state_name', 'New York',
+    'venue_zip_code', '10001',
+    'waitlist_enabled', true
+));
+select fx_event(:'eventCommunityLogoFallbackID', :'groupNoLogoID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'description_short', 'Annual Kubernetes conference short summary',
+    'ends_at', '2024-06-15 17:00:00+00',
+    'location', ST_GeogFromText('POINT(-122.3321 47.6062)'),
+    'published', true,
+    'starts_at', '2024-06-15 09:00:00+00',
+    'timezone', 'America/New_York',
+    'venue_address', '123 Main St',
+    'venue_city', 'New York',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Convention Center',
+    'venue_state_code', 'NY',
+    'venue_state_name', 'New York',
+    'venue_zip_code', '10001',
+    'waitlist_enabled', true
+));
+select fx_event(:'eventPaidID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 20,
+    'ends_at', '2024-06-16 17:00:00+00',
+    'event_kind_id', 'virtual',
+    'location', ST_GeogFromText('POINT(-122.3321 47.6062)'),
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2024-06-16 09:00:00+00',
+    'timezone', 'America/New_York',
+    'venue_address', '123 Main St',
+    'venue_city', 'New York',
+    'venue_country_code', 'US',
+    'venue_country_name', 'United States',
+    'venue_name', 'Convention Center',
+    'venue_state_code', 'NY',
+    'venue_state_name', 'New York',
+    'venue_zip_code', '10001'
+));
 
 -- Event with registration questions and waitlist enabled
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published,
-    starts_at,
-    capacity,
-    waitlist_enabled,
-    registration_ends_at,
-    registration_starts_at,
-    registration_questions
-) values (
-    :'eventQuestionsID',
-    :'groupID',
-    'Waitlist Questions Event',
-    'waitlist-questions-event',
-    'Event for waitlist registration question tests',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true,
-    '2030-01-03 10:00:00+00',
-    2,
-    true,
-    '2030-01-02 10:00:00+00',
-    '2030-01-01 10:00:00+00',
-    jsonb_build_array(jsonb_build_object(
+select fx_event(:'eventQuestionsID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 2,
+    'published', true,
+    'registration_ends_at', '2030-01-02 10:00:00+00',
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', :'questionID',
         'kind', 'free-text',
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
-    ))
-);
+    )),
+    'registration_starts_at', '2030-01-01 10:00:00+00',
+    'starts_at', '2030-01-03 10:00:00+00',
+    'waitlist_enabled', true
+));
 
 -- Event that collects payment outside the platform
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone,
-
-    external_payment_url
-) values (
-    :'eventExternalID',
-    'External payment summary event',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'External Payment Event',
-    'external-payment-event',
-    'UTC',
-
-    'https://pay.example.test/summary'
-);
+select fx_event(:'eventExternalID', :'groupID', :'eventCategoryID', jsonb_build_object('external_payment_url', 'https://pay.example.test/summary'));
 
 -- Event ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventPaidID',
-    1,
-    20,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventPaidID', jsonb_build_object(
+    'seats_total', 20,
+    'title', 'General admission'
+));
 
 -- Invitation-only tier used by the main event's queue fixture
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    availability,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'mainTicketTypeID',
-    true,
-    'invitation_only',
-    :'eventID',
-    1,
-    5,
-    'General admission'
-);
+select fx_event_ticket_type(:'mainTicketTypeID', :'eventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'seats_total', 5,
+    'title', 'General admission'
+));
 
 -- Current free price for the main event's invitation-only tier
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (gen_random_uuid(), 0, :'mainTicketTypeID');
+select fx_event_ticket_price_window(gen_random_uuid(), :'mainTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Invitation-only ticket type excluded from public summaries
-insert into event_ticket_type (
-    event_ticket_type_id,
-    active,
-    availability,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'privateTicketTypeID',
-    true,
-    'invitation_only',
-    :'eventPaidID',
-    2,
-    5,
-    'Sponsor admission'
-);
+select fx_event_ticket_type(:'privateTicketTypeID', :'eventPaidID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 2,
+    'seats_total', 5
+));
 
 -- Event ticket price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'ticketPriceWindowID',
-    3000,
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 3000));
 
 -- Current invitation-only ticket price excluded from public summaries
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'privateTicketPriceWindowID',
-    1000,
-    :'privateTicketTypeID'
-);
+select fx_event_ticket_price_window(:'privateTicketPriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- Link meeting to event
 insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id)
@@ -582,8 +300,8 @@ select is(
     )::jsonb,
     format('{
         "canceled": false,
-        "community_display_name": "Cloud Native Seattle",
-        "community_name": "cloud-native-seattle",
+        "community_display_name": "Cloud Native Seattle Event Summary",
+        "community_name": "cloud-native-seattle-event-summary",
         "event_id": "%s",
         "group_category_name": "Technology",
         "group_name": "Seattle Kubernetes Meetup",

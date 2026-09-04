@@ -41,162 +41,46 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'find-reusable-community',
-    'Find Reusable Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'primaryUserID',
-        'hash-1',
-        'primary@example.com',
-        true,
-        'primary-user'
-    ),
-    (
-        :'secondaryUserID',
-        'hash-2',
-        'secondary@example.com',
-        true,
-        'secondary-user'
-    ),
-    (
-        :'recoveryUserID',
-        'hash-3',
-        'recovery@example.com',
-        true,
-        'recovery-user'
-    ),
-    (
-        :'offerUserID',
-        'hash-5',
-        'offer@example.com',
-        true,
-        'offer-user'
-    ),
-    (
-        :'recoveryOnlyUserID',
-        'hash-4',
-        'recovery-only@example.com',
-        true,
-        'recovery-only-user'
-    ),
-    (
-        :'refundPendingUserID',
-        'hash-6',
-        'refund-pending@example.com',
-        true,
-        'refund-pending-user'
-    );
+-- Baseline community, categories and users
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'offerUserID');
+select fx_user(:'primaryUserID');
+select fx_user(:'recoveryOnlyUserID');
+select fx_user(:'recoveryUserID');
+select fx_user(:'refundPendingUserID');
+select fx_user(:'secondaryUserID');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    payment_recipient
-)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Find Reusable Group',
-    'find-reusable-group',
-    jsonb_build_object(
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('payment_recipient', jsonb_build_object(
         'provider', 'stripe',
         'recipient_id', 'acct_find_reusable',
         'seller_display_name', 'Reusable Purchase Fiscal Sponsor'
-    )
-);
+    )));
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    payment_currency_code,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Find Reusable Event',
-    'find-reusable-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    'USD',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Ticket types
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-)
-values
-    (
-        :'ticketTypeAID',
-        :'eventID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        :'ticketTypeBID',
-        :'eventID',
-        2,
-        10,
-        'VIP'
-    );
+select fx_event_ticket_type(:'ticketTypeAID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'ticketTypeBID', :'eventID', jsonb_build_object(
+    'order', 2,
+    'seats_total', 10,
+    'title', 'VIP'
+));
 
 -- Price windows
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values
-    (:'priceWindowAID', 2500, :'ticketTypeAID'),
-    (:'priceWindowBID', 4000, :'ticketTypeBID');
+select fx_event_ticket_price_window(:'priceWindowAID', :'ticketTypeAID', jsonb_build_object('amount_minor', 2500));
+select fx_event_ticket_price_window(:'priceWindowBID', :'ticketTypeBID', jsonb_build_object('amount_minor', 4000));
 
 -- Purchases
 insert into event_purchase (

@@ -22,105 +22,30 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'A test group'
-);
-
--- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    meeting_in_sync,
-    meeting_provider_host_user,
-    meeting_sync_claimed_at,
-    timezone
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Test Event',
-    'test-event',
-    'A test event',
-    false,
-    'event-claim-host@example.com',
-    current_timestamp,
-    'America/New_York'
-);
+-- Event with scenario-specific state
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-claim-host@example.com',
+    'meeting_sync_claimed_at', current_timestamp,
+    'timezone', 'America/New_York'
+));
 
 -- Event with stale claim
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    meeting_error,
-    meeting_in_sync,
-    meeting_provider_host_user,
-    meeting_sync_claimed_at,
-    timezone
-) values (
-    :'eventStaleClaimID',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Stale Claim Event',
-    'stale-claim-event',
-    'A stale claim event',
-    'Previous sync error',
-    false,
-    'event-stale-claim-host@example.com',
-    current_timestamp,
-    'America/New_York'
-);
+select fx_event(:'eventStaleClaimID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'meeting_error', 'Previous sync error',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-stale-claim-host@example.com',
+    'meeting_sync_claimed_at', current_timestamp,
+    'timezone', 'America/New_York'
+));
 
 -- Session
 insert into session (

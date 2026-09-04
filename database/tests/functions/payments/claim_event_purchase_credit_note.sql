@@ -36,45 +36,21 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the credit-note event
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'claim-credit-note-community'
-);
-
--- Event category used by the credit-note event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the credit-note group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the credit-note event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Attendee owning the refunded purchases
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the refunded purchases
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by each purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Purchases providing immutable context for each claim state
 insert into event_purchase (
@@ -139,7 +115,7 @@ insert into event_purchase_refund (
     (
         2500, 'USD', :'retryPurchaseID', :'retryRefundID',
         'refund-claim-retry-credit-note', 'automatic-unfulfillable-checkout',
-        'stripe', 're_retry', current_timestamp, 'provider-succeeded'
+        'stripe', 're_retry_claim_event_purchase_credit_note', current_timestamp, 'provider-succeeded'
     ),
     (
         2500, 'USD', :'stalePurchaseID', :'staleRefundID',

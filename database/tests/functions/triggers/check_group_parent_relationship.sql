@@ -25,38 +25,11 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'community1ID',
-        'test-community',
-        'Test Community',
-        'Test community',
-        'https://example.com/banner-mobile.png',
-        'https://example.com/banner.png',
-        'https://example.com/logo.png'
-    ), (
-        :'community2ID',
-        'other-community',
-        'Other Community',
-        'Other community',
-        'https://example.com/other-banner-mobile.png',
-        'https://example.com/other-banner.png',
-        'https://example.com/other-logo.png'
-    );
-
--- Group categories
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategory1ID', :'community1ID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Technology');
+-- Baseline community and group categories
+select fx_community(:'community1ID');
+select fx_community(:'community2ID');
+select fx_group_category(:'groupCategory1ID', :'community1ID');
+select fx_group_category(:'groupCategory2ID', :'community2ID');
 
 -- Parent candidate groups
 insert into "group" (

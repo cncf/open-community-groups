@@ -31,84 +31,25 @@ select plan(26);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'category1ID', 'Conference', :'community1ID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('3a3b0000-0000-0000-0000-000000000017', 'Technology', :'community1ID');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    name,
-    slug,
-    description,
-    group_category_id
-) values (
-    :'group1ID',
-    :'community1ID',
-    'Test Group',
-    'abc1234',
-    'A test group',
-    '3a3b0000-0000-0000-0000-000000000017'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'community1ID');
+select fx_group_category('3a3b0000-0000-0000-0000-000000000017', :'community1ID');
+select fx_event_category(:'category1ID', :'community1ID');
+select fx_group(:'group1ID', :'community1ID', '3a3b0000-0000-0000-0000-000000000017');
 
 -- Event with meeting_in_sync=false for testing preservation
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    meeting_provider_id,
-    meeting_requested,
-    meeting_in_sync,
-    published,
-    starts_at,
-    ends_at
-) values (
-    :'event5ID',
-    :'group1ID',
-    'Event With Pending Sync',
-    'ghi9abc',
-    'This event has a pending meeting sync',
-    'America/New_York',
-    :'category1ID',
-    'virtual',
-    100,
-    'zoom',
-    true,
-    false,
-    true,
-    '2030-03-01 10:00:00-05',
-    '2030-03-01 12:00:00-05'
-);
+select fx_event(:'event5ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2030-03-01 12:00:00-05',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'name', 'Event With Pending Sync',
+    'published', true,
+    'starts_at', '2030-03-01 10:00:00-05',
+    'timezone', 'America/New_York'
+));
 
 -- Event meeting for meeting_in_sync=false preservation
 insert into meeting (
@@ -128,39 +69,17 @@ insert into meeting (
 );
 
 -- Started event with synced automatic meeting
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    published,
-    starts_at,
-    ends_at
-) values (
-    :'event25ID',
-    :'group1ID',
-    'Started Synced Event',
-    'started-synced-event',
-    'This event started with a synced automatic meeting',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    100,
-    true,
-    'zoom',
-    true,
-    true,
-    '2020-02-01 10:00:00+00',
-    '2020-02-01 12:00:00+00'
-);
+select fx_event(:'event25ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2020-02-01 12:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'name', 'Started Synced Event',
+    'published', true,
+    'starts_at', '2020-02-01 10:00:00+00'
+));
 
 -- Started event meeting for archived sync checks
 insert into meeting (event_id, join_url, meeting_id, meeting_provider_id, provider_meeting_id)
@@ -173,29 +92,13 @@ values (
 );
 
 -- Event with session having meeting_in_sync=false
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at
-) values (
-    :'event6ID',
-    :'group1ID',
-    'Event With Session Pending Sync',
-    'jkl2def',
-    'This event has a session with pending meeting sync',
-    'America/New_York',
-    :'category1ID',
-    'virtual',
-    '2030-04-01 09:00:00-04',
-    '2030-04-01 17:00:00-04'
-);
+select fx_event(:'event6ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'ends_at', '2030-04-01 17:00:00-04',
+    'event_kind_id', 'virtual',
+    'name', 'Event With Session Pending Sync',
+    'starts_at', '2030-04-01 09:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Session with pending meeting sync for preservation checks
 insert into session (
@@ -240,33 +143,14 @@ insert into meeting (
 );
 
 -- Started session with synced automatic meeting
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    published,
-    starts_at,
-    ends_at
-) values (
-    :'event26ID',
-    :'group1ID',
-    'Started Session Parent Event',
-    'started-session-parent-event',
-    'This event started with a synced session meeting',
-    'UTC',
-    :'category1ID',
-    'virtual',
-    100,
-    true,
-    '2020-02-02 09:00:00+00',
-    '2020-02-02 13:00:00+00'
-);
+select fx_event(:'event26ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2020-02-02 13:00:00+00',
+    'event_kind_id', 'virtual',
+    'name', 'Started Session Parent Event',
+    'published', true,
+    'starts_at', '2020-02-02 09:00:00+00'
+));
 
 -- Started session row for archived sync checks
 insert into session (
@@ -304,31 +188,15 @@ values (
 );
 
 -- Event with session that has a meeting (for orphan test)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-    published
-) values (
-    :'event7ID',
-    :'group1ID',
-    'Event For Session Removal Test',
-    'mno3ghi',
-    'This event has a session with a meeting',
-    'America/New_York',
-    :'category1ID',
-    'virtual',
-    '2030-05-01 09:00:00-04',
-    '2030-05-01 17:00:00-04',
-    true
-);
+select fx_event(:'event7ID', :'group1ID', :'category1ID', jsonb_build_object(
+    'description', 'This event has a session with a meeting',
+    'ends_at', '2030-05-01 17:00:00-04',
+    'event_kind_id', 'virtual',
+    'name', 'Event For Session Removal Test',
+    'published', true,
+    'starts_at', '2030-05-01 09:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Existing session row for removal/orphan checks
 insert into session (
@@ -360,18 +228,22 @@ insert into meeting (join_url, meeting_id, meeting_provider_id, provider_meeting
 values ('https://zoom.us/j/123123123', :'meeting1ID', 'zoom', '123123123', :'session2ID');
 
 -- Every update fixture uses the unified ticket inventory
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-select gen_random_uuid(), e.event_id, 1, coalesce(e.capacity, 100), 'General Admission'
+select fx_event_ticket_type(
+    gen_random_uuid(),
+    e.event_id,
+    jsonb_build_object(
+        'seats_total', coalesce(e.capacity, 100)
+    )
+)
 from event e
 where e.group_id = :'group1ID';
 
 -- Current free prices for the unified ticket inventory
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
+select fx_event_ticket_price_window(
+    gen_random_uuid(),
+    ett.event_ticket_type_id,
+    jsonb_build_object('amount_minor', 0)
 )
-select gen_random_uuid(), 0, ett.event_ticket_type_id
 from event_ticket_type ett
 join event e using (event_id)
 where e.group_id = :'group1ID';

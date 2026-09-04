@@ -62,294 +62,81 @@ select plan(11);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'event-invitations-community',
-    'Event Invitations Community',
-    'Community for testing event invitation listings',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+select fx_community(:'communityID', jsonb_build_object(
+    'display_name', 'Event Invitations Community',
+    'name', 'event-invitations-community'
+));
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+-- Baseline group categories, event categories and users
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'bouncedDiscountUserID');
+select fx_user(:'endedWindowApprovalUserID');
+select fx_user(:'endedWindowWaitlistUserID');
+select fx_user(:'externalUserID');
+select fx_user(:'invitedUserID');
+select fx_user(:'livePriceUserID');
+select fx_user(:'privateUserID');
+select fx_user(:'refundUserID');
+select fx_user(:'rejectedUserID');
+select fx_user(:'ticketUserID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name
-) values (
-    :'acceptedUserID',
-    'hash-accepted',
-    'accepted@example.com',
-    true,
-    'accepted',
-    'Accepted User'
-), (
-    :'bouncedDiscountUserID',
-    'hash-bounced-discount',
-    'bounced-discount@example.com',
-    true,
-    'bounced-discount-user',
-    'Bounced Discount User'
-), (
-    :'endedWindowApprovalUserID',
-    'hash-ended-window-approval',
-    'ended-window-approval@example.com',
-    true,
-    'ended-window-approval-user',
-    'Ended Window Approval User'
-), (
-    :'endedWindowWaitlistUserID',
-    'hash-ended-window-waitlist',
-    'ended-window-waitlist@example.com',
-    true,
-    'ended-window-waitlist-user',
-    'Ended Window Waitlist User'
-), (
-    :'externalUserID',
-    'hash-external',
-    'external@example.com',
-    true,
-    'external-user',
-    'External User'
-), (
-    :'invitedUserID',
-    'hash-invited',
-    'invited@example.com',
-    true,
-    'invited',
-    'Invited User'
-), (
-    :'livePriceUserID',
-    'hash-live-price',
-    'live-price@example.com',
-    true,
-    'live-price-user',
-    'Live Price User'
-), (
-    :'privateUserID',
-    'hash-private',
-    'private@example.com',
-    true,
-    'private-user',
-    'Private User'
-), (
-    :'refundUserID',
-    'hash-refund',
-    'refund@example.com',
-    true,
-    'refund-user',
-    'Refund User'
-), (
-    :'rejectedUserID',
-    'hash-rejected',
-    'rejected@example.com',
-    true,
-    'rejected',
-    'Rejected User'
-), (
-    :'ticketUserID',
-    'hash-ticket',
-    'ticket@example.com',
-    true,
-    'ticket-user',
-    'Ticket User'
-);
+select fx_user(:'acceptedUserID', jsonb_build_object('username', 'accepted'));
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug, active)
-values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Event Invitations Group', 'events', true),
-    (:'inactiveGroupID', :'communityID', :'groupCategoryID', 'Inactive Group', 'inactive', false);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('name', 'Event Invitations Group'));
+select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
 
 -- Events
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    payment_currency_code,
-    published,
-    canceled,
-    registration_questions,
-    starts_at
-) values (
-    :'eventID',
-    'Future Event',
-    'future-event',
-    'Future event with pending invitations',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'USD',
-    true,
-    false,
-    '[]'::jsonb,
-    '2099-01-02 10:00:00+00'
-), (
-    :'canceledEventID',
-    'Canceled Event',
-    'canceled-event',
-    'Canceled event with ignored invitations',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'USD',
-    true,
-    true,
-    '[]'::jsonb,
-    '2099-01-03 10:00:00+00'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'name', 'Future Event',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2099-01-02 10:00:00+00'
+));
+select fx_event(:'canceledEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2099-01-03 10:00:00+00'
+));
 
 -- Ticketed event hosting the approval offer and external checkout
-insert into event (
-    event_id,
-    canceled,
-    description,
-    event_category_id,
-    event_kind_id,
-    external_payment_instructions,
-    external_payment_url,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    registration_questions,
-    slug,
-    starts_at,
-    timezone
-) values (
-    :'eventTicketedID',
-    false,
-    'Ticket event with an approval offer',
-    :'eventCategoryID',
-    'in-person',
-    'Transfer to the club IBAN and include the reference',
-    'https://pay.example.test/invitations-external',
-    :'groupID',
-    'Ticket Event',
-    'USD',
-    true,
-    format(
+select fx_event(:'eventTicketedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_instructions', 'Transfer to the club IBAN and include the reference',
+    'external_payment_url', 'https://pay.example.test/invitations-external',
+    'name', 'Ticket Event',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'registration_questions', format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Meal", "required": true, "options": []}]',
         :'questionID'
     )::jsonb,
-    'ticket-event',
-    '2099-01-05 10:00:00+00',
-    'UTC'
-);
+    'starts_at', '2099-01-05 10:00:00+00'
+));
 
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    payment_currency_code,
-    published,
-    canceled,
-    registration_questions,
-    starts_at
-) values (
-    :'inactiveGroupEventID',
-    'Inactive Group Event',
-    'inactive-event',
-    'Inactive group event with ignored invitations',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'inactiveGroupID',
-    'USD',
-    true,
-    false,
-    '[]'::jsonb,
-    '2099-01-04 10:00:00+00'
-);
+select fx_event(:'inactiveGroupEventID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'USD',
+    'published', true,
+    'starts_at', '2099-01-04 10:00:00+00'
+));
 
 -- Event whose ticket sales window has ended
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    payment_currency_code,
-    published,
-    canceled,
-    registration_questions,
-    starts_at
-) values (
-    :'endedWindowEventID',
-    'Ended Window Event',
-    'ended-window-event',
-    'Event whose ticket sales window has ended',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'EUR',
-    true,
-    false,
-    '[]'::jsonb,
-    '2099-01-06 10:00:00+00'
-);
+select fx_event(:'endedWindowEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'payment_currency_code', 'EUR',
+    'published', true,
+    'starts_at', '2099-01-06 10:00:00+00'
+));
 
 -- Ticket tier assigned by the approval offer
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketedID',
-    :'ticketTypeID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventTicketedID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Paid price window for the ticket tier
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    1000,
-    :'priceWindowID',
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- Discount used by the bounced-back pending snapshot fixture
 insert into event_discount_code (
@@ -375,44 +162,27 @@ insert into event_discount_code (
 );
 
 -- Ticket tier whose sales window has already ended
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'endedWindowEventID',
-    :'endedWindowTicketTypeID',
-    1,
-    10,
-    'Ended window admission'
-);
+select fx_event_ticket_type(:'endedWindowTicketTypeID', :'endedWindowEventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'Ended window admission'
+));
 
 -- Lapsed price window used by ended-window offer display scenarios
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id,
-    ends_at,
-    starts_at
-) values (
-    2500,
-    :'endedWindowPriceWindowID',
-    :'endedWindowTicketTypeID',
-    current_timestamp - interval '1 minute',
-    current_timestamp - interval '2 days'
-);
+select fx_event_ticket_price_window(:'endedWindowPriceWindowID', :'endedWindowTicketTypeID', jsonb_build_object(
+    'amount_minor', 2500,
+    'ends_at', current_timestamp - interval '1 minute',
+    'starts_at', current_timestamp - interval '2 days'
+));
 
 -- Events without an explicit ticket fixture use default admission tiers
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
+select fx_event_ticket_type(
+    md5(e.event_id::text || ':ticket-type')::uuid,
+    e.event_id,
+    jsonb_build_object(
+        'seats_total', 100,
+        'title', 'General Admission'
+    )
 )
-select e.event_id, md5(e.event_id::text || ':ticket-type')::uuid, 1, 100, 'General Admission'
 from event e
 where not exists (
     select 1
@@ -421,12 +191,11 @@ where not exists (
 );
 
 -- Current free prices for the default admission tiers
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
+select fx_event_ticket_price_window(
+    md5(ett.event_ticket_type_id::text || ':price-window')::uuid,
+    ett.event_ticket_type_id,
+    jsonb_build_object('amount_minor', 0)
 )
-select 0, md5(ett.event_ticket_type_id::text || ':price-window')::uuid, ett.event_ticket_type_id
 from event_ticket_type ett
 where not exists (
     select 1
@@ -435,31 +204,14 @@ where not exists (
 );
 
 -- Paid private tier alongside the event's free public RSVP tier
-insert into event_ticket_type (
-    availability,
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    'invitation_only',
-    :'eventID',
-    :'privateTicketTypeID',
-    2,
-    10,
-    'Private supporter'
-);
+select fx_event_ticket_type(:'privateTicketTypeID', :'eventID', jsonb_build_object(
+    'availability', 'invitation_only',
+    'order', 2,
+    'seats_total', 10,
+    'title', 'Private supporter'
+));
 
-insert into event_ticket_price_window (
-    amount_minor,
-    event_ticket_price_window_id,
-    event_ticket_type_id
-) values (
-    2500,
-    :'privatePriceWindowID',
-    :'privateTicketTypeID'
-);
+select fx_event_ticket_price_window(:'privatePriceWindowID', :'privateTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Event invitation offer states
 insert into admission_offer (

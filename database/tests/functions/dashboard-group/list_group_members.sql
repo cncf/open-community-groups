@@ -23,83 +23,35 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+-- Baseline communities, group categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username,
-    name,
-    photo_url
-) values (
-    :'user1ID',
-    gen_random_bytes(32),
-    'alice@example.com',
-    true,
-    'alice',
-    'Alice',
-    'https://example.com/u1.png'
-), (
-    :'user2ID',
-    gen_random_bytes(32),
-    'bob@example.com',
-    true,
-    'bob',
-    null,
-    'https://example.com/u2.png'
-), (
-    :'user3ID',
-    gen_random_bytes(32),
-    'aaron@example.com',
-    true,
-    'aaron',
-    null,
-    'https://example.com/u3.png'
-), (
-    :'user4ID',
-    gen_random_bytes(32),
-    'alice2@example.com',
-    true,
-    'alice2',
-    'Alice',
-    'https://example.com/u4.png'
-), (
-    :'user5ID',
-    gen_random_bytes(32),
-    'bobby@example.com',
-    true,
-    'bobby',
-    'Bob',
-    'https://example.com/u5.png'
-);
+select fx_user(:'user1ID', jsonb_build_object(
+    'name', 'Alice',
+    'photo_url', 'https://example.com/u1.png',
+    'username', 'alice-list-group-members'
+));
+select fx_user(:'user2ID', jsonb_build_object(
+    'photo_url', 'https://example.com/u2.png',
+    'username', 'bob-list-group-members'
+));
+select fx_user(:'user3ID', jsonb_build_object(
+    'photo_url', 'https://example.com/u3.png',
+    'username', 'aaron'
+));
+select fx_user(:'user4ID', jsonb_build_object(
+    'name', 'Alice',
+    'photo_url', 'https://example.com/u4.png',
+    'username', 'alice2-list-group-members'
+));
+select fx_user(:'user5ID', jsonb_build_object(
+    'name', 'Bob',
+    'photo_url', 'https://example.com/u5.png',
+    'username', 'bobby'
+));
 
 -- Group members
 insert into group_member (group_id, user_id, created_at)
@@ -122,15 +74,15 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'members', '[
-            {"created_at": 1704067200, "username": "alice", "company": null, "name": "Alice",
+            {"created_at": 1704067200, "username": "alice-list-group-members", "company": null, "name": "Alice",
                 "photo_url": "https://example.com/u1.png", "title": null},
-            {"created_at": 1704326400, "username": "alice2", "company": null, "name": "Alice",
+            {"created_at": 1704326400, "username": "alice2-list-group-members", "company": null, "name": "Alice",
                 "photo_url": "https://example.com/u4.png", "title": null},
             {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
                 "photo_url": "https://example.com/u5.png", "title": null},
             {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
                 "photo_url": "https://example.com/u3.png", "title": null},
-            {"created_at": 1704153600, "username": "bob", "company": null, "name": null,
+            {"created_at": 1704153600, "username": "bob-list-group-members", "company": null, "name": null,
                 "photo_url": "https://example.com/u2.png", "title": null}
         ]'::jsonb,
         'total', 5

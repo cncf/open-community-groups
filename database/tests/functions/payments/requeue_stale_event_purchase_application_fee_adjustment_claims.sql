@@ -48,51 +48,27 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the recovery fixtures
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'stale-application-fee-adjustment-community'
-);
-
--- Event category used by the recovery event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the recovery group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the recovery event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Users owning the recovery purchases
-insert into "user" (auth_hash, email, user_id, username) values
-    ('completed-user', 'completed@example.test', :'completedUserID', 'completed-user'),
-    ('failed-user', 'failed@example.test', :'failedUserID', 'failed-user'),
-    ('final-prior-user', 'final-prior@example.test', :'finalPriorUserID', 'final-prior-user'),
-    ('final-user', 'final@example.test', :'finalUserID', 'final-user'),
-    ('recent-user', 'recent@example.test', :'recentUserID', 'recent-user'),
-    ('stale-prior-user', 'stale-prior@example.test', :'stalePriorUserID', 'stale-prior-user'),
-    ('stale-user', 'stale@example.test', :'staleUserID', 'stale-user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'completedUserID');
+select fx_user(:'failedUserID');
+select fx_user(:'finalPriorUserID');
+select fx_user(:'finalUserID');
+select fx_user(:'recentUserID');
+select fx_user(:'stalePriorUserID');
+select fx_user(:'staleUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the recovery purchases
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by every recovery purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 20, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 20,
+    'title', 'General admission'
+));
 
 -- Purchases providing immutable context for every recovery state
 insert into event_purchase (

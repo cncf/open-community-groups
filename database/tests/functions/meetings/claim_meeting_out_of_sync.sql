@@ -57,338 +57,158 @@ select plan(26);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Users for event_host, event_speaker, and session_speaker host aggregation
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'userEventHostID', 'hash1', 'eventhost@example.com', true, 'eventhost'),
-    (:'userEventSpeakerID', 'hash2', 'eventspeaker@example.com', true, 'eventspeaker'),
-    (:'userSessionSpeakerID', 'hash3', 'sessionspeaker@example.com', true, 'sessionspeaker');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'A test group'
-);
+select fx_user(:'userEventHostID', jsonb_build_object(
+    'email', 'eventhost@example.com',
+    'username', 'eventhost'
+));
+select fx_user(:'userEventSpeakerID', jsonb_build_object(
+    'email', 'eventspeaker@example.com',
+    'username', 'eventspeaker'
+));
+select fx_user(:'userSessionSpeakerID', jsonb_build_object(
+    'email', 'sessionspeaker@example.com',
+    'username', 'sessionspeaker'
+));
 
 -- Event candidates and exclusions
 -- Delete-focused rows that could interfere start in sync and are reopened later
-insert into event (
-    capacity,
-    canceled,
-    deleted,
-    description,
-    ends_at,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    meeting_hosts,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    name,
-    published,
-    slug,
-    starts_at,
-    timezone
-) values
-(
-    100,
-    false,
-    false,
-    'Event create test',
-    current_timestamp + interval '1 day 1 hour',
-    :'eventCategoryID',
-    :'eventCreateID',
-    'virtual',
-    :'groupID',
-    array['explicit@example.com'],
-    false,
-    'zoom',
-    true,
-    'Event Create Test',
-    true,
-    'event-create-test',
-    current_timestamp + interval '1 day',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'Event update test',
-    current_timestamp + interval '2 days 2 hours',
-    :'eventCategoryID',
-    :'eventUpdateID',
-    'virtual',
-    :'groupID',
-    null,
-    false,
-    'zoom',
-    true,
-    'Event Update Test',
-    true,
-    'event-update-test',
-    current_timestamp + interval '2 days',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'Parent event for sessions',
-    current_timestamp + interval '3 days 2 hours',
-    :'eventCategoryID',
-    :'eventWithSessionsID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Event With Sessions',
-    true,
-    'event-with-sessions',
-    current_timestamp + interval '3 days',
-    'UTC'
-),
-(
-    100,
-    true,
-    false,
-    'Canceled event delete test',
-    current_timestamp + interval '4 days 1 hour',
-    :'eventCategoryID',
-    :'eventCanceledDeleteID',
-    'virtual',
-    :'groupID',
-    null,
-    false,
-    'zoom',
-    true,
-    'Event Canceled Delete Test',
-    false,
-    'event-canceled-delete-test',
-    current_timestamp + interval '4 days',
-    'UTC'
-),
-(
-    100,
-    false,
-    true,
-    'Soft deleted event test',
-    current_timestamp + interval '4 days 2 hours',
-    :'eventCategoryID',
-    :'eventDeletedID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Event Deleted Test',
-    false,
-    'event-deleted-test',
-    current_timestamp + interval '4 days 1 hour',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'Unpublished event test',
-    current_timestamp + interval '5 days 1 hour',
-    :'eventCategoryID',
-    :'eventUnpublishedID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Event Unpublished Test',
-    false,
-    'event-unpublished-test',
-    current_timestamp + interval '5 days',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'Unpublished event with meeting test',
-    current_timestamp + interval '5 days 2 hours',
-    :'eventCategoryID',
-    :'eventUnpublishedWithMeetingID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Event Unpublished With Meeting Test',
-    false,
-    'event-unpublished-with-meeting-test',
-    current_timestamp + interval '5 days 1 hour',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'Meeting disabled test',
-    current_timestamp + interval '6 days 1 hour',
-    :'eventCategoryID',
-    :'eventDisabledID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    null,
-    false,
-    'Event Disabled Test',
-    true,
-    'event-disabled-test',
-    current_timestamp + interval '6 days',
-    'UTC'
-),
-(
-    100,
-    true,
-    false,
-    'Canceled before meeting creation',
-    current_timestamp + interval '7 days 1 hour',
-    :'eventCategoryID',
-    :'eventCanceledNoMeetingID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Event Canceled No Meeting Test',
-    false,
-    'event-canceled-no-meeting-test',
-    current_timestamp + interval '7 days',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'In-sync event exclusion',
-    current_timestamp + interval '8 days 1 hour',
-    :'eventCategoryID',
-    :'eventInSyncID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Event In Sync Test',
-    true,
-    'event-in-sync-test',
-    current_timestamp + interval '8 days',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'No meeting request exclusion',
-    current_timestamp + interval '9 days 1 hour',
-    :'eventCategoryID',
-    :'eventNoRequestID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    null,
-    false,
-    'Event No Request Test',
-    true,
-    'event-no-request-test',
-    current_timestamp + interval '9 days',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'Past import event exclusion',
-    '2020-06-11 11:00:00+00',
-    :'eventCategoryID',
-    :'eventPastImportID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Past Import Event Test',
-    true,
-    'past-import-event-test',
-    '2020-06-11 10:00:00+00',
-    'UTC'
-),
-(
-    100,
-    false,
-    false,
-    'Event for hard-delete orphan meetings',
-    current_timestamp + interval '10 days 1 hour',
-    :'eventCategoryID',
-    :'eventOrphanCascadeID',
-    'virtual',
-    :'groupID',
-    null,
-    true,
-    'zoom',
-    true,
-    'Event Orphan Cascade Test',
-    true,
-    'event-orphan-cascade-test',
-    current_timestamp + interval '10 days',
-    'UTC'
-);
+select fx_event(:'eventCreateID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '1 day 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_hosts', array['explicit@example.com'],
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'name', 'Event Create Test',
+    'published', true,
+    'starts_at', current_timestamp + interval '1 day'
+));
+select fx_event(:'eventUpdateID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '2 days 2 hours',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'name', 'Event Update Test',
+    'published', true,
+    'starts_at', current_timestamp + interval '2 days'
+));
+select fx_event(:'eventWithSessionsID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '3 days 2 hours',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '3 days'
+));
+select fx_event(:'eventCanceledDeleteID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '4 days 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'starts_at', current_timestamp + interval '4 days'
+));
+select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'deleted', true,
+    'ends_at', current_timestamp + interval '4 days 2 hours',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'starts_at', current_timestamp + interval '4 days 1 hour'
+));
+select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '5 days 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'name', 'Event Unpublished Test',
+    'starts_at', current_timestamp + interval '5 days'
+));
+select fx_event(:'eventUnpublishedWithMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '5 days 2 hours',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'starts_at', current_timestamp + interval '5 days 1 hour'
+));
+select fx_event(:'eventDisabledID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '6 days 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_requested', false,
+    'published', true,
+    'starts_at', current_timestamp + interval '6 days'
+));
+select fx_event(:'eventCanceledNoMeetingID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '7 days 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'starts_at', current_timestamp + interval '7 days'
+));
+select fx_event(:'eventInSyncID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '8 days 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '8 days'
+));
+select fx_event(:'eventNoRequestID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '9 days 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_requested', false,
+    'published', true,
+    'starts_at', current_timestamp + interval '9 days'
+));
+select fx_event(:'eventPastImportID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', '2020-06-11 11:00:00+00',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', '2020-06-11 10:00:00+00'
+));
+select fx_event(:'eventOrphanCascadeID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 100,
+    'ends_at', current_timestamp + interval '10 days 1 hour',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', true,
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'published', true,
+    'starts_at', current_timestamp + interval '10 days'
+));
 
 -- Session candidates
 -- Delete-focused rows start in sync so event and session create/update priority is stable

@@ -23,21 +23,11 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- User who owns both active badges
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'hash', 'order-owner@example.test', true, 'order-owner');
-
--- Community that owns the issuing group
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Order Community', '/logo', 'order-community');
-
--- Category used by the issuing group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that issued the badges
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Order Group', 'order-group');
+-- Baseline community, group categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Status list used by both active awards
 insert into badge_status_list (badge_status_list_id, group_id)

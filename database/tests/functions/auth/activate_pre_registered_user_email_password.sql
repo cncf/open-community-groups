@@ -19,44 +19,19 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    name,
-    auth_hash,
-    email,
-    email_verified,
-    password,
-    registration_status,
-    username
-) values (
-    :'userID',
-    null,
-    'pre-registered-hash',
-    'invited@example.com',
-    false,
-    null,
-    'pre-registered',
-    'invited-user'
-), (
-    :'registeredUserID',
-    'Registered User',
-    'registered-hash',
-    'registered@example.com',
-    false,
-    'secret',
-    'registered',
-    'registered-user'
-), (
-    :'takenUsernameUserID',
-    'Taken User',
-    'taken-hash',
-    'taken@example.com',
-    true,
-    'secret',
-    'registered',
-    'alice'
-);
+-- Pre-registered user activated by email/password signup
+select fx_user(:'userID', jsonb_build_object(
+    'auth_hash', 'pre-registered-hash',
+    'email', 'invited@example.com',
+    'email_verified', false,
+    'registration_status', 'pre-registered'
+));
+
+-- Registered user that cannot be activated again
+select fx_user(:'registeredUserID', jsonb_build_object('email', 'registered@example.com'));
+
+-- Existing username collision for activation
+select fx_user(:'takenUsernameUserID', jsonb_build_object('username', 'alice'));
 
 -- Existing verification code to refresh on activation
 insert into email_verification_code (email_verification_code_id, user_id, created_at)

@@ -32,46 +32,21 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'community1ID',
-    'community-one',
-    'Community One',
-    'Community 1',
-    'https://example.com/community-1-mobile.png',
-    'https://example.com/community-1.png',
-    'https://example.com/community-1-logo.png'
-), (
-    :'community2ID',
-    'community-two',
-    'Community Two',
-    'Community 2',
-    'https://example.com/community-2-mobile.png',
-    'https://example.com/community-2.png',
-    'https://example.com/community-2-logo.png'
-);
+select fx_community(:'community1ID', jsonb_build_object('display_name', 'Community One'));
+
+-- Baseline community and group category
+select fx_community(:'community2ID');
+select fx_group_category(:'groupCategoryID', :'community1ID');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'actor1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice'),
-    (:'actor2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob'),
-    (:'wildcardActorID', gen_random_bytes(32), 'userx1@example.com', true, 'userx1');
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'community1ID', 'Technology');
+select fx_user(:'actor1ID', jsonb_build_object('username', 'alice-audit-logs'));
+-- user
+select fx_user(:'actor2ID', jsonb_build_object('username', 'bob'));
+-- user
+select fx_user(:'wildcardActorID', jsonb_build_object('username', 'userx1'));
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'community1ID', :'groupCategoryID', 'Platform', 'platform');
+select fx_group(:'groupID', :'community1ID', :'groupCategoryID', jsonb_build_object('name', 'Platform'));
 
 -- Audit log rows
 insert into audit_log (
@@ -89,7 +64,7 @@ insert into audit_log (
         :'audit1ID',
         'community_updated',
         :'actor1ID',
-        'alice',
+        'alice-audit-logs',
         :'community1ID',
         '2024-02-01 10:00:00+00',
         '{"subject": "Roadmap updated"}',
@@ -111,7 +86,7 @@ insert into audit_log (
         :'audit3ID',
         'region_added',
         :'actor1ID',
-        'alice',
+        'alice-audit-logs',
         :'community1ID',
         '2024-02-03 10:00:00+00',
         '{}'::jsonb,
@@ -122,7 +97,7 @@ insert into audit_log (
         :'audit4ID',
         'event_added',
         :'actor1ID',
-        'alice',
+        'alice-audit-logs',
         :'community2ID',
         '2024-02-04 10:00:00+00',
         '{}'::jsonb,
@@ -144,7 +119,7 @@ insert into audit_log (
         :'audit5ID',
         'community_team_invitation_accepted',
         :'actor1ID',
-        'alice',
+        'alice-audit-logs',
         :'community1ID',
         '2024-02-06 10:00:00+00',
         '{}'::jsonb,
@@ -166,7 +141,7 @@ insert into audit_log (
         :'audit7ID',
         'region_deleted',
         :'actor1ID',
-        'alice',
+        'alice-audit-logs',
         :'community1ID',
         '2024-02-07 10:00:00+00',
         '{"name": "Atlantis"}'::jsonb,
@@ -202,7 +177,7 @@ select is(
         [
             {
                 "action": "region_deleted",
-                "actor_username": "alice",
+                "actor_username": "alice-audit-logs",
                 "audit_log_id": "%s",
                 "created_at": 1707300000,
                 "details": {"name": "Atlantis"},
@@ -222,12 +197,12 @@ select is(
             },
             {
                 "action": "community_team_invitation_accepted",
-                "actor_username": "alice",
+                "actor_username": "alice-audit-logs",
                 "audit_log_id": "%s",
                 "created_at": 1707213600,
                 "details": {},
                 "resource_id": "%s",
-                "resource_name": "alice",
+                "resource_name": "alice-audit-logs",
                 "resource_type": "user"
             },
             {
@@ -252,7 +227,7 @@ select is(
             },
             {
                 "action": "region_added",
-                "actor_username": "alice",
+                "actor_username": "alice-audit-logs",
                 "audit_log_id": "%s",
                 "created_at": 1706954400,
                 "details": {},
@@ -272,7 +247,7 @@ select is(
             },
             {
                 "action": "community_updated",
-                "actor_username": "alice",
+                "actor_username": "alice-audit-logs",
                 "audit_log_id": "%s",
                 "created_at": 1706781600,
                 "details": {"subject": "Roadmap updated"},
@@ -318,7 +293,7 @@ select is(
         [
             {
                 "action": "community_updated",
-                "actor_username": "alice",
+                "actor_username": "alice-audit-logs",
                 "audit_log_id": "%s",
                 "created_at": 1706781600,
                 "details": {"subject": "Roadmap updated"},
@@ -382,7 +357,7 @@ select is(
         [
             {
                 "action": "community_updated",
-                "actor_username": "alice",
+                "actor_username": "alice-audit-logs",
                 "audit_log_id": "%s",
                 "created_at": 1706781600,
                 "details": {"subject": "Roadmap updated"},

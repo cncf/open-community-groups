@@ -25,110 +25,22 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community for notification-context scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'notification-context-community',
-    'Notification Context Community',
-    'Community for purchase notification context tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category for notification-context scenarios
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category for notification-context scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that owns the purchase under test
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'groupID',
-    'Notification Context Group',
-    'notification-context-group'
-);
-
--- Separate group used by the ownership-miss scenario
-insert into "group" (
-    community_id,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    :'communityID',
-    :'groupCategoryID',
-    :'otherGroupID',
-    'Other Notification Context Group',
-    'other-notification-context-group'
-);
-
--- Attendee who owns the purchase
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (
-    :'attendeeID',
-    'hash-context-attendee',
-    'context-attendee@example.test',
-    true,
-    'context-attendee'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'attendeeID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+select fx_group(:'otherGroupID', :'communityID', :'groupCategoryID');
 
 -- Published event used by the notification-context scenario
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    published,
-    slug,
-    timezone
-) values (
-    'Notification context event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    :'groupID',
-    'Notification Context Event',
-    true,
-    'notification-context-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Ticket type required by the purchase row
-insert into event_ticket_type (
-    event_id,
-    event_ticket_type_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventID',
-    :'eventTicketTypeID',
-    1,
-    50,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 50,
+    'title', 'General admission'
+));
 
 -- Purchase whose identifiers are returned to the notification composer
 insert into event_purchase (

@@ -18,44 +18,10 @@ select plan(3);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'activeCommunityID',
-    'community-name-lookup',
-    'Community Name Lookup',
-    'Community used for ID lookups',
-    'https://example.com/community-name-lookup-banner-mobile.png',
-    'https://example.com/community-name-lookup-banner.png',
-    'https://example.com/community-name-lookup-logo.png'
-);
+select fx_community(:'activeCommunityID', jsonb_build_object('name', 'community-name-lookup'));
 
 -- Second community used to verify identifier-specific lookup
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    active,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'inactiveCommunityID',
-    'inactive-community-name-lookup',
-    'Inactive Community Name Lookup',
-    'Inactive community used for ID lookups',
-    false,
-    'https://example.com/inactive-community-name-lookup-banner-mobile.png',
-    'https://example.com/inactive-community-name-lookup-banner.png',
-    'https://example.com/inactive-community-name-lookup-logo.png'
-);
+select fx_community(:'inactiveCommunityID', jsonb_build_object('active', false));
 
 -- ============================================================================
 -- TESTS

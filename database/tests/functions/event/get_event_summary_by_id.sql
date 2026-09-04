@@ -24,114 +24,35 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'event-summary-community',
-    'Event Summary',
-    'Community for summary tests',
-    'https://example.test/banner-mobile.png',
-    'https://example.test/banner.png',
-    'https://example.test/logo.png'
-), (
-    :'community2ID',
-    'other-community',
-    'Other Community',
-    'Another community',
-    'https://example.test/other-banner-mobile.png',
-    'https://example.test/other-banner.png',
-    'https://example.test/other.png'
-);
+-- Baseline communities, event categories and users
+select fx_community(:'communityID');
+select fx_community(:'community2ID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name, created_at)
-values (:'groupCategoryID', :'communityID', 'Event Category', '2025-01-01 00:00:00');
+-- Group category with scenario-specific state
+select fx_group_category(:'groupCategoryID', :'communityID', jsonb_build_object('created_at', '2025-01-01 00:00:00'));
 
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Summary Events');
+-- Group with scenario-specific state
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('group_site_layout_id', 'default'));
 
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values (:'userID', 'test_hash', 'summary-user@example.test', true, 'summary-user');
+-- Event with scenario-specific state
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 50,
+    'event_kind_id', 'hybrid',
+    'payment_currency_code', 'USD',
+    'published', true,
+    'published_at', '2025-06-01 00:00:00+00',
+    'starts_at', '2025-07-01 10:00:00+00',
+    'timezone', 'America/New_York',
+    'venue_city', 'Metropolis'
+));
 
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, group_site_layout_id)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Summary Group',
-    'summary-group',
-    'default'
-);
+-- Event ticket type with scenario-specific state
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object('seats_total', 50));
 
--- Event
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    published,
-    slug,
-    timezone,
-    venue_city,
-    starts_at,
-    capacity,
-    published_at
-) values (
-    :'eventID',
-    'Event summary test',
-    :'eventCategoryID',
-    'hybrid',
-    :'groupID',
-    'Summary Event',
-    'USD',
-    true,
-    'summary-event',
-    'America/New_York',
-    'Metropolis',
-    '2025-07-01 10:00:00+00',
-    50,
-    '2025-06-01 00:00:00+00'
-);
-
--- Event ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventID',
-    1,
-    50,
-    'General admission'
-);
-
--- Event ticket price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'ticketPriceWindowID',
-    2500,
-    :'ticketTypeID'
-);
+-- Event ticket price window with scenario-specific state
+select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Event attendee
 insert into event_attendee (event_id, user_id, checked_in, checked_in_at, created_at)

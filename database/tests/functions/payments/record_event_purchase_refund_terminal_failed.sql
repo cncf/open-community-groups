@@ -42,134 +42,32 @@ select plan(19);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'record-terminal-refund-failure-community',
-    'Record Terminal Refund Failure Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'failedUserID',
-        'hash-1',
-        'terminal-failed-buyer@example.com',
-        true,
-        'terminal-failed-buyer'
-    ),
-    (
-        :'finalizedUserID',
-        'hash-3',
-        'terminal-finalized-buyer@example.com',
-        true,
-        'terminal-finalized-buyer'
-    ),
-    (
-        :'invalidUserID',
-        'hash-4',
-        'terminal-invalid-buyer@example.com',
-        true,
-        'terminal-invalid-buyer'
-    ),
-    (
-        :'recoveryUserID',
-        'hash-5',
-        'terminal-recovery-buyer@example.com',
-        true,
-        'terminal-recovery-buyer'
-    ),
-    (
-        :'succeededUserID',
-        'hash-2',
-        'terminal-succeeded-buyer@example.com',
-        true,
-        'terminal-succeeded-buyer'
-    );
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Record Terminal Refund Failure Group',
-    'record-terminal-refund-failure-group'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'failedUserID');
+select fx_user(:'finalizedUserID');
+select fx_user(:'invalidUserID');
+select fx_user(:'recoveryUserID');
+select fx_user(:'succeededUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    starts_at,
-    published,
-    published_at
-) values (
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Record Terminal Refund Failure Event',
-    'record-terminal-refund-failure-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 day',
-    true,
-    now()
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'starts_at', now() + interval '1 day'
+));
 
 -- Ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'eventTicketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    2500,
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 2500));
 
 -- Purchases
 insert into event_purchase (
@@ -337,7 +235,7 @@ insert into event_purchase_refund (
     :'failedClaimID',
     current_timestamp,
     null,
-    're_failed_123',
+    're_failed_123_refund_terminal_failed',
     null
 ), (
     :'finalizedRefundID',
@@ -414,7 +312,7 @@ select throws_ok(
     format($$select record_event_purchase_refund_terminal_failed(
         %L::uuid,
         '   ',
-        're_failed_123',
+        're_failed_123_refund_terminal_failed',
         'provider refund failed'
     )$$, :'failedRefundID'),
     'expected idempotency key is required',
@@ -455,7 +353,7 @@ select throws_ok(
     format($$select record_event_purchase_refund_terminal_failed(
         %L::uuid,
         %L,
-        're_failed_123',
+        're_failed_123_refund_terminal_failed',
         'provider refund failed',
         %L::uuid
     )$$,
@@ -472,7 +370,7 @@ select lives_ok(
     format($$select record_event_purchase_refund_terminal_failed(
         %L::uuid,
         %L,
-        're_failed_123',
+        're_failed_123_refund_terminal_failed',
         'provider refund failed',
         %L::uuid
     )$$,
@@ -502,8 +400,8 @@ select results_eq(
         null::timestamptz,
         'provider-failed'::text,
         true,
-        'provider refund failed: re_failed_123'::text,
-        're_failed_123'::text,
+        'provider refund failed: re_failed_123_refund_terminal_failed'::text,
+        're_failed_123_refund_terminal_failed'::text,
         true
     ) $$,
     'Should pin the terminal provider refund without rotating its idempotency key'
@@ -514,7 +412,7 @@ select lives_ok(
     format($$select record_event_purchase_refund_terminal_failed(
         %L::uuid,
         %L,
-        're_failed_123',
+        're_failed_123_refund_terminal_failed',
         'duplicate provider refund failed'
     )$$, :'failedRefundID', 'event-purchase-refund-' || :'failedPurchaseID'),
     'Should accept a duplicate terminal provider failure as an idempotent replay'
@@ -534,8 +432,8 @@ select results_eq(
     $$ values (
         'provider-failed'::text,
 
-        'provider refund failed: re_failed_123'::text,
-        're_failed_123'::text
+        'provider refund failed: re_failed_123_refund_terminal_failed'::text,
+        're_failed_123_refund_terminal_failed'::text
     ) $$,
     'Should preserve the first terminal provider failure on replay'
 );
@@ -560,8 +458,8 @@ select results_eq(
     $$, :'failedRefundID'),
     $$ values (
         'provider-failed'::text,
-        'provider refund failed: re_failed_123'::text,
-        're_failed_123'::text
+        'provider refund failed: re_failed_123_refund_terminal_failed'::text,
+        're_failed_123_refund_terminal_failed'::text
     ) $$,
     'Should keep the current attempt state after a delayed failure'
 );

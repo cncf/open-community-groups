@@ -47,208 +47,55 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'free-community',
-    'Free Community',
-    'Test',
-    'https://e/banner-mobile.png',
-    'https://e/banner.png',
-    'https://e/logo.png'
-);
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'user1ID');
+select fx_user(:'user2ID');
+select fx_user(:'user3ID');
+select fx_user(:'user4ID');
+select fx_user(:'user5ID');
+select fx_user(:'user6ID');
+select fx_user(:'user7ID');
+select fx_user(:'user8ID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
-
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (
-        :'user1ID',
-        'hash-1',
-        'user1@example.com',
-        true,
-        'user-1'
-    ),
-    (
-        :'user2ID',
-        'hash-2',
-        'user2@example.com',
-        true,
-        'user-2'
-    ),
-    (
-        :'user3ID',
-        'hash-3',
-        'user3@example.com',
-        true,
-        'user-3'
-    ),
-    (
-        :'user4ID',
-        'hash-4',
-        'user4@example.com',
-        true,
-        'user-4'
-    ),
-    (
-        :'user5ID',
-        'hash-5',
-        'user5@example.com',
-        true,
-        'user-5'
-    ),
-    (
-        :'user6ID',
-        'hash-6',
-        'user6@example.com',
-        true,
-        'user-6'
-    ),
-    (
-        :'user7ID',
-        'hash-7',
-        'user7@example.com',
-        true,
-        'user-7'
-    ),
-    (
-        :'user8ID',
-        'hash-8',
-        'user8@example.com',
-        true,
-        'user-8'
-    );
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Free Group', 'free-group');
-
--- Event
-insert into event (
-    event_id,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    ends_at,
-    starts_at,
-    published,
-    published_at,
-    registration_questions,
-    registration_starts_at
-) values (
-    -- Event with pending registration answers created during checkout
-    :'eventID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Free Event',
-    'free-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    true,
-    now(),
-    jsonb_build_array(jsonb_build_object(
+-- Event with pending registration answers created during checkout
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'published', true,
+    'published_at', now(),
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', :'registrationQuestionID',
         'kind', 'free-text',
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
     )),
-    null
-), (
-    :'eventInactiveID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Inactive Free Event',
-    'inactive-free-event',
-    'Test event',
-    'UTC',
-    null,
-    now() + interval '1 day',
-    false,
-    null,
-    '[]'::jsonb,
-    null
-), (
-    :'eventOpenUntilStartID',
-    :'eventCategoryID',
-    'in-person',
-    :'groupID',
-    'Open Until Start Free Event',
-    'open-until-start-free-event',
-    'Test event',
-    'UTC',
-    now() + interval '1 hour',
-    now() - interval '1 hour',
-    true,
-    now(),
-    '[]'::jsonb,
-    now() - interval '2 hours'
-);
+    'starts_at', now() + interval '1 day'
+));
 
--- Ticket type
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-)
-values
-    (
-        :'eventTicketTypeID',
-        :'eventID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        :'eventInactiveTicketTypeID',
-        :'eventInactiveID',
-        1,
-        10,
-        'General admission'
-    ),
-    (
-        :'eventOpenUntilStartTicketTypeID',
-        :'eventOpenUntilStartID',
-        1,
-        10,
-        'General admission'
-    );
+-- Unpublished event
+select fx_event(:'eventInactiveID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'starts_at', now() + interval '1 day'
+));
+
+-- Started event whose registration window stays open until the event start
+select fx_event(:'eventOpenUntilStartID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 hour',
+    'published', true,
+    'published_at', now(),
+    'registration_starts_at', now() - interval '2 hours',
+    'starts_at', now() - interval '1 hour'
+));
+
+-- Ticket types
+select fx_event_ticket_type(:'eventTicketTypeID', :'eventID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'eventInactiveTicketTypeID', :'eventInactiveID', jsonb_build_object('seats_total', 10));
+select fx_event_ticket_type(:'eventOpenUntilStartTicketTypeID', :'eventOpenUntilStartID', jsonb_build_object('seats_total', 10));
 
 -- Price window
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    :'priceWindowID',
-    0,
-    :'eventTicketTypeID'
-);
+select fx_event_ticket_price_window(:'priceWindowID', :'eventTicketTypeID', jsonb_build_object('amount_minor', 0));
 
 -- Canceled attendee row reactivated by completing an offer-linked free purchase
 insert into event_attendee (

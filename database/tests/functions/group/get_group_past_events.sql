@@ -29,240 +29,82 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A test community',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community and categories for group event lookup
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+-- Parent group resolved by slug
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'city', 'San Francisco',
+    'country_code', 'US',
+    'country_name', 'United States',
+    'slug', 'test-group',
+    'state', 'CA'
+));
 
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    city,
-    country_code,
-    country_name,
-    state
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'San Francisco',
-    'US',
-    'United States',
-    'CA'
-);
+-- Child groups used by inherited event lookup
+select fx_group(:'childGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupID'));
+select fx_group(:'inactiveChildGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'parent_group_id', :'groupID'
+));
+select fx_group(:'deletedChildGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'active', false,
+    'deleted', true,
+    'parent_group_id', :'groupID'
+));
 
--- Child groups
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    deleted,
+-- Events covering past filters and ordering
+select fx_event(:'event1ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 year' + interval '2 hours',
+    'published', true,
+    'starts_at', now() - interval '1 year'
+));
+select fx_event(:'event2ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '11 months' + interval '2 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() - interval '11 months',
+    'test_event', true
+));
+select fx_event(:'event3ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '1 year' + interval '5 days' + interval '2 hours',
+    'event_kind_id', 'hybrid',
+    'starts_at', now() - interval '1 year' + interval '5 days'
+));
+select fx_event(:'event4ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() + interval '1 year' + interval '2 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() + interval '1 year'
+));
+select fx_event(:'event5ID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '6 months' + interval '2 hours',
+    'event_kind_id', 'virtual',
+    'published', true,
+    'starts_at', now() - interval '6 months'
+));
 
-    parent_group_id
-) values
-    (:'childGroupID', :'communityID', :'groupCategoryID', 'Active Child Group', 'active-child-group', true, false, :'groupID'),
-    (:'inactiveChildGroupID', :'communityID', :'groupCategoryID', 'Inactive Child Group', 'inactive-child-group', false, false, :'groupID'),
-    (:'deletedChildGroupID', :'communityID', :'groupCategoryID', 'Deleted Child Group', 'deleted-child-group', false, true, :'groupID');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Tech Talks');
-
--- Event
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    test_event,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    starts_at,
-    ends_at,
-    logo_url,
-    venue_city
-) values
-    -- Past published event (oldest)
-    (
-        :'event1ID',
-        'Past Event 1',
-        'past-event-1',
-        'First past event',
-        false,
-        'UTC',
-        :'eventCategoryID',
-        'in-person',
-        :'groupID',
-        true,
-        now() - interval '1 year',
-        now() - interval '1 year' + interval '2 hours',
-        'https://example.com/past-event-1.png',
-        'San Francisco'
-    ),
-    -- Past published event (newer)
-    (
-        :'event2ID',
-        'Past Event 2',
-        'past-event-2',
-        'Second past event',
-        true,
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        true,
-        now() - interval '11 months',
-        now() - interval '11 months' + interval '2 hours',
-        'https://example.com/past-event-2.png',
-        'Online'
-    ),
-    -- Past unpublished event (should not be included)
-    (
-        :'event3ID',
-        'Past Event 3',
-        'past-event-3',
-        'Unpublished past event',
-        false,
-        'UTC',
-        :'eventCategoryID',
-        'hybrid',
-        :'groupID',
-        false,
-        now() - interval '1 year' + interval '5 days',
-        now() - interval '1 year' + interval '5 days' + interval '2 hours',
-        null,
-        'New York'
-    ),
-    -- Future event (should not be included)
-    (
-        :'event4ID',
-        'Future Event',
-        'future-event',
-        'A future event',
-        false,
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        true,
-        now() + interval '1 year',
-        now() + interval '1 year' + interval '2 hours',
-        null,
-        'Los Angeles'
-    ),
-    -- Past published event (most recent, should be listed first)
-    (
-        :'event5ID',
-        'Past Event 5',
-        'past-event-5',
-        'Most recent past event',
-        false,
-        'UTC',
-        :'eventCategoryID',
-        'virtual',
-        :'groupID',
-        true,
-        now() - interval '6 months',
-        now() - interval '6 months' + interval '2 hours',
-        'https://example.com/past-event-5.png',
-        'Online'
-    );
-
--- Child group events
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    test_event,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    published,
-    starts_at,
-    ends_at,
-    logo_url,
-    venue_city
-) values
-    (
-        :'childEventID',
-        'Active Child Past Event',
-        'active-child-past-event',
-        'Active child past event',
-        false,
-        'UTC',
-        :'eventCategoryID',
-        'hybrid',
-        :'childGroupID',
-        true,
-        now() - interval '3 months',
-        now() - interval '3 months' + interval '2 hours',
-        null,
-        'San Francisco'
-    ),
-    (
-        :'inactiveChildEventID',
-        'Inactive Child Past Event',
-        'inactive-child-past-event',
-        'Inactive child past event',
-        false,
-        'UTC',
-        :'eventCategoryID',
-        'hybrid',
-        :'inactiveChildGroupID',
-        true,
-        now() - interval '2 months',
-        now() - interval '2 months' + interval '2 hours',
-        null,
-        'San Francisco'
-    ),
-    (
-        :'deletedChildEventID',
-        'Deleted Child Past Event',
-        'deleted-child-past-event',
-        'Deleted child past event',
-        false,
-        'UTC',
-        :'eventCategoryID',
-        'hybrid',
-        :'deletedChildGroupID',
-        true,
-        now() - interval '4 months',
-        now() - interval '4 months' + interval '2 hours',
-        null,
-        'San Francisco'
-    );
+-- Child group events covering active and inactive children
+select fx_event(:'childEventID', :'childGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '3 months' + interval '2 hours',
+    'event_kind_id', 'hybrid',
+    'published', true,
+    'starts_at', now() - interval '3 months'
+));
+select fx_event(:'inactiveChildEventID', :'inactiveChildGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '2 months' + interval '2 hours',
+    'event_kind_id', 'hybrid',
+    'published', true,
+    'starts_at', now() - interval '2 months'
+));
+select fx_event(:'deletedChildEventID', :'deletedChildGroupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', now() - interval '4 months' + interval '2 hours',
+    'event_kind_id', 'hybrid',
+    'published', true,
+    'starts_at', now() - interval '4 months'
+));
 
 -- ============================================================================
 -- TESTS

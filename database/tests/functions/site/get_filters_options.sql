@@ -25,40 +25,25 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values
-    (
-        :'community1ID',
-        'alpha-community',
-        'Alpha Community',
-        'First community',
-        'https://example.com/alpha-banner_mobile.png',
-        'https://example.com/alpha-banner.png',
-        'https://example.com/alpha-logo.png'
-    ),
-    (
-        :'community2ID',
-        'cloud-native-seattle',
-        'Cloud Native Seattle',
-        'A vibrant community',
-        'https://example.com/cns-banner_mobile.png',
-        'https://example.com/cns-banner.png',
-        'https://example.com/cns-logo.png'
-    );
+-- Communities returned as global filter options
+select fx_community(:'community1ID', jsonb_build_object(
+    'display_name', 'Alpha Community',
+    'name', 'alpha-community'
+));
+select fx_community(:'community2ID', jsonb_build_object(
+    'display_name', 'Cloud Native Seattle Filters Options',
+    'name', 'cloud-native-seattle-filters-options'
+));
 
--- Group category
-insert into group_category (group_category_id, community_id, name, "order")
-values
-    (:'groupCategory1ID', :'community2ID', 'Technology', 1),
-    (:'groupCategory2ID', :'community2ID', 'Business', 2);
+-- Group categories returned for the selected community
+select fx_group_category(:'groupCategory1ID', :'community2ID', jsonb_build_object(
+    'name', 'Technology',
+    'order', 1
+));
+select fx_group_category(:'groupCategory2ID', :'community2ID', jsonb_build_object(
+    'name', 'Business',
+    'order', 2
+));
 
 -- Region
 insert into region (region_id, name, community_id, "order")
@@ -66,29 +51,30 @@ values
     (:'region1ID', 'North America', :'community2ID', 1),
     (:'region2ID', 'Europe', :'community2ID', 2);
 
--- Event category
-insert into event_category (event_category_id, community_id, name, "order")
-values
-    (:'eventCategory1ID', :'community2ID', 'Tech Talks', 1),
-    (:'eventCategory2ID', :'community2ID', 'Workshops', 2),
-    (:'eventCategory3ID', :'community2ID', 'Conferences', 3);
+-- Event categories returned for the selected community
+select fx_event_category(:'eventCategory1ID', :'community2ID', jsonb_build_object(
+    'name', 'Tech Talks',
+    'order', 1
+));
+select fx_event_category(:'eventCategory2ID', :'community2ID', jsonb_build_object(
+    'name', 'Workshops',
+    'order', 2
+));
+select fx_event_category(:'eventCategory3ID', :'community2ID', jsonb_build_object(
+    'name', 'Conferences',
+    'order', 3
+));
 
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    active,
-    description,
-    slug_pretty
-)
-values
-    (:'group1ID', :'community2ID', :'groupCategory1ID',
-        'Alpha Group', 'alpha-group', true, 'First group', 'alpha-group-pretty'),
-    (:'group2ID', :'community2ID', :'groupCategory2ID',
-        'Beta Group', 'beta-group', true, 'Second group', null);
+-- Groups returned as event filter options
+select fx_group(:'group1ID', :'community2ID', :'groupCategory1ID', jsonb_build_object(
+    'name', 'Alpha Group',
+    'slug', 'alpha-group',
+    'slug_pretty', 'alpha-group-pretty'
+));
+select fx_group(:'group2ID', :'community2ID', :'groupCategory2ID', jsonb_build_object(
+    'name', 'Beta Group',
+    'slug', 'beta-group'
+));
 
 -- ============================================================================
 -- TESTS
@@ -100,7 +86,7 @@ select is(
     '{
         "communities": [
             {"name": "Alpha Community", "value": "alpha-community"},
-            {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
+            {"name": "Cloud Native Seattle Filters Options", "value": "cloud-native-seattle-filters-options"}
         ],
         "distance": [
             {"name": "10 km", "value": "10000"},
@@ -115,11 +101,11 @@ select is(
 
 -- Should return community filters but not groups when entity_kind is groups
 select is(
-    get_filters_options('cloud-native-seattle', 'groups')::jsonb,
+    get_filters_options('cloud-native-seattle-filters-options', 'groups')::jsonb,
     '{
         "communities": [
             {"name": "Alpha Community", "value": "alpha-community"},
-            {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
+            {"name": "Cloud Native Seattle Filters Options", "value": "cloud-native-seattle-filters-options"}
         ],
         "distance": [
             {"name": "10 km", "value": "10000"},
@@ -147,11 +133,11 @@ select is(
 
 -- Should return all filter options including groups when entity_kind is events
 select is(
-    get_filters_options('cloud-native-seattle', 'events')::jsonb,
+    get_filters_options('cloud-native-seattle-filters-options', 'events')::jsonb,
     '{
         "communities": [
             {"name": "Alpha Community", "value": "alpha-community"},
-            {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
+            {"name": "Cloud Native Seattle Filters Options", "value": "cloud-native-seattle-filters-options"}
         ],
         "distance": [
             {"name": "10 km", "value": "10000"},
@@ -187,7 +173,7 @@ select is(
     '{
         "communities": [
             {"name": "Alpha Community", "value": "alpha-community"},
-            {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
+            {"name": "Cloud Native Seattle Filters Options", "value": "cloud-native-seattle-filters-options"}
         ],
         "distance": [
             {"name": "10 km", "value": "10000"},
@@ -210,7 +196,7 @@ select is(
     '{
         "communities": [
             {"name": "Alpha Community", "value": "alpha-community"},
-            {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
+            {"name": "Cloud Native Seattle Filters Options", "value": "cloud-native-seattle-filters-options"}
         ],
         "distance": [
             {"name": "10 km", "value": "10000"},

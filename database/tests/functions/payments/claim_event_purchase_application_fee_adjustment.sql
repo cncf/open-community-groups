@@ -11,76 +11,52 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set adjustmentID 'd7320000-0000-0000-0000-000000000001'
-\set blockedAdjustmentID 'd7320000-0000-0000-0000-000000000020'
-\set blockedPurchaseID 'd7320000-0000-0000-0000-000000000021'
-\set blockedUserID 'd7320000-0000-0000-0000-000000000022'
-\set communityID 'd7320000-0000-0000-0000-000000000002'
-\set eventCategoryID 'd7320000-0000-0000-0000-000000000003'
-\set eventID 'd7320000-0000-0000-0000-000000000004'
-\set finalAdjustmentID 'd7320000-0000-0000-0000-000000000010'
-\set finalPurchaseID 'd7320000-0000-0000-0000-000000000011'
-\set finalUserID 'd7320000-0000-0000-0000-000000000017'
-\set groupCategoryID 'd7320000-0000-0000-0000-000000000005'
-\set groupID 'd7320000-0000-0000-0000-000000000006'
-\set purchaseID 'd7320000-0000-0000-0000-000000000007'
-\set retryAdjustmentID 'd7320000-0000-0000-0000-000000000012'
-\set retryPurchaseID 'd7320000-0000-0000-0000-000000000013'
-\set retryUserID 'd7320000-0000-0000-0000-000000000018'
-\set staleAdjustmentID 'd7320000-0000-0000-0000-000000000014'
-\set staleClaimID 'd7320000-0000-0000-0000-000000000015'
-\set stalePurchaseID 'd7320000-0000-0000-0000-000000000016'
-\set staleUserID 'd7320000-0000-0000-0000-000000000019'
-\set ticketTypeID 'd7320000-0000-0000-0000-000000000008'
-\set userID 'd7320000-0000-0000-0000-000000000009'
+\set adjustmentID '79030000-0000-0000-0000-000000000001'
+\set blockedAdjustmentID '79030000-0000-0000-0000-000000000020'
+\set blockedPurchaseID '79030000-0000-0000-0000-000000000021'
+\set blockedUserID '79030000-0000-0000-0000-000000000022'
+\set communityID '79030000-0000-0000-0000-000000000002'
+\set eventCategoryID '79030000-0000-0000-0000-000000000003'
+\set eventID '79030000-0000-0000-0000-000000000004'
+\set finalAdjustmentID '79030000-0000-0000-0000-000000000010'
+\set finalPurchaseID '79030000-0000-0000-0000-000000000011'
+\set finalUserID '79030000-0000-0000-0000-000000000017'
+\set groupCategoryID '79030000-0000-0000-0000-000000000005'
+\set groupID '79030000-0000-0000-0000-000000000006'
+\set purchaseID '79030000-0000-0000-0000-000000000007'
+\set retryAdjustmentID '79030000-0000-0000-0000-000000000012'
+\set retryPurchaseID '79030000-0000-0000-0000-000000000013'
+\set retryUserID '79030000-0000-0000-0000-000000000018'
+\set staleAdjustmentID '79030000-0000-0000-0000-000000000014'
+\set staleClaimID '79030000-0000-0000-0000-000000000015'
+\set stalePurchaseID '79030000-0000-0000-0000-000000000016'
+\set staleUserID '79030000-0000-0000-0000-000000000019'
+\set ticketTypeID '79030000-0000-0000-0000-000000000008'
+\set userID '79030000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the adjustment event
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'claim-fee-adjustment-community'
-);
-
--- Event category used by the adjustment event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the adjustment group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the adjustment event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- Attendees owning the direct-charge purchases
-insert into "user" (auth_hash, email, user_id, username) values
-    ('user', 'user@example.test', :'userID', 'user'),
-    ('blocked-user', 'blocked-user@example.test', :'blockedUserID', 'blocked-user'),
-    ('final-user', 'final-user@example.test', :'finalUserID', 'final-user'),
-    ('retry-user', 'retry-user@example.test', :'retryUserID', 'retry-user'),
-    ('stale-user', 'stale-user@example.test', :'staleUserID', 'stale-user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'blockedUserID');
+select fx_user(:'finalUserID');
+select fx_user(:'retryUserID');
+select fx_user(:'staleUserID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the direct-charge purchases
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by each purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 10, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Purchases providing immutable context for each claim state
 insert into event_purchase (

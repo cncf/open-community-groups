@@ -19,48 +19,12 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cncf-seattle',
-    'CNCF Seattle',
-    'Community for group category delete tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline community, group category and groups
+select fx_community(:'communityID');
+select fx_group_category(:'inUseGroupCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'inUseGroupCategoryID');
 
--- Group categories
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
-) values
-    (:'inUseGroupCategoryID', :'communityID', 'Platform'),
-    (:'unusedGroupCategoryID', :'communityID', 'Security');
-
--- Group using the first category
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'inUseGroupCategoryID',
-    'Seattle Platform',
-    'seattle-platform'
-);
+select fx_group_category(:'unusedGroupCategoryID', :'communityID', jsonb_build_object('name', 'Security'));
 
 -- ============================================================================
 -- TESTS

@@ -16,49 +16,24 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    password,
-    provider,
-    registration_status,
-    username
-) values (
-    :'registeredUserID',
-    'registered-hash',
-    'registered@example.com',
-    true,
-    'registered-password',
-    jsonb_build_object(
+-- Verified registered user matched by Linux Foundation identity
+select fx_user(:'registeredUserID', jsonb_build_object('provider', jsonb_build_object(
+    'linuxfoundation', jsonb_build_object(
+        'issuer', 'https://issuer.example.com',
+        'subject', 'auth0|registered'
+    )
+)));
+
+-- Unverified registered user excluded from Linux Foundation identity lookup
+select fx_user(:'unverifiedUserID', jsonb_build_object(
+    'email_verified', false,
+    'provider', jsonb_build_object(
         'linuxfoundation', jsonb_build_object(
-            'username', 'lf-registered'
-        ) || jsonb_build_object(
-            'issuer', 'https://issuer.example.com',
-            'subject', 'auth0|registered'
-        )
-    ),
-    'registered',
-    'registered-user'
-), (
-    :'unverifiedUserID',
-    'unverified-hash',
-    'unverified@example.com',
-    false,
-    null,
-    jsonb_build_object(
-        'linuxfoundation', jsonb_build_object(
-            'username', 'lf-unverified'
-        ) || jsonb_build_object(
             'issuer', 'https://issuer.example.com',
             'subject', 'auth0|unverified'
         )
-    ),
-    'registered',
-    'unverified-user'
-);
+    )
+));
 
 -- ============================================================================
 -- TESTS

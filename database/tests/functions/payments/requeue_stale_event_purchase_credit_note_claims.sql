@@ -49,45 +49,21 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community owning the recovery fixtures
-insert into community (
-    banner_mobile_url, banner_url, community_id, description, display_name,
-    logo_url, name
-) values (
-    'https://example.test/mobile.png', 'https://example.test/banner.png',
-    :'communityID', 'Community', 'Community', 'https://example.test/logo.png',
-    'stale-credit-note-community'
-);
-
--- Event category used by the recovery event
-insert into event_category (community_id, event_category_id, name)
-values (:'communityID', :'eventCategoryID', 'Events');
-
--- Group category used by the recovery group
-insert into group_category (community_id, group_category_id, name)
-values (:'communityID', :'groupCategoryID', 'Groups');
-
--- Group owning the recovery event
-insert into "group" (community_id, group_category_id, group_id, name, slug)
-values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
-
--- User owning the recovery purchases
-insert into "user" (auth_hash, email, user_id, username)
-values ('user', 'user@example.test', :'userID', 'user');
+-- Baseline community, categories, users and group
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'userID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event associated with the recovery purchases
-insert into event (
-    description, event_category_id, event_id, event_kind_id, group_id, name,
-    payment_currency_code, slug, timezone
-) values (
-    'Event', :'eventCategoryID', :'eventID', 'in-person', :'groupID', 'Event',
-    'USD', 'event', 'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('payment_currency_code', 'USD'));
 
 -- Ticket type snapshotted by every recovery purchase
-insert into event_ticket_type (
-    event_id, event_ticket_type_id, "order", seats_total, title
-) values (:'eventID', :'ticketTypeID', 1, 20, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 20,
+    'title', 'General admission'
+));
 
 -- Purchases providing immutable context for every recovery state
 insert into event_purchase (
@@ -102,13 +78,13 @@ insert into event_purchase (
     tax_behavior, tax_calculation_mode, tax_classification, ticket_title,
     user_id, venue_snapshot
 ) values
-    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_failed', 'ch_failed', 'cs_failed', 'in_failed', 'acct_recovery', 'pi_failed', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
-    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'finalPriorPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_final_prior', 'ch_final_prior', 'cs_final_prior', 'in_final_prior', 'acct_recovery', 'pi_final_prior', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
-    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'finalPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_final', 'ch_final', 'cs_final', 'in_final', 'acct_recovery', 'pi_final', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
+    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'failedPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_failed', 'ch_failed_stale_credit_note_claims', 'cs_failed_stale_credit_note_claims', 'in_failed', 'acct_recovery', 'pi_failed_stale_credit_note_claims', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
+    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'finalPriorPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_final_prior', 'ch_final_prior_stale_credit_note_claims', 'cs_final_prior_stale_credit_note_claims', 'in_final_prior', 'acct_recovery', 'pi_final_prior_stale_credit_note_claims', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
+    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'finalPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_final', 'ch_final_stale_credit_note_claims', 'cs_final_stale_credit_note_claims', 'in_final', 'acct_recovery', 'pi_final_stale_credit_note_claims', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
     (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'issuedPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_issued', 'ch_issued', 'cs_issued', 'in_issued', 'acct_recovery', 'pi_issued', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
-    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'recentPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_recent', 'ch_recent', 'cs_recent', 'in_recent', 'acct_recovery', 'pi_recent', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
-    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'stalePriorPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_stale_prior', 'ch_stale_prior', 'cs_stale_prior', 'in_stale_prior', 'acct_recovery', 'pi_stale_prior', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
-    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_stale', 'ch_stale', 'cs_stale', 'in_stale', 'acct_recovery', 'pi_stale', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb);
+    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'recentPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_recent', 'ch_recent_stale_credit_note_claims', 'cs_recent_stale_credit_note_claims', 'in_recent', 'acct_recovery', 'pi_recent_stale_credit_note_claims', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
+    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'stalePriorPurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_stale_prior', 'ch_stale_prior_stale_credit_note_claims', 'cs_stale_prior_stale_credit_note_claims', 'in_stale_prior', 'acct_recovery', 'pi_stale_prior_stale_credit_note_claims', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb),
+    (2500, 'direct-charge', current_timestamp, 'acct_recovery', 'USD', :'eventID', :'stalePurchaseID', :'ticketTypeID', 100, 'stripe', 'fee_stale', 'ch_stale_stale_credit_note_claims', 'cs_stale_stale_credit_note_claims', 'in_stale', 'acct_recovery', 'pi_stale_stale_credit_note_claims', 2500, 100, '{"display_name":"Sponsor"}'::jsonb, 'refunded', 2300, 200, 'inclusive', 'manual', 'professional-event-admission', 'General admission', :'userID', '{}'::jsonb);
 
 -- Successful refunds required by the credit-note fixtures
 insert into event_purchase_refund (
@@ -118,11 +94,11 @@ insert into event_purchase_refund (
 ) values
     (2500, 'USD', :'failedPurchaseID', :'failedRefundID', 'recover-refund-failed', 'automatic-unfulfillable-checkout', 'stripe', 're_failed', current_timestamp, 'provider-succeeded'),
     (2500, 'USD', :'finalPriorPurchaseID', :'finalPriorRefundID', 'recover-refund-final-prior', 'automatic-unfulfillable-checkout', 'stripe', 're_final_prior', current_timestamp, 'provider-succeeded'),
-    (2500, 'USD', :'finalPurchaseID', :'finalRefundID', 'recover-refund-final', 'automatic-unfulfillable-checkout', 'stripe', 're_final', current_timestamp, 'provider-succeeded'),
+    (2500, 'USD', :'finalPurchaseID', :'finalRefundID', 'recover-refund-final', 'automatic-unfulfillable-checkout', 'stripe', 're_final_stale_credit_note_claims', current_timestamp, 'provider-succeeded'),
     (2500, 'USD', :'issuedPurchaseID', :'issuedRefundID', 'recover-refund-issued', 'automatic-unfulfillable-checkout', 'stripe', 're_issued', current_timestamp, 'provider-succeeded'),
     (2500, 'USD', :'recentPurchaseID', :'recentRefundID', 'recover-refund-recent', 'automatic-unfulfillable-checkout', 'stripe', 're_recent', current_timestamp, 'provider-succeeded'),
     (2500, 'USD', :'stalePriorPurchaseID', :'stalePriorRefundID', 'recover-refund-stale-prior', 'automatic-unfulfillable-checkout', 'stripe', 're_stale_prior', current_timestamp, 'provider-succeeded'),
-    (2500, 'USD', :'stalePurchaseID', :'staleRefundID', 'recover-refund-stale', 'automatic-unfulfillable-checkout', 'stripe', 're_stale', current_timestamp, 'provider-succeeded');
+    (2500, 'USD', :'stalePurchaseID', :'staleRefundID', 'recover-refund-stale', 'automatic-unfulfillable-checkout', 'stripe', 're_stale_stale_credit_note_claims', current_timestamp, 'provider-succeeded');
 
 -- Credit notes covering recovery and protected states
 insert into event_purchase_credit_note (

@@ -24,6 +24,11 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline communities, group categories and event categories
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+
 -- Operator allowlist used by the ready-event scenario
 insert into external_payments_config (
     allowed_countries,
@@ -35,137 +40,29 @@ insert into external_payments_config (
     336
 );
 
--- Community for readiness scenarios
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'external-ready-community',
-    'External Ready Community',
-    'Community for external readiness tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category for readiness scenarios
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category for readiness scenarios
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
 -- Allowlisted group with the external-payments toggle enabled
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'KR',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'groupID',
-    'External Ready Group',
-    'external-ready-group'
-);
+select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'KR',
+    'external_payments_enabled', true
+));
 
 -- Group outside the allowlist
-insert into "group" (
-    country_code,
-    community_id,
-    external_payments_enabled,
-    group_category_id,
-    group_id,
-    name,
-    slug
-) values (
-    'US',
-    :'communityID',
-    true,
-    :'groupCategoryID',
-    :'groupUnreadyID',
-    'External Unready Group',
-    'external-unready-group'
-);
+select fx_group(:'groupUnreadyID', :'communityID', :'groupCategoryID', jsonb_build_object(
+    'country_code', 'US',
+    'external_payments_enabled', true
+));
+
+-- Event without an external payment URL
+select fx_event(:'eventNoUrlID', :'groupID', :'eventCategoryID');
 
 -- External-marked event on the allowlisted group
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Ready event',
-    :'eventCategoryID',
-    :'eventID',
-    'in-person',
-    'https://pay.example.test/ready',
-    :'groupID',
-    'Ready Event',
-    'ready-event',
-    'UTC'
-);
-
--- Allowlisted event without an external payment URL
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'No URL event',
-    :'eventCategoryID',
-    :'eventNoUrlID',
-    'in-person',
-    :'groupID',
-    'No URL Event',
-    'no-url-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'external_payment_url', 'https://pay.example.test/ready',
+    'slug', 'ready-event'
+));
 
 -- External-marked event on a group that is not allowlisted
-insert into event (
-    description,
-    event_category_id,
-    event_id,
-    event_kind_id,
-    external_payment_url,
-    group_id,
-    name,
-    slug,
-    timezone
-) values (
-    'Unready event',
-    :'eventCategoryID',
-    :'eventUnreadyID',
-    'in-person',
-    'https://pay.example.test/unready',
-    :'groupUnreadyID',
-    'Unready Event',
-    'unready-event',
-    'UTC'
-);
+select fx_event(:'eventUnreadyID', :'groupUnreadyID', :'eventCategoryID', jsonb_build_object('external_payment_url', 'https://pay.example.test/unready'));
 
 -- ============================================================================
 -- TESTS

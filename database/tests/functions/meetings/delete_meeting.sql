@@ -27,92 +27,27 @@ select plan(18);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event Category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
-
--- Group Category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    name,
-    slug,
-    description
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Test Group',
-    'test-group',
-    'A test group'
-);
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event: has meeting to delete (with previous error)
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    canceled,
-    capacity,
-    meeting_error,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'eventID',
-    :'groupID',
-    'Event Test',
-    'event-test',
-    'Test event for meeting delete',
-    'America/New_York',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-01 10:00:00-04',
-    '2025-06-01 11:00:00-04',
-
-    true,
-    100,
-    'Previous sync error',
-    false,
-    'zoom',
-    'event-claim-host@example.com',
-    true,
-    current_timestamp
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', '2025-06-01 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_error', 'Previous sync error',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-claim-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-01 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Meeting linked to event
 insert into meeting (
@@ -125,54 +60,27 @@ insert into meeting (
 ) values (
     :'meetingEventID',
     :'eventID',
-    'https://zoom.us/j/123456789',
+    'https://zoom.us/j/123456789-delete',
     'zoom',
     'pass123',
-    '123456789'
+    '123456789-delete'
 );
 
 -- Event with stale claim: has meeting to delete after owner state changes
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    canceled,
-    capacity,
-    meeting_error,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'eventStaleClaimID',
-    :'groupID',
-    'Event Stale Claim',
-    'event-stale-claim',
-    'Test event for stale meeting delete',
-    'America/New_York',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-02 10:00:00-04',
-    '2025-06-02 11:00:00-04',
-
-    true,
-    100,
-    'Previous sync error',
-    false,
-    'zoom',
-    'event-stale-claim-host@example.com',
-    true,
-    current_timestamp
-);
+select fx_event(:'eventStaleClaimID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', '2025-06-02 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_error', 'Previous sync error',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-stale-claim-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-02 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Meeting linked to stale event claim
 insert into meeting (
@@ -192,45 +100,19 @@ insert into meeting (
 );
 
 -- Event with reassigned claim: worker token no longer matches
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    canceled,
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_provider_host_user,
-    meeting_requested,
-    meeting_sync_claimed_at
-) values (
-    :'eventReassignedClaimID',
-    :'groupID',
-    'Event Reassigned Claim',
-    'event-reassigned-claim',
-    'Test event reclaimed by another worker',
-    'America/New_York',
-    :'eventCategoryID',
-    'virtual',
-    '2025-06-03 10:00:00-04',
-    '2025-06-03 11:00:00-04',
-
-    true,
-    100,
-    false,
-    'zoom',
-    'event-reassigned-claim-host@example.com',
-    true,
-    current_timestamp
-);
+select fx_event(:'eventReassignedClaimID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'canceled', true,
+    'capacity', 100,
+    'ends_at', '2025-06-03 11:00:00-04',
+    'event_kind_id', 'virtual',
+    'meeting_in_sync', false,
+    'meeting_provider_host_user', 'event-reassigned-claim-host@example.com',
+    'meeting_provider_id', 'zoom',
+    'meeting_requested', true,
+    'meeting_sync_claimed_at', current_timestamp,
+    'starts_at', '2025-06-03 10:00:00-04',
+    'timezone', 'America/New_York'
+));
 
 -- Meeting linked to reassigned event claim
 insert into meeting (

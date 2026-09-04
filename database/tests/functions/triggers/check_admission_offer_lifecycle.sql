@@ -29,110 +29,30 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'offer-lifecycle-community',
-    'Offer Lifecycle Community',
-    'Community for admission offer lifecycle tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category used by the lifecycle event
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category used by the hosting group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'Offer Lifecycle Group',
-    'offer-lifecycle-group'
-);
-
--- Offer recipients
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (
-        :'claimOverwriteUserID',
-        'hash-claim-overwrite',
-        'claim-overwrite@example.test',
-        true,
-        'claim-overwrite-user'
-    ),
-    (:'checkoutUserID', 'hash-checkout', 'checkout@example.test', true, 'checkout-user'),
-    (:'pendingUserID', 'hash-pending', 'pending@example.test', true, 'pending-user'),
-    (
-        :'replacementUserID',
-        'hash-replacement',
-        'replacement@example.test',
-        true,
-        'replacement-user'
-    );
+-- Baseline community, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'claimOverwriteUserID');
+select fx_user(:'checkoutUserID');
+select fx_user(:'pendingUserID');
+select fx_user(:'replacementUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Ticketed event
-insert into event (
-    event_id,
-    description,
-    event_category_id,
-    event_kind_id,
-    group_id,
-    name,
-    payment_currency_code,
-    slug,
-    timezone
-) values (
-    :'eventID',
-    'Event for admission offer lifecycle tests',
-    :'eventCategoryID',
-    'virtual',
-    :'groupID',
-    'Offer Lifecycle Event',
-    'USD',
-    'offer-lifecycle-event',
-    'UTC'
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'event_kind_id', 'virtual',
+    'payment_currency_code', 'USD'
+));
 
 -- Ticket tier reserved by the lifecycle offers
-insert into event_ticket_type (
-    event_ticket_type_id,
-    event_id,
-    "order",
-    seats_total,
-    title
-) values (
-    :'ticketTypeID',
-    :'eventID',
-    1,
-    10,
-    'General admission'
-);
+select fx_event_ticket_type(:'ticketTypeID', :'eventID', jsonb_build_object(
+    'seats_total', 10,
+    'title', 'General admission'
+));
 
 -- Paid price window for the ticket tier
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-) values (
-    gen_random_uuid(),
-    1000,
-    :'ticketTypeID'
-);
+select fx_event_ticket_price_window(gen_random_uuid(), :'ticketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- Pending, snapshotted-pending, and checkout-pending offers
 insert into admission_offer (

@@ -18,53 +18,17 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (
-    user_id,
-    name,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values (
-    :'excludedUserID',
-    'Reserved User',
-    'reserved-hash',
-    'reserved@example.com',
-    true,
-    'reserved'
-), (
-    :'exhaustedUsernameUserID',
-    'Exhausted User',
-    'exhausted-hash',
-    'exhausted@example.com',
-    true,
-    'exhausted'
-), (
-    :'user2ID',
-    'Taken User',
-    'taken-hash',
-    'taken@example.com',
-    true,
-    'taken'
-), (
-    :'user3ID',
-    'Taken User 2',
-    'taken-2-hash',
-    'taken2@example.com',
-    true,
-    'taken2'
-);
+-- Existing usernames used by collision resolution
+select fx_user(:'excludedUserID', jsonb_build_object('username', 'reserved'));
+select fx_user(:'exhaustedUsernameUserID', jsonb_build_object('username', 'exhausted'));
+select fx_user(:'user2ID', jsonb_build_object('username', 'taken'));
+select fx_user(:'user3ID', jsonb_build_object('username', 'taken2'));
 
 -- Exhausted username variants
-insert into "user" (user_id, name, auth_hash, email, email_verified, username)
-select
+select fx_user(
     ('0a080000-0000-0000-0000-' || lpad((100 + suffix)::text, 12, '0'))::uuid,
-    format('Exhausted User %s', suffix),
-    'exhausted-hash-' || suffix,
-    format('exhausted%s@example.com', suffix),
-    true,
-    'exhausted' || suffix
+    jsonb_build_object('username', 'exhausted' || suffix)
+)
 from generate_series(2, 99) as suffix;
 
 -- ============================================================================

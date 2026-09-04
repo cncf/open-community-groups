@@ -25,44 +25,17 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'capacity-sync-community',
-    'Capacity Sync Community',
-    'Community for capacity synchronization trigger tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Event category used by the events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group category used by the hosting group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Capacity Sync Group', 'capacity-sync-group');
+-- Baseline community, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Event whose capacity follows its ticket tiers
-insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
-values (:'eventID', 'Event with synced capacity', :'eventCategoryID', 'virtual', :'groupID', 'Synced Event', 'synced-event', 'UTC');
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Event receiving a moved ticket tier
-insert into event (event_id, description, event_category_id, event_kind_id, group_id, name, slug, timezone)
-values (:'otherEventID', 'Event receiving a tier', :'eventCategoryID', 'virtual', :'groupID', 'Receiving Event', 'receiving-event', 'UTC');
+select fx_event(:'otherEventID', :'groupID', :'eventCategoryID', jsonb_build_object('event_kind_id', 'virtual'));
 
 -- Ticket tier of the receiving event
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)

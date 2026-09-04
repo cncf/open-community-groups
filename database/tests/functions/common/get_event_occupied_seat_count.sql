@@ -42,193 +42,79 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'seat-count-community',
-    'Seat Count Community',
-    'Community for occupied seat count tests',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
+-- Baseline communities, group categories, event categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_user(:'activeCheckoutUserID');
+select fx_user(:'expiredCheckoutUserID');
+select fx_user(:'expiredOfferUserID');
+select fx_user(:'manualPendingUserID');
+select fx_user(:'refundPurchaseUserID');
+select fx_user(:'ticketOfferUserID');
+select fx_user(:'freePendingUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Seat Count Group', 'seat-count-group');
-
--- Users
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    username
-) values (
-    :'activeCheckoutUserID',
-    gen_random_bytes(32),
-    'active-checkout@example.com',
-    true,
-    'active-checkout'
-), (
-    :'confirmedUserID',
-    gen_random_bytes(32),
-    'confirmed@example.com',
-    true,
-    'confirmed'
-), (
-    :'expiredCheckoutUserID',
-    gen_random_bytes(32),
-    'expired-checkout@example.com',
-    true,
-    'expired-checkout'
-), (
-    :'expiredOfferUserID',
-    gen_random_bytes(32),
-    'expired-offer@example.com',
-    true,
-    'expired-offer'
-), (
-    :'manualPendingUserID',
-    gen_random_bytes(32),
-    'manual-pending@example.com',
-    true,
-    'manual-pending'
-), (
-    :'refundPurchaseUserID',
-    gen_random_bytes(32),
-    'refund-purchase@example.com',
-    true,
-    'refund-purchase'
-), (
-    :'ticketOfferUserID',
-    gen_random_bytes(32),
-    'ticket-offer@example.com',
-    true,
-    'ticket-offer'
-), (
-    :'freePendingUserID',
-    gen_random_bytes(32),
-    'free-pending@example.com',
-    true,
-    'free-pending'
-);
+select fx_user(:'confirmedUserID', jsonb_build_object('username', 'confirmed'));
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    capacity,
-    payment_currency_code,
-    starts_at,
-    registration_questions
-) values (
-    :'ticketedEventID',
-    :'groupID',
-    'Ticketed Questions Event',
-    'ticketed-questions-event',
-    'Ticketed event for occupied seat count tests',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    5,
-    'USD',
-    '2030-01-01 10:00:00+00',
-    jsonb_build_array(jsonb_build_object(
+select fx_event(:'ticketedEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'payment_currency_code', 'USD',
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', :'question1ID',
         'kind', 'free-text',
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
-    ))
-), (
-    :'freeEventID',
-    :'groupID',
-    'Free Questions Event',
-    'free-questions-event',
-    'Free event for occupied seat count tests',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    5,
-    null,
-    '2030-01-02 10:00:00+00',
-    jsonb_build_array(jsonb_build_object(
+    )),
+    'starts_at', '2030-01-01 10:00:00+00'
+));
+select fx_event(:'freeEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'registration_questions', jsonb_build_array(jsonb_build_object(
         'id', :'question2ID',
         'kind', 'free-text',
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
-    ))
-), (
-    :'offerEventID',
-    :'groupID',
-    'Offer Event',
-    'offer-event',
-    'Event for active and expired offer counts',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    5,
-    'USD',
-    '2030-01-03 10:00:00+00',
-    '[]'::jsonb
-), (
-    :'refundEventID',
-    :'groupID',
-    'Refund Event',
-    'refund-event',
-    'Event for refund reservation counts',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    5,
-    'USD',
-    '2030-01-04 10:00:00+00',
-    '[]'::jsonb
-);
+    )),
+    'starts_at', '2030-01-02 10:00:00+00'
+));
+select fx_event(:'offerEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'payment_currency_code', 'USD',
+    'starts_at', '2030-01-03 10:00:00+00'
+));
+select fx_event(:'refundEventID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'capacity', 5,
+    'payment_currency_code', 'USD',
+    'starts_at', '2030-01-04 10:00:00+00'
+));
 
 -- Ticket types
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values
-    (:'ticketTypeID', :'ticketedEventID', 1, 5, 'General admission'),
-    (:'freeTicketTypeID', :'freeEventID', 1, 5, 'General admission'),
-    (:'offerTicketTypeID', :'offerEventID', 1, 5, 'General admission'),
-    (:'refundTicketTypeID', :'refundEventID', 1, 5, 'General admission');
+select fx_event_ticket_type(:'ticketTypeID', :'ticketedEventID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'freeTicketTypeID', :'freeEventID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'offerTicketTypeID', :'offerEventID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'General admission'
+));
+select fx_event_ticket_type(:'refundTicketTypeID', :'refundEventID', jsonb_build_object(
+    'seats_total', 5,
+    'title', 'General admission'
+));
 
 -- Price windows supporting the event ticket fixtures
-insert into event_ticket_price_window (
-    event_ticket_price_window_id,
-    amount_minor,
-    event_ticket_type_id
-)
-values
-    (:'ticketPriceWindowID', 1000, :'ticketTypeID'),
-    (:'freePriceWindowID', 0, :'freeTicketTypeID'),
-    (:'offerPriceWindowID', 1000, :'offerTicketTypeID'),
-    (:'refundPriceWindowID', 1000, :'refundTicketTypeID');
+select fx_event_ticket_price_window(:'ticketPriceWindowID', :'ticketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(:'freePriceWindowID', :'freeTicketTypeID', jsonb_build_object('amount_minor', 0));
+select fx_event_ticket_price_window(:'offerPriceWindowID', :'offerTicketTypeID', jsonb_build_object('amount_minor', 1000));
+select fx_event_ticket_price_window(:'refundPriceWindowID', :'refundTicketTypeID', jsonb_build_object('amount_minor', 1000));
 
 -- Attendees
 insert into event_attendee (

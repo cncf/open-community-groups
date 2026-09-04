@@ -28,23 +28,15 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
+-- Baseline community, group categories, users and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_user(:'otherUserID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
+
 -- Badge owner and another dashboard user
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'otherUserID', 'hash', 'refresh-other@example.test', true, 'refresh-other'),
-    (:'userID', 'hash', 'refresh-owner@example.test', true, 'refresh-owner');
 
--- Community that owns the issuing group
-insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
-values (:'communityID', '/mobile', '/banner', 'Description', 'Refresh Identity Community', '/logo', 'refresh-identity-community');
-
--- Category used by the issuing group
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group that issued the badges
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Refresh Identity Group', 'refresh-identity-group');
+select fx_user(:'userID', jsonb_build_object('email', 'refresh-owner@example.test'));
 
 -- Status list containing the awards
 insert into badge_status_list (badge_status_list_id, group_id)

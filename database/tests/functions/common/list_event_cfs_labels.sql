@@ -22,69 +22,15 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    banner_mobile_url,
-    banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'cfs-label-community',
-    'CFS Label Community',
-    'Community for CFS label tests',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'CFS Label Group', 'cfs-label-group');
+-- Baseline communities, group categories, event categories and groups
+select fx_community(:'communityID');
+select fx_group_category(:'groupCategoryID', :'communityID');
+select fx_event_category(:'eventCategoryID', :'communityID');
+select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 -- Events
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published
-) values (
-    :'eventID',
-    :'groupID',
-    'Event with labels',
-    'event-with-labels',
-    'Event with CFS labels',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true
-), (
-    :'eventNoLabelsID',
-    :'groupID',
-    'Event no labels',
-    'event-no-labels',
-    'Event without CFS labels',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
-    true
-);
+select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
+select fx_event(:'eventNoLabelsID', :'groupID', :'eventCategoryID', jsonb_build_object('published', true));
 
 -- Event CFS labels
 insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
