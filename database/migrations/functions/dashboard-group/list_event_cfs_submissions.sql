@@ -5,19 +5,20 @@ returns json as $$
         -- Parse pagination and sorting filters
         filters as (
             select
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value,
+                f.limit_value,
+                f.offset_value,
                 case
-                    when lower(p_filters->>'sort') in (
+                    when f.sort in (
                         'created-asc',
                         'created-desc',
                         'ratings-count-asc',
                         'ratings-count-desc',
                         'stars-asc',
                         'stars-desc'
-                    ) then lower(p_filters->>'sort')
+                    ) then f.sort
                     else 'created-desc'
                 end as sort_value
+            from parse_search_filters(p_filters) f
         ),
         -- Parse selected label filters
         label_filter as (
@@ -117,7 +118,7 @@ returns json as $$
         submissions as (
             select
                 fs.cfs_submission_id,
-                extract(epoch from fs.created_at)::bigint as created_at,
+                epoch_seconds(fs.created_at) as created_at,
                 json_strip_nulls(json_build_object(
                     'description', sp.description,
                     'duration_minutes', floor(extract(epoch from sp.duration) / 60)::int,
@@ -128,26 +129,10 @@ returns json as $$
 
                     'co_speaker', case
                         when co.user_id is null then null
-                        else json_strip_nulls(json_build_object(
-                            'user_id', co.user_id,
-                            'username', co.username,
-
-                            'company', co.company,
-                            'name', co.name,
-                            'photo_url', co.photo_url,
-                            'title', co.title
-                        ))
+                        else public_user_summary(co)
                     end
                 )) as session_proposal,
-                json_strip_nulls(json_build_object(
-                    'user_id', u.user_id,
-                    'username', u.username,
-
-                    'company', u.company,
-                    'name', u.name,
-                    'photo_url', u.photo_url,
-                    'title', u.title
-                )) as speaker,
+                public_user_summary(u) as speaker,
                 coalesce(rs.ratings_count, 0) as ratings_count,
                 fs.status_id,
                 css.display_name as status_name,
@@ -163,15 +148,7 @@ returns json as $$
                 ) as labels,
                 (
                     select coalesce(json_agg(json_strip_nulls(json_build_object(
-                        'reviewer', json_strip_nulls(json_build_object(
-                            'user_id', rating_user.user_id,
-                            'username', rating_user.username,
-
-                            'company', rating_user.company,
-                            'name', rating_user.name,
-                            'photo_url', rating_user.photo_url,
-                            'title', rating_user.title
-                        )),
+                        'reviewer', public_user_summary(rating_user),
                         'stars', csr.stars,
 
                         'comments', csr.comments
@@ -186,17 +163,9 @@ returns json as $$
                 s.session_id as linked_session_id,
                 case
                     when reviewer.user_id is null then null
-                    else json_strip_nulls(json_build_object(
-                        'user_id', reviewer.user_id,
-                        'username', reviewer.username,
-
-                        'company', reviewer.company,
-                        'name', reviewer.name,
-                        'photo_url', reviewer.photo_url,
-                        'title', reviewer.title
-                    ))
+                    else public_user_summary(reviewer)
                 end as reviewed_by,
-                extract(epoch from fs.updated_at)::bigint as updated_at
+                epoch_seconds(fs.updated_at) as updated_at
             from paginated_submission_ids psi
             join filtered_submissions fs on fs.cfs_submission_id = psi.cfs_submission_id
             join session_proposal sp on sp.session_proposal_id = fs.session_proposal_id

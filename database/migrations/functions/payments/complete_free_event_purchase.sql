@@ -90,13 +90,10 @@ begin
         ep.amount_minor,
         ep.hold_expires_at,
         coalesce(ao.source = 'organizer_invitation', false),
-        exists (
-            select 1
-            from event_purchase recovery_ep
-            where recovery_ep.event_id = ep.event_id
-            and recovery_ep.event_purchase_id <> ep.event_purchase_id
-            and recovery_ep.status = 'refund-recovery-pending'
-            and recovery_ep.user_id = ep.user_id
+        event_has_pending_refund_recovery(
+            ep.event_id,
+            ep.user_id,
+            ep.event_purchase_id
         ),
         ep.status,
         ep.user_id

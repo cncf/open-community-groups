@@ -22,12 +22,7 @@ returns table (
     and ep.admission_offer_id is not distinct from p_admission_offer_id
     and (
         -- Block checkout during recovery without invalidating a completed replacement purchase
-        ep.status in (
-            'completed',
-            'refund-pending',
-            'refund-recovery-pending',
-            'refund-requested'
-        )
+        event_purchase_holds_seat(ep.status)
         or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
     )
     order by

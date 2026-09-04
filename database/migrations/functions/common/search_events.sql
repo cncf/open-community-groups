@@ -4,15 +4,12 @@ returns json as $$
 declare
     v_bbox geometry;
     v_community_ids uuid[];
-    v_date_from date := (p_filters->>'date_from');
-    v_date_to date := (p_filters->>'date_to');
     v_event_category text[];
+    v_filters record;
     v_group_category text[];
     v_group_ids uuid[];
     v_kind text[];
-    v_limit int := (p_filters->>'limit')::int;
     v_max_distance real;
-    v_offset int := (p_filters->>'offset')::int;
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
     v_sort_direction text := case lower(coalesce(p_filters->>'sort_direction', 'asc'))
@@ -23,6 +20,11 @@ declare
     v_user_location geography;
 begin
     -- Prepare filters
+    select *
+    into v_filters
+    from parse_search_filters(p_filters);
+
+    -- Prepare geographic bounds
     if p_filters ? 'bbox_ne_lat' and p_filters ? 'bbox_ne_lon' and p_filters ? 'bbox_sw_lat' and p_filters ? 'bbox_sw_lon' then
         v_bbox := st_makeenvelope(
             (p_filters->>'bbox_sw_lon')::real,
@@ -32,15 +34,21 @@ begin
             4326
         );
     end if;
+
+    -- Resolve selected communities by public names
     if p_filters ? 'community' and jsonb_array_length(p_filters->'community') > 0 then
         select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
         from jsonb_array_elements_text(p_filters->'community') e
         join community c on c.name = e;
     end if;
+
+    -- Normalize selected event categories
     if p_filters ? 'event_category' then
         select array_agg(lower(e::text)) into v_event_category
         from jsonb_array_elements_text(p_filters->'event_category') e;
     end if;
+
+    -- Resolve selected groups within the selected community scope
     if p_filters ? 'group' and jsonb_array_length(p_filters->'group') > 0 then
         select coalesce(array_agg(g.group_id), array[]::uuid[]) into v_group_ids
         from jsonb_array_elements_text(p_filters->'group') e
@@ -48,35 +56,41 @@ begin
         where v_community_ids is null
         or g.community_id = any(v_community_ids);
     end if;
+
+    -- Normalize selected group categories
     if p_filters ? 'group_category' then
         select array_agg(lower(e::text)) into v_group_category
         from jsonb_array_elements_text(p_filters->'group_category') e;
     end if;
+
+    -- Normalize selected event kinds
     if p_filters ? 'kind' then
         select array_agg(e::text) into v_kind
         from jsonb_array_elements_text(p_filters->'kind') e;
     end if;
+
+    -- Prepare proximity filtering
     if p_filters ? 'latitude' and p_filters ? 'longitude' then
         v_user_location := jsonb_geography_point(p_filters);
+
+        -- Apply an optional maximum distance around the user location
         if p_filters ? 'distance' then
             v_max_distance := (p_filters->>'distance')::real;
         end if;
     end if;
+
+    -- Normalize selected regions
     if p_filters ? 'region' then
         select array_agg(lower(e::text)) into v_region
         from jsonb_array_elements_text(p_filters->'region') e;
     end if;
-    if p_filters ? 'ts_query' then
-        select ts_rewrite(
-            websearch_to_tsquery(p_filters->>'ts_query'),
-            format('
-                select
-                    to_tsquery(lexeme),
-                    to_tsquery(lexeme || '':*'')
-                from unnest(tsvector_to_array(to_tsvector(%L))) as lexeme
-                ', p_filters->>'ts_query'
-            )
-        ) into v_tsquery_with_prefix_matching;
+
+    -- Build a prefix-matching text search query
+    if v_filters.ts_query is not null then
+        v_tsquery_with_prefix_matching := prefix_tsquery(
+            get_current_ts_config(),
+            v_filters.ts_query
+        );
     end if;
 
     -- Filter, paginate and aggregate matching events
@@ -127,11 +141,11 @@ begin
             case when cardinality(v_region) > 0 then
             r.normalized_name = any(v_region) else true end
         and
-            case when v_date_from is not null then
-            e.starts_at >= v_date_from else true end
+            case when v_filters.date_from is not null then
+            e.starts_at >= v_filters.date_from else true end
         and
-            case when v_date_to is not null then
-            e.starts_at < (v_date_to + interval '1 day') else true end
+            case when v_filters.date_to is not null then
+            e.starts_at < (v_filters.date_to + interval '1 day') else true end
         and
             case when v_max_distance is not null and v_user_location is not null then
             st_dwithin(v_user_location, coalesce(e.location, g.location), v_max_distance) else true end
@@ -162,8 +176,8 @@ begin
                 end
             ) desc,
             starts_at asc
-        limit v_limit
-        offset v_offset
+        limit v_filters.limit_value
+        offset v_filters.offset_value
     )
     -- Build response payload with optional bbox and total count
     select json_build_object(

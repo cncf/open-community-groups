@@ -54,12 +54,9 @@ begin
         from event_purchase ep
         where ep.event_id = ea.event_id
         and ep.user_id = ea.user_id
-        and ep.status in (
-            'completed',
-            'refund-pending',
-            'refund-recovery-pending',
-            'refund-requested',
-            'refunded'
+        and (
+            event_purchase_holds_seat(ep.status)
+            or ep.status = 'refunded'
         )
         order by ep.created_at desc, ep.event_purchase_id desc
         limit 1
@@ -105,7 +102,7 @@ begin
             'photo_url', v_attendee.photo_url
         ),
         'checked_in_at', (
-            select floor(extract(epoch from ea.checked_in_at))
+            select epoch_seconds(ea.checked_in_at)
             from event_attendee ea
             where ea.event_id = p_event_id
             and ea.user_id = v_attendee.user_id

@@ -5,30 +5,23 @@ create or replace function prepare_event_checkout_validate_attendee_state(
 )
 returns void as $$
 declare
-    v_attendee_status text;
+    v_enrollment record;
 begin
-    -- Load the attendee lifecycle state before deciding whether to proceed
-    select status
-    into v_attendee_status
-    from event_attendee
-    where event_id = p_event_id
-    and user_id = p_user_id;
+    -- Load the user's enrollment facts before deciding whether to proceed
+    select *
+    into v_enrollment
+    from event_user_enrollment(p_event_id, p_user_id);
 
-    if v_attendee_status = 'confirmed' then
+    if v_enrollment.attendee_status = 'confirmed' then
         raise exception 'user is already attending this event' using errcode = 'OCG01';
     end if;
 
-    if v_attendee_status in ('invitation-pending', 'invitation-rejected') then
+    if v_enrollment.attendee_status in ('invitation-pending', 'invitation-rejected') then
         raise exception 'user has a pending or rejected invitation for this event' using errcode = 'OCG01';
     end if;
 
     -- Reject queued users before they can bypass waitlist promotion
-    if exists (
-        select 1
-        from event_waitlist ew
-        where ew.event_id = p_event_id
-        and ew.user_id = p_user_id
-    ) then
+    if v_enrollment.waitlisted then
         raise exception 'user is already on the waiting list for this event' using errcode = 'OCG01';
     end if;
 end;

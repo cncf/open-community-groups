@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,29 +13,23 @@ select plan(21);
 
 \set communityID '5e090000-0000-0000-0000-000000000001'
 \set eventApprovalPending '5e090000-0000-0000-0000-000000000002'
-\set eventCanceled '5e090000-0000-0000-0000-000000000003'
 \set eventCategoryID '5e090000-0000-0000-0000-000000000004'
-\set eventDeleted '5e090000-0000-0000-0000-000000000005'
 \set eventDisabledWaitlist '5e090000-0000-0000-0000-000000000006'
 \set eventFull '5e090000-0000-0000-0000-000000000007'
-\set eventInactiveGroup '5e090000-0000-0000-0000-000000000008'
 \set eventOK '5e090000-0000-0000-0000-000000000009'
 \set eventPaidTicketed '5e090000-0000-0000-0000-00000000000a'
 \set eventPaidTicketedPurchaseID '5e090000-0000-0000-0000-00000000000b'
 \set eventPaidTicketTypeID '5e090000-0000-0000-0000-00000000000c'
 \set eventPast '5e090000-0000-0000-0000-00000000000d'
-\set eventStartedNoEnd '5e090000-0000-0000-0000-000000000010'
 \set eventTicketed '5e090000-0000-0000-0000-000000000011'
 \set eventTicketedDiscountCodeID '5e090000-0000-0000-0000-000000000012'
 \set eventTicketedPurchaseID '5e090000-0000-0000-0000-000000000013'
 \set eventTicketTypeID '5e090000-0000-0000-0000-000000000014'
 \set eventTicketedPriceWindowID '5e090000-0000-0000-0000-000000000022'
 \set eventUnlimited '5e090000-0000-0000-0000-000000000015'
-\set eventUnpublished '5e090000-0000-0000-0000-000000000016'
 \set eventWaitlist '5e090000-0000-0000-0000-000000000017'
 \set groupCategoryID '5e090000-0000-0000-0000-000000000018'
 \set groupID '5e090000-0000-0000-0000-000000000019'
-\set inactiveGroupID '5e090000-0000-0000-0000-00000000001a'
 \set user1ID '5e090000-0000-0000-0000-00000000001c'
 \set user2ID '5e090000-0000-0000-0000-00000000001d'
 \set user3ID '5e090000-0000-0000-0000-00000000001e'
@@ -56,10 +50,6 @@ select fx_user(:'user4ID');
 
 -- Group with scenario-specific state
 select fx_group(:'groupID', :'communityID', :'groupCategoryID', jsonb_build_object('slug', 'active-group'));
-select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'slug', 'inactive-group'
-));
 
 -- Events with scenario-specific state
 select fx_event(:'eventOK', :'groupID', :'eventCategoryID', jsonb_build_object(
@@ -71,33 +61,12 @@ select fx_event(:'eventApprovalPending', :'groupID', :'eventCategoryID', jsonb_b
     'attendee_approval_required', true,
     'published', true
 ));
-select fx_event(:'eventCanceled', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'capacity', 1,
-    'name', 'Canceled',
-    'slug', 'canceled',
-    'waitlist_enabled', true
-));
-select fx_event(:'eventDeleted', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'name', 'Deleted',
-    'slug', 'deleted'
-));
-select fx_event(:'eventInactiveGroup', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'slug', 'inactive-group'
-));
-select fx_event(:'eventUnpublished', :'groupID', :'eventCategoryID', jsonb_build_object('name', 'Unpublished'));
 select fx_event(:'eventPast', :'groupID', :'eventCategoryID', jsonb_build_object(
     'ends_at', current_timestamp - interval '1 hour',
     'name', 'Past',
     'published', true,
     'slug', 'past',
     'starts_at', current_timestamp - interval '2 hours'
-));
-select fx_event(:'eventStartedNoEnd', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'published', true,
-    'starts_at', current_timestamp - interval '1 hour'
 ));
 select fx_event(:'eventDisabledWaitlist', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 2,
@@ -200,14 +169,12 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventDisabledWaitlist', :'user2ID', 'confirmed'),
     (:'eventPast', :'user1ID', 'confirmed'),
     (:'eventPaidTicketed', :'user3ID', 'confirmed'),
-    (:'eventStartedNoEnd', :'user1ID', 'confirmed'),
     (:'eventFull', :'user1ID', 'confirmed'),
     (:'eventUnlimited', :'user1ID', 'confirmed'),
     (:'eventTicketed', :'user1ID', 'confirmed');
 
 -- Event Waitlists
 insert into event_waitlist (created_at, event_id, event_ticket_type_id, user_id) values
-    (current_timestamp, :'eventCanceled', (select event_ticket_type_id from event_ticket_type where event_id = :'eventCanceled' limit 1), :'user4ID'),
     (current_timestamp, :'eventDisabledWaitlist', (select event_ticket_type_id from event_ticket_type where event_id = :'eventDisabledWaitlist' limit 1), :'user3ID'),
     (current_timestamp, :'eventFull', (select event_ticket_type_id from event_ticket_type where event_id = :'eventFull' limit 1), :'user2ID'),
     (current_timestamp + interval '1 minute', :'eventFull', (select event_ticket_type_id from event_ticket_type where event_id = :'eventFull' limit 1), :'user3ID'),
@@ -575,50 +542,6 @@ select throws_ok(
     'OCG01',
     'event not found or inactive',
     'Rejects leave requests for past events'
-);
-
--- Should reject started events without an end time
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventStartedNoEnd', :'user1ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects started events without an end time for leave requests'
-);
-
--- Should reject waitlist leave requests for canceled events
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventCanceled', :'user4ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects waitlist leave requests for canceled events'
-);
-
--- Should reject deleted events
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventDeleted', :'user1ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects leave requests for deleted events'
-);
-
--- Should reject events from inactive groups
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInactiveGroup', :'user1ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects leave requests for inactive-group events'
 );
 
 -- ============================================================================

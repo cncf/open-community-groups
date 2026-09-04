@@ -24,7 +24,7 @@ begin
     -- Preserve the stored deadline except when moving into a longer hold
     if new.expires_at is distinct from old.expires_at
        and not (
-            old.status in ('checkout_pending', 'pending')
+            admission_offer_is_active(old.status)
             and new.status = 'checkout_pending'
             and new.expires_at >= old.expires_at
        ) then

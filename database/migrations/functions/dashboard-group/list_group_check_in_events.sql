@@ -7,7 +7,7 @@ returns json as $$
             e.event_id,
             e.event_kind_id as kind,
             e.name,
-            floor(extract(epoch from e.starts_at)) as starts_at,
+            epoch_seconds(e.starts_at) as starts_at,
             e.timezone,
 
             coalesce(e.logo_url, g.logo_url, c.logo_url) as logo_url,

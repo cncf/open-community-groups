@@ -6,15 +6,15 @@ returns json as $$
         filters as (
             select
                 (p_filters->>'checked_in')::boolean as checked_in_value,
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value,
+                f.limit_value,
+                f.offset_value,
                 case
-                    when lower(p_filters->>'sort') in (
+                    when f.sort in (
                         'created-at-asc',
                         'created-at-desc',
                         'name-asc',
                         'name-desc'
-                    ) then lower(p_filters->>'sort')
+                    ) then f.sort
                     else 'name-asc'
                 end as sort_value,
                 case
@@ -39,7 +39,8 @@ returns json as $$
                         then lower(p_filters->>'title')
                     else null
                 end as title_value,
-                nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
+                f.tsquery
+            from parse_search_filters(p_filters) f
         ),
         -- Parse selected ticket type filters
         ticket_type_filter as (
@@ -52,22 +53,6 @@ returns json as $$
                     coalesce(p_filters->'event_ticket_type_ids', '[]'::jsonb)
                 )
             ) input_ticket_types
-        ),
-        -- Prepare text search with prefix matching
-        search_filter as (
-            select
-                ts_rewrite(
-                    websearch_to_tsquery('simple', ts_query_value),
-                    format('
-                        select
-                            to_tsquery(''simple'', lexeme),
-                            to_tsquery(''simple'', lexeme || '':*'')
-                        from unnest(tsvector_to_array(to_tsvector(''simple'', %L))) as lexeme
-                        ', ts_query_value
-                    )
-                ) as ts_query
-            from filters
-            where ts_query_value is not null
         ),
         -- Normalize attendee and organizer-offer rows into one enrollment shape
         enrollment_candidates as (
@@ -167,7 +152,7 @@ returns json as $$
                 ao.expires_at as offer_expires_at,
                 null::jsonb as registration_answers,
                 case
-                    when ao.status in ('checkout_pending', 'pending') then 1
+                    when admission_offer_is_active(ao.status) then 1
                     else 0
                 end as source_priority,
                 case
@@ -219,7 +204,7 @@ returns json as $$
                 er.admission_offer_source,
                 er.admission_offer_status,
                 er.checked_in,
-                extract(epoch from er.created_at)::bigint as created_at,
+                epoch_seconds(er.created_at) as created_at,
                 er.created_at as created_at_sort,
                 u.email,
                 case
@@ -238,16 +223,16 @@ returns json as $$
                 u.user_id,
                 u.username,
 
-                extract(epoch from er.checked_in_at)::bigint as checked_in_at,
+                epoch_seconds(er.checked_in_at) as checked_in_at,
                 ep.amount_minor,
                 ep.charge_model,
-                extract(epoch from ep.completed_at)::bigint as completed_at,
+                epoch_seconds(ep.completed_at) as completed_at,
                 u.company,
                 ep.currency_code,
                 ep.discount_code,
                 case
                     when ep.charge_model = 'external'
-                    then extract(epoch from ep.hold_expires_at)::bigint
+                    then epoch_seconds(ep.hold_expires_at)
                 end as external_payment_deadline,
                 ep.external_payment_details,
                 marked_by.username as external_payment_marked_by,
@@ -261,7 +246,7 @@ returns json as $$
                 ) as externally_paid,
                 coalesce(ep.event_ticket_type_id, er.event_ticket_type_id)
                     as event_ticket_type_id,
-                extract(epoch from er.offer_expires_at)::bigint as offer_expires_at,
+                epoch_seconds(er.offer_expires_at) as offer_expires_at,
                 coalesce(ep.ticket_title, er.ticket_title) as ticket_title,
                 u.bio,
                 u.bluesky_url,
@@ -327,13 +312,9 @@ returns json as $$
                 from event_purchase
                 where event_id = er.event_id
                 and user_id = er.user_id
-                and status in (
-                    'completed',
-                    'pending',
-                    'refund-pending',
-                    'refund-recovery-pending',
-                    'refund-requested',
-                    'refunded'
+                and (
+                    event_purchase_holds_seat(status)
+                    or status in ('pending', 'refunded')
                 )
                 order by created_at desc, event_purchase_id desc
                 limit 1
@@ -363,24 +344,21 @@ returns json as $$
         ),
         -- Apply table filters while retaining internal search data
         filtered_attendees as (
-            select *
+            select base_attendees.*
             from base_attendees
+            cross join filters f
             where (
-                not exists (select 1 from search_filter)
-                or exists (
-                    select 1
-                    from search_filter
-                    where search_filter.ts_query @@ base_attendees.tsdoc
-                )
+                f.tsquery is null
+                or f.tsquery @@ base_attendees.tsdoc
             )
             and (
                 coalesce(
-                    (select status_value from filters),
+                    f.status_value,
                     case when event_canceled then 'all' else 'current' end
                 ) = 'all'
                 or (
                     coalesce(
-                        (select status_value from filters),
+                        f.status_value,
                         case when event_canceled then 'all' else 'current' end
                     ) = 'current'
                     and enrollment_status in (
@@ -392,7 +370,7 @@ returns json as $$
                     )
                 )
                 or (
-                    (select status_value from filters) = 'history'
+                    f.status_value = 'history'
                     and enrollment_status in (
                         'attendance-canceled',
                         'invitation-canceled',
@@ -400,19 +378,19 @@ returns json as $$
                         'invitation-expired'
                     )
                 )
-                or (select status_value from filters) = enrollment_status
+                or f.status_value = enrollment_status
             )
             and (
-                (select checked_in_value from filters) is null
+                f.checked_in_value is null
                 or (
                     enrollment_status = 'confirmed'
-                    and checked_in = (select checked_in_value from filters)
+                    and checked_in = f.checked_in_value
                 )
             )
             and (
-                (select title_value from filters) is null
-                or ((select title_value from filters) = 'present' and title is not null)
-                or ((select title_value from filters) = 'missing' and title is null)
+                f.title_value is null
+                or (f.title_value = 'present' and title is not null)
+                or (f.title_value = 'missing' and title is null)
             )
             and (
                 (select ticket_types_total from ticket_type_filter) = 0

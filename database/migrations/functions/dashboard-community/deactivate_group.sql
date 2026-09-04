@@ -6,17 +6,13 @@ create or replace function deactivate_group(
 )
 returns void as $$
 begin
+    -- Lock the target group before mutating it
+    perform lock_active_group(p_community_id, p_group_id);
+
     -- Deactivate the target group
     update "group" set
         active = false
-    where group_id = p_group_id
-    and community_id = p_community_id
-    and deleted = false;
-
-    -- Ensure the target group exists and is active
-    if not found then
-        raise exception 'group not found or inactive' using errcode = 'OCG01';
-    end if;
+    where group_id = p_group_id;
 
     -- Track the deactivation
     perform insert_audit_log(

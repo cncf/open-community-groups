@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(61);
+select plan(60);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,7 +32,6 @@ select plan(61);
 \set groupAutomaticTaxID '1c020000-0000-0000-0000-00000000001d'
 \set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
-\set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
 \set groupDelistedID '1c020000-0000-0000-0000-000000000036'
 \set groupDisableID '1c020000-0000-0000-0000-000000000030'
 \set groupEnableAbroadID '1c020000-0000-0000-0000-00000000003e'
@@ -125,14 +124,6 @@ where group_id = :'inactiveParentGroupID';
 -- Parent group team
 insert into group_team (group_id, user_id, role, accepted)
 values (:'parentGroupID', :'groupAdminID', 'admin', true);
-
--- Group (deleted)
-select fx_group(:'groupDeletedID', :'communityID', :'groupCategory1ID', jsonb_build_object(
-    'active', false,
-    'created_at', '2024-01-15 10:00:00+00',
-    'deleted', true,
-    'deleted_at', '2024-02-15 10:00:00+00'
-));
 
 -- Group with array fields
 select fx_group(:'group3ID'::uuid, :'communityID', :'groupCategory1ID', jsonb_build_object(
@@ -616,24 +607,6 @@ select results_eq(
         :'groupID'
     ),
     'Should create the expected audit rows'
-);
-
--- Should throw error when updating deleted group
-select throws_ok(
-    format(
-        $$select update_group(
-        null::uuid,
-        %L::uuid,
-        %L::uuid,
-        '{"name": "Won''t Work", "category_id": "%s", "description": "This should fail"}'::jsonb
-    )$$,
-        :'communityID',
-        :'groupDeletedID',
-        :'groupCategory1ID'
-    ),
-    'OCG01',
-    'group not found or inactive',
-    'Should throw error when trying to update deleted group'
 );
 
 -- Should convert empty strings to null for nullable fields

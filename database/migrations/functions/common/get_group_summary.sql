@@ -16,7 +16,7 @@ returns json as $$
         ),
         'community_display_name', c.display_name,
         'community_name', c.name,
-        'created_at', floor(extract(epoch from g.created_at)),
+        'created_at', epoch_seconds(g.created_at),
         'group_id', g.group_id,
         'name', g.name,
         'slug', g.slug,

@@ -103,15 +103,7 @@ begin
         e.tax_behavior,
         e.tax_calculation_mode,
         e.timezone,
-        jsonb_build_object(
-            'address', nullif(btrim(e.venue_address), ''),
-            'city', nullif(btrim(e.venue_city), ''),
-            'country_code', nullif(btrim(e.venue_country_code), ''),
-            'name', nullif(btrim(e.venue_name), ''),
-            'state_code', nullif(btrim(e.venue_state_code), ''),
-            'state_name', nullif(btrim(e.venue_state_name), ''),
-            'zip_code', nullif(btrim(e.venue_zip_code), '')
-        ),
+        event_venue_snapshot(e),
         g.name,
         g.slug,
         g.slug_pretty,
@@ -174,7 +166,7 @@ begin
 
         -- Reject missing, inactive, or expired admission offers
         if not found
-           or v_admission_offer_status not in ('checkout_pending', 'pending')
+           or not admission_offer_is_active(v_admission_offer_status)
            or (
                 v_admission_offer_expires_at is not null
                 and v_admission_offer_expires_at <= current_timestamp
@@ -215,7 +207,7 @@ begin
         from admission_offer ao
         where ao.event_id = p_event_id
         and ao.user_id = p_user_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
         and ao.expires_at > current_timestamp
     ) then
         return jsonb_build_object('conflict', 'admission-offer-required');
@@ -263,7 +255,7 @@ begin
                     'event_id', p_event_id,
                     'event_name', v_event_name,
                     'event_slug', v_event_slug,
-                    'event_starts_at', extract(epoch from v_event_starts_at)::bigint,
+                    'event_starts_at', epoch_seconds(v_event_starts_at),
                     'event_timezone', v_event_timezone,
                     'group_name', v_group_name,
                     'group_slug', v_group_slug,
@@ -712,7 +704,7 @@ begin
                 'amount_minor', v_final_amount_minor,
                 'currency_code', v_currency_code,
                 'dashboard_url', '/dashboard/user?tab=events',
-                'deadline', extract(epoch from v_hold_expires_at)::bigint,
+                'deadline', epoch_seconds(v_hold_expires_at),
                 'event_id', p_event_id,
                 'event_name', v_event_name,
                 'event_purchase_id', v_purchase_id,
@@ -736,7 +728,7 @@ begin
             'event_id', p_event_id,
             'event_name', v_event_name,
             'event_slug', v_event_slug,
-            'event_starts_at', extract(epoch from v_event_starts_at)::bigint,
+            'event_starts_at', epoch_seconds(v_event_starts_at),
             'event_timezone', v_event_timezone,
             'group_name', v_group_name,
             'group_slug', v_group_slug,

@@ -30,6 +30,7 @@ begin
     where ao.admission_offer_id = p_admission_offer_id
     and ao.user_id = p_actor_user_id;
 
+    -- Reject offers that the user cannot decline
     if not found then
         raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
@@ -46,6 +47,7 @@ begin
     where e.event_id = v_event_id
     for update of e;
 
+    -- Reject offers whose event context disappeared
     if not found then
         raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
@@ -78,11 +80,12 @@ begin
     from admission_offer ao
     where ao.admission_offer_id = p_admission_offer_id
     and ao.event_id = v_event_id
-    and ao.status in ('checkout_pending', 'pending')
+    and admission_offer_is_active(ao.status)
     and ao.expires_at > current_timestamp
     and ao.user_id = p_actor_user_id
     for update of ao;
 
+    -- Reject offers that are no longer active
     if not found then
         raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
@@ -95,6 +98,7 @@ begin
     and ep.status = 'pending'
     for update of ep;
 
+    -- Expire pending checkout state when the offer has one
     if found then
         update event_purchase
         set
@@ -104,6 +108,7 @@ begin
         where admission_offer_id = p_admission_offer_id
         and status = 'pending';
 
+        -- Release discount capacity tied to the abandoned checkout
         if v_event_discount_code_id is not null then
             perform release_event_discount_code_availability(v_event_discount_code_id);
         end if;
@@ -117,8 +122,9 @@ begin
         status = 'declined',
         updated_at = current_timestamp
     where admission_offer_id = p_admission_offer_id
-    and status in ('checkout_pending', 'pending');
+    and admission_offer_is_active(status);
 
+    -- Reject concurrent offer changes that won the race
     if not found then
         raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;

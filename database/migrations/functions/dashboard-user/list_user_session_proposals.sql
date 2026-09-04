@@ -5,8 +5,9 @@ returns json as $$
         -- Parse pagination filters
         filters as (
             select
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value
+                f.limit_value,
+                f.offset_value
+            from parse_search_filters(p_filters) f
         ),
         -- Collect submission counts and linked sessions
         session_proposal_links as (
@@ -33,22 +34,14 @@ returns json as $$
 
                 case
                     when co.user_id is null then null
-                    else json_strip_nulls(json_build_object(
-                        'user_id', co.user_id,
-                        'username', co.username,
-
-                        'company', co.company,
-                        'name', co.name,
-                        'photo_url', co.photo_url,
-                        'title', co.title
-                    ))
+                    else public_user_summary(co)
                 end as co_speaker,
                 pl.linked_session_id,
 
-                extract(epoch from sp.created_at)::bigint as created_at,
+                epoch_seconds(sp.created_at) as created_at,
                 floor(extract(epoch from sp.duration) / 60)::int as duration_minutes,
                 (pl.submission_count > 0) as has_submissions,
-                extract(epoch from sp.updated_at)::bigint as updated_at
+                epoch_seconds(sp.updated_at) as updated_at
             from session_proposal sp
             join session_proposal_level spl using (session_proposal_level_id)
             join session_proposal_status sps

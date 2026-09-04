@@ -13,8 +13,11 @@ database/
     schema/       Numbered Tern migrations: tables, indexes, constraints,
                   reference data, triggers, drop statements
     functions/    Function sources loaded by 001_load_functions.sql
+      internal/<concern>/   SQL-only helpers, never called from Rust
       auth/, common/, community/, dashboard-*/, event/, group/,
-      meetings/, notifications/, payments/, site/, triggers/
+      images/, meetings/, notifications/, payments/, redirector/,
+      site/                 Rust-facing functions, one folder per trait
+      triggers/             Trigger functions
     migrate.sh    Applies schema migrations, then reloads every function
   scripts/
     lint.sh       Convention checks run by `just db-lint` and CI
@@ -29,22 +32,41 @@ database/
     migrations/   Representative-data upgrade tests
 ```
 
-Function folders mirror the Rust database traits in `ocg-server/src/db`:
-a function called from `db/dashboard/group.rs` lives in
-`functions/dashboard-group/`, one called from `db/payments.rs` in
-`functions/payments/`, and so on. `common/` holds functions shared by several
-traits together with SQL-only helpers (validators, projections, search
-scaffolding). `triggers/` holds every trigger function. Every function file
-has a mirrored test at the same path under `tests/functions/`.
+Rust-facing function folders mirror the database traits in `ocg-server/src/db`
+(and `ocg-redirector/src/db.rs` for `redirector/`): a function called from
+`db/dashboard/group.rs` lives in `functions/dashboard-group/`, one called from
+`db/payments.rs` in `functions/payments/`, and so on. `common/` holds only the
+`DBCommon` trait functions. `triggers/` holds every trigger function.
+Operator-only entry points documented for `psql` use
+(`requeue_badge_award_job`, `manual_requeue_notifications`) stay in the folder
+of the feature they serve.
+
+Helpers that are only called from other SQL functions live under
+`functions/internal/<concern>/`, grouped coarsely by the rule they own:
+`audit`, `enrollment`, `events`, `groups`, `json`, `meetings`,
+`notifications`, `payments`, `search`, `stats`, `text`, `ticketing`, `users`.
+The path answers "is this a contract change?": a signature or result shape
+under `internal/` may change freely as long as its SQL callers and tests are
+updated in the same change; anything outside `internal/` is consumed by Rust
+and requires the DTO, wrapper and contract-test updates described below.
+`database/scripts/lint.sh` fails when an `internal/` function name appears in
+Rust code (contract tests excepted).
+
+Every function file has a mirrored test at the same path under
+`tests/functions/` and the lint script checks the mirror in both directions.
 
 ## Loader ordering
 
 `functions/001_load_functions.sql` is a single Tern migration that loads every
-function with `{{ template "<folder>/<file>.sql" }}` entries. Entries are
-grouped by folder and alphabetized within the group. A function that depends
-on another function being defined first is placed after its dependency and
-carries a short trailing comment naming the dependency (`-- Dependency for
-...` or `-- Do not sort alphabetically, has dependency`).
+function with `{{ template "<folder>/<file>.sql" }}` entries. The
+`internal/<concern>/` groups load first (alphabetically by concern), then the
+Rust-facing folders alphabetically; entries are alphabetized within each
+group. Only `language sql` bodies are resolved at creation time, so ordering
+exceptions exist solely for a `language sql` function whose dependency would
+otherwise load later. Such an entry is moved next to its dependency and
+carries a trailing comment (`-- Dependency for <callers>` when pulled
+forward, `-- Depends on <function>` when pushed back); `plpgsql` callers need
+no exception.
 
 `migrate.sh` applies schema migrations first and then re-runs the loader on
 every migration run, so the loader copy of a function is always the live
@@ -139,8 +161,10 @@ contract.
   rules: every schema-defined trigger function has a loader file and a
   loader entry, no trigger function is defined by more than one schema
   migration after `0079`, and no loader file creates a trigger. It also
-  checks the test rules below: no table-level locks in function tests and no
-  `fx_*` references under `migrations/`.
+  checks the layout rules (function/test mirror in both directions, no
+  `internal/` function referenced from Rust) and the test rules below: no
+  table-level locks in function tests and no `fx_*` references under
+  `migrations/`.
 
 ## Job lifecycles
 
@@ -171,6 +195,69 @@ restarted safely and external calls stay outside transactions:
   (`complete_event_purchase_*_recovery`) from the group dashboard.
 - Idempotency keys and provider references are stored before any external
   side effect so retries and webhooks can be reconciled.
+
+## Shared predicates and helpers
+
+Each domain rule has one home under `functions/internal/`; callers delegate
+instead of repeating the predicate, so the rule cannot drift between files.
+The rule-owning helpers are:
+
+- `event_effective_ends_at(event)`: `coalesce(ends_at, starts_at)`, the moment
+  an event stops being current (an event with a start and no end is over once
+  it starts).
+- `lock_active_event(p_community_id, p_group_id, p_event_id,
+  p_require_published)`: locks (`for update`) an event scoped by community
+  and/or group whose group is active and which is not deleted, canceled or
+  over (optionally published), raising `event not found or inactive`
+  (`OCG01`). Every attendee and organizer enrollment mutation starts with it.
+- `lock_active_group(p_community_id, p_group_id)`: locks a non-deleted group
+  in the community, raising `group not found or inactive` (`OCG01`); the
+  `active` flag is not required because activation is one of the mutations.
+- `admission_offer_is_active(status)` (`checkout_pending`, `pending`) and
+  `event_purchase_holds_seat(status)` (`completed` and the refund-in-flight
+  states): the status sets that reserve capacity.
+- `event_has_pending_refund_recovery(p_event_id, p_user_id,
+  p_excluded_event_purchase_id)`: another purchase of the user awaits operator
+  refund recovery, which blocks new checkouts.
+- `event_user_enrollment(p_event_id, p_user_id)`: one row with the attendee
+  row, active admission offer, relevant purchase, refund request, invitation
+  request and waitlist facts for a user, plus a derived `state`
+  (`confirmed`, `payment-pending`, `offer-active`, `registration-pending`,
+  `invitation-pending`, `invitation-declined`, `approval-pending`,
+  `approval-rejected`, `waitlisted`, `offer-expired`, `none`). Read functions
+  map the state to their labels; mutations lock their rows first and then
+  read the facts from it.
+- `parse_search_filters(p_filters)` and `prefix_tsquery(config, text)`: the
+  pagination (`limit`/`offset`, clamped to non-negative, null when absent),
+  `ts_query` (trimmed, as an ILIKE pattern and as a `simple` prefix-matching
+  tsquery), `date_from`/`date_to` and lowercased `sort` keys shared by
+  `search_*` and `list_*` functions. Callers keep their defaults, sort
+  allow-lists and function-specific keys.
+- Projections and encodings: `epoch_seconds(timestamptz)` (whole seconds,
+  truncated; the only timestamp encoding in JSON results),
+  `public_user_summary("user")`, `event_venue_snapshot(event)`,
+  `event_purchase_refund_to_json(event_purchase_refund)` and
+  `event_ticket_type_current_price(event_ticket_type_id)`.
+- `release_meeting_sync(p_event_id, p_session_id, p_sync_claimed_at,
+  p_sync_state_hash, p_error)`: completes a meeting sync claim for the
+  `add/update/delete_meeting` and `set_meeting_error` workers.
+
+When a repeated predicate, status set or projection is found while changing a
+function, extract it into a named helper here and delegate from every
+occurrence in the same change.
+
+### Test ownership when extracting helpers
+
+- Every helper has its own test under `tests/functions/internal/<concern>/`
+  covering its full branch matrix.
+- A caller's test keeps exactly one scenario per delegated helper proving the
+  delegation is wired and that its rejection propagates; it does not re-test
+  the helper's branches.
+- Before removing a scenario from a caller, confirm the equivalent scenario
+  exists in the helper's test: coverage moves, it is never dropped. Seed rows
+  that only served a moved scenario go with it.
+- Scenarios proving the caller's own behavior (state transitions, audit rows,
+  returned payload, label mapping) stay.
 
 ## Inline SQL in Rust
 

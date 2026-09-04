@@ -103,7 +103,7 @@ begin
             select ao.user_id
             from admission_offer ao
             where ao.event_id = p_event_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
 
             union
 
@@ -131,7 +131,7 @@ begin
     perform 1
     from admission_offer ao
     where ao.event_id = p_event_id
-    and ao.status in ('checkout_pending', 'pending')
+    and admission_offer_is_active(ao.status)
     order by ao.admission_offer_id
     for update of ao;
 
@@ -168,7 +168,7 @@ begin
         and (
             ep.hold_expires_at <= current_timestamp
             or (
-                ao.status in ('checkout_pending', 'pending')
+                admission_offer_is_active(ao.status)
                 and ao.expires_at is not null
                 and ao.expires_at <= current_timestamp
             )
@@ -206,7 +206,7 @@ begin
                     'amount_minor', v_event_purchase.amount_minor,
                     'currency_code', v_event_purchase.currency_code,
                     'dashboard_url', '/dashboard/user?tab=events',
-                    'deadline', extract(epoch from v_event_purchase.hold_expires_at)::bigint,
+                    'deadline', epoch_seconds(v_event_purchase.hold_expires_at),
                     'event_id', p_event_id,
                     'event_name', v_event_name,
                     'event_purchase_id', v_event_purchase.event_purchase_id,
@@ -264,7 +264,7 @@ begin
                 'amount_minor', v_event_purchase.amount_minor,
                 'currency_code', v_event_purchase.currency_code,
                 'dashboard_url', '/dashboard/user?tab=events',
-                'deadline', extract(epoch from v_event_purchase.hold_expires_at)::bigint,
+                'deadline', epoch_seconds(v_event_purchase.hold_expires_at),
                 'event_id', p_event_id,
                 'event_name', v_event_name,
                 'event_purchase_id', v_event_purchase.event_purchase_id,
@@ -290,7 +290,7 @@ begin
             ao.user_id
         from admission_offer ao
         where ao.event_id = p_event_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
         order by ao.admission_offer_id
     loop
         if v_admission_offer.expires_at is not null
@@ -325,12 +325,7 @@ begin
                     from event_purchase ep
                     where ep.admission_offer_id = v_admission_offer.admission_offer_id
                     and (
-                        ep.status in (
-                            'completed',
-                            'refund-pending',
-                            'refund-recovery-pending',
-                            'refund-requested'
-                        )
+                        event_purchase_holds_seat(ep.status)
                         or (
                             ep.status = 'pending'
                             and ep.hold_expires_at > current_timestamp
@@ -402,18 +397,11 @@ begin
             end if;
 
             -- Resolve current pricing before moving the queue head
-            select etpw.amount_minor
-            into v_price_amount_minor
-            from event_ticket_price_window etpw
-            where etpw.event_ticket_type_id = v_ticket_type.event_ticket_type_id
-            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-            order by
-                etpw.starts_at desc nulls last,
-                etpw.event_ticket_price_window_id
-            limit 1;
+            v_price_amount_minor := event_ticket_type_current_price(
+                v_ticket_type.event_ticket_type_id
+            );
 
-            if not found then
+            if v_price_amount_minor is null then
                 exit;
             end if;
 
@@ -507,7 +495,7 @@ begin
                     'event_id', p_event_id,
                     'event_name', v_event_name,
                     'event_ticket_type_id', v_ticket_type.event_ticket_type_id,
-                    'expires_at', extract(epoch from v_offer_expires_at)::bigint,
+                    'expires_at', epoch_seconds(v_offer_expires_at),
                     'group_name', v_group_name,
                     'is_simple_rsvp', v_is_simple_rsvp,
                     'theme', v_theme,

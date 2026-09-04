@@ -9,7 +9,7 @@ returns json as $$
         json_agg(
             json_strip_nulls(json_build_object(
                 -- Include core proposal fields
-                'created_at', extract(epoch from sp.created_at)::bigint,
+                'created_at', epoch_seconds(sp.created_at),
                 'description', sp.description,
                 'duration_minutes', floor(extract(epoch from sp.duration) / 60)::int,
                 'session_proposal_id', sp.session_proposal_id,
@@ -22,20 +22,12 @@ returns json as $$
                 -- Include optional co-speaker details
                 'co_speaker', case
                     when co.user_id is null then null
-                    else json_strip_nulls(json_build_object(
-                        'user_id', co.user_id,
-                        'username', co.username,
-
-                        'company', co.company,
-                        'name', co.name,
-                        'photo_url', co.photo_url,
-                        'title', co.title
-                    ))
+                    else public_user_summary(co)
                 end,
                 -- Include submission status and derived flags
                 'submission_status_id', cs.status_id,
                 'submission_status_name', css.display_name,
-                'updated_at', extract(epoch from sp.updated_at)::bigint,
+                'updated_at', epoch_seconds(sp.updated_at),
 
                 'is_submitted', cs.cfs_submission_id is not null
             ))

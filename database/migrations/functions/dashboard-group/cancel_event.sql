@@ -16,8 +16,8 @@ begin
     and canceled = false
     and deleted = false
     and (
-        coalesce(ends_at, starts_at) is null
-        or coalesce(ends_at, starts_at) >= current_timestamp
+        event_effective_ends_at(event) is null
+        or event_effective_ends_at(event) >= current_timestamp
     )
     for update;
 

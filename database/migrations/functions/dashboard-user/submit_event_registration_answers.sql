@@ -7,62 +7,34 @@ create or replace function submit_event_registration_answers(
 )
 returns void as $$
 declare
-    v_group_id uuid;
+    v_event event;
     v_has_active_checkout_hold boolean;
     v_manually_invited boolean;
-    v_registration_ends_at timestamptz;
-    v_registration_questions jsonb;
-    v_registration_starts_at timestamptz;
     v_registration_window_open boolean;
-    v_starts_at timestamptz;
 begin
     -- Load active event context before validating answer edits
-    select
-        e.group_id,
-        e.registration_ends_at,
-        e.registration_questions,
-        e.registration_starts_at,
-        e.starts_at
-    into
-        v_group_id,
-        v_registration_ends_at,
-        v_registration_questions,
-        v_registration_starts_at,
-        v_starts_at
-    from event e
-    join "group" g on g.group_id = e.group_id
-    where e.event_id = p_event_id
-    and g.community_id = p_community_id
-    and g.active = true
-    and e.deleted = false
-    and e.published = true
-    and e.canceled = false
-    for update of e;
-
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    v_event := lock_active_event(p_community_id, null, p_event_id, true);
 
     -- Require a questionnaire before accepting answers
-    if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) = 0 then
+    if jsonb_array_length(coalesce(v_event.registration_questions, '[]'::jsonb)) = 0 then
         raise exception 'event does not have registration questions' using errcode = 'OCG01';
     end if;
 
     -- Resolve the public registration window before applying attendee-specific overrides
     v_registration_window_open := is_registration_window_open(
-        v_registration_starts_at,
-        v_registration_ends_at,
-        v_starts_at
+        v_event.registration_starts_at,
+        v_event.registration_ends_at,
+        v_event.starts_at
     );
 
     -- Block answer edits once the event has started
-    if v_starts_at is not null
-       and current_timestamp >= v_starts_at then
+    if v_event.starts_at is not null
+       and current_timestamp >= v_event.starts_at then
         raise exception 'registration answers can only be submitted before the event starts' using errcode = 'OCG01';
     end if;
 
     -- Validate submitted answers against the event questionnaire
-    perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
+    perform validate_questionnaire_answers_payload(v_event.registration_questions, p_registration_answers);
 
     -- Active checkout holds may finish answering questions after public registration closes
     select exists (
@@ -83,6 +55,7 @@ begin
     and ea.status in ('confirmed', 'registration-questions-pending')
     for update of ea;
 
+    -- Reject missing attendee registration rows
     if not found then
         raise exception 'event registration not found' using errcode = 'OCG01';
     end if;
@@ -108,7 +81,7 @@ begin
         'user',
         p_actor_user_id,
         p_community_id,
-        v_group_id,
+        v_event.group_id,
         p_event_id,
         jsonb_build_object('event_id', p_event_id, 'user_id', p_actor_user_id)
     );

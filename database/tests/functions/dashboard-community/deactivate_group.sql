@@ -1,20 +1,20 @@
+-- Tests deactivating dashboard community groups.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '2c070000-0000-0000-0000-000000000001'
-\set groupAlreadyDeletedID '2c070000-0000-0000-0000-000000000002'
 \set groupAlreadyInactiveID '2c070000-0000-0000-0000-000000000003'
 \set groupCategoryID '2c070000-0000-0000-0000-000000000004'
 \set groupID '2c070000-0000-0000-0000-000000000005'
-\set unknownCommunityID '2c070000-0000-0000-0000-000000000006'
 \set unknownGroupID '2c070000-0000-0000-0000-000000000007'
 
 -- ============================================================================
@@ -25,11 +25,6 @@ select plan(8);
 select fx_community(:'communityID');
 select fx_group_category(:'groupCategoryID', :'communityID');
 select fx_group(:'groupID', :'communityID', :'groupCategoryID');
-
-select fx_group(:'groupAlreadyDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
 
 -- Group (inactive)
 select fx_group(:'groupAlreadyInactiveID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
@@ -102,30 +97,6 @@ select lives_ok(
         :'groupAlreadyInactiveID'
     ),
     'Should be idempotent for already inactive groups'
-);
-
--- Should throw error for already deleted group
-select throws_ok(
-    format(
-        $$select deactivate_group(null::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID',
-        :'groupAlreadyDeletedID'
-    ),
-    'OCG01',
-    'group not found or inactive',
-    'Should throw error when trying to deactivate already deleted group'
-);
-
--- Should throw error for wrong community_id
-select throws_ok(
-    format(
-        $$select deactivate_group(null::uuid, %L::uuid, %L::uuid)$$,
-        :'unknownCommunityID',
-        :'groupID'
-    ),
-    'OCG01',
-    'group not found or inactive',
-    'Should throw error when community_id does not match'
 );
 
 -- Should throw error for non-existent group

@@ -118,19 +118,14 @@ begin
             from admission_offer ao
             where ao.event_id = p_event_id
             and ao.event_ticket_type_id = v_ticket_type_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
             and ao.expires_at is not null
             and ao.expires_at <= current_timestamp
             and not exists (
                 select 1
                 from event_purchase ep
                 where ep.admission_offer_id = ao.admission_offer_id
-                and ep.status in (
-                    'completed',
-                    'refund-pending',
-                    'refund-recovery-pending',
-                    'refund-requested'
-                )
+                and event_purchase_holds_seat(ep.status)
             )
         )
         into v_allocated_seat_count;
@@ -149,7 +144,7 @@ begin
                 from admission_offer ao
                 where ao.event_id = p_event_id
                 and ao.event_ticket_type_id = v_ticket_type_id
-                and ao.status in ('checkout_pending', 'pending')
+                and admission_offer_is_active(ao.status)
                 and ao.expires_at > current_timestamp
            ) then
             raise exception 'ticket types with active offers cannot be deactivated' using errcode = 'OCG01';

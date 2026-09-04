@@ -3,7 +3,7 @@ create or replace function check_admission_offer_enrollment_state()
 returns trigger as $$
 begin
     -- Ignore terminal offers that do not reserve capacity
-    if new.status not in ('checkout_pending', 'pending') then
+    if not admission_offer_is_active(new.status) then
         return new;
     end if;
 
@@ -48,12 +48,9 @@ begin
         from event_purchase ep
         where ep.event_id = new.event_id
         and ep.user_id = new.user_id
-        and ep.status in (
-            'completed',
-            'pending',
-            'refund-pending',
-            'refund-recovery-pending',
-            'refund-requested'
+        and (
+            event_purchase_holds_seat(ep.status)
+            or ep.status = 'pending'
         )
         and ep.admission_offer_id is distinct from new.admission_offer_id
     ) then

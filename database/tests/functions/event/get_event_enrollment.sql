@@ -398,7 +398,7 @@ select is(
                 "status": "pending-payment"
             }
         $$,
-        extract(epoch from timestamptz '2099-01-01 12:00:00+00')::bigint,
+        epoch_seconds(timestamptz '2099-01-01 12:00:00+00'),
         :'externalPaymentID'
     )::jsonb,
     'Should return a pending external payment without a resume checkout URL'

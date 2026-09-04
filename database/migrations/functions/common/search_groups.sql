@@ -4,17 +4,21 @@ returns json as $$
 declare
     v_bbox geometry;
     v_community_ids uuid[];
+    v_filters record;
     v_group_category text[];
     v_include_inactive boolean := coalesce((p_filters->>'include_inactive')::boolean, false);
-    v_limit int := (p_filters->>'limit')::int;
     v_max_distance real;
-    v_offset int := (p_filters->>'offset')::int;
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'name');
     v_tsquery_with_prefix_matching tsquery;
     v_user_location geography;
 begin
     -- Prepare filters
+    select *
+    into v_filters
+    from parse_search_filters(p_filters);
+
+    -- Prepare geographic bounds
     if p_filters ? 'bbox_ne_lat' and p_filters ? 'bbox_ne_lon' and p_filters ? 'bbox_sw_lat' and p_filters ? 'bbox_sw_lon' then
         v_bbox := st_makeenvelope(
             (p_filters->>'bbox_sw_lon')::real,
@@ -24,36 +28,42 @@ begin
             4326
         );
     end if;
+
+    -- Resolve selected communities by public names
     if p_filters ? 'community' and jsonb_array_length(p_filters->'community') > 0 then
         select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
         from jsonb_array_elements_text(p_filters->'community') e
         join community c on c.name = e;
     end if;
+
+    -- Normalize selected group categories
     if p_filters ? 'group_category' then
         select array_agg(lower(e::text)) into v_group_category
         from jsonb_array_elements_text(p_filters->'group_category') e;
     end if;
+
+    -- Prepare proximity filtering
     if p_filters ? 'latitude' and p_filters ? 'longitude' then
         v_user_location := jsonb_geography_point(p_filters);
+
+        -- Apply an optional maximum distance around the user location
         if p_filters ? 'distance' then
             v_max_distance := (p_filters->>'distance')::real;
         end if;
     end if;
+
+    -- Normalize selected regions
     if p_filters ? 'region' then
         select array_agg(lower(e::text)) into v_region
         from jsonb_array_elements_text(p_filters->'region') e;
     end if;
-    if p_filters ? 'ts_query' then
-        select ts_rewrite(
-            websearch_to_tsquery(p_filters->>'ts_query'),
-            format('
-                select
-                    to_tsquery(lexeme),
-                    to_tsquery(lexeme || '':*'')
-                from unnest(tsvector_to_array(to_tsvector(%L))) as lexeme
-                ', p_filters->>'ts_query'
-            )
-        ) into v_tsquery_with_prefix_matching;
+
+    -- Build a prefix-matching text search query
+    if v_filters.ts_query is not null then
+        v_tsquery_with_prefix_matching := prefix_tsquery(
+            get_current_ts_config(),
+            v_filters.ts_query
+        );
     end if;
 
     -- Filter, paginate and aggregate matching groups
@@ -107,8 +117,8 @@ begin
             (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
             (case when v_sort_by = 'name' then name end) asc,
             created_at desc
-        limit v_limit
-        offset v_offset
+        limit v_filters.limit_value
+        offset v_filters.offset_value
     )
     -- Build response payload with optional bbox and total count
     select json_build_object(

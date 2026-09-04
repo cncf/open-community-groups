@@ -28,7 +28,7 @@ returns int as $$
         select ao.user_id
         from admission_offer ao
         where ao.event_id = p_event_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
         and ao.expires_at > current_timestamp
 
         union
@@ -38,12 +38,7 @@ returns int as $$
         from event_purchase ep
         where ep.event_id = p_event_id
         and (
-            ep.status in (
-                'completed',
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested'
-            )
+            event_purchase_holds_seat(ep.status)
             or (
                 ep.status = 'pending'
                 and ep.hold_expires_at > current_timestamp

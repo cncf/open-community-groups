@@ -8,7 +8,7 @@ returns json as $$
             c.name as community_name,
             ct.role,
 
-            extract(epoch from ct.created_at)::bigint as created_at
+            epoch_seconds(ct.created_at) as created_at
         from community_team ct
         join community c using (community_id)
         where ct.user_id = p_user_id

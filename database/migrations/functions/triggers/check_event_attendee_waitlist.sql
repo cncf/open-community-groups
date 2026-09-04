@@ -21,7 +21,7 @@ begin
         from admission_offer ao
         where ao.event_id = new.event_id
         and ao.user_id = new.user_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
         and not (
             new.status = 'registration-questions-pending'
             and ao.status = 'checkout_pending'

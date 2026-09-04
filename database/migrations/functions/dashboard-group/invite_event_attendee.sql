@@ -13,9 +13,7 @@ declare
     v_admission_offer_id uuid;
     v_community_id uuid;
     v_create_pre_registered_user boolean := false;
-    v_ends_at timestamptz;
-    v_event_external_payment_url text;
-    v_event_name text;
+    v_event event;
     v_existing_status text;
     v_existing_user_email_verified boolean;
     v_existing_user_registration_status text;
@@ -24,12 +22,9 @@ declare
     v_is_simple_rsvp boolean;
     v_normalized_email text := lower(nullif(btrim(p_email), ''));
     v_offer_expires_at timestamptz;
-    v_payment_currency_code text;
     v_payment_recipient jsonb;
     v_promoted_user_ids uuid[];
-    v_registration_questions jsonb;
     v_selectable_ticket_type_count int;
-    v_starts_at timestamptz;
     v_target_user_id uuid;
     v_theme jsonb;
     v_ticket_allocated_count int;
@@ -37,7 +32,6 @@ declare
     v_ticket_current_price bigint;
     v_ticket_seats_total int;
     v_ticket_title text;
-    v_timezone text;
 begin
     -- Validate invitation target shape
     if (p_user_id is null and v_normalized_email is null)
@@ -46,46 +40,19 @@ begin
     end if;
 
     -- Lock and validate the event before ticket and attendee enrollment state
+    v_event := lock_active_event(null, p_group_id, p_event_id, true);
+
+    -- Load group context needed for payment validation, notifications and audit
     select
         g.community_id,
-        e.ends_at,
-        e.external_payment_url,
-        e.name,
         g.name,
-        e.payment_currency_code,
-        g.payment_recipient,
-        e.registration_questions,
-        e.starts_at,
-        e.timezone
+        g.payment_recipient
     into
         v_community_id,
-        v_ends_at,
-        v_event_external_payment_url,
-        v_event_name,
         v_group_name,
-        v_payment_currency_code,
-        v_payment_recipient,
-        v_registration_questions,
-        v_starts_at,
-        v_timezone
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and g.active = true
-    and e.deleted = false
-    and e.published = true
-    and e.canceled = false
-    and (
-        coalesce(e.ends_at, e.starts_at) is null
-        or coalesce(e.ends_at, e.starts_at) >= current_timestamp
-    )
-    for update of e;
-
-    -- Reject invitations when the event is missing or no longer inviteable
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+        v_payment_recipient
+    from "group" g
+    where g.group_id = v_event.group_id;
 
     -- Lock ticket tiers before reconciliation and target-user enrollment state
     perform 1
@@ -95,7 +62,7 @@ begin
     for update of ett;
 
     v_has_registration_questions :=
-        jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0;
+        jsonb_array_length(coalesce(v_event.registration_questions, '[]'::jsonb)) > 0;
     v_is_simple_rsvp := is_event_simple_rsvp(p_event_id);
 
     -- Resolve registered or pre-register email invitee
@@ -158,13 +125,7 @@ begin
         from event_ticket_type ett
         where ett.event_id = p_event_id
         and ett.active = true
-        and exists (
-            select 1
-            from event_ticket_price_window etpw
-            where etpw.event_ticket_type_id = ett.event_ticket_type_id
-            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-        );
+        and event_ticket_type_current_price(ett.event_ticket_type_id) is not null;
 
         -- Require an explicit tier when more than one organizer-visible tier exists
         if v_selectable_ticket_type_count <> 1 then
@@ -174,17 +135,7 @@ begin
 
     -- Resolve the organizer-selected ticket tier and current base price
     select
-        (
-            select etpw.amount_minor
-            from event_ticket_price_window etpw
-            where etpw.event_ticket_type_id = ett.event_ticket_type_id
-            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-            order by
-                etpw.starts_at desc nulls last,
-                etpw.event_ticket_price_window_id
-            limit 1
-        ),
+        event_ticket_type_current_price(ett.event_ticket_type_id),
         ett.availability,
         ett.seats_total,
         ett.title
@@ -262,7 +213,7 @@ begin
     end if;
 
     -- Ensure payments can be collected before reserving a paid seat
-    if v_event_external_payment_url is not null then
+    if v_event.external_payment_url is not null then
         -- Reject paid invitations when the external event is no longer eligible
         if v_ticket_current_price > 0
            and not is_event_external_payments_ready(p_event_id) then
@@ -274,7 +225,7 @@ begin
         perform validate_event_ticketing_payment_readiness(
             p_configured_provider,
             v_ticket_current_price > 0,
-            v_payment_currency_code,
+            v_event.payment_currency_code,
             v_payment_recipient,
             p_event_id
         );
@@ -308,7 +259,7 @@ begin
         select 1
         from admission_offer ao
         where ao.event_id = p_event_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
         and ao.user_id = v_target_user_id
     ) then
         raise exception 'user already has a pending event invitation' using errcode = 'OCG01';
@@ -343,17 +294,17 @@ begin
     and user_id = v_target_user_id;
 
     -- Bound the invitation expiry to the remaining event window
-    if v_starts_at is not null and v_starts_at > current_timestamp then
+    if v_event.starts_at is not null and v_event.starts_at > current_timestamp then
         v_offer_expires_at := least(
             current_timestamp + interval '24 hours',
-            v_starts_at
+            v_event.starts_at
         );
 
     -- Bound in-progress events by end time instead of start time
     else
         v_offer_expires_at := least(
             current_timestamp + interval '24 hours',
-            coalesce(v_ends_at, 'infinity'::timestamptz)
+            coalesce(v_event.ends_at, 'infinity'::timestamptz)
         );
     end if;
 
@@ -379,7 +330,7 @@ begin
         v_ticket_current_price,
         case
             -- Keep intrinsic-free snapshots currency-free
-            when v_ticket_current_price > 0 then v_payment_currency_code
+            when v_ticket_current_price > 0 then v_event.payment_currency_code
             -- Drop event currency from free organizer invitations
             else null
         end,
@@ -406,21 +357,21 @@ begin
         jsonb_strip_nulls(jsonb_build_object(
             'admission_offer_id', v_admission_offer_id,
             'amount_minor', v_ticket_current_price,
-            'currency_code', v_payment_currency_code,
+            'currency_code', v_event.payment_currency_code,
             'dashboard_url', format(
                 '/dashboard/user?tab=invitations#event-offer-%s',
                 v_admission_offer_id
             ),
             'event_id', p_event_id,
-            'event_name', v_event_name,
+            'event_name', v_event.name,
             'event_ticket_type_id', p_event_ticket_type_id,
-            'expires_at', extract(epoch from v_offer_expires_at)::bigint,
+            'expires_at', epoch_seconds(v_offer_expires_at),
             'group_name', v_group_name,
             'is_simple_rsvp', v_is_simple_rsvp,
             'registration_questions_required', v_has_registration_questions,
             'theme', v_theme,
             'ticket_title', v_ticket_title,
-            'timezone', v_timezone,
+            'timezone', v_event.timezone,
             'user_id', v_target_user_id
         )),
         '[]'::jsonb,

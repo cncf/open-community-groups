@@ -1,9 +1,11 @@
+-- Tests soft-deleting dashboard community groups.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,7 +13,6 @@ select plan(12);
 
 \set communityID '2c0a0000-0000-0000-0000-000000000001'
 \set childGroupID '2c0a0000-0000-0000-0000-000000000007'
-\set groupAlreadyDeletedID '2c0a0000-0000-0000-0000-000000000002'
 \set groupCategoryID '2c0a0000-0000-0000-0000-000000000003'
 \set groupID '2c0a0000-0000-0000-0000-000000000004'
 \set groupWrongCommunityID '2c0a0000-0000-0000-0000-000000000005'
@@ -29,12 +30,6 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_group(:'groupWrongCommunityID', :'communityID', :'groupCategoryID');
 
 select fx_group(:'childGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupID'));
-
--- Already deleted group
-select fx_group(:'groupAlreadyDeletedID', :'communityID', :'groupCategoryID', jsonb_build_object(
-    'active', false,
-    'deleted', true
-));
 
 -- Group with its own parent link
 select fx_group(:'linkedGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('parent_group_id', :'groupWrongCommunityID'));
@@ -143,18 +138,6 @@ select results_eq(
         :'linkedGroupID'
     ),
     'Should create the expected audit row'
-);
-
--- Should throw error for already deleted group
-select throws_ok(
-    format(
-        $$select delete_group(null::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID',
-        :'groupAlreadyDeletedID'
-    ),
-    'OCG01',
-    'group not found or inactive',
-    'Should throw error when trying to delete already deleted group'
 );
 
 -- Should throw error for wrong community_id

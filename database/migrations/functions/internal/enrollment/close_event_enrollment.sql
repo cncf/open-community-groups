@@ -55,7 +55,7 @@ begin
             select ao.user_id
             from admission_offer ao
             where ao.event_id = p_event_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
 
             union
 
@@ -80,12 +80,9 @@ begin
             select ep.user_id
             from event_purchase ep
             where ep.event_id = p_event_id
-            and ep.status in (
-                'completed',
-                'pending',
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested'
+            and (
+                event_purchase_holds_seat(ep.status)
+                or ep.status = 'pending'
             )
 
             union
@@ -103,19 +100,16 @@ begin
     perform 1
     from admission_offer ao
     where ao.event_id = p_event_id
-    and ao.status in ('checkout_pending', 'pending')
+    and admission_offer_is_active(ao.status)
     order by ao.admission_offer_id
     for update of ao;
 
     perform 1
     from event_purchase ep
     where ep.event_id = p_event_id
-    and ep.status in (
-        'completed',
-        'pending',
-        'refund-pending',
-        'refund-recovery-pending',
-        'refund-requested'
+    and (
+        event_purchase_holds_seat(ep.status)
+        or ep.status = 'pending'
     )
     order by ep.event_purchase_id
     for update of ep;

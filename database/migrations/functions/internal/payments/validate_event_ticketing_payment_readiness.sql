@@ -176,15 +176,7 @@ begin
             e.manual_tax_rate_ids,
             e.tax_behavior,
             e.tax_calculation_mode,
-            jsonb_build_object(
-                'address', nullif(btrim(e.venue_address), ''),
-                'city', nullif(btrim(e.venue_city), ''),
-                'country_code', nullif(btrim(e.venue_country_code), ''),
-                'name', nullif(btrim(e.venue_name), ''),
-                'state_code', nullif(btrim(e.venue_state_code), ''),
-                'state_name', nullif(btrim(e.venue_state_name), ''),
-                'zip_code', nullif(btrim(e.venue_zip_code), '')
-            )
+            event_venue_snapshot(e)
         into
             v_event_kind_id,
             v_manual_tax_rate_ids,

@@ -13,6 +13,14 @@
 #   - create trigger statements live in schema migrations, never in loader
 #     function files.
 #
+# Layout rules:
+#   - Every function file has a mirrored pgTAP test at the same path under
+#     tests/functions, and every test under tests/functions mirrors a function
+#     file (scenario-split test files named <function>_<suffix>.sql and the
+#     payments/refund_worker_lifecycle.sql lifecycle suite are allowed).
+#   - Functions under functions/internal/ are SQL-only helpers: the Rust
+#     crates never call them (contract tests excepted).
+#
 # Test rules:
 #   - pgTAP function tests run in parallel against one database, so they must
 #     not take table-level locks (alter table, lock table, truncate).
@@ -38,6 +46,43 @@ fail() {
     echo "error: $1" >&2
     status=1
 }
+
+# Every function file has a mirrored test, and every test mirrors a function
+for file in $(cd "$functions_dir" && find . -name '*.sql' ! -name '001_load_functions.sql' | sed 's|^\./||' | sort); do
+    if [ ! -f "$tests_dir/functions/$file" ]; then
+        fail "$functions_dir/$file has no mirrored test at $tests_dir/functions/$file"
+    fi
+done
+for file in $(cd "$tests_dir/functions" && find . -name '*.sql' | sed 's|^\./||' | sort); do
+    if [ -f "$functions_dir/$file" ]; then
+        continue
+    fi
+    case "$file" in
+        payments/refund_worker_lifecycle.sql) continue ;; # cross-function lifecycle suite
+    esac
+    dir=$(dirname "$file")
+    base=$(basename "$file" .sql)
+    matched=0
+    for candidate in "$functions_dir/$dir"/*.sql; do
+        name=$(basename "$candidate" .sql)
+        case "$base" in
+            "${name}_"*) matched=1; break ;;
+        esac
+    done
+    if [ "$matched" -eq 0 ]; then
+        fail "$tests_dir/functions/$file does not mirror a function file under $functions_dir/$dir"
+    fi
+done
+
+# Functions under internal/ are SQL-only helpers and must not be called from Rust
+for file in $(find "$functions_dir/internal" -name '*.sql' | sort); do
+    name=$(basename "$file" .sql)
+    callers=$(grep -rlE "\b$name\b" "$database_dir/../ocg-server/src" "$database_dir/../ocg-redirector/src" --include='*.rs' \
+        | grep -v '/contract_tests/' || true)
+    if [ -n "$callers" ]; then
+        fail "internal function $name is referenced from Rust: $(printf '%s' "$callers" | tr '\n' ' ')"
+    fi
+done
 
 # Prints "migration_number function_name" for every trigger function defined
 # by a schema migration.

@@ -11,6 +11,7 @@ declare
     v_current_external_payments_enabled boolean;
     v_current_parent_group_id uuid;
     v_external_payments_enabled_changed boolean := false;
+    v_group "group";
     v_new_country_code text;
     v_new_external_payments_enabled boolean;
     v_new_parent_group_id uuid;
@@ -21,22 +22,12 @@ declare
     v_previous_payment_recipient jsonb;
     v_provider_account_changed boolean := false;
 begin
-    -- Retrieve existing values to compare against the update payload
-    select
-        country_code,
-        external_payments_enabled,
-        parent_group_id,
-        payment_recipient
-    into
-        v_current_country_code,
-        v_current_external_payments_enabled,
-        v_current_parent_group_id,
-        v_previous_payment_recipient
-    from "group"
-    where group_id = p_group_id
-    and community_id = p_community_id
-    and deleted = false
-    for update;
+    -- Lock and load existing values to compare against the update payload
+    v_group := lock_active_group(p_community_id, p_group_id);
+    v_current_country_code := v_group.country_code;
+    v_current_external_payments_enabled := v_group.external_payments_enabled;
+    v_current_parent_group_id := v_group.parent_group_id;
+    v_previous_payment_recipient := v_group.payment_recipient;
 
     -- Resolve the requested parent value
     v_parent_group_id_present := coalesce((p_group->>'parent_group_id_present')::boolean, false);
@@ -155,8 +146,8 @@ begin
            and e.external_payment_url is null
            and is_event_paid_capable(e.event_id)
            and (
-               coalesce(e.ends_at, e.starts_at) is null
-               or coalesce(e.ends_at, e.starts_at) > current_timestamp
+               event_effective_ends_at(e) is null
+               or event_effective_ends_at(e) > current_timestamp
            )
        ) then
         raise exception 'paid-capable events require a payment recipient' using errcode = 'OCG01';
@@ -176,8 +167,8 @@ begin
             and e.tax_calculation_mode = 'manual'
             and is_event_paid_capable(e.event_id)
             and (
-                coalesce(e.ends_at, e.starts_at) is null
-                or coalesce(e.ends_at, e.starts_at) > current_timestamp
+                event_effective_ends_at(e) is null
+                or event_effective_ends_at(e) > current_timestamp
             )
        ) then
         raise exception 'fiscal sponsor cannot be replaced while published manual-tax events are upcoming' using errcode = 'OCG01';
@@ -215,8 +206,8 @@ begin
            and e.external_payment_url is not null
            and is_event_paid_capable(e.event_id)
            and (
-               coalesce(e.ends_at, e.starts_at) is null
-               or coalesce(e.ends_at, e.starts_at) > current_timestamp
+               event_effective_ends_at(e) is null
+               or event_effective_ends_at(e) > current_timestamp
            )
        ) then
         raise exception 'external payments cannot be disabled while published external paid events are upcoming' using errcode = 'OCG01';
@@ -248,8 +239,8 @@ begin
            and e.external_payment_url is not null
            and upper(e.venue_country_code) is distinct from upper(v_new_country_code)
            and (
-               coalesce(e.ends_at, e.starts_at) is null
-               or coalesce(e.ends_at, e.starts_at) > current_timestamp
+               event_effective_ends_at(e) is null
+               or event_effective_ends_at(e) > current_timestamp
            )
        ) then
         raise exception 'published external paid events require a venue in the group country' using errcode = 'OCG01';
@@ -327,14 +318,7 @@ begin
         website_url = nullif(p_group->>'website_url', ''),
         wechat_url = nullif(p_group->>'wechat_url', ''),
         youtube_url = nullif(p_group->>'youtube_url', '')
-    where group_id = p_group_id
-    and community_id = p_community_id
-    and deleted = false;
-
-    -- Ensure the target group exists and is active
-    if not found then
-        raise exception 'group not found or inactive' using errcode = 'OCG01';
-    end if;
+    where group_id = p_group_id;
 
     -- Track the update
     perform insert_audit_log(

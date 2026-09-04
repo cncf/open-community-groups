@@ -2,6 +2,13 @@
 create or replace function list_user_events(p_user_id uuid, p_filters jsonb)
 returns json as $$
     with
+        -- Normalize common list filters.
+        filters as (
+            select
+                f.limit_value,
+                f.offset_value
+            from parse_search_filters(p_filters) f
+        ),
         -- Collect visible upcoming events once for all participation roles.
         visible_events as (
             select
@@ -165,15 +172,7 @@ returns json as $$
                 and ea.user_id = ao.user_id
             join event_ticket_type ett using (event_ticket_type_id)
             left join lateral (
-                select etpw.amount_minor
-                from event_ticket_price_window etpw
-                where etpw.event_ticket_type_id = ao.event_ticket_type_id
-                and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-                and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-                order by
-                    etpw.starts_at desc nulls last,
-                    etpw.event_ticket_price_window_id
-                limit 1
+                select event_ticket_type_current_price(ao.event_ticket_type_id) as amount_minor
             ) current_price on true
             left join lateral (
                 select
@@ -207,7 +206,7 @@ returns json as $$
                 limit 1
             ) pending_purchase on true
             where ao.user_id = p_user_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
             and ao.expires_at > current_timestamp
             and not exists (
                 select 1
@@ -343,8 +342,8 @@ returns json as $$
             from event_rows er
             left join latest_refund_request lrr using (event_id)
             order by er.starts_at asc, er.event_id asc
-            offset (p_filters->>'offset')::int
-            limit (p_filters->>'limit')::int
+            offset (select offset_value from filters)
+            limit (select limit_value from filters)
         )
     -- Build final payload.
     select json_build_object(
@@ -396,7 +395,7 @@ returns json as $$
                                 select jsonb_strip_nulls(jsonb_build_object(
                                     'amount_minor', ep.amount_minor,
                                     'currency_code', ep.currency_code,
-                                    'deadline', extract(epoch from ep.hold_expires_at)::bigint,
+                                    'deadline', epoch_seconds(ep.hold_expires_at),
                                     'instructions', e.external_payment_instructions,
                                     'reference', ep.event_purchase_id,
                                     'url', e.external_payment_url
@@ -412,7 +411,7 @@ returns json as $$
                                 limit 1
                             ),
                             'offer_expires_at',
-                            extract(epoch from erp.offer_expires_at)::bigint,
+                            epoch_seconds(erp.offer_expires_at),
                             'refund_rejection_reason',
                             erp.refund_rejection_reason,
                             'refund_request_status',

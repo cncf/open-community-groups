@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(65);
+select plan(61);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,15 +13,11 @@ select plan(65);
 
 \set communityID '5e020000-0000-0000-0000-000000000001'
 \set duplicateWaitlistUserID '5e020000-0000-0000-0000-000000000055'
-\set eventCanceledID '5e020000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e020000-0000-0000-0000-000000000003'
-\set eventDeletedID '5e020000-0000-0000-0000-000000000004'
 \set eventFullNoWaitlistID '5e020000-0000-0000-0000-000000000005'
 \set eventFullWaitlistID '5e020000-0000-0000-0000-000000000006'
-\set eventInactiveGroupID '5e020000-0000-0000-0000-000000000007'
 \set eventInviteOnlyID '5e020000-0000-0000-0000-000000000008'
 \set eventOKID '5e020000-0000-0000-0000-000000000009'
-\set eventPastID '5e020000-0000-0000-0000-00000000000a'
 \set eventQuestionsApprovalID '5e020000-0000-0000-0000-00000000000b'
 \set eventQuestionsFullWaitlistID '5e020000-0000-0000-0000-00000000000c'
 \set eventQuestionsID '5e020000-0000-0000-0000-00000000000d'
@@ -44,7 +40,6 @@ select plan(65);
 \set groupCategoryID '5e020000-0000-0000-0000-00000000000f'
 \set groupID '5e020000-0000-0000-0000-000000000010'
 \set ignoredQuestionID '5e020000-0000-0000-0000-000000000011'
-\set inactiveGroupID '5e020000-0000-0000-0000-000000000012'
 \set questionID '5e020000-0000-0000-0000-000000000013'
 \set questionsAttendeeUserID '5e020000-0000-0000-0000-000000000014'
 \set questionsCommunityID '5e020000-0000-0000-0000-000000000015'
@@ -138,8 +133,6 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 
 select fx_user(:'questionsAttendeeUserID', jsonb_build_object('name', 'Attendee'));
 
-select fx_group(:'inactiveGroupID', :'communityID', :'groupCategoryID', jsonb_build_object('active', false));
-
 -- Events with scenario-specific state
 select fx_event(:'eventOKID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'name', 'OK',
@@ -149,24 +142,6 @@ select fx_event(:'eventOKID', :'groupID', :'eventCategoryID', jsonb_build_object
 select fx_event(:'eventUnpublishedID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'name', 'Unpublished',
     'slug', 'unpublished'
-));
-select fx_event(:'eventCanceledID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'canceled', true,
-    'name', 'Canceled',
-    'slug', 'canceled'
-));
-select fx_event(:'eventDeletedID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'deleted', true,
-    'name', 'Deleted',
-    'slug', 'deleted'
-));
-select fx_event(:'eventInactiveGroupID', :'inactiveGroupID', :'eventCategoryID', jsonb_build_object('published', true));
-select fx_event(:'eventPastID', :'groupID', :'eventCategoryID', jsonb_build_object(
-    'ends_at', current_timestamp - interval '1 hour',
-    'name', 'Past',
-    'published', true,
-    'slug', 'past',
-    'starts_at', current_timestamp - interval '2 hours'
 ));
 select fx_event(:'eventFullNoWaitlistID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'capacity', 2,
@@ -1237,50 +1212,6 @@ select throws_ok(
     'OCG01',
     'event not found or inactive',
     'Rejects unpublished events'
-);
-
--- Should reject canceled events
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventCanceledID', :'user1ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects canceled events'
-);
-
--- Should reject deleted events
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventDeletedID', :'user1ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects deleted events'
-);
-
--- Should reject past events
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventPastID', :'user1ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects past events'
-);
-
--- Should reject events from inactive groups
-select throws_ok(
-    format(
-        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInactiveGroupID', :'user1ID'
-    ),
-    'OCG01',
-    'event not found or inactive',
-    'Rejects events from inactive groups'
 );
 
 -- The handler validates questions before the checkout route

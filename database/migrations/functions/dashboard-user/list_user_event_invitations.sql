@@ -12,11 +12,11 @@ returns json as $$
             ao.status as admission_offer_status,
             c.display_name as community_display_name,
             c.name as community_name,
-            extract(epoch from ao.created_at)::bigint as created_at,
+            epoch_seconds(ao.created_at) as created_at,
             e.event_id,
             e.name as event_name,
             ao.event_ticket_type_id,
-            extract(epoch from ao.expires_at)::bigint as expires_at,
+            epoch_seconds(ao.expires_at) as expires_at,
             g.name as group_name,
             coalesce(
                 is_event_simple_rsvp(e.event_id)
@@ -59,14 +59,14 @@ returns json as $$
                 when pending_purchase.charge_model is distinct from 'external'
                 then pending_purchase.provider_checkout_url
             end as resume_checkout_url,
-            extract(epoch from e.starts_at)::bigint as starts_at,
+            epoch_seconds(e.starts_at) as starts_at,
 
             case
                 when pending_purchase.charge_model = 'external'
                 then jsonb_strip_nulls(jsonb_build_object(
                     'amount_minor', pending_purchase.amount_minor,
                     'currency_code', pending_purchase.currency_code,
-                    'deadline', extract(epoch from pending_purchase.hold_expires_at)::bigint,
+                    'deadline', epoch_seconds(pending_purchase.hold_expires_at),
                     'instructions', e.external_payment_instructions,
                     'reference', pending_purchase.event_purchase_id,
                     'url', e.external_payment_url
@@ -89,15 +89,7 @@ returns json as $$
             limit 1
         ) invitation_request on true
         left join lateral (
-            select etpw.amount_minor
-            from event_ticket_price_window etpw
-            where etpw.event_ticket_type_id = ao.event_ticket_type_id
-            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-            order by
-                etpw.starts_at desc nulls last,
-                etpw.event_ticket_price_window_id
-            limit 1
+            select event_ticket_type_current_price(ao.event_ticket_type_id) as amount_minor
         ) current_price on true
         left join lateral (
             select
@@ -137,7 +129,7 @@ returns json as $$
             limit 1
         ) pending_purchase on true
         where ao.user_id = p_user_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
         and ao.expires_at > current_timestamp
         and not exists (
             select 1
@@ -154,8 +146,8 @@ returns json as $$
         and e.published = true
         and e.canceled = false
         and (
-            coalesce(e.ends_at, e.starts_at) is null
-            or coalesce(e.ends_at, e.starts_at) >= current_timestamp
+            event_effective_ends_at(e) is null
+            or event_effective_ends_at(e) >= current_timestamp
         )
         order by ao.created_at desc
     ) invitation;

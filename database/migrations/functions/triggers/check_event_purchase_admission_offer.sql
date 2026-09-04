@@ -19,12 +19,9 @@ begin
 
     -- Ignore historical purchases and purchases explicitly linked to an offer
     if new.admission_offer_id is not null
-       or new.status not in (
-            'completed',
-            'pending',
-            'refund-pending',
-            'refund-recovery-pending',
-            'refund-requested'
+       or not (
+            event_purchase_holds_seat(new.status)
+            or new.status = 'pending'
        ) then
         return new;
     end if;
@@ -38,7 +35,7 @@ begin
         from admission_offer ao
         where ao.event_id = new.event_id
         and ao.user_id = new.user_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
     ) then
         raise exception 'active admission offer must be claimed directly' using errcode = 'OCG01';
     end if;

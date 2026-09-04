@@ -83,6 +83,7 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
     'starts_at', now() + interval '1 day'
 ));
 select fx_event(:'eventStartedID', :'groupID', :'eventCategoryID', jsonb_build_object(
+    'ends_at', current_timestamp + interval '1 hour',
     'published', true,
     'registration_questions', format(
         $json$

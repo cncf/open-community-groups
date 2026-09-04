@@ -12,43 +12,14 @@ create or replace function update_meeting(
 declare
     v_claim_held boolean := false;
 begin
-    -- Complete event claim when the worker still holds it
-    if p_event_id is not null then
-        update event
-        set
-            meeting_error = case
-                when current_state.sync_state_hash = p_sync_state_hash then null
-                else meeting_error
-            end,
-            meeting_in_sync = current_state.sync_state_hash = p_sync_state_hash,
-            meeting_provider_host_user = null,
-            meeting_sync_claimed_at = null
-        from (
-            select get_event_meeting_sync_state_hash(p_event_id) as sync_state_hash
-        ) current_state
-        where event_id = p_event_id
-          and meeting_sync_claimed_at = p_sync_claimed_at;
-        v_claim_held := found;
-    end if;
-
-    -- Complete session claim when the worker still holds it
-    if p_session_id is not null then
-        update session
-        set
-            meeting_error = case
-                when current_state.sync_state_hash = p_sync_state_hash then null
-                else meeting_error
-            end,
-            meeting_in_sync = current_state.sync_state_hash = p_sync_state_hash,
-            meeting_provider_host_user = null,
-            meeting_sync_claimed_at = null
-        from (
-            select get_session_meeting_sync_state_hash(p_session_id) as sync_state_hash
-        ) current_state
-        where session_id = p_session_id
-          and meeting_sync_claimed_at = p_sync_claimed_at;
-        v_claim_held := found;
-    end if;
+    -- Complete event or session claim when the worker still holds it
+    v_claim_held := release_meeting_sync(
+        p_event_id,
+        p_session_id,
+        p_sync_claimed_at,
+        p_sync_state_hash,
+        null
+    );
 
     -- Update meeting only when the worker still held the claim
     if v_claim_held then

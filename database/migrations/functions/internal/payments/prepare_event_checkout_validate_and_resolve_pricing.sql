@@ -43,7 +43,7 @@ begin
             where ao.admission_offer_id = p_admission_offer_id
             and ao.event_id = p_event_id
             and ao.event_ticket_type_id = p_event_ticket_type_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
             and ao.user_id = p_user_id
             and ao.expires_at > current_timestamp
        ) then
@@ -54,7 +54,7 @@ begin
     select
         ett.active,
         ett.availability,
-        cp.amount_minor,
+        event_ticket_type_current_price(ett.event_ticket_type_id),
         ett.seats_total,
         ett.title
     into
@@ -64,17 +64,6 @@ begin
         v_seats_total,
         ticket_title
     from event_ticket_type ett
-    left join lateral (
-        select etpw.amount_minor
-        from event_ticket_price_window etpw
-        where etpw.event_ticket_type_id = ett.event_ticket_type_id
-        and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-        and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-        order by
-            etpw.starts_at desc nulls last,
-            etpw.event_ticket_price_window_id asc
-        limit 1
-    ) cp on true
     where ett.event_id = p_event_id
     and ett.event_ticket_type_id = p_event_ticket_type_id;
 

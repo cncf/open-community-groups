@@ -8,30 +8,19 @@ create or replace function cancel_event_attendee_attendance(
 ) returns json as $$
 declare
     v_community_id uuid;
+    v_event event;
     v_existing_refund_kind text;
     v_purchase event_purchase;
     v_refund_request_id uuid;
 begin
     -- Lock the event and verify it belongs to the selected group and can be changed
+    v_event := lock_active_event(null, p_group_id, p_event_id, true);
+
+    -- Load group context needed for audit
     select g.community_id
     into v_community_id
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and e.published = true
-    and e.canceled = false
-    and (
-        coalesce(e.ends_at, e.starts_at) is null
-        or coalesce(e.ends_at, e.starts_at) >= current_timestamp
-    )
-    for update of e;
-
-    -- Reject missing or inactive events before changing attendance
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    from "group" g
+    where g.group_id = v_event.group_id;
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
     perform 1

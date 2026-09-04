@@ -41,7 +41,7 @@ returns text as $$
             select 1
             from admission_offer ao
             where ao.event_id = e.event_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
         )
         or exists (
             select 1
@@ -57,7 +57,7 @@ returns text as $$
         -- Canceled events have already completed the required workflow
         when e.canceled then 'allowed'
         -- Past events no longer need cancellation before deletion
-        when coalesce(e.ends_at, e.starts_at) < current_timestamp then 'allowed'
+        when event_effective_ends_at(e) < current_timestamp then 'allowed'
         -- Unused drafts have no lifecycle records that deletion could orphan
         when not e.published
              and e.published_at is null

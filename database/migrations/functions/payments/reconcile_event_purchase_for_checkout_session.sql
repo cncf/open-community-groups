@@ -83,7 +83,7 @@ begin
             select ao.user_id
             from admission_offer ao
             where ao.event_id = v_event_id
-            and ao.status in ('checkout_pending', 'pending')
+            and admission_offer_is_active(ao.status)
 
             union
 
@@ -114,7 +114,7 @@ begin
     perform 1
     from admission_offer ao
     where ao.event_id = v_event_id
-    and ao.status in ('checkout_pending', 'pending')
+    and admission_offer_is_active(ao.status)
     order by ao.admission_offer_id
     for update of ao;
 
@@ -140,13 +140,10 @@ begin
         coalesce(p_provider_payment_reference, ep.provider_payment_reference),
         p_provider_total_minor,
         ep.event_purchase_id,
-        exists (
-            select 1
-            from event_purchase recovery_ep
-            where recovery_ep.event_id = ep.event_id
-            and recovery_ep.event_purchase_id <> ep.event_purchase_id
-            and recovery_ep.status = 'refund-recovery-pending'
-            and recovery_ep.user_id = ep.user_id
+        event_has_pending_refund_recovery(
+            ep.event_id,
+            ep.user_id,
+            ep.event_purchase_id
         ),
         ep.status,
         p_provider_total_minor - p_tax_amount_minor,
@@ -156,8 +153,8 @@ begin
             or not e.published
             or not g.active
             or (
-                coalesce(e.ends_at, e.starts_at) is not null
-                and coalesce(e.ends_at, e.starts_at) <= current_timestamp
+                event_effective_ends_at(e) is not null
+                and event_effective_ends_at(e) <= current_timestamp
             )
             or (
                 ep.admission_offer_id is not null

@@ -7,51 +7,16 @@ create or replace function attend_event(
     p_event_ticket_type_id uuid default null
 ) returns text as $$
 declare
-    v_attendee_approval_required boolean;
+    v_event event;
     v_has_reusable_free_purchase boolean;
     v_has_registration_questions boolean;
     v_invitation_request_status text;
-    v_registration_ends_at timestamptz;
-    v_registration_questions jsonb;
-    v_registration_starts_at timestamptz;
     v_selectable_public_ticket_count int;
-    v_starts_at timestamptz;
     v_ticket_allocated_count int;
     v_ticket_seats_total int;
-    v_waitlist_enabled boolean;
 begin
     -- Lock and validate the attendee-visible event
-    select
-        e.attendee_approval_required,
-        e.registration_ends_at,
-        e.registration_questions,
-        e.registration_starts_at,
-        e.starts_at,
-        e.waitlist_enabled
-    into
-        v_attendee_approval_required,
-        v_registration_ends_at,
-        v_registration_questions,
-        v_registration_starts_at,
-        v_starts_at,
-        v_waitlist_enabled
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = p_event_id
-    and g.community_id = p_community_id
-    and g.active = true
-    and e.deleted = false
-    and e.published = true
-    and e.canceled = false
-    and (
-        coalesce(e.ends_at, e.starts_at) is null
-        or coalesce(e.ends_at, e.starts_at) >= current_timestamp
-    )
-    for update of e;
-
-    if not found then
-        raise exception 'event not found or inactive' using errcode = 'OCG01';
-    end if;
+    v_event := lock_active_event(p_community_id, null, p_event_id, true);
 
     -- Lock tiers and reconcile stale reservations before serializing this attendee
     perform 1
@@ -70,14 +35,14 @@ begin
 
     -- Require public registration for every new self-service enrollment
     if not is_registration_window_open(
-        v_registration_starts_at,
-        v_registration_ends_at,
-        v_starts_at
+        v_event.registration_starts_at,
+        v_event.registration_ends_at,
+        v_event.starts_at
     ) then
         raise exception 'event registration is not open' using errcode = 'OCG01';
     end if;
 
-    -- Reject enrollment state that must be resumed or completed elsewhere
+    -- Reject attendees that are already enrolled
     if exists (
         select 1
         from event_attendee ea
@@ -88,36 +53,30 @@ begin
         raise exception 'user is already attending this event' using errcode = 'OCG01';
     end if;
 
+    -- Reject offers that must be resumed or completed elsewhere
     if exists (
         select 1
         from admission_offer ao
         where ao.event_id = p_event_id
         and ao.user_id = p_user_id
-        and ao.status in ('checkout_pending', 'pending')
+        and admission_offer_is_active(ao.status)
         and ao.expires_at > current_timestamp
     ) then
         raise exception 'user already has an active admission offer for this event' using errcode = 'OCG01';
     end if;
 
+    -- Reject purchases that already reserve enrollment
     if exists (
         select 1
         from event_purchase ep
         where ep.event_id = p_event_id
         and ep.user_id = p_user_id
         and (
-            ep.status in (
-                'completed',
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested'
-            )
+            event_purchase_holds_seat(ep.status)
             or (
                 ep.status = 'pending'
                 and ep.hold_expires_at > current_timestamp
-                and (
-                    v_attendee_approval_required
-                    or not is_event_simple_rsvp(p_event_id)
-                )
+                and (v_event.attendee_approval_required or not is_event_simple_rsvp(p_event_id))
             )
         )
     ) then
@@ -139,17 +98,12 @@ begin
         where ett.event_id = p_event_id
         and ett.active = true
         and ett.availability = 'public'
-        and exists (
-            select 1
-            from event_ticket_price_window etpw
-            where etpw.event_ticket_type_id = ett.event_ticket_type_id
-            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-        );
+        and event_ticket_type_current_price(ett.event_ticket_type_id) is not null;
 
+        -- Require one public tier unless private approval requests are allowed
         if v_selectable_public_ticket_count <> 1
            and not (
-                v_attendee_approval_required
+                v_event.attendee_approval_required
                 and v_selectable_public_ticket_count = 0
            ) then
             raise exception 'ticket type is required' using errcode = 'OCG01';
@@ -162,27 +116,23 @@ begin
         and ett.event_ticket_type_id = p_event_ticket_type_id
         and ett.active = true
         and ett.availability = 'public'
-        and exists (
-            select 1
-            from event_ticket_price_window etpw
-            where etpw.event_ticket_type_id = ett.event_ticket_type_id
-            and (etpw.starts_at is null or etpw.starts_at <= current_timestamp)
-            and (etpw.ends_at is null or etpw.ends_at >= current_timestamp)
-        );
+        and event_ticket_type_current_price(ett.event_ticket_type_id) is not null;
 
+        -- Require the selected tier to be public and purchasable
         if v_selectable_public_ticket_count <> 1 then
             raise exception 'ticket type is required' using errcode = 'OCG01';
         end if;
     end if;
 
     -- Route approval-required enrollment into a public-tier or generic request
-    if v_attendee_approval_required then
+    if v_event.attendee_approval_required then
         v_has_registration_questions :=
-            jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0;
+            jsonb_array_length(coalesce(v_event.registration_questions, '[]'::jsonb)) > 0;
 
+        -- Validate answers when the request collects attendee details
         if v_has_registration_questions then
             perform validate_questionnaire_answers_payload(
-                v_registration_questions,
+                v_event.registration_questions,
                 p_registration_answers
             );
         end if;
@@ -194,10 +144,13 @@ begin
         and eir.user_id = p_user_id
         for update of eir;
 
+        -- Reject duplicate pending approval requests
         if v_invitation_request_status = 'pending' then
             raise exception 'user has already requested an invitation for this event' using errcode = 'OCG01';
+        -- Reject previously denied approval requests
         elsif v_invitation_request_status = 'rejected' then
             raise exception 'invitation request was rejected for this event' using errcode = 'OCG01';
+        -- Reject approval requests that already converted to an offer
         elsif v_invitation_request_status = 'accepted' then
             raise exception 'invitation request was already accepted for this event' using errcode = 'OCG01';
         end if;
@@ -226,6 +179,7 @@ begin
     and ett.active = true
     and ett.availability = 'public';
 
+    -- Reject unavailable tiers that should not reach checkout
     if not found then
         raise exception 'ticket type is not publicly available' using errcode = 'OCG01';
     end if;
@@ -240,22 +194,18 @@ begin
         and ep.amount_minor = 0
         and ep.status = 'pending'
         and ep.hold_expires_at > current_timestamp
-        and not v_attendee_approval_required
+        and not v_event.attendee_approval_required
     )
     into v_has_reusable_free_purchase;
 
+    -- Reject purchase holds that cannot be safely reused
     if exists (
         select 1
         from event_purchase ep
         where ep.event_id = p_event_id
         and ep.user_id = p_user_id
         and (
-            ep.status in (
-                'completed',
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested'
-            )
+            event_purchase_holds_seat(ep.status)
             or (
                 ep.status = 'pending'
                 and ep.hold_expires_at > current_timestamp
@@ -269,6 +219,7 @@ begin
         raise exception 'user already has an active purchase for this event' using errcode = 'OCG01';
     end if;
 
+    -- Resume zero-value checkout when the existing hold is reusable
     if v_has_reusable_free_purchase then
         return 'pending-payment';
     end if;
@@ -280,11 +231,13 @@ begin
     )
     into v_ticket_allocated_count;
 
+    -- Route into checkout when capacity remains
     if v_ticket_allocated_count < v_ticket_seats_total then
         return 'pending-payment';
     end if;
 
-    if not v_waitlist_enabled then
+    -- Reject sold-out events with no waitlist
+    if not v_event.waitlist_enabled then
         return 'event-capacity-unavailable';
     end if;
 

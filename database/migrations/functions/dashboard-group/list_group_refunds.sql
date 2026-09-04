@@ -6,9 +6,10 @@ returns json as $$
         filters as (
             select
                 (p_filters->>'event_id')::uuid as event_id_value,
-                (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value,
-                nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value,
+                f.ilike_pattern,
+                f.limit_value,
+                f.offset_value,
+                f.ts_query as ts_query_value,
                 case
                     when lower(p_filters->>'view') in (
                         'active',
@@ -18,6 +19,7 @@ returns json as $$
                     ) then lower(p_filters->>'view')
                     else 'active'
                 end as view_value
+            from parse_search_filters(p_filters) f
         ),
         -- Select every purchase that has entered a refund workflow
         base_refunds as (
@@ -188,7 +190,7 @@ returns json as $$
                     br.name,
                     br.ticket_title,
                     br.username
-                ) ilike '%' || escape_ilike_pattern(f.ts_query_value) || '%'
+                ) ilike f.ilike_pattern
             )
             and (
                 f.view_value = 'all'
@@ -230,7 +232,7 @@ returns json as $$
                     bfr.operation,
                     bfr.ticket_title,
                     bfr.username
-                ) ilike '%' || escape_ilike_pattern(f.ts_query_value) || '%'
+                ) ilike f.ilike_pattern
             )
         ),
         -- Combine refund and financial-recovery work into one bounded page
@@ -260,7 +262,7 @@ returns json as $$
         refunds as (
             select
                 fr.amount_minor,
-                extract(epoch from fr.created_at_sort)::bigint as created_at,
+                epoch_seconds(fr.created_at_sort) as created_at,
                 fr.currency_code,
                 fr.email,
                 fr.event_id,
@@ -269,7 +271,7 @@ returns json as $$
                 fr.charge_model = 'external' as external,
                 fr.status,
                 fr.ticket_title,
-                extract(epoch from fr.updated_at_sort)::bigint as updated_at,
+                epoch_seconds(fr.updated_at_sort) as updated_at,
                 fr.user_id,
                 fr.username,
 

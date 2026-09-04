@@ -64,25 +64,6 @@ begin
     end if;
 
     -- Return the durable refund state after recording provider progress
-    return jsonb_strip_nulls(
-        jsonb_build_object(
-            'amount_minor', v_refund.amount_minor,
-            'currency_code', v_refund.currency_code,
-            'event_purchase_id', v_refund.event_purchase_id,
-            'event_purchase_refund_id', v_refund.event_purchase_refund_id,
-            'idempotency_key', v_refund.idempotency_key,
-            'kind', v_refund.kind,
-            'payment_provider', v_refund.payment_provider_id,
-            'status', v_refund.status,
-            'terminal_failure', v_refund.terminal_failure,
-
-            'attempt_count', v_refund.attempt_count,
-            'claim_id', v_refund.claim_id,
-            'failure_message', v_refund.failure_message,
-            'finalized_at', extract(epoch from v_refund.finalized_at)::bigint,
-            'provider_refund_id', v_refund.provider_refund_id,
-            'provider_refunded_at', extract(epoch from v_refund.provider_refunded_at)::bigint
-        )
-    );
+    return event_purchase_refund_to_json(v_refund);
 end;
 $$ language plpgsql;

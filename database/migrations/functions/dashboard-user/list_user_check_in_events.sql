@@ -8,7 +8,7 @@ returns json as $$
             e.event_id,
             e.event_kind_id as kind,
             e.name,
-            floor(extract(epoch from e.starts_at)) as starts_at,
+            epoch_seconds(e.starts_at) as starts_at,
             e.timezone,
 
             coalesce(e.logo_url, g.logo_url, c.logo_url) as logo_url,
@@ -31,13 +31,7 @@ returns json as $$
             from event_purchase ep
             where ep.event_id = ea.event_id
             and ep.user_id = ea.user_id
-            and ep.status in (
-                'completed',
-                'refund-pending',
-                'refund-recovery-pending',
-                'refund-requested',
-                'refunded'
-            )
+            and (event_purchase_holds_seat(ep.status) or ep.status = 'refunded')
             order by ep.created_at desc, ep.event_purchase_id desc
             limit 1
         ) purchase on true

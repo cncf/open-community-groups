@@ -1,3 +1,5 @@
+-- Tests listing CFS submissions for an event.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
@@ -208,7 +210,7 @@ select is(
                 'action_required_message', 'Looks good',
                 'average_rating', 4.5,
                 'cfs_submission_id', :'submission2ID'::uuid,
-                'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+                'created_at', (select epoch_seconds(created_at) from cfs_submission
                     where cfs_submission_id = :'submission2ID'::uuid),
                 'labels', jsonb_build_array(
                     jsonb_build_object(
@@ -260,14 +262,14 @@ select is(
                 ),
                 'status_id', 'approved',
                 'status_name', 'Approved',
-                'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                'updated_at', (select epoch_seconds(updated_at) from cfs_submission
                     where cfs_submission_id = :'submission2ID'::uuid)
             ),
             jsonb_build_object(
                 'action_required_message', null,
                 'average_rating', 2.0,
                 'cfs_submission_id', :'submission1ID'::uuid,
-                'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+                'created_at', (select epoch_seconds(created_at) from cfs_submission
                     where cfs_submission_id = :'submission1ID'::uuid),
                 'labels', jsonb_build_array(
                     jsonb_build_object(
@@ -303,7 +305,7 @@ select is(
                 ),
                 'status_id', 'not-reviewed',
                 'status_name', 'Not reviewed',
-                'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                'updated_at', (select epoch_seconds(updated_at) from cfs_submission
                     where cfs_submission_id = :'submission1ID'::uuid)
             )
         ),
@@ -347,7 +349,7 @@ select is(
             'action_required_message', 'Looks good',
             'average_rating', 4.5,
             'cfs_submission_id', :'submission2ID'::uuid,
-            'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+            'created_at', (select epoch_seconds(created_at) from cfs_submission
                 where cfs_submission_id = :'submission2ID'::uuid),
             'labels', jsonb_build_array(
                 jsonb_build_object(
@@ -399,7 +401,7 @@ select is(
             ),
             'status_id', 'approved',
             'status_name', 'Approved',
-            'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+            'updated_at', (select epoch_seconds(updated_at) from cfs_submission
                 where cfs_submission_id = :'submission2ID'::uuid)
         )
     ),
