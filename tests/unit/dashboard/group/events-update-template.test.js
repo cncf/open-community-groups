@@ -216,6 +216,10 @@ describe("dashboard group event update template", () => {
     expect(template).to.include('name="external_payment_window_hours_present"');
     expect(template).to.include('id="external_payment_window_hours"');
     expect(template).to.include('name="external_payment_window_hours"');
+    expect(template).to.include('min="1"');
+    expect(template).to.include(
+      '{% if let Some(max_hours) = external_payments.max_payment_window_hours %}max="{{ max_hours }}"{% endif %}',
+    );
     expect(template).to.include(
       "{% if let Some(hours) = event.external_payment_window_hours %}value=\"{{ hours }}\"{% endif %}",
     );

@@ -348,6 +348,9 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include(
       'data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"',
     );
+    expect(
+      template.match(/data-refund-external="true"/gu),
+    ).to.have.lengthOf(2);
     expect(template).to.include("dashboard::refund_review_modal");
     expect(template).to.include('id_prefix = "refund-reject"');
     expect(template).to.include('review_note_id = "refund-review-note"');

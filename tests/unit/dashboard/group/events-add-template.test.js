@@ -191,6 +191,10 @@ describe("dashboard group event add template", () => {
     expect(template).to.include("Payment instructions");
     expect(template).to.include('id="external_payment_window_hours"');
     expect(template).to.include('name="external_payment_window_hours"');
+    expect(template).to.include('min="1"');
+    expect(template).to.include(
+      '{% if let Some(max_hours) = external_payments.max_payment_window_hours %}max="{{ max_hours }}"{% endif %}',
+    );
     expect(template).to.include("Payment window (hours)");
     expect(template).to.include(
       'class="col-span-full 2xl:col-span-4 2xl:col-start-1"> <label for="external_payment_url"',

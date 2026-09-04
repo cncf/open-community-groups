@@ -155,6 +155,7 @@ export const TEST_GROUP_NAMES = {
   alpha: "Platform Ops Meetup",
   beta: "Inactive Local Chapter",
   empty: "Empty Coverage Group",
+  externalPayments: "External Payments Lab",
   gamma: "Observability Guild",
 };
 
@@ -171,6 +172,7 @@ export const TEST_GROUP_SLUGS = {
     alpha: "test-group-alpha",
     beta: "test-group-beta",
     empty: "empty-coverage-group",
+    externalPayments: "external-payments-lab",
     gamma: "test-group-gamma",
   },
   community2: {
@@ -186,6 +188,7 @@ export const TEST_GROUP_IDS = {
     alpha: "44444444-4444-4444-4444-444444444441",
     beta: "44444444-4444-4444-4444-444444444442",
     empty: "44444444-4444-4444-4444-444444444447",
+    externalPayments: "44444444-4444-4444-4444-444444444448",
     gamma: "44444444-4444-4444-4444-444444444443",
   },
   community2: {
@@ -288,6 +291,34 @@ export const TEST_TICKETING_EVENTS = {
     id: "55555555-5555-5555-5555-555555555913",
     name: "Ticket Request Lab",
     slug: "alpha-ticket-request-lab",
+  },
+};
+
+/** Isolated events used by the external payment E2E journeys. */
+export const TEST_EXTERNAL_PAYMENT_EVENTS = {
+  capacity: {
+    id: "55555555-5555-5555-5555-555555555925",
+    name: "External Payment Capacity Lab",
+    slug: "external-payment-capacity",
+    ticketTypeId: "56555555-5555-5555-5555-555555555925",
+  },
+  copyFree: {
+    id: "55555555-5555-5555-5555-555555555927",
+    name: "External Payment Free Copy Source",
+    slug: "external-payment-free-copy-source",
+  },
+  invitation: {
+    id: "55555555-5555-5555-5555-555555555926",
+    name: "External Payment Invitation Lab",
+    slug: "external-payment-invitation",
+    ticketTypeId: "56555555-5555-5555-5555-555555555926",
+  },
+  lifecycle: {
+    discountCode: "EXTERNALFREE",
+    id: "55555555-5555-5555-5555-555555555924",
+    name: "External Payment Lifecycle Lab",
+    slug: "external-payment-lifecycle",
+    ticketTypeId: "56555555-5555-5555-5555-555555555924",
   },
 };
 
@@ -647,6 +678,9 @@ export const waitForAttendanceState = async (page) => {
   await Promise.race([
     getAttendButton(page).waitFor({ state: "visible" }),
     getLeaveButton(page).waitFor({ state: "visible" }),
+    attendanceContainer
+      .locator('[data-attendance-role="refund-btn"]')
+      .waitFor({ state: "visible" }),
   ]);
 };
 

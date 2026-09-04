@@ -1594,6 +1594,67 @@ describe("event attendance paid modal", () => {
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
   });
 
+  it("handles malformed external payment details without keeping stale values", async () => {
+    const {
+      attendButton,
+      checker,
+      externalPaymentAmount,
+      externalPaymentDeadline,
+      externalPaymentDetails,
+      externalPaymentInstructions,
+      externalPaymentReference,
+    } = renderPaidAttendanceDom({ eventTimezone: "Invalid/Timezone" });
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        external_payment: {
+          amount_minor: 5000,
+          currency_code: "INVALID",
+          deadline: 1_700_000_000,
+          instructions: "Pay by transfer.",
+          reference: "payment-reference",
+          url: "https://pay.example.test/event",
+        },
+        status: "pending-payment",
+      }),
+    });
+
+    expect(
+      externalPaymentAmount.querySelector("[data-attendance-detail-value]")?.textContent,
+    ).to.equal("INVALID 50.00");
+    expect(
+      externalPaymentDeadline.querySelector("[data-attendance-detail-value]")?.textContent,
+    ).not.to.equal("");
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        external_payment: {
+          amount_minor: "5000",
+          currency_code: null,
+          deadline: "not-a-date",
+          instructions: "   ",
+          url: "https://pay.example.test/event",
+        },
+        status: "pending-payment",
+      }),
+    });
+
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
+      "Open payment page",
+    );
+    expect(externalPaymentDetails.classList.contains("hidden")).to.equal(false);
+    [
+      externalPaymentAmount,
+      externalPaymentDeadline,
+      externalPaymentInstructions,
+      externalPaymentReference,
+    ].forEach((detail) => {
+      expect(detail.classList.contains("hidden")).to.equal(true);
+      expect(detail.querySelector("[data-attendance-detail-value]")?.textContent).to.equal("");
+    });
+  });
+
   it("keeps pending-payment available after the registration window closes", async () => {
     // Render an active pending payment after public registration has closed.
     const { checker, attendButton, checkoutCancelButton } = renderPaidAttendanceDom({

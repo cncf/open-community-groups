@@ -160,6 +160,9 @@ describe("event attendance button template", () => {
     expect(macros).to.include('title = "Payment details"');
     expect(macros).to.include('width_classes = "w-80"');
     expect(macros).to.include(
+      'alignment_classes = "start-0 sm:start-1/2 sm:-translate-x-1/2"',
+    );
+    expect(macros).to.include(
       'class="mt-0.5 block text-sm font-medium text-stone-900"',
     );
     expect(macros).to.include(

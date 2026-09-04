@@ -168,6 +168,11 @@ jobs:
               password: ""
           images:
             provider: db
+          external_payments:
+            allowed_countries:
+              - US
+            default_payment_window_hours: 72
+            max_payment_window_hours: 336
           payments:
             provider: stripe
             mode: test

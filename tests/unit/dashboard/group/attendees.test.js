@@ -1140,7 +1140,7 @@ describe("dashboard group attendees", () => {
     }
   });
 
-  it("keeps rejection feedback distinct from external refund approval feedback", () => {
+  it("resets external refund copy when the next attendee approval uses Stripe", () => {
     // Open external approval and rejection forms for the same refund workflow.
     const originalHtmx = window.htmx;
     window.htmx = { process: () => {} };
@@ -1149,20 +1149,34 @@ describe("dashboard group attendees", () => {
       document.body.innerHTML = attendeeRefundApproveMarkup();
       initializeAttendeesUi();
       const approveTrigger = document.querySelector("[data-attendee-refund-approve-open]");
+      const approveForm = document.getElementById("attendee-refund-approve-form");
+      const approveExternalNote = document.getElementById("attendee-refund-approve-external-note");
       approveTrigger.dataset.refundExternal = "true";
       approveTrigger.click();
-      expect(document.getElementById("attendee-refund-approve-form")?.dataset.successMessage).to.equal(
+      expect(approveForm?.dataset.successMessage).to.equal(
         "Refund recorded. Attendance canceled.",
       );
+      expect(approveExternalNote?.hidden).to.equal(false);
+      expect(approveExternalNote?.classList.contains("hidden")).to.equal(false);
+
+      document.getElementById("close-attendee-refund-approve-modal")?.click();
+      approveTrigger.dataset.refundExternal = "false";
+      approveTrigger.click();
+      expect(approveForm?.dataset.successMessage).to.equal("Refund queued.");
+      expect(approveExternalNote?.hidden).to.equal(true);
+      expect(approveExternalNote?.classList.contains("hidden")).to.equal(true);
 
       document.body.innerHTML = attendeeRefundRejectMarkup();
       initializeAttendeesUi();
       const rejectTrigger = document.querySelector("[data-attendee-refund-reject-open]");
+      const rejectExternalNote = document.getElementById("attendee-refund-reject-external-note");
       rejectTrigger.dataset.refundExternal = "true";
       rejectTrigger.click();
       expect(document.getElementById("attendee-refund-reject-form")?.dataset.successMessage).to.equal(
         "Refund request rejected.",
       );
+      expect(rejectExternalNote?.hidden).to.equal(false);
+      expect(rejectExternalNote?.classList.contains("hidden")).to.equal(false);
     } finally {
       window.htmx = originalHtmx;
     }

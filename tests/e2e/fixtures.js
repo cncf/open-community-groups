@@ -99,6 +99,9 @@ export const test = base.extend({
   organizerEmptyGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer1, (page) =>
     selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.empty),
   ),
+  organizerExternalGroupPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer1, (page) =>
+    selectGroupContext(page, TEST_COMMUNITY_IDS.community1, TEST_GROUP_IDS.community1.externalPayments),
+  ),
   organizerGroupWithoutPaymentsPage: authenticatedPageFixture(TEST_USER_CREDENTIALS.organizer2, (page) =>
     selectGroupContext(page, TEST_COMMUNITY_IDS.community2, TEST_GROUP_IDS.community2.delta),
   ),

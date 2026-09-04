@@ -869,6 +869,7 @@
                                     data-refund-reject-url="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/reject"
                                     data-refund-attendee-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                                     data-refund-event-name="{{ event.name }}"
+                                    {% if attendee.charge_model == Some(crate::types::payments::EventPurchaseChargeModel::External) %}data-refund-external="true"{% endif %}
                                     role="menuitem"
                                     class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
                                     type="button">

@@ -106,6 +106,9 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('id="attendee-external-payment-form"');
     expect(template).to.include('hx-ext="no-empty-vals"');
     expect(template).to.include(
+      'hx-disabled-elt="#submit-attendee-external-payment"',
+    );
+    expect(template).to.include(
       'id="attendee-external-payment-summary" class="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm sm:grid-cols-2"',
     );
     expect(template).to.include('id="attendee-external-payment-attendee"');
@@ -148,6 +151,9 @@ describe("dashboard group attendees list template", () => {
       "{% if let Some(marked_by) = &attendee.external_payment_marked_by -%}",
     );
     expect(template).to.include("by {{ marked_by }}");
+    expect(
+      template.match(/data-refund-external="true"/gu),
+    ).to.have.lengthOf(2);
   });
 
   it("uses filter-aware empty states", async () => {

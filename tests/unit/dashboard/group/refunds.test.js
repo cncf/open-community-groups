@@ -203,24 +203,38 @@ describe("dashboard group refunds", () => {
     }
   });
 
-  it("uses external completion feedback only for refund approval", () => {
+  it("resets external refund copy when the next approval uses Stripe", () => {
     // Mark both review actions as external before opening their forms.
     renderRecoveryFixture();
     const approveTrigger = document.querySelector("[data-refund-approve-open]");
     const rejectTrigger = document.querySelector("[data-refund-reject-open]");
+    const approveForm = document.getElementById("refund-approve-form");
+    const approveExternalNote = document.getElementById("refund-approve-external-note");
+    const rejectExternalNote = document.getElementById("refund-reject-external-note");
     approveTrigger.dataset.refundExternal = "true";
     rejectTrigger.dataset.refundExternal = "true";
 
     approveTrigger.click();
-    expect(document.getElementById("refund-approve-form")?.dataset.successMessage).to.equal(
+    expect(approveForm?.dataset.successMessage).to.equal(
       "Refund recorded. Attendance canceled.",
     );
+    expect(approveExternalNote?.hidden).to.equal(false);
+    expect(approveExternalNote?.classList.contains("hidden")).to.equal(false);
+
+    document.getElementById("close-refund-approve-modal")?.click();
+    approveTrigger.dataset.refundExternal = "false";
+    approveTrigger.click();
+    expect(approveForm?.dataset.successMessage).to.equal("Refund queued.");
+    expect(approveExternalNote?.hidden).to.equal(true);
+    expect(approveExternalNote?.classList.contains("hidden")).to.equal(true);
 
     document.getElementById("close-refund-approve-modal")?.click();
     rejectTrigger.click();
     expect(document.getElementById("refund-reject-form")?.dataset.successMessage).to.equal(
       "Refund request rejected.",
     );
+    expect(rejectExternalNote?.hidden).to.equal(false);
+    expect(rejectExternalNote?.classList.contains("hidden")).to.equal(false);
   });
 
   it("explains when the refund request has no reason", () => {

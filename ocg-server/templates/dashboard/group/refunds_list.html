@@ -393,6 +393,7 @@
                                   data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
                                   data-refund-event="{{ refund.event_name }}"
                                   data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
+                                  {% if refund.external %}data-refund-external="true"{% endif %}
                                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
                             <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                             <span>Reject refund</span>
