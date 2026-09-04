@@ -780,9 +780,10 @@ const formatExternalPaymentAmount = (amountMinor, currencyCode) =>
 /**
  * Formats an external-payment deadline for display.
  * @param {unknown} deadline - Unix seconds or ISO timestamp
+ * @param {unknown} timezone - Event IANA timezone
  * @returns {string} Localized deadline
  */
-const formatExternalPaymentDeadline = (deadline) => {
+const formatExternalPaymentDeadline = (deadline, timezone) => {
   const date =
     typeof deadline === "number"
       ? new Date(deadline * 1000)
@@ -793,10 +794,24 @@ const formatExternalPaymentDeadline = (deadline) => {
     return "";
   }
 
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const formatOptions = {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZoneName: "short",
+    year: "numeric",
+  };
+  if (typeof timezone === "string" && timezone.trim()) {
+    formatOptions.timeZone = timezone;
+  }
+
+  try {
+    return date.toLocaleString(undefined, formatOptions);
+  } catch (_) {
+    delete formatOptions.timeZone;
+    return date.toLocaleString(undefined, formatOptions);
+  }
 };
 
 /**
@@ -959,7 +974,10 @@ const renderExternalPaymentDetails = (container, externalPayment) => {
     setElementHidden(amount, !formattedAmount);
   }
   if (deadline instanceof HTMLElement) {
-    const formattedDeadline = formatExternalPaymentDeadline(externalPayment.deadline);
+    const formattedDeadline = formatExternalPaymentDeadline(
+      externalPayment.deadline,
+      container.dataset.eventTimezone,
+    );
     deadline.textContent = formattedDeadline ? `Confirm by ${formattedDeadline}` : "";
     setElementHidden(deadline, !formattedDeadline);
   }

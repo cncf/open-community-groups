@@ -75,6 +75,9 @@ describe("events list page", () => {
       "All attendee registrations will be canceled immediately. Full refunds for eligible paid purchases will be queued and may take time to process.",
     );
     expect(template).to.include(
+      "All attendee registrations will be canceled immediately. Any external payments already received must be returned by an organizer outside OCG.",
+    );
+    expect(template).to.include(
       'data-confirm-text="{% if action == "cancel" %}Cancel event{% else %}Yes{% endif %}"',
     );
     expect(template).to.include(

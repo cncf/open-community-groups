@@ -4,9 +4,11 @@
 {% import "macros/question_answers.html" as question_answers -%}
 
 {# External payment deadline, reference, and organizer instructions. #}
-{% macro external_payment_details(external_payment) -%}
+{% macro external_payment_details(external_payment, timezone) -%}
   <div class="mt-1.5 space-y-0.5 text-xs text-stone-500">
-    <div>Confirm by {{ external_payment.deadline.format("%b %d, %Y at %H:%M UTC") }}</div>
+    <div>
+      Confirm by {{ external_payment.deadline.with_timezone(timezone).format("%b %-e, %Y at %-I:%M %p %Z") }}
+    </div>
     <div class="font-mono">{{ external_payment.reference }}</div>
     {% if let Some(instructions) = &external_payment.instructions -%}
       <div class="whitespace-pre-wrap">{{ instructions }}</div>
@@ -180,7 +182,7 @@
                 {{ refund_status_badge(item, "mobile") -}}
               </div>
               {% if let Some(external_payment) = &item.external_payment -%}
-                <div class="xl:hidden">{{ external_payment_details(external_payment) -}}</div>
+                <div class="xl:hidden">{{ external_payment_details(external_payment, item.event.timezone) -}}</div>
               {% endif -%}
             </td>
             {# End role -#}
@@ -194,7 +196,7 @@
                 {{ refund_status_badge(item, "desktop") -}}
               </div>
               {% if let Some(external_payment) = &item.external_payment -%}
-                {{ external_payment_details(external_payment) -}}
+                {{ external_payment_details(external_payment, item.event.timezone) -}}
               {% endif -%}
             </td>
             {# End status -#}

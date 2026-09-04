@@ -21,6 +21,7 @@ describe("event attendance button template", () => {
       'hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/enrollment"',
     );
     expect(template).to.include('hx-swap="none ignoreTitle:true"');
+    expect(template).to.include('data-event-timezone="{{ event.timezone }}"');
   });
 
   it("includes registration answers only when the event has questions", async () => {

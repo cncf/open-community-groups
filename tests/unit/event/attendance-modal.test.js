@@ -15,6 +15,7 @@ const initializeAttendanceDom = async () => {
 const renderPaidAttendanceDom = ({
   starts = "2099-05-10T10:00:00Z",
   attendeeApprovalRequired = "false",
+  eventTimezone = "Asia/Seoul",
   hasVisibleTicketTypes = "true",
   ticketPurchaseAvailable = "true",
   ticketIsFreeOnly = "false",
@@ -40,6 +41,7 @@ const renderPaidAttendanceDom = ({
       data-attendance-container
       data-starts="${starts}"
       data-attendee-approval-required="${attendeeApprovalRequired}"
+      data-event-timezone="${eventTimezone}"
       data-has-sold-out-ticket-types="true"
       data-has-visible-ticket-types="${hasVisibleTicketTypes}"
       data-is-simple-rsvp="${isSimpleRsvp}"
@@ -1508,8 +1510,13 @@ describe("event attendance paid modal", () => {
       style: "currency",
     }).format(50);
     const expectedDeadline = new Date(deadlineSeconds * 1000).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      timeZone: "Asia/Seoul",
+      timeZoneName: "short",
+      year: "numeric",
     });
 
     dispatchHtmxAfterRequest(checker, {

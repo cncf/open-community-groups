@@ -116,7 +116,8 @@ describe("dashboard group home template", () => {
       'dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds", extra_styles = "max-md:hidden")',
     );
     expect(template).to.include("{% if content.is_refunds() && !payments_ready -%}");
-    expect(template).to.include("Historical refunds and recovery records remain accessible");
+    expect(template).to.include("Automatic payment processing is unavailable");
+    expect(template).to.include("external refunds can still be recorded");
     expect(template).to.include("else if content.is_refunds() -%}refunds");
     expect(template).not.to.include("refresh-group-refunds");
   });

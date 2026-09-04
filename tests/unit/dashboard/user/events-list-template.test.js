@@ -189,17 +189,19 @@ describe("dashboard user events list template", () => {
 
     expect(template).to.include("{% if let Some(external_payment) = &item.external_payment -%}");
     expect(template).to.include(
-      "Confirm by {{ external_payment.deadline.format(\"%b %d, %Y at %H:%M UTC\") }}",
+      'external_payment.deadline.with_timezone(timezone).format("%b %-e, %Y at %-I:%M %p %Z")',
     );
     expect(template).to.include('<div class="font-mono">{{ external_payment.reference }}</div>');
     expect(template).to.include(
       "{% if let Some(instructions) = &external_payment.instructions -%}",
     );
-    expect(template).to.include("{% macro external_payment_details(external_payment) -%}");
+    expect(template).to.include("{% macro external_payment_details(external_payment, timezone) -%}");
     expect(template).to.include(
-      '<div class="xl:hidden">{{ external_payment_details(external_payment) -}}</div>',
+      '<div class="xl:hidden">{{ external_payment_details(external_payment, item.event.timezone) -}}</div>',
     );
-    expect(template).to.include("{{ external_payment_details(external_payment) -}}");
+    expect(template).to.include(
+      "{{ external_payment_details(external_payment, item.event.timezone) -}}",
+    );
     expect(template).to.include('href="{{ external_payment.url }}"');
     expect(template).to.include('target="_blank"');
     expect(template).to.include('rel="noopener noreferrer"');

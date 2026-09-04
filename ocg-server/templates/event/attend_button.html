@@ -7,6 +7,7 @@
 <div id="attendance-container-{{ attendance_instance }}"
      data-attendance-container
      data-canceled="{{ event.canceled }}"
+     data-event-timezone="{{ event.timezone }}"
      data-has-sold-out-ticket-types="{{ event.has_sold_out_visible_ticket_types() }}"
      data-has-visible-ticket-types="{{ event.has_visible_ticket_types() }}"
      data-is-simple-rsvp="{{ event.has_single_free_public_ticket_type() }}"

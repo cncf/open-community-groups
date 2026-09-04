@@ -173,7 +173,7 @@
       {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden") -}}
     {% endif -%}
     {% if content.is_refunds() && !payments_ready -%}
-      {{ dashboard::permission_warning(message = "Current payment setup is unavailable. Historical refunds and recovery records remain accessible; restore the payment provider and fiscal sponsor before retrying provider operations.") -}}
+      {{ dashboard::permission_warning(message = "Automatic payment processing is unavailable. Historical records remain accessible, and external refunds can still be recorded after the money is returned outside OCG.") -}}
     {% endif -%}
     {# Content -#}
     {% if is_check_in_fallback -%}

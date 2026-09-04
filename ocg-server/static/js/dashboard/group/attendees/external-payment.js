@@ -1,4 +1,5 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { localizeCurrencyLabel } from "/static/js/common/currency.js";
 import { closestElementWithinRoot, getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { trapModalFocus } from "/static/js/common/modals/modal-lifecycle.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
@@ -136,7 +137,7 @@ const openExternalPaymentModal = (trigger, root) => {
 
   const attendee = trigger.dataset.externalPaymentAttendee || "this attendee";
   const ticket = trigger.dataset.externalPaymentTicket || "ticket";
-  const amount = trigger.dataset.externalPaymentAmount || "";
+  const amount = localizeCurrencyLabel(trigger.dataset.externalPaymentAmount);
   const reference = trigger.dataset.externalPaymentReference || "";
   if (summary instanceof HTMLElement) {
     const amountText = amount ? ` (${amount})` : "";

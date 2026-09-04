@@ -1073,8 +1073,12 @@ describe("dashboard group attendees", () => {
       expect(form?.getAttribute("hx-post")).to.equal(
         "/dashboard/group/events/event-1/purchases/purchase-1/external-payment",
       );
+      const expectedAmount = new Intl.NumberFormat(undefined, {
+        currency: "KRW",
+        style: "currency",
+      }).format(50000);
       expect(document.getElementById("attendee-external-payment-summary")?.textContent).to.equal(
-        "Mark General admission for Ana Lopez as paid (KRW 50000). Reference: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.",
+        `Mark General admission for Ana Lopez as paid (${expectedAmount}). Reference: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.`,
       );
       expect(document.getElementById("attendee-external-payment-details")?.value).to.equal("");
       expect(document.activeElement).to.equal(document.getElementById("attendee-external-payment-details"));
