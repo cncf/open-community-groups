@@ -474,7 +474,7 @@ select throws_ok(
         :'groupID',
         :'expiredPurchaseID'
     ),
-    'P0001',
+    'OCG01',
     'purchase hold has expired',
     'Should reject an expired external purchase'
 );
@@ -487,7 +487,7 @@ select throws_ok(
         :'otherGroupID',
         :'pendingPurchaseID'
     ),
-    'P0001',
+    'OCG01',
     'purchase not found',
     'Should reject a purchase that belongs to another group'
 );
@@ -500,7 +500,7 @@ select throws_ok(
         :'groupID',
         :'stripePurchaseID'
     ),
-    'P0001',
+    'OCG01',
     'only external purchases can be marked paid locally',
     'Should reject a Stripe purchase that cannot be marked paid locally'
 );
@@ -513,7 +513,7 @@ select throws_ok(
         :'groupID',
         '00000000-0000-0000-0000-000000000000'
     ),
-    'P0001',
+    'OCG01',
     'purchase not found',
     'Should reject a missing purchase'
 );

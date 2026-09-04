@@ -140,6 +140,7 @@ select throws_ok(
         :'label1ID', :'label1ID', :'label1ID', :'label1ID',
         :'label1ID', :'label1ID', :'label1ID'
     ),
+    'OCG01',
     'too many submission labels',
     'Should reject more than ten labels'
 );
@@ -151,6 +152,7 @@ select throws_ok(
         :'eventID',
         :'labelOtherID'
     ),
+    'OCG01',
     'invalid event CFS labels',
     'Should reject labels from another event'
 );

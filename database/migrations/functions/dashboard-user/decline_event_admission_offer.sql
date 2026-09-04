@@ -31,7 +31,7 @@ begin
     and ao.user_id = p_actor_user_id;
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     -- Lock the event and ticket inventory before user enrollment state
@@ -47,7 +47,7 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     perform 1
@@ -84,7 +84,7 @@ begin
     for update of ao;
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     -- Expire any linked checkout and release its discount and attendee hold
@@ -120,7 +120,7 @@ begin
     and status in ('checkout_pending', 'pending');
 
     if not found then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     perform reconcile_event_enrollment(

@@ -14,7 +14,7 @@ begin
         join event e on e.event_id = p_event_id
         where gs.group_id <> e.group_id
     ) then
-        raise exception 'sponsor does not belong to event group';
+        raise exception 'sponsor does not belong to event group' using errcode = 'OCG01';
     end if;
 
     -- Replace associations from the payload

@@ -41,11 +41,11 @@ begin
     where ep.event_purchase_id = p_event_purchase_id;
 
     if not found then
-        raise exception 'purchase not found';
+        raise exception 'purchase not found' using errcode = 'OCG01';
     end if;
 
     if v_purchase_hold_expired then
-        raise exception 'purchase hold has expired';
+        raise exception 'purchase hold has expired' using errcode = 'OCG01';
     end if;
 
     -- Lock the group before the event to match dashboard event mutations
@@ -56,7 +56,7 @@ begin
     for update of g;
 
     if not found then
-        raise exception 'purchase not found';
+        raise exception 'purchase not found' using errcode = 'OCG01';
     end if;
 
     -- Lock the event before the purchase to match checkout and attendance flows
@@ -78,7 +78,7 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'purchase not found';
+        raise exception 'purchase not found' using errcode = 'OCG01';
     end if;
 
     -- Reconcile under the global event, tier, user, and purchase lock order
@@ -115,24 +115,24 @@ begin
     for update of ep;
 
     if not found then
-        raise exception 'purchase not found';
+        raise exception 'purchase not found' using errcode = 'OCG01';
     end if;
 
     -- Validate that the locked purchase is still eligible for local completion
     if v_status <> 'pending' then
-        raise exception 'purchase is no longer pending';
+        raise exception 'purchase is no longer pending' using errcode = 'OCG01';
     end if;
 
     if v_amount_minor <> 0 then
-        raise exception 'only free purchases can be completed locally';
+        raise exception 'only free purchases can be completed locally' using errcode = 'OCG01';
     end if;
 
     if v_hold_expires_at is not null and v_hold_expires_at <= current_timestamp then
-        raise exception 'purchase hold has expired';
+        raise exception 'purchase hold has expired' using errcode = 'OCG01';
     end if;
 
     if v_recovery_pending then
-        raise exception 'checkout is unavailable while refund recovery is in progress';
+        raise exception 'checkout is unavailable while refund recovery is in progress' using errcode = 'OCG01';
     end if;
 
     -- Ensure the event is still active before completing the free purchase
@@ -144,7 +144,7 @@ begin
            coalesce(v_event_ends_at, v_event_starts_at) is not null
            and coalesce(v_event_ends_at, v_event_starts_at) <= current_timestamp
        ) then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Complete the linked reservation before creating active attendance
@@ -157,7 +157,7 @@ begin
         and status = 'checkout_pending';
 
         if not found then
-            raise exception 'admission offer is no longer available';
+            raise exception 'admission offer is no longer available' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -179,7 +179,7 @@ begin
 
     -- Never complete the purchase without a confirmed attendee row
     if not found then
-        raise exception 'attendee cannot be confirmed for this event';
+        raise exception 'attendee cannot be confirmed for this event' using errcode = 'OCG01';
     end if;
 
     update event_purchase

@@ -199,6 +199,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid
     )$$, :'eventID', :'confirmedUserID'),
+    'OCG01',
     'user is already attending this event',
     'Should reject confirmed attendees'
 );
@@ -209,6 +210,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid
     )$$, :'eventID', :'invitedUserID'),
+    'OCG01',
     'user has a pending or rejected invitation for this event',
     'Should reject users with a pending invitation'
 );
@@ -219,6 +221,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid
     )$$, :'eventID', :'rejectedUserID'),
+    'OCG01',
     'user has a pending or rejected invitation for this event',
     'Should reject users with a rejected invitation'
 );
@@ -229,6 +232,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid
     )$$, :'eventID', :'waitlistedUserID'),
+    'OCG01',
     'user is already on the waiting list for this event',
     'Should reject waitlisted users'
 );

@@ -30,7 +30,7 @@ begin
 
     -- Reject missing or inactive events before changing attendance
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
@@ -53,7 +53,7 @@ begin
 
     -- Reject cancellations that no longer have confirmed attendance
     if not found then
-        raise exception 'confirmed event attendee not found';
+        raise exception 'confirmed event attendee not found' using errcode = 'OCG01';
     end if;
 
     -- Lock the attendee's current purchase when one exists
@@ -85,7 +85,7 @@ begin
                 'attendance-cancellation',
                 'refund-request-approval'
             ) then
-                raise exception 'event purchase refund already started with different kind';
+                raise exception 'event purchase refund already started with different kind' using errcode = 'OCG01';
             end if;
 
             return json_build_object('cancellation_status', 'refund-queued');
@@ -94,7 +94,7 @@ begin
         -- Validate the provider contract before creating durable work
         if v_purchase.payment_provider_id is null
            or v_purchase.provider_payment_reference is null then
-            raise exception 'paid purchase is not ready for refund';
+            raise exception 'paid purchase is not ready for refund' using errcode = 'OCG01';
         end if;
 
         -- Attach a synthetic organizer decision or promote an existing request
@@ -127,7 +127,7 @@ begin
 
         -- Reject requests that cannot be promoted into attendance cancellation
         if v_refund_request_id is null then
-            raise exception 'refund request is not available for attendance cancellation';
+            raise exception 'refund request is not available for attendance cancellation' using errcode = 'OCG01';
         end if;
 
         -- Insert durable worker work with the purchase-level idempotency key

@@ -27,17 +27,17 @@ begin
 
     -- Reject events without an enabled CFS
     if v_cfs_enabled is distinct from true then
-        raise exception 'cfs is not enabled for this event';
+        raise exception 'cfs is not enabled for this event' using errcode = 'OCG01';
     end if;
 
     -- Reject events without a complete CFS window
     if v_cfs_starts_at is null or v_cfs_ends_at is null then
-        raise exception 'cfs window not configured';
+        raise exception 'cfs window not configured' using errcode = 'OCG01';
     end if;
 
     -- Reject events outside their CFS window
     if current_timestamp < v_cfs_starts_at or current_timestamp >= v_cfs_ends_at then
-        raise exception 'cfs is not open';
+        raise exception 'cfs is not open' using errcode = 'OCG01';
     end if;
 
     -- Lock and validate proposal ownership before creating a submission
@@ -49,7 +49,7 @@ begin
 
     -- Reject proposals outside the user's ownership
     if not found then
-        raise exception 'session proposal not found';
+        raise exception 'session proposal not found' using errcode = 'OCG01';
     end if;
 
     -- Validate proposal can be submitted
@@ -60,7 +60,7 @@ begin
 
     -- Reject proposals that are not ready for event submission
     if not found then
-        raise exception 'session proposal not ready for submission';
+        raise exception 'session proposal not ready for submission' using errcode = 'OCG01';
     end if;
 
     -- Validate labels payload

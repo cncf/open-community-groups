@@ -42,28 +42,28 @@ begin
     -- Published events must keep the start date required by publish_event
     if (p_event_before->>'published')::boolean = true
        and v_new_starts_at is null then
-        raise exception 'published event must have a start date';
+        raise exception 'published event must have a start date' using errcode = 'OCG01';
     end if;
 
     -- Require configured registration openings to leave time before close
     if v_registration_starts_at is not null
        and v_registration_ends_at is not null
        and v_registration_starts_at >= v_registration_ends_at then
-        raise exception 'registration starts_at must be before registration ends_at';
+        raise exception 'registration starts_at must be before registration ends_at' using errcode = 'OCG01';
     end if;
 
     -- Keep configured registration openings from extending past the event start
     if v_registration_starts_at is not null
        and v_new_starts_at is not null
        and v_registration_starts_at > v_new_starts_at then
-        raise exception 'registration starts_at cannot be after event starts_at';
+        raise exception 'registration starts_at cannot be after event starts_at' using errcode = 'OCG01';
     end if;
 
     -- Keep configured registration closes from extending past the event start
     if v_registration_ends_at is not null
        and v_new_starts_at is not null
        and v_registration_ends_at > v_new_starts_at then
-        raise exception 'registration ends_at cannot be after event starts_at';
+        raise exception 'registration ends_at cannot be after event starts_at' using errcode = 'OCG01';
     end if;
 
     -- Detect whether the current event snapshot is already in the past,
@@ -79,11 +79,11 @@ begin
     -- Prevent past events from being moved back into the future
     if v_is_past_event then
         if p_event->>'starts_at' is not null and v_new_starts_at > current_timestamp then
-            raise exception 'event starts_at cannot be in the future';
+            raise exception 'event starts_at cannot be in the future' using errcode = 'OCG01';
         end if;
 
         if p_event->>'ends_at' is not null and v_new_ends_at > current_timestamp then
-            raise exception 'event ends_at cannot be in the future';
+            raise exception 'event ends_at cannot be in the future' using errcode = 'OCG01';
         end if;
 
         if p_event->'sessions' is not null then
@@ -91,13 +91,13 @@ begin
             loop
                 v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
                 if v_session_starts_at > current_timestamp then
-                    raise exception 'session starts_at cannot be in the future';
+                    raise exception 'session starts_at cannot be in the future' using errcode = 'OCG01';
                 end if;
 
                 if v_session->>'ends_at' is not null then
                     v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
                     if v_session_ends_at > current_timestamp then
-                        raise exception 'session ends_at cannot be in the future';
+                        raise exception 'session ends_at cannot be in the future' using errcode = 'OCG01';
                     end if;
                 end if;
             end loop;
@@ -109,14 +109,14 @@ begin
         if p_event->>'starts_at' is not null and v_new_starts_at < current_timestamp then
             if v_event_before_starts_at is null
                or v_event_before_starts_at >= current_timestamp then
-                raise exception 'event starts_at cannot be in the past';
+                raise exception 'event starts_at cannot be in the past' using errcode = 'OCG01';
             elsif v_new_starts_at < v_event_before_starts_at then
-                raise exception 'event starts_at cannot be earlier than current value';
+                raise exception 'event starts_at cannot be earlier than current value' using errcode = 'OCG01';
             end if;
         end if;
 
         if p_event->>'ends_at' is not null and v_new_ends_at < current_timestamp then
-            raise exception 'event ends_at cannot be in the past';
+            raise exception 'event ends_at cannot be in the past' using errcode = 'OCG01';
         end if;
 
         if p_event->'sessions' is not null then
@@ -147,9 +147,9 @@ begin
                 if v_session_starts_at < current_timestamp then
                     if v_session_before_starts_at is null
                        or v_session_before_starts_at >= current_timestamp then
-                        raise exception 'session starts_at cannot be in the past';
+                        raise exception 'session starts_at cannot be in the past' using errcode = 'OCG01';
                     elsif v_session_starts_at < v_session_before_starts_at then
-                        raise exception 'session starts_at cannot be earlier than current value';
+                        raise exception 'session starts_at cannot be earlier than current value' using errcode = 'OCG01';
                     end if;
                 end if;
 
@@ -158,9 +158,9 @@ begin
                     if v_session_ends_at < current_timestamp then
                         if v_session_before_ends_at is null
                            or v_session_before_ends_at >= current_timestamp then
-                            raise exception 'session ends_at cannot be in the past';
+                            raise exception 'session ends_at cannot be in the past' using errcode = 'OCG01';
                         elsif v_session_ends_at < v_session_before_ends_at then
-                            raise exception 'session ends_at cannot be earlier than current value';
+                            raise exception 'session ends_at cannot be earlier than current value' using errcode = 'OCG01';
                         end if;
                     end if;
                 end if;

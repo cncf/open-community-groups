@@ -118,6 +118,7 @@ select throws_ok(
         :'group1ID',
         :'group1ID'
     ),
+    'OCG01',
     'group cannot be its own parent',
     'Should reject self-parenting'
 );
@@ -129,6 +130,7 @@ select throws_ok(
         :'otherCommunityGroupID',
         :'group1ID'
     ),
+    'OCG01',
     'parent group must belong to the same community',
     'Should reject cross-community parents'
 );
@@ -140,6 +142,7 @@ select throws_ok(
         :'deletedParentID',
         :'group1ID'
     ),
+    'OCG01',
     'parent group cannot be deleted',
     'Should reject deleted parents'
 );
@@ -151,6 +154,7 @@ select throws_ok(
         :'inactiveParentID',
         :'group1ID'
     ),
+    'OCG01',
     'parent group must be active',
     'Should reject newly selected inactive parents'
 );
@@ -162,6 +166,7 @@ select throws_ok(
         :'group2ID',
         :'group3ID'
     ),
+    'OCG01',
     'parent group cannot be a subgroup',
     'Should reject assigning a subgroup as a parent'
 );
@@ -173,6 +178,7 @@ select throws_ok(
         :'group3ID',
         :'group1ID'
     ),
+    'OCG01',
     'group with subgroups cannot have a parent',
     'Should reject assigning a parent to a group with child links'
 );

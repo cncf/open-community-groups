@@ -1950,6 +1950,7 @@ select throws_ok(
         :'closedWindowTicketTypeBID',
         :'closedWindowMismatchedUserID'
     ),
+    'OCG01',
     'event registration is not open',
     'Should reject replacing a pending purchase after registration closes'
 );
@@ -1982,6 +1983,7 @@ select throws_ok(
         :'closedWindowTicketTypeAID',
         :'closedWindowNewUserID'
     ),
+    'OCG01',
     'event registration is not open',
     'Should reject creating a checkout purchase after registration closes'
 );
@@ -2340,7 +2342,7 @@ select throws_ok(
         :'ineffectiveDiscountUserID',
         :'ineffectiveDiscountOfferID'
     ),
-    'P0001',
+    'OCG01',
     'discount code does not reduce ticket price',
     'Should reject offer discounts below one minor unit'
 );
@@ -2591,6 +2593,7 @@ select throws_ok(
             'stripe'
         )
     $$,
+    'OCG01',
     'payment amount must be zero or at least Stripe minimum charge amount',
     'Should reject discounted checkout amounts below Stripe minimums'
 );
@@ -2607,6 +2610,7 @@ select throws_ok(
             'stripe'
         )
     $$,
+    'OCG01',
     'questionnaire answers are required',
     'Should require answers before preparing checkout for events with questions'
 );
@@ -2651,6 +2655,7 @@ select throws_ok(
             'stripe'
         )
     $$,
+    'OCG01',
     'user has a pending or rejected invitation for this event',
     'Should reject reusing a pending purchase when an invitation is pending'
 );

@@ -22,7 +22,7 @@ begin
     for update;
 
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Cancel active offers, expire checkouts, and clear enrollment queues
@@ -49,7 +49,7 @@ begin
     );
 
     if found then
-        raise exception 'event has a paid purchase that is not ready for refund';
+        raise exception 'event has a paid purchase that is not ready for refund' using errcode = 'OCG01';
     end if;
 
     -- Preserve attendance history while removing active access and capacity

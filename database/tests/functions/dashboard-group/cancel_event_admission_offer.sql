@@ -178,7 +178,7 @@ select throws_ok(
         :'unknownGroupID',
         :'offerID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject offers outside the selected group'
 );

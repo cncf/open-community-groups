@@ -22,7 +22,7 @@ begin
            p_actor_user_id,
            'group.settings.write'
        ) then
-        raise exception 'you must be able to manage the selected parent group';
+        raise exception 'you must be able to manage the selected parent group' using errcode = 'OCG01';
     end if;
 
     -- Insert group with unique slug generation and collision retry

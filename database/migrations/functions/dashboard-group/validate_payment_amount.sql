@@ -14,12 +14,12 @@ begin
 
     -- Require callers to provide an amount
     if p_amount_minor is null then
-        raise exception 'payment amount is required';
+        raise exception 'payment amount is required' using errcode = 'OCG01';
     end if;
 
     -- Reject malformed negative amounts before checking charge limits
     if p_amount_minor < 0 then
-        raise exception 'payment amount must be greater than or equal to 0';
+        raise exception 'payment amount must be greater than or equal to 0' using errcode = 'OCG01';
     end if;
 
     -- Free tickets do not create provider charges
@@ -66,7 +66,7 @@ begin
 
     -- Reject paid amounts below the configured minimum
     if v_min_amount_minor is not null and p_amount_minor < v_min_amount_minor then
-        raise exception 'payment amount must be zero or at least Stripe minimum charge amount';
+        raise exception 'payment amount must be zero or at least Stripe minimum charge amount' using errcode = 'OCG01';
     end if;
 
     -- Apply maximum charge amounts by currency
@@ -82,7 +82,7 @@ begin
 
     -- Reject paid amounts above the configured maximum
     if p_amount_minor > v_max_amount_minor then
-        raise exception 'payment amount exceeds Stripe maximum charge amount';
+        raise exception 'payment amount exceeds Stripe maximum charge amount' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

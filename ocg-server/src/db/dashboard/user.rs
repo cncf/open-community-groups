@@ -378,13 +378,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_user_check_in_code(&self, event_id: Uuid, user_id: Uuid) -> Result<Option<Uuid>> {
         self.fetch_scalar_opt(
-            r"
-                select check_in_code
-                from event_attendee
-                where event_id = $1::uuid
-                and user_id = $2::uuid
-                and status = 'confirmed'
-            ",
+            "select get_user_check_in_code($1::uuid, $2::uuid)",
             &[&event_id, &user_id],
         )
         .await

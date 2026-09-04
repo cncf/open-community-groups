@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -61,10 +61,6 @@ values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
 insert into "user" (auth_hash, email, user_id, username) values
     ('actor', 'actor@example.test', :'actorID', 'actor'),
     ('buyer', 'buyer@example.test', :'buyerID', 'buyer');
-
--- Events-manager membership granting recovery authority
-insert into group_team (accepted, group_id, role, user_id)
-values (true, :'groupID', 'events-manager', :'actorID');
 
 -- Event associated with each refunded purchase
 insert into event (
@@ -206,6 +202,7 @@ select throws_ok(
         :'actorID', :'groupID', :'creditNoteID', '   ', 'case-456',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'provider credit-note id is required',
     'Should require a provider credit-note id'
 );
@@ -217,6 +214,7 @@ select throws_ok(
         :'actorID', :'groupID', :'creditNoteID', 'cn_external', '   ',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'recovery reference is required',
     'Should require a recovery reference'
 );
@@ -228,6 +226,7 @@ select throws_ok(
         :'actorID', :'groupID', :'creditNoteID', 'cn_external', 'case-456',
         '   '
     ),
+    'OCG01',
     'recovery note is required',
     'Should require a recovery note'
 );
@@ -239,6 +238,7 @@ select throws_ok(
         :'actorID', :'groupID', :'missingCreditNoteID', 'cn_external',
         'case-456', 'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable credit note not found',
     'Should reject a missing credit note'
 );
@@ -250,19 +250,9 @@ select throws_ok(
         :'actorID', :'missingGroupID', :'creditNoteID', 'cn_external',
         'case-456', 'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable credit note not found',
     'Should reject a credit note from another group'
-);
-
--- Should require events write access at execution time
-select throws_ok(
-    format(
-        'select complete_event_purchase_credit_note_recovery(%L, %L, %L, %L, %L, %L)',
-        :'buyerID', :'groupID', :'creditNoteID', 'cn_external', 'case-456',
-        'Verified Stripe activity'
-    ),
-    'events write access is required',
-    'Should require events write access at execution time'
 );
 
 -- Should reject credit-note work before automatic attempts are exhausted
@@ -272,6 +262,7 @@ select throws_ok(
         :'actorID', :'groupID', :'lowCreditNoteID', 'cn_external', 'case-456',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable credit note not found',
     'Should reject credit-note work before automatic attempts are exhausted'
 );
@@ -283,6 +274,7 @@ select throws_ok(
         :'actorID', :'groupID', :'pendingCreditNoteID', 'cn_external',
         'case-456', 'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable credit note not found',
     'Should reject credit-note work with a non-failed status'
 );
@@ -349,6 +341,7 @@ select throws_ok(
         :'actorID', :'groupID', :'creditNoteID', 'cn_other', 'case-456',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'credit-note recovery already completed with different evidence',
     'Should reject conflicting credit-note recovery evidence'
 );

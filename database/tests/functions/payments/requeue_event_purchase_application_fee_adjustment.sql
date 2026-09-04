@@ -140,6 +140,7 @@ select throws_ok(
         'select requeue_event_purchase_application_fee_adjustment(%L, %L)',
         :'groupID', :'missingAdjustmentID'
     ),
+    'OCG01',
     'retryable application-fee adjustment not found',
     'Should reject a missing application-fee adjustment'
 );
@@ -150,6 +151,7 @@ select throws_ok(
         'select requeue_event_purchase_application_fee_adjustment(%L, %L)',
         :'missingGroupID', :'adjustmentID'
     ),
+    'OCG01',
     'retryable application-fee adjustment not found',
     'Should reject an application-fee adjustment from another group'
 );
@@ -160,6 +162,7 @@ select throws_ok(
         'select requeue_event_purchase_application_fee_adjustment(%L, %L)',
         :'groupID', :'lowAdjustmentID'
     ),
+    'OCG01',
     'retryable application-fee adjustment not found',
     'Should reject application-fee work before automatic retries are exhausted'
 );
@@ -170,6 +173,7 @@ select throws_ok(
         'select requeue_event_purchase_application_fee_adjustment(%L, %L)',
         :'groupID', :'pendingAdjustmentID'
     ),
+    'OCG01',
     'retryable application-fee adjustment not found',
     'Should reject application-fee work with a non-failed status'
 );

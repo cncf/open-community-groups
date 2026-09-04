@@ -81,6 +81,7 @@ select lives_ok(
 select throws_ok(
     format('insert into "group" (group_id, community_id, name, slug, description, group_category_id) values (%L, %L, %L, %L, %L, %L)',
         :'missingGroupID', :'community1ID', 'Another Group', 'another-group', 'Another test group', :'groupCategory2ID'),
+    'OCG01',
     'group category not found in community',
     'Should fail when group category is from different community'
 );
@@ -88,6 +89,7 @@ select throws_ok(
 -- Should fail when updating group to category from different community
 select throws_ok(
     format('update "group" set group_category_id = %L where group_id = %L', :'groupCategory2ID', :'groupID'),
+    'OCG01',
     'group category not found in community',
     'Should fail when updating group to category from different community'
 );

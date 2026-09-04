@@ -283,7 +283,7 @@ select throws_ok(
         $$,
         :'groupID'
     ),
-    'P0001',
+    'OCG01',
     'event_ids cannot be empty',
     'Should reject empty event ids'
 );
@@ -300,7 +300,7 @@ select throws_ok(
         :'groupID',
         :'deletedEventID'
     ),
-    'P0001',
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject inactive event ids'
 );
@@ -318,7 +318,7 @@ select throws_ok(
         :'groupID',
         :'canceledEventID'
     ),
-    'P0001',
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject canceled event ids when publishing'
 );
@@ -339,7 +339,7 @@ select throws_ok(
         :'event1ID',
         :'otherEventID'
     ),
-    'P0001',
+    'OCG01',
     'events must belong to the same series',
     'Should reject events from different series'
 );
@@ -356,7 +356,7 @@ select throws_ok(
         :'groupID',
         :'standaloneEventID'
     ),
-    'P0001',
+    'OCG01',
     'events must belong to the same series',
     'Should reject standalone events'
 );

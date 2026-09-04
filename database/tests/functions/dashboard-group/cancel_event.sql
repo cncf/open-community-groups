@@ -526,6 +526,7 @@ select throws_ok(
         $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
         :'userID', :'groupID', :'eventAlreadyCanceledID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject an already canceled event'
 );
@@ -536,6 +537,7 @@ select throws_ok(
         $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
         :'userID', :'groupID', :'eventPastID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject a completed past event'
 );
@@ -741,6 +743,7 @@ select throws_ok(
         $$select cancel_event(null::uuid, %L::uuid, %L::uuid)$$,
         :'missingGroupID', :'eventID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

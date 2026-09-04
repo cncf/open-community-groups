@@ -508,6 +508,7 @@ select throws_ok(
         :'eventID',
         :'discountCodeOtherID'
     ),
+    'OCG01',
     'discount code does not belong to event',
     'Should reject updating a discount code that belongs to another event'
 );
@@ -522,6 +523,7 @@ select throws_ok(
         :'eventProtectedID',
         :'discountCodeOtherID'
     ),
+    'OCG01',
     'discount code total_available cannot be less than existing redemptions',
     'Should reject lowering total_available below existing redemptions'
 );
@@ -532,6 +534,7 @@ select throws_ok(
         $$select sync_event_discount_codes('%s'::uuid, '[]'::jsonb)$$,
         :'eventProtectedID'
     ),
+    'OCG01',
     'discount codes with redemptions cannot be removed; deactivate them instead',
     'Should reject removing discount codes with redemptions'
 );

@@ -23,7 +23,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Admin authorized to remove artwork
+-- Actor recorded by the gallery audit entries
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'actorID', 'hash', 'remove-art@example.test', true, 'remove-art');
 
@@ -38,10 +38,6 @@ values (:'groupCategoryID', :'communityID', 'Technology');
 -- Group that owns the artwork
 insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'groupCategoryID', 'Remove Artwork Group', 'remove-artwork-group');
-
--- Authorized group team member
-insert into group_team (group_id, accepted, role, user_id)
-values (:'groupID', true, 'admin', :'actorID');
 
 -- Referenced and unreferenced gallery entries
 insert into badge_artwork (badge_artwork_id, file_name, group_id)
@@ -60,6 +56,7 @@ values (:'badgeID', 'Criteria', 'Description', :'groupID', 'used.png', 'Badge');
 -- Should block artwork referenced by a current definition
 select throws_ok(
     format($$select delete_badge_artwork(%L::uuid, %L::uuid, %L::uuid, %L::uuid)$$, :'actorID', :'communityID', :'groupID', :'artworkUsedID'),
+    'OCG01',
     'badge artwork is used by a badge',
     'Should block artwork referenced by a current definition'
 );

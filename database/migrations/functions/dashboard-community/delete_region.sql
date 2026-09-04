@@ -18,7 +18,7 @@ begin
       and r.region_id = p_region_id;
 
     if not found then
-        raise exception 'region not found';
+        raise exception 'region not found' using errcode = 'OCG01';
     end if;
 
     -- Block deletion when groups still reference this region
@@ -28,7 +28,7 @@ begin
     where g.region_id = p_region_id;
 
     if v_groups_count > 0 then
-        raise exception 'cannot delete region in use by groups';
+        raise exception 'cannot delete region in use by groups' using errcode = 'OCG01';
     end if;
 
     -- Delete the region record

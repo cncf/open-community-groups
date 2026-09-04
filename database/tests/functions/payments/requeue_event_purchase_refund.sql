@@ -213,6 +213,7 @@ select throws_ok(
         'select requeue_event_purchase_refund(%L::uuid, %L::uuid)',
         :'groupID', :'terminalPurchaseID'
     ),
+    'OCG01',
     'retryable event purchase refund not found',
     'Should reject a terminal provider failure'
 );
@@ -223,6 +224,7 @@ select throws_ok(
         'select requeue_event_purchase_refund(%L::uuid, %L::uuid)',
         :'groupID', :'underBudgetPurchaseID'
     ),
+    'OCG01',
     'retryable event purchase refund not found',
     'Should reject a refund before its retry budget is exhausted'
 );
@@ -233,6 +235,7 @@ select throws_ok(
         'select requeue_event_purchase_refund(%L::uuid, %L::uuid)',
         :'missingGroupID', :'scopePurchaseID'
     ),
+    'OCG01',
     'retryable event purchase refund not found',
     'Should reject a refund outside the requested group'
 );
@@ -243,6 +246,7 @@ select throws_ok(
         'select requeue_event_purchase_refund(%L::uuid, %L::uuid)',
         :'groupID', :'missingPurchaseID'
     ),
+    'OCG01',
     'retryable event purchase refund not found',
     'Should reject a missing purchase refund'
 );

@@ -153,6 +153,7 @@ select throws_ok(
         'select reject_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventID', :'requesterID'
     ),
+    'OCG01',
     'pending invitation request not found',
     'Should reject rejecting an already reviewed request'
 );

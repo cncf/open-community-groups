@@ -68,6 +68,7 @@ select lives_ok(
 -- Should reject null payloads
 select throws_ok(
     $$select validate_questionnaire_questions_payload(null::jsonb)$$,
+    'OCG01',
     'questionnaire questions must be an array',
     'Should reject null payloads'
 );
@@ -81,6 +82,7 @@ select throws_ok(
             }'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire questions must be an array',
     'Should reject non-array payloads'
 );
@@ -88,6 +90,7 @@ select throws_ok(
 -- Should reject non-object questions
 select throws_ok(
     $$select validate_questionnaire_questions_payload('["not-an-object"]'::jsonb)$$,
+    'OCG01',
     'questionnaire question must be an object',
     'Should reject non-object questions'
 );
@@ -107,6 +110,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question id must be a uuid',
     'Should reject invalid question ids'
 );
@@ -125,6 +129,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question id must be a uuid',
     'Should reject questions without ids'
 );
@@ -151,6 +156,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question ids must be unique',
     'Should reject duplicate question ids'
 );
@@ -170,6 +176,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question prompt is required',
     'Should reject blank prompts'
 );
@@ -189,6 +196,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question kind is invalid',
     'Should reject unsupported question kinds'
 );
@@ -208,6 +216,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question required must be a boolean',
     'Should reject non-boolean required flags'
 );
@@ -232,6 +241,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'free-text questionnaire questions cannot define options',
     'Should reject options for free-text questions'
 );
@@ -251,6 +261,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'select questionnaire questions require options',
     'Should reject select questions without options'
 );
@@ -274,6 +285,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question option id must be a uuid',
     'Should reject options without ids'
 );
@@ -302,6 +314,7 @@ select throws_ok(
             ]'::jsonb
         )
     $$,
+    'OCG01',
     'questionnaire question option ids must be unique per question',
     'Should reject duplicate option ids per question'
 );

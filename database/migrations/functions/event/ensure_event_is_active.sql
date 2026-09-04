@@ -18,7 +18,7 @@ begin
             or coalesce(e.ends_at, e.starts_at) >= current_timestamp
         )
     ) then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

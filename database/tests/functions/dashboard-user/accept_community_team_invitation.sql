@@ -140,6 +140,7 @@ select throws_ok(
         :'user2ID',
         :'communityID'
     ),
+    'OCG01',
     'no pending community invitation found',
     'Should reject accepting a non-existent invitation'
 );

@@ -37,6 +37,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '1 day' + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should reject a future event that moves into the past'
 );
@@ -55,6 +56,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '4 days' + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'registration starts_at must be before registration ends_at',
     'Should reject registration windows where the open date is after the close date'
 );
@@ -73,6 +75,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '4 days' + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'registration starts_at must be before registration ends_at',
     'Should reject registration windows where the open date equals the close date'
 );
@@ -90,6 +93,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '4 days' + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'registration ends_at cannot be after event starts_at',
     'Should reject registration close dates after the event start'
 );
@@ -107,6 +111,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '4 days' + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'registration starts_at cannot be after event starts_at',
     'Should reject open-only registration windows that open after the event start'
 );
@@ -123,6 +128,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp - interval '1 day'))::bigint
         )
     )$$,
+    'OCG01',
     'event starts_at cannot be in the future',
     'Should reject a past event that moves into the future'
 );
@@ -139,6 +145,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'event starts_at cannot be earlier than current value',
     'Should reject a live event that moves earlier than its current start'
 );
@@ -152,6 +159,7 @@ select throws_ok(
         ),
         '{}'::jsonb
     )$$,
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should reject a dateless event that moves into the past'
 );
@@ -185,6 +193,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '1 day' + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'session starts_at cannot be in the past',
     'Should reject a future session that moves into the past'
 );
@@ -241,6 +250,7 @@ select throws_ok(
             'ends_at', floor(extract(epoch from current_timestamp + interval '1 day' + interval '1 hour'))::bigint
         )
     )$$,
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should reject a non-UTC future event that moves into the past'
 );

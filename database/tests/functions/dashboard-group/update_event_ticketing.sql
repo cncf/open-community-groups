@@ -1378,6 +1378,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'paid ticketing requires an in-person or hybrid event with a complete physical venue',
     'Should reject changing a paid hybrid event to virtual'
 );
@@ -1429,6 +1430,7 @@ select throws_ok(
             null
         )
     $$,
+    'OCG01',
     'payments are not configured on this server',
     'Should reject unrelated edits after payment setup is lost'
 );
@@ -1449,6 +1451,7 @@ select throws_ok(
             "ticket_types": null
         }'::jsonb
     )$$,
+    'OCG01',
     'events require at least one ticket type',
     'Should reject removing every ticket type'
 );
@@ -1483,6 +1486,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket type does not belong to event',
     'Should reject ticket types whose identifiers belong to another event'
 );
@@ -1517,6 +1521,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket price window does not belong to event',
     'Should reject ticket price windows whose identifiers belong to another event'
 );
@@ -1564,6 +1569,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket price window does not belong to ticket type',
     'Should reject ticket price windows whose identifiers belong to another ticket type'
 );
@@ -1592,6 +1598,7 @@ select throws_ok(
             "kind_id": "virtual"
         }'::jsonb
     )$$,
+    'OCG01',
     'discount code does not belong to event',
     'Should reject discount codes whose identifiers belong to another event'
 );
@@ -1625,6 +1632,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require payment_currency_code',
     'Should reject paid-capable events when payment_currency_code is omitted'
 );
@@ -1685,6 +1693,7 @@ select throws_ok(
             "attendee_approval_required": false
         }'::jsonb
     )$$,
+    'OCG01',
     'approval-required events with pending invitation requests cannot disable approval',
     'Should reject disabling attendee approval while invitation requests are pending'
 );
@@ -1708,6 +1717,7 @@ select throws_ok(
             "waitlist_enabled": false
         }'::jsonb
     )$$,
+    'OCG01',
     'approval-required events cannot have existing waitlist entries',
     'Should reject enabling attendee approval while queued users already exist'
 );
@@ -1755,6 +1765,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket type seats_total (0) cannot be less than current allocated seats (1)',
     'Should reject seat totals below the current purchased inventory for a ticket type'
 );
@@ -1789,6 +1800,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
+    'OCG01',
     'ticket types with purchases cannot be removed; deactivate them instead',
     'Should reject removing ticket types that already have purchases'
 );
@@ -1818,6 +1830,7 @@ select throws_ok(
             "kind_id": "virtual"
         }'::jsonb
     )$$,
+    'OCG01',
     'discount code total_available cannot be less than existing redemptions',
     'Should reject lowering discount code availability below existing redemptions'
 );
@@ -1837,6 +1850,7 @@ select throws_ok(
             "kind_id": "virtual"
         }'::jsonb
     )$$,
+    'OCG01',
     'discount codes with redemptions cannot be removed; deactivate them instead',
     'Should reject removing discount codes that already have redemptions'
 );
@@ -1950,6 +1964,7 @@ select throws_ok(
         '3a3c0000-0000-0000-0000-000000000016'::uuid,
         '{"name": "Draft Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "bad", "kind": "free-text", "prompt": "Invalid", "required": true, "options": []}]}'::jsonb
     )$$,
+    'OCG01',
     'questionnaire question id must be a uuid',
     'Should validate registration questions when updating an event'
 );
@@ -1984,6 +1999,7 @@ select throws_ok(
         '3a3c0000-0000-0000-0000-000000000015'::uuid,
         '{"name": "Answered Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "3a3c0000-0000-0000-0000-000000000031", "kind": "free-text", "prompt": "Changed", "required": true, "options": []}]}'::jsonb
     )$$,
+    'OCG01',
     'registration questions cannot be changed after attendees have submitted answers',
     'Should reject registration question changes after answers exist'
 );
@@ -2007,6 +2023,7 @@ select throws_ok(
         '3a3c0000-0000-0000-0000-000000000056'::uuid,
         '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "3a3c0000-0000-0000-0000-000000000031", "kind": "free-text", "prompt": "Changed", "required": true, "options": []}]}'::jsonb
     )$$,
+    'OCG01',
     'registration questions cannot be changed while checkout holds are active',
     'Should reject registration question changes while checkout holds are active'
 );

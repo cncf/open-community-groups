@@ -14,7 +14,7 @@ begin
     and revoked_at is null;
 
     if not found then
-        raise exception 'active awarded badge not found';
+        raise exception 'active awarded badge not found' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

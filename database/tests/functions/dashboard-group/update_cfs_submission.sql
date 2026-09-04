@@ -402,6 +402,7 @@ select throws_ok(
         :'submissionID',
         '{"action_required_message":"Need more info","status_id":"information-requested","rating_stars":6}'
     ),
+    'OCG01',
     'invalid rating stars',
     'Should reject invalid rating stars'
 );
@@ -420,6 +421,7 @@ select throws_ok(
         :'submission3ID',
         '{"status_id":"rejected"}'
     ),
+    'OCG01',
     'linked submissions must remain approved',
     'Should reject status changes for linked submissions'
 );
@@ -438,6 +440,7 @@ select throws_ok(
         :'submissionID',
         '{"status_id":"withdrawn"}'
     ),
+    'OCG01',
     'invalid submission status',
     'Should reject withdrawn status updates'
 );
@@ -456,6 +459,7 @@ select throws_ok(
         :'submission2ID',
         '{"status_id":"approved"}'
     ),
+    'OCG01',
     'submission not found',
     'Should reject updating withdrawn submissions'
 );
@@ -477,6 +481,7 @@ select throws_ok(
             :'labelInvalidID'
         )
     ),
+    'OCG01',
     'invalid event CFS labels',
     'Should reject labels that do not belong to the event'
 );

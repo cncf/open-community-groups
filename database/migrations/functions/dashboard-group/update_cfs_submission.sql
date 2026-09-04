@@ -21,13 +21,13 @@ begin
             'not-reviewed',
             'rejected'
         ) then
-        raise exception 'invalid submission status';
+        raise exception 'invalid submission status' using errcode = 'OCG01';
     end if;
 
     -- Validate labels payload
     if p_submission ? 'label_ids' then
         if coalesce(jsonb_array_length(p_submission->'label_ids'), 0) > 10 then
-            raise exception 'too many submission labels';
+            raise exception 'too many submission labels' using errcode = 'OCG01';
         end if;
 
         if p_submission->'label_ids' is not null then
@@ -45,7 +45,7 @@ begin
         v_rating_stars := (p_submission->>'rating_stars')::int;
 
         if v_rating_stars < 0 or v_rating_stars > 5 then
-            raise exception 'invalid rating stars';
+            raise exception 'invalid rating stars' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -59,7 +59,7 @@ begin
     for update;
 
     if not found then
-        raise exception 'submission not found';
+        raise exception 'submission not found' using errcode = 'OCG01';
     end if;
 
     -- Prevent status changes for linked submissions
@@ -69,7 +69,7 @@ begin
             from session s
             where s.cfs_submission_id = p_cfs_submission_id
         ) then
-        raise exception 'linked submissions must remain approved';
+        raise exception 'linked submissions must remain approved' using errcode = 'OCG01';
     end if;
 
     -- Update submission

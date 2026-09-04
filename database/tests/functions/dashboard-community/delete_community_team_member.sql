@@ -129,6 +129,7 @@ select throws_ok(
         :'communityID',
         :'user1ID'
     ),
+    'OCG01',
     'cannot remove the last accepted community admin',
     'Should block deleting the last accepted member'
 );
@@ -149,6 +150,7 @@ select throws_ok(
         :'communityID',
         :'user4ID'
     ),
+    'OCG01',
     'user is not a community team member',
     'Should not allow deleting when membership does not exist'
 );

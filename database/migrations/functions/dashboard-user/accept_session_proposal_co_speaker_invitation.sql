@@ -12,7 +12,7 @@ begin
     and sp.co_speaker_user_id = p_actor_user_id;
 
     if not found then
-        raise exception 'session proposal invitation not found';
+        raise exception 'session proposal invitation not found' using errcode = 'OCG01';
     end if;
 
     -- Mark proposal as ready for submission after co-speaker acceptance,
@@ -25,7 +25,7 @@ begin
     and session_proposal_status_id = 'pending-co-speaker-response';
 
     if not found then
-        raise exception 'session proposal is not awaiting co-speaker response';
+        raise exception 'session proposal is not awaiting co-speaker response' using errcode = 'OCG01';
     end if;
 
     -- Track the accepted invitation

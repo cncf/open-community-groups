@@ -25,7 +25,7 @@ begin
         where edc.event_discount_code_id = any(v_discount_code_ids)
         and edc.event_id <> p_event_id
     ) then
-        raise exception 'discount code does not belong to event';
+        raise exception 'discount code does not belong to event' using errcode = 'OCG01';
     end if;
 
     -- Prevent lowering total_available below existing redemptions
@@ -52,7 +52,7 @@ begin
             )
         ) > (discount_code->>'total_available')::int
     ) then
-        raise exception 'discount code total_available cannot be less than existing redemptions';
+        raise exception 'discount code total_available cannot be less than existing redemptions' using errcode = 'OCG01';
     end if;
 
     -- Prevent removing discount codes that are already linked to purchases
@@ -63,7 +63,7 @@ begin
         where edc.event_id = p_event_id
         and not (edc.event_discount_code_id = any(v_discount_code_ids))
     ) then
-        raise exception 'discount codes with redemptions cannot be removed; deactivate them instead';
+        raise exception 'discount codes with redemptions cannot be removed; deactivate them instead' using errcode = 'OCG01';
     end if;
 
     -- Prune omitted discount codes after integrity checks

@@ -534,6 +534,7 @@ select throws_ok(
         null,
         '{}'::jsonb
     )$$, :'communityID', :'eventCanceledID', :'requesterID'),
+    'OCG01',
     'purchase not found or not refundable',
     'Should reject a redundant request after automatic cancellation refund starts'
 );
@@ -563,6 +564,7 @@ select throws_ok(
         null,
         '{}'::jsonb
     )$$, :'communityID', :'eventStartedID', :'requesterID'),
+    'OCG01',
     'purchase not found or not refundable',
     'Should reject refund requests after the event has started'
 );
@@ -576,6 +578,7 @@ select throws_ok(
         null,
         '{}'::jsonb
     )$$, :'communityID', :'eventID', :'requesterID'),
+    'OCG01',
     'refund request already exists for this purchase',
     'Should reject duplicate refund requests'
 );

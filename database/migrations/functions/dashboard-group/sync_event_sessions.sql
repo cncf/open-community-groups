@@ -68,7 +68,7 @@ begin
                 and event_id = p_event_id;
 
                 if not found then
-                    raise exception 'session % not found for event %', v_session_id, p_event_id;
+                    raise exception 'session % not found for event %', v_session_id, p_event_id using errcode = 'OCG01';
                 end if;
 
                 delete from session_speaker where session_id = v_session_id;

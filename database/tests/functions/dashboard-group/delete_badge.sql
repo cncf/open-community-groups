@@ -42,10 +42,6 @@ values (:'groupCategoryID', :'communityID', 'Technology');
 insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'groupCategoryID', 'Delete Group', 'delete-group');
 
--- Authorized group team member
-insert into group_team (group_id, accepted, role, user_id)
-values (:'groupID', true, 'admin', :'actorID');
-
 -- Definition deleted by the test
 insert into badge (badge_id, criteria, description, group_id, image_file_name, name)
 values (:'badgeID', 'Criteria', 'Description', :'groupID', 'badge.png', 'Badge');

@@ -193,6 +193,7 @@ select throws_ok(
         :'event1ID',
         :'user1ID'
     ),
+    'OCG01',
     'user is already on the waiting list for this event',
     'Should reject attendee inserts when the user is already waitlisted'
 );
@@ -205,6 +206,7 @@ select throws_ok(
         :'event2ID',
         :'user2ID'
     ),
+    'OCG01',
     'user is already on the waiting list for this event',
     'Should reject attendee updates that target a waitlisted pair'
 );
@@ -227,6 +229,7 @@ select throws_ok(
         :'event1ID',
         :'user3ID'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject attendee inserts for active offer recipients'
 );
@@ -239,6 +242,7 @@ select throws_ok(
         :'event2ID',
         :'user2ID'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject attendee updates targeting active offer recipients'
 );

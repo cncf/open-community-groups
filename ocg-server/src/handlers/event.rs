@@ -955,12 +955,7 @@ async fn ensure_attendee_event_is_active(
 ) -> Result<(), HandlerError> {
     db.ensure_event_is_active(community_id, event_id)
         .await
-        .map_err(|err| match HandlerError::from(err) {
-            HandlerError::Other(err) if err.to_string() == "event not found or inactive" => {
-                HandlerError::Database("event not found or inactive".to_string())
-            }
-            other => other,
-        })
+        .map_err(HandlerError::from)
 }
 
 /// Builds the attendee-facing pending-payment payload for an external purchase.

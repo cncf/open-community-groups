@@ -77,6 +77,7 @@ select throws_ok(
         :'communityID',
         :'inUseGroupCategoryID'
     ),
+    'OCG01',
     'cannot delete group category in use by groups',
     'Should block deleting group category referenced by groups'
 );
@@ -149,6 +150,7 @@ select throws_ok(
         :'communityID',
         :'unknownGroupCategoryID'
     ),
+    'OCG01',
     'group category not found',
     'Should fail when deleting a non-existing group category'
 );

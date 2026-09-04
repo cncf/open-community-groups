@@ -12,7 +12,7 @@ begin
     for update;
 
     if not found then
-        raise exception 'awarded badge not found';
+        raise exception 'awarded badge not found' using errcode = 'OCG01';
     end if;
 
     -- Lock and validate current ownership before changing credential state
@@ -24,7 +24,7 @@ begin
     for update;
 
     if not found then
-        raise exception 'awarded badge not found';
+        raise exception 'awarded badge not found' using errcode = 'OCG01';
     end if;
     if v_user_badge.revoked_at is not null then
         return;

@@ -14,7 +14,7 @@ declare
 begin
     -- Require an attendee-visible reason before locking mutable state
     if v_review_note is null then
-        raise exception 'refund rejection reason is required';
+        raise exception 'refund rejection reason is required' using errcode = 'OCG01';
     end if;
 
     -- Lock the event before its purchase and refund request
@@ -27,7 +27,7 @@ begin
 
     -- Reject purchases outside the requested group
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Lock and load the pending refund request before rejecting it
@@ -51,7 +51,7 @@ begin
 
     -- Reject refund requests that changed while waiting for their locks
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Restore the purchase to its completed state

@@ -30,14 +30,14 @@ begin
            v_external_payment_url is not null
            or p_external_window_hours is not null
        ) then
-        raise exception 'external payment fields require external payments mode';
+        raise exception 'external payment fields require external payments mode' using errcode = 'OCG01';
     end if;
 
     -- Skip payment requirements when every configured ticket price is zero
     if p_paid_capable is not true then
         -- Reject leftover external fields on unpaid events
         if v_external_payment_url is not null or p_external_window_hours is not null then
-            raise exception 'external payment fields require paid-capable ticketing';
+            raise exception 'external payment fields require paid-capable ticketing' using errcode = 'OCG01';
         end if;
 
         return;
@@ -45,7 +45,7 @@ begin
 
     -- Validate the currency required by every positive ticket price
     if p_payment_currency_code is null then
-        raise exception 'paid-capable events require payment_currency_code';
+        raise exception 'paid-capable events require payment_currency_code' using errcode = 'OCG01';
     end if;
 
     perform validate_payment_currency_code(p_payment_currency_code);
@@ -60,13 +60,13 @@ begin
 
         -- Reject external mode when the operator configuration is absent
         if not found then
-            raise exception 'external payments are not configured on this server';
+            raise exception 'external payments are not configured on this server' using errcode = 'OCG01';
         end if;
 
         -- Require an absolute http(s) payments URL for paid external events
         if v_external_payment_url is null
            or v_external_payment_url !~* '^https?://[^[:space:]/?#]+' then
-            raise exception 'paid-capable events require a valid external payment url';
+            raise exception 'paid-capable events require a valid external payment url' using errcode = 'OCG01';
         end if;
 
         -- Reject windows outside the operator-configured maximum
@@ -75,34 +75,34 @@ begin
                p_external_window_hours < 1
                or p_external_window_hours > v_max_window_hours
            ) then
-            raise exception 'external payment window exceeds the configured maximum';
+            raise exception 'external payment window exceeds the configured maximum' using errcode = 'OCG01';
         end if;
 
     -- Validate the server Stripe configuration for non-external paid events
     elsif p_configured_provider is null then
-        raise exception 'payments are not configured on this server';
+        raise exception 'payments are not configured on this server' using errcode = 'OCG01';
     end if;
 
     -- Validate the Stripe recipient required by non-external paid events
     if p_external_mode is not true then
         -- Reject paid events without a configured fiscal sponsor
         if p_payment_recipient is null then
-            raise exception 'paid-capable events require a payment recipient';
+            raise exception 'paid-capable events require a payment recipient' using errcode = 'OCG01';
         end if;
 
         -- Reject recipients that do not match the configured provider
         if coalesce(p_payment_recipient->>'provider', '') <> p_configured_provider then
-            raise exception 'paid-capable events require a payment recipient for the server payments provider';
+            raise exception 'paid-capable events require a payment recipient for the server payments provider' using errcode = 'OCG01';
         end if;
 
         -- Reject recipients without a connected account identifier
         if nullif(btrim(p_payment_recipient->>'recipient_id'), '') is null then
-            raise exception 'paid-capable events require a valid payment recipient';
+            raise exception 'paid-capable events require a valid payment recipient' using errcode = 'OCG01';
         end if;
 
         -- Reject recipients without an attendee-visible seller name
         if nullif(btrim(p_payment_recipient->>'seller_display_name'), '') is null then
-            raise exception 'paid-capable events require a payment recipient seller name';
+            raise exception 'paid-capable events require a payment recipient seller name' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -196,7 +196,7 @@ begin
 
         -- Reject missing events after the stored-context lookup
         if not found then
-            raise exception 'event not found or inactive';
+            raise exception 'event not found or inactive' using errcode = 'OCG01';
         end if;
 
     -- Reject paid-capable validation that cannot resolve event context
@@ -211,7 +211,7 @@ begin
        or v_venue_snapshot->>'country_code' is null
        or v_venue_snapshot->>'name' is null
        or v_venue_snapshot->>'zip_code' is null then
-        raise exception 'paid ticketing requires an in-person or hybrid event with a complete physical venue';
+        raise exception 'paid ticketing requires an in-person or hybrid event with a complete physical venue' using errcode = 'OCG01';
     end if;
 
     -- Bind external paid events to the group country and skip Stripe tax-rate checks
@@ -219,7 +219,7 @@ begin
         -- Reject venues outside the country that made the group eligible
         if upper(v_venue_snapshot->>'country_code')
                 is distinct from upper(nullif(btrim(p_group_country_code), '')) then
-            raise exception 'external paid events require a venue in the group country';
+            raise exception 'external paid events require a venue in the group country' using errcode = 'OCG01';
         end if;
 
         return;
@@ -229,7 +229,7 @@ begin
     if v_tax_calculation_mode = 'automatic' then
         -- Reject stale manual Tax Rate selections in automatic mode
         if cardinality(v_manual_tax_rate_ids) > 0 then
-            raise exception 'automatic ticket tax cannot include manual Tax Rates';
+            raise exception 'automatic ticket tax cannot include manual Tax Rates' using errcode = 'OCG01';
         end if;
 
     -- Require a nonempty, unique set of usable Stripe identifiers
@@ -246,13 +246,13 @@ begin
                 select count(distinct rate_id)
                 from unnest(v_manual_tax_rate_ids) as rate_id
            ) then
-            raise exception 'manual ticket tax requires at least one unique Stripe Tax Rate';
+            raise exception 'manual ticket tax requires at least one unique Stripe Tax Rate' using errcode = 'OCG01';
         end if;
 
     -- Normalize no-tax events and reject stale manual Tax Rate selections
     elsif v_tax_calculation_mode = 'none' then
         if v_tax_behavior <> 'inclusive' or cardinality(v_manual_tax_rate_ids) > 0 then
-            raise exception 'events that do not collect tax require inclusive display and no Tax Rates';
+            raise exception 'events that do not collect tax require inclusive display and no Tax Rates' using errcode = 'OCG01';
         end if;
 
     -- Reject tax modes the ticketing contract does not support

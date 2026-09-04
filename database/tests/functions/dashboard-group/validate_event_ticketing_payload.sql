@@ -29,6 +29,7 @@ insert into external_payments_config (
 -- Should reject an omitted ticket inventory
 select throws_ok(
     $$select validate_event_ticketing_payload(null, null, null, null, null)$$,
+    'OCG01',
     'events require at least one ticket type',
     'Should reject an omitted ticket inventory'
 );
@@ -167,6 +168,7 @@ select throws_ok(
             "venue_zip_code": "100-0001"
         }'::jsonb
     )$$,
+    'OCG01',
     'external paid events require a venue in the group country',
     'Should reject a paid-capable external event with a venue outside the group country'
 );
@@ -193,6 +195,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require payment_currency_code',
     'Should require a payment currency for paid-capable events'
 );
@@ -230,6 +233,7 @@ select throws_ok(
             "venue_zip_code": "00000"
         }'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject a paid-capable external event without a payment URL'
 );
@@ -256,6 +260,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'payment_currency_code must be a supported currency code',
     'Should reject unsupported payment currencies for ticketed events'
 );
@@ -297,6 +302,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount codes must be unique per event',
     'Should delegate discount code validation'
 );
@@ -327,6 +333,7 @@ select throws_ok(
             "title": "General admission"
         }]'::jsonb
     )$$,
+    'OCG01',
     'discount_codes require positive ticket pricing',
     'Should require positive ticket pricing when discount codes are present'
 );
@@ -349,6 +356,7 @@ select throws_ok(
             "title": "General admission"
         }]'::jsonb
     )$$,
+    'OCG01',
     'payment_currency_code requires positive ticket pricing',
     'Should require positive ticket pricing when a payment currency is present'
 );
@@ -383,6 +391,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket price windows cannot overlap',
     'Should delegate ticket type validation'
 );
@@ -420,6 +429,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'payment amount must be zero or at least Stripe minimum charge amount',
     'Should reject non-zero ticket prices below Stripe minimums'
 );
@@ -457,6 +467,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'payment amount exceeds Stripe maximum charge amount',
     'Should reject ticket prices above Stripe maximums'
 );

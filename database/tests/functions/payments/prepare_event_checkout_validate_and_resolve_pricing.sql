@@ -487,6 +487,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000022'::uuid,
         null
     )$$,
+    'OCG01',
     'user is already attending this event',
     'Should reject attendees that already have a seat'
 );
@@ -499,6 +500,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000032'::uuid,
         null
     )$$,
+    'OCG01',
     'user has a pending or rejected invitation for this event',
     'Should reject users with a pending invitation'
 );
@@ -511,6 +513,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000033'::uuid,
         null
     )$$,
+    'OCG01',
     'user has a pending or rejected invitation for this event',
     'Should reject users with a rejected invitation'
 );
@@ -523,6 +526,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000028'::uuid,
         null
     )$$,
+    'OCG01',
     'ticket type is sold out',
     'Should reject sold out ticket types'
 );
@@ -535,6 +539,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000026'::uuid,
         null
     )$$,
+    'OCG01',
     'ticket type not found',
     'Should reject missing ticket types'
 );
@@ -547,6 +552,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000029'::uuid,
         null
     )$$,
+    'OCG01',
     'ticket type is not active',
     'Should reject inactive ticket types'
 );
@@ -559,6 +565,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000040'::uuid,
         null
     )$$,
+    'OCG01',
     'ticket type does not have an active price window',
     'Should reject ticket types without an active price window'
 );
@@ -571,6 +578,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000026'::uuid,
         null
     )$$,
+    'OCG01',
     'ticket type is not available for direct checkout',
     'Should reject invitation-only ticket identifiers from direct checkout'
 );
@@ -612,7 +620,7 @@ select throws_ok(
         :'offerUserID',
         :'missingTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject pricing without the exact owned offer'
 );
@@ -625,6 +633,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000027'::uuid,
         'VIP25'
     )$$,
+    'OCG01',
     'discount codes cannot be applied to free tickets',
     'Should reject ineffective discount codes on intrinsically free tickets'
 );
@@ -644,7 +653,7 @@ select throws_ok(
         :'ineffectiveDiscountTicketTypeID',
         :'percentageDiscountUserID'
     ),
-    'P0001',
+    'OCG01',
     'discount code does not reduce ticket price',
     'Should reject percentage discounts below one minor unit'
 );
@@ -662,6 +671,7 @@ select throws_ok(
         :'queueTicketTypeID',
         :'fixedDiscountUserID'
     ),
+    'OCG01',
     'ticket type has queued users',
     'Should reject direct pricing while a tier queue remains blocked'
 );
@@ -674,6 +684,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000023'::uuid,
         'missing'
     )$$,
+    'OCG01',
     'discount code not found',
     'Should reject unknown discount codes'
 );
@@ -686,6 +697,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000024'::uuid,
         'INACTIVE'
     )$$,
+    'OCG01',
     'discount code is not available',
     'Should reject unavailable discount codes'
 );
@@ -698,6 +710,7 @@ select throws_ok(
         '79260000-0000-0000-0000-000000000025'::uuid,
         'TOTAL1'
     )$$,
+    'OCG01',
     'discount code is no longer available',
     'Should reject discounts whose total availability is exhausted'
 );

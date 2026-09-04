@@ -109,6 +109,7 @@ select throws_ok(
         :'communityID',
         :'unknownUserID'
     ),
+    'OCG01',
     'user is not a community team member',
     'Should error when updating role for non-existing member'
 );
@@ -142,6 +143,7 @@ select throws_ok(
         :'communityID',
         :'user2ID'
     ),
+    'OCG01',
     'cannot change role for the last accepted community admin',
     'Should block demoting the last accepted community admin'
 );

@@ -15,12 +15,12 @@ begin
     for update;
 
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Enforce cancellation and refund settlement before destructive removal
     if get_event_delete_eligibility(p_group_id, p_event_id) <> 'allowed' then
-        raise exception 'event must be canceled and all payment work settled before deletion';
+        raise exception 'event must be canceled and all payment work settled before deletion' using errcode = 'OCG01';
     end if;
 
     -- Update event to mark as deleted

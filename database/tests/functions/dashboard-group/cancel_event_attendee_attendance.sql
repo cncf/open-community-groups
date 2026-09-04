@@ -722,6 +722,7 @@ select throws_ok(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
         :'actorID', :'groupID', :'eventID', :'attendeeID'
     ),
+    'OCG01',
     'confirmed event attendee not found',
     'Should reject canceling missing confirmed attendance'
 );
@@ -732,6 +733,7 @@ select throws_ok(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
         :'actorID', :'unknownGroupID', :'eventID', :'attendeeID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject events outside the selected group'
 );
@@ -940,6 +942,7 @@ select throws_ok(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
         :'actorID', :'groupID', :'eventPaidID', :'approvedRequestAttendeeID'
     ),
+    'OCG01',
     'refund request is not available for attendance cancellation',
     'Should reject an approved request without durable refund work'
 );
@@ -950,6 +953,7 @@ select throws_ok(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
         :'actorID', :'groupID', :'eventPaidID', :'conflictingRefundAttendeeID'
     ),
+    'OCG01',
     'event purchase refund already started with different kind',
     'Should reject durable work created for a different refund kind'
 );
@@ -1082,6 +1086,7 @@ select throws_ok(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
         :'actorID', :'groupID', :'eventUnpublishedID', :'attendeeID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject unpublished events'
 );
@@ -1092,6 +1097,7 @@ select throws_ok(
         $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
         :'actorID', :'groupID', :'eventCanceledID', :'attendeeID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject canceled events'
 );

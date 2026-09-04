@@ -184,6 +184,7 @@ select throws_ok(
         :'eventID',
         :'label1ID'
     ),
+    'OCG01',
     'submission not found',
     'Should reject mismatched submission and event IDs'
 );
@@ -206,6 +207,7 @@ select throws_ok(
         :'eventID',
         :'labelOtherID'
     ),
+    'OCG01',
     'invalid event CFS labels',
     'Should reject labels from another event'
 );

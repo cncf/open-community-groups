@@ -123,6 +123,7 @@ select throws_ok(
         :'userID',
         :'groupID'
     ),
+    'OCG01',
     'no pending group invitation found',
     'Should reject a second rejection when no pending invitation exists'
 );

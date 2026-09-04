@@ -241,6 +241,7 @@ select throws_ok(
         :'communityID',
         :'groupAlreadyDeletedID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should throw error when trying to delete already deleted group'
 );
@@ -252,6 +253,7 @@ select throws_ok(
         :'unknownCommunityID',
         :'groupWrongCommunityID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should throw error when community_id does not match'
 );

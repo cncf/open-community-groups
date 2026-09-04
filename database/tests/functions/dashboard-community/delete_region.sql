@@ -91,6 +91,7 @@ select throws_ok(
         :'communityID',
         :'inUseRegionID'
     ),
+    'OCG01',
     'cannot delete region in use by groups',
     'Should block deleting region referenced by groups'
 );
@@ -163,6 +164,7 @@ select throws_ok(
         :'communityID',
         :'unknownRegionID'
     ),
+    'OCG01',
     'region not found',
     'Should fail when deleting a non-existing region'
 );

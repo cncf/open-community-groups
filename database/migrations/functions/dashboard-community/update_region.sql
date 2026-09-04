@@ -14,7 +14,7 @@ begin
       and r.region_id = p_region_id;
 
     if not found then
-        raise exception 'region not found';
+        raise exception 'region not found' using errcode = 'OCG01';
     end if;
 
     -- Update the region record
@@ -32,6 +32,6 @@ begin
         p_community_id
     );
 exception when unique_violation then
-    raise exception 'region already exists';
+    raise exception 'region already exists' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

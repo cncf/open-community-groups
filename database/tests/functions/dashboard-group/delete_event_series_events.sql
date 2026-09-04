@@ -242,6 +242,7 @@ select throws_ok(
         :'groupID',
         array[:'eligibleEventOneID', :'eligibleEventTwoID']
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject replaying deletion for inactive occurrences'
 );
@@ -254,6 +255,7 @@ select throws_ok(
         :'groupID',
         array[:'guardedAllowedEventID', :'guardedBlockedEventID']
     ),
+    'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject a series containing a blocked occurrence'
 );

@@ -15,11 +15,11 @@ begin
     and user_id = p_user_id;
 
     if v_attendee_status = 'confirmed' then
-        raise exception 'user is already attending this event';
+        raise exception 'user is already attending this event' using errcode = 'OCG01';
     end if;
 
     if v_attendee_status in ('invitation-pending', 'invitation-rejected') then
-        raise exception 'user has a pending or rejected invitation for this event';
+        raise exception 'user has a pending or rejected invitation for this event' using errcode = 'OCG01';
     end if;
 
     -- Reject queued users before they can bypass waitlist promotion
@@ -29,7 +29,7 @@ begin
         where ew.event_id = p_event_id
         and ew.user_id = p_user_id
     ) then
-        raise exception 'user is already on the waiting list for this event';
+        raise exception 'user is already on the waiting list for this event' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

@@ -145,6 +145,7 @@ select throws_ok(
         $$select add_group_team_member(null::uuid, %L::uuid, %L::uuid, 'admin')$$,
         :'groupID', :'user1ID'
     ),
+    'OCG01',
     'user is already a group team member',
     'Should not allow duplicate group team membership'
 );

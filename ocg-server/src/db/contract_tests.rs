@@ -38,6 +38,7 @@ use crate::{
         },
         site::DBSite,
     },
+    handlers::error::USER_FACING_DB_ERROR_CODE,
     services::meetings::MeetingProvider,
     templates::{
         dashboard::{
@@ -547,6 +548,10 @@ async fn db_contracts_cfs_session_link_serializes_submission_rejection() -> Resu
         linked_err.as_db_error().map(DbError::message),
         Some("linked submissions must remain approved")
     );
+    assert_eq!(
+        linked_err.code(),
+        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
+    );
 
     // Restore the shared submission fixture for later contract tests
     review_client
@@ -653,6 +658,10 @@ async fn db_contracts_check_in_attendee_by_code_rejects_concurrently_revoked_cod
     assert_eq!(
         scan_err.as_db_error().map(DbError::message),
         Some("check-in credential not found")
+    );
+    assert_eq!(
+        scan_err.code(),
+        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
     );
 
     Ok(())
@@ -2226,6 +2235,27 @@ async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_internal_raise_keeps_default_sqlstate() -> Result<()> {
+    // Setup a direct connection to call a worker-only function with invalid configuration
+    let pool = contract_tests_pool()?;
+    let client = pool.get().await?;
+
+    // Check internal invariant failures keep P0001 and never carry the user-facing code
+    let internal_err = client
+        .query_one("select cleanup_badge_award_jobs($1::bigint)", &[&0_i64])
+        .await
+        .expect_err("non-positive retention should be rejected");
+    assert_eq!(internal_err.code(), Some(&SqlState::RAISE_EXCEPTION));
+    assert_eq!(
+        internal_err.as_db_error().map(DbError::message),
+        Some("badge award job retention must be positive")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_invite_event_attendee_deserializes() -> Result<()> {
     // Setup the contract database and dedicated invitee fixture
     let db = contract_tests_db()?;
@@ -3520,6 +3550,10 @@ async fn db_contracts_lock_events_for_cancellation_serializes_rsvp() -> Result<(
     assert_eq!(
         canceled_err.as_db_error().map(DbError::message),
         Some("event not found or inactive")
+    );
+    assert_eq!(
+        canceled_err.code(),
+        Some(&SqlState::from_code(USER_FACING_DB_ERROR_CODE))
     );
 
     Ok(())

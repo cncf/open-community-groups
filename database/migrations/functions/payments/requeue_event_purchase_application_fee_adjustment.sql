@@ -23,7 +23,7 @@ begin
 
     -- Reject missing, cross-group, or ineligible work
     if not found then
-        raise exception 'retryable application-fee adjustment not found';
+        raise exception 'retryable application-fee adjustment not found' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

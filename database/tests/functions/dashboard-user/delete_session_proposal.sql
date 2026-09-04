@@ -236,6 +236,7 @@ select throws_ok(
         :'userID',
         :'proposalWithSubmissionID'
     ),
+    'OCG01',
     'session proposal has submissions',
     'Should reject deleting proposals with submissions'
 );
@@ -247,6 +248,7 @@ select throws_ok(
         :'userID',
         :'otherUserProposalID'
     ),
+    'OCG01',
     'session proposal not found',
     'Should not leak submissions for other users'
 );

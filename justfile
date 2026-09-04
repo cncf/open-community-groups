@@ -128,6 +128,10 @@ db-init data_dir:
     mkdir -p "{{ data_dir }}"
     just pg initdb -U {{ db_user }} "{{ data_dir }}"
 
+# Check database layer conventions (trigger function ownership).
+db-lint:
+    sh "{{ source_dir }}/database/scripts/lint.sh"
+
 # Load e2e seed data into e2e test database.
 db-load-tests-e2e-data:
     just pg psql {{ pg_conn }} {{ db_name_tests_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"

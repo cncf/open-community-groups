@@ -42,7 +42,7 @@ begin
     -- Validate invitation target shape
     if (p_user_id is null and v_normalized_email is null)
        or (p_user_id is not null and v_normalized_email is not null) then
-        raise exception 'provide exactly one invite target';
+        raise exception 'provide exactly one invite target' using errcode = 'OCG01';
     end if;
 
     -- Lock and validate the event before ticket and attendee enrollment state
@@ -84,7 +84,7 @@ begin
 
     -- Reject invitations when the event is missing or no longer inviteable
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Lock ticket tiers before reconciliation and target-user enrollment state
@@ -109,7 +109,7 @@ begin
 
         -- Reject unknown or unverified registered invitees
         if not found then
-            raise exception 'registered user not found';
+            raise exception 'registered user not found' using errcode = 'OCG01';
         end if;
 
     -- Resolve or pre-register the email invitee
@@ -140,7 +140,7 @@ begin
         -- Reject registered accounts whose email is still unverified
         elsif v_existing_user_registration_status = 'registered'
               and v_existing_user_email_verified = false then
-            raise exception 'registered user email is not verified';
+            raise exception 'registered user email is not verified' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -168,7 +168,7 @@ begin
 
         -- Require an explicit tier when more than one organizer-visible tier exists
         if v_selectable_ticket_type_count <> 1 then
-            raise exception 'ticket type is required for event invitations';
+            raise exception 'ticket type is required for event invitations' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -200,7 +200,7 @@ begin
 
     -- Reject missing, inactive, or currently unpriced invitation tiers
     if not found or v_ticket_current_price is null then
-        raise exception 'ticket type is not available';
+        raise exception 'ticket type is not available' using errcode = 'OCG01';
     end if;
 
     -- Keep RSVP wording only for the event's free public tier
@@ -266,7 +266,7 @@ begin
         -- Reject paid invitations when the external event is no longer eligible
         if v_ticket_current_price > 0
            and not is_event_external_payments_ready(p_event_id) then
-            raise exception 'external payments are not available for this event';
+            raise exception 'external payments are not available for this event' using errcode = 'OCG01';
         end if;
 
     -- Keep the Stripe provider requirement for non-external events
@@ -290,17 +290,17 @@ begin
 
     -- Reject confirmed attendees who already hold a seat
     if v_existing_status = 'confirmed' then
-        raise exception 'user is already attending this event';
+        raise exception 'user is already attending this event' using errcode = 'OCG01';
     end if;
 
     -- Reject invitees who already have a pending attendance invitation
     if v_existing_status = 'invitation-pending' then
-        raise exception 'user already has a pending event invitation';
+        raise exception 'user already has a pending event invitation' using errcode = 'OCG01';
     end if;
 
     -- Reject invitees who still owe registration answers
     if v_existing_status = 'registration-questions-pending' then
-        raise exception 'user already has a pending event registration';
+        raise exception 'user already has a pending event registration' using errcode = 'OCG01';
     end if;
 
     -- Reject invitees who already have an active offer reservation
@@ -311,7 +311,7 @@ begin
         and ao.status in ('checkout_pending', 'pending')
         and ao.user_id = v_target_user_id
     ) then
-        raise exception 'user already has a pending event invitation';
+        raise exception 'user already has a pending event invitation' using errcode = 'OCG01';
     end if;
 
     -- Persist a new email invitee only after capacity allocation succeeds
@@ -359,7 +359,7 @@ begin
 
     -- Reject invitations that cannot reserve any remaining claim window
     if v_offer_expires_at <= current_timestamp then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Create the time-limited organizer invitation reservation

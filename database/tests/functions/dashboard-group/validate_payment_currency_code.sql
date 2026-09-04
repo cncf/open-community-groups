@@ -24,6 +24,7 @@ select lives_ok(
 -- Should reject empty currencies
 select throws_ok(
     $$select validate_payment_currency_code('   ')$$,
+    'OCG01',
     'payment_currency_code cannot be empty',
     'Should reject empty currencies'
 );
@@ -31,6 +32,7 @@ select throws_ok(
 -- Should reject unsupported currencies
 select throws_ok(
     $$select validate_payment_currency_code('USDD')$$,
+    'OCG01',
     'payment_currency_code must be a supported currency code',
     'Should reject unsupported currencies'
 );

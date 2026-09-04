@@ -710,6 +710,7 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventPaidTicketed', :'user3ID'
     ),
+    'OCG01',
     'paid attendees must request a refund instead of leaving the event',
     'Should reject paid attendees trying to leave a ticketed event'
 );
@@ -864,6 +865,7 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventPast', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects leave requests for past events'
 );
@@ -874,6 +876,7 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventStartedNoEnd', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects started events without an end time for leave requests'
 );
@@ -884,6 +887,7 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventCanceled', :'user4ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects waitlist leave requests for canceled events'
 );
@@ -894,6 +898,7 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventDeleted', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects leave requests for deleted events'
 );
@@ -904,6 +909,7 @@ select throws_ok(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventInactiveGroup', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects leave requests for inactive-group events'
 );

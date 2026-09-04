@@ -135,6 +135,7 @@ select throws_ok(
         :'coSpeakerUserID',
         :'proposalReadyID'
     ),
+    'OCG01',
     'session proposal is not awaiting co-speaker response',
     'Should reject acceptance when invitation is not pending'
 );
@@ -146,6 +147,7 @@ select throws_ok(
         :'userID2',
         :'proposalReadyID'
     ),
+    'OCG01',
     'session proposal invitation not found',
     'Should reject acceptance for users that are not the invited co-speaker'
 );

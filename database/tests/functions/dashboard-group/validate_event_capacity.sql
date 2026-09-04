@@ -189,6 +189,7 @@ select throws_ok(
         '{"capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
+    'OCG01',
     'event capacity (200) exceeds maximum participants allowed (100)',
     'Should reject capacity above the meeting provider limit'
 );
@@ -219,6 +220,7 @@ select throws_ok(
         null,
         200
     )$$,
+    'OCG01',
     'event capacity (200) exceeds maximum participants allowed (100)',
     'Should validate provider limits against the effective capacity override'
 );
@@ -233,6 +235,7 @@ select throws_ok(
         )$$,
         :'eventID'
     ),
+    'OCG01',
     'event capacity (2) cannot be less than current number of attendees (3)',
     'Should reject update capacity below the current attendee count'
 );
@@ -256,6 +259,7 @@ select throws_ok(
         $$select validate_event_capacity('{"capacity": 0}'::jsonb, null::jsonb, '%s'::uuid)$$,
         :'eventQuestionsID'
     ),
+    'OCG01',
     'event capacity (0) cannot be less than current number of attendees (1)',
     'Should exclude pending registration rows without an active checkout hold'
 );
@@ -275,6 +279,7 @@ select throws_ok(
         $$select validate_event_capacity('{"capacity": 1}'::jsonb, null::jsonb, '%s'::uuid)$$,
         :'eventManualOverCapacityID'
     ),
+    'OCG01',
     'event capacity (1) cannot be less than current number of attendees (3)',
     'Should reject capacity below non-manual occupied seats'
 );

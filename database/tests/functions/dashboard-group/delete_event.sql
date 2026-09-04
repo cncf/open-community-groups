@@ -447,6 +447,7 @@ select is(
 -- Should preserve blocked active events
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'activeEventID'),
+    'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject an active event that has not been canceled'
 );
@@ -459,6 +460,7 @@ select is(
 -- Should preserve events with unresolved payment work
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'pendingEventID'),
+    'OCG01',
     'event must be canceled and all payment work settled before deletion',
     'Should reject an event with unresolved payment work'
 );
@@ -502,6 +504,7 @@ select throws_ok(
         'select delete_event(%L, %L, %L)',
         :'actorID', :'missingGroupID', :'activeEventID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject deletion from the wrong group'
 );
@@ -509,6 +512,7 @@ select throws_ok(
 -- Should reject replaying deletion for an inactive event
 select throws_ok(
     format('select delete_event(%L, %L, %L)', :'actorID', :'groupID', :'draftEventID'),
+    'OCG01',
     'event not found or inactive',
     'Should reject replaying deletion for an inactive event'
 );

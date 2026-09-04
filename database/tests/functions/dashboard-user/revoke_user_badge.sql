@@ -58,6 +58,7 @@ insert into user_badge (
 -- Should reject another user's badge before mutation
 select throws_ok(
     format($$select revoke_user_badge(%L::uuid, %L::uuid)$$, :'otherUserID', :'userBadgeID'),
+    'OCG01',
     'awarded badge not found',
     'Should reject another user''s badge before mutation'
 );

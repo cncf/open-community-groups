@@ -15,7 +15,7 @@ declare
 begin
     -- Validate waitlist configuration against capacity requirements
     if v_waitlist_enabled = true and v_capacity is null then
-        raise exception 'waitlist enabled events must define a capacity';
+        raise exception 'waitlist enabled events must define a capacity' using errcode = 'OCG01';
     end if;
 
     -- Validate event capacity against provider limits for meetings
@@ -26,7 +26,7 @@ begin
            and v_capacity > v_provider_max_participants
         then
             raise exception 'event capacity (%) exceeds maximum participants allowed (%)',
-                v_capacity, v_provider_max_participants;
+                v_capacity, v_provider_max_participants using errcode = 'OCG01';
         end if;
     end if;
 
@@ -44,7 +44,7 @@ begin
 
         if v_capacity + v_manual_occupied_seat_count < v_attendee_count then
             raise exception 'event capacity (%) cannot be less than current number of attendees (%)',
-                v_capacity, v_attendee_count;
+                v_capacity, v_attendee_count using errcode = 'OCG01';
         end if;
     end if;
 end;

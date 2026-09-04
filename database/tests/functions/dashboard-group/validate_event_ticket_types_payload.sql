@@ -14,6 +14,7 @@ select plan(14);
 -- Should reject an omitted ticket types payload
 select throws_ok(
     $$select validate_event_ticket_types_payload(null)$$,
+    'OCG01',
     'events require at least one ticket type',
     'Should reject an omitted ticket types payload'
 );
@@ -64,6 +65,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket type availability must be public or invitation_only',
     'Should reject unsupported ticket type availability'
 );
@@ -94,6 +96,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket price windows cannot overlap',
     'Should reject overlapping ticket price windows'
 );
@@ -115,6 +118,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket price windows require event_ticket_price_window_id',
     'Should reject ticket price windows without identifiers'
 );
@@ -136,6 +140,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket types require event_ticket_type_id',
     'Should reject ticket types without identifiers'
 );
@@ -158,6 +163,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket types require title',
     'Should reject ticket types without title'
 );
@@ -179,6 +185,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket types require seats_total',
     'Should reject ticket types without seats_total'
 );
@@ -201,6 +208,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket type seats_total must be greater than or equal to 0',
     'Should reject ticket types with negative seats_total values'
 );
@@ -217,6 +225,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket types require at least one price window',
     'Should reject ticket types without price windows'
 );
@@ -234,6 +243,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket types require at least one price window',
     'Should reject ticket types with empty price windows'
 );
@@ -255,6 +265,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket price windows must have non-negative amounts and valid date ranges',
     'Should reject ticket price windows without amount_minor'
 );
@@ -277,6 +288,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket price windows must have non-negative amounts and valid date ranges',
     'Should reject ticket price windows with negative amount_minor'
 );
@@ -301,6 +313,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'ticket price windows must have non-negative amounts and valid date ranges',
     'Should reject ticket price windows with inverted date ranges'
 );

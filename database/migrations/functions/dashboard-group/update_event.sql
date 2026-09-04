@@ -67,7 +67,7 @@ begin
 
     -- Reject missing or inactive groups before loading the event
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Load the locked event state used by the update flow
@@ -82,7 +82,7 @@ begin
 
     -- Reject missing or inactive events before resolving the update
     if v_event_before is null then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Parse payload values used across the update flow
@@ -147,7 +147,7 @@ begin
 
     -- Reject any external URL while the group cannot collect externally
     if v_external_payment_url is not null and not v_group_external_ready then
-        raise exception 'external payments are not available for this event';
+        raise exception 'external payments are not available for this event' using errcode = 'OCG01';
     end if;
 
     -- Use the external rail only while the group is eligible right now
@@ -211,7 +211,7 @@ begin
                )
            )
        ) then
-        raise exception 'payment configuration changed during provider validation';
+        raise exception 'payment configuration changed during provider validation' using errcode = 'OCG01';
     end if;
 
     -- Resolve registration question defaults
@@ -230,7 +230,7 @@ begin
     if v_registration_questions <> coalesce(v_event_before->'registration_questions', '[]'::jsonb) then
         -- Reject changes after attendees submit answers
         if questionnaire_answers_exist_for_event(p_event_id) then
-            raise exception 'registration questions cannot be changed after attendees have submitted answers';
+            raise exception 'registration questions cannot be changed after attendees have submitted answers' using errcode = 'OCG01';
         end if;
 
         -- Reject changes while pending purchases hold questionnaire state
@@ -241,7 +241,7 @@ begin
             and ep.status = 'pending'
             and ep.hold_expires_at > current_timestamp
         ) then
-            raise exception 'registration questions cannot be changed while checkout holds are active';
+            raise exception 'registration questions cannot be changed while checkout holds are active' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -266,12 +266,12 @@ begin
 
     -- Enforce attendee approval transition rules
     if v_event_attendee_approval_required = false and v_has_pending_invitation_requests then
-        raise exception 'approval-required events with pending invitation requests cannot disable approval';
+        raise exception 'approval-required events with pending invitation requests cannot disable approval' using errcode = 'OCG01';
     end if;
 
     -- Block approval-required attendance while queued users exist
     if v_event_attendee_approval_required = true and v_has_waitlist_entries then
-        raise exception 'approval-required events cannot have existing waitlist entries';
+        raise exception 'approval-required events cannot have existing waitlist entries' using errcode = 'OCG01';
     end if;
 
     -- Validate enrollment and ticketing payload rules

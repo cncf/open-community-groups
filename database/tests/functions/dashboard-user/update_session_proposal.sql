@@ -310,6 +310,7 @@ select throws_ok(
             'title', 'Python 102'
         )::text
     ),
+    'OCG01',
     'session proposal with submissions cannot change co-speaker',
     'Should reject changing co-speaker for proposals with submissions'
 );
@@ -328,6 +329,7 @@ select throws_ok(
             'title', 'Zig 202'
         )::text
     ),
+    'OCG01',
     'session proposal linked to a session',
     'Should reject updating proposals linked to sessions'
 );
@@ -346,6 +348,7 @@ select throws_ok(
             'title', 'Zig 202'
         )::text
     ),
+    'OCG01',
     'session proposal not found',
     'Should not leak linked sessions for other users'
 );

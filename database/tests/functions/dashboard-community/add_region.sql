@@ -105,6 +105,7 @@ select throws_ok(
     ) $$,
         :'communityID'
     ),
+    'OCG01',
     'region already exists',
     'Should reject duplicate region names'
 );

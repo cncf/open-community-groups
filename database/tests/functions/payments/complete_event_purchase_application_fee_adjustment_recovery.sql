@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -65,10 +65,6 @@ insert into "user" (auth_hash, email, user_id, username) values
         'pending-buyer', 'pending-buyer@example.test', :'pendingBuyerID',
         'pending-buyer'
     );
-
--- Events-manager membership granting recovery authority
-insert into group_team (accepted, group_id, role, user_id)
-values (true, :'groupID', 'events-manager', :'actorID');
 
 -- Event associated with each direct-charge purchase
 insert into event (
@@ -184,6 +180,7 @@ select throws_ok(
         :'actorID', :'groupID', :'adjustmentID', '   ', 'case-123',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'provider application-fee refund id is required',
     'Should require a provider application-fee refund id'
 );
@@ -195,6 +192,7 @@ select throws_ok(
         :'actorID', :'groupID', :'adjustmentID', 'fr_external', '   ',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'recovery reference is required',
     'Should require a recovery reference'
 );
@@ -206,6 +204,7 @@ select throws_ok(
         :'actorID', :'groupID', :'adjustmentID', 'fr_external', 'case-123',
         '   '
     ),
+    'OCG01',
     'recovery note is required',
     'Should require a recovery note'
 );
@@ -217,6 +216,7 @@ select throws_ok(
         :'actorID', :'groupID', :'missingAdjustmentID', 'fr_external',
         'case-123', 'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable application-fee adjustment not found',
     'Should reject a missing application-fee adjustment'
 );
@@ -228,19 +228,9 @@ select throws_ok(
         :'actorID', :'missingGroupID', :'adjustmentID', 'fr_external',
         'case-123', 'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable application-fee adjustment not found',
     'Should reject an application-fee adjustment from another group'
-);
-
--- Should require events write access at execution time
-select throws_ok(
-    format(
-        'select complete_event_purchase_application_fee_adjustment_recovery(%L, %L, %L, %L, %L, %L)',
-        :'buyerID', :'groupID', :'adjustmentID', 'fr_external', 'case-123',
-        'Verified Stripe activity'
-    ),
-    'events write access is required',
-    'Should require events write access at execution time'
 );
 
 -- Should reject application-fee work before automatic attempts are exhausted
@@ -250,6 +240,7 @@ select throws_ok(
         :'actorID', :'groupID', :'lowAdjustmentID', 'fr_external', 'case-123',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable application-fee adjustment not found',
     'Should reject application-fee work before automatic attempts are exhausted'
 );
@@ -261,6 +252,7 @@ select throws_ok(
         :'actorID', :'groupID', :'pendingAdjustmentID', 'fr_external',
         'case-123', 'Verified Stripe activity'
     ),
+    'OCG01',
     'recoverable application-fee adjustment not found',
     'Should reject application-fee work with a non-failed status'
 );
@@ -329,6 +321,7 @@ select throws_ok(
         :'actorID', :'groupID', :'adjustmentID', 'fr_other', 'case-123',
         'Verified Stripe activity'
     ),
+    'OCG01',
     'application-fee recovery already completed with different evidence',
     'Should reject conflicting application-fee recovery evidence'
 );

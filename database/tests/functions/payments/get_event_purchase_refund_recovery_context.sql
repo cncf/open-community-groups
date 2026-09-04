@@ -253,6 +253,7 @@ select throws_ok(
         :'groupID',
         :'missingPurchaseID'
     ),
+    'OCG01',
     'event purchase refund not found',
     'Should reject a missing purchase'
 );
@@ -264,6 +265,7 @@ select throws_ok(
         :'otherGroupID',
         :'pendingPurchaseID'
     ),
+    'OCG01',
     'event purchase refund not found',
     'Should reject a purchase outside the requested group'
 );

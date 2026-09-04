@@ -105,6 +105,7 @@ select throws_ok(
     ) $$,
         :'communityID'
     ),
+    'OCG01',
     'event category already exists',
     'Should reject duplicate event category names'
 );
@@ -119,6 +120,7 @@ select throws_ok(
     ) $$,
         :'communityID'
     ),
+    'OCG01',
     'event category name is invalid',
     'Should reject event category names that generate empty slugs'
 );

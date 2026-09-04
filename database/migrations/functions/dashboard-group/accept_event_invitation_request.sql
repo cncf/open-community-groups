@@ -69,7 +69,7 @@ begin
 
     -- Reject review when the event is not an active approval event
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Resolve attendee wording from the event's public ticket shape
@@ -97,7 +97,7 @@ begin
 
     -- Reject review when no pending or reissueable request exists
     if not found then
-        raise exception 'pending invitation request not found';
+        raise exception 'pending invitation request not found' using errcode = 'OCG01';
     end if;
 
     -- Preserve public requests or require an organizer-assigned private tier
@@ -105,14 +105,14 @@ begin
         -- Reject organizer overrides of a requester-selected public tier
         if p_event_ticket_type_id is not null
            and p_event_ticket_type_id <> v_requested_ticket_type_id then
-            raise exception 'requested ticket type cannot be changed';
+            raise exception 'requested ticket type cannot be changed' using errcode = 'OCG01';
         end if;
 
         p_event_ticket_type_id := v_requested_ticket_type_id;
 
     -- Require a private-tier assignment for generic invitation-only requests
     elsif p_event_ticket_type_id is null then
-        raise exception 'invitation-only ticket type is required';
+        raise exception 'invitation-only ticket type is required' using errcode = 'OCG01';
     end if;
 
     -- Load the requested public tier or organizer-assigned private tier
@@ -147,7 +147,7 @@ begin
 
     -- Reject inactive, unpriced, or ineligible ticket assignments
     if not found or v_target_price is null then
-        raise exception 'ticket type is not available';
+        raise exception 'ticket type is not available' using errcode = 'OCG01';
     end if;
 
     -- Keep RSVP wording only for the event's free public tier
@@ -164,7 +164,7 @@ begin
             and ao.status in ('checkout_pending', 'pending')
             and ao.user_id = p_user_id
        ) then
-        raise exception 'user already has an active admission offer for this event';
+        raise exception 'user already has an active admission offer for this event' using errcode = 'OCG01';
     end if;
 
     -- Reject request reissue while an active purchase still occupies the seat
@@ -182,7 +182,7 @@ begin
             )
             and ep.user_id = p_user_id
        ) then
-        raise exception 'user already has an active purchase for this event';
+        raise exception 'user already has an active purchase for this event' using errcode = 'OCG01';
     end if;
 
     -- Reconcile public queue priority and stale reservations before allocation
@@ -205,7 +205,7 @@ begin
 
     -- Reject review when reconciliation removed the request
     if not found then
-        raise exception 'pending invitation request not found';
+        raise exception 'pending invitation request not found' using errcode = 'OCG01';
     end if;
 
     -- Recheck tier capacity now that stale reservations are settled
@@ -235,7 +235,7 @@ begin
         -- Reject paid approvals when the external event is no longer eligible
         if v_target_price > 0
            and not is_event_external_payments_ready(p_event_id) then
-            raise exception 'external payments are not available for this event';
+            raise exception 'external payments are not available for this event' using errcode = 'OCG01';
         end if;
     -- Keep the Stripe provider requirement for non-external events
     else
@@ -265,7 +265,7 @@ begin
 
     -- Reject offers that would expire immediately
     if v_offer_expires_at <= current_timestamp then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Record the first organizer approval while preserving reviewed reissues

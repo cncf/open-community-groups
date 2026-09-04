@@ -159,6 +159,7 @@ select throws_ok(
         'insert into session (event_id, name, starts_at, ends_at, session_kind_id) values (%L, ''Early Start Session'', ''2030-01-01 09:00:00+00'', ''2030-01-01 11:00:00+00'', ''in-person'')',
         :'eventWithBoundsID'
     ),
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should fail when session starts_at is before event starts_at'
 );
@@ -169,6 +170,7 @@ select throws_ok(
         'insert into session (event_id, name, starts_at, ends_at, session_kind_id) values (%L, ''Late Start Session'', ''2030-01-01 19:00:00+00'', ''2030-01-01 20:00:00+00'', ''in-person'')',
         :'eventWithBoundsID'
     ),
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should fail when session starts_at is after event ends_at'
 );
@@ -179,6 +181,7 @@ select throws_ok(
         'insert into session (event_id, name, starts_at, ends_at, session_kind_id) values (%L, ''Late End Session'', ''2030-01-01 17:00:00+00'', ''2030-01-01 19:00:00+00'', ''in-person'')',
         :'eventWithBoundsID'
     ),
+    'OCG01',
     'session ends_at must be within event bounds',
     'Should fail when session ends_at is after event ends_at'
 );
@@ -189,6 +192,7 @@ select throws_ok(
         'update session set starts_at = ''2030-01-01 09:00:00+00'' where session_id = %L',
         :'sessionID'
     ),
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should fail when updating session starts_at to before event starts_at'
 );
@@ -199,6 +203,7 @@ select throws_ok(
         'update session set ends_at = ''2030-01-01 19:00:00+00'' where session_id = %L',
         :'sessionID'
     ),
+    'OCG01',
     'session ends_at must be within event bounds',
     'Should fail when updating session ends_at to after event ends_at'
 );

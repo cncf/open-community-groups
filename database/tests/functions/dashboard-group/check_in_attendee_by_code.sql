@@ -255,6 +255,7 @@ select throws_ok(
         :'eventID',
         :'groupID'
     ),
+    'OCG01',
     'check-in credential not found',
     'Should reject an unknown credential'
 );
@@ -269,6 +270,7 @@ select throws_ok(
         :'eventID',
         :'unknownCode'
     ),
+    'OCG01',
     'event unavailable for check-in',
     'Should reject a credential from the wrong selected group'
 );
@@ -283,6 +285,7 @@ select throws_ok(
         :'endedEventID',
         :'groupID'
     ),
+    'OCG01',
     'event unavailable for check-in',
     'Should reject a credential after the event''s explicit end time'
 );
@@ -297,6 +300,7 @@ select throws_ok(
         :'eventID',
         :'groupID'
     ),
+    'OCG01',
     'attendance is not confirmed',
     'Should reject a credential whose attendance is no longer confirmed'
 );

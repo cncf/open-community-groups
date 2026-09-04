@@ -31,7 +31,7 @@ begin
                 and event_id = p_event_id;
 
                 if not found then
-                    raise exception 'event CFS label % not found for event %', v_cfs_label_id, p_event_id;
+                    raise exception 'event CFS label % not found for event %', v_cfs_label_id, p_event_id using errcode = 'OCG01';
                 end if;
             end if;
 

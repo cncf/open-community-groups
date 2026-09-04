@@ -30,8 +30,8 @@ begin
     return v_event_category_id;
 exception
     when unique_violation then
-        raise exception 'event category already exists';
+        raise exception 'event category already exists' using errcode = 'OCG01';
     when check_violation then
-        raise exception 'event category name is invalid';
+        raise exception 'event category name is invalid' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

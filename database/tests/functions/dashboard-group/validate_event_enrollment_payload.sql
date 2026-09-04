@@ -20,6 +20,7 @@ select lives_ok(
 -- Should reject waitlists for approval-required events
 select throws_ok(
     $$select validate_event_enrollment_payload(true, true)$$,
+    'OCG01',
     'approval-required events cannot enable waitlist',
     'Should reject waitlists for approval-required events'
 );

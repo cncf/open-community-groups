@@ -58,6 +58,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount codes must be unique per event',
     'Should reject duplicate discount codes'
 );
@@ -77,6 +78,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount code available cannot exceed total_available',
     'Should reject discount codes with available values above total_available'
 );
@@ -93,6 +95,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount codes require event_discount_code_id',
     'Should reject discount codes without identifiers'
 );
@@ -110,6 +113,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount codes require code',
     'Should reject discount codes without code'
 );
@@ -127,6 +131,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount codes require title',
     'Should reject discount codes without title'
 );
@@ -145,6 +150,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount code available must be greater than or equal to 0',
     'Should reject discount codes with negative available values'
 );
@@ -163,6 +169,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount code total_available must be greater than or equal to 0',
     'Should reject discount codes with negative total_available values'
 );
@@ -182,6 +189,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount code ends_at cannot be before starts_at',
     'Should reject discount codes with inverted date ranges'
 );
@@ -198,6 +206,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'fixed amount discount codes require amount_minor',
     'Should reject fixed amount discount codes without amount_minor'
 );
@@ -215,6 +224,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount code amount_minor must be greater than 0',
     'Should reject fixed amount discount codes with non-positive amount_minor'
 );
@@ -232,6 +242,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount code amount_minor must be greater than 0',
     'Should reject fixed amount discount codes with negative amount_minor'
 );
@@ -250,6 +261,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'fixed amount discount codes cannot include percentage',
     'Should reject fixed amount discount codes with percentage values'
 );
@@ -266,6 +278,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'percentage discount codes require percentage',
     'Should reject percentage discount codes without percentage'
 );
@@ -283,6 +296,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount percentage must be between 1 and 100',
     'Should reject percentage discount codes below the allowed range'
 );
@@ -300,6 +314,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'discount percentage must be between 1 and 100',
     'Should reject percentage discount codes above the allowed range'
 );
@@ -318,6 +333,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
+    'OCG01',
     'percentage discount codes cannot include amount_minor',
     'Should reject percentage discount codes with amount_minor values'
 );

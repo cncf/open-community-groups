@@ -41,11 +41,11 @@ begin
     end if;
 
     if nullif(btrim(p_recovery_reference), '') is null then
-        raise exception 'recovery reference is required';
+        raise exception 'recovery reference is required' using errcode = 'OCG01';
     end if;
 
     if nullif(btrim(p_recovery_note), '') is null then
-        raise exception 'recovery note is required';
+        raise exception 'recovery note is required' using errcode = 'OCG01';
     end if;
 
     -- Resolve and lock the event before its purchase and durable refund
@@ -64,7 +64,7 @@ begin
       and e.group_id = p_group_id;
 
     if not found then
-        raise exception 'event purchase refund not found';
+        raise exception 'event purchase refund not found' using errcode = 'OCG01';
     end if;
 
     perform 1
@@ -128,17 +128,7 @@ begin
     for update of ep, epr;
 
     if not found then
-        raise exception 'recoverable event purchase refund not found';
-    end if;
-
-    -- Require event management access at execution time
-    if not user_has_group_permission(
-        v_community_id,
-        v_group_id,
-        p_actor_user_id,
-        'group.events.write'
-    ) then
-        raise exception 'events write access is required';
+        raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
     end if;
 
     -- Treat an exact repeated completion as an idempotent operator retry
@@ -146,7 +136,7 @@ begin
         if v_recovery_completed_by_user_id <> p_actor_user_id
            or v_recovery_note <> btrim(p_recovery_note)
            or v_recovery_reference <> btrim(p_recovery_reference) then
-            raise exception 'refund recovery already completed with different evidence';
+            raise exception 'refund recovery already completed with different evidence' using errcode = 'OCG01';
         end if;
 
         return jsonb_build_object(
@@ -159,14 +149,14 @@ begin
     if v_refund_status <> 'provider-failed'
        or not v_terminal_failure
        or v_provider_refund_id is null then
-        raise exception 'recoverable event purchase refund not found';
+        raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
     end if;
 
     -- Validate the local lifecycle that the external recovery will complete
     if v_finalized_at is null then
         if v_kind in ('automatic-unfulfillable-checkout', 'event-cancellation') then
             if v_purchase_status <> 'refund-pending' then
-                raise exception 'recoverable event purchase refund not found';
+                raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
             end if;
         elsif v_kind in (
             'attendance-cancellation',
@@ -177,10 +167,10 @@ begin
                    v_purchase_status = 'refund-pending'
                    and v_event_canceled
             ) then
-                raise exception 'recoverable event purchase refund not found';
+                raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
             end if;
         else
-            raise exception 'recoverable event purchase refund not found';
+            raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
         end if;
 
         if v_event_refund_request_id is not null then
@@ -192,11 +182,11 @@ begin
             for update;
 
             if not found then
-                raise exception 'recoverable event purchase refund not found';
+                raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
             end if;
         end if;
     elsif v_purchase_status not in ('refund-recovery-pending', 'refunded') then
-        raise exception 'recoverable event purchase refund not found';
+        raise exception 'recoverable event purchase refund not found' using errcode = 'OCG01';
     end if;
 
     -- Require app-composed notification data before first-time finalization

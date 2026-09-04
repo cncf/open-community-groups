@@ -116,6 +116,7 @@ select throws_ok(
         :'communityID',
         :'user1ID'
     ),
+    'OCG01',
     'user is already a community team member',
     'Should not allow duplicate community team membership'
 );

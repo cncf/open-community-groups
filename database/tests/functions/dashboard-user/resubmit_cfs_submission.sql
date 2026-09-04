@@ -232,6 +232,7 @@ select throws_ok(
         :'user1ID',
         :'submission3ID'
     ),
+    'OCG01',
     'submission not found or cannot be resubmitted',
     'Should reject resubmitting another user''s submission'
 );
@@ -296,6 +297,7 @@ select throws_ok(
         :'user1ID',
         :'submission2ID'
     ),
+    'OCG01',
     'submission not found or cannot be resubmitted',
     'Should reject resubmitting approved submission'
 );
@@ -314,6 +316,7 @@ select throws_ok(
         :'user1ID',
         :'submission4ID'
     ),
+    'OCG01',
     'submission not found or cannot be resubmitted',
     'Should reject resubmitting submission linked to a session'
 );

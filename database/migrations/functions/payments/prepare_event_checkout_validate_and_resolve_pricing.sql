@@ -47,7 +47,7 @@ begin
             and ao.user_id = p_user_id
             and ao.expires_at > current_timestamp
        ) then
-        raise exception 'admission offer is no longer available';
+        raise exception 'admission offer is no longer available' using errcode = 'OCG01';
     end if;
 
     -- Resolve the selected ticket type and the currently active price window
@@ -80,19 +80,19 @@ begin
 
     -- Reject missing, inactive, or unsellable ticket selections
     if not found then
-        raise exception 'ticket type not found';
+        raise exception 'ticket type not found' using errcode = 'OCG01';
     end if;
 
     if not v_ticket_active then
-        raise exception 'ticket type is not active';
+        raise exception 'ticket type is not active' using errcode = 'OCG01';
     end if;
 
     if p_admission_offer_id is null and v_ticket_availability <> 'public' then
-        raise exception 'ticket type is not available for direct checkout';
+        raise exception 'ticket type is not available for direct checkout' using errcode = 'OCG01';
     end if;
 
     if v_price_window_amount_minor is null then
-        raise exception 'ticket type does not have an active price window';
+        raise exception 'ticket type does not have an active price window' using errcode = 'OCG01';
     end if;
 
     -- Preserve FIFO priority when reconciliation leaves a blocked queue head
@@ -103,7 +103,7 @@ begin
             where ew.event_id = p_event_id
             and ew.event_ticket_type_id = p_event_ticket_type_id
        ) then
-        raise exception 'ticket type has queued users';
+        raise exception 'ticket type has queued users' using errcode = 'OCG01';
     end if;
 
     -- Count allocated inventory before deciding whether the ticket is sold out
@@ -117,13 +117,13 @@ begin
     if p_admission_offer_id is null
        and v_seats_total is not null
        and v_allocated_seat_count >= v_seats_total then
-        raise exception 'ticket type is sold out';
+        raise exception 'ticket type is sold out' using errcode = 'OCG01';
     end if;
 
     -- Validate the selected discount code before creating a new hold
     if p_discount_code is not null then
         if v_price_window_amount_minor = 0 then
-            raise exception 'discount codes cannot be applied to free tickets';
+            raise exception 'discount codes cannot be applied to free tickets' using errcode = 'OCG01';
         end if;
 
         select
@@ -154,7 +154,7 @@ begin
 
         -- Reject missing or unavailable discount codes before pricing
         if not found then
-            raise exception 'discount code not found';
+            raise exception 'discount code not found' using errcode = 'OCG01';
         end if;
 
         if not v_discount_active
@@ -165,7 +165,7 @@ begin
                 and v_discount_available is not null
                 and v_discount_available <= 0
            ) then
-            raise exception 'discount code is not available';
+            raise exception 'discount code is not available' using errcode = 'OCG01';
         end if;
 
         if v_discount_total_available is not null then
@@ -181,7 +181,7 @@ begin
             );
 
             if v_redemptions >= v_discount_total_available then
-                raise exception 'discount code is no longer available';
+                raise exception 'discount code is no longer available' using errcode = 'OCG01';
             end if;
         end if;
 
@@ -196,7 +196,7 @@ begin
 
         -- Reject discounts that cannot reduce the price by one minor unit
         if discount_amount_minor = 0 then
-            raise exception 'discount code does not reduce ticket price';
+            raise exception 'discount code does not reduce ticket price' using errcode = 'OCG01';
         end if;
     end if;
 

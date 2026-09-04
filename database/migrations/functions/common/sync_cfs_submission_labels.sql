@@ -13,7 +13,7 @@ begin
     and cs.event_id = p_event_id;
 
     if not found then
-        raise exception 'submission not found';
+        raise exception 'submission not found' using errcode = 'OCG01';
     end if;
 
     -- Validate supplied labels before replacing existing links

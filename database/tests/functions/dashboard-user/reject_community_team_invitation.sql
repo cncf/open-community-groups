@@ -132,6 +132,7 @@ select throws_ok(
         :'userID',
         :'communityID'
     ),
+    'OCG01',
     'no pending community invitation found',
     'Should reject a second rejection when no pending invitation exists'
 );

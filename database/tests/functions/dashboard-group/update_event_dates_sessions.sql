@@ -312,6 +312,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Past End Event", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000001", "kind_id": "in-person", "ends_at": "2020-01-01T12:00:00"}'::jsonb
     )$$,
+    'OCG01',
     'event ends_at cannot be in the past',
     'Should throw error when event ends_at is in the past'
 );
@@ -324,6 +325,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Session Past End", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000001", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past End Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2020-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session ends_at cannot be in the past',
     'Should throw error when session ends_at is in the past'
 );
@@ -383,6 +385,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000007'::uuid,
         '{"name": "Published No Dates Event", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000001", "kind_id": "in-person"}'::jsonb
     )$$,
+    'OCG01',
     'published event must have a start date',
     'Should reject clearing the start date on a published event'
 );
@@ -417,6 +420,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Session Before Event", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000001", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Early Session", "starts_at": "2030-01-01T09:00:00", "ends_at": "2030-01-01T10:30:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should throw error when session starts_at is before event starts_at'
 );
@@ -429,6 +433,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Session After Event", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000001", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Late Session", "starts_at": "2030-01-01T13:00:00", "ends_at": "2030-01-01T14:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should throw error when session starts_at is after event ends_at'
 );
@@ -441,6 +446,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Session Exceeds Event", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000001", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Long Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T13:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
+    'OCG01',
     'session ends_at must be within event bounds',
     'Should throw error when session ends_at is after event ends_at'
 );
@@ -465,6 +471,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000008'::uuid,
         '{"name": "Shrink Bounds Event", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000001", "kind_id": "virtual", "starts_at": "2030-05-01T09:00:00", "ends_at": "2030-05-01T12:00:00", "sessions": [{"session_id": "3a3a0000-0000-0000-0000-000000000011", "name": "Shrink Bounds Session", "starts_at": "2030-05-01T15:00:00", "ends_at": "2030-05-01T16:00:00", "kind": "virtual"}]}'::jsonb
     )$$,
+    'OCG01',
     'session starts_at must be within event bounds',
     'Should throw error when shrinking event bounds leaves a retained session out of bounds'
 );
@@ -670,6 +677,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000005'::uuid,
         '{"name": "Future Past Event", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000002", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2099-01-02T12:30:00"}'::jsonb
     )$$,
+    'OCG01',
     'event ends_at cannot be in the future',
     'Should throw error when past event ends_at is in the future'
 );
@@ -682,6 +690,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000005'::uuid,
         '{"name": "Future Past Session", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000002", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2020-01-02T12:30:00", "sessions": [{"name": "Future Session", "starts_at": "2099-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual"}]}'::jsonb
     )$$,
+    'OCG01',
     'session starts_at cannot be in the future',
     'Should throw error when past event session starts_at is in the future'
 );
@@ -694,6 +703,7 @@ select throws_ok(
         '3a3a0000-0000-0000-0000-000000000005'::uuid,
         '{"name": "Future Past Session", "description": "Test", "timezone": "UTC", "category_id": "3a3a0000-0000-0000-0000-000000000002", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2020-01-02T12:30:00", "sessions": [{"name": "Future Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2099-01-02T11:30:00", "kind": "virtual"}]}'::jsonb
     )$$,
+    'OCG01',
     'session ends_at cannot be in the future',
     'Should throw error when past event session ends_at is in the future'
 );

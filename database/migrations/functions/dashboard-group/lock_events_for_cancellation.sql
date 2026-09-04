@@ -36,7 +36,7 @@ begin
 
     -- Reject stale or cross-group scopes after acquiring all available locks
     if v_locked_event_count <> cardinality(v_event_ids) then
-        raise exception 'one or more events were not found or inactive';
+        raise exception 'one or more events were not found or inactive' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

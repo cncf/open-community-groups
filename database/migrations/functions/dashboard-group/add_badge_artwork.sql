@@ -10,16 +10,6 @@ declare
     v_badge_artwork_id uuid;
     v_file_name text;
 begin
-    -- Authorize the actor against the requested community and group
-    if not user_has_group_permission(
-        p_community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.badges.write'
-    ) then
-        raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
-    end if;
-
     -- Normalize the content-addressed file name stored by the image service
     v_file_name := nullif(
         btrim(regexp_replace(p_file_name, '^/images/(badges/)?', '')),
@@ -50,6 +40,6 @@ begin
 
 exception
     when not_null_violation or check_violation then
-        raise exception 'badge artwork file name is invalid';
+        raise exception 'badge artwork file name is invalid' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

@@ -24,12 +24,12 @@ begin
     if p_validate_payment_configuration then
         -- Reject discount codes on events that cannot collect payment
         if not v_paid_capable and p_discount_codes is not null then
-            raise exception 'discount_codes require positive ticket pricing';
+            raise exception 'discount_codes require positive ticket pricing' using errcode = 'OCG01';
         end if;
 
         -- Reject a currency on events that cannot collect payment
         if not v_paid_capable and p_payment_currency_code is not null then
-            raise exception 'payment_currency_code requires positive ticket pricing';
+            raise exception 'payment_currency_code requires positive ticket pricing' using errcode = 'OCG01';
         end if;
 
         -- Require a ready payment path before accepting paid-capable tickets

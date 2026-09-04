@@ -213,7 +213,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject paid recurring events when payment readiness fails'
 );
@@ -240,7 +240,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'events must include between 2 and 13 items',
     'Should reject too few event payloads'
 );
@@ -269,7 +269,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'events must include between 2 and 13 items',
     'Should reject too many event payloads'
 );
@@ -306,7 +306,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'additional_occurrences must be between 1 and 12',
     'Should reject invalid additional occurrence count'
 );
@@ -343,7 +343,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'events count must match additional_occurrences',
     'Should reject mismatched event and recurrence counts'
 );
@@ -380,7 +380,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'unsupported recurrence pattern',
     'Should reject unsupported recurrence pattern'
 );
@@ -416,7 +416,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'recurring events require timezone',
     'Should reject missing timezone on the anchor event'
 );
@@ -452,7 +452,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'recurring events require starts_at',
     'Should reject missing start date on the anchor event'
 );
@@ -489,7 +489,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
     ),
-    'P0001',
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should roll back the whole series when one generated event fails'
 );

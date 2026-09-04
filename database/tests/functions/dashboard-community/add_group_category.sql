@@ -105,6 +105,7 @@ select throws_ok(
     ) $$,
         :'communityID'
     ),
+    'OCG01',
     'group category already exists',
     'Should reject duplicate group category names'
 );

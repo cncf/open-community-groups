@@ -174,6 +174,7 @@ select ok(
 -- Should reject a revoked badge
 select throws_ok(
     format($$select refresh_user_badge_identity(%L::uuid, %L::uuid)$$, :'userID', :'revokedBadgeID'),
+    'OCG01',
     'active user badge not found',
     'Should reject a revoked badge'
 );
@@ -181,6 +182,7 @@ select throws_ok(
 -- Should reject an unknown badge
 select throws_ok(
     format($$select refresh_user_badge_identity(%L::uuid, %L::uuid)$$, :'userID', gen_random_uuid()),
+    'OCG01',
     'active user badge not found',
     'Should reject an unknown badge'
 );
@@ -188,6 +190,7 @@ select throws_ok(
 -- Should reject another user's badge
 select throws_ok(
     format($$select refresh_user_badge_identity(%L::uuid, %L::uuid)$$, :'otherUserID', :'boundBadgeID'),
+    'OCG01',
     'active user badge not found',
     'Should reject another user''s badge'
 );

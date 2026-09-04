@@ -279,7 +279,7 @@ begin
             v_event_registration_ends_at,
             v_event_starts_at
         ) then
-        raise exception 'event registration is not open';
+        raise exception 'event registration is not open' using errcode = 'OCG01';
     end if;
 
     -- Resolve pricing without rolling back queue reconciliation on sold-out conflicts
@@ -313,7 +313,7 @@ begin
             );
         exception
             -- Translate expected pricing failures into stable conflict results
-            when raise_exception then
+            when sqlstate 'OCG01' then
                 -- Report admission offers that became unavailable
                 if sqlerrm = 'admission offer is no longer available' then
                     return jsonb_build_object('conflict', 'admission-offer-unavailable');
@@ -447,7 +447,7 @@ begin
                 );
             exception
                 -- Hide provider-readiness details behind the stable checkout conflict
-                when raise_exception then
+                when sqlstate 'OCG01' then
                     return jsonb_build_object('conflict', 'payment-setup-unavailable');
             end;
             perform validate_payment_amount(v_currency_code, v_final_amount_minor);
@@ -466,7 +466,7 @@ begin
             perform validate_payment_currency_code(v_currency_code);
         exception
             -- Hide unsupported currency details behind the stable checkout conflict
-            when raise_exception then
+            when sqlstate 'OCG01' then
                 return jsonb_build_object('conflict', 'payment-setup-unavailable');
         end;
     -- Remove payment configuration from intrinsically free purchases

@@ -208,6 +208,7 @@ select throws_ok(
         :'eventID',
         :'otherGroupSponsorID'
     ),
+    'OCG01',
     'sponsor does not belong to event group',
     'Should reject sponsors that belong to a different group'
 );

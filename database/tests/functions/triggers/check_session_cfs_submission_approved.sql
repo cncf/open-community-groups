@@ -193,6 +193,7 @@ select throws_ok(
         '2025-01-10 11:30:00+00',
         :'submissionPendingID'
     ),
+    'OCG01',
     'cfs submission must be approved',
     'Should reject non-approved submissions'
 );
@@ -208,6 +209,7 @@ select throws_ok(
         '2025-01-10 11:30:00+00',
         :'submissionOtherEventID'
     ),
+    'OCG01',
     'cfs submission does not belong to the session event',
     'Should reject submissions from another event'
 );
@@ -219,6 +221,7 @@ select throws_ok(
         :'submissionPendingID',
         :'sessionID'
     ),
+    'OCG01',
     'cfs submission must be approved',
     'Should reject updating sessions to non-approved submissions'
 );

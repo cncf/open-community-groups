@@ -100,6 +100,7 @@ where email_verification_code_id = :'verificationCodeToDelete'::uuid;
 -- Should raise exception for invalid verification code
 select throws_ok(
     format('select verify_email(%L::uuid)', :'invalidVerificationCodeID'),
+    'OCG01',
     'email verification failed: invalid code',
     'Should raise exception for non-existent verification code'
 );
@@ -107,6 +108,7 @@ select throws_ok(
 -- Should raise exception for expired verification code
 select throws_ok(
     format('select verify_email(%L::uuid)', :'expiredVerificationCodeID'),
+    'OCG01',
     'email verification failed: invalid code',
     'Should raise exception for expired verification code'
 );
@@ -135,6 +137,7 @@ select lives_ok(
 
 select throws_ok(
     format('select verify_email(%L::uuid)', :'usedVerificationCode'),
+    'OCG01',
     'email verification failed: invalid code',
     'Should raise exception for already used verification code'
 );

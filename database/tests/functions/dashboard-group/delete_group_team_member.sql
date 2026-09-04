@@ -157,6 +157,7 @@ select throws_ok(
         $$ select delete_group_team_member(null::uuid, %L::uuid, %L::uuid) $$,
         :'groupID', :'user1ID'
     ),
+    'OCG01',
     'cannot remove the last accepted group admin',
     'Should block deleting the last accepted member'
 );
@@ -180,6 +181,7 @@ select throws_ok(
         $$ select delete_group_team_member(null::uuid, %L::uuid, %L::uuid) $$,
         :'groupID', :'user4ID'
     ),
+    'OCG01',
     'user is not a group team member',
     'Should raise error when deleting non-existing member'
 );

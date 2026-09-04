@@ -46,7 +46,7 @@ begin
            coalesce(v_event_ends_at, v_event_starts_at) is not null
            and coalesce(v_event_ends_at, v_event_starts_at) <= current_timestamp
        ) then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Return the optional event currency after state validation

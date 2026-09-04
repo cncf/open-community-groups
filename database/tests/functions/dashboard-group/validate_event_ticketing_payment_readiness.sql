@@ -116,6 +116,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'manual ticket tax requires at least one unique Stripe Tax Rate',
     'Should reject paid manual-tax events without a selected rate'
 );
@@ -139,6 +140,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'manual ticket tax requires at least one unique Stripe Tax Rate',
     'Should reject duplicate manual Tax Rate identifiers'
 );
@@ -162,6 +164,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'manual ticket tax requires at least one unique Stripe Tax Rate',
     'Should reject manual Tax Rate identifiers with surrounding whitespace'
 );
@@ -186,6 +189,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'automatic ticket tax cannot include manual Tax Rates',
     'Should reject manual Tax Rate identifiers in automatic mode'
 );
@@ -233,6 +237,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'events that do not collect tax require inclusive display and no Tax Rates',
     'Should reject exclusive display for no-tax events'
 );
@@ -253,6 +258,7 @@ select throws_ok(
             "venue_name": "Community Hall"
         }'::jsonb
     )$$,
+    'OCG01',
     'paid ticketing requires an in-person or hybrid event with a complete physical venue',
     'Should reject paid-capable hybrid events with an incomplete physical venue'
 );
@@ -265,6 +271,7 @@ select throws_ok(
         null,
         '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require payment_currency_code',
     'Should reject a missing payment currency for paid-capable events'
 );
@@ -292,6 +299,7 @@ select lives_ok(
 -- Should reject a missing payment recipient for paid-capable events
 select throws_ok(
     $$select validate_event_ticketing_payment_readiness('stripe', true, 'USD', null)$$,
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject a missing payment recipient for paid-capable events'
 );
@@ -304,6 +312,7 @@ select throws_ok(
         'USD',
         '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
     )$$,
+    'OCG01',
     'payments are not configured on this server',
     'Should reject a missing server payment provider for paid-capable events'
 );
@@ -316,6 +325,7 @@ select throws_ok(
         'USD',
         '{"provider": "other", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require a payment recipient for the server payments provider',
     'Should reject a recipient for another payment provider'
 );
@@ -328,6 +338,7 @@ select throws_ok(
         'USD',
         '{"provider": "stripe", "recipient_id": " ", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require a valid payment recipient',
     'Should reject an empty recipient identifier'
 );
@@ -340,6 +351,7 @@ select throws_ok(
         'USDD',
         '{"provider": "stripe", "recipient_id": "acct_ready", "seller_display_name": "Ready Fiscal Sponsor"}'::jsonb
     )$$,
+    'OCG01',
     'payment_currency_code must be a supported currency code',
     'Should reject an unsupported payment currency for paid-capable events'
 );
@@ -352,6 +364,7 @@ select throws_ok(
         'USD',
         '{"provider": "stripe", "recipient_id": "acct_ready"}'::jsonb
     )$$,
+    'OCG01',
     'paid-capable events require a payment recipient seller name',
     'Should reject a payment recipient without a seller name'
 );
@@ -375,6 +388,7 @@ select throws_ok(
             "venue_zip_code": "94105"
         }'::jsonb
     )$$,
+    'OCG01',
     'paid ticketing requires an in-person or hybrid event with a complete physical venue',
     'Should reject paid-capable virtual events even when a physical venue is present'
 );
@@ -464,6 +478,7 @@ select throws_ok(
         'https://pay.example.test/unpaid',
         null
     )$$,
+    'OCG01',
     'external payment fields require paid-capable ticketing',
     'Should reject external fields on unpaid events'
 );
@@ -488,6 +503,7 @@ select throws_ok(
         'https://pay.example.test/leftover',
         null
     )$$,
+    'OCG01',
     'external payment fields require external payments mode',
     'Should reject external fields when the group is not in external mode'
 );
@@ -512,6 +528,7 @@ select throws_ok(
         'ftp://pay.example.test/invalid',
         null
     )$$,
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject external mode without a valid payment URL'
 );
@@ -536,6 +553,7 @@ select throws_ok(
         'https://pay.example.test/window',
         337
     )$$,
+    'OCG01',
     'external payment window exceeds the configured maximum',
     'Should reject an external payment window above the configured maximum'
 );
@@ -560,6 +578,7 @@ select throws_ok(
         'https://pay.example.test/virtual',
         null
     )$$,
+    'OCG01',
     'paid ticketing requires an in-person or hybrid event with a complete physical venue',
     'Should reject paid external virtual events even with a complete venue'
 );
@@ -584,6 +603,7 @@ select throws_ok(
         null,
         null
     )$$,
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject paid external mode when the payment URL is missing'
 );
@@ -609,6 +629,7 @@ select throws_ok(
         null,
         'KR'
     )$$,
+    'OCG01',
     'external paid events require a venue in the group country',
     'Should reject paid external events with a venue outside the group country'
 );
@@ -634,6 +655,7 @@ select throws_ok(
         null,
         null
     )$$,
+    'OCG01',
     'external paid events require a venue in the group country',
     'Should reject paid external events when the group country is unknown'
 );

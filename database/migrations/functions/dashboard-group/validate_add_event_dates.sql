@@ -15,14 +15,14 @@ begin
     if p_event->>'starts_at' is not null then
         v_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
         if v_starts_at < current_timestamp then
-            raise exception 'event starts_at cannot be in the past';
+            raise exception 'event starts_at cannot be in the past' using errcode = 'OCG01';
         end if;
     end if;
 
     if p_event->>'ends_at' is not null then
         v_ends_at := (p_event->>'ends_at')::timestamp at time zone v_timezone;
         if v_ends_at < current_timestamp then
-            raise exception 'event ends_at cannot be in the past';
+            raise exception 'event ends_at cannot be in the past' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -39,20 +39,20 @@ begin
     if v_registration_starts_at is not null
        and v_registration_ends_at is not null
        and v_registration_starts_at >= v_registration_ends_at then
-        raise exception 'registration starts_at must be before registration ends_at';
+        raise exception 'registration starts_at must be before registration ends_at' using errcode = 'OCG01';
     end if;
 
     -- Keep configured registration windows from extending past the event start
     if v_registration_starts_at is not null
        and v_starts_at is not null
        and v_registration_starts_at > v_starts_at then
-        raise exception 'registration starts_at cannot be after event starts_at';
+        raise exception 'registration starts_at cannot be after event starts_at' using errcode = 'OCG01';
     end if;
 
     if v_registration_ends_at is not null
        and v_starts_at is not null
        and v_registration_ends_at > v_starts_at then
-        raise exception 'registration ends_at cannot be after event starts_at';
+        raise exception 'registration ends_at cannot be after event starts_at' using errcode = 'OCG01';
     end if;
 
     -- New event sessions cannot be created with past session dates
@@ -61,13 +61,13 @@ begin
         loop
             v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
             if v_session_starts_at < current_timestamp then
-                raise exception 'session starts_at cannot be in the past';
+                raise exception 'session starts_at cannot be in the past' using errcode = 'OCG01';
             end if;
 
             if v_session->>'ends_at' is not null then
                 v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
                 if v_session_ends_at < current_timestamp then
-                    raise exception 'session ends_at cannot be in the past';
+                    raise exception 'session ends_at cannot be in the past' using errcode = 'OCG01';
                 end if;
             end if;
         end loop;

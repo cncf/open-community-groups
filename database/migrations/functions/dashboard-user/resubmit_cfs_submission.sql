@@ -23,7 +23,7 @@ begin
 
     -- Ensure submission exists and can be resubmitted
     if not found then
-        raise exception 'submission not found or cannot be resubmitted';
+        raise exception 'submission not found or cannot be resubmitted' using errcode = 'OCG01';
     end if;
 
     -- Track the resubmission

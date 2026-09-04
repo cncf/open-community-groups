@@ -124,6 +124,7 @@ select lives_ok(
 -- Should fail when sponsor is from different group
 select throws_ok(
     format('insert into event_sponsor (event_id, group_sponsor_id, level) values (%L, %L, ''Gold'')', :'eventID', :'sponsor2ID'),
+    'OCG01',
     'sponsor not found in group',
     'Should fail when sponsor is from different group'
 );
@@ -131,6 +132,7 @@ select throws_ok(
 -- Should fail when updating event_sponsor to sponsor from different group
 select throws_ok(
     format('update event_sponsor set group_sponsor_id = %L where event_id = %L', :'sponsor2ID', :'eventID'),
+    'OCG01',
     'sponsor not found in group',
     'Should fail when updating event_sponsor to sponsor from different group'
 );

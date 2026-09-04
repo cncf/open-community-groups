@@ -12,6 +12,13 @@ use crate::{services::payments::FiscalSponsorReadinessError, types::search::Filt
 #[cfg(test)]
 mod tests;
 
+/// SQLSTATE raised by database functions for user-facing rejections.
+///
+/// Database functions raise `using errcode = 'OCG01'` when the message is safe
+/// to show to the user. Any other database error, including the default
+/// `P0001` of `raise exception`, is an internal failure.
+pub(crate) const USER_FACING_DB_ERROR_CODE: &str = "OCG01";
+
 /// Represents all possible errors that can occur in a handler.
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum HandlerError {
@@ -76,7 +83,7 @@ impl IntoResponse for HandlerError {
 
 impl From<anyhow::Error> for HandlerError {
     fn from(err: anyhow::Error) -> Self {
-        // Try to extract P0001 error message from tokio_postgres
+        // Surface user-facing database rejections by their SQLSTATE
         if let Some(msg) = extract_db_error_message(&err) {
             return HandlerError::Database(msg);
         }
@@ -112,13 +119,13 @@ impl From<serde_qs::Error> for HandlerError {
     }
 }
 
-/// Extracts user-facing message from P0001 (RAISE EXCEPTION) database errors.
+/// Extracts the message of a database error raised with the user-facing SQLSTATE.
 fn extract_db_error_message(err: &anyhow::Error) -> Option<String> {
     let pg_err = err.downcast_ref::<tokio_postgres::Error>()?;
     let db_err = pg_err.as_db_error()?;
 
-    // P0001 is the default SQLSTATE for RAISE EXCEPTION
-    if db_err.code() == &SqlState::RAISE_EXCEPTION {
+    // Only OCG01 messages are meant for users; P0001 and others stay internal
+    if db_err.code() == &SqlState::from_code(USER_FACING_DB_ERROR_CODE) {
         return Some(db_err.message().to_string());
     }
     None

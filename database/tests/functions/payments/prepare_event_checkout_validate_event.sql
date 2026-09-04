@@ -277,6 +277,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid
     )$$, :'communityID', :'inactiveEventID'),
+    'OCG01',
     'event not found or inactive',
     'Should reject inactive events'
 );

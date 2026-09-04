@@ -71,6 +71,7 @@ select results_eq(
 -- Should reject duplicate or incomplete orders
 select throws_ok(
     format($$select update_user_badges_order(%L::uuid, array[%L::uuid, %L::uuid])$$, :'userID', :'firstBadgeID', :'firstBadgeID'),
+    'OCG01',
     'badge order does not match active badges',
     'Should reject duplicate or incomplete orders'
 );
@@ -78,6 +79,7 @@ select throws_ok(
 -- Should reject a missing order instead of treating it as an empty update
 select throws_ok(
     format($$select update_user_badges_order(%L::uuid, null)$$, :'userID'),
+    'OCG01',
     'badge order does not match active badges',
     'Should reject a missing order'
 );

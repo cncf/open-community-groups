@@ -353,7 +353,7 @@ select throws_ok(
         :'wrongUserID',
         :'offerID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject declining another user''s offer'
 );
@@ -365,7 +365,7 @@ select throws_ok(
         :'expiredRecipientID',
         :'expiredOfferID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject declining an expired offer'
 );
@@ -377,7 +377,7 @@ select throws_ok(
         :'terminalRecipientID',
         :'terminalOfferID'
     ),
-    'P0001',
+    'OCG01',
     'admission offer is no longer available',
     'Should reject declining a terminal offer'
 );

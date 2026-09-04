@@ -1014,7 +1014,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, %L, 'registered@example.com') $$,
         :'actorID', :'groupID', :'eventID', :'registeredUserID'
     ),
-    'P0001',
+    'OCG01',
     'provide exactly one invite target',
     'Should reject invitations with both user_id and email'
 );
@@ -1158,7 +1158,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
         :'actorID', :'groupID', :'eventID', :'registeredUserID', :'simpleTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'user already has a pending event invitation',
     'Should reject re-inviting users with a pending invitation'
 );
@@ -1169,7 +1169,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
         :'actorID', :'groupID', :'eventID', :'confirmedAttendeeUserID', :'simpleTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'user is already attending this event',
     'Should reject re-inviting confirmed attendees'
 );
@@ -1191,7 +1191,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
         :'actorID', :'groupID', :'eventID', :'waitlistedUserID', :'simpleTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'user already has a pending event invitation',
     'Should reject inviting a user with an active waitlist offer'
 );
@@ -1262,7 +1262,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, null, 'unverified@example.com', %L) $$,
         :'actorID', :'groupID', :'eventID', :'simpleTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'registered user email is not verified',
     'Should reject email invites for registered users with unverified email'
 );
@@ -1343,7 +1343,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
         :'actorID', :'groupID', :'ticketedEventID', :'registeredUserID'
     ),
-    'P0001',
+    'OCG01',
     'ticket type is required for event invitations',
     'Should require a selected tier for multi-tier event invitations'
 );
@@ -1358,7 +1358,7 @@ select throws_ok(
         :'unavailableInviteUserID',
         :'unavailableTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'ticket type is not available',
     'Should reject unavailable ticket types for event invitations'
 );
@@ -1384,7 +1384,7 @@ select throws_ok(
         :'invalidTicketUserID',
         :'ticketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'ticket type is not available',
     'Should reject ticket types selected for a different event'
 );
@@ -1426,7 +1426,7 @@ select throws_ok(
         :'paidTicketTypeID',
         'stripe'
     ),
-    'P0001',
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject paid ticket invitations when payment readiness fails'
 );
@@ -1441,7 +1441,7 @@ select throws_ok(
         :'externalUnreadyInviteUserID',
         :'externalUnreadyTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'external payments are not available for this event',
     'Should reject paid invitations when an external-marked event is not ready'
 );
@@ -1479,7 +1479,7 @@ select throws_ok(
         :'paidContextTicketTypeID',
         'stripe'
     ),
-    'P0001',
+    'OCG01',
     'paid ticketing requires an in-person or hybrid event with a complete physical venue',
     'Should validate the stored event venue for paid ticket invitations'
 );
@@ -1767,7 +1767,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
         :'actorID', :'groupID', :'unpublishedEventID', :'registeredUserID', :'simpleTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'event not found or inactive',
     'Should reject unpublished events'
 );
@@ -1778,7 +1778,7 @@ select throws_ok(
         $$ select invite_event_attendee(%L, %L, %L, %L, null, %L) $$,
         :'actorID', :'groupID', :'canceledEventID', :'registeredUserID', :'simpleTicketTypeID'
     ),
-    'P0001',
+    'OCG01',
     'event not found or inactive',
     'Should reject canceled events'
 );

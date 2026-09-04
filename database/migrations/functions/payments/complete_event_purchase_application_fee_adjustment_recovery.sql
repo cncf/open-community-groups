@@ -21,15 +21,15 @@ begin
     end if;
 
     if nullif(btrim(p_provider_application_fee_refund_id), '') is null then
-        raise exception 'provider application-fee refund id is required';
+        raise exception 'provider application-fee refund id is required' using errcode = 'OCG01';
     end if;
 
     if nullif(btrim(p_recovery_reference), '') is null then
-        raise exception 'recovery reference is required';
+        raise exception 'recovery reference is required' using errcode = 'OCG01';
     end if;
 
     if nullif(btrim(p_recovery_note), '') is null then
-        raise exception 'recovery note is required';
+        raise exception 'recovery note is required' using errcode = 'OCG01';
     end if;
 
     -- Lock the exhausted work item and resolve its authorization scope
@@ -47,16 +47,7 @@ begin
     for update of epafa;
 
     if not found then
-        raise exception 'recoverable application-fee adjustment not found';
-    end if;
-
-    if not user_has_group_permission(
-        v_adjustment.community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.events.write'
-    ) then
-        raise exception 'events write access is required';
+        raise exception 'recoverable application-fee adjustment not found' using errcode = 'OCG01';
     end if;
 
     -- Treat an exact repeated completion as an idempotent operator retry
@@ -66,14 +57,14 @@ begin
                 btrim(p_provider_application_fee_refund_id)
            or v_adjustment.recovery_note <> btrim(p_recovery_note)
            or v_adjustment.recovery_reference <> btrim(p_recovery_reference) then
-            raise exception 'application-fee recovery already completed with different evidence';
+            raise exception 'application-fee recovery already completed with different evidence' using errcode = 'OCG01';
         end if;
 
         return;
     end if;
 
     if v_adjustment.status <> 'failed' or v_adjustment.attempt_count < 10 then
-        raise exception 'recoverable application-fee adjustment not found';
+        raise exception 'recoverable application-fee adjustment not found' using errcode = 'OCG01';
     end if;
 
     -- Persist the completed provider operation and recovery evidence

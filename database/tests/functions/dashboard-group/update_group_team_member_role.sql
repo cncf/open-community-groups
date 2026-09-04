@@ -127,6 +127,7 @@ select throws_ok(
         $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'viewer')$$,
         :'pendingGroupID', :'user1ID'
     ),
+    'OCG01',
     'cannot change role for the last accepted group admin',
     'Should block demoting the last accepted group admin when another admin is pending'
 );
@@ -137,6 +138,7 @@ select throws_ok(
         $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'admin')$$,
         :'groupID', :'missingUserID'
     ),
+    'OCG01',
     'user is not a group team member',
     'Should error when updating role for non-existing member'
 );
@@ -167,6 +169,7 @@ select throws_ok(
         $$select update_group_team_member_role(null::uuid, %L::uuid, %L::uuid, 'viewer')$$,
         :'groupID', :'user2ID'
     ),
+    'OCG01',
     'cannot change role for the last accepted group admin',
     'Should block demoting the last accepted group admin'
 );

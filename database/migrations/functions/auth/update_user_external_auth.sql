@@ -23,7 +23,7 @@ begin
         where lower(u.email) = v_email
         and u.user_id <> p_user_id
     ) then
-        raise exception 'external auth email belongs to another user';
+        raise exception 'external auth email belongs to another user' using errcode = 'OCG01';
     end if;
 
     -- Reject LF OIDC identities owned by another user
@@ -34,7 +34,7 @@ begin
         and u.provider #>> '{linuxfoundation,subject}' = v_lf_subject
         and u.user_id <> p_user_id
     ) then
-        raise exception 'external auth identity belongs to another user';
+        raise exception 'external auth identity belongs to another user' using errcode = 'OCG01';
     end if;
 
     -- Sync verified external-auth identity details
@@ -53,7 +53,7 @@ begin
 
     -- Ensure a registered user was updated
     if not found then
-        raise exception 'registered external-auth user not found';
+        raise exception 'registered external-auth user not found' using errcode = 'OCG01';
     end if;
 
     -- Return an external-auth payload with required defaults

@@ -276,6 +276,7 @@ select throws_ok(
     )$$,
         :'unknownCommunityID'
     ),
+    'OCG01',
     'community not found',
     'Should raise an error when the community does not exist'
 );

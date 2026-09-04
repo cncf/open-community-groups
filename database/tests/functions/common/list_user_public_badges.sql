@@ -217,6 +217,7 @@ select is(
 -- Should reject requests above the public page-size cap
 select throws_ok(
     $$select list_user_public_badges('profile-user', 51, 0)$$,
+    'OCG01',
     'badge pagination is outside the supported range',
     'Should reject an unbounded public profile request'
 );

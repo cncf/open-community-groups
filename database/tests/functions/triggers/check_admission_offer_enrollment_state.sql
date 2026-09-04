@@ -206,6 +206,7 @@ select throws_ok(
         :'ticketTypeID',
         :'attendeeUserID'
     ),
+    'OCG01',
     'user already has active attendance for this event',
     'Should reject offers for confirmed attendees'
 );
@@ -228,6 +229,7 @@ select throws_ok(
         :'ticketTypeID',
         :'waitlistUserID'
     ),
+    'OCG01',
     'user is already on the waiting list for this event',
     'Should reject offers for waitlisted users'
 );
@@ -250,6 +252,7 @@ select throws_ok(
         :'ticketTypeID',
         :'requestUserID'
     ),
+    'OCG01',
     'user already has a pending invitation request for this event',
     'Should reject offers until the pending request is reviewed'
 );
@@ -272,6 +275,7 @@ select throws_ok(
         :'ticketTypeID',
         :'purchaseUserID'
     ),
+    'OCG01',
     'user already has an active purchase for this event',
     'Should reject offers for active purchase owners'
 );

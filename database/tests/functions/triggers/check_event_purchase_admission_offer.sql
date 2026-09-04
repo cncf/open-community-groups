@@ -196,6 +196,7 @@ select throws_ok(
         :'ticketTypeID',
         :'activeOfferUserID'
     ),
+    'OCG01',
     'active admission offer must be claimed directly',
     'Should reject direct purchases while an offer is active'
 );

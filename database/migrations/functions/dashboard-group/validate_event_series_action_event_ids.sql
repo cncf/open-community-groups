@@ -17,7 +17,7 @@ declare
 begin
     -- Validate event count
     if cardinality(v_event_ids) = 0 then
-        raise exception 'event_ids cannot be empty';
+        raise exception 'event_ids cannot be empty' using errcode = 'OCG01';
     end if;
 
     -- Validate event state
@@ -33,7 +33,7 @@ begin
     );
 
     if v_found_events <> cardinality(v_event_ids) then
-        raise exception 'one or more events were not found or inactive';
+        raise exception 'one or more events were not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Validate series membership
@@ -54,7 +54,7 @@ begin
 
     -- Validate series consistency
     if v_standalone_events > 0 or v_series_count <> 1 then
-        raise exception 'events must belong to the same series';
+        raise exception 'events must belong to the same series' using errcode = 'OCG01';
     end if;
 
     return v_event_ids;

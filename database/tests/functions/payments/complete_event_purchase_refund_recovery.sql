@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(35);
+select plan(34);
 
 -- ============================================================================
 -- VARIABLES
@@ -220,10 +220,6 @@ values (
     '{"provider":"stripe","recipient_id":"acct_recovery","seller_display_name":"Recovery Fiscal Sponsor"}'::jsonb,
     'complete-refund-recovery-group'
 );
-
--- Accepted event manager allowed to complete recovery
-insert into group_team (accepted, group_id, role, user_id)
-values (true, :'groupID', 'events-manager', :'actorUserID');
 
 -- Canceled event shared by external recovery scenarios
 insert into event (
@@ -1061,6 +1057,7 @@ select throws_ok(
         'Verified by finance',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'refundID'),
+    'OCG01',
     'recovery reference is required',
     'Should require an external recovery reference'
 );
@@ -1075,6 +1072,7 @@ select throws_ok(
         ' ',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'refundID'),
+    'OCG01',
     'recovery note is required',
     'Should require a recovery note'
 );
@@ -1089,6 +1087,7 @@ select throws_ok(
         'Verified by finance',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'missingRefundID'),
+    'OCG01',
     'event purchase refund not found',
     'Should reject an unknown durable refund'
 );
@@ -1103,6 +1102,7 @@ select throws_ok(
         'Invalid local state',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'invalidRefundID'),
+    'OCG01',
     'recoverable event purchase refund not found',
     'Should reject a terminal refund outside a recoverable purchase state'
 );
@@ -1117,6 +1117,7 @@ select throws_ok(
         'Provider attempt is uncertain',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'unpinnedRefundID'),
+    'OCG01',
     'recoverable event purchase refund not found',
     'Should reject a terminal refund without a pinned provider attempt'
 );
@@ -1131,6 +1132,7 @@ select throws_ok(
         'Provider result remains retryable',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'nonterminalRefundID'),
+    'OCG01',
     'recoverable event purchase refund not found',
     'Should reject a pinned provider result that is not terminal'
 );
@@ -1176,20 +1178,6 @@ select results_eq(
         0::int
     ) $$,
     'Should preserve invalid states without appending audit entries'
-);
-
--- Should require events write access
-select throws_ok(
-    format($$select complete_event_purchase_refund_recovery(
-        %L::uuid,
-        %L::uuid,
-        %L::uuid,
-        'bank-transfer-automatic',
-        'Verified automatic refund',
-        (select notification_template_data from refund_recovery_test_data)
-    )$$, :'automaticUserID', :'groupID', :'automaticRefundID'),
-    'events write access is required',
-    'Should require events write access'
 );
 
 -- Should complete active-event recovery with configured provider reconciliation
@@ -1369,6 +1357,7 @@ select throws_ok(
         'Different evidence',
         (select notification_template_data from refund_recovery_test_data)
     )$$, :'actorUserID', :'groupID', :'refundID'),
+    'OCG01',
     'refund recovery already completed with different evidence',
     'Should reject conflicting recovery evidence'
 );

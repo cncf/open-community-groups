@@ -40,12 +40,12 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Require a questionnaire before accepting answers
     if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) = 0 then
-        raise exception 'event does not have registration questions';
+        raise exception 'event does not have registration questions' using errcode = 'OCG01';
     end if;
 
     -- Resolve the public registration window before applying attendee-specific overrides
@@ -58,7 +58,7 @@ begin
     -- Block answer edits once the event has started
     if v_starts_at is not null
        and current_timestamp >= v_starts_at then
-        raise exception 'registration answers can only be submitted before the event starts';
+        raise exception 'registration answers can only be submitted before the event starts' using errcode = 'OCG01';
     end if;
 
     -- Validate submitted answers against the event questionnaire
@@ -84,14 +84,14 @@ begin
     for update of ea;
 
     if not found then
-        raise exception 'event registration not found';
+        raise exception 'event registration not found' using errcode = 'OCG01';
     end if;
 
     -- Only manual invitations and active checkout holds can answer outside the public window
     if not coalesce(v_manually_invited, false)
        and not v_has_active_checkout_hold
        and not v_registration_window_open then
-        raise exception 'event registration is not open';
+        raise exception 'event registration is not open' using errcode = 'OCG01';
     end if;
 
     -- Store answers while checkout retains ownership of pending confirmation

@@ -120,6 +120,7 @@ select throws_ok(
         :'communityID',
         :'region1ID'
     ),
+    'OCG01',
     'region already exists',
     'Should reject duplicate region names'
 );
@@ -136,6 +137,7 @@ select throws_ok(
         :'communityID',
         :'unknownRegionID'
     ),
+    'OCG01',
     'region not found',
     'Should fail when updating a non-existing region'
 );

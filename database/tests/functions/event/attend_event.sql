@@ -1338,6 +1338,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventTicketedID', :'user2ID'
     ),
+    'OCG01',
     'ticket type is required',
     'Requires a selected ticket tier'
 );
@@ -1351,6 +1352,7 @@ select throws_ok(
         :'activeApprovalOfferUserID',
         :'ticketApprovalTypeID'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject approval requests with an active admission offer'
 );
@@ -1364,6 +1366,7 @@ select throws_ok(
         :'activeApprovalPurchaseUserID',
         :'ticketApprovalTypeID'
     ),
+    'OCG01',
     'user already has an active purchase for this event',
     'Should reject approval requests with an active purchase'
 );
@@ -1419,6 +1422,7 @@ select throws_ok(
         :'ticketPrivateSelectionUserID',
         :'ticketPrivateSelectionTypeID'
     ),
+    'OCG01',
     'ticket type is required',
     'Should reject attendee selection of an invitation-only tier'
 );
@@ -1555,6 +1559,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid,null,%L::uuid)',
         :'communityID', :'eventTicketedID', :'user4ID', :'ticketPrivateTypeID'
     ),
+    'OCG01',
     'ticket type is required',
     'Should reject invitation-only ticket waitlist joins'
 );
@@ -1565,6 +1570,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventTicketedID', :'user10ID'
     ),
+    'OCG01',
     'user already has an active purchase for this event',
     'Rejects a second enrollment attempt with an active checkout'
 );
@@ -1575,6 +1581,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventRegistrationUpcomingID', :'user1ID'
     ),
+    'OCG01',
     'event registration is not open',
     'Rejects attendee registration before the registration window opens'
 );
@@ -1585,6 +1592,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventRegistrationClosedID', :'user7ID'
     ),
+    'OCG01',
     'event registration is not open',
     'Rejects attendee registration after the registration window closes'
 );
@@ -1595,6 +1603,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventRegistrationOpenUntilStartID', :'user7ID'
     ),
+    'OCG01',
     'event registration is not open',
     'Rejects attendee registration after an open-only registration window reaches the event start'
 );
@@ -1704,6 +1713,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventFullNoWaitlistID', :'user1ID'
     ),
+    'OCG01',
     'user is already attending this event',
     'Rejects duplicate RSVP for a confirmed attendee'
 );
@@ -1864,6 +1874,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventInviteOnlyID', :'user3ID'
     ),
+    'OCG01',
     'invitation request was already accepted for this event',
     'Rejects a new enrollment attempt for an accepted request'
 );
@@ -1903,6 +1914,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventInviteOnlyID', :'user2ID'
     ),
+    'OCG01',
     'user has already requested an invitation for this event',
     'Rejects duplicate invitation requests'
 );
@@ -1913,6 +1925,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventInviteOnlyID', :'user4ID'
     ),
+    'OCG01',
     'invitation request was rejected for this event',
     'Rejects users whose invitation request was rejected'
 );
@@ -1930,6 +1943,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventUnpublishedID', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects unpublished events'
 );
@@ -1940,6 +1954,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventCanceledID', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects canceled events'
 );
@@ -1950,6 +1965,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventDeletedID', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects deleted events'
 );
@@ -1960,6 +1976,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventPastID', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects past events'
 );
@@ -1970,6 +1987,7 @@ select throws_ok(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventInactiveGroupID', :'user1ID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Rejects events from inactive groups'
 );

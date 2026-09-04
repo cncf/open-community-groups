@@ -27,7 +27,7 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
@@ -58,7 +58,7 @@ begin
     for update of ep;
 
     if v_purchase_amount_minor > 0 then
-        raise exception 'paid attendees must request a refund instead of leaving the event';
+        raise exception 'paid attendees must request a refund instead of leaving the event' using errcode = 'OCG01';
     end if;
 
     -- Preserve the confirmed attendee row while removing active attendance
@@ -108,6 +108,6 @@ begin
         return json_build_object('left_status', 'pending-approval');
     end if;
 
-    raise exception 'user is not attending or waitlisted for this event';
+    raise exception 'user is not attending or waitlisted for this event' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

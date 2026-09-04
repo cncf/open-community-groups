@@ -125,6 +125,7 @@ select throws_ok(
         :'user1ID',
         :'groupID'
     ),
+    'OCG01',
     'no pending group invitation found',
     'Second accept should fail since invite is no longer pending'
 );

@@ -121,6 +121,7 @@ select throws_ok(
         :'groupID',
         :'otherEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a cross-group target'
 );
@@ -132,6 +133,7 @@ select throws_ok(
         :'deletedGroupID',
         :'activeEventID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should reject a deleted group'
 );
@@ -143,6 +145,7 @@ select throws_ok(
         :'groupID',
         :'deletedEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a deleted target'
 );
@@ -164,6 +167,7 @@ select throws_ok(
         :'missingGroupID',
         :'activeEventID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should reject a missing group'
 );
@@ -175,6 +179,7 @@ select throws_ok(
         :'groupID',
         :'missingEventID'
     ),
+    'OCG01',
     'one or more events were not found or inactive',
     'Should reject a missing target'
 );

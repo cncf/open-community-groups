@@ -216,6 +216,7 @@ select throws_ok(
         $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
         :'communityID', :'missingEventID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject missing event'
 );
@@ -226,6 +227,7 @@ select throws_ok(
         $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
         :'community2ID', :'eventOKID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject event from another community'
 );
@@ -236,6 +238,7 @@ select throws_ok(
         $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
         :'communityID', :'eventUnpublishedID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject unpublished event'
 );
@@ -246,6 +249,7 @@ select throws_ok(
         $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
         :'communityID', :'eventCanceledID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject canceled event'
 );
@@ -256,6 +260,7 @@ select throws_ok(
         $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
         :'communityID', :'eventDeletedID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject deleted event'
 );
@@ -266,6 +271,7 @@ select throws_ok(
         $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
         :'communityID', :'eventInactiveGroupID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject inactive-group event'
 );
@@ -276,6 +282,7 @@ select throws_ok(
         $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
         :'communityID', :'eventPastID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject past event'
 );

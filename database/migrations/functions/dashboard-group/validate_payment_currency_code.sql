@@ -6,7 +6,7 @@ declare
 begin
     -- Require a non-empty code before checking the supported Stripe list
     if v_currency_code is null then
-        raise exception 'payment_currency_code cannot be empty';
+        raise exception 'payment_currency_code cannot be empty' using errcode = 'OCG01';
     end if;
 
     -- Reject currency codes that Stripe checkout cannot price
@@ -15,7 +15,7 @@ begin
         from unnest(list_payment_currency_codes()) as supported_currency_code
         where supported_currency_code = v_currency_code
     ) then
-        raise exception 'payment_currency_code must be a supported currency code';
+        raise exception 'payment_currency_code must be a supported currency code' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

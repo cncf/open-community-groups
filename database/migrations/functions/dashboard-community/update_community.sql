@@ -39,7 +39,7 @@ begin
 
     -- Ensure the target community exists
     if not found then
-        raise exception 'community not found';
+        raise exception 'community not found' using errcode = 'OCG01';
     end if;
 
     -- Track the community update

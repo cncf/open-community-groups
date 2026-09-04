@@ -385,6 +385,7 @@ select throws_ok(
         :'groupCategoryID',
         :'groupPrettySlugID'
     ),
+    'OCG01',
     'you must be able to manage the selected parent group',
     'Should reject a selected parent when the actor cannot manage the parent'
 );

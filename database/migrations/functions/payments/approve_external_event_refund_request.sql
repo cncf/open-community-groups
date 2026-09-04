@@ -28,7 +28,7 @@ begin
 
     -- Reject missing groups after the lock attempt
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Lock the event before ticket types, purchases, and refund requests
@@ -42,7 +42,7 @@ begin
 
     -- Reject purchases outside the requested group
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Lock ticket tiers before serializing this attendee's enrollment state
@@ -72,12 +72,12 @@ begin
 
     -- Reject purchases that disappeared while waiting for the lock
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Reject non-external purchases that must be approved through the provider
     if v_charge_model <> 'external' then
-        raise exception 'only external purchases can be refunded locally';
+        raise exception 'only external purchases can be refunded locally' using errcode = 'OCG01';
     end if;
 
     -- Reconcile leftover pending requests after a local external refund
@@ -103,7 +103,7 @@ begin
 
     -- Reject purchases that are not waiting for organizer approval
     if v_status <> 'refund-requested' then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Serialize this attendee's enrollment transitions
@@ -123,7 +123,7 @@ begin
 
     -- Reject refund requests that changed while waiting for their lock
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Return early on idempotent replays of an already approved request
@@ -149,7 +149,7 @@ begin
 
     -- Reject requests that left the pending state
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Mark the external purchase refunded without creating provider work

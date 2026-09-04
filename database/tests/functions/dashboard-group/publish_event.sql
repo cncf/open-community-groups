@@ -902,6 +902,7 @@ select throws_ok(
         :'missingGroupID',
         :'eventID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );
@@ -914,6 +915,7 @@ select throws_ok(
         :'groupID',
         :'eventNoStartDateID'
     ),
+    'OCG01',
     'event must have a start date to be published',
     'Should throw error when event has no start date'
 );
@@ -1008,6 +1010,7 @@ select throws_ok(
         :'groupNoRecipientID',
         :'eventTicketedNoRecipientID'
     ),
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should throw error when paid-capable event group has no payment recipient'
 );
@@ -1038,6 +1041,7 @@ select throws_ok(
         :'groupID',
         :'eventTicketedInvalidCurrencyID'
     ),
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject publication validated against a stale sponsor'
 );
@@ -1068,6 +1072,7 @@ select throws_ok(
         :'groupID',
         :'eventTicketedInvalidCurrencyID'
     ),
+    'OCG01',
     'payment_currency_code must be a supported currency code',
     'Should reject ticketed events whose currency code is unsupported'
 );
@@ -1098,6 +1103,7 @@ select throws_ok(
         :'groupID',
         :'eventExternalClearID'
     ),
+    'OCG01',
     'external payments are not available for this event',
     'Should reject publishing an external URL when the group is not currently eligible'
 );
@@ -1150,6 +1156,7 @@ select throws_ok(
         :'groupExternalID',
         :'eventExternalMissingUrlID'
     ),
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject publishing a paid external event without a payment URL'
 );
@@ -1162,6 +1169,7 @@ select throws_ok(
         :'groupExternalID',
         :'eventExternalAbroadID'
     ),
+    'OCG01',
     'external paid events require a venue in the group country',
     'Should reject publishing a paid external event with a venue outside the group country'
 );

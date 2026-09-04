@@ -29,6 +29,6 @@ begin
 
     return v_region_id;
 exception when unique_violation then
-    raise exception 'region already exists';
+    raise exception 'region already exists' using errcode = 'OCG01';
 end;
 $$ language plpgsql;

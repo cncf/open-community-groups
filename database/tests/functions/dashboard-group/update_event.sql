@@ -1177,6 +1177,7 @@ select throws_ok(
         null::jsonb,
         'stripe'
     )$$,
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject a paid update validated against a stale sponsor'
 );
@@ -1799,6 +1800,7 @@ select throws_ok(
         '3a390000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Won''t Work", "description": "This should fail", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person"}'::jsonb
     )$$,
+    'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );
@@ -1811,6 +1813,7 @@ select throws_ok(
         '3a390000-0000-0000-0000-000000000005'::uuid,
         '{"name": "Try to Update Canceled", "description": "This should fail", "timezone": "UTC", "category_id": "3a390000-0000-0000-0000-000000000001", "kind_id": "in-person"}'::jsonb
     )$$,
+    'OCG01',
     'event not found or inactive',
     'Should throw error when event is canceled'
 );
@@ -2004,6 +2007,7 @@ select throws_ok(
         :'eventExternalClearTicketTypeID',
         :'eventExternalClearPriceWindowID'
     ),
+    'OCG01',
     'external payments are not available for this event',
     'Should reject a persisted external URL when the group toggle is off'
 );
@@ -2055,6 +2059,7 @@ select throws_ok(
         :'eventExternalDelistedTicketTypeID',
         :'eventExternalDelistedPriceWindowID'
     ),
+    'OCG01',
     'external payments are not available for this event',
     'Should reject a persisted external URL when the group country is delisted'
 );
@@ -2202,6 +2207,7 @@ select throws_ok(
         :'eventExternalPendingClearTicketTypeID',
         :'eventExternalPendingClearPriceWindowID'
     ),
+    'OCG01',
     'external payment url cannot be cleared while pending external purchases exist',
     'Should reject clearing an external payment URL while a pending external purchase exists'
 );
@@ -2252,6 +2258,7 @@ select throws_ok(
         :'eventExternalDelistedTicketTypeID',
         :'eventExternalDelistedPriceWindowID'
     ),
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject clearing an external URL when Stripe is not ready'
 );
@@ -2306,6 +2313,7 @@ select throws_ok(
         :'eventExternalStripeTicketTypeID',
         :'eventExternalStripePriceWindowID'
     ),
+    'OCG01',
     'paid-capable events require a valid external payment url',
     'Should reject updating a paid external event without a payment URL'
 );
@@ -2504,6 +2512,7 @@ select throws_ok(
         :'eventExternalPaidTicketTypeID',
         :'eventExternalPaidPriceWindowID'
     ),
+    'OCG01',
     'external payment window exceeds the configured maximum',
     'Should reject an external payment window above the configured maximum on update'
 );
@@ -2554,6 +2563,7 @@ select throws_ok(
         :'eventExternalPaidTicketTypeID',
         :'eventExternalPaidPriceWindowID'
     ),
+    'OCG01',
     'external paid events require a venue in the group country',
     'Should reject moving a paid external event venue outside the group country'
 );

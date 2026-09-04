@@ -23,7 +23,7 @@ begin
     and epr.attempt_count >= 10;
 
     if not found then
-        raise exception 'retryable event purchase refund not found';
+        raise exception 'retryable event purchase refund not found' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

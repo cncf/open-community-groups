@@ -1407,6 +1407,7 @@ select throws_ok(
         :'publicAlternateTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'requested ticket type cannot be changed',
     'Should reject changing the requested ticket type during approval'
 );
@@ -1474,6 +1475,7 @@ select throws_ok(
         :'requester9ID',
         'stripe'
     ),
+    'OCG01',
     'ticket type is not available',
     'Should reject unavailable requested ticket types'
 );
@@ -1508,6 +1510,7 @@ select throws_ok(
         :'requester13ID',
         'stripe'
     ),
+    'OCG01',
     'invitation-only ticket type is required',
     'Should require a tier when accepting a generic private request'
 );
@@ -1523,6 +1526,7 @@ select throws_ok(
         :'publicGenericTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'ticket type is not available',
     'Should reject a public tier assignment for a generic private request'
 );
@@ -1584,6 +1588,7 @@ select throws_ok(
         :'publicGenericTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject duplicate approval while its offer is active'
 );
@@ -1598,6 +1603,7 @@ select throws_ok(
         :'requester11ID',
         'stripe'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject reissuing when an active offer already exists'
 );
@@ -1632,6 +1638,7 @@ select throws_ok(
         :'requester12ID',
         'stripe'
     ),
+    'OCG01',
     'user already has an active purchase for this event',
     'Should reject reissuing when an active purchase already exists'
 );
@@ -1696,6 +1703,7 @@ select throws_ok(
         :'requester10ID',
         'stripe'
     ),
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject paid approval when the group payment recipient is missing'
 );
@@ -1709,6 +1717,7 @@ select throws_ok(
         :'eventExternalUnreadyApprovalID',
         :'externalUnreadyRequesterID'
     ),
+    'OCG01',
     'external payments are not available for this event',
     'Should reject paid approval when an external-marked event is not ready'
 );
@@ -1887,6 +1896,7 @@ select throws_ok(
         :'privateTicketTypeID',
         'stripe'
     ),
+    'OCG01',
     'requested ticket type cannot be changed',
     'Should reject changing the persisted request tier'
 );
@@ -2298,6 +2308,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventUnpublishedID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event is unpublished'
 );
@@ -2308,6 +2319,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'inactiveGroupID', :'eventInactiveGroupID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event belongs to an inactive group'
 );
@@ -2318,6 +2330,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventApprovalDisabledID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event approval is disabled'
 );
@@ -2328,6 +2341,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventPastID', :'requesterID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject accepting when event is past'
 );
@@ -2451,6 +2465,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventID', :'requesterID'
     ),
+    'OCG01',
     'user already has an active admission offer for this event',
     'Should reject accepting an already reviewed request'
 );
@@ -2461,6 +2476,7 @@ select throws_ok(
         'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
         :'actorID', :'groupID', :'eventAttendeeConflictID', :'requester4ID'
     ),
+    'OCG01',
     'user already has active attendance for this event',
     'Should reject accepting when the requester is already attending'
 );

@@ -12,7 +12,7 @@ begin
       and gt.accepted = false;
 
     if not found then
-        raise exception 'no pending group invitation found';
+        raise exception 'no pending group invitation found' using errcode = 'OCG01';
     end if;
 
     -- Track the rejected invitation

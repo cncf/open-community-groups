@@ -14,7 +14,7 @@ begin
 
     -- Reject proposals outside the user's ownership
     if not found then
-        raise exception 'session proposal not found';
+        raise exception 'session proposal not found' using errcode = 'OCG01';
     end if;
 
     -- Do not allow deletion if there are associated submissions
@@ -24,7 +24,7 @@ begin
 
     -- Preserve proposals already submitted to an event
     if found then
-        raise exception 'session proposal has submissions';
+        raise exception 'session proposal has submissions' using errcode = 'OCG01';
     end if;
 
     -- Proceed to delete the session proposal
@@ -34,7 +34,7 @@ begin
 
     -- Reject proposals removed after ownership validation
     if not found then
-        raise exception 'session proposal not found';
+        raise exception 'session proposal not found' using errcode = 'OCG01';
     end if;
 
     -- Track the deleted session proposal

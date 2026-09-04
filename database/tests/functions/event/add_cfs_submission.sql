@@ -346,6 +346,7 @@ select throws_ok(
         :'userID',
         :'proposalID'
     ),
+    'OCG01',
     'cfs is not open',
     'Should reject submissions when CFS is closed'
 );
@@ -359,6 +360,7 @@ select throws_ok(
         :'userID',
         :'proposalID'
     ),
+    'OCG01',
     'cfs is not enabled for this event',
     'Should reject submissions when CFS is disabled'
 );
@@ -372,6 +374,7 @@ select throws_ok(
         :'userID',
         :'proposalID'
     ),
+    'OCG01',
     'cfs window not configured',
     'Should reject submissions when the CFS window is not configured'
 );
@@ -386,6 +389,7 @@ select throws_ok(
         :'userID',
         :'proposalID'
     ),
+    'OCG01',
     'cfs is not enabled for this event',
     'Should reject submissions when event is unpublished'
 );
@@ -400,6 +404,7 @@ select throws_ok(
         :'userID',
         :'proposalID'
     ),
+    'OCG01',
     'cfs is not enabled for this event',
     'Should reject submissions when event belongs to another community'
 );
@@ -413,6 +418,7 @@ select throws_ok(
         :'userID',
         :'missingProposalID'
     ),
+    'OCG01',
     'session proposal not found',
     'Should reject submissions for missing proposals'
 );
@@ -463,6 +469,7 @@ select throws_ok(
         :'userID',
         :'proposalPendingID'
     ),
+    'OCG01',
     'session proposal not ready for submission',
     'Should reject submissions for proposals not ready for submission'
 );
@@ -477,6 +484,7 @@ select throws_ok(
         :'proposalWithLabelsID',
         :'labelInvalidID'
     ),
+    'OCG01',
     'invalid event CFS labels',
     'Should reject labels that do not belong to the event'
 );

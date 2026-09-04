@@ -6,43 +6,43 @@ declare
 begin
     if jsonb_typeof(p_ticket_types) is distinct from 'array'
        or jsonb_array_length(p_ticket_types) = 0 then
-        raise exception 'events require at least one ticket type';
+        raise exception 'events require at least one ticket type' using errcode = 'OCG01';
     end if;
 
     -- Validate each supplied ticket type and its price windows
     for v_ticket_type in select jsonb_array_elements(p_ticket_types)
     loop
         if (v_ticket_type->>'event_ticket_type_id') is null then
-            raise exception 'ticket types require event_ticket_type_id';
+            raise exception 'ticket types require event_ticket_type_id' using errcode = 'OCG01';
         end if;
 
         if coalesce(v_ticket_type->>'availability', 'public')
            not in ('invitation_only', 'public') then
-            raise exception 'ticket type availability must be public or invitation_only';
+            raise exception 'ticket type availability must be public or invitation_only' using errcode = 'OCG01';
         end if;
 
         if nullif(v_ticket_type->>'title', '') is null then
-            raise exception 'ticket types require title';
+            raise exception 'ticket types require title' using errcode = 'OCG01';
         end if;
 
         if coalesce((v_ticket_type->>'order')::int, 0) < 1 then
-            raise exception 'ticket type order must be greater than or equal to 1';
+            raise exception 'ticket type order must be greater than or equal to 1' using errcode = 'OCG01';
         end if;
 
         if (v_ticket_type->>'seats_total') is null then
-            raise exception 'ticket types require seats_total';
+            raise exception 'ticket types require seats_total' using errcode = 'OCG01';
         end if;
 
         if (v_ticket_type->>'seats_total')::int < 0 then
-            raise exception 'ticket type seats_total must be greater than or equal to 0';
+            raise exception 'ticket type seats_total must be greater than or equal to 0' using errcode = 'OCG01';
         end if;
 
         if coalesce(jsonb_typeof(v_ticket_type->'price_windows'), '') <> 'array' then
-            raise exception 'ticket types require at least one price window';
+            raise exception 'ticket types require at least one price window' using errcode = 'OCG01';
         end if;
 
         if jsonb_array_length(v_ticket_type->'price_windows') = 0 then
-            raise exception 'ticket types require at least one price window';
+            raise exception 'ticket types require at least one price window' using errcode = 'OCG01';
         end if;
 
         if exists (
@@ -50,7 +50,7 @@ begin
             from jsonb_array_elements(v_ticket_type->'price_windows') as price_windows(price_window)
             where (price_window->>'event_ticket_price_window_id') is null
         ) then
-            raise exception 'ticket price windows require event_ticket_price_window_id';
+            raise exception 'ticket price windows require event_ticket_price_window_id' using errcode = 'OCG01';
         end if;
 
         if exists (
@@ -65,7 +65,7 @@ begin
                        < (price_window->>'starts_at')::timestamptz
                )
         ) then
-            raise exception 'ticket price windows must have non-negative amounts and valid date ranges';
+            raise exception 'ticket price windows must have non-negative amounts and valid date ranges' using errcode = 'OCG01';
         end if;
 
         if exists (
@@ -85,7 +85,7 @@ begin
             join price_windows pw2 on pw1.ordinality < pw2.ordinality
             where pw1.active_window && pw2.active_window
         ) then
-            raise exception 'ticket price windows cannot overlap';
+            raise exception 'ticket price windows cannot overlap' using errcode = 'OCG01';
         end if;
     end loop;
 end;

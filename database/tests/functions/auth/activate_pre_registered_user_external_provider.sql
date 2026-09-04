@@ -111,6 +111,7 @@ select throws_ok(
         %L::uuid,
         '{"name": "Registered User", "provider": {}, "username": "registered-user"}'::jsonb
     ) $$, :'registeredUserID'),
+    'OCG01',
     'pre-registered user not found',
     'Should reject users that are already registered'
 );
@@ -121,6 +122,7 @@ select throws_ok(
         %L::uuid,
         '{"name": "Missing User", "provider": {}, "username": "missing"}'::jsonb
     ) $$, :'unknownUserID'),
+    'OCG01',
     'pre-registered user not found',
     'Should reject missing pre-registered users'
 );

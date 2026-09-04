@@ -12,6 +12,7 @@
 {{ template "auth/get_user_by_id_verified.sql" }}
 {{ template "auth/get_user_by_linuxfoundation_identity_for_external_auth.sql" }}
 {{ template "auth/get_user_by_username.sql" }}
+{{ template "auth/group_belongs_to_community.sql" }}
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
 {{ template "auth/update_user_external_auth.sql" }}
@@ -213,6 +214,7 @@
 {{ template "dashboard-user/decline_event_admission_offer.sql" }}
 {{ template "dashboard-user/delete_session_proposal.sql" }}
 {{ template "dashboard-user/get_user_badge.sql" }}
+{{ template "dashboard-user/get_user_check_in_code.sql" }}
 {{ template "dashboard-user/list_session_proposal_levels.sql" }}
 {{ template "dashboard-user/list_user_audit_logs.sql" }}
 {{ template "dashboard-user/list_user_badges.sql" }}
@@ -348,8 +350,27 @@
 {{ template "site/get_site_upcoming_events.sql" }}
 {{ template "site/list_communities.sql" }}
 
+{{ template "triggers/check_admission_offer_enrollment_state.sql" }}
+{{ template "triggers/check_admission_offer_lifecycle.sql" }}
+{{ template "triggers/check_event_attendee_waitlist.sql" }}
+{{ template "triggers/check_event_category_community.sql" }}
+{{ template "triggers/check_event_external_payment_url.sql" }}
+{{ template "triggers/check_event_has_ticket_type.sql" }}
+{{ template "triggers/check_event_purchase_admission_offer.sql" }}
+{{ template "triggers/check_event_sponsor_group.sql" }}
+{{ template "triggers/check_event_ticketing_consistency.sql" }}
+{{ template "triggers/check_event_waitlist_attendee.sql" }}
+{{ template "triggers/check_group_category_community.sql" }}
+{{ template "triggers/check_group_parent_relationship.sql" }}
+{{ template "triggers/check_group_region_community.sql" }}
+{{ template "triggers/check_session_cfs_submission_approved.sql" }}
 {{ template "triggers/check_session_within_event_bounds.sql" }}
 {{ template "triggers/prevent_audit_log_mutation.sql" }}
+{{ template "triggers/prevent_user_badge_revocation_reversal.sql" }}
+{{ template "triggers/revoke_user_badges_on_user_delete.sql" }}
+{{ template "triggers/rotate_event_attendee_check_in_code.sql" }}
+{{ template "triggers/sync_event_capacity_from_ticket_types.sql" }}
+{{ template "triggers/validate_group_slug_pretty.sql" }}
 
 ---- create above / drop below ----
 

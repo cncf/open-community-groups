@@ -165,6 +165,7 @@ select throws_ok(
         :'user2ID',
         :'submission1ID'
     ),
+    'OCG01',
     'submission not found or cannot be withdrawn',
     'Should reject withdrawing another user''s submission'
 );
@@ -222,6 +223,7 @@ select throws_ok(
         :'user1ID',
         :'submission2ID'
     ),
+    'OCG01',
     'submission not found or cannot be withdrawn',
     'Should reject withdrawing approved submission'
 );

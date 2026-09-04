@@ -67,6 +67,7 @@ select is((select is_listed from user_badge where user_badge_id = :'userBadgeID'
 -- Should reject a badge owned by another user
 select throws_ok(
     format($$select update_user_badge_listing(%L::uuid, %L::uuid, true)$$, :'otherUserID', :'userBadgeID'),
+    'OCG01',
     'active awarded badge not found',
     'Should reject a badge owned by another user'
 );

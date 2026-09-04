@@ -120,6 +120,7 @@ select throws_ok(
         :'communityID',
         :'eventCategory1ID'
     ),
+    'OCG01',
     'event category already exists',
     'Should reject duplicate event category names'
 );
@@ -136,6 +137,7 @@ select throws_ok(
         :'communityID',
         :'eventCategory1ID'
     ),
+    'OCG01',
     'event category name is invalid',
     'Should reject event category names that generate empty slugs'
 );
@@ -152,6 +154,7 @@ select throws_ok(
         :'communityID',
         :'unknownEventCategoryID'
     ),
+    'OCG01',
     'event category not found',
     'Should fail when updating a non-existing event category'
 );

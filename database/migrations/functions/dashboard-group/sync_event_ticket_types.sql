@@ -23,7 +23,7 @@ declare
 begin
     -- Require at least one tier before pruning the current inventory
     if jsonb_array_length(coalesce(p_ticket_types, '[]'::jsonb)) = 0 then
-        raise exception 'events require at least one ticket type';
+        raise exception 'events require at least one ticket type' using errcode = 'OCG01';
     end if;
 
     -- Reject ticket type identifiers that belong to a different event
@@ -33,7 +33,7 @@ begin
         where ett.event_ticket_type_id = any(v_ticket_type_ids)
         and ett.event_id <> p_event_id
     ) then
-        raise exception 'ticket type does not belong to event';
+        raise exception 'ticket type does not belong to event' using errcode = 'OCG01';
     end if;
 
     -- Reject price window identifiers that belong to a different event
@@ -49,7 +49,7 @@ begin
         join event_ticket_type ett on ett.event_ticket_type_id = etpw.event_ticket_type_id
         where ett.event_id <> p_event_id
     ) then
-        raise exception 'ticket price window does not belong to event';
+        raise exception 'ticket price window does not belong to event' using errcode = 'OCG01';
     end if;
 
     -- Prevent removing ticket types referenced by admission offers
@@ -60,7 +60,7 @@ begin
         where ett.event_id = p_event_id
         and not (ett.event_ticket_type_id = any(v_ticket_type_ids))
     ) then
-        raise exception 'ticket types with admission offers cannot be removed; deactivate them instead';
+        raise exception 'ticket types with admission offers cannot be removed; deactivate them instead' using errcode = 'OCG01';
     end if;
 
     -- Prevent removing ticket types referenced by invitation requests
@@ -72,7 +72,7 @@ begin
         where ett.event_id = p_event_id
         and not (ett.event_ticket_type_id = any(v_ticket_type_ids))
     ) then
-        raise exception 'ticket types with invitation requests cannot be removed; deactivate them instead';
+        raise exception 'ticket types with invitation requests cannot be removed; deactivate them instead' using errcode = 'OCG01';
     end if;
 
     -- Prevent removing ticket types that are already linked to purchases
@@ -83,7 +83,7 @@ begin
         where ett.event_id = p_event_id
         and not (ett.event_ticket_type_id = any(v_ticket_type_ids))
     ) then
-        raise exception 'ticket types with purchases cannot be removed; deactivate them instead';
+        raise exception 'ticket types with purchases cannot be removed; deactivate them instead' using errcode = 'OCG01';
     end if;
 
     -- Prevent removing ticket types referenced by waitlist entries
@@ -94,7 +94,7 @@ begin
         where ett.event_id = p_event_id
         and not (ett.event_ticket_type_id = any(v_ticket_type_ids))
     ) then
-        raise exception 'ticket types with waitlist entries cannot be removed; deactivate them instead';
+        raise exception 'ticket types with waitlist entries cannot be removed; deactivate them instead' using errcode = 'OCG01';
     end if;
 
     -- Prune omitted ticket types after integrity checks
@@ -139,7 +139,7 @@ begin
             raise exception
                 'ticket type seats_total (%) cannot be less than current allocated seats (%)',
                 coalesce((v_ticket_type->>'seats_total')::int, 0),
-                v_allocated_seat_count;
+                v_allocated_seat_count using errcode = 'OCG01';
         end if;
 
         -- Protect active offers from tier deactivation
@@ -152,7 +152,7 @@ begin
                 and ao.status in ('checkout_pending', 'pending')
                 and ao.expires_at > current_timestamp
            ) then
-            raise exception 'ticket types with active offers cannot be deactivated';
+            raise exception 'ticket types with active offers cannot be deactivated' using errcode = 'OCG01';
         end if;
 
         -- Keep queued and pending-request tiers active and publicly selectable
@@ -183,7 +183,7 @@ begin
                 and eir.status = 'pending'
             )
         ) then
-            raise exception 'ticket types with queued or pending requests must remain active and public';
+            raise exception 'ticket types with queued or pending requests must remain active and public' using errcode = 'OCG01';
         end if;
 
         -- Upsert the ticket type row with normalized defaults
@@ -236,7 +236,7 @@ begin
             where etpw.event_ticket_price_window_id = any(v_price_window_ids)
             and etpw.event_ticket_type_id <> v_ticket_type_id
         ) then
-            raise exception 'ticket price window does not belong to ticket type';
+            raise exception 'ticket price window does not belong to ticket type' using errcode = 'OCG01';
         end if;
 
         -- Prune omitted price windows before upserting the payload

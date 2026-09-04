@@ -12,7 +12,7 @@ declare
 begin
     -- Validate normalized pagination
     if v_limit <= 0 or v_limit > 50 or v_offset < 0 then
-        raise exception 'badge pagination is outside the supported range';
+        raise exception 'badge pagination is outside the supported range' using errcode = 'OCG01';
     end if;
 
     -- Query active public badges in stable profile order

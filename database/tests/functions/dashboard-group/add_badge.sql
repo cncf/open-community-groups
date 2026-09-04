@@ -20,7 +20,7 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Admin authorized to manage badges
+-- Actor recorded by the badge audit entries
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'actorID', 'hash', 'badge-admin@example.test', true, 'badge-admin');
 
@@ -35,10 +35,6 @@ values (:'groupCategoryID', :'communityID', 'Technology');
 -- Group that owns the badge
 insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'groupCategoryID', 'Badge Definition Group', 'badge-definition-group');
-
--- Authorized group team member
-insert into group_team (group_id, accepted, role, user_id)
-values (:'groupID', true, 'admin', :'actorID');
 
 -- Artwork available to the definition
 insert into badge_artwork (file_name, group_id)
@@ -74,6 +70,7 @@ select throws_ok(
         $$select add_badge(%L::uuid, %L::uuid, %L::uuid, '{"criteria":"C","description":"D","image_file_name":"missing.png","name":"N"}'::jsonb)$$,
         :'actorID', :'communityID', :'groupID'
     ),
+    'OCG01',
     'badge artwork not found',
     'Should reject artwork owned outside the group gallery'
 );
@@ -84,6 +81,7 @@ select throws_ok(
         $$select add_badge(%L::uuid, %L::uuid, %L::uuid, '{"criteria":" ","description":"D","image_file_name":"badge.png","name":"N"}'::jsonb)$$,
         :'actorID', :'communityID', :'groupID'
     ),
+    'OCG01',
     'badge fields are invalid',
     'Should reject empty badge fields'
 );

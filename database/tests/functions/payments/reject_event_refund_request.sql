@@ -198,6 +198,7 @@ select throws_ok(
         %L::uuid,
         null
     )$$, :'actorUserID', :'groupID', :'purchaseID'),
+    'OCG01',
     'refund rejection reason is required',
     'Should reject a null rejection reason before mutating refund state'
 );
@@ -210,6 +211,7 @@ select throws_ok(
         %L::uuid,
         '   '
     )$$, :'actorUserID', :'groupID', :'purchaseID'),
+    'OCG01',
     'refund rejection reason is required',
     'Should reject a whitespace-only rejection reason before mutating refund state'
 );
@@ -237,6 +239,7 @@ select throws_ok(
         %L::uuid,
         'Not eligible'
     )$$, :'actorUserID', :'missingGroupID', :'purchaseID'),
+    'OCG01',
     'refund request not found',
     'Should reject a request outside the requested group'
 );
@@ -307,6 +310,7 @@ select throws_ok(
         %L::uuid,
         'Not eligible'
     )$$, :'actorUserID', :'groupID', :'missingPurchaseID'),
+    'OCG01',
     'refund request not found',
     'Should reject missing pending refund requests'
 );

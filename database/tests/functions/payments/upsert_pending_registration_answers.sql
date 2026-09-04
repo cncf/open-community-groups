@@ -198,6 +198,7 @@ select throws_ok(
             null
         )
     $$, :'eventID', :'pendingUserID', :'registrationQuestionID'),
+    'OCG01',
     'questionnaire answers are required',
     'Should validate answers before writing the attendee row'
 );

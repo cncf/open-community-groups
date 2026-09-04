@@ -40,7 +40,7 @@ begin
 
     -- Reject missing or inactive groups before loading the event
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Check if the event is active and lock it for publication
@@ -69,7 +69,7 @@ begin
 
     -- Reject missing or inactive events before resolving publication
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Return early when the event is already published
@@ -79,7 +79,7 @@ begin
 
     -- Reject publishing an external-marked event while the group is ineligible
     if v_external_payment_url is not null and not v_group_external_ready then
-        raise exception 'external payments are not available for this event';
+        raise exception 'external payments are not available for this event' using errcode = 'OCG01';
     end if;
 
     -- Use the external rail only while the group is eligible right now
@@ -112,7 +112,7 @@ begin
                and not (p_payment_validation->>'require_automatic_tax')::boolean
            )
        ) then
-        raise exception 'payment configuration changed during provider validation';
+        raise exception 'payment configuration changed during provider validation' using errcode = 'OCG01';
     end if;
 
     -- Require checkout-critical payment configuration only for paid-capable events
@@ -131,7 +131,7 @@ begin
 
     -- Check that the event has a start date
     if v_starts_at is null then
-        raise exception 'event must have a start date to be published';
+        raise exception 'event must have a start date to be published' using errcode = 'OCG01';
     end if;
 
     -- Update event to mark as published

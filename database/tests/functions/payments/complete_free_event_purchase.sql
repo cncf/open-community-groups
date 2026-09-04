@@ -647,6 +647,7 @@ select results_eq(
 -- Should reject expired purchase holds
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'expiredPurchaseID'),
+    'OCG01',
     'purchase hold has expired',
     'Should reject expired purchase holds'
 );
@@ -654,6 +655,7 @@ select throws_ok(
 -- Should reject free purchases when the event is inactive
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'inactivePurchaseID'),
+    'OCG01',
     'event not found or inactive',
     'Should reject free purchases when the event is inactive'
 );
@@ -664,6 +666,7 @@ select throws_ok(
         $$select complete_free_event_purchase(%L::uuid)$$,
         :'recoveryReplacementPurchaseID'
     ),
+    'OCG01',
     'checkout is unavailable while refund recovery is in progress',
     'Should reject a free replacement while refund recovery is unresolved'
 );
@@ -750,6 +753,7 @@ select results_eq(
 -- Should reject non-free purchases
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'paidPurchaseID'),
+    'OCG01',
     'only free purchases can be completed locally',
     'Should reject non-free purchases'
 );
@@ -757,6 +761,7 @@ select throws_ok(
 -- Should reject purchases that are no longer pending
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'completedPurchaseID'),
+    'OCG01',
     'purchase is no longer pending',
     'Should reject purchases that are no longer pending'
 );
@@ -764,6 +769,7 @@ select throws_ok(
 -- Should reject purchases whose attendee row cannot be confirmed
 select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'invitedPurchaseID'),
+    'OCG01',
     'attendee cannot be confirmed for this event',
     'Should reject purchases whose attendee row cannot be confirmed'
 );

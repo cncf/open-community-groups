@@ -111,6 +111,7 @@ select throws_ok(
         :'communityID',
         :'inUseEventCategoryID'
     ),
+    'OCG01',
     'cannot delete event category in use by events',
     'Should block deleting event category referenced by events'
 );
@@ -183,6 +184,7 @@ select throws_ok(
         :'communityID',
         :'unknownEventCategoryID'
     ),
+    'OCG01',
     'event category not found',
     'Should fail when deleting a non-existing event category'
 );

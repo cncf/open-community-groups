@@ -413,6 +413,7 @@ select throws_ok(
         :'missingGroupID',
         :'eventID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

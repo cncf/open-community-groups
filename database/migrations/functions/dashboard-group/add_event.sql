@@ -71,7 +71,7 @@ begin
 
     -- Reject a submitted payment URL when the group cannot collect externally
     if v_external_payment_url is not null and not v_external_mode then
-        raise exception 'external payments are not available for this event';
+        raise exception 'external payments are not available for this event' using errcode = 'OCG01';
     end if;
 
     -- Normalize external paid events onto organizer-managed tax
@@ -120,7 +120,7 @@ begin
                )
            )
        ) then
-        raise exception 'payment configuration changed during provider validation';
+        raise exception 'payment configuration changed during provider validation' using errcode = 'OCG01';
     end if;
 
     -- Validate enrollment and ticketing payload rules

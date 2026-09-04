@@ -7,7 +7,7 @@ returns void as $$
 begin
     -- Enforce the maximum number of labels per submission
     if coalesce(array_length(p_label_ids, 1), 0) > 10 then
-        raise exception 'too many submission labels';
+        raise exception 'too many submission labels' using errcode = 'OCG01';
     end if;
 
     -- Ensure all supplied labels belong to the event
@@ -22,7 +22,7 @@ begin
         );
 
         if found then
-            raise exception 'invalid event CFS labels';
+            raise exception 'invalid event CFS labels' using errcode = 'OCG01';
         end if;
     end if;
 end;

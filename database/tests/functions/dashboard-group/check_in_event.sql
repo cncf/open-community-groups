@@ -233,6 +233,7 @@ select throws_ok(
         :'eventID',
         :'missingUserID'
     ),
+    'OCG01',
     'attendance is not confirmed',
     'Should reject users without confirmed attendance'
 );
@@ -246,6 +247,7 @@ select throws_ok(
         :'canceledEventID',
         :'attendeeUserID'
     ),
+    'OCG01',
     'event unavailable for check-in',
     'Should reject events that are unavailable for check-in'
 );

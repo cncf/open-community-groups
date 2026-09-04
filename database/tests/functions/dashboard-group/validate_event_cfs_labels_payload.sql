@@ -34,6 +34,7 @@ select throws_ok(
             {"name": "Track / Backend", "color": "#FEE2E2"}
         ]'::jsonb
     )$$,
+    'OCG01',
     'duplicate cfs label names',
     'Should reject duplicate CFS label names'
 );
@@ -51,6 +52,7 @@ select throws_ok(
             from generate_series(1, 201) as gs
         )
     )$$,
+    'OCG01',
     'too many cfs labels',
     'Should reject more than 200 CFS labels'
 );

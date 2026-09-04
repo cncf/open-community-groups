@@ -25,7 +25,7 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'purchase not found or not refundable';
+        raise exception 'purchase not found or not refundable' using errcode = 'OCG01';
     end if;
 
     -- Lock the attendee's current active paid purchase before validating the request
@@ -47,7 +47,7 @@ begin
     for update of ep;
 
     if not found then
-        raise exception 'purchase not found or not refundable';
+        raise exception 'purchase not found or not refundable' using errcode = 'OCG01';
     end if;
 
     -- Reject duplicate requests and purchases that are no longer refundable
@@ -56,12 +56,12 @@ begin
         from event_refund_request
         where event_purchase_id = v_event_purchase_id
     ) then
-        raise exception 'refund request already exists for this purchase';
+        raise exception 'refund request already exists for this purchase' using errcode = 'OCG01';
     end if;
 
     -- Only completed paid purchases can enter the refund-request flow
     if v_purchase_status <> 'completed' then
-        raise exception 'purchase not found or not refundable';
+        raise exception 'purchase not found or not refundable' using errcode = 'OCG01';
     end if;
 
     -- Create the pending refund request owned by the attendee

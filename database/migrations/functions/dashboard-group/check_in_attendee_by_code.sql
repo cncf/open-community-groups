@@ -35,7 +35,7 @@ begin
 
     -- Reject unavailable events before resolving credentials
     if not found then
-        raise exception 'event unavailable for check-in';
+        raise exception 'event unavailable for check-in' using errcode = 'OCG01';
     end if;
 
     -- Resolve the credential and attendee display context
@@ -80,12 +80,12 @@ begin
 
     -- Reject credentials that do not belong to the selected event
     if not found then
-        raise exception 'check-in credential not found';
+        raise exception 'check-in credential not found' using errcode = 'OCG01';
     end if;
 
     -- Reject credentials whose attendance is no longer confirmed
     if v_attendee.status <> 'confirmed' then
-        raise exception 'attendance is not confirmed';
+        raise exception 'attendance is not confirmed' using errcode = 'OCG01';
     end if;
 
     -- Apply the shared atomic transition and audit behavior

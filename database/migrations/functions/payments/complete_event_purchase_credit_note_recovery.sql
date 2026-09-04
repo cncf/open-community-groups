@@ -21,15 +21,15 @@ begin
     end if;
 
     if nullif(btrim(p_provider_credit_note_id), '') is null then
-        raise exception 'provider credit-note id is required';
+        raise exception 'provider credit-note id is required' using errcode = 'OCG01';
     end if;
 
     if nullif(btrim(p_recovery_reference), '') is null then
-        raise exception 'recovery reference is required';
+        raise exception 'recovery reference is required' using errcode = 'OCG01';
     end if;
 
     if nullif(btrim(p_recovery_note), '') is null then
-        raise exception 'recovery note is required';
+        raise exception 'recovery note is required' using errcode = 'OCG01';
     end if;
 
     -- Lock the exhausted work item and resolve its authorization scope
@@ -49,16 +49,7 @@ begin
     for update of epcn;
 
     if not found then
-        raise exception 'recoverable credit note not found';
-    end if;
-
-    if not user_has_group_permission(
-        v_credit_note.community_id,
-        p_group_id,
-        p_actor_user_id,
-        'group.events.write'
-    ) then
-        raise exception 'events write access is required';
+        raise exception 'recoverable credit note not found' using errcode = 'OCG01';
     end if;
 
     -- Treat an exact repeated completion as an idempotent operator retry
@@ -67,14 +58,14 @@ begin
            or v_credit_note.provider_credit_note_id <> btrim(p_provider_credit_note_id)
            or v_credit_note.recovery_note <> btrim(p_recovery_note)
            or v_credit_note.recovery_reference <> btrim(p_recovery_reference) then
-            raise exception 'credit-note recovery already completed with different evidence';
+            raise exception 'credit-note recovery already completed with different evidence' using errcode = 'OCG01';
         end if;
 
         return;
     end if;
 
     if v_credit_note.status <> 'failed' or v_credit_note.attempt_count < 10 then
-        raise exception 'recoverable credit note not found';
+        raise exception 'recoverable credit note not found' using errcode = 'OCG01';
     end if;
 
     -- Persist the issued provider document and recovery evidence

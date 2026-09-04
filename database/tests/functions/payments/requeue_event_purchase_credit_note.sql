@@ -165,6 +165,7 @@ select throws_ok(
         'select requeue_event_purchase_credit_note(%L, %L)',
         :'groupID', :'missingCreditNoteID'
     ),
+    'OCG01',
     'retryable credit note not found',
     'Should reject a missing credit note'
 );
@@ -175,6 +176,7 @@ select throws_ok(
         'select requeue_event_purchase_credit_note(%L, %L)',
         :'missingGroupID', :'creditNoteID'
     ),
+    'OCG01',
     'retryable credit note not found',
     'Should reject a credit note from another group'
 );
@@ -185,6 +187,7 @@ select throws_ok(
         'select requeue_event_purchase_credit_note(%L, %L)',
         :'groupID', :'lowCreditNoteID'
     ),
+    'OCG01',
     'retryable credit note not found',
     'Should reject credit-note work before automatic retries are exhausted'
 );
@@ -195,6 +198,7 @@ select throws_ok(
         'select requeue_event_purchase_credit_note(%L, %L)',
         :'groupID', :'pendingCreditNoteID'
     ),
+    'OCG01',
     'retryable credit note not found',
     'Should reject credit-note work with a non-failed status'
 );

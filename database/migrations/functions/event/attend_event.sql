@@ -50,7 +50,7 @@ begin
     for update of e;
 
     if not found then
-        raise exception 'event not found or inactive';
+        raise exception 'event not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Lock tiers and reconcile stale reservations before serializing this attendee
@@ -74,7 +74,7 @@ begin
         v_registration_ends_at,
         v_starts_at
     ) then
-        raise exception 'event registration is not open';
+        raise exception 'event registration is not open' using errcode = 'OCG01';
     end if;
 
     -- Reject enrollment state that must be resumed or completed elsewhere
@@ -85,7 +85,7 @@ begin
         and ea.user_id = p_user_id
         and ea.status = 'confirmed'
     ) then
-        raise exception 'user is already attending this event';
+        raise exception 'user is already attending this event' using errcode = 'OCG01';
     end if;
 
     if exists (
@@ -96,7 +96,7 @@ begin
         and ao.status in ('checkout_pending', 'pending')
         and ao.expires_at > current_timestamp
     ) then
-        raise exception 'user already has an active admission offer for this event';
+        raise exception 'user already has an active admission offer for this event' using errcode = 'OCG01';
     end if;
 
     if exists (
@@ -121,7 +121,7 @@ begin
             )
         )
     ) then
-        raise exception 'user already has an active purchase for this event';
+        raise exception 'user already has an active purchase for this event' using errcode = 'OCG01';
     end if;
 
     -- Resolve a selected public tier or preserve a fully private generic request
@@ -152,7 +152,7 @@ begin
                 v_attendee_approval_required
                 and v_selectable_public_ticket_count = 0
            ) then
-            raise exception 'ticket type is required';
+            raise exception 'ticket type is required' using errcode = 'OCG01';
         end if;
     else
         select count(*)::int
@@ -171,7 +171,7 @@ begin
         );
 
         if v_selectable_public_ticket_count <> 1 then
-            raise exception 'ticket type is required';
+            raise exception 'ticket type is required' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -195,11 +195,11 @@ begin
         for update of eir;
 
         if v_invitation_request_status = 'pending' then
-            raise exception 'user has already requested an invitation for this event';
+            raise exception 'user has already requested an invitation for this event' using errcode = 'OCG01';
         elsif v_invitation_request_status = 'rejected' then
-            raise exception 'invitation request was rejected for this event';
+            raise exception 'invitation request was rejected for this event' using errcode = 'OCG01';
         elsif v_invitation_request_status = 'accepted' then
-            raise exception 'invitation request was already accepted for this event';
+            raise exception 'invitation request was already accepted for this event' using errcode = 'OCG01';
         end if;
 
         insert into event_invitation_request (
@@ -227,7 +227,7 @@ begin
     and ett.availability = 'public';
 
     if not found then
-        raise exception 'ticket type is not publicly available';
+        raise exception 'ticket type is not publicly available' using errcode = 'OCG01';
     end if;
 
     -- Reuse interrupted zero-value checkout holds for the selected tier
@@ -266,7 +266,7 @@ begin
             )
         )
     ) then
-        raise exception 'user already has an active purchase for this event';
+        raise exception 'user already has an active purchase for this event' using errcode = 'OCG01';
     end if;
 
     if v_has_reusable_free_purchase then

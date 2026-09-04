@@ -367,6 +367,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'externalPurchaseID'
     ),
+    'OCG01',
     'external purchases must be approved locally',
     'Should reject an external purchase that must be approved locally'
 );
@@ -377,6 +378,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'freePurchaseID'
     ),
+    'OCG01',
     'paid purchase is not ready for refund',
     'Should reject a free purchase'
 );
@@ -387,6 +389,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'missingPurchaseID'
     ),
+    'OCG01',
     'refund request not found',
     'Should reject a missing purchase'
 );
@@ -397,6 +400,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'groupID', :'missingRequestPurchaseID'
     ),
+    'OCG01',
     'refund request not found',
     'Should reject a purchase without a refund request'
 );
@@ -407,6 +411,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, null)$$,
         :'actorID', :'missingGroupID', :'happyPurchaseID'
     ),
+    'OCG01',
     'refund request not found',
     'Should reject a request outside the requested group'
 );
@@ -417,6 +422,7 @@ select throws_ok(
         $$select queue_event_refund_request_approval(%L::uuid, %L::uuid, %L::uuid, 'Approved')$$,
         :'actorID', :'groupID', :'conflictPurchaseID'
     ),
+    'OCG01',
     'event purchase refund already started with different kind',
     'Should reject durable work owned by a different refund kind'
 );

@@ -24,7 +24,7 @@ begin
 
     -- Reject missing, cross-group, or ineligible work
     if not found then
-        raise exception 'retryable credit note not found';
+        raise exception 'retryable credit note not found' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

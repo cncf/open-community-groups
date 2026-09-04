@@ -35,6 +35,7 @@ select throws_ok(
             'timezone', 'UTC'
         )
     )$$,
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should reject event starts_at in the past'
 );
@@ -47,6 +48,7 @@ select throws_ok(
             'timezone', 'UTC'
         )
     )$$,
+    'OCG01',
     'event ends_at cannot be in the past',
     'Should reject event ends_at in the past'
 );
@@ -61,6 +63,7 @@ select throws_ok(
             'timezone', 'UTC'
         )
     )$$,
+    'OCG01',
     'registration starts_at must be before registration ends_at',
     'Should reject registration windows where the open date is after the close date'
 );
@@ -75,6 +78,7 @@ select throws_ok(
             'timezone', 'UTC'
         )
     )$$,
+    'OCG01',
     'registration starts_at must be before registration ends_at',
     'Should reject registration windows where the open date equals the close date'
 );
@@ -88,6 +92,7 @@ select throws_ok(
             'timezone', 'UTC'
         )
     )$$,
+    'OCG01',
     'registration ends_at cannot be after event starts_at',
     'Should reject registration close dates after the event start'
 );
@@ -101,6 +106,7 @@ select throws_ok(
             'timezone', 'UTC'
         )
     )$$,
+    'OCG01',
     'registration starts_at cannot be after event starts_at',
     'Should reject open-only registration windows that open after the event start'
 );
@@ -117,6 +123,7 @@ select throws_ok(
             )
         )
     )$$,
+    'OCG01',
     'session starts_at cannot be in the past',
     'Should reject session starts_at in the past'
 );
@@ -134,6 +141,7 @@ select throws_ok(
             )
         )
     )$$,
+    'OCG01',
     'session ends_at cannot be in the past',
     'Should reject session ends_at in the past'
 );
@@ -146,6 +154,7 @@ select throws_ok(
             'timezone', 'Asia/Kolkata'
         )
     )$$,
+    'OCG01',
     'event starts_at cannot be in the past',
     'Should validate dates using the event timezone'
 );

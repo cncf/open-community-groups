@@ -120,6 +120,7 @@ select throws_ok(
         :'communityID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'group category already exists',
     'Should reject duplicate group category names'
 );
@@ -136,6 +137,7 @@ select throws_ok(
         :'communityID',
         :'unknownGroupCategoryID'
     ),
+    'OCG01',
     'group category not found',
     'Should fail when updating a non-existing group category'
 );

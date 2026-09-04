@@ -18,7 +18,7 @@ begin
 
     -- Ensure the target group exists and is active
     if not found then
-        raise exception 'group not found or inactive';
+        raise exception 'group not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Clear child links pointing to the deleted group

@@ -13,7 +13,7 @@ begin
 
     -- Ensure a pending invitation exists
     if not found then
-        raise exception 'no pending community invitation found';
+        raise exception 'no pending community invitation found' using errcode = 'OCG01';
     end if;
 
     -- Track the accepted invitation

@@ -109,6 +109,7 @@ select throws_ok(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
         :'communityID', :'groupID', :'user2ID'
     ),
+    'OCG01',
     'user is not a member of this group',
     'Should not allow user to leave a group they are not a member of'
 );
@@ -119,6 +120,7 @@ select throws_ok(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
         :'communityID', :'inactiveGroupID', :'user1ID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should not allow user to leave an inactive group'
 );
@@ -129,6 +131,7 @@ select throws_ok(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
         :'communityID', :'deletedGroupID', :'user1ID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should not allow user to leave a deleted group'
 );

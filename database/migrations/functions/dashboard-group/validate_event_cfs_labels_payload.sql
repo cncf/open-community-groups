@@ -9,7 +9,7 @@ begin
 
     -- Enforce the maximum number of labels accepted in one payload
     if jsonb_array_length(p_cfs_labels) > 200 then
-        raise exception 'too many cfs labels';
+        raise exception 'too many cfs labels' using errcode = 'OCG01';
     end if;
 
     -- Reject duplicate non-empty label names within the payload
@@ -23,7 +23,7 @@ begin
         group by cfs_labels.cfs_label_name
         having count(*) > 1
     ) then
-        raise exception 'duplicate cfs label names';
+        raise exception 'duplicate cfs label names' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

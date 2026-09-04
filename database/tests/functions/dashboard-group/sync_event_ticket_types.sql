@@ -562,6 +562,7 @@ select throws_ok(
         :'ticketTypeProtectedID',
         :'windowProtectedID'
     ),
+    'OCG01',
     'ticket type does not belong to event',
     'Should reject updating a ticket type that belongs to another event'
 );
@@ -577,6 +578,7 @@ select throws_ok(
         :'ticketType1ID',
         :'windowProtectedID'
     ),
+    'OCG01',
     'ticket price window does not belong to event',
     'Should reject updating a price window that belongs to another event'
 );
@@ -597,6 +599,7 @@ select throws_ok(
         :'ticketType3ID',
         :'window1CurrentID'
     ),
+    'OCG01',
     'ticket price window does not belong to ticket type',
     'Should reject reassigning a price window to a different same-event ticket type'
 );
@@ -611,6 +614,7 @@ select throws_ok(
         :'eventGuardedID',
         :'ticketTypeGuardedRetainedID'
     ),
+    'OCG01',
     'ticket types with admission offers cannot be removed; deactivate them instead',
     'Should reject removing ticket types with admission offers'
 );
@@ -625,6 +629,7 @@ select throws_ok(
         :'eventRequestedID',
         :'ticketTypeRequestedRetainedID'
     ),
+    'OCG01',
     'ticket types with invitation requests cannot be removed; deactivate them instead',
     'Should reject removing ticket types with invitation requests'
 );
@@ -639,6 +644,7 @@ select throws_ok(
         :'eventProtectedID',
         :'ticketTypeProtectedRetainedID'
     ),
+    'OCG01',
     'ticket types with purchases cannot be removed; deactivate them instead',
     'Should reject removing ticket types with purchases'
 );
@@ -653,6 +659,7 @@ select throws_ok(
         :'eventWaitlistRemovalID',
         :'ticketTypeWaitlistRetainedID'
     ),
+    'OCG01',
     'ticket types with waitlist entries cannot be removed; deactivate them instead',
     'Should reject removing ticket types with waitlist entries'
 );
@@ -690,6 +697,7 @@ select throws_ok(
         :'eventGuardedID',
         :'ticketTypeGuardedID'
     ),
+    'OCG01',
     'ticket type seats_total (0) cannot be less than current allocated seats (1)',
     'Should reject seat totals below active offer reservations'
 );
@@ -705,6 +713,7 @@ select throws_ok(
         :'ticketTypeProtectedID',
         :'windowProtectedID'
     ),
+    'OCG01',
     'ticket type seats_total (0) cannot be less than current allocated seats (3)',
     'Should reject seat totals below current purchased inventory'
 );
@@ -719,6 +728,7 @@ select throws_ok(
         :'eventGuardedID',
         :'ticketTypeGuardedID'
     ),
+    'OCG01',
     'ticket types with active offers cannot be deactivated',
     'Should reject deactivating a tier with an active offer'
 );
@@ -733,6 +743,7 @@ select throws_ok(
         :'eventGuardedID',
         :'ticketTypeGuardedID'
     ),
+    'OCG01',
     'ticket types with queued or pending requests must remain active and public',
     'Should reject hiding a tier with a queued user'
 );
@@ -747,6 +758,7 @@ select throws_ok(
         :'eventRequestedID',
         :'ticketTypeRequestedID'
     ),
+    'OCG01',
     'ticket types with queued or pending requests must remain active and public',
     'Should reject hiding a tier with a pending request'
 );

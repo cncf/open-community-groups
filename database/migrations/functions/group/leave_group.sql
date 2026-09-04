@@ -14,7 +14,7 @@ begin
         and active = true
         and deleted = false
     ) then
-        raise exception 'group not found or inactive';
+        raise exception 'group not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Remove user from group
@@ -23,7 +23,7 @@ begin
     and user_id = p_user_id;
 
     if not found then
-        raise exception 'user is not a member of this group';
+        raise exception 'user is not a member of this group' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

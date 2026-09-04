@@ -57,7 +57,7 @@ begin
            p_actor_user_id,
            'group.settings.write'
        ) then
-        raise exception 'you must be able to manage the selected parent group';
+        raise exception 'you must be able to manage the selected parent group' using errcode = 'OCG01';
     end if;
 
     -- Require the provider account and attendee-visible seller name together
@@ -72,7 +72,7 @@ begin
                ''
            ) is null
        ) then
-        raise exception 'payment recipient account and seller name must be provided together';
+        raise exception 'payment recipient account and seller name must be provided together' using errcode = 'OCG01';
     end if;
 
     -- Reject a seller name submitted without a provider account
@@ -83,7 +83,7 @@ begin
        ) is not null
        and nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '')
            is null then
-        raise exception 'payment recipient account and seller name must be provided together';
+        raise exception 'payment recipient account and seller name must be provided together' using errcode = 'OCG01';
     end if;
 
     -- Normalize the optional payment recipient before persisting it
@@ -138,7 +138,7 @@ begin
                p_group_id
            ) is distinct from (v_payment_validation->>'require_automatic_tax')::boolean
         then
-            raise exception 'payment configuration changed during provider validation';
+            raise exception 'payment configuration changed during provider validation' using errcode = 'OCG01';
         end if;
     end if;
 
@@ -159,7 +159,7 @@ begin
                or coalesce(e.ends_at, e.starts_at) > current_timestamp
            )
        ) then
-        raise exception 'paid-capable events require a payment recipient';
+        raise exception 'paid-capable events require a payment recipient' using errcode = 'OCG01';
     end if;
 
     -- Block account replacement while published manual-tax sales remain active
@@ -180,7 +180,7 @@ begin
                 or coalesce(e.ends_at, e.starts_at) > current_timestamp
             )
        ) then
-        raise exception 'fiscal sponsor cannot be replaced while published manual-tax events are upcoming';
+        raise exception 'fiscal sponsor cannot be replaced while published manual-tax events are upcoming' using errcode = 'OCG01';
     end if;
 
     -- Resolve the final country and external-payments toggle together
@@ -219,7 +219,7 @@ begin
                or coalesce(e.ends_at, e.starts_at) > current_timestamp
            )
        ) then
-        raise exception 'external payments cannot be disabled while published external paid events are upcoming';
+        raise exception 'external payments cannot be disabled while published external paid events are upcoming' using errcode = 'OCG01';
     end if;
 
     -- Reject enabling the toggle or moving off the allowlist while it stays on
@@ -229,7 +229,7 @@ begin
            or v_new_country_code is distinct from v_current_country_code
        )
        and not is_country_external_payments_allowlisted(v_new_country_code) then
-        raise exception 'external payments are not available for this group country';
+        raise exception 'external payments are not available for this group country' using errcode = 'OCG01';
     end if;
 
     -- Keep upcoming published external sales inside the group country
@@ -252,7 +252,7 @@ begin
                or coalesce(e.ends_at, e.starts_at) > current_timestamp
            )
        ) then
-        raise exception 'published external paid events require a venue in the group country';
+        raise exception 'published external paid events require a venue in the group country' using errcode = 'OCG01';
     end if;
 
     -- Require draft manual-tax events to reselect rates in the new account
@@ -333,7 +333,7 @@ begin
 
     -- Ensure the target group exists and is active
     if not found then
-        raise exception 'group not found or inactive';
+        raise exception 'group not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Track the update

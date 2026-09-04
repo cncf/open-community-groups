@@ -21,7 +21,7 @@ begin
 
     -- Reject purchases outside the requested group
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Lock and load the requested purchase before creating durable work
@@ -38,7 +38,7 @@ begin
 
     -- Reject unavailable purchases or refund requests
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Lock the current refund request after its purchase
@@ -51,7 +51,7 @@ begin
 
     -- Reject refund requests that changed while waiting for their lock
     if not found then
-        raise exception 'refund request not found';
+        raise exception 'refund request not found' using errcode = 'OCG01';
     end if;
 
     -- Preserve the first durable approval decision on idempotent replays
@@ -65,7 +65,7 @@ begin
     if found then
         -- Reject durable work owned by another refund workflow
         if v_existing_refund_kind <> 'refund-request-approval' then
-            raise exception 'event purchase refund already started with different kind';
+            raise exception 'event purchase refund already started with different kind' using errcode = 'OCG01';
         end if;
 
         -- Finish a compatible replay without duplicating durable work
@@ -74,14 +74,14 @@ begin
 
     -- Reject external purchases that must be approved locally
     if v_purchase.charge_model = 'external' then
-        raise exception 'external purchases must be approved locally';
+        raise exception 'external purchases must be approved locally' using errcode = 'OCG01';
     end if;
 
     -- Validate the provider contract before creating durable work
     if v_purchase.amount_minor <= 0
        or v_purchase.payment_provider_id is null
        or v_purchase.provider_payment_reference is null then
-        raise exception 'paid purchase is not ready for refund';
+        raise exception 'paid purchase is not ready for refund' using errcode = 'OCG01';
     end if;
 
     -- Persist the review decision before the asynchronous provider handoff
@@ -128,7 +128,7 @@ begin
 
     -- Reject durable work owned by another refund workflow
     if not found then
-        raise exception 'event purchase refund already started with different kind';
+        raise exception 'event purchase refund already started with different kind' using errcode = 'OCG01';
     end if;
 end;
 $$ language plpgsql;

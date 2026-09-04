@@ -577,6 +577,7 @@ select throws_ok(
         :'questionID',
         :'optionVegetarianID'
     ),
+    'OCG01',
     'event registration is not open',
     'Should reject registration answer updates after the registration window closes'
 );
@@ -682,6 +683,7 @@ select throws_ok(
         :'eventStartedID',
         :'questionID'
     ),
+    'OCG01',
     'registration answers can only be submitted before the event starts',
     'Should reject confirmed attendee updates after the event starts'
 );
@@ -701,6 +703,7 @@ select throws_ok(
         :'communityID',
         :'eventStartedID'
     ),
+    'OCG01',
     'registration answers can only be submitted before the event starts',
     'Should reject started events before validating answers'
 );
@@ -720,6 +723,7 @@ select throws_ok(
         :'communityID',
         :'eventNoQuestionsID'
     ),
+    'OCG01',
     'event does not have registration questions',
     'Should reject events without registration questions'
 );
@@ -739,6 +743,7 @@ select throws_ok(
         :'communityID',
         :'eventID'
     ),
+    'OCG01',
     'required questionnaire answer is missing',
     'Should reject invalid answers'
 );
@@ -760,6 +765,7 @@ select throws_ok(
         :'questionID',
         :'optionStandardID'
     ),
+    'OCG01',
     'event registration not found',
     'Should reject users without an attendee row'
 );
@@ -781,6 +787,7 @@ select throws_ok(
         :'questionID',
         :'optionStandardID'
     ),
+    'OCG01',
     'event not found or inactive',
     'Should reject events outside the route community'
 );

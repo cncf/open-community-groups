@@ -193,6 +193,7 @@ select throws_ok(
         %L::uuid,
         '{"email": "conflict@example.com"}'::jsonb
     ) $$, :'userID'),
+    'OCG01',
     'external auth email belongs to another user',
     'Should reject syncing an email owned by another user'
 );
@@ -231,6 +232,7 @@ select throws_ok(
             }
         }'::jsonb
     ) $$, :'userWithoutNameID'),
+    'OCG01',
     'external auth identity belongs to another user',
     'Should reject syncing an LF OIDC identity owned by another user'
 );
@@ -241,6 +243,7 @@ select throws_ok(
         %L::uuid,
         '{"email": "activated@example.com"}'::jsonb
     ) $$, :'preRegisteredUserID'),
+    'OCG01',
     'registered external-auth user not found',
     'Should reject pre-registered users'
 );

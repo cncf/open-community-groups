@@ -399,7 +399,7 @@ select throws_ok(
         $$,
         :'userID', :'groupID', :'eventRollbackID', :'eventNoStartID'
     ),
-    'P0001',
+    'OCG01',
     'event must have a start date to be published',
     'Should reject invalid batches before keeping partial changes'
 );

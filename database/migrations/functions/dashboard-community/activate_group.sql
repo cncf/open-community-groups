@@ -15,7 +15,7 @@ begin
 
     -- Ensure the target group exists and is active
     if not found then
-        raise exception 'group not found or inactive';
+        raise exception 'group not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Track the activation

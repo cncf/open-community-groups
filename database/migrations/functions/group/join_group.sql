@@ -14,7 +14,7 @@ begin
         and active = true
         and deleted = false
     ) then
-        raise exception 'group not found or inactive';
+        raise exception 'group not found or inactive' using errcode = 'OCG01';
     end if;
 
     -- Add user to group
@@ -23,7 +23,7 @@ begin
         values (p_group_id, p_user_id);
     exception
         when unique_violation then
-            raise exception 'user is already a member of this group';
+            raise exception 'user is already a member of this group' using errcode = 'OCG01';
     end;
 end;
 $$ language plpgsql;

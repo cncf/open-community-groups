@@ -1183,7 +1183,7 @@ select throws_ok(
         :'groupID',
         :'groupCategory2ID'
     ),
-    'P0001',
+    'OCG01',
     'Pretty slug must use lowercase ASCII letters, numbers, and hyphens only',
     'Should reject pretty slugs with invalid characters'
 );
@@ -1246,6 +1246,7 @@ select throws_ok(
         :'groupDeletedID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should throw error when trying to update deleted group'
 );
@@ -1314,6 +1315,7 @@ select throws_ok(
         :'groupID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should throw error when community_id does not match'
 );
@@ -1483,6 +1485,7 @@ select throws_ok(
         :'group4ID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'fiscal sponsor cannot be replaced while published manual-tax events are upcoming',
     'Should reject a sponsor swap that invalidates active manual-tax events'
 );
@@ -1522,6 +1525,7 @@ select throws_ok(
         :'group5ID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject a sponsor change validated against stale recipient state'
 );
@@ -1561,6 +1565,7 @@ select throws_ok(
         :'groupAutomaticTaxID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'payment configuration changed during provider validation',
     'Should reject validation that missed a published automatic-tax event'
 );
@@ -1586,6 +1591,7 @@ select throws_ok(
         :'group4ID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'payment recipient account and seller name must be provided together',
     'Should reject a payment recipient without an attendee-visible seller name'
 );
@@ -1611,6 +1617,7 @@ select throws_ok(
         :'group4ID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'paid-capable events require a payment recipient',
     'Should reject clearing payment recipient when published paid-capable events exist'
 );
@@ -1841,6 +1848,7 @@ select throws_ok(
         :'groupCategory1ID',
         :'unauthorizedParentGroupID'
     ),
+    'OCG01',
     'you must be able to manage the selected parent group',
     'Should reject changing to a parent the actor cannot manage'
 );
@@ -1997,6 +2005,7 @@ select throws_ok(
         :'groupMoveCountryID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'external payments are not available for this group country',
     'Should reject changing country off the allowlist while external payments stay enabled'
 );
@@ -2066,6 +2075,7 @@ select throws_ok(
         :'groupRejectEnableID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'external payments are not available for this group country',
     'Should reject enabling external payments when the country is not allowlisted'
 );
@@ -2088,6 +2098,7 @@ select throws_ok(
         :'groupEnableAbroadID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'published external paid events require a venue in the group country',
     'Should reject enabling external payments while published external events are held abroad'
 );
@@ -2110,6 +2121,7 @@ select throws_ok(
         :'groupVenueCountryID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'published external paid events require a venue in the group country',
     'Should reject moving the group country away from upcoming external event venues'
 );
@@ -2146,6 +2158,7 @@ select throws_ok(
         :'groupVenueCountryID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'external payments cannot be disabled while published external paid events are upcoming',
     'Should reject disabling external payments while published external paid events are upcoming'
 );
@@ -2169,6 +2182,7 @@ select throws_ok(
         :'groupVenueCountryID',
         :'groupCategory1ID'
     ),
+    'OCG01',
     'external payments cannot be disabled while published external paid events are upcoming',
     'Should reject moving the group country away from event venues when the same update disables external payments'
 );

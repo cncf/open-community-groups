@@ -105,6 +105,7 @@ select throws_ok(
         $$select join_group(%L::uuid, %L::uuid, %L::uuid)$$,
         :'communityID', :'groupID', :'user1ID'
     ),
+    'OCG01',
     'user is already a member of this group',
     'Should not allow user to join a group they are already a member of'
 );
@@ -115,6 +116,7 @@ select throws_ok(
         $$select join_group(%L::uuid, %L::uuid, %L::uuid)$$,
         :'communityID', :'inactiveGroupID', :'user1ID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should not allow user to join an inactive group'
 );
@@ -125,6 +127,7 @@ select throws_ok(
         $$select join_group(%L::uuid, %L::uuid, %L::uuid)$$,
         :'communityID', :'deletedGroupID', :'user1ID'
     ),
+    'OCG01',
     'group not found or inactive',
     'Should not allow user to join a deleted group'
 );
