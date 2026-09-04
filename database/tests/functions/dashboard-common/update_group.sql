@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(58);
+select plan(61);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,9 @@ select plan(58);
 \set communityID '1c020000-0000-0000-0000-000000000001'
 \set eventAutomaticTaxID '1c020000-0000-0000-0000-00000000001c'
 \set eventCategoryID '1c020000-0000-0000-0000-000000000002'
+\set eventDelistedID '1c020000-0000-0000-0000-000000000043'
+\set eventDisablePastID '1c020000-0000-0000-0000-000000000044'
+\set eventDisableUnpublishedID '1c020000-0000-0000-0000-000000000045'
 \set eventEnableAbroadID '1c020000-0000-0000-0000-00000000003c'
 \set eventExternalPaidID '1c020000-0000-0000-0000-000000000038'
 \set eventFreeID '1c020000-0000-0000-0000-000000000014'
@@ -47,6 +50,9 @@ select plan(58);
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
 \set priceWindowAutomaticTaxID '1c020000-0000-0000-0000-00000000001e'
+\set priceWindowDelistedID '1c020000-0000-0000-0000-000000000046'
+\set priceWindowDisablePastID '1c020000-0000-0000-0000-000000000047'
+\set priceWindowDisableUnpublishedID '1c020000-0000-0000-0000-000000000048'
 \set priceWindowEnableAbroadID '1c020000-0000-0000-0000-000000000042'
 \set priceWindowExternalPaidID '1c020000-0000-0000-0000-00000000003a'
 \set priceWindowFreeID '1c020000-0000-0000-0000-000000000017'
@@ -54,6 +60,9 @@ select plan(58);
 \set priceWindowUnpublishedID '1c020000-0000-0000-0000-000000000018'
 \set priceWindowVenueCountryID '1c020000-0000-0000-0000-000000000041'
 \set ticketTypeAutomaticTaxID '1c020000-0000-0000-0000-00000000001f'
+\set ticketTypeDelistedID '1c020000-0000-0000-0000-000000000049'
+\set ticketTypeDisablePastID '1c020000-0000-0000-0000-00000000004a'
+\set ticketTypeDisableUnpublishedID '1c020000-0000-0000-0000-00000000004b'
 \set ticketTypeEnableAbroadID '1c020000-0000-0000-0000-000000000040'
 \set ticketTypeExternalPaidID '1c020000-0000-0000-0000-000000000039'
 \set ticketTypeFreeID '1c020000-0000-0000-0000-000000000019'
@@ -617,7 +626,7 @@ insert into event_ticket_type (
     'General admission'
 );
 
--- Ticket prices define the paid capability of each ticketed event.
+-- Ticket prices define the paid capability of each ticketed event
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -629,7 +638,7 @@ insert into event_ticket_price_window (
     (:'priceWindowID', 2500, :'ticketTypeID'),
     (:'priceWindowUnpublishedID', 2500, :'ticketTypeUnpublishedID');
 
--- Allowlisted group used to disable external payments as a kill switch
+-- Allowlisted group disabling external payments with only past or unpublished external events
 insert into "group" (
     community_id,
     country_code,
@@ -743,7 +752,7 @@ insert into "group" (
     'external-reject-enable-group'
 );
 
--- Enabled group whose country is no longer allowlisted
+-- Enabled group whose country is no longer allowlisted despite an upcoming external event
 insert into "group" (
     community_id,
     country_code,
@@ -901,6 +910,153 @@ insert into event_ticket_price_window (
 ) values
     (:'priceWindowEnableAbroadID', 5000, :'ticketTypeEnableAbroadID'),
     (:'priceWindowVenueCountryID', 5000, :'ticketTypeVenueCountryID');
+
+-- Upcoming published external paid event in the delisted group
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Published external paid event left unsellable by the delisted country',
+    :'eventCategoryID'::uuid,
+    :'eventDelistedID'::uuid,
+    'in-person',
+    'https://pay.example.test/delisted',
+    :'groupDelistedID'::uuid,
+    'External Delisted Event',
+    'USD',
+    true,
+    'external-delisted-event',
+    current_timestamp + interval '7 days',
+    'none',
+    'UTC',
+    '1 Test Street',
+    'Austin',
+    'US',
+    'Test Hall',
+    '00000'
+);
+
+-- Past published external paid event that must not block disabling the toggle
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Published external paid event that already ended',
+    current_timestamp - interval '6 days',
+    :'eventCategoryID'::uuid,
+    :'eventDisablePastID'::uuid,
+    'in-person',
+    'https://pay.example.test/disable-past',
+    :'groupDisableID'::uuid,
+    'External Disable Past Event',
+    'KRW',
+    true,
+    'external-disable-past-event',
+    current_timestamp - interval '7 days',
+    'none',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- Unpublished upcoming external paid event that must not block disabling the toggle
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Draft external paid event awaiting publication',
+    :'eventCategoryID'::uuid,
+    :'eventDisableUnpublishedID'::uuid,
+    'in-person',
+    'https://pay.example.test/disable-draft',
+    :'groupDisableID'::uuid,
+    'External Disable Draft Event',
+    'KRW',
+    false,
+    'external-disable-draft-event',
+    current_timestamp + interval '7 days',
+    'none',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- Ticket types for the toggle-disable external events
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values
+    (:'ticketTypeDelistedID'::uuid, :'eventDelistedID'::uuid, 1, 50, 'External admission'),
+    (:'ticketTypeDisablePastID'::uuid, :'eventDisablePastID'::uuid, 1, 50, 'External admission'),
+    (:'ticketTypeDisableUnpublishedID'::uuid, :'eventDisableUnpublishedID'::uuid, 1, 50, 'External admission');
+
+-- Ticket prices making the toggle-disable external events paid
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values
+    (:'priceWindowDelistedID', 5000, :'ticketTypeDelistedID'),
+    (:'priceWindowDisablePastID', 5000, :'ticketTypeDisablePastID'),
+    (:'priceWindowDisableUnpublishedID', 5000, :'ticketTypeDisableUnpublishedID');
 
 -- ============================================================================
 -- TESTS
@@ -1689,7 +1845,7 @@ select throws_ok(
     'Should reject changing to a parent the actor cannot manage'
 );
 
--- Should allow disabling external payments as a kill switch
+-- Should allow disabling external payments when no upcoming published external events remain
 select lives_ok(
     format(
         $$select update_group(
@@ -1707,7 +1863,7 @@ select lives_ok(
         :'groupDisableID',
         :'groupCategory1ID'
     ),
-    'Should allow disabling external payments as a kill switch'
+    'Should allow disabling external payments when no upcoming published external events remain'
 );
 
 -- Should persist the disabled external-payments toggle
@@ -1972,8 +2128,30 @@ select is(
     'Should keep the group country after rejecting the move away from event venues'
 );
 
--- Should allow moving the group country away from event venues when the same update disables external payments
-select lives_ok(
+-- Should reject disabling external payments while published external paid events are upcoming
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Venue Country Group",
+            "category_id": "%s",
+            "country_code": "KR",
+            "external_payments_enabled": false
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupVenueCountryID',
+        :'groupCategory1ID'
+    ),
+    'external payments cannot be disabled while published external paid events are upcoming',
+    'Should reject disabling external payments while published external paid events are upcoming'
+);
+
+-- Should reject moving the group country away from event venues when the same update disables external payments
+select throws_ok(
     format(
         $$select update_group(
         null::uuid,
@@ -1991,10 +2169,11 @@ select lives_ok(
         :'groupVenueCountryID',
         :'groupCategory1ID'
     ),
-    'Should allow moving the group country away from event venues when the same update disables external payments'
+    'external payments cannot be disabled while published external paid events are upcoming',
+    'Should reject moving the group country away from event venues when the same update disables external payments'
 );
 
--- Should persist the moved country and disabled toggle together
+-- Should keep the country and enabled toggle after rejecting the disable
 select is(
     (
         select jsonb_build_object(
@@ -2004,8 +2183,8 @@ select is(
         from "group"
         where group_id = :'groupVenueCountryID'::uuid
     ),
-    '{"country_code": "JP", "external_payments_enabled": false}'::jsonb,
-    'Should persist the moved country and disabled toggle together'
+    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
+    'Should keep the country and enabled toggle after rejecting the disable'
 );
 
 -- Should allow unrelated group updates after the country leaves the allowlist
@@ -2041,6 +2220,39 @@ select is(
     ),
     '{"external_payments_enabled": true, "name": "External Delisted Group Updated"}'::jsonb,
     'Should keep the toggle enabled after an unrelated save on a delisted country'
+);
+
+-- Should allow disabling external payments on a delisted country despite upcoming external events
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Delisted Group Updated",
+            "category_id": "%s",
+            "country_code": "US",
+            "country_name": "United States",
+            "external_payments_enabled": false
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupDelistedID',
+        :'groupCategory1ID'
+    ),
+    'Should allow disabling external payments on a delisted country despite upcoming external events'
+);
+
+-- Should persist the disabled toggle for the delisted country
+select is(
+    (
+        select external_payments_enabled
+        from "group"
+        where group_id = :'groupDelistedID'::uuid
+    ),
+    false,
+    'Should persist the disabled toggle for the delisted country'
 );
 
 -- Should replace the fiscal sponsor when only external paid events are published

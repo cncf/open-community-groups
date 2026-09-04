@@ -313,10 +313,11 @@
         </div>
         <p class="form-legend mt-2">
           When enabled, paid events require a payment URL instead of Stripe.
-          Disabling this immediately stops new external sales. Existing unpaid
-          reservations stay open until they expire or are marked paid.
-          Changing the group country away from an allowlisted country while this
-          remains enabled is rejected.
+          Disabling this is rejected while published external paid events are
+          upcoming; cancel or unpublish them first. Once disabled, new external
+          sales stop immediately and existing unpaid reservations stay open
+          until they expire or are marked paid. Changing the group country away
+          from an allowlisted country while this remains enabled is rejected.
         </p>
       {% endif -%}
     </div>

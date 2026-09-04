@@ -196,8 +196,12 @@ Rules:
   case it stays visible so it can be turned off.
 - Changing the group country away from an allowlisted country while the
   checkbox stays on is rejected unless the same save turns it off.
-- Turning it off is always allowed and stops new external sales immediately.
-  Existing pending purchases can still be marked paid, canceled, or refunded.
+- Turning it off is rejected while an upcoming published external paid event
+  exists; cancel or unpublish those events first. Once off, new external sales
+  stop immediately, and existing pending purchases can still be marked paid,
+  canceled, or refunded. When the group is already ineligible because its
+  country left the allowlist or the operator disabled external payments,
+  turning it off is always allowed.
 - Updating or publishing an event that still has an external payment URL is
   rejected while the group is ineligible. Clear the URL to move the event onto
   Stripe only after every pending external purchase has completed, expired, or

@@ -188,7 +188,10 @@ rejected while the group is ineligible (toggle off, country delisted, or
 operator config absent). Paid external events must also hold their venue in
 the group country; saving or publishing one with a venue elsewhere is rejected,
 and the group cannot change country or turn the toggle on while an upcoming
-published external event has a venue outside the resulting group country.
+published external event has a venue outside the resulting group country. An
+eligible group cannot turn the toggle off while it has upcoming published
+external paid events; those must be canceled or unpublished first. A group
+that is already ineligible can always turn the toggle off.
 Organizers can clear the URL to move the event onto Stripe validation only
 after every pending external purchase has completed, expired, or been
 canceled. Changing the URL or instructions while holds are open updates the

@@ -75,6 +75,7 @@ begin
         raise exception 'payment recipient account and seller name must be provided together';
     end if;
 
+    -- Reject a seller name submitted without a provider account
     if p_group ? 'payment_recipient'
        and nullif(
            btrim(coalesce(p_group->'payment_recipient'->>'seller_display_name', '')),
@@ -118,6 +119,8 @@ begin
     -- Bind external provider validation to the payment state locked above
     if v_provider_account_changed then
         v_payment_validation := p_group->'_payment_validation';
+
+        -- Reject validation snapshots that do not match the locked payment state
         if v_payment_validation is null
            or not (v_payment_validation ? 'expected_payment_recipient')
            or not (v_payment_validation ? 'validated_payment_recipient')
@@ -196,6 +199,28 @@ begin
     end;
     v_external_payments_enabled_changed :=
         v_new_external_payments_enabled is distinct from v_current_external_payments_enabled;
+
+    -- Keep upcoming published external sales on their payment rail while the
+    -- group can still collect externally
+    if v_current_external_payments_enabled
+       and not v_new_external_payments_enabled
+       and is_country_external_payments_allowlisted(v_current_country_code)
+       and exists (
+           select 1
+           from event e
+           where e.group_id = p_group_id
+           and e.canceled = false
+           and e.deleted = false
+           and e.published = true
+           and e.external_payment_url is not null
+           and is_event_paid_capable(e.event_id)
+           and (
+               coalesce(e.ends_at, e.starts_at) is null
+               or coalesce(e.ends_at, e.starts_at) > current_timestamp
+           )
+       ) then
+        raise exception 'external payments cannot be disabled while published external paid events are upcoming';
+    end if;
 
     -- Reject enabling the toggle or moving off the allowlist while it stays on
     if v_new_external_payments_enabled
@@ -288,7 +313,12 @@ begin
             else payment_recipient
         end,
         photos_urls = jsonb_text_array(p_group->'photos_urls'),
-        region_id = case when p_group->>'region_id' <> '' then (p_group->>'region_id')::uuid else null end,
+        region_id = case
+            -- Use a submitted region
+            when p_group->>'region_id' <> '' then (p_group->>'region_id')::uuid
+            -- Clear the region when it is empty or omitted
+            else null
+        end,
         slack_url = nullif(p_group->>'slack_url', ''),
         slug_pretty = nullif(btrim(p_group->>'slug_pretty'), ''),
         state = nullif(p_group->>'state', ''),
