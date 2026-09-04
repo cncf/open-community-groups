@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(53);
+select plan(58);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,10 +14,12 @@ select plan(53);
 \set communityID '1c020000-0000-0000-0000-000000000001'
 \set eventAutomaticTaxID '1c020000-0000-0000-0000-00000000001c'
 \set eventCategoryID '1c020000-0000-0000-0000-000000000002'
+\set eventEnableAbroadID '1c020000-0000-0000-0000-00000000003c'
 \set eventExternalPaidID '1c020000-0000-0000-0000-000000000038'
 \set eventFreeID '1c020000-0000-0000-0000-000000000014'
 \set eventID '1c020000-0000-0000-0000-000000000003'
 \set eventUnpublishedID '1c020000-0000-0000-0000-000000000004'
+\set eventVenueCountryID '1c020000-0000-0000-0000-00000000003b'
 \set group2ID '1c020000-0000-0000-0000-000000000005'
 \set group3ID '1c020000-0000-0000-0000-000000000006'
 \set group4ID '1c020000-0000-0000-0000-000000000007'
@@ -30,6 +32,7 @@ select plan(53);
 \set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
 \set groupDelistedID '1c020000-0000-0000-0000-000000000036'
 \set groupDisableID '1c020000-0000-0000-0000-000000000030'
+\set groupEnableAbroadID '1c020000-0000-0000-0000-00000000003e'
 \set groupEnableID '1c020000-0000-0000-0000-000000000031'
 \set groupExternalPaidID '1c020000-0000-0000-0000-000000000037'
 \set groupFinalCountryID '1c020000-0000-0000-0000-000000000032'
@@ -37,21 +40,26 @@ select plan(53);
 \set groupMoveCountryDisableID '1c020000-0000-0000-0000-000000000033'
 \set groupMoveCountryID '1c020000-0000-0000-0000-000000000034'
 \set groupRejectEnableID '1c020000-0000-0000-0000-000000000035'
+\set groupVenueCountryID '1c020000-0000-0000-0000-00000000003d'
 \set inactiveParentGroupID '1c020000-0000-0000-0000-00000000001a'
 \set inactiveParentedGroupID '1c020000-0000-0000-0000-00000000001b'
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
 \set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
 \set parentGroupID '1c020000-0000-0000-0000-000000000012'
 \set priceWindowAutomaticTaxID '1c020000-0000-0000-0000-00000000001e'
+\set priceWindowEnableAbroadID '1c020000-0000-0000-0000-000000000042'
 \set priceWindowExternalPaidID '1c020000-0000-0000-0000-00000000003a'
 \set priceWindowFreeID '1c020000-0000-0000-0000-000000000017'
 \set priceWindowID '1c020000-0000-0000-0000-000000000016'
 \set priceWindowUnpublishedID '1c020000-0000-0000-0000-000000000018'
+\set priceWindowVenueCountryID '1c020000-0000-0000-0000-000000000041'
 \set ticketTypeAutomaticTaxID '1c020000-0000-0000-0000-00000000001f'
+\set ticketTypeEnableAbroadID '1c020000-0000-0000-0000-000000000040'
 \set ticketTypeExternalPaidID '1c020000-0000-0000-0000-000000000039'
 \set ticketTypeFreeID '1c020000-0000-0000-0000-000000000019'
 \set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
 \set ticketTypeUnpublishedID '1c020000-0000-0000-0000-00000000000f'
+\set ticketTypeVenueCountryID '1c020000-0000-0000-0000-00000000003f'
 \set unauthorizedParentGroupID '1c020000-0000-0000-0000-000000000013'
 
 -- ============================================================================
@@ -64,7 +72,7 @@ insert into external_payments_config (
     default_payment_window_hours,
     max_payment_window_hours
 ) values (
-    array['KR']::text[],
+    array['JP', 'KR']::text[],
     72,
     336
 );
@@ -753,6 +761,146 @@ insert into "group" (
     'External Delisted Group',
     'external-delisted-group'
 );
+
+-- Allowlisted group blocked from enabling external payments by an event venue abroad
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'JP',
+    false,
+    :'groupCategory1ID',
+    :'groupEnableAbroadID',
+    'External Enable Abroad Group',
+    'external-enable-abroad-group'
+);
+
+-- Allowlisted enabled group blocked from moving country by an upcoming external event
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    true,
+    :'groupCategory1ID',
+    :'groupVenueCountryID',
+    'External Venue Country Group',
+    'external-venue-country-group'
+);
+
+-- Published external paid event whose venue is outside its disabled group's country
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Published external paid event held outside the group country',
+    :'eventCategoryID'::uuid,
+    :'eventEnableAbroadID'::uuid,
+    'in-person',
+    'https://pay.example.test/enable-abroad',
+    :'groupEnableAbroadID'::uuid,
+    'External Enable Abroad Event',
+    'KRW',
+    true,
+    'external-enable-abroad-event',
+    current_timestamp + interval '7 days',
+    'none',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- Published external paid event anchoring its group to the venue country
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    tax_calculation_mode,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Published external paid event held in the group country',
+    :'eventCategoryID'::uuid,
+    :'eventVenueCountryID'::uuid,
+    'in-person',
+    'https://pay.example.test/venue-country',
+    :'groupVenueCountryID'::uuid,
+    'External Venue Country Event',
+    'KRW',
+    true,
+    'external-venue-country-event',
+    current_timestamp + interval '7 days',
+    'none',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- Ticket types for the external venue-country events
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values
+    (:'ticketTypeEnableAbroadID'::uuid, :'eventEnableAbroadID'::uuid, 1, 50, 'External admission'),
+    (:'ticketTypeVenueCountryID'::uuid, :'eventVenueCountryID'::uuid, 1, 50, 'External admission');
+
+-- Ticket prices making the external venue-country events paid
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values
+    (:'priceWindowEnableAbroadID', 5000, :'ticketTypeEnableAbroadID'),
+    (:'priceWindowVenueCountryID', 5000, :'ticketTypeVenueCountryID');
 
 -- ============================================================================
 -- TESTS
@@ -1764,6 +1912,100 @@ select throws_ok(
     ),
     'external payments are not available for this group country',
     'Should reject enabling external payments when the country is not allowlisted'
+);
+
+-- Should reject enabling external payments while published external events are held abroad
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Enable Abroad Group",
+            "category_id": "%s",
+            "country_code": "JP",
+            "external_payments_enabled": true
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupEnableAbroadID',
+        :'groupCategory1ID'
+    ),
+    'published external paid events require a venue in the group country',
+    'Should reject enabling external payments while published external events are held abroad'
+);
+
+-- Should reject moving the group country away from upcoming external event venues
+select throws_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Venue Country Group",
+            "category_id": "%s",
+            "country_code": "JP",
+            "country_name": "Japan"
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupVenueCountryID',
+        :'groupCategory1ID'
+    ),
+    'published external paid events require a venue in the group country',
+    'Should reject moving the group country away from upcoming external event venues'
+);
+
+-- Should keep the group country after rejecting the move away from event venues
+select is(
+    (
+        select jsonb_build_object(
+            'country_code', country_code,
+            'external_payments_enabled', external_payments_enabled
+        )
+        from "group"
+        where group_id = :'groupVenueCountryID'::uuid
+    ),
+    '{"country_code": "KR", "external_payments_enabled": true}'::jsonb,
+    'Should keep the group country after rejecting the move away from event venues'
+);
+
+-- Should allow moving the group country away from event venues when the same update disables external payments
+select lives_ok(
+    format(
+        $$select update_group(
+        null::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "External Venue Country Group",
+            "category_id": "%s",
+            "country_code": "JP",
+            "country_name": "Japan",
+            "external_payments_enabled": false
+        }'::jsonb
+    )$$,
+        :'communityID',
+        :'groupVenueCountryID',
+        :'groupCategory1ID'
+    ),
+    'Should allow moving the group country away from event venues when the same update disables external payments'
+);
+
+-- Should persist the moved country and disabled toggle together
+select is(
+    (
+        select jsonb_build_object(
+            'country_code', country_code,
+            'external_payments_enabled', external_payments_enabled
+        )
+        from "group"
+        where group_id = :'groupVenueCountryID'::uuid
+    ),
+    '{"country_code": "JP", "external_payments_enabled": false}'::jsonb,
+    'Should persist the moved country and disabled toggle together'
 );
 
 -- Should allow unrelated group updates after the country leaves the allowlist

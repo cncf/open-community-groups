@@ -579,7 +579,7 @@ select hasnt_function(
 );
 select has_function(
     'validate_event_ticketing_payment_readiness',
-    array['text', 'boolean', 'text', 'jsonb', 'uuid', 'jsonb', 'boolean', 'text', 'integer']::name[]
+    array['text', 'boolean', 'text', 'jsonb', 'uuid', 'jsonb', 'boolean', 'text', 'integer', 'text']::name[]
 );
 select has_function('validate_payment_amount', array['text', 'bigint']::name[]);
 select has_function('validate_payment_currency_code', array['text']::name[]);

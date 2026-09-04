@@ -185,10 +185,14 @@ has a payment URL. An external event that loses eligibility returns
 
 Editing or publishing an event that still has an external payment URL is
 rejected while the group is ineligible (toggle off, country delisted, or
-operator config absent). Organizers can clear the URL to move the event onto
-Stripe validation only after every pending external purchase has completed,
-expired, or been canceled. Changing the URL or instructions while holds are
-open updates the live copy shown to those attendees.
+operator config absent). Paid external events must also hold their venue in
+the group country; saving or publishing one with a venue elsewhere is rejected,
+and the group cannot change country or turn the toggle on while an upcoming
+published external event has a venue outside the resulting group country.
+Organizers can clear the URL to move the event onto Stripe validation only
+after every pending external purchase has completed, expired, or been
+canceled. Changing the URL or instructions while holds are open updates the
+live copy shown to those attendees.
 
 OCG does not calculate tax, issue invoices, or produce credit notes for
 external purchases; the organizer handles receipts, tax, and returning money.
@@ -604,7 +608,8 @@ blocks the opt-in. Check that:
   ISO 3166-1 alpha-2 code is on the allowlist.
 - The user saving the setting has group settings write access.
 
-Eligibility is evaluated from the group's country, not from event venues.
+Eligibility is evaluated from the group's country, not from event venues. Once
+eligible, paid external events must place their venue in that same country.
 
 ### Stripe Returns Signature Errors
 
@@ -637,7 +642,8 @@ dashboard `Refunds` tab.
 
 These checks apply to Stripe paid events. For a group that uses external
 payments, verify instead that the operator config is present, the group opt-in
-is on, the group country is allowlisted, and the event has a payment URL.
+is on, the group country is allowlisted, the event has a payment URL, and the
+event venue is in the group country.
 
 Check that:
 

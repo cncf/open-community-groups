@@ -974,7 +974,8 @@
               <input type="hidden" name="tax_calculation_mode" value="none">
               <p class="col-span-full text-sm/6 text-stone-600">
                 Organizers are responsible for tax and receipts for payments collected outside
-                this platform.
+                this platform. Paid tickets require a complete venue in the group country
+                {%- if let Some(country_code) = external_payments.country_code %} ({{ country_code }}){% endif -%}.
               </p>
             {% else -%}
               <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">

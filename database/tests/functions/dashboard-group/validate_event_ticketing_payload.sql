@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- SEED DATA
@@ -120,6 +120,7 @@ select lives_ok(
         '{
             "external_mode": true,
             "external_payment_url": "https://pay.example.test/ready",
+            "group_country_code": "KR",
             "kind_id": "in-person",
             "venue_address": "1 Test Street",
             "venue_city": "Seoul",
@@ -129,6 +130,45 @@ select lives_ok(
         }'::jsonb
     )$$,
     'Should accept paid-capable external mode without a Stripe recipient'
+);
+
+-- Should reject a paid-capable external event with a venue outside the group country
+select throws_ok(
+    $$select validate_event_ticketing_payload(
+        null,
+        null,
+        'KRW',
+        null,
+        '[
+            {
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 5000,
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        true,
+        null,
+        '{
+            "external_mode": true,
+            "external_payment_url": "https://pay.example.test/abroad",
+            "group_country_code": "KR",
+            "kind_id": "in-person",
+            "venue_address": "1 Test Street",
+            "venue_city": "Tokyo",
+            "venue_country_code": "JP",
+            "venue_name": "Test Hall",
+            "venue_zip_code": "100-0001"
+        }'::jsonb
+    )$$,
+    'external paid events require a venue in the group country',
+    'Should reject a paid-capable external event with a venue outside the group country'
 );
 
 -- Should require a payment currency for ticketed events

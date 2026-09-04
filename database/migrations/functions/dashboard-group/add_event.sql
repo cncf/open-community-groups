@@ -21,6 +21,7 @@ declare
         p_event->>'external_payment_window_hours',
         ''
     )::int;
+    v_group_country_code text;
     v_manual_tax_rate_ids text[] := coalesce(
         jsonb_text_array(p_event->'manual_tax_rate_ids'),
         '{}'::text[]
@@ -57,9 +58,11 @@ begin
 
     -- Lock group payment state through paid-capable ticket validation and insertion
     select
+        g.country_code,
         is_group_external_payments_ready(g.group_id),
         g.payment_recipient
     into
+        v_group_country_code,
         v_external_mode,
         v_payment_recipient
     from "group" g
@@ -138,6 +141,7 @@ begin
             'external_mode', v_external_mode,
             'external_payment_url', v_external_payment_url,
             'external_payment_window_hours', v_external_payment_window_hours,
+            'group_country_code', v_group_country_code,
             'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
             'tax_calculation_mode', v_tax_calculation_mode
         )
@@ -158,6 +162,7 @@ begin
     loop
         v_slug := generate_slug(7);
 
+        -- Attempt the insert with the candidate slug
         begin
             insert into event (
                 group_id,
@@ -247,7 +252,9 @@ begin
                 v_manual_tax_rate_ids,
                 jsonb_text_array(p_event->'meeting_hosts'),
                 case
+                    -- Start requested meetings out of sync so provisioning runs
                     when (p_event->>'meeting_requested')::boolean = true then false
+                    -- Leave unrequested meetings without sync state
                     else null
                 end,
                 nullif(p_event->>'meeting_join_instructions', ''),
@@ -266,7 +273,9 @@ begin
                 (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
                 jsonb_text_array(p_event->'tags'),
                 case
+                    -- Normalize no-tax events onto inclusive display
                     when v_tax_calculation_mode = 'none' then 'inclusive'
+                    -- Keep the submitted display behavior for tax-collecting events
                     else coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
                 end,
                 v_tax_calculation_mode,
@@ -282,12 +291,17 @@ begin
             )
             returning event_id into v_event_id;
 
-            exit; -- Success, exit the loop
-        exception when unique_violation then
-            v_retries := v_retries + 1;
-            if v_retries >= v_max_retries then
-                raise exception 'failed to generate unique slug after % attempts', v_max_retries;
-            end if;
+            -- Stop retrying once the insert succeeds
+            exit;
+        exception
+            -- Retry slug collisions up to the configured limit
+            when unique_violation then
+                v_retries := v_retries + 1;
+
+                -- Give up after exhausting the retry budget
+                if v_retries >= v_max_retries then
+                    raise exception 'failed to generate unique slug after % attempts', v_max_retries;
+                end if;
         end;
     end loop;
 

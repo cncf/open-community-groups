@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(51);
+select plan(52);
 
 -- ============================================================================
 -- VARIABLES
@@ -2506,6 +2506,56 @@ select throws_ok(
     ),
     'external payment window exceeds the configured maximum',
     'Should reject an external payment window above the configured maximum on update'
+);
+
+-- Should reject moving a paid external event venue outside the group country
+select throws_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "External Paid Event",
+                "description": "External event updated for window and tax normalization",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/update",
+                "payment_currency_code": "KRW",
+                "venue_address": "1 Test Street",
+                "venue_city": "Tokyo",
+                "venue_country_code": "JP",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "100-0001",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "availability": "public",
+                        "event_ticket_type_id": "%s",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "%s"
+                            }
+                        ],
+                        "seats_total": 50,
+                        "title": "General Admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID',
+        :'eventExternalPaidID',
+        :'category1ID',
+        :'eventExternalPaidTicketTypeID',
+        :'eventExternalPaidPriceWindowID'
+    ),
+    'external paid events require a venue in the group country',
+    'Should reject moving a paid external event venue outside the group country'
 );
 
 -- ============================================================================

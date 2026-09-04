@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(28);
+select plan(31);
 
 -- ============================================================================
 -- SEED DATA
@@ -397,9 +397,34 @@ select lives_ok(
         }'::jsonb,
         true,
         'https://pay.example.test/ready',
-        null
+        null,
+        'KR'
     )$$,
     'Should accept external mode without a Stripe recipient when the URL is valid'
+);
+
+-- Should accept an external venue whose country matches the group country in another case
+select lives_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "1 Test Street",
+            "venue_city": "Seoul",
+            "venue_country_code": "kr",
+            "venue_name": "Test Hall",
+            "venue_zip_code": "00000"
+        }'::jsonb,
+        true,
+        'https://pay.example.test/case',
+        null,
+        ' KR '
+    )$$,
+    'Should accept an external venue whose country matches the group country in another case'
 );
 
 -- Should accept an external payment window within the configured maximum
@@ -420,7 +445,8 @@ select lives_ok(
         }'::jsonb,
         true,
         'https://pay.example.test/window',
-        168
+        168,
+        'KR'
     )$$,
     'Should accept an external payment window within the configured maximum'
 );
@@ -560,6 +586,56 @@ select throws_ok(
     )$$,
     'paid-capable events require a valid external payment url',
     'Should reject paid external mode when the payment URL is missing'
+);
+
+-- Should reject paid external events with a venue outside the group country
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "1 Test Street",
+            "venue_city": "Tokyo",
+            "venue_country_code": "JP",
+            "venue_name": "Test Hall",
+            "venue_zip_code": "100-0001"
+        }'::jsonb,
+        true,
+        'https://pay.example.test/abroad',
+        null,
+        'KR'
+    )$$,
+    'external paid events require a venue in the group country',
+    'Should reject paid external events with a venue outside the group country'
+);
+
+-- Should reject paid external events when the group country is unknown
+select throws_ok(
+    $$select validate_event_ticketing_payment_readiness(
+        null,
+        true,
+        'KRW',
+        null,
+        null,
+        '{
+            "kind_id": "in-person",
+            "venue_address": "1 Test Street",
+            "venue_city": "Seoul",
+            "venue_country_code": "KR",
+            "venue_name": "Test Hall",
+            "venue_zip_code": "00000"
+        }'::jsonb,
+        true,
+        'https://pay.example.test/no-country',
+        null,
+        null
+    )$$,
+    'external paid events require a venue in the group country',
+    'Should reject paid external events when the group country is unknown'
 );
 
 -- ============================================================================

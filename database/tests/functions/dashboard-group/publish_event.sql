@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(27);
+select plan(29);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(27);
 
 \set communityID '3a2b0000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a2b0000-0000-0000-0000-000000000002'
+\set eventExternalAbroadID '3a2b0000-0000-0000-0000-00000000003a'
 \set eventExternalClearID '3a2b0000-0000-0000-0000-000000000030'
 \set eventExternalMissingUrlID '3a2b0000-0000-0000-0000-000000000031'
 \set eventExternalReadyID '3a2b0000-0000-0000-0000-000000000032'
@@ -30,6 +31,7 @@ select plan(27);
 \set groupNoRecipientID '3a2b0000-0000-0000-0000-000000000011'
 \set missingGroupID '3a2b0000-0000-0000-0000-000000000012'
 \set previousPublisherID '3a2b0000-0000-0000-0000-000000000013'
+\set priceWindowExternalAbroadID '3a2b0000-0000-0000-0000-00000000003b'
 \set priceWindowExternalClearID '3a2b0000-0000-0000-0000-000000000034'
 \set priceWindowExternalMissingUrlID '3a2b0000-0000-0000-0000-000000000035'
 \set priceWindowExternalReadyID '3a2b0000-0000-0000-0000-000000000036'
@@ -40,6 +42,7 @@ select plan(27);
 \set sessionMeetingID '3a2b0000-0000-0000-0000-000000000014'
 \set sessionNoMeetingID '3a2b0000-0000-0000-0000-000000000015'
 \set sessionPublishedMeetingID '3a2b0000-0000-0000-0000-000000000016'
+\set ticketTypeExternalAbroadID '3a2b0000-0000-0000-0000-00000000003c'
 \set ticketTypeExternalClearID '3a2b0000-0000-0000-0000-000000000037'
 \set ticketTypeExternalMissingUrlID '3a2b0000-0000-0000-0000-000000000038'
 \set ticketTypeExternalReadyID '3a2b0000-0000-0000-0000-000000000039'
@@ -481,6 +484,45 @@ insert into event_ticket_price_window (
     (:'priceWindowInvalidCurrencyID', 2500, :'ticketTypeInvalidCurrencyID'),
     (:'priceWindowNoRecipientID', 2500, :'ticketTypeNoRecipientID');
 
+-- Paid external draft whose venue sits outside the group country
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'Paid external draft with a venue abroad',
+    :'eventCategoryID',
+    :'eventExternalAbroadID',
+    'in-person',
+    'https://pay.example.test/abroad',
+    :'groupExternalID',
+    'External Abroad Publish Event',
+    'KRW',
+    false,
+    'external-abroad-publish-event',
+    current_timestamp + interval '2 days',
+    'UTC',
+    '1 Test Street',
+    'Tokyo',
+    'JP',
+    'Test Hall',
+    '100-0001'
+);
+
 -- Paid non-external draft that still carries a leftover external URL
 insert into event (
     description,
@@ -604,6 +646,7 @@ insert into event_ticket_type (
     seats_total,
     title
 ) values
+    (:'ticketTypeExternalAbroadID', :'eventExternalAbroadID', 1, 50, 'General admission'),
     (:'ticketTypeExternalClearID', :'eventExternalClearID', 1, 50, 'General admission'),
     (:'ticketTypeExternalMissingUrlID', :'eventExternalMissingUrlID', 1, 50, 'General admission'),
     (:'ticketTypeExternalReadyID', :'eventExternalReadyID', 1, 50, 'General admission');
@@ -614,6 +657,7 @@ insert into event_ticket_price_window (
     amount_minor,
     event_ticket_type_id
 ) values
+    (:'priceWindowExternalAbroadID', 5000, :'ticketTypeExternalAbroadID'),
     (:'priceWindowExternalClearID', 2500, :'ticketTypeExternalClearID'),
     (:'priceWindowExternalMissingUrlID', 5000, :'ticketTypeExternalMissingUrlID'),
     (:'priceWindowExternalReadyID', 5000, :'ticketTypeExternalReadyID');
@@ -1108,6 +1152,24 @@ select throws_ok(
     ),
     'paid-capable events require a valid external payment url',
     'Should reject publishing a paid external event without a payment URL'
+);
+
+-- Should reject publishing a paid external event with a venue outside the group country
+select throws_ok(
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupExternalID',
+        :'eventExternalAbroadID'
+    ),
+    'external paid events require a venue in the group country',
+    'Should reject publishing a paid external event with a venue outside the group country'
+);
+
+select is(
+    (select published from event where event_id = :'eventExternalAbroadID'::uuid),
+    false,
+    'Should keep the external event unpublished when its venue is outside the group country'
 );
 
 -- ============================================================================

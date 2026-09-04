@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(49);
+select plan(50);
 
 -- ============================================================================
 -- VARIABLES
@@ -1442,6 +1442,50 @@ select throws_ok(
     ),
     'paid-capable events require a valid external payment url',
     'Should reject a paid external event with an invalid payment URL'
+);
+
+-- Should reject a paid external event with a venue outside the group country
+select throws_ok(
+    format(
+        $$select add_event(
+            null::uuid,
+            %L::uuid,
+            '{
+                "name": "External Abroad Event",
+                "description": "Test",
+                "timezone": "UTC",
+                "category_id": "3a020000-0000-0000-0000-000000000011",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/abroad",
+                "payment_currency_code": "KRW",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000af",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000b0"
+                            }
+                        ],
+                        "seats_total": 25,
+                        "title": "General admission"
+                    }
+                ],
+                "venue_address": "1 Test Street",
+                "venue_city": "Tokyo",
+                "venue_country_code": "JP",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "100-0001"
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID'
+    ),
+    'external paid events require a venue in the group country',
+    'Should reject a paid external event with a venue outside the group country'
 );
 
 -- Should reject an external payment window above the configured maximum

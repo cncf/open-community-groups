@@ -24,6 +24,7 @@ declare
     v_external_payment_instructions text;
     v_external_payment_url text;
     v_external_payment_window_hours int;
+    v_group_country_code text;
     v_group_external_ready boolean := false;
     v_has_pending_invitation_requests boolean;
     v_has_waitlist_entries boolean;
@@ -51,10 +52,12 @@ begin
     -- paid ticket updates cannot invalidate each other
     select
         g.community_id,
+        g.country_code,
         is_group_external_payments_ready(g.group_id),
         g.payment_recipient
     into
         v_community_id,
+        v_group_country_code,
         v_group_external_ready,
         v_payment_recipient
     from "group" g
@@ -289,6 +292,7 @@ begin
             'external_mode', v_external_mode,
             'external_payment_url', v_external_payment_url,
             'external_payment_window_hours', v_external_payment_window_hours,
+            'group_country_code', v_group_country_code,
             'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
             'tax_calculation_mode', v_tax_calculation_mode
         )
@@ -453,6 +457,7 @@ begin
             'external_mode', v_external_mode,
             'external_payment_url', v_external_payment_url,
             'external_payment_window_hours', v_external_payment_window_hours,
+            'group_country_code', v_group_country_code,
             'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
             'tax_calculation_mode', v_tax_calculation_mode
         )

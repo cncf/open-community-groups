@@ -12,6 +12,7 @@ declare
     v_external_mode boolean := false;
     v_external_payment_url text;
     v_external_payment_window_hours int;
+    v_group_country_code text;
     v_group_external_ready boolean := false;
     v_paid_capable boolean;
     v_payment_currency_code text;
@@ -24,10 +25,12 @@ begin
     -- publication cannot invalidate each other
     select
         g.community_id,
+        g.country_code,
         is_group_external_payments_ready(g.group_id),
         g.payment_recipient
     into
         v_community_id,
+        v_group_country_code,
         v_group_external_ready,
         v_payment_recipient
     from "group" g
@@ -122,7 +125,8 @@ begin
         null,
         v_external_mode,
         v_external_payment_url,
-        v_external_payment_window_hours
+        v_external_payment_window_hours,
+        v_group_country_code
     );
 
     -- Check that the event has a start date

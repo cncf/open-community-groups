@@ -41,7 +41,9 @@ begin
     -- Resolve the requested parent value
     v_parent_group_id_present := coalesce((p_group->>'parent_group_id_present')::boolean, false);
     v_new_parent_group_id := case
+        -- Use the explicitly submitted parent, including an explicit clear
         when v_parent_group_id_present then nullif(p_group->>'parent_group_id', '')::uuid
+        -- Preserve the parent omitted from a partial payload
         else v_current_parent_group_id
     end;
 
@@ -85,7 +87,9 @@ begin
 
     -- Normalize the optional payment recipient before persisting it
     v_new_payment_recipient := case
+        -- Resolve the submitted recipient
         when p_group ? 'payment_recipient' then case
+            -- Trim the recipient fields when an account is provided
             when nullif(btrim(coalesce(p_group->'payment_recipient'->>'recipient_id', '')), '') is not null
             then jsonb_build_object(
                 'provider', btrim(p_group->'payment_recipient'->>'provider'),
@@ -93,6 +97,7 @@ begin
                 'seller_display_name',
                     btrim(p_group->'payment_recipient'->>'seller_display_name')
             )
+            -- Treat an empty account as clearing the recipient
             else null
         end
     end;
@@ -177,12 +182,16 @@ begin
 
     -- Resolve the final country and external-payments toggle together
     v_new_country_code := case
+        -- Use an explicitly submitted country
         when p_group ? 'country_code' then nullif(p_group->>'country_code', '')
+        -- Preserve the country omitted from a partial payload
         else v_current_country_code
     end;
     v_new_external_payments_enabled := case
+        -- Use an explicitly submitted toggle, treating an invalid value as off
         when p_group ? 'external_payments_enabled' then
             coalesce((p_group->>'external_payments_enabled')::boolean, false)
+        -- Preserve the toggle omitted from a partial payload
         else v_current_external_payments_enabled
     end;
     v_external_payments_enabled_changed :=
@@ -196,6 +205,29 @@ begin
        )
        and not is_country_external_payments_allowlisted(v_new_country_code) then
         raise exception 'external payments are not available for this group country';
+    end if;
+
+    -- Keep upcoming published external sales inside the group country
+    if v_new_external_payments_enabled
+       and (
+           not v_current_external_payments_enabled
+           or v_new_country_code is distinct from v_current_country_code
+       )
+       and exists (
+           select 1
+           from event e
+           where e.group_id = p_group_id
+           and e.canceled = false
+           and e.deleted = false
+           and e.published = true
+           and e.external_payment_url is not null
+           and upper(e.venue_country_code) is distinct from upper(v_new_country_code)
+           and (
+               coalesce(e.ends_at, e.starts_at) is null
+               or coalesce(e.ends_at, e.starts_at) > current_timestamp
+           )
+       ) then
+        raise exception 'published external paid events require a venue in the group country';
     end if;
 
     -- Require draft manual-tax events to reselect rates in the new account
@@ -244,11 +276,15 @@ begin
         logo_url = nullif(p_group->>'logo_url', ''),
         og_image_url = nullif(p_group->>'og_image_url', ''),
         parent_group_id = case
+            -- Apply the resolved parent when the payload addressed it
             when v_parent_group_id_present then v_new_parent_group_id
+            -- Preserve the parent omitted from a partial payload
             else parent_group_id
         end,
         payment_recipient = case
+            -- Apply the normalized recipient when the payload addressed it
             when p_group ? 'payment_recipient' then v_new_payment_recipient
+            -- Preserve the recipient omitted from a partial payload
             else payment_recipient
         end,
         photos_urls = jsonb_text_array(p_group->'photos_urls'),

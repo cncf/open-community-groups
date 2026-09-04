@@ -202,7 +202,11 @@ Rules:
   rejected while the group is ineligible. Clear the URL to move the event onto
   Stripe only after every pending external purchase has completed, expired, or
   been canceled. Open holds keep using the live event payment URL.
-- Group country governs eligibility, not the event venue country.
+- Group country governs eligibility. Paid external events must also hold their
+  venue in the group country: saving or publishing one with a venue elsewhere
+  is rejected, and so is moving the group country (or turning the checkbox on)
+  while an upcoming published external event has a venue outside the new
+  country.
 
 When the checkbox is on, the event `Tickets` tab asks for:
 
@@ -225,7 +229,8 @@ cancellations and unpublishes, not to send payment.
 The event `Tickets` tab does not offer a ticket-tax mode for external events:
 OCG does not calculate tax, and ticket prices are treated as tax-inclusive.
 Organizers remain responsible for tax, receipts, and returning money outside
-OCG. Paid events still require in-person or hybrid plus a complete venue.
+OCG. Paid events still require in-person or hybrid plus a complete venue, and
+that venue must be in the group country.
 
 ## Team: Organizer Capacity
 

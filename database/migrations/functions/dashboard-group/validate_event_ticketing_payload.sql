@@ -43,7 +43,8 @@ begin
                 p_event_payload,
                 coalesce((p_event_payload->>'external_mode')::boolean, false),
                 nullif(btrim(p_event_payload->>'external_payment_url'), ''),
-                nullif(p_event_payload->>'external_payment_window_hours', '')::int
+                nullif(p_event_payload->>'external_payment_window_hours', '')::int,
+                nullif(btrim(p_event_payload->>'group_country_code'), '')
             );
         end if;
     end if;

@@ -8,7 +8,8 @@ create or replace function validate_event_ticketing_payment_readiness(
     p_event_payload jsonb default null,
     p_external_mode boolean default false,
     p_external_payment_url text default null,
-    p_external_window_hours int default null
+    p_external_window_hours int default null,
+    p_group_country_code text default null
 )
 returns void as $$
 declare
@@ -213,8 +214,14 @@ begin
         raise exception 'paid ticketing requires an in-person or hybrid event with a complete physical venue';
     end if;
 
-    -- Skip Stripe tax-rate checks when the event collects payments externally
+    -- Bind external paid events to the group country and skip Stripe tax-rate checks
     if p_external_mode then
+        -- Reject venues outside the country that made the group eligible
+        if upper(v_venue_snapshot->>'country_code')
+                is distinct from upper(nullif(btrim(p_group_country_code), '')) then
+            raise exception 'external paid events require a venue in the group country';
+        end if;
+
         return;
     end if;
 
