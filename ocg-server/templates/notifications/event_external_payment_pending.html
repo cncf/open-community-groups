@@ -1,0 +1,44 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event External Payment Pending Notification -#}
+{% block subject -%}
+  Complete your payment for {{ event_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Pay {{ self.price_label() }} for {{ ticket_title }} and include reference {{ event_purchase_id }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    Your <strong>{{ ticket_title }}</strong> place for
+    <strong>{{ event_name }}</strong> with
+    <strong>{{ group_name }}</strong> is reserved until the organizer confirms
+    payment.
+    Pay <strong>{{ self.price_label() }}</strong> using the payment page below
+    and include reference
+    <strong>{{ event_purchase_id }}</strong>.
+    The organizer must mark the payment received by
+    <strong>{{ deadline.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}</strong>.
+    {% if let Some(instructions) = external_payment_instructions -%}
+      <br />
+      <br />
+      {{ instructions }}
+    {% endif -%}
+  </p>
+
+  {{ email::button(link = external_payment_url, text = "Open payment page", color = theme.primary_color) }}
+
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">
+    You can also review this reservation from your
+    <a href="{{ dashboard_url }}">dashboard</a>.
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you reserved a paid ticket for {{ event_name }}.
+{% endblock footer -%}
+{# End event external payment pending notification -#}

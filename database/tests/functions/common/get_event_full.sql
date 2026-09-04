@@ -308,7 +308,10 @@ insert into event (
     photos_urls,
     created_at,
 
-    event_series_id
+    event_series_id,
+    external_payment_instructions,
+    external_payment_url,
+    external_payment_window_hours
 ) values (
     :'eventID',
     'KubeCon Seattle 2024',
@@ -351,7 +354,10 @@ insert into event (
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     '2024-04-01 10:00:00+00',
 
-    :'eventSeriesID'
+    :'eventSeriesID',
+    'Use the purchase ID as the transfer reference.',
+    'https://pay.example.test/event',
+    72
 );
 
 -- Related event in the same series
@@ -1012,6 +1018,9 @@ select is(
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
         "event_series_id": "0c060000-0000-0000-0000-00000000000b",
+        "external_payment_instructions": "Use the purchase ID as the transfer reference.",
+        "external_payment_url": "https://pay.example.test/event",
+        "external_payment_window_hours": 72,
         "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,

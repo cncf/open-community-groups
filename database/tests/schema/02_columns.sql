@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(82);
+select plan(83);
 
 -- ============================================================================
 -- TESTS
@@ -303,6 +303,9 @@ select columns_are('event', array[
     'event_reminder_evaluated_for_starts_at',
     'event_reminder_sent_at',
     'event_series_id',
+    'external_payment_instructions',
+    'external_payment_url',
+    'external_payment_window_hours',
     'legacy_id',
     'legacy_url',
     'location',
@@ -490,6 +493,9 @@ select columns_are('event_purchase', array[
     'platform_fee_bps',
 
     'connected_seller_id',
+    'external_payment_details',
+    'external_payment_marked_by_user_id',
+    'external_payment_reminder_sent_at',
     'final_platform_fee_amount_minor',
     'financially_reconciled_at',
     'manual_tax_rate_ids',
@@ -712,6 +718,15 @@ select columns_are('meeting_provider', array[
     'display_name'
 ]);
 
+-- Test: external_payments_config columns should match expected
+select columns_are('external_payments_config', array[
+    'singleton',
+    'allowed_countries',
+    'default_payment_window_hours',
+    'max_payment_window_hours',
+    'updated_at'
+]);
+
 -- Test: group columns should match expected
 select columns_are('group', array[
     'group_id',
@@ -719,6 +734,7 @@ select columns_are('group', array[
     'community_id',
     'created_at',
     'deleted',
+    'external_payments_enabled',
     'group_category_id',
     'group_site_layout_id',
     'name',

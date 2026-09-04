@@ -11,6 +11,7 @@ returns jsonb as $$
 declare
     v_community_id uuid;
     v_ends_at timestamptz;
+    v_event_external_payment_url text;
     v_event_name text;
     v_group_name text;
     v_is_simple_rsvp boolean;
@@ -34,6 +35,7 @@ begin
     select
         g.community_id,
         e.ends_at,
+        e.external_payment_url,
         e.name,
         g.name,
         e.payment_currency_code,
@@ -43,6 +45,7 @@ begin
     into
         v_community_id,
         v_ends_at,
+        v_event_external_payment_url,
         v_event_name,
         v_group_name,
         v_payment_currency_code,
@@ -228,13 +231,22 @@ begin
     end if;
 
     -- Ensure payments can be collected before reserving a paid seat
-    perform validate_event_ticketing_payment_readiness(
-        p_configured_provider,
-        v_target_price > 0,
-        v_payment_currency_code,
-        v_payment_recipient,
-        p_event_id
-    );
+    if v_event_external_payment_url is not null then
+        -- Reject paid approvals when the external event is no longer eligible
+        if v_target_price > 0
+           and not is_event_external_payments_ready(p_event_id) then
+            raise exception 'external payments are not available for this event';
+        end if;
+    -- Keep the Stripe provider requirement for non-external events
+    else
+        perform validate_event_ticketing_payment_readiness(
+            p_configured_provider,
+            v_target_price > 0,
+            v_payment_currency_code,
+            v_payment_recipient,
+            p_event_id
+        );
+    end if;
 
     -- Bound the invitation expiry to the remaining event window
     if v_starts_at is not null and v_starts_at > current_timestamp then

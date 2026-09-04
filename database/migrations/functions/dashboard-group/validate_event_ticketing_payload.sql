@@ -22,14 +22,17 @@ begin
 
     -- Validate the final payment shape only after mutation-specific guards run
     if p_validate_payment_configuration then
+        -- Reject discount codes on events that cannot collect payment
         if not v_paid_capable and p_discount_codes is not null then
             raise exception 'discount_codes require positive ticket pricing';
         end if;
 
+        -- Reject a currency on events that cannot collect payment
         if not v_paid_capable and p_payment_currency_code is not null then
             raise exception 'payment_currency_code requires positive ticket pricing';
         end if;
 
+        -- Require a ready payment path before accepting paid-capable tickets
         if v_paid_capable then
             perform validate_event_ticketing_payment_readiness(
                 p_configured_provider,
@@ -37,13 +40,18 @@ begin
                 p_payment_currency_code,
                 p_payment_recipient,
                 p_event_id,
-                p_event_payload
+                p_event_payload,
+                coalesce((p_event_payload->>'external_mode')::boolean, false),
+                nullif(btrim(p_event_payload->>'external_payment_url'), ''),
+                nullif(p_event_payload->>'external_payment_window_hours', '')::int,
+                nullif(btrim(p_event_payload->>'group_country_code'), '')
             );
         end if;
     end if;
 
     -- Validate charge amount limits for every configured price window
     if v_paid_capable and p_validate_payment_configuration then
+        -- Check each configured price against the currency's charge limits
         for v_amount_minor in
             select (price_window->>'amount_minor')::bigint
             from jsonb_array_elements(p_ticket_types) as ticket_types(ticket_type)

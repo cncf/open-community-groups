@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -27,6 +27,8 @@ select plan(9);
 \set audit12ID '3a1f0000-0000-0000-0000-000000000113'
 \set audit13ID '3a1f0000-0000-0000-0000-000000000114'
 \set audit14ID '3a1f0000-0000-0000-0000-000000000115'
+\set audit15ID '3a1f0000-0000-0000-0000-000000000116'
+\set audit16ID '3a1f0000-0000-0000-0000-000000000117'
 \set communityID '3a1f0000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a1f0000-0000-0000-0000-000000000022'
 \set eventID '3a1f0000-0000-0000-0000-000000000051'
@@ -249,6 +251,30 @@ insert into audit_log (
         'community'
     ),
     (
+        :'audit15ID',
+        'event_purchase_external_payment_completed',
+        :'actor2ID',
+        'bob',
+        :'communityID',
+        '2024-03-03 11:00:00+00',
+        '{"event_purchase_id": "3a1f0000-0000-0000-0000-000000000061", "user_id": "3a1f0000-0000-0000-0000-000000000041"}',
+        :'groupID',
+        :'eventID',
+        'event'
+    ),
+    (
+        :'audit16ID',
+        'group_external_payments_updated',
+        :'actor1ID',
+        'alice',
+        :'communityID',
+        '2024-03-04 11:00:00+00',
+        '{"external_payments_enabled": true}',
+        :'groupID',
+        :'groupID',
+        'group'
+    ),
+    (
         :'audit12ID',
         'event_refund_recovery_completed',
         :'actor1ID',
@@ -351,6 +377,26 @@ select is(
                 "resource_type": "group"
             },
             {
+                "action": "group_external_payments_updated",
+                "actor_username": "alice",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000117",
+                "created_at": 1709550000,
+                "details": {"external_payments_enabled": true},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000031",
+                "resource_name": "Platform",
+                "resource_type": "group"
+            },
+            {
+                "action": "event_purchase_external_payment_completed",
+                "actor_username": "bob",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000116",
+                "created_at": 1709463600,
+                "details": {"event_purchase_id": "3a1f0000-0000-0000-0000-000000000061", "user_id": "3a1f0000-0000-0000-0000-000000000041"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000051",
+                "resource_name": "Recovery Event",
+                "resource_type": "event"
+            },
+            {
                 "action": "event_attendee_attendance_canceled",
                 "actor_username": "alice",
                 "audit_log_id": "3a1f0000-0000-0000-0000-000000000112",
@@ -442,7 +488,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        13
+        15
     ),
     'Should return only group dashboard actions for the selected group'
 );
@@ -491,6 +537,58 @@ select is(
     )::jsonb#>>'{logs,0,action}',
     'event_credit_note_recovery_completed',
     'Should filter group audit logs by credit-note recovery completion'
+);
+
+-- Should filter group audit logs by external payment completion
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"action": "event_purchase_external_payment_completed", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        '[
+            {
+                "action": "event_purchase_external_payment_completed",
+                "actor_username": "bob",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000116",
+                "created_at": 1709463600,
+                "details": {"event_purchase_id": "3a1f0000-0000-0000-0000-000000000061", "user_id": "3a1f0000-0000-0000-0000-000000000041"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000051",
+                "resource_name": "Recovery Event",
+                "resource_type": "event"
+            }
+        ]'::jsonb,
+        'total',
+        1
+    ),
+    'Should filter group audit logs by external payment completion'
+);
+
+-- Should filter group audit logs by external payments opt-in changes
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"action": "group_external_payments_updated", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        '[
+            {
+                "action": "group_external_payments_updated",
+                "actor_username": "alice",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000117",
+                "created_at": 1709550000,
+                "details": {"external_payments_enabled": true},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000031",
+                "resource_name": "Platform",
+                "resource_type": "group"
+            }
+        ]'::jsonb,
+        'total',
+        1
+    ),
+    'Should filter group audit logs by external payments opt-in changes'
 );
 
 -- Should filter group audit logs by actor and action

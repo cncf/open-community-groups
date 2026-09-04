@@ -4,6 +4,16 @@ import { initializeGroupSettings } from "/static/js/dashboard/group/settings-for
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
+const loadSettingsTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/dashboard/group/settings_update.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
+const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
+
 describe("dashboard group settings page", () => {
   const renderSettingsForm = ({ account = "", legalName = "" } = {}) => {
     document.body.innerHTML = `
@@ -25,6 +35,24 @@ describe("dashboard group settings page", () => {
 
   afterEach(() => {
     resetDom();
+  });
+
+  it("exposes the external payments eligibility toggle", async () => {
+    // Load the settings template before checking the external payments section.
+    const template = normalizeWhitespace(await loadSettingsTemplate());
+
+    expect(template).to.include('title = "External payments"');
+    expect(template).to.include("{% if !external_payments.configured -%}");
+    expect(template).to.include("External payments are not configured for this deployment.");
+    expect(template).to.include("{% else if !external_payments.eligible -%}");
+    expect(template).to.include('name="external_payments_enabled"');
+    expect(template).to.include('id="external_payments_enabled"');
+    expect(template).to.include('value="true"');
+    expect(template).to.include("{% if group.external_payments_enabled %}checked{% endif %}");
+    expect(template).to.include("{% if group.external_payments_enabled -%}");
+    expect(template).to.include("This group's country is no longer on the operator allowlist.");
+    expect(template).to.include("Collect paid tickets outside this platform");
+    expect(template).to.include("When enabled, paid events require a payment URL instead of Stripe.");
   });
 
   it("requires both fiscal sponsor fields when either one has a value", () => {

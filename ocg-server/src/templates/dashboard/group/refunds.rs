@@ -148,6 +148,9 @@ pub(crate) struct GroupRefund {
 
     /// Number of provider attempts made.
     pub attempt_count: Option<i32>,
+    /// Whether this refund was resolved outside the payment provider.
+    #[serde(default)]
+    pub external: bool,
     /// Last provider failure message.
     pub failure_message: Option<String>,
     /// Refund workflow kind.

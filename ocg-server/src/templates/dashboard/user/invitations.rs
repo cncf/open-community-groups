@@ -11,7 +11,7 @@ use crate::{
         community::CommunityRole,
         event::{EventAdmissionOfferSource, EventAdmissionOfferStatus},
         group::GroupRole,
-        payments::format_amount_minor,
+        payments::{ExternalPaymentInfo, format_amount_minor},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
 };
@@ -85,6 +85,8 @@ pub(crate) struct EventInvitation {
     pub amount_minor: Option<i64>,
     /// Currency used to display the offer amount.
     pub currency_code: Option<String>,
+    /// Snapshot of an unpaid external purchase the attendee must complete.
+    pub external_payment: Option<ExternalPaymentInfo>,
     /// Existing registration answers from a ticket request or checkout.
     pub registration_answers: Option<QuestionnaireAnswers>,
     /// Registration questions configured for the event.
@@ -201,6 +203,7 @@ mod tests {
 
             amount_minor: None,
             currency_code: None,
+            external_payment: None,
             registration_answers: None,
             registration_questions: vec![],
             resume_checkout_url: None,

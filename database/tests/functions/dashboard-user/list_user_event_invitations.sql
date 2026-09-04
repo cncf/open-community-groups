@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,6 +29,9 @@ select plan(10);
 \set eventCategoryID '4a0b0000-0000-0000-0000-000000000004'
 \set eventID '4a0b0000-0000-0000-0000-000000000005'
 \set eventTicketedID '4a0b0000-0000-0000-0000-000000000012'
+\set externalOfferID '4a0b0000-0000-0000-0000-000000000031'
+\set externalPurchaseID '4a0b0000-0000-0000-0000-000000000032'
+\set externalUserID '4a0b0000-0000-0000-0000-000000000033'
 \set groupCategoryID '4a0b0000-0000-0000-0000-000000000006'
 \set groupID '4a0b0000-0000-0000-0000-000000000007'
 \set inactiveGroupEventID '4a0b0000-0000-0000-0000-000000000008'
@@ -122,6 +125,13 @@ insert into "user" (
     'ended-window-waitlist-user',
     'Ended Window Waitlist User'
 ), (
+    :'externalUserID',
+    'hash-external',
+    'external@example.com',
+    true,
+    'external-user',
+    'External User'
+), (
     :'invitedUserID',
     'hash-invited',
     'invited@example.com',
@@ -214,24 +224,61 @@ insert into event (
     true,
     '[]'::jsonb,
     '2099-01-03 10:00:00+00'
-), (
+);
+
+-- Ticketed event hosting the approval offer and external checkout
+insert into event (
+    event_id,
+    canceled,
+    description,
+    event_category_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    registration_questions,
+    slug,
+    starts_at,
+    timezone
+) values (
     :'eventTicketedID',
-    'Ticket Event',
-    'ticket-event',
+    false,
     'Ticket event with an approval offer',
-    'UTC',
     :'eventCategoryID',
     'in-person',
+    'Transfer to the club IBAN and include the reference',
+    'https://pay.example.test/invitations-external',
     :'groupID',
+    'Ticket Event',
     'USD',
     true,
-    false,
     format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Meal", "required": true, "options": []}]',
         :'questionID'
     )::jsonb,
-    '2099-01-05 10:00:00+00'
-), (
+    'ticket-event',
+    '2099-01-05 10:00:00+00',
+    'UTC'
+);
+
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    payment_currency_code,
+    published,
+    canceled,
+    registration_questions,
+    starts_at
+) values (
     :'inactiveGroupEventID',
     'Inactive Group Event',
     'inactive-event',
@@ -585,6 +632,35 @@ values
         :'ticketUserID'
     );
 
+-- Checkout-pending offer paid through an external purchase hold
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalOfferID',
+    1000,
+    '2024-01-13 10:00:00+00',
+    'USD',
+    0,
+    :'eventTicketedID',
+    :'ticketTypeID',
+    '2099-01-05 10:00:00+00',
+    'approval',
+    'checkout_pending',
+    'General admission',
+    :'externalUserID'
+);
+
 -- Pending discounted offer frozen after an abandoned checkout
 insert into admission_offer (
     admission_offer_id,
@@ -750,6 +826,39 @@ insert into event_purchase (
     :'ticketOfferID'
 );
 
+-- Pending external purchase linked to the external checkout offer
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provider_checkout_url,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalOfferID',
+    1000,
+    'external',
+    'USD',
+    :'eventTicketedID',
+    :'externalPurchaseID',
+    :'ticketTypeID',
+    '2099-01-05 12:00:00+00',
+    0,
+    'https://example.test/checkout/should-not-resume',
+    0,
+    'pending',
+    'General admission',
+    :'externalUserID'
+);
+
 -- Refund-processing purchase that suppresses its linked offer
 insert into event_purchase (
     admission_offer_id,
@@ -849,6 +958,41 @@ select is(
         )
     )::jsonb,
     'Should list active pending event invitations for the user'
+);
+
+-- Should expose external payment details on a checkout-pending offer
+select is(
+    (
+        select jsonb_build_object(
+            'external_payment',
+            invitation->'external_payment',
+            'has_resume_checkout_url',
+            invitation ? 'resume_checkout_url'
+        )
+        from (
+            select list_user_event_invitations(:'externalUserID'::uuid)::jsonb->0 as invitation
+        ) listed
+    ),
+    jsonb_build_object(
+        'external_payment',
+        jsonb_build_object(
+            'amount_minor',
+            1000,
+            'currency_code',
+            'USD',
+            'deadline',
+            4071297600,
+            'reference',
+            :'externalPurchaseID',
+            'url',
+            'https://pay.example.test/invitations-external',
+            'instructions',
+            'Transfer to the club IBAN and include the reference'
+        ),
+        'has_resume_checkout_url',
+        false
+    ),
+    'Should expose external payment details on a checkout-pending offer'
 );
 
 -- Should expose the exact assigned tier on an owned ticket offer

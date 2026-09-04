@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,7 @@ select plan(5);
 \set audit5ID '2c0e0000-0000-0000-0000-000000000007'
 \set audit6ID '2c0e0000-0000-0000-0000-000000000008'
 \set audit7ID '2c0e0000-0000-0000-0000-000000000009'
+\set audit8ID '2c0e0000-0000-0000-0000-000000000018'
 \set community1ID '2c0e0000-0000-0000-0000-000000000010'
 \set community2ID '2c0e0000-0000-0000-0000-000000000011'
 \set deletedRegionID '2c0e0000-0000-0000-0000-000000000012'
@@ -171,6 +172,17 @@ insert into audit_log (
         '{"name": "Atlantis"}'::jsonb,
         :'deletedRegionID',
         'region'
+    ),
+    (
+        :'audit8ID',
+        'group_external_payments_updated',
+        :'actor2ID',
+        'bob',
+        :'community1ID',
+        '2024-02-03 11:00:00+00',
+        '{"external_payments_enabled": true}'::jsonb,
+        :'groupID',
+        'group'
     );
 
 -- ============================================================================
@@ -229,6 +241,16 @@ select is(
                 "resource_type": "community"
             },
             {
+                "action": "group_external_payments_updated",
+                "actor_username": "bob",
+                "audit_log_id": "%s",
+                "created_at": 1706958000,
+                "details": {"external_payments_enabled": true},
+                "resource_id": "%s",
+                "resource_name": "Platform",
+                "resource_type": "group"
+            },
+            {
                 "action": "region_added",
                 "actor_username": "alice",
                 "audit_log_id": "%s",
@@ -268,6 +290,8 @@ select is(
             :'actor1ID',
             :'wildcardAuditID',
             :'community1ID',
+            :'audit8ID',
+            :'groupID',
             :'audit3ID',
             :'missingRegionID',
             :'audit2ID',
@@ -276,7 +300,7 @@ select is(
             :'community1ID'
         )::jsonb,
         'total',
-        7
+        8
     ),
     'Should return only community dashboard actions for the selected community'
 );
@@ -311,6 +335,38 @@ select is(
         1
     ),
     'Should filter community audit logs by action and actor'
+);
+
+-- Should filter community audit logs by external payments opt-in changes
+select is(
+    list_community_audit_logs(
+        :'community1ID'::uuid,
+        '{"action": "group_external_payments_updated", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        format(
+            $json$
+        [
+            {
+                "action": "group_external_payments_updated",
+                "actor_username": "bob",
+                "audit_log_id": "%s",
+                "created_at": 1706958000,
+                "details": {"external_payments_enabled": true},
+                "resource_id": "%s",
+                "resource_name": "Platform",
+                "resource_type": "group"
+            }
+        ]
+            $json$,
+            :'audit8ID',
+            :'groupID'
+        )::jsonb,
+        'total',
+        1
+    ),
+    'Should filter community audit logs by external payments opt-in changes'
 );
 
 -- Should return community audit logs in ascending order with pagination

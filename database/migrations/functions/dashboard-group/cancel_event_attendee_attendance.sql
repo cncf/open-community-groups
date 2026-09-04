@@ -28,6 +28,7 @@ begin
     )
     for update of e;
 
+    -- Reject missing or inactive events before changing attendance
     if not found then
         raise exception 'event not found or inactive';
     end if;
@@ -50,6 +51,7 @@ begin
     and ea.status = 'confirmed'
     for update of ea;
 
+    -- Reject cancellations that no longer have confirmed attendance
     if not found then
         raise exception 'confirmed event attendee not found';
     end if;
@@ -65,8 +67,10 @@ begin
     limit 1
     for update of ep;
 
-    -- Queue paid cancellations without releasing attendance or capacity
-    if found and v_purchase.amount_minor > 0 then
+    -- Queue Stripe cancellations without releasing attendance or capacity
+    if found
+       and v_purchase.amount_minor > 0
+       and v_purchase.charge_model is distinct from 'external' then
         -- Preserve an already queued attendee refund on idempotent retries
         select epr.kind
         into v_existing_refund_kind
@@ -76,6 +80,7 @@ begin
 
         -- Validate and reuse existing durable refund work
         if found then
+            -- Reject durable work created for a different refund kind
             if v_existing_refund_kind not in (
                 'attendance-cancellation',
                 'refund-request-approval'
@@ -120,6 +125,7 @@ begin
         where event_refund_request.status in ('approving', 'pending', 'rejected')
         returning event_refund_request_id into v_refund_request_id;
 
+        -- Reject requests that cannot be promoted into attendance cancellation
         if v_refund_request_id is null then
             raise exception 'refund request is not available for attendance cancellation';
         end if;
@@ -172,9 +178,39 @@ begin
     and user_id = p_user_id
     and status = 'confirmed';
 
-    -- If the attendee had a free ticket purchase, delegate the refund transition
+    -- Refund free or external purchases locally after attendance is canceled
     if v_purchase.event_purchase_id is not null then
-        perform refund_free_event_purchase(v_purchase.event_purchase_id);
+        -- Mark external purchases refunded without creating provider work
+        if v_purchase.charge_model = 'external' then
+            update event_purchase
+            set
+                refunded_at = current_timestamp,
+                status = 'refunded',
+                updated_at = current_timestamp
+            where event_purchase_id = v_purchase.event_purchase_id
+            and status in ('completed', 'refund-requested');
+
+            -- Resolve a leftover attendee refund request after the local refund
+            update event_refund_request
+            set
+                reviewed_at = current_timestamp,
+                reviewed_by_user_id = p_actor_user_id,
+                status = 'approved',
+                updated_at = current_timestamp
+            where event_purchase_id = v_purchase.event_purchase_id
+            and status = 'pending';
+
+            -- Release any reserved discount redemption after refunding the purchase
+            if v_purchase.event_discount_code_id is not null then
+                perform release_event_discount_code_availability(
+                    v_purchase.event_discount_code_id
+                );
+            end if;
+
+        -- Delegate free-purchase refunds to the existing local helper
+        else
+            perform refund_free_event_purchase(v_purchase.event_purchase_id);
+        end if;
     end if;
 
     -- Reconcile the released ticket-tier capacity

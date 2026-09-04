@@ -178,6 +178,15 @@
                 {% endif -%}
                 {{ refund_status_badge(item, "desktop") -}}
               </div>
+              {% if let Some(external_payment) = &item.external_payment -%}
+                <div class="mt-1.5 space-y-0.5 text-xs text-stone-500">
+                  <div>Confirm by {{ external_payment.deadline.format("%b %d, %Y at %H:%M UTC") }}</div>
+                  <div class="font-mono">{{ external_payment.reference }}</div>
+                  {% if let Some(instructions) = &external_payment.instructions -%}
+                    <div class="whitespace-pre-wrap">{{ instructions }}</div>
+                  {% endif -%}
+                </div>
+              {% endif -%}
             </td>
             {# End status -#}
 
@@ -193,7 +202,18 @@
                 </summary>
                 <div class="dropdown absolute end-0 top-8 z-10 w-[220px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
                   <ul class="text-sm text-stone-700" role="menu">
-                    {% if let Some(resume_checkout_url) = &item.resume_checkout_url -%}
+                    {% if let Some(external_payment) = &item.external_payment -%}
+                      <li>
+                        <a href="{{ external_payment.url }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           role="menuitem"
+                           class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                          <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+                          <span>Open payment page</span>
+                        </a>
+                      </li>
+                    {% else if let Some(resume_checkout_url) = &item.resume_checkout_url -%}
                       <li>
                         <a href="{{ resume_checkout_url }}"
                            role="menuitem"

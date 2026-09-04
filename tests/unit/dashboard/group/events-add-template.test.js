@@ -168,6 +168,25 @@ describe("dashboard group event add template", () => {
     expect(template).not.to.include("{{ payment_recipient.recipient_id }}");
   });
 
+  it("renders external payment fields when the group is eligible", async () => {
+    // Load the event add template before checking external payment controls.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("{% if self.uses_external_ticketing() -%}");
+    expect(template).to.include('id="external_payment_url"');
+    expect(template).to.include('name="external_payment_url"');
+    expect(template).to.include("External payment URL");
+    expect(template).to.include('id="external_payment_instructions"');
+    expect(template).to.include('name="external_payment_instructions"');
+    expect(template).to.include("Payment instructions");
+    expect(template).to.include('id="external_payment_window_hours"');
+    expect(template).to.include('name="external_payment_window_hours"');
+    expect(template).to.include("Payment window (hours)");
+    expect(template).to.include(
+      "Organizers are responsible for tax and receipts for payments collected outside",
+    );
+  });
+
   it("starts free-only ticketing at ticket types without setup guidance", async () => {
     const template = normalizeWhitespace(await loadTemplate());
     const ticketForm = template.slice(
@@ -176,7 +195,7 @@ describe("dashboard group event add template", () => {
     );
 
     expect(ticketForm).to.include(
-      '{% if payments_ready -%} <div> {{ dashboard::form_title(title = "Tickets"',
+      '{% if self.is_paid_ticketing_available() -%} <div> {{ dashboard::form_title(title = "Tickets"',
     );
     expect(ticketForm).to.include(">Ticket Types</div>");
     expect(

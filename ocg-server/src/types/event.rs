@@ -16,8 +16,8 @@ use crate::{
         group::GroupSummary,
         location::{LocationParts, build_location},
         payments::{
-            EventDiscountCode, EventRefundRequestStatus, EventTicketType, TicketTaxBehavior,
-            TicketTaxCalculationMode, format_amount_minor,
+            EventDiscountCode, EventPurchaseChargeModel, EventRefundRequestStatus, EventTicketType,
+            ExternalPaymentInfo, TicketTaxBehavior, TicketTaxCalculationMode, format_amount_minor,
         },
         questionnaire::QuestionnaireQuestion,
         user::User,
@@ -55,6 +55,9 @@ pub struct EventSummary {
     pub group_name: String,
     /// Generated URL-friendly identifier for the group hosting this event.
     pub group_slug: String,
+    /// Whether paid tickets are collected outside the platform.
+    #[serde(default)]
+    pub has_external_payment: bool,
     /// Whether this event has registration questions configured.
     #[serde(default)]
     pub has_registration_questions: bool,
@@ -367,6 +370,12 @@ pub struct EventFull {
     pub event_reminder_enabled: Option<bool>,
     /// Linked event series identifier, when the event was created as recurring.
     pub event_series_id: Option<Uuid>,
+    /// Organizer-supplied instructions for paying outside the platform.
+    pub external_payment_instructions: Option<String>,
+    /// External payment URL required for paid events in external mode.
+    pub external_payment_url: Option<String>,
+    /// Organizer-confirmation window in hours for external payments.
+    pub external_payment_window_hours: Option<i32>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// Legacy event hosts.
@@ -672,6 +681,7 @@ impl From<&EventFull> for EventSummary {
             group_category_name: event.group.category.name.clone(),
             group_name: event.group.name.clone(),
             group_slug: event.group.slug.clone(),
+            has_external_payment: event.external_payment_url.is_some(),
             has_registration_questions: event.has_registration_questions
                 || !event.registration_questions.is_empty(),
             has_related_events: event.has_related_events,
@@ -821,11 +831,17 @@ pub struct EventEnrollmentState {
     /// Ticket type assigned to the active admission offer.
     #[serde(default)]
     pub event_ticket_type_id: Option<Uuid>,
+    /// Snapshot of an unpaid external purchase the attendee must complete.
+    #[serde(default)]
+    pub external_payment: Option<ExternalPaymentInfo>,
     /// Whether the enrollment comes from a manual organizer invitation.
     #[serde(default)]
     pub manually_invited: bool,
     /// Purchase amount associated with the user and event.
     pub purchase_amount_minor: Option<i64>,
+    /// Charge model of the current purchase, when one exists.
+    #[serde(default)]
+    pub purchase_charge_model: Option<EventPurchaseChargeModel>,
     /// Attendee-visible reason for a rejected refund request.
     pub refund_rejection_reason: Option<String>,
     /// Refund request state associated with the user purchase.

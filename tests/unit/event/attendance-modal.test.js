@@ -229,6 +229,16 @@ const renderPaidAttendanceDom = ({
       >
         <span data-attendance-label>Cancel attendance</span>
       </button>
+      <div
+        data-attendance-role="external-payment-details"
+        class="hidden"
+      >
+        <p data-attendance-role="external-payment-awaiting">Awaiting organizer confirmation</p>
+        <p data-attendance-role="external-payment-amount" class="hidden"></p>
+        <p data-attendance-role="external-payment-deadline" class="hidden"></p>
+        <p data-attendance-role="external-payment-reference" class="hidden"></p>
+        <p data-attendance-role="external-payment-instructions" class="hidden"></p>
+      </div>
       <details data-attendance-role="actions-menu" data-event-actions-menu class="hidden">
         <button
           data-attendance-role="checkout-resume-btn"
@@ -283,6 +293,13 @@ const renderPaidAttendanceDom = ({
     actionsMenu: document.querySelector('[data-attendance-role="actions-menu"]'),
     checkoutCancelButton: document.querySelector('[data-attendance-role="checkout-cancel-btn"]'),
     checkoutResumeButton: document.querySelector('[data-attendance-role="checkout-resume-btn"]'),
+    externalPaymentAmount: document.querySelector('[data-attendance-role="external-payment-amount"]'),
+    externalPaymentDeadline: document.querySelector('[data-attendance-role="external-payment-deadline"]'),
+    externalPaymentDetails: document.querySelector('[data-attendance-role="external-payment-details"]'),
+    externalPaymentInstructions: document.querySelector(
+      '[data-attendance-role="external-payment-instructions"]',
+    ),
+    externalPaymentReference: document.querySelector('[data-attendance-role="external-payment-reference"]'),
     questionsModal: document.querySelector('[data-attendance-role="registration-modal"]'),
     questionsModalClose: document.querySelector('[data-attendance-role="registration-modal-close"]'),
     registrationForm: document.querySelector('[data-attendance-role="registration-form"]'),
@@ -1377,6 +1394,8 @@ describe("event attendance paid modal", () => {
       "Continue to checkout",
     );
     expect(attendButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
+    expect(attendButton.dataset.openInNewTab).to.equal(undefined);
+    expect(attendButton.hasAttribute("rel")).to.equal(false);
     expect(checkoutResumeButton.classList.contains("hidden")).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
@@ -1385,6 +1404,151 @@ describe("event attendance paid modal", () => {
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
     expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(true);
+  });
+
+  it("clears external pending-payment details when enrollment leaves that state", async () => {
+    // Render an external pending payment, then move to a guest state.
+    const {
+      attendButton,
+      checker,
+      externalPaymentAmount,
+      externalPaymentDeadline,
+      externalPaymentDetails,
+      externalPaymentInstructions,
+      externalPaymentReference,
+    } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        external_payment: {
+          amount_minor: 5000,
+          currency_code: "EUR",
+          deadline: 1_700_000_000,
+          instructions: "Transfer to the club account.",
+          reference: "11111111-1111-1111-1111-111111111111",
+          url: "https://pay.example.test/event",
+        },
+        status: "pending-payment",
+      }),
+    });
+
+    expect(externalPaymentDetails.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.dataset.openInNewTab).to.equal("true");
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(externalPaymentDetails.classList.contains("hidden")).to.equal(true);
+    expect(externalPaymentAmount.textContent).to.equal("");
+    expect(externalPaymentDeadline.textContent).to.equal("");
+    expect(externalPaymentInstructions.textContent).to.equal("");
+    expect(externalPaymentReference.textContent).to.equal("");
+    expect(attendButton.dataset.openInNewTab).to.equal(undefined);
+    expect(attendButton.hasAttribute("rel")).to.equal(false);
+    expect(attendButton.hasAttribute("data-resume-url")).to.equal(false);
+  });
+
+  it("opens external payment URLs in a new tab from pending-payment", async () => {
+    // Render external pending payment and intercept window.open.
+    const { attendButton, checker } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+    const openCalls = [];
+    const originalOpen = window.open;
+    window.open = (...args) => {
+      openCalls.push(args);
+      return null;
+    };
+
+    try {
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({
+          external_payment: {
+            amount_minor: 2500,
+            currency_code: "EUR",
+            deadline: 1_700_000_000,
+            reference: "22222222-2222-2222-2222-222222222222",
+            url: "https://pay.example.test/resume",
+          },
+          status: "pending-payment",
+        }),
+      });
+
+      attendButton.click();
+
+      expect(openCalls).to.deep.equal([
+        ["https://pay.example.test/resume", "_blank", "noopener,noreferrer"],
+      ]);
+    } finally {
+      window.open = originalOpen;
+    }
+  });
+
+  it("renders external pending-payment details and Open payment page", async () => {
+    // Render controls for an externally managed pending payment.
+    const {
+      actionsMenu,
+      attendButton,
+      checker,
+      checkoutCancelButton,
+      externalPaymentAmount,
+      externalPaymentDeadline,
+      externalPaymentDetails,
+      externalPaymentInstructions,
+      externalPaymentReference,
+      ticketModal,
+    } = renderPaidAttendanceDom({
+      markButtonPriceBadge: false,
+    });
+    await initializeAttendanceDom();
+    const deadlineSeconds = 1_700_000_000;
+    const expectedAmount = new Intl.NumberFormat(undefined, {
+      currency: "EUR",
+      style: "currency",
+    }).format(50);
+    const expectedDeadline = new Date(deadlineSeconds * 1000).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        external_payment: {
+          amount_minor: 5000,
+          currency_code: "EUR",
+          deadline: deadlineSeconds,
+          instructions: "Use the reference on your bank transfer.",
+          reference: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+          url: "https://pay.example.test/event",
+        },
+        status: "pending-payment",
+      }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
+      "Open payment page",
+    );
+    expect(attendButton.title).to.equal("Awaiting organizer confirmation");
+    expect(attendButton.dataset.resumeUrl).to.equal("https://pay.example.test/event");
+    expect(attendButton.dataset.openInNewTab).to.equal("true");
+    expect(externalPaymentDetails.classList.contains("hidden")).to.equal(false);
+    expect(externalPaymentAmount.textContent).to.equal(`Amount due: ${expectedAmount}`);
+    expect(externalPaymentAmount.classList.contains("hidden")).to.equal(false);
+    expect(externalPaymentDeadline.textContent).to.equal(`Confirm by ${expectedDeadline}`);
+    expect(externalPaymentDeadline.classList.contains("hidden")).to.equal(false);
+    expect(externalPaymentReference.textContent).to.equal(
+      "Reference: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    );
+    expect(externalPaymentReference.classList.contains("hidden")).to.equal(false);
+    expect(externalPaymentInstructions.textContent).to.equal(
+      "Use the reference on your bank transfer.",
+    );
+    expect(externalPaymentInstructions.classList.contains("hidden")).to.equal(false);
+    expect(actionsMenu.classList.contains("hidden")).to.equal(false);
+    expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
+    expect(ticketModal.classList.contains("hidden")).to.equal(true);
   });
 
   it("keeps pending-payment available after the registration window closes", async () => {

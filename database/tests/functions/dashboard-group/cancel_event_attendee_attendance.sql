@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(25);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,12 +26,19 @@ select plan(21);
 \set conflictingRefundPurchaseID '3a070000-0000-0000-0000-000000000027'
 \set eventCanceledID '3a070000-0000-0000-0000-000000000004'
 \set eventCategoryID '3a070000-0000-0000-0000-000000000005'
+\set eventExternalID '3a070000-0000-0000-0000-000000000030'
 \set eventID '3a070000-0000-0000-0000-000000000006'
 \set eventLimitedID '3a070000-0000-0000-0000-000000000007'
 \set eventPaidID '3a070000-0000-0000-0000-000000000008'
 \set eventTicketTypeID '3a070000-0000-0000-0000-000000000009'
 \set eventTicketedFreeID '3a070000-0000-0000-0000-000000000018'
 \set eventUnpublishedID '3a070000-0000-0000-0000-000000000010'
+\set externalAttendeeID '3a070000-0000-0000-0000-000000000031'
+\set externalPurchaseID '3a070000-0000-0000-0000-000000000032'
+\set externalRequestedAttendeeID '3a070000-0000-0000-0000-000000000034'
+\set externalRequestedPurchaseID '3a070000-0000-0000-0000-000000000035'
+\set externalRequestedRefundRequestID '3a070000-0000-0000-0000-000000000036'
+\set externalTicketTypeID '3a070000-0000-0000-0000-000000000033'
 \set freeTicketAttendeeID '3a070000-0000-0000-0000-000000000019'
 \set freeTicketPriceWindowID '3a070000-0000-0000-0000-00000000001a'
 \set freeTicketPromotedUserID '3a070000-0000-0000-0000-00000000001b'
@@ -113,6 +120,22 @@ values
         'Conflicting Refund',
         :'conflictingRefundAttendeeID',
         'conflicting-refund'
+    ),
+    (
+        'hash-external-attendee',
+        'external-attendee@example.com',
+        true,
+        'External Attendee',
+        :'externalAttendeeID',
+        'external-attendee'
+    ),
+    (
+        'hash-external-requested',
+        'external-requested@example.com',
+        true,
+        'External Requested',
+        :'externalRequestedAttendeeID',
+        'external-requested'
     ),
     (
         'hash-free-attendee',
@@ -505,6 +528,131 @@ values
         now(),
         :'freeTicketTypeID'
     );
+
+-- External-marked event used by the local refund attendance branch
+insert into event (
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    false,
+    'External attendance cancellation event',
+    :'eventCategoryID',
+    :'eventExternalID',
+    'in-person',
+    'https://pay.example.test/attendance-cancel',
+    :'groupID',
+    'External Attendance Event',
+    'KRW',
+    true,
+    'external-attendance-event',
+    now() + interval '7 days',
+    'UTC'
+);
+
+-- Ticket type for the external attendance event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'externalTicketTypeID',
+    :'eventExternalID',
+    1,
+    50,
+    'External admission'
+);
+
+-- Completed external purchase refunded locally on attendance cancellation
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    current_timestamp - interval '1 hour',
+    'KRW',
+    :'eventExternalID',
+    :'externalPurchaseID',
+    :'externalTicketTypeID',
+    0,
+    0,
+    'completed',
+    'External admission',
+    :'externalAttendeeID'
+);
+
+-- Confirmed attendee holding the completed external purchase
+insert into event_attendee (checked_in, event_id, status, user_id)
+values (false, :'eventExternalID', 'confirmed', :'externalAttendeeID');
+
+-- External purchase waiting on an attendee refund request
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    current_timestamp - interval '1 hour',
+    'KRW',
+    :'eventExternalID',
+    :'externalRequestedPurchaseID',
+    :'externalTicketTypeID',
+    0,
+    0,
+    'refund-requested',
+    'External admission',
+    :'externalRequestedAttendeeID'
+);
+
+-- Pending refund request that attendance cancellation must resolve
+insert into event_refund_request (
+    event_purchase_id,
+    event_refund_request_id,
+    requested_by_user_id,
+    status
+) values (
+    :'externalRequestedPurchaseID',
+    :'externalRequestedRefundRequestID',
+    :'externalRequestedAttendeeID',
+    'pending'
+);
+
+-- Confirmed attendee holding the refund-requested external purchase
+insert into event_attendee (checked_in, event_id, status, user_id)
+values (false, :'eventExternalID', 'confirmed', :'externalRequestedAttendeeID');
 
 -- ============================================================================
 -- TESTS
@@ -946,6 +1094,75 @@ select throws_ok(
     ),
     'event not found or inactive',
     'Should reject canceled events'
+);
+
+-- Should cancel external attendance and refund the purchase locally
+select results_eq(
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
+        :'actorID', :'groupID', :'eventExternalID', :'externalAttendeeID'
+    ),
+    $$ values ('{"cancellation_status": "attendance-canceled"}'::jsonb) $$,
+    'Should cancel external attendance and refund the purchase locally'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'attendee_status', ea.status,
+            'purchase_status', ep.status,
+            'refund_count', (
+                select count(*)::int
+                from event_purchase_refund epr
+                where epr.event_purchase_id = ep.event_purchase_id
+            )
+        )
+        from event_attendee ea
+        join event_purchase ep
+            on ep.event_id = ea.event_id
+            and ep.user_id = ea.user_id
+        where ea.event_id = :'eventExternalID'::uuid
+        and ea.user_id = :'externalAttendeeID'::uuid
+    ),
+    '{
+        "attendee_status": "attendance-canceled",
+        "purchase_status": "refunded",
+        "refund_count": 0
+    }'::jsonb,
+    'Should mark the external purchase refunded without provider work'
+);
+
+-- Should resolve a pending external refund request when canceling attendance
+select results_eq(
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
+        :'actorID', :'groupID', :'eventExternalID', :'externalRequestedAttendeeID'
+    ),
+    $$ values ('{"cancellation_status": "attendance-canceled"}'::jsonb) $$,
+    'Should resolve a pending external refund request when canceling attendance'
+);
+
+select is(
+    (
+        select jsonb_build_object(
+            'attendee_status', ea.status,
+            'purchase_status', ep.status,
+            'request_status', err.status
+        )
+        from event_attendee ea
+        join event_purchase ep
+            on ep.event_id = ea.event_id
+            and ep.user_id = ea.user_id
+        join event_refund_request err using (event_purchase_id)
+        where ea.event_id = :'eventExternalID'::uuid
+        and ea.user_id = :'externalRequestedAttendeeID'::uuid
+    ),
+    '{
+        "attendee_status": "attendance-canceled",
+        "purchase_status": "refunded",
+        "request_status": "approved"
+    }'::jsonb,
+    'Should resolve a pending external refund request when canceling attendance'
 );
 
 -- ============================================================================

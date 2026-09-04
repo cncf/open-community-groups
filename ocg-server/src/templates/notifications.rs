@@ -211,6 +211,118 @@ pub(crate) struct EventCustom {
     pub theme: Theme,
 }
 
+/// Template for an expired external payment window.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_external_payment_expired.html")]
+pub(crate) struct EventExternalPaymentExpired {
+    /// Link to the user dashboard events page.
+    pub dashboard_url: String,
+    /// Event display name.
+    pub event_name: String,
+    /// Group display name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Amount that was due in minor units.
+    #[serde(default)]
+    pub amount_minor: Option<i64>,
+    /// Currency of the amount due.
+    pub currency_code: Option<String>,
+    /// Organizer-confirmation deadline.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub deadline: Option<DateTime<Utc>>,
+    /// Whether the event was canceled and the attendee should not pay.
+    #[serde(default)]
+    pub do_not_pay: bool,
+    /// Snapshot of organizer-supplied payment instructions.
+    pub external_payment_instructions: Option<String>,
+    /// Snapshot of the external payment URL.
+    pub external_payment_url: Option<String>,
+    /// Ticket title snapshot.
+    pub ticket_title: Option<String>,
+    /// Event timezone used to display the deadline.
+    pub timezone: Option<Tz>,
+}
+
+/// Template for pending external payment instructions.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_external_payment_pending.html")]
+pub(crate) struct EventExternalPaymentPending {
+    /// Amount due in minor units.
+    pub amount_minor: i64,
+    /// Link to the user dashboard events page.
+    pub dashboard_url: String,
+    /// Organizer-confirmation deadline.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub deadline: DateTime<Utc>,
+    /// Event display name.
+    pub event_name: String,
+    /// Stable payment reference used to match the external transfer.
+    pub event_purchase_id: Uuid,
+    /// Snapshot of the external payment URL.
+    pub external_payment_url: String,
+    /// Group display name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+    /// Ticket title snapshot.
+    pub ticket_title: String,
+    /// Event timezone used to display the deadline.
+    pub timezone: Tz,
+
+    /// Currency of the amount due.
+    pub currency_code: Option<String>,
+    /// Snapshot of organizer-supplied payment instructions.
+    pub external_payment_instructions: Option<String>,
+}
+
+impl EventExternalPaymentPending {
+    /// Formats the amount due for display.
+    pub(crate) fn price_label(&self) -> String {
+        format_offer_price(Some(self.amount_minor), self.currency_code.as_deref())
+    }
+}
+
+/// Template for an upcoming external payment deadline reminder.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_external_payment_reminder.html")]
+pub(crate) struct EventExternalPaymentReminder {
+    /// Amount due in minor units.
+    pub amount_minor: i64,
+    /// Link to the user dashboard events page.
+    pub dashboard_url: String,
+    /// Organizer-confirmation deadline.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub deadline: DateTime<Utc>,
+    /// Event display name.
+    pub event_name: String,
+    /// Stable payment reference used to match the external transfer.
+    pub event_purchase_id: Uuid,
+    /// Snapshot of the external payment URL.
+    pub external_payment_url: String,
+    /// Group display name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+    /// Ticket title snapshot.
+    pub ticket_title: String,
+    /// Event timezone used to display the deadline.
+    pub timezone: Tz,
+
+    /// Currency of the amount due.
+    pub currency_code: Option<String>,
+    /// Snapshot of organizer-supplied payment instructions.
+    pub external_payment_instructions: Option<String>,
+}
+
+impl EventExternalPaymentReminder {
+    /// Formats the amount due for display.
+    pub(crate) fn price_label(&self) -> String {
+        format_offer_price(Some(self.amount_minor), self.currency_code.as_deref())
+    }
+}
+
 /// Template for event invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_invitation.html")]
@@ -251,6 +363,9 @@ pub(crate) struct EventPaidConfiguredItem {
     /// Timezone used to display the event start.
     pub timezone: Tz,
 
+    /// Whether paid tickets are collected outside the platform.
+    #[serde(default)]
+    pub has_external_payment: bool,
     /// UTC timestamp when the event starts.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
@@ -283,6 +398,9 @@ pub(crate) struct EventSeriesNotificationItem {
 pub(crate) struct EventRefundApproved {
     /// Event summary data.
     pub event: EventSummary,
+    /// Whether the organizer returned funds outside OCG.
+    #[serde(default)]
+    pub external_payment: bool,
     /// Link to the event page.
     pub link: String,
     /// Theme configuration for the community.

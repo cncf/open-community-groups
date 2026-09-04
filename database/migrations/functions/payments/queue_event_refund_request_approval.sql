@@ -72,6 +72,11 @@ begin
         return;
     end if;
 
+    -- Reject external purchases that must be approved locally
+    if v_purchase.charge_model = 'external' then
+        raise exception 'external purchases must be approved locally';
+    end if;
+
     -- Validate the provider contract before creating durable work
     if v_purchase.amount_minor <= 0
        or v_purchase.payment_provider_id is null

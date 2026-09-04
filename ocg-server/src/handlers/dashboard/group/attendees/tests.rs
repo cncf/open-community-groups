@@ -855,7 +855,7 @@ async fn test_download_csv_success() {
     );
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "Name,Company,Title,Invited\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\",Yes\nanonymous-attendee,,,No\n",
+        "Name,Company,Title,Invited,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\",Yes,,,,,,\nanonymous-attendee,,,No,,,,,,\n",
     );
 }
 
@@ -1018,7 +1018,7 @@ async fn test_download_csv_with_answers_success() {
     );
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "Name,Company,Title,Invited,Dietary restrictions?,Meal preference,Topics\nEvent Attendee,Example,Engineer,No,No peanuts,Vegetarian,\"Rust, Databases\"\nNo Answers,Example,Engineer,No,,,\n",
+        "Name,Company,Title,Invited,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details,Dietary restrictions?,Meal preference,Topics\nEvent Attendee,Example,Engineer,No,,,,,,,No peanuts,Vegetarian,\"Rust, Databases\"\nNo Answers,Example,Engineer,No,,,,,,,,,\n",
     );
 }
 
@@ -2022,6 +2022,240 @@ async fn test_manual_check_in_success() {
 
     // Check response matches expectations
     assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn test_mark_external_payment_success() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Mark the purchase paid through the payments manager
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_external_checkout()
+        .times(1)
+        .withf(move |actor_uid, gid, purchase_id, details| {
+            *actor_uid == user_id
+                && *gid == group_id
+                && *purchase_id == event_purchase_id
+                && details.as_deref() == Some("wire 123")
+        })
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
+
+    // Submit the mark-paid form
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/purchases/{event_purchase_id}/external-payment"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from("details=wire+123"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the attendee table refresh trigger
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
+    );
+}
+
+#[tokio::test]
+async fn test_mark_external_payment_success_with_blank_details() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Mark the purchase paid without optional details
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_external_checkout()
+        .times(1)
+        .withf(move |actor_uid, gid, purchase_id, details| {
+            *actor_uid == user_id
+                && *gid == group_id
+                && *purchase_id == event_purchase_id
+                && details.is_none()
+        })
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
+
+    // Submit the mark-paid form with an empty details field
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/purchases/{event_purchase_id}/external-payment"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from("details="))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the attendee table refresh trigger
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
+    );
+}
+
+#[tokio::test]
+async fn test_mark_external_payment_success_with_empty_body() {
+    // Setup authenticated organizer context
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication and authorization expectations
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Mark the purchase paid without optional details
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_complete_external_checkout()
+        .times(1)
+        .withf(move |actor_uid, gid, purchase_id, details| {
+            *actor_uid == user_id
+                && *gid == group_id
+                && *purchase_id == event_purchase_id
+                && details.is_none()
+        })
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
+
+    // Submit the mark-paid form with an empty body
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/purchases/{event_purchase_id}/external-payment"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(""))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the attendee table refresh trigger
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
+    );
 }
 
 #[tokio::test]

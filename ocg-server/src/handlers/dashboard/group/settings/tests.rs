@@ -22,7 +22,7 @@ use crate::{
     },
     types::{
         group::GroupParentOption,
-        payments::{GroupPaymentRecipient, PaymentProvider},
+        payments::{GroupExternalPaymentsContext, GroupPaymentRecipient, PaymentProvider},
         permissions::GroupPermission,
     },
 };
@@ -96,6 +96,19 @@ async fn test_update_page_success() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![region.clone()]));
+    db.expect_get_group_external_payments_context()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| {
+            Ok(GroupExternalPaymentsContext {
+                configured: false,
+                eligible: false,
+                enabled: false,
+                country_code: None,
+                default_payment_window_hours: None,
+                max_payment_window_hours: None,
+            })
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -122,6 +135,7 @@ async fn test_update_page_success() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_update_page_selects_current_inactive_parent_option() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -198,6 +212,19 @@ async fn test_update_page_selects_current_inactive_parent_option() {
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![region.clone()]));
+    db.expect_get_group_external_payments_context()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| {
+            Ok(GroupExternalPaymentsContext {
+                configured: false,
+                eligible: false,
+                enabled: false,
+                country_code: None,
+                default_payment_window_hours: None,
+                max_payment_window_hours: None,
+            })
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

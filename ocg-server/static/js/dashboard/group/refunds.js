@@ -11,6 +11,7 @@ import {
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
+import { applyExternalRefundReviewCopy } from "/static/js/dashboard/group/attendees/shared.js";
 
 const FINANCIAL_RECOVERY_MODAL_ID = "financial-recovery-modal";
 const RECOVERY_MODAL_ID = "refund-recovery-modal";
@@ -354,6 +355,8 @@ const openRefundReviewModal = (root, trigger, config) => {
   if (reason) {
     reason.textContent = trigger.dataset.refundReason || "No reason provided.";
   }
+
+  applyExternalRefundReviewCopy(form, trigger, `${config.contextPrefix}-external-note`, root);
 
   const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");
   const focusOrigin = actionsMenuSummary instanceof HTMLElement ? actionsMenuSummary : trigger;

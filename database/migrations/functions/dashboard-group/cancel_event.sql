@@ -36,11 +36,12 @@ begin
     order by event_purchase_id
     for update;
 
-    -- Reject paid purchases that cannot be handed to a refund worker
+    -- Reject Stripe purchases that cannot be handed to a refund worker
     perform 1
     from event_purchase
     where event_id = p_event_id
     and amount_minor > 0
+    and charge_model is distinct from 'external'
     and status in ('completed', 'refund-requested')
     and (
         payment_provider_id is null
@@ -67,7 +68,7 @@ begin
     where event_id = p_event_id
     and status = 'invitation-pending';
 
-    -- Close free ticket purchases locally and restore discount inventory
+    -- Close free and external ticket purchases locally and restore discount inventory
     for v_event_discount_code_id in
         update event_purchase
         set
@@ -75,7 +76,10 @@ begin
             status = 'refunded',
             updated_at = current_timestamp
         where event_id = p_event_id
-        and amount_minor = 0
+        and (
+            amount_minor = 0
+            or charge_model = 'external'
+        )
         and status in ('completed', 'refund-requested')
         returning event_discount_code_id
     loop
@@ -94,7 +98,10 @@ begin
     from event_purchase ep
     where ep.event_purchase_id = err.event_purchase_id
     and ep.event_id = p_event_id
-    and ep.amount_minor = 0
+    and (
+        ep.amount_minor = 0
+        or ep.charge_model = 'external'
+    )
     and ep.status = 'refunded'
     and err.status in ('approving', 'pending');
 
@@ -126,6 +133,7 @@ begin
         and err.status in ('approving', 'pending')
     where ep.event_id = p_event_id
     and ep.amount_minor > 0
+    and ep.charge_model is distinct from 'external'
     and ep.status in ('completed', 'refund-requested')
     on conflict (event_purchase_id) do nothing;
 
@@ -140,6 +148,7 @@ begin
     where ep.event_purchase_id = err.event_purchase_id
     and ep.event_id = p_event_id
     and ep.amount_minor > 0
+    and ep.charge_model is distinct from 'external'
     and err.status = 'pending';
 
     -- Hand provider-backed purchases to their durable refund jobs
@@ -150,6 +159,7 @@ begin
         updated_at = current_timestamp
     where event_id = p_event_id
     and amount_minor > 0
+    and charge_model is distinct from 'external'
     and status in ('completed', 'refund-requested');
 
     -- Update event to mark as canceled

@@ -68,6 +68,7 @@ describe("dashboard group attendees list template", () => {
       ["all", "All enrollments"],
       ["confirmed", "Confirmed"],
       ["checkout-pending", "Checkout pending"],
+      ["payment-pending", "Payment pending"],
       ["invitation-pending", "Invitation pending"],
       ["registration-pending", "Registration pending"],
       ["attendance-canceled", "Attendance canceled"],
@@ -78,6 +79,38 @@ describe("dashboard group attendees list template", () => {
       expect(template).to.include(`value="${value}"`);
       expect(template).to.include(`>${label}</option>`);
     }
+  });
+
+  it("marks external payments received from the payment-pending actions menu", async () => {
+    // Load the attendees list before checking the mark-paid action and modal.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("AttendeeEnrollmentStatus::PaymentPending");
+    expect(template).to.include("data-external-payment-open");
+    expect(template).to.include(
+      'data-external-payment-url="/dashboard/group/events/{{ event.event_id }}/purchases/{{ event_purchase_id }}/external-payment"',
+    );
+    expect(template).to.include('data-external-payment-attendee="{{ attendee.user.name.as_deref()');
+    expect(template).to.include('data-external-payment-ticket="{{ attendee.ticket_title.as_deref()');
+    expect(template).to.include(
+      'data-external-payment-reference="{{ attendee.external_payment_reference.as_ref()',
+    );
+    expect(template).to.include("data-external-payment-amount");
+    expect(template).to.include("<span>Mark payment received</span>");
+    expect(template).to.include('id="attendee-external-payment-modal"');
+    expect(template).to.include('title = "Mark payment received"');
+    expect(template).to.include('id="attendee-external-payment-form"');
+    expect(template).to.include('hx-ext="no-empty-vals"');
+    expect(template).to.include('id="attendee-external-payment-details"');
+    expect(template).to.include('id="submit-attendee-external-payment"');
+    expect(template).to.include("attendee_external_payment_detail(attendee)");
+    expect(template).to.include("Paid externally");
+    expect(template).to.include("{% if let Some(paid_at) = attendee.completed_at -%}");
+    expect(template).to.include('on {{ paid_at.format("%b %d, %Y at %H:%M UTC") }}');
+    expect(template).to.include(
+      "{% if let Some(marked_by) = &attendee.external_payment_marked_by -%}",
+    );
+    expect(template).to.include("by {{ marked_by }}");
   });
 
   it("uses filter-aware empty states", async () => {
@@ -309,8 +342,22 @@ describe("dashboard group attendees list template", () => {
     );
     const paidCancellation = sliceTemplateSection(
       cancelAttendanceAction,
-      "{% if self::is_paid_attendee(attendee.amount_minor) -%}",
+      "{% else if self::is_paid_attendee(attendee.amount_minor) -%}",
       "{% else -%}",
+    );
+    const externalCancellation = sliceTemplateSection(
+      cancelAttendanceAction,
+      "{% if attendee.charge_model == Some(crate::types::payments::EventPurchaseChargeModel::External) -%}",
+      "{% else if self::is_paid_attendee(attendee.amount_minor) -%}",
+    );
+
+    // Verify external attendees confirm money returned outside the platform.
+    expect(externalCancellation).to.include('data-confirm-text="Confirm returned"');
+    expect(externalCancellation).to.include(
+      'data-confirm-message="Cancel this attendance and confirm the money was returned outside this platform?"',
+    );
+    expect(externalCancellation).to.include(
+      'data-success-message="Attendance canceled. Confirm the money was returned outside this platform."',
     );
 
     // Verify paid attendees receive the refund-specific contract and label.

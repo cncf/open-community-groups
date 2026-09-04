@@ -14,6 +14,7 @@ returns json as $$
                 e.slug as event_slug,
                 e.starts_at as event_starts_at,
                 e.timezone as event_timezone,
+                ep.charge_model,
                 ep.event_purchase_id,
                 g.name as group_name,
                 g.slug as group_slug,
@@ -29,7 +30,7 @@ returns json as $$
             join community c using (community_id)
             where ep.user_id = p_user_id
             and ep.amount_minor > 0
-            and ep.charge_model = 'direct-charge'
+            and ep.charge_model in ('direct-charge', 'external')
             and ep.status in (
                 'completed',
                 'refund-pending',
@@ -69,9 +70,18 @@ returns json as $$
                     || jsonb_strip_nulls(jsonb_build_object(
                         'completed_at', floor(extract(epoch from prp.completed_at)),
                         'event_starts_at', floor(extract(epoch from prp.event_starts_at)),
+                        'externally_managed', case
+                            when prp.charge_model = 'external' then true
+                        end,
                         'group_slug_pretty', prp.group_slug_pretty,
-                        'provider_invoice_id', prp.provider_invoice_id,
-                        'seller_display_name', prp.seller_snapshot->>'display_name'
+                        'provider_invoice_id', case
+                            when prp.charge_model = 'direct-charge'
+                            then prp.provider_invoice_id
+                        end,
+                        'seller_display_name', case
+                            when prp.charge_model = 'direct-charge'
+                            then prp.seller_snapshot->>'display_name'
+                        end
                     ))
                     order by coalesce(prp.completed_at, prp.created_at) desc,
                         prp.event_purchase_id desc

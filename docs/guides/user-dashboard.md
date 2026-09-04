@@ -82,13 +82,15 @@ Each row includes:
   legacy rejection without a reason still shows the badge.
 
 When a row is marked `Payment pending`, use the row actions menu to complete checkout while the
-ticket hold is still active, even if public registration closes after checkout started. You can
-also cancel checkout from the same menu to release the hold. A pending payment does not describe
-you as an attendee unless you already have a separate confirmed attendance role. When a row is
-marked `Registration pending`, use the row actions menu to complete the event's registration
-questions. You can update submitted answers from the same menu before the event starts while
-registration is open, while an active checkout hold exists, or when an organizer invited you
-manually.
+ticket hold is still active, even if public registration closes after checkout started. If the
+organizer collects payment outside OCG, the same menu offers `Open payment page` instead, and the
+row shows your payment reference, the organizer's instructions, and the deadline by which the
+organizer must confirm your payment. You can also cancel checkout from the same menu to release
+the hold. A pending payment does not describe you as an attendee unless you already have a
+separate confirmed attendance role. When a row is marked `Registration pending`, use the row
+actions menu to complete the event's registration questions. You can update submitted answers
+from the same menu before the event starts while registration is open, while an active checkout
+hold exists, or when an organizer invited you manually.
 
 An `Event offer` row links to the Invitations tab, which owns claim, decline,
 checkout resume, and checkout cancellation actions. An active offer does not
@@ -127,7 +129,10 @@ events.
 Each row shows the event, ticket, fiscal-sponsor seller, amount paid, purchase
 or refund status, and available provider documents. Open invoice and issued
 credit-note links in a new tab. A processing label means Stripe has not issued
-the document yet or OCG is still reconciling its current link.
+the document yet or OCG is still reconciling its current link. Purchases paid
+outside OCG are labeled `Externally managed`; their documents menu shows
+`Managed outside OCG` instead of invoice or credit-note links, so ask the
+organizer directly for receipts.
 
 Use this dashboard history to access documents for upcoming, past, and canceled
 events. Free and discounted-to-zero purchases do not create Stripe invoices or
@@ -182,7 +187,8 @@ Event offer rows show:
 - Existing ticket-request answers and any registration questions required at
   claim time. Optional questions can be skipped.
 - `Claim offer`, plus `Decline`.
-- `Continue to checkout` and `Cancel checkout` when a paid checkout hold exists.
+- `Continue to checkout` or `Open payment page` and `Cancel checkout` when a
+  paid checkout hold exists.
 
 Pending offers show the current ticket price while a sales window is open.
 In-progress checkout holds and discounted claims keep their stored snapshot,

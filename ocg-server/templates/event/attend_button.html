@@ -467,6 +467,19 @@
 </span>
 {# End refund request button and rejection reason -#}
 
+{# External payment details -#}
+<div data-attendance-role="external-payment-details"
+     class="hidden w-full max-w-md space-y-1 text-sm text-stone-600">
+  <p data-attendance-role="external-payment-awaiting">Awaiting organizer confirmation</p>
+  <p data-attendance-role="external-payment-amount"></p>
+  <p data-attendance-role="external-payment-deadline"></p>
+  <p data-attendance-role="external-payment-reference"
+     class="font-mono text-xs"></p>
+  <p data-attendance-role="external-payment-instructions"
+     class="whitespace-pre-wrap"></p>
+</div>
+{# End external payment details -#}
+
 {# Attendance checker -#}
 <div id="attendance-checker-{{ attendance_instance }}"
      data-attendance-role="attendance-checker"

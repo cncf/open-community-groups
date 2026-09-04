@@ -58,9 +58,16 @@ returns json as $$
     purchase_state as (
         select
             ep.amount_minor,
+            ep.charge_model,
+            ep.currency_code,
             ep.event_purchase_id,
-            ep.provider_checkout_url
+            e.external_payment_instructions,
+            e.external_payment_url,
+            ep.hold_expires_at,
+            ep.provider_checkout_url,
+            ep.status
         from event_purchase ep
+        join event e using (event_id)
         where ep.event_id = p_event_id
         and ep.user_id = p_user_id
         and (
@@ -164,13 +171,31 @@ returns json as $$
         jsonb_build_object(
             'is_checked_in', es.is_checked_in,
             'purchase_amount_minor', (select amount_minor from purchase_state),
+            'purchase_charge_model', (select charge_model from purchase_state),
             'refund_request_status', (select status from refund_request_state),
-            'resume_checkout_url', (select provider_checkout_url from purchase_state),
+            'resume_checkout_url', (
+                select provider_checkout_url
+                from purchase_state
+                where charge_model is distinct from 'external'
+            ),
             'status', es.status
         )
         || jsonb_strip_nulls(jsonb_build_object(
             'admission_offer_id', (select admission_offer_id from active_offer),
             'event_ticket_type_id', (select event_ticket_type_id from active_offer),
+            'external_payment', (
+                select jsonb_strip_nulls(jsonb_build_object(
+                    'amount_minor', amount_minor,
+                    'currency_code', currency_code,
+                    'deadline', extract(epoch from hold_expires_at)::bigint,
+                    'instructions', external_payment_instructions,
+                    'reference', event_purchase_id,
+                    'url', external_payment_url
+                ))
+                from purchase_state
+                where status = 'pending'
+                and charge_model = 'external'
+            ),
             'refund_rejection_reason', (select rejection_reason from refund_request_state)
         ))
         || case

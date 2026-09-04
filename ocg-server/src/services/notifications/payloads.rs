@@ -83,6 +83,7 @@ pub(super) fn build_event_paid_configured_notification(
             name: event.name.clone(),
             timezone: event.timezone,
 
+            has_external_payment: event.has_external_payment,
             starts_at: event.starts_at,
         })
         .collect::<Vec<_>>();
@@ -124,15 +125,17 @@ pub(crate) fn build_event_published_notification(
     })
 }
 
-/// Builds template data for an event refund approval notification.
+/// Builds template data for an approved event refund.
 pub(crate) fn build_event_refund_approved_template_data(
     event: &EventSummary,
+    external_payment: bool,
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<serde_json::Value> {
     let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventRefundApproved {
         event: event.clone(),
+        external_payment,
         link: build_event_page_link(base_url, event),
         theme: site_settings.theme.clone(),
     };
@@ -435,10 +438,9 @@ mod tests {
         let related_event_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
-        let events = vec![
-            sample_event_summary(event_id, group_id),
-            sample_event_summary(related_event_id, group_id),
-        ];
+        let mut related_event = sample_event_summary(related_event_id, group_id);
+        related_event.has_external_payment = true;
+        let events = vec![sample_event_summary(event_id, group_id), related_event];
         let site_settings = sample_site_settings();
 
         // Build the aggregate notification
@@ -461,7 +463,9 @@ mod tests {
                 .expect("template data to deserialize");
         assert_eq!(template.event_count, 2);
         assert_eq!(template.events[0].event_id, event_id);
+        assert!(!template.events[0].has_external_payment);
         assert_eq!(template.events[1].event_id, related_event_id);
+        assert!(template.events[1].has_external_payment);
         assert_eq!(template.group_name, events[0].group_name);
         assert_eq!(
             template.theme.primary_color,
@@ -480,7 +484,7 @@ mod tests {
 
         // Build notifications
         let approved =
-            build_event_refund_approved_template_data(&event, &server_cfg, &site_settings)
+            build_event_refund_approved_template_data(&event, false, &server_cfg, &site_settings)
                 .expect("template data to be built");
         let rejected = build_event_refund_rejected_notification(
             &event,
@@ -495,6 +499,7 @@ mod tests {
         let approved_template: EventRefundApproved =
             serde_json::from_value(approved).expect("template data to deserialize");
         assert_eq!(approved_template.event.event_id, event_id);
+        assert!(!approved_template.external_payment);
 
         assert!(rejected.attachments.is_empty());
         assert!(matches!(
@@ -510,6 +515,26 @@ mod tests {
             rejected_template.rejection_reason,
             "Outside the refund policy window"
         );
+    }
+
+    #[test]
+    fn test_build_event_refund_approved_external_payment_payload() {
+        // Setup identifiers and data structures
+        let event_id = Uuid::new_v4();
+        let event = sample_event_summary(event_id, Uuid::new_v4());
+        let site_settings = sample_site_settings();
+        let server_cfg = sample_server_cfg();
+
+        // Build an external refund-approval payload
+        let approved =
+            build_event_refund_approved_template_data(&event, true, &server_cfg, &site_settings)
+                .expect("template data to be built");
+
+        // Check the payload marks the refund as returned outside OCG
+        let approved_template: EventRefundApproved =
+            serde_json::from_value(approved).expect("template data to deserialize");
+        assert_eq!(approved_template.event.event_id, event_id);
+        assert!(approved_template.external_payment);
     }
 
     #[test]

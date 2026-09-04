@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(42);
+select plan(50);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(42);
 \set communityID '3a020000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a020000-0000-0000-0000-000000000011'
 \set groupCategoryID '3a020000-0000-0000-0000-000000000010'
+\set groupExternalID '3a020000-0000-0000-0000-0000000000a0'
 \set groupID '3a020000-0000-0000-0000-000000000002'
 \set invalidUserID '3a020000-0000-0000-0000-000000009999'
 \set sponsor1ID '3a020000-0000-0000-0000-000000000061'
@@ -25,6 +26,17 @@ select plan(42);
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Operator allowlist and window limits used by external paid-event scenarios
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
 
 -- Community
 insert into community (
@@ -76,6 +88,25 @@ insert into "group" (
     'A study group focused on Kubernetes best practices and implementation',
     :'groupCategoryID',
     '{"provider": "stripe", "recipient_id": "acct_add_event", "seller_display_name": "Add Event Fiscal Sponsor"}'::jsonb
+);
+
+-- Allowlisted group with external payments enabled for paid external creates
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    true,
+    :'groupCategoryID',
+    :'groupExternalID',
+    'External Payments Group',
+    'external-payments-group'
 );
 
 -- Group Sponsors
@@ -1171,6 +1202,374 @@ select throws_ok(
     )$$,
     'questionnaire question id must be a uuid',
     'Should validate registration questions when creating an event'
+);
+
+-- Should reject a submitted external URL when the group cannot collect externally
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Rejected External Fields Event",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "external_payment_instructions": "Pay offline",
+            "external_payment_url": "https://pay.example.test/ignored",
+            "external_payment_window_hours": 48,
+            "payment_currency_code": "USD",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000a1",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 2500,
+                            "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000a2"
+                        }
+                    ],
+                    "seats_total": 25,
+                    "title": "General admission"
+                }
+            ],
+            "venue_address": "123 Main St",
+            "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_name": "Community Hall",
+            "venue_zip_code": "94105"
+        }'::jsonb,
+        null::jsonb,
+        'stripe'
+    )$$,
+    'external payments are not available for this event',
+    'Should reject a submitted external URL when the group cannot collect externally'
+);
+
+-- Should create a paid external event with a valid payment URL
+select add_event(
+    null::uuid,
+    :'groupExternalID'::uuid,
+    '{
+        "name": "Paid External Event",
+        "description": "Test",
+        "timezone": "UTC",
+        "category_id": "3a020000-0000-0000-0000-000000000011",
+        "kind_id": "in-person",
+        "external_payment_instructions": "Transfer to the organizer account",
+        "external_payment_url": "https://pay.example.test/add",
+        "external_payment_window_hours": 96,
+        "payment_currency_code": "KRW",
+        "tax_behavior": "exclusive",
+        "tax_calculation_mode": "automatic",
+        "ticket_types": [
+            {
+                "active": true,
+                "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000a3",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 5000,
+                        "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000a4"
+                    }
+                ],
+                "seats_total": 25,
+                "title": "General admission"
+            }
+        ],
+        "venue_address": "1 Test Street",
+        "venue_city": "Seoul",
+        "venue_country_code": "KR",
+        "venue_name": "Test Hall",
+        "venue_zip_code": "00000"
+    }'::jsonb,
+    null::jsonb,
+    null
+) as "paidExternalEventID" \gset
+
+select is(
+    (
+        select jsonb_build_object(
+            'external_payment_instructions', e.external_payment_instructions,
+            'external_payment_url', e.external_payment_url,
+            'external_payment_window_hours', e.external_payment_window_hours,
+            'tax_behavior', e.tax_behavior,
+            'tax_calculation_mode', e.tax_calculation_mode
+        )
+        from event e
+        where e.event_id = :'paidExternalEventID'::uuid
+    ),
+    '{
+        "external_payment_instructions": "Transfer to the organizer account",
+        "external_payment_url": "https://pay.example.test/add",
+        "external_payment_window_hours": 96,
+        "tax_behavior": "inclusive",
+        "tax_calculation_mode": "none"
+    }'::jsonb,
+    'Should create a paid external event with a valid payment URL'
+);
+
+-- Should persist a null external window so checkout can apply the config default
+select add_event(
+    null::uuid,
+    :'groupExternalID'::uuid,
+    '{
+        "name": "External Default Window Event",
+        "description": "Test",
+        "timezone": "UTC",
+        "category_id": "3a020000-0000-0000-0000-000000000011",
+        "kind_id": "in-person",
+        "external_payment_url": "https://pay.example.test/default-window",
+        "payment_currency_code": "KRW",
+        "ticket_types": [
+            {
+                "active": true,
+                "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000a5",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 5000,
+                        "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000a6"
+                    }
+                ],
+                "seats_total": 25,
+                "title": "General admission"
+            }
+        ],
+        "venue_address": "1 Test Street",
+        "venue_city": "Seoul",
+        "venue_country_code": "KR",
+        "venue_name": "Test Hall",
+        "venue_zip_code": "00000"
+    }'::jsonb,
+    null::jsonb,
+    null
+) as "externalDefaultWindowEventID" \gset
+
+select is(
+    (
+        select external_payment_window_hours
+        from event
+        where event_id = :'externalDefaultWindowEventID'::uuid
+    ),
+    null::int,
+    'Should persist a null external window so checkout can apply the config default'
+);
+
+-- Should reject a paid external event without a payment URL
+select throws_ok(
+    format(
+        $$select add_event(
+            null::uuid,
+            %L::uuid,
+            '{
+                "name": "Missing External URL Event",
+                "description": "Test",
+                "timezone": "UTC",
+                "category_id": "3a020000-0000-0000-0000-000000000011",
+                "kind_id": "in-person",
+                "payment_currency_code": "KRW",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000a7",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000a8"
+                            }
+                        ],
+                        "seats_total": 25,
+                        "title": "General admission"
+                    }
+                ],
+                "venue_address": "1 Test Street",
+                "venue_city": "Seoul",
+                "venue_country_code": "KR",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "00000"
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID'
+    ),
+    'paid-capable events require a valid external payment url',
+    'Should reject a paid external event without a payment URL'
+);
+
+-- Should reject a paid external event with an invalid payment URL
+select throws_ok(
+    format(
+        $$select add_event(
+            null::uuid,
+            %L::uuid,
+            '{
+                "name": "Invalid External URL Event",
+                "description": "Test",
+                "timezone": "UTC",
+                "category_id": "3a020000-0000-0000-0000-000000000011",
+                "kind_id": "in-person",
+                "external_payment_url": "not-a-url",
+                "payment_currency_code": "KRW",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000a9",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000aa"
+                            }
+                        ],
+                        "seats_total": 25,
+                        "title": "General admission"
+                    }
+                ],
+                "venue_address": "1 Test Street",
+                "venue_city": "Seoul",
+                "venue_country_code": "KR",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "00000"
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID'
+    ),
+    'paid-capable events require a valid external payment url',
+    'Should reject a paid external event with an invalid payment URL'
+);
+
+-- Should reject a paid external event with a venue outside the group country
+select throws_ok(
+    format(
+        $$select add_event(
+            null::uuid,
+            %L::uuid,
+            '{
+                "name": "External Abroad Event",
+                "description": "Test",
+                "timezone": "UTC",
+                "category_id": "3a020000-0000-0000-0000-000000000011",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/abroad",
+                "payment_currency_code": "KRW",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000af",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000b0"
+                            }
+                        ],
+                        "seats_total": 25,
+                        "title": "General admission"
+                    }
+                ],
+                "venue_address": "1 Test Street",
+                "venue_city": "Tokyo",
+                "venue_country_code": "JP",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "100-0001"
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID'
+    ),
+    'external paid events require a venue in the group country',
+    'Should reject a paid external event with a venue outside the group country'
+);
+
+-- Should reject an external payment window above the configured maximum
+select throws_ok(
+    format(
+        $$select add_event(
+            null::uuid,
+            %L::uuid,
+            '{
+                "name": "External Window Too Large Event",
+                "description": "Test",
+                "timezone": "UTC",
+                "category_id": "3a020000-0000-0000-0000-000000000011",
+                "kind_id": "in-person",
+                "external_payment_url": "https://pay.example.test/too-large",
+                "external_payment_window_hours": 337,
+                "payment_currency_code": "KRW",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000ab",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000ac"
+                            }
+                        ],
+                        "seats_total": 25,
+                        "title": "General admission"
+                    }
+                ],
+                "venue_address": "1 Test Street",
+                "venue_city": "Seoul",
+                "venue_country_code": "KR",
+                "venue_name": "Test Hall",
+                "venue_zip_code": "00000"
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID'
+    ),
+    'external payment window exceeds the configured maximum',
+    'Should reject an external payment window above the configured maximum'
+);
+
+-- Should reject paid external virtual events without a complete physical venue
+select throws_ok(
+    format(
+        $$select add_event(
+            null::uuid,
+            %L::uuid,
+            '{
+                "name": "External Virtual Event",
+                "description": "Test",
+                "timezone": "UTC",
+                "category_id": "3a020000-0000-0000-0000-000000000011",
+                "kind_id": "virtual",
+                "external_payment_url": "https://pay.example.test/virtual",
+                "payment_currency_code": "KRW",
+                "ticket_types": [
+                    {
+                        "active": true,
+                        "event_ticket_type_id": "3a020000-0000-0000-0000-0000000000ad",
+                        "order": 1,
+                        "price_windows": [
+                            {
+                                "amount_minor": 5000,
+                                "event_ticket_price_window_id": "3a020000-0000-0000-0000-0000000000ae"
+                            }
+                        ],
+                        "seats_total": 25,
+                        "title": "General admission"
+                    }
+                ]
+            }'::jsonb,
+            null::jsonb,
+            null
+        )$$,
+        :'groupExternalID'
+    ),
+    'paid ticketing requires an in-person or hybrid event with a complete physical venue',
+    'Should reject paid external virtual events without a complete physical venue'
 );
 
 -- ============================================================================

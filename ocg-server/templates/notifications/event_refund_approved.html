@@ -15,8 +15,14 @@
     Your payment for <strong>{{ event.name }}</strong> has been refunded.
     <br />
     <br />
-    Your ticket has been released. The time it takes for the money to appear in
-    your account depends on your payment provider and bank.
+    Your ticket has been released.
+    {% if external_payment -%}
+      The organizer confirmed that the money was returned outside OCG. Contact
+      {{ event.group_name }} if you need transfer details.
+    {% else -%}
+      The time it takes for the money to appear in your account depends on your
+      payment provider and bank.
+    {% endif -%}
   </p>
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}

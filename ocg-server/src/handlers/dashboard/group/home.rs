@@ -181,23 +181,32 @@ pub(crate) async fn page(
             Content::Refunds(template)
         }
         Tab::Settings => {
-            let (can_manage_settings, group, has_child_links, categories, parent_options, regions) =
-                tokio::try_join!(
-                    db.user_has_group_permission(
-                        &community_id,
-                        &group_id,
-                        &user.user_id,
-                        GroupPermission::SettingsWrite
-                    ),
-                    db.get_group_full(community_id, group_id),
-                    db.group_has_child_links(community_id, group_id),
-                    db.list_group_categories(community_id),
-                    db.list_group_parent_options(community_id, user.user_id, Some(group_id)),
-                    db.list_regions(community_id)
-                )?;
+            let (
+                can_manage_settings,
+                group,
+                has_child_links,
+                categories,
+                parent_options,
+                regions,
+                external_payments,
+            ) = tokio::try_join!(
+                db.user_has_group_permission(
+                    &community_id,
+                    &group_id,
+                    &user.user_id,
+                    GroupPermission::SettingsWrite
+                ),
+                db.get_group_full(community_id, group_id),
+                db.group_has_child_links(community_id, group_id),
+                db.list_group_categories(community_id),
+                db.list_group_parent_options(community_id, user.user_id, Some(group_id)),
+                db.list_regions(community_id),
+                db.get_group_external_payments_context(community_id, group_id)
+            )?;
             Content::Settings(Box::new(settings::UpdatePage {
                 can_manage_settings,
                 categories,
+                external_payments,
                 group,
                 has_child_links,
                 parent_options,

@@ -705,7 +705,7 @@
     <div data-content="payments" class="hidden">
       <form id="payments-form">
         <div class="space-y-12">
-          {% if payments_ready -%}
+          {% if self.is_paid_ticketing_available() -%}
             <div>
               {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
 
@@ -728,96 +728,155 @@
                   <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
                 </div>
 
-                <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
-                    <button type="button"
-                            class="btn-primary-outline btn-mini"
-                            data-automatic-tax-readiness-action="check"
-                            aria-label="Save the event before checking whether its venue is ready for automatic tax."
-                            title="Save the event before checking whether its venue is ready for automatic tax."
-                            disabled>Check readiness</button>
+                {% if self.uses_external_ticketing() -%}
+                  <div class="col-span-full 2xl:col-span-4">
+                    <label for="external_payment_url" class="form-label">
+                      External payment URL
+                      <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
+                    </label>
+                    <div class="mt-2">
+                      <input type="url"
+                             id="external_payment_url"
+                             name="external_payment_url"
+                             class="input-primary"
+                             maxlength="{{ crate::validation::MAX_LEN_L }}"
+                             placeholder="https://">
+                    </div>
+                    <p class="form-legend">
+                      Attendees open this page to pay outside the platform. Include the purchase
+                      reference shown after they reserve a ticket.
+                    </p>
                   </div>
-                  <div class="mt-2">
-                    <select id="tax_calculation_mode"
-                            name="tax_calculation_mode"
-                            class="select-primary">
-                      <option value="automatic" selected>Automatic Stripe Tax</option>
-                      <option value="manual">Manual Stripe Tax Rates</option>
-                      <option value="none">Do not collect tax</option>
-                    </select>
-                  </div>
-                  <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
-                </div>
 
-                <div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">
-                  <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
-                  <div class="mt-2">
-                    <select id="tax_behavior" name="tax_behavior" class="select-primary">
-                      <option value="inclusive" selected>Tax included in ticket price</option>
-                      <option value="exclusive">Tax added at Checkout</option>
-                    </select>
+                  <div class="col-span-full 2xl:col-span-4">
+                    <label for="external_payment_instructions" class="form-label">Payment instructions</label>
+                    <div class="mt-2">
+                      <textarea id="external_payment_instructions"
+                                name="external_payment_instructions"
+                                class="input-primary"
+                                rows="4"
+                                maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
+                    </div>
+                    <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
                   </div>
-                  <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
-                </div>
 
-                <div id="manual-tax-rates-fieldset"
-                     class="col-span-full max-w-3xl"
-                     data-disabled="false"
-                     data-selected-rate-ids="[]"
-                     data-tax-rates-url="/dashboard/group/events/tax-rates"
-                     tabindex="-1"
-                     hidden>
-                  <div class="form-label">
-                    <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
-                    <span class="group/manual-tax-info relative inline-flex align-super">
-                      <button type="button"
-                              class="inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                              aria-label="About Manual Stripe Tax Rates"
-                              aria-describedby="manual-tax-rates-info">
-                        <span class="svg-icon size-3 icon-question-mark bg-stone-500"
-                              aria-hidden="true"></span>
-                      </button>
-                      {% call dashboard::tooltip_panel(
-                        id = "manual-tax-rates-info",
-                        title = "Stripe Tax Rates",
-                        visibility_classes = "group-hover/manual-tax-info:visible group-hover/manual-tax-info:opacity-100 group-focus-within/manual-tax-info:visible group-focus-within/manual-tax-info:opacity-100",
-                        width_classes = "w-72"
-                      ) -%}
-                      <span class="block text-stone-900">Create Tax Rates in the fiscal sponsor's Stripe account.</span>
-                      {% endcall -%}
-                    </span>
+                  <div class="col-span-full 2xl:col-span-2">
+                    <label for="external_payment_window_hours" class="form-label">Payment window (hours)</label>
+                    <div class="mt-2">
+                      <input type="number"
+                             id="external_payment_window_hours"
+                             name="external_payment_window_hours"
+                             class="input-primary"
+                             min="1"
+                             {% if let Some(max_hours) = external_payments.max_payment_window_hours %}max="{{ max_hours }}"{% endif %}
+                             {% if let Some(default_hours) = external_payments.default_payment_window_hours %}placeholder="{{ default_hours }}"{% endif %}>
+                    </div>
+                    <p class="form-legend">
+                      Organizer-confirmation deadline, capped by registration close and event start.
+                      {% if let Some(max_hours) = external_payments.max_payment_window_hours -%}
+                        Maximum {{ max_hours }} hours.
+                      {% endif -%}
+                    </p>
                   </div>
-                  <div class="mt-2 flex items-end gap-3">
-                    <select id="manual-tax-rates"
-                            name="manual_tax_rate_ids[]"
-                            class="select-primary flex-1"
-                            data-tax-rates-role="select"
-                            aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>
-                    <button type="button"
-                            class="btn-primary-outline inline-flex min-w-28 shrink-0 items-center justify-center whitespace-nowrap"
-                            data-tax-rates-action="retry"
-                            aria-label="Retry loading Stripe Tax Rates"
-                            hidden>
-                      <span data-tax-rates-role="retry-label">Retry</span>
-                      <span class="inline-flex items-center"
-                            data-tax-rates-role="retry-loading"
-                            hidden>
-                        <svg-spinner size="size-4" label="Loading Stripe Tax Rates">
-                        </svg-spinner>
-                      </span>
-                    </button>
-                  </div>
-                  <p id="manual-tax-rates-help" class="form-legend">
-                    Select an active rate owned by this group's fiscal sponsor. The same rate applies to every paid ticket tier.
+
+                  <input type="hidden" name="tax_calculation_mode" value="none">
+                  <p class="col-span-full text-sm/6 text-stone-600">
+                    Organizers are responsible for tax and receipts for payments collected outside
+                    this platform. Paid tickets require a complete venue in the group country
+                    {%- if let Some(country_code) = external_payments.country_code %} ({{ country_code }}){% endif -%}.
                   </p>
-                  <p id="manual-tax-rates-state"
-                     class="mt-2 rounded-md border px-4 py-3 text-sm/6"
-                     data-tax-rates-role="state"
-                     role="status"
-                     aria-live="polite"
-                     hidden></p>
-                </div>
+                {% else -%}
+                  <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
+                      <button type="button"
+                              class="btn-primary-outline btn-mini"
+                              data-automatic-tax-readiness-action="check"
+                              aria-label="Save the event before checking whether its venue is ready for automatic tax."
+                              title="Save the event before checking whether its venue is ready for automatic tax."
+                              disabled>Check readiness</button>
+                    </div>
+                    <div class="mt-2">
+                      <select id="tax_calculation_mode"
+                              name="tax_calculation_mode"
+                              class="select-primary">
+                        <option value="automatic" selected>Automatic Stripe Tax</option>
+                        <option value="manual">Manual Stripe Tax Rates</option>
+                        <option value="none">Do not collect tax</option>
+                      </select>
+                    </div>
+                    <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
+                  </div>
+
+                  <div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">
+                    <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
+                    <div class="mt-2">
+                      <select id="tax_behavior" name="tax_behavior" class="select-primary">
+                        <option value="inclusive" selected>Tax included in ticket price</option>
+                        <option value="exclusive">Tax added at Checkout</option>
+                      </select>
+                    </div>
+                    <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
+                  </div>
+
+                  <div id="manual-tax-rates-fieldset"
+                       class="col-span-full max-w-3xl"
+                       data-disabled="false"
+                       data-selected-rate-ids="[]"
+                       data-tax-rates-url="/dashboard/group/events/tax-rates"
+                       tabindex="-1"
+                       hidden>
+                    <div class="form-label">
+                      <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
+                      <span class="group/manual-tax-info relative inline-flex align-super">
+                        <button type="button"
+                                class="inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                                aria-label="About Manual Stripe Tax Rates"
+                                aria-describedby="manual-tax-rates-info">
+                          <span class="svg-icon size-3 icon-question-mark bg-stone-500"
+                                aria-hidden="true"></span>
+                        </button>
+                        {% call dashboard::tooltip_panel(
+                          id = "manual-tax-rates-info",
+                          title = "Stripe Tax Rates",
+                          visibility_classes = "group-hover/manual-tax-info:visible group-hover/manual-tax-info:opacity-100 group-focus-within/manual-tax-info:visible group-focus-within/manual-tax-info:opacity-100",
+                          width_classes = "w-72"
+                        ) -%}
+                        <span class="block text-stone-900">Create Tax Rates in the fiscal sponsor's Stripe account.</span>
+                        {% endcall -%}
+                      </span>
+                    </div>
+                    <div class="mt-2 flex items-end gap-3">
+                      <select id="manual-tax-rates"
+                              name="manual_tax_rate_ids[]"
+                              class="select-primary flex-1"
+                              data-tax-rates-role="select"
+                              aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>
+                      <button type="button"
+                              class="btn-primary-outline inline-flex min-w-28 shrink-0 items-center justify-center whitespace-nowrap"
+                              data-tax-rates-action="retry"
+                              aria-label="Retry loading Stripe Tax Rates"
+                              hidden>
+                        <span data-tax-rates-role="retry-label">Retry</span>
+                        <span class="inline-flex items-center"
+                              data-tax-rates-role="retry-loading"
+                              hidden>
+                          <svg-spinner size="size-4" label="Loading Stripe Tax Rates">
+                          </svg-spinner>
+                        </span>
+                      </button>
+                    </div>
+                    <p id="manual-tax-rates-help" class="form-legend">
+                      Select an active rate owned by this group's fiscal sponsor. The same rate applies to every paid ticket tier.
+                    </p>
+                    <p id="manual-tax-rates-state"
+                       class="mt-2 rounded-md border px-4 py-3 text-sm/6"
+                       data-tax-rates-role="state"
+                       role="status"
+                       aria-live="polite"
+                       hidden></p>
+                  </div>
+                {% endif -%}
               </div>
             </div>
           {% endif -%}
@@ -828,7 +887,7 @@
               Use one ticket type per tier and add price windows for scheduled pricing.
               Paid ticket prices require an in-person or hybrid event with a venue name,
               address, city, postal code, and country.
-              {% if payments_ready -%}
+              {% if self.is_paid_ticketing_available() -%}
                 Set the ticket amount to 0 to make a specific tier free.
               {% else -%}
                 Ticket prices are fixed at 0 until payments are configured.
@@ -841,11 +900,11 @@
                         class="btn-secondary inline-flex items-center justify-center whitespace-nowrap"
                         aria-label="Add ticket type">Add ticket type</button>
               </div>
-              <ticket-types-editor id="ticket-types-ui" class="mt-5 block space-y-4" data-disabled="false" {% if !payments_ready %}free-only{% endif %} ticket-types='[{"active":true,"availability":"public","order":1,"price_windows":[{"amount_minor":0}],"seats_total":500,"title":"General Admission"}]'></ticket-types-editor>
+              <ticket-types-editor id="ticket-types-ui" class="mt-5 block space-y-4" data-disabled="false" {% if !self.is_paid_ticketing_available() %}free-only{% endif %} ticket-types='[{"active":true,"availability":"public","order":1,"price_windows":[{"amount_minor":0}],"seats_total":500,"title":"General Admission"}]'></ticket-types-editor>
             </div>
           </div>
 
-          {% if payments_ready -%}
+          {% if self.is_paid_ticketing_available() -%}
             <div class="pb-12">
               <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
               <p class="mt-1 text-sm/6 text-stone-500">

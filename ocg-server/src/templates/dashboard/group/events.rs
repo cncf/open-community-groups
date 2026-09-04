@@ -21,8 +21,8 @@ use crate::{
         group::GroupSponsor,
         pagination::{self, Pagination, ToRawQuery},
         payments::{
-            EventDiscountType, EventTicketTypeAvailability, GroupPaymentRecipient,
-            TicketTaxBehavior, TicketTaxCalculationMode,
+            EventDiscountType, EventTicketTypeAvailability, GroupExternalPaymentsContext,
+            GroupPaymentRecipient, TicketTaxBehavior, TicketTaxCalculationMode,
         },
         questionnaire::QuestionnaireQuestion,
     },
@@ -50,6 +50,8 @@ pub(crate) struct AddPage {
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
+    /// Group-level external-payments eligibility and window limits.
+    pub external_payments: GroupExternalPaymentsContext,
     /// Group identifier.
     pub group_id: Uuid,
     /// Flag indicating if meetings functionality is enabled.
@@ -71,6 +73,24 @@ pub(crate) struct AddPage {
 
     /// Payments recipient configured for paid ticket revenue.
     pub payment_recipient: Option<GroupPaymentRecipient>,
+}
+
+impl AddPage {
+    /// Returns true when paid tickets can be configured through Stripe or external payments.
+    pub(crate) fn is_paid_ticketing_available(&self) -> bool {
+        !matches!(
+            event_ticketing_mode(self.payments_ready, &self.external_payments),
+            EventTicketingMode::Unavailable
+        )
+    }
+
+    /// Returns true when the group currently collects paid tickets outside the platform.
+    pub(crate) fn uses_external_ticketing(&self) -> bool {
+        matches!(
+            event_ticketing_mode(self.payments_ready, &self.external_payments),
+            EventTicketingMode::External
+        )
+    }
 }
 
 /// List events page template.
@@ -115,6 +135,8 @@ pub(crate) struct UpdatePage {
     pub event: EventFull,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
+    /// Group-level external-payments eligibility and window limits.
+    pub external_payments: GroupExternalPaymentsContext,
     /// Group identifier.
     pub group_id: Uuid,
     /// Flag indicating if meetings functionality is enabled.
@@ -139,6 +161,14 @@ pub(crate) struct UpdatePage {
 }
 
 impl UpdatePage {
+    /// Returns true when paid tickets can be configured through Stripe or external payments.
+    pub(crate) fn is_paid_ticketing_available(&self) -> bool {
+        !matches!(
+            event_ticketing_mode(self.payments_ready, &self.external_payments),
+            EventTicketingMode::Unavailable
+        )
+    }
+
     /// Returns true when the provided currency code matches the current event currency.
     pub(crate) fn is_selected_payment_currency_code(&self, payment_currency_code: &str) -> bool {
         self.event.payment_currency_code.as_deref() == Some(payment_currency_code)
@@ -147,6 +177,14 @@ impl UpdatePage {
     /// Returns true when tax is added to the configured ticket price.
     pub(crate) fn uses_exclusive_ticket_tax(&self) -> bool {
         self.event.tax_behavior == TicketTaxBehavior::Exclusive
+    }
+
+    /// Returns true when the group currently collects paid tickets outside the platform.
+    pub(crate) fn uses_external_ticketing(&self) -> bool {
+        matches!(
+            event_ticketing_mode(self.payments_ready, &self.external_payments),
+            EventTicketingMode::External
+        )
     }
 
     /// Returns true when the event uses manual Stripe Tax Rates.
@@ -299,6 +337,24 @@ pub(crate) struct Event {
     /// Whether event reminder notifications are enabled.
     #[garde(skip)]
     pub event_reminder_enabled: Option<bool>,
+    /// Organizer-supplied instructions for paying outside the platform.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub external_payment_instructions: Option<String>,
+    /// Whether the payment instructions field was submitted.
+    #[garde(skip)]
+    pub external_payment_instructions_present: Option<bool>,
+    /// External payment URL required for paid events in external mode.
+    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
+    pub external_payment_url: Option<String>,
+    /// Whether the external payment URL field was submitted.
+    #[garde(skip)]
+    pub external_payment_url_present: Option<bool>,
+    /// Organizer-confirmation window in hours for external payments.
+    #[garde(range(min = 1))]
+    pub external_payment_window_hours: Option<i32>,
+    /// Whether the payment window field was submitted.
+    #[garde(skip)]
+    pub external_payment_window_hours_present: Option<bool>,
     /// User IDs of event hosts.
     #[garde(skip)]
     pub hosts: Option<Vec<Uuid>>,
@@ -440,17 +496,33 @@ impl Event {
             _ => Map::new(),
         };
 
-        // Normalize tax fields that do not apply to the selected mode
-        if self.tax_calculation_mode != TicketTaxCalculationMode::Manual
-            || (self.manual_tax_rate_ids_present.is_some() && self.manual_tax_rate_ids.is_none())
-        {
-            payload.insert("manual_tax_rate_ids".to_string(), Value::Array(Vec::new()));
-        }
-        if self.tax_calculation_mode == TicketTaxCalculationMode::None {
+        // External payments never use provider tax
+        let is_external = self
+            .external_payment_url
+            .as_deref()
+            .is_some_and(|url| !url.trim().is_empty());
+        if is_external {
             payload.insert(
                 "tax_behavior".to_string(),
                 serde_json::to_value(TicketTaxBehavior::Inclusive)?,
             );
+            payload.insert(
+                "tax_calculation_mode".to_string(),
+                serde_json::to_value(TicketTaxCalculationMode::None)?,
+            );
+        } else if self.tax_calculation_mode == TicketTaxCalculationMode::None {
+            payload.insert(
+                "tax_behavior".to_string(),
+                serde_json::to_value(TicketTaxBehavior::Inclusive)?,
+            );
+        }
+
+        // Normalize tax fields that do not apply to the selected mode
+        if is_external
+            || self.tax_calculation_mode != TicketTaxCalculationMode::Manual
+            || (self.manual_tax_rate_ids_present.is_some() && self.manual_tax_rate_ids.is_none())
+        {
+            payload.insert("manual_tax_rate_ids".to_string(), Value::Array(Vec::new()));
         }
 
         // Assign identifiers to discount codes that do not have one yet
@@ -468,6 +540,9 @@ impl Event {
         // Remove ticketing fields so they can be reinserted from submitted inputs
         payload.remove("discount_codes");
         payload.remove("discount_codes_present");
+        payload.remove("external_payment_instructions_present");
+        payload.remove("external_payment_url_present");
+        payload.remove("external_payment_window_hours_present");
         payload.remove("manual_tax_rate_ids_present");
         payload.remove("recurrence_additional_occurrences");
         payload.remove("recurrence_pattern");
@@ -475,6 +550,26 @@ impl Event {
         payload.remove("registration_questions_present");
         payload.remove("ticket_types");
         payload.remove("ticket_types_present");
+
+        // Distinguish submitted-empty external fields from omitted fields
+        if self.external_payment_instructions_present.is_some() {
+            payload.insert(
+                "external_payment_instructions".to_string(),
+                serde_json::to_value(&self.external_payment_instructions)?,
+            );
+        }
+        if self.external_payment_url_present.is_some() {
+            payload.insert(
+                "external_payment_url".to_string(),
+                serde_json::to_value(&self.external_payment_url)?,
+            );
+        }
+        if self.external_payment_window_hours_present.is_some() {
+            payload.insert(
+                "external_payment_window_hours".to_string(),
+                serde_json::to_value(self.external_payment_window_hours)?,
+            );
+        }
 
         // Preserve omitted registration questions on partial form submissions,
         // but allow an explicitly submitted empty questions editor to clear them
@@ -788,15 +883,49 @@ pub(crate) struct TicketType {
     pub seats_total: Option<i32>,
 }
 
+// Helpers.
+
+/// Paid-ticketing rail available on the event editor.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EventTicketingMode {
+    /// Organizer-collected payments outside the platform.
+    External,
+    /// Stripe Connect payments.
+    Stripe,
+    /// Paid tickets cannot be configured.
+    Unavailable,
+}
+
+/// Resolves the event editor's paid-ticketing rail.
+fn event_ticketing_mode(
+    payments_ready: bool,
+    external_payments: &GroupExternalPaymentsContext,
+) -> EventTicketingMode {
+    // Prefer organizer-collected payments when the group is opted in and allowlisted
+    if external_payments.enabled && external_payments.eligible {
+        EventTicketingMode::External
+    // Use Stripe when a matching fiscal sponsor is configured
+    } else if payments_ready {
+        EventTicketingMode::Stripe
+    // Hide paid ticketing until one rail is available
+    } else {
+        EventTicketingMode::Unavailable
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
 
     use crate::types::payments::{
-        EventDiscountType, EventTicketTypeAvailability, TicketTaxBehavior, TicketTaxCalculationMode,
+        EventDiscountType, EventTicketTypeAvailability, GroupExternalPaymentsContext,
+        TicketTaxBehavior, TicketTaxCalculationMode,
     };
 
-    use super::{DiscountCode, Event, TicketPriceWindow, TicketType};
+    use super::{
+        DiscountCode, Event, EventTicketingMode, TicketPriceWindow, TicketType,
+        event_ticketing_mode,
+    };
 
     #[test]
     fn discount_code_deserialization_keeps_explicit_availability_override_signals() {
@@ -857,6 +986,84 @@ timezone=UTC",
     }
 
     #[test]
+    fn test_event_ticketing_mode_prefers_external_when_eligible() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: true,
+            enabled: true,
+            country_code: Some("KR".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+        };
+
+        assert_eq!(
+            event_ticketing_mode(true, &external_payments),
+            EventTicketingMode::External
+        );
+    }
+
+    #[test]
+    fn test_event_ticketing_mode_returns_external_without_stripe_recipient() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: true,
+            enabled: true,
+            country_code: Some("KR".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+        };
+
+        assert_eq!(
+            event_ticketing_mode(false, &external_payments),
+            EventTicketingMode::External
+        );
+    }
+
+    #[test]
+    fn test_event_ticketing_mode_returns_stripe_when_external_is_unavailable() {
+        let external_payments = GroupExternalPaymentsContext {
+            configured: true,
+            eligible: false,
+            enabled: false,
+            country_code: Some("US".to_string()),
+            default_payment_window_hours: Some(72),
+            max_payment_window_hours: Some(336),
+        };
+
+        assert_eq!(
+            event_ticketing_mode(true, &external_payments),
+            EventTicketingMode::Stripe
+        );
+    }
+
+    #[test]
+    fn test_event_ticketing_mode_returns_unavailable_without_either_rail() {
+        let external_payments = GroupExternalPaymentsContext::default();
+
+        assert_eq!(
+            event_ticketing_mode(false, &external_payments),
+            EventTicketingMode::Unavailable
+        );
+    }
+
+    #[test]
+    fn to_db_payload_clears_submitted_empty_external_payment_fields() {
+        let mut event = sample_event();
+        event.external_payment_instructions_present = Some(true);
+        event.external_payment_url_present = Some(true);
+        event.external_payment_window_hours_present = Some(true);
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert_eq!(payload["external_payment_instructions"], Value::Null);
+        assert_eq!(payload["external_payment_url"], Value::Null);
+        assert_eq!(payload["external_payment_window_hours"], Value::Null);
+        assert!(payload.get("external_payment_instructions_present").is_none());
+        assert!(payload.get("external_payment_url_present").is_none());
+        assert!(payload.get("external_payment_window_hours_present").is_none());
+    }
+
+    #[test]
     fn to_db_payload_clears_submitted_empty_manual_tax_rate_selection() {
         let mut event = sample_event();
         event.manual_tax_rate_ids_present = Some(true);
@@ -878,6 +1085,9 @@ timezone=UTC",
         assert_eq!(payload["name"], "Sample Event");
         assert_eq!(payload["timezone"], "UTC");
         assert!(payload.get("discount_codes").is_none());
+        assert!(payload.get("external_payment_instructions").is_none());
+        assert!(payload.get("external_payment_url").is_none());
+        assert!(payload.get("external_payment_window_hours").is_none());
         assert!(payload.get("registration_questions").is_none());
         assert!(payload.get("ticket_types").is_none());
     }
@@ -910,6 +1120,21 @@ timezone=UTC",
 
         assert!(payload.get("manual_tax_rate_ids").is_none());
         assert!(payload.get("manual_tax_rate_ids_present").is_none());
+    }
+
+    #[test]
+    fn to_db_payload_normalizes_external_event_tax() {
+        let mut event = sample_event();
+        event.external_payment_url = Some("https://pay.example.test/add".to_string());
+        event.manual_tax_rate_ids = Some(vec!["txr_stale".to_string()]);
+        event.tax_behavior = TicketTaxBehavior::Exclusive;
+        event.tax_calculation_mode = TicketTaxCalculationMode::Automatic;
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert_eq!(payload["manual_tax_rate_ids"], serde_json::json!([]));
+        assert_eq!(payload["tax_behavior"], "inclusive");
+        assert_eq!(payload["tax_calculation_mode"], "none");
     }
 
     #[test]

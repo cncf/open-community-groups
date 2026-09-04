@@ -39,7 +39,7 @@ async fn build_refund_approval_template_data_returns_expected_payload() {
     // Build the template payload
     let composer = sample_notification_composer(db, MockNotificationsManager::new());
     let template_data = composer
-        .build_refund_approval_template_data(community_id, event_id)
+        .build_refund_approval_template_data(community_id, event_id, false)
         .await
         .expect("refund approval template data to be built");
 
@@ -48,6 +48,45 @@ async fn build_refund_approval_template_data_returns_expected_payload() {
         template_data,
         to_value(&EventRefundApproved {
             event: sample_event_summary(event_id),
+            external_payment: false,
+            link: "/community/group/group/event/event".to_string(),
+            theme: SiteSettings::default().theme,
+        })
+        .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn build_refund_approval_template_data_marks_external_payment() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let site_settings = SiteSettings::default();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Build the template payload
+    let composer = sample_notification_composer(db, MockNotificationsManager::new());
+    let template_data = composer
+        .build_refund_approval_template_data(community_id, event_id, true)
+        .await
+        .expect("refund approval template data to be built");
+
+    // Check the payload marks the refund as returned outside OCG
+    assert_eq!(
+        template_data,
+        to_value(&EventRefundApproved {
+            event: sample_event_summary(event_id),
+            external_payment: true,
             link: "/community/group/group/event/event".to_string(),
             theme: SiteSettings::default().theme,
         })
@@ -139,6 +178,8 @@ async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance
             community_id,
             event_id,
             user_id,
+
+            transitioned: None,
         })
         .await;
 }
@@ -254,6 +295,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),
         group_slug: "group".to_string(),
+        has_external_payment: false,
         has_registration_questions: false,
         has_related_events: false,
         kind: EventKind::default(),

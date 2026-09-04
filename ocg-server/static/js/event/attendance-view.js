@@ -5,6 +5,7 @@ import {
   setElementHidden,
 } from "/static/js/common/dom.js";
 import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
+import { formatMinorUnitsForDisplay } from "/static/js/dashboard/event/ticketing/currency.js";
 import {
   ATTEND_EVENT_LABEL,
   CANCEL_ATTENDANCE_LABEL,
@@ -29,7 +30,9 @@ import {
 } from "/static/js/event/attendance-dom.js";
 import { initializeTicketModalControls } from "/static/js/event/attendance-ticket-view.js";
 
+const AWAITING_ORGANIZER_CONFIRMATION_LABEL = "Awaiting organizer confirmation";
 const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
+const OPEN_PAYMENT_PAGE_LABEL = "Open payment page";
 const CLAIM_TICKET_LABEL = "Claim ticket";
 const COMPLETE_REGISTRATION_LABEL = "Complete registration";
 const CONFIRM_RSVP_LABEL = "Confirm RSVP";
@@ -395,10 +398,11 @@ export const showPendingApprovalAttendanceState = (container, meta) => {
  * Shows the pending-payment state for an attendee.
  * @param {HTMLElement} container - Attendance container element
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{resume_checkout_url?: string}} response - Attendance response
+ * @param {{external_payment?: {url?: string}, resume_checkout_url?: string}} response - Attendance response
  */
 export const showPendingPaymentState = (container, meta, response) => {
   const { actionsMenu, attendButton, checkoutCancelButton } = getPrimaryControls(container);
+  const externalPayment = response.external_payment;
 
   resetPrimaryControls(container);
   setControlPriceBadgesHidden(container, true);
@@ -407,8 +411,9 @@ export const showPendingPaymentState = (container, meta, response) => {
     attendButton,
     withEventActionState(meta, {
       icon: "icon-ticket",
-      label: CONTINUE_CHECKOUT_LABEL,
-      resumeUrl: response.resume_checkout_url || "",
+      label: externalPayment ? OPEN_PAYMENT_PAGE_LABEL : CONTINUE_CHECKOUT_LABEL,
+      resumeUrl: externalPayment?.url || response.resume_checkout_url || "",
+      title: externalPayment ? AWAITING_ORGANIZER_CONFIRMATION_LABEL : null,
     }),
   );
   renderControl(checkoutCancelButton, {
@@ -416,6 +421,10 @@ export const showPendingPaymentState = (container, meta, response) => {
     label: CANCEL_CHECKOUT_LABEL,
     title: CANCEL_CHECKOUT_TITLE,
   });
+  if (attendButton instanceof HTMLButtonElement && externalPayment) {
+    attendButton.dataset.openInNewTab = "true";
+  }
+  renderExternalPaymentDetails(container, externalPayment);
   renderMeetingDetails(false, meta);
 };
 
@@ -760,6 +769,37 @@ const getSigninState = (meta) => {
 };
 
 /**
+ * Formats an external-payment amount for display.
+ * @param {unknown} amountMinor - Amount in minor units
+ * @param {unknown} currencyCode - ISO currency code
+ * @returns {string} Formatted amount
+ */
+const formatExternalPaymentAmount = (amountMinor, currencyCode) =>
+  formatMinorUnitsForDisplay(amountMinor, currencyCode);
+
+/**
+ * Formats an external-payment deadline for display.
+ * @param {unknown} deadline - Unix seconds or ISO timestamp
+ * @returns {string} Localized deadline
+ */
+const formatExternalPaymentDeadline = (deadline) => {
+  const date =
+    typeof deadline === "number"
+      ? new Date(deadline * 1000)
+      : typeof deadline === "string"
+        ? new Date(deadline)
+        : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
+
+/**
  * Hides an attendance control.
  * @param {HTMLElement|null} control - Control to hide
  */
@@ -771,6 +811,32 @@ const hideControl = (control) => {
   control.classList.remove("opacity-100");
   setElementHidden(control, true);
   control.classList.add("opacity-0", "transition-opacity", "duration-150");
+};
+
+/**
+ * Hides the external-payment details panel.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {void}
+ */
+const hideExternalPaymentDetails = (container) => {
+  const details = getAttendanceControl(container, "external-payment-details");
+  if (!(details instanceof HTMLElement)) {
+    return;
+  }
+
+  [
+    "external-payment-amount",
+    "external-payment-deadline",
+    "external-payment-instructions",
+    "external-payment-reference",
+  ].forEach((role) => {
+    const element = getAttendanceControl(container, role);
+    if (element instanceof HTMLElement) {
+      element.textContent = "";
+      setElementHidden(element, true);
+    }
+  });
+  setElementHidden(details, true);
 };
 
 /**
@@ -867,6 +933,52 @@ const renderControl = (control, state = {}) => {
 };
 
 /**
+ * Shows snapshot details for a pending external payment.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{amount_minor?: number, currency_code?: string, deadline?: number|string, instructions?: string, reference?: string}|null|undefined} externalPayment - External payment snapshot
+ * @returns {void}
+ */
+const renderExternalPaymentDetails = (container, externalPayment) => {
+  const details = getAttendanceControl(container, "external-payment-details");
+  if (!(details instanceof HTMLElement) || !externalPayment) {
+    hideExternalPaymentDetails(container);
+    return;
+  }
+
+  const amount = getAttendanceControl(container, "external-payment-amount");
+  const deadline = getAttendanceControl(container, "external-payment-deadline");
+  const instructions = getAttendanceControl(container, "external-payment-instructions");
+  const reference = getAttendanceControl(container, "external-payment-reference");
+
+  if (amount instanceof HTMLElement) {
+    const formattedAmount = formatExternalPaymentAmount(
+      externalPayment.amount_minor,
+      externalPayment.currency_code,
+    );
+    amount.textContent = formattedAmount ? `Amount due: ${formattedAmount}` : "";
+    setElementHidden(amount, !formattedAmount);
+  }
+  if (deadline instanceof HTMLElement) {
+    const formattedDeadline = formatExternalPaymentDeadline(externalPayment.deadline);
+    deadline.textContent = formattedDeadline ? `Confirm by ${formattedDeadline}` : "";
+    setElementHidden(deadline, !formattedDeadline);
+  }
+  if (reference instanceof HTMLElement) {
+    const paymentReference = externalPayment.reference ? String(externalPayment.reference) : "";
+    reference.textContent = paymentReference ? `Reference: ${paymentReference}` : "";
+    setElementHidden(reference, !paymentReference);
+  }
+  if (instructions instanceof HTMLElement) {
+    const paymentInstructions =
+      typeof externalPayment.instructions === "string" ? externalPayment.instructions.trim() : "";
+    instructions.textContent = paymentInstructions;
+    setElementHidden(instructions, !paymentInstructions);
+  }
+
+  setElementHidden(details, false);
+};
+
+/**
  * Shows an escaped attendee-visible reason for a rejected refund request.
  * @param {HTMLElement} container - Attendance container element
  * @param {{refund_rejection_reason?: string, refund_request_status?: string}} response - Attendance response
@@ -931,8 +1043,10 @@ const resetPrimaryControls = (container) => {
 
   if (attendButton instanceof HTMLButtonElement) {
     delete attendButton.dataset.resumeUrl;
+    delete attendButton.dataset.openInNewTab;
     delete attendButton.dataset.registrationQuestionsPending;
   }
+  hideExternalPaymentDetails(container);
   if (checkoutResumeButton instanceof HTMLButtonElement) {
     delete checkoutResumeButton.dataset.resumeUrl;
   }

@@ -850,6 +850,7 @@ fn expect_refund_approval_context(db: &mut MockDB, refund: &ClaimedEventPurchase
 
     to_value(&EventRefundApproved {
         event: sample_event_summary(event_id),
+        external_payment: false,
         link: "/community/group/group/event/event".to_string(),
         theme: SiteSettings::default().theme,
     })
@@ -867,6 +868,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),
         group_slug: "group".to_string(),
+        has_external_payment: false,
         has_registration_questions: false,
         has_related_events: false,
         kind: EventKind::default(),

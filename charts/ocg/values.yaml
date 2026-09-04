@@ -62,6 +62,15 @@ email:
     # Password
     password: ""
 
+# External payments for groups in countries without Stripe Connect.
+# Set enabled to true and provide a non-empty list of ISO 3166-1 alpha-2
+# country codes. An empty allowlist is invalid when enabled is true.
+externalPayments:
+  enabled: false
+  allowedCountries: []
+  defaultPaymentWindowHours: 72
+  maxPaymentWindowHours: 336
+
 # Image storage configuration
 images:
   # Storage provider [db|s3]

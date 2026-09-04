@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -34,6 +34,8 @@ select plan(14);
 \set retryUserID 'd4100000-0000-0000-0000-000000000019'
 \set ticketTypeID 'd4100000-0000-0000-0000-000000000020'
 \set ticketType2ID 'd4100000-0000-0000-0000-000000000021'
+\set externalPurchaseID 'd4100000-0000-0000-0000-000000000026'
+\set externalUserID 'd4100000-0000-0000-0000-000000000027'
 \set waitingPurchaseID 'd4100000-0000-0000-0000-000000000022'
 \set waitingUserID 'd4100000-0000-0000-0000-000000000023'
 
@@ -82,6 +84,7 @@ insert into "user" (auth_hash, email, name, photo_url, user_id, username) values
         :'needsUserID',
         'requester'
     ),
+    ('external', 'external@example.test', null, null, :'externalUserID', 'external'),
     ('refunded', 'refunded@example.test', null, null, :'refundedUserID', 'refunded'),
     ('rejected', 'rejected@example.test', null, null, :'rejectedUserID', 'rejected'),
     ('retry', 'retry@example.test', null, null, :'retryUserID', 'retry'),
@@ -227,6 +230,39 @@ from (
     user_id,
     provider_checkout_session_id,
     provider_payment_reference
+);
+
+-- Externally resolved refund shown with external=true in completed history
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    refunded_at,
+    status,
+    ticket_title,
+    updated_at,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-01-06 00:00:00+00',
+    'KRW',
+    :'eventID',
+    :'externalPurchaseID',
+    :'ticketTypeID',
+    0,
+    0,
+    '2024-01-06 02:00:00+00',
+    'refunded',
+    'General admission',
+    '2024-01-06 02:00:00+00',
+    :'externalUserID'
 );
 
 -- Attendee requests represented in needs-review and completed history
@@ -503,7 +539,7 @@ select is(
             '{"limit": 50, "offset": 0, "view": "completed"}'::jsonb
         )->>'total'
     )::int,
-    2,
+    3,
     'Should include refunded and rejected history in the completed view'
 );
 
@@ -515,7 +551,7 @@ select is(
             '{"limit": 50, "offset": 0, "view": "all"}'::jsonb
         )->>'total'
     )::int,
-    7,
+    8,
     'Should include every refund workflow in the all view'
 );
 
@@ -557,6 +593,7 @@ select is(
         'event_id', :'eventID'::uuid,
         'event_name', 'Primary event',
         'event_purchase_id', :'needsPurchaseID'::uuid,
+        'external', false,
         'status', 'needs-review',
         'ticket_title', 'General admission',
         'updated_at', 1704078000,
@@ -602,7 +639,7 @@ select results_eq(
 select results_eq(
     $$
         select
-            (result->'refunds'->0->>'event_purchase_id')::uuid,
+            jsonb_array_length(result->'refunds'),
             (result->>'total')::int
         from (
             select list_group_refunds(
@@ -612,8 +649,8 @@ select results_eq(
         ) refunds
     $$,
     $$ values (
-        'd4100000-0000-0000-0000-000000000011'::uuid,
-        7
+        1,
+        8
     ) $$,
     'Should paginate all operational history while retaining the filtered total'
 );
@@ -626,6 +663,49 @@ select is(
     )::jsonb,
     '{"events": [], "financial_recoveries": [], "refunds": [], "total": 0}'::jsonb,
     'Should return an empty payload outside the target group'
+);
+
+-- Should mark externally resolved refunds with external=true
+select is(
+    (
+        select refund
+        from jsonb_array_elements(
+            list_group_refunds(
+                :'groupID'::uuid,
+                '{
+                    "limit": 50,
+                    "offset": 0,
+                    "ts_query": "external@example.test",
+                    "view": "completed"
+                }'::jsonb
+            )::jsonb->'refunds'
+        ) refund
+        where (refund->>'event_purchase_id')::uuid = :'externalPurchaseID'::uuid
+    ),
+    jsonb_build_object(
+        'amount_minor', 5000,
+        'created_at', 1704506400,
+        'currency_code', 'KRW',
+        'email', 'external@example.test',
+        'event_id', :'eventID'::uuid,
+        'event_name', 'Primary event',
+        'event_purchase_id', :'externalPurchaseID'::uuid,
+        'external', true,
+        'status', 'refunded',
+        'ticket_title', 'General admission',
+        'updated_at', 1704506400,
+        'user_id', :'externalUserID'::uuid,
+        'username', 'external',
+        'attempt_count', null,
+        'failure_message', null,
+        'kind', null,
+        'name', null,
+        'photo_url', null,
+        'provider_refund_id', null,
+        'requested_reason', null,
+        'review_note', null
+    ),
+    'Should mark externally resolved refunds with external=true'
 );
 
 -- ============================================================================

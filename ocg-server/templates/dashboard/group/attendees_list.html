@@ -90,6 +90,10 @@
                   {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::CheckoutPending -%}
                     selected
                   {% endif -%}>Checkout pending</option>
+          <option value="payment-pending"
+                  {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::PaymentPending -%}
+                    selected
+                  {% endif -%}>Payment pending</option>
           <option value="invitation-pending"
                   {% if status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatusFilter::InvitationPending -%}
                     selected
@@ -587,6 +591,7 @@
               {% if attendee.ticket_title.is_some() -%}
                 <div class="mt-1 truncate text-xs text-stone-600 lg:hidden">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
               {% endif -%}
+              <div class="mt-1 lg:hidden">{{ attendee_external_payment_detail(attendee) -}}</div>
             </td>
             {# End attendee -#}
 
@@ -620,6 +625,7 @@
                       <span data-localized-currency>{{ amount_label }}</span>
                     </div>
                   {% endif -%}
+                  {{ attendee_external_payment_detail(attendee) -}}
                 </div>
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-1">
@@ -632,6 +638,7 @@
                       <span data-localized-currency>{{ amount_label }}</span>
                     </div>
                   {% endif -%}
+                  {{ attendee_external_payment_detail(attendee) -}}
                 </div>
               {% else if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                 <div class="text-stone-500">-</div>
@@ -658,7 +665,7 @@
                             {% endif %}">
                 <input type="checkbox"
                        class="sr-only peer check-in-toggle"
-                       aria-label="{% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled %} Canceled attendance cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending %} Pending checkout cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled %} Canceled invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined %} Declined invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired %} Expired invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending %} Pending invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending %} Pending registration cannot be checked in {% else if attendee.checked_in %} Checked in {% else if event.canceled %} Canceled event check-in unavailable {% else if !can_manage_check_ins %} Your role cannot manage check-in {% else %} Check in attendee {% endif %}"
+                       aria-label="{% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::AttendanceCanceled %} Canceled attendance cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending %} Pending checkout cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled %} Canceled invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined %} Declined invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationExpired %} Expired invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending %} Pending invitation cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending %} Pending payment cannot be checked in {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending %} Pending registration cannot be checked in {% else if attendee.checked_in %} Checked in {% else if event.canceled %} Canceled event check-in unavailable {% else if !can_manage_check_ins %} Your role cannot manage check-in {% else %} Check in attendee {% endif %}"
                        data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/check-in"
                        {% if attendee.checked_in %}checked{% endif %}
                        {% if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed || attendee.checked_in || !can_manage_check_ins || event.canceled %}
@@ -777,6 +784,24 @@
                             </button>
                           </li>
                         {% endif -%}
+                        {% if can_manage_events && !event.canceled && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending -%}
+                          {% if let Some(event_purchase_id) = attendee.event_purchase_id -%}
+                            <li>
+                              <button type="button"
+                                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
+                                      data-external-payment-open
+                                      data-external-payment-url="/dashboard/group/events/{{ event.event_id }}/purchases/{{ event_purchase_id }}/external-payment"
+                                      data-external-payment-attendee="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
+                                      data-external-payment-ticket="{{ attendee.ticket_title.as_deref() |assigned_or("Ticket") }}"
+                                      {% if let Some(amount) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) %}data-external-payment-amount="{{ amount }}"{% endif %}
+                                      data-external-payment-reference="{{ attendee.external_payment_reference.as_ref() |assigned_or(event_purchase_id) }}"
+                                      role="menuitem">
+                                <div class="svg-icon size-4 icon-ticket shrink-0 bg-stone-600"></div>
+                                <span>Mark payment received</span>
+                              </button>
+                            </li>
+                          {% endif -%}
+                        {% endif -%}
                         {% if can_manage_events && !event.canceled && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                           <li>
                             {% call badges::recipient_award_button(event_id = event.event_id, user_id = attendee.user.user_id, extra_styles = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900", menu_item = true) -%}
@@ -789,7 +814,9 @@
                             <button id="cancel-attendance-{{ attendee.user.user_id }}"
                                     {% if !event.canceled && !event.is_past() && attendee.refund_progress.is_none() && attendee.refund_request_status != Some(crate::types::payments::EventRefundRequestStatus::Approved) -%}
                                       hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action
-                                      {% if self::is_paid_attendee(attendee.amount_minor) -%}
+                                      {% if attendee.charge_model == Some(crate::types::payments::EventPurchaseChargeModel::External) -%}
+                                        data-confirm-message="Cancel this attendance and confirm the money was returned outside this platform?" data-confirm-text="Confirm returned" data-success-message="Attendance canceled. Confirm the money was returned outside this platform." data-error-message="Something went wrong canceling this attendance. Please try again later."
+                                      {% else if self::is_paid_attendee(attendee.amount_minor) -%}
                                         data-confirm-message="Queue a full refund for this attendee? Their attendance will remain active until the refund is confirmed." data-confirm-text="Queue refund" data-success-message="Refund queued. Attendance will be canceled after confirmation." data-error-message="Something went wrong queueing this refund. Please try again later."
                                       {% else -%}
                                         data-confirm-message="Are you sure you want to cancel this attendance?" data-confirm-text="Yes" data-success-message="Attendance canceled." data-error-message="Something went wrong canceling this attendance. Please try again later."
@@ -827,6 +854,7 @@
                                     data-refund-approve-url="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/approve"
                                     data-refund-attendee-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                                     data-refund-event-name="{{ event.name }}"
+                                    {% if attendee.charge_model == Some(crate::types::payments::EventPurchaseChargeModel::External) %}data-refund-external="true"{% endif %}
                                     role="menuitem"
                                     class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
                                     type="button">
@@ -918,6 +946,56 @@
     error_message = "Something went wrong rejecting this refund request. Please try again later.",
     review_note_required = true) -}}
   {# End refund rejection modal -#}
+
+  {# External payment confirmation modal -#}
+  <div id="attendee-external-payment-modal"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="attendee-external-payment-modal-title"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+    <div id="overlay-attendee-external-payment-modal"
+         class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+    <div class="modal-panel p-4 max-w-lg">
+      <div class="modal-card rounded-lg">
+        {{ dashboard::modal_header(title_id = "attendee-external-payment-modal-title",
+          title = "Mark payment received",
+          close_id = "close-attendee-external-payment-modal") -}}
+        <div class="modal-body p-4 md:p-8">
+          <p id="attendee-external-payment-summary"
+             class="text-sm/6 text-stone-700"></p>
+          <form id="attendee-external-payment-form"
+                hx-post=""
+                hx-ext="no-empty-vals"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="#submit-attendee-external-payment"
+                class="mt-6 flex flex-col gap-4">
+            <div>
+              <label for="attendee-external-payment-details" class="form-label">Payment details</label>
+              <textarea id="attendee-external-payment-details"
+                        name="details"
+                        class="input-primary mt-2"
+                        rows="3"
+                        maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                        placeholder="Optional note, such as a bank reference"></textarea>
+            </div>
+            <p class="text-sm/6 text-stone-600">
+              Confirm the payment was received outside this platform. This cannot be undone except
+              by canceling attendance.
+            </p>
+            <div class="flex justify-end gap-3">
+              <button type="button"
+                      id="cancel-attendee-external-payment-modal"
+                      class="btn-primary-outline">Cancel</button>
+              <button type="submit"
+                      id="submit-attendee-external-payment"
+                      class="btn-primary">Mark paid</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {# End external payment confirmation modal -#}
 {% endif -%}
 
 {# Invitation modal -#}
@@ -1184,6 +1262,8 @@
       {{ badges::status_badge(label = "Attendance canceled", canceled = true) -}}
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::CheckoutPending -%}
       {{ badges::status_badge(label = "Checkout pending") -}}
+    {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending -%}
+      {{ badges::status_badge(label = "Payment pending") -}}
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationCanceled -%}
       {{ badges::status_badge(label = "Invitation canceled", canceled = true) -}}
     {% else if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationDeclined -%}
@@ -1198,6 +1278,33 @@
   </div>
 {% endmacro attendee_status -%}
 {# End attendee status. #}
+
+{# External payment deadline, reference, and paid marker. #}
+{% macro attendee_external_payment_detail(attendee) -%}
+  {% if attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending -%}
+    {% if let Some(deadline) = attendee.external_payment_deadline -%}
+      <div class="text-xs text-stone-500">Due {{ deadline.format("%b %d, %Y at %H:%M UTC") }}</div>
+    {% endif -%}
+    {% if let Some(reference) = attendee.external_payment_reference -%}
+      <div class="truncate font-mono text-xs text-stone-500"
+           title="{{ reference }}">{{ reference }}</div>
+    {% endif -%}
+  {% else if attendee.externally_paid -%}
+    <div class="text-xs text-stone-500">
+      Paid externally
+      {% if let Some(paid_at) = attendee.completed_at -%}
+        on {{ paid_at.format("%b %d, %Y at %H:%M UTC") }}
+      {% endif -%}
+      {% if let Some(marked_by) = &attendee.external_payment_marked_by -%}
+        by {{ marked_by }}
+      {% endif -%}
+    </div>
+    {% if let Some(details) = &attendee.external_payment_details -%}
+      <div class="whitespace-pre-wrap text-xs text-stone-500">{{ details }}</div>
+    {% endif -%}
+  {% endif -%}
+{% endmacro attendee_external_payment_detail -%}
+{# End external payment detail. #}
 
 {# Attendee table state fields for filter, sort, and search forms. #}
 {% macro attendee_table_state_inputs(

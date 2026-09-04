@@ -11,6 +11,7 @@ use axum::{
     },
     response::{Html, IntoResponse, Response},
 };
+use chrono::{DateTime, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -51,13 +52,14 @@ use crate::{
     },
     types::{
         pagination::{self, NavigationLinks},
+        payments::EventPurchaseChargeModel,
         permissions::GroupPermission,
         questionnaire::QuestionnaireQuestion,
     },
     util::base_url_without_trailing_slash,
     validation::{
-        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty,
-        trimmed_non_empty_opt,
+        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, blank_string_as_none,
+        trimmed_non_empty, trimmed_non_empty_opt,
     },
 };
 
@@ -360,6 +362,31 @@ pub(crate) async fn manual_check_in(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Marks a pending external purchase as paid.
+#[instrument(skip_all, err)]
+pub(crate) async fn mark_external_payment(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(payments_manager): State<DynPaymentsManager>,
+    Path((_, event_purchase_id)): Path<(Uuid, Uuid)>,
+    ValidatedForm(details): ValidatedForm<ExternalPaymentDetailsInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    payments_manager
+        .complete_external_checkout(
+            user.user_id,
+            group_id,
+            event_purchase_id,
+            details.details.clone(),
+        )
+        .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-event-attendees")],
+    )
+        .into_response())
+}
+
 /// Rejects an event invitation request.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_invitation_request(
@@ -639,6 +666,15 @@ pub(crate) struct EventInvitationRequestAcceptance {
     pub event_ticket_type_id: Option<Uuid>,
 }
 
+/// Form data for marking an external payment received.
+#[derive(Debug, Deserialize, Serialize, Validate)]
+pub(crate) struct ExternalPaymentDetailsInput {
+    /// Optional organizer note describing the received payment.
+    #[serde(default, deserialize_with = "blank_string_as_none")]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub details: Option<String>,
+}
+
 /// Form data for refund approvals.
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct RefundApprovalInput {
@@ -673,6 +709,12 @@ fn build_attendees_csv(
         "Company".to_string(),
         "Title".to_string(),
         "Invited".to_string(),
+        "Payment method".to_string(),
+        "Amount".to_string(),
+        "Payment deadline".to_string(),
+        "Paid at".to_string(),
+        "Marked by".to_string(),
+        "Payment details".to_string(),
     ];
     if let Some(questions) = registration_questions {
         headers.extend(questions.iter().map(|question| question.prompt.clone()));
@@ -699,6 +741,12 @@ fn build_attendees_csv(
                 "No"
             }
             .to_string(),
+            csv_payment_method(attendee).to_string(),
+            csv_payment_amount(attendee),
+            csv_optional_timestamp(attendee.external_payment_deadline),
+            csv_optional_timestamp(attendee.completed_at),
+            attendee.external_payment_marked_by.clone().unwrap_or_default(),
+            attendee.external_payment_details.clone().unwrap_or_default(),
         ];
         if let Some(questions) = registration_questions {
             row.extend(
@@ -711,6 +759,29 @@ fn build_attendees_csv(
     }
 
     writer.into_inner().map_err(|err| anyhow::Error::from(err).into())
+}
+
+/// Formats an optional timestamp for attendee CSV export.
+fn csv_optional_timestamp(value: Option<DateTime<Utc>>) -> String {
+    value
+        .map(|value| value.format("%Y-%m-%d %H:%M UTC").to_string())
+        .unwrap_or_default()
+}
+
+/// Formats a purchase amount for attendee CSV export.
+fn csv_payment_amount(attendee: &Attendee) -> String {
+    attendees::format_payment_amount(&attendee.amount_minor, attendee.currency_code.as_deref())
+        .unwrap_or_default()
+}
+
+/// Returns the payment-method label for attendee CSV export.
+fn csv_payment_method(attendee: &Attendee) -> &'static str {
+    match attendee.charge_model {
+        Some(EventPurchaseChargeModel::DirectCharge) => "Stripe",
+        Some(EventPurchaseChargeModel::External) => "External",
+        Some(EventPurchaseChargeModel::OcgFree) => "Free",
+        None => "",
+    }
 }
 
 /// Converts an organizer allocation result into the stable HTTP contract.

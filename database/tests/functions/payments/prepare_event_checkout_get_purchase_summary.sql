@@ -249,6 +249,7 @@ select is(
     prepare_event_checkout_get_purchase_summary(:'purchaseID'::uuid),
     jsonb_build_object(
         'amount_minor', 2500,
+        'charge_model', 'direct-charge',
         'currency_code', 'USD',
         'discount_amount_minor', 0,
         'event_purchase_id', :'purchaseID'::uuid,
@@ -272,6 +273,7 @@ select is(
     prepare_event_checkout_get_purchase_summary(:'purchaseWithProviderFieldsID'::uuid),
     jsonb_build_object(
         'amount_minor', 2000,
+        'charge_model', 'direct-charge',
         'completed_at', 1893579300,
         'currency_code', 'USD',
         'discount_amount_minor', 500,

@@ -10,7 +10,8 @@ use crate::{
         DynDB,
         mock::MockDB,
         payments::{
-            CompletedEventPurchase, EventPurchaseRefundRecoveryContext, UserPurchaseDocumentContext,
+            CompletedEventPurchase, EventPurchaseNotificationContext,
+            EventPurchaseRefundRecoveryContext, UserPurchaseDocumentContext,
         },
     },
     services::{
@@ -26,9 +27,9 @@ use crate::{
     types::{
         event::{EventKind, EventSummary},
         payments::{
-            EventPurchaseSummary, FiscalSponsorSeller, GroupPaymentRecipient, PaymentProvider,
-            PreparedEventCheckout, TicketTaxBehavior, TicketTaxCalculationMode,
-            TicketTaxJurisdiction, TicketVenue,
+            EventPurchaseChargeModel, EventPurchaseSummary, FiscalSponsorSeller,
+            GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
+            TicketTaxCalculationMode, TicketTaxJurisdiction, TicketVenue,
         },
         site::SiteSettings,
     },
@@ -37,12 +38,86 @@ use crate::{
 use super::PaymentsWebhookEndpoint;
 
 #[tokio::test]
+async fn approve_refund_request_approves_external_purchases_locally() {
+    // Setup identifiers and the local approval expectation
+    let actor_user_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_charge_model()
+        .withf(move |purchase| *purchase == event_purchase_id)
+        .times(1)
+        .returning(|_| Ok(EventPurchaseChargeModel::External));
+    db.expect_get_event_purchase_notification_context()
+        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
+        .times(1)
+        .returning(move |_, _| {
+            Ok(Some(EventPurchaseNotificationContext {
+                community_id,
+                event_id,
+            }))
+        });
+    db.expect_get_event_summary_by_id()
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .times(1)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
+    db.expect_approve_external_event_refund_request()
+        .withf(move |actor, group, purchase, note, template| {
+            *actor == actor_user_id
+                && *group == group_id
+                && *purchase == event_purchase_id
+                && note.as_deref() == Some("Returned by bank transfer")
+                && template.as_ref().is_some_and(|data| {
+                    data.get("event")
+                        .and_then(|event| event.get("event_id"))
+                        .and_then(|value| value.as_str())
+                        .is_some_and(|value| value == event_id.to_string())
+                })
+        })
+        .times(1)
+        .returning(move |_, _, _, _, _| {
+            Ok(CompletedEventPurchase {
+                community_id,
+                event_id,
+                user_id,
+
+                transitioned: Some(true),
+            })
+        });
+    db.expect_queue_event_refund_request_approval().times(0);
+
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+
+    // Approve the external refund locally
+    manager
+        .approve_refund_request(&ApproveRefundRequestInput {
+            actor_user_id,
+            event_purchase_id,
+            group_id,
+            review_note: Some("Returned by bank transfer".to_string()),
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn approve_refund_request_only_queues_durable_work() {
     // Setup identifiers and the durable queue expectation
     let actor_user_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let mut db = MockDB::new();
+    db.expect_get_event_purchase_charge_model()
+        .withf(move |purchase| *purchase == event_purchase_id)
+        .times(1)
+        .returning(|_| Ok(EventPurchaseChargeModel::DirectCharge));
     db.expect_queue_event_refund_request_approval()
         .withf(move |actor, group, purchase, note| {
             *actor == actor_user_id
@@ -76,6 +151,9 @@ async fn approve_refund_request_only_queues_durable_work() {
 async fn approve_refund_request_propagates_queue_failure() {
     // Setup a durable queue failure
     let mut db = MockDB::new();
+    db.expect_get_event_purchase_charge_model()
+        .times(1)
+        .returning(|_| Ok(EventPurchaseChargeModel::DirectCharge));
     db.expect_queue_event_refund_request_approval()
         .times(1)
         .returning(|_, _, _, _| Err(anyhow::anyhow!("queue unavailable")));
@@ -102,6 +180,119 @@ async fn approve_refund_request_propagates_queue_failure() {
 }
 
 #[tokio::test]
+async fn complete_external_checkout_enqueues_welcome_when_transitioned() {
+    // Setup identifiers and the first-transition completion
+    let actor_user_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_notification_context()
+        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
+        .times(1)
+        .returning(move |_, _| {
+            Ok(Some(EventPurchaseNotificationContext {
+                community_id,
+                event_id,
+            }))
+        });
+    db.expect_get_event_summary_by_id()
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .times(1)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
+    db.expect_complete_external_event_purchase()
+        .withf(
+            move |actor, group, purchase, details, attachments, template| {
+                *actor == actor_user_id
+                    && *group == group_id
+                    && *purchase == event_purchase_id
+                    && details.as_deref() == Some("wire 123")
+                    && attachments
+                        .as_ref()
+                        .is_some_and(|value| value.as_array().is_some_and(|items| items.len() == 1))
+                    && template.as_ref().is_some_and(|data| {
+                        data.get("event")
+                            .and_then(|event| event.get("event_id"))
+                            .and_then(|value| value.as_str())
+                            .is_some_and(|value| value == event_id.to_string())
+                    })
+            },
+        )
+        .times(1)
+        .returning(move |_, _, _, _, _, _| {
+            Ok(CompletedEventPurchase {
+                community_id,
+                event_id,
+                user_id,
+
+                transitioned: Some(true),
+            })
+        });
+
+    // Complete the external checkout
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    manager
+        .complete_external_checkout(
+            actor_user_id,
+            group_id,
+            event_purchase_id,
+            Some("wire 123".to_string()),
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn complete_external_checkout_skips_welcome_when_already_completed() {
+    // Setup an idempotent replay that still composes but lets SQL skip enqueue
+    let actor_user_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_notification_context()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(Some(EventPurchaseNotificationContext {
+                community_id,
+                event_id,
+            }))
+        });
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(SiteSettings::default()));
+    db.expect_complete_external_event_purchase()
+        .times(1)
+        .returning(move |_, _, _, _, _, _| {
+            Ok(CompletedEventPurchase {
+                community_id,
+                event_id,
+                user_id,
+
+                transitioned: Some(false),
+            })
+        });
+
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    manager
+        .complete_external_checkout(actor_user_id, group_id, event_purchase_id, None)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
     // Setup checkout identifiers and notification context
     let community_id = Uuid::new_v4();
@@ -120,6 +311,8 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
                 community_id,
                 event_id,
                 user_id,
+
+                transitioned: None,
             })
         });
     db.expect_get_event_summary_by_id()
@@ -959,6 +1152,8 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
                 community_id,
                 event_id,
                 user_id: target_user_id,
+
+                transitioned: None,
             })
         });
     db.expect_get_event_summary_by_id()
@@ -1301,6 +1496,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),
         group_slug: "group".to_string(),
+        has_external_payment: false,
         has_registration_questions: false,
         has_related_events: false,
         kind: EventKind::default(),

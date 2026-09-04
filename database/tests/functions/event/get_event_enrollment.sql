@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,8 @@ select plan(12);
 \set communityID '6e000000-0000-0000-0000-000000000001'
 \set eventCategoryID '6e000000-0000-0000-0000-000000000002'
 \set eventID '6e000000-0000-0000-0000-000000000003'
+\set externalPaymentID '6e000000-0000-0000-0000-000000000033'
+\set externalPaymentUserID '6e000000-0000-0000-0000-000000000034'
 \set groupCategoryID '6e000000-0000-0000-0000-000000000004'
 \set groupID '6e000000-0000-0000-0000-000000000005'
 \set openEventID '6e000000-0000-0000-0000-000000000006'
@@ -94,6 +96,7 @@ insert into "user" (auth_hash, email, email_verified, user_id, username)
 values
     ('hash', 'attendee@example.test', true, :'attendeeID', 'enrollment-attendee'),
     ('hash', 'expired@example.test', true, :'expiredUserID', 'enrollment-expired'),
+    ('hash', 'external@example.test', true, :'externalPaymentUserID', 'enrollment-external'),
     ('hash', 'offered@example.test', true, :'offeredUserID', 'enrollment-offered'),
     ('hash', 'open-request@example.test', true, :'openRequestUserID', 'enrollment-open-request'),
     ('hash', 'payment@example.test', true, :'pendingPaymentUserID', 'enrollment-payment'),
@@ -112,6 +115,8 @@ insert into event (
     event_category_id,
     event_id,
     event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
     group_id,
     name,
     payment_currency_code,
@@ -127,6 +132,8 @@ insert into event (
         :'eventCategoryID',
         :'eventID',
         'in-person',
+        'Wire to account 123',
+        'https://pay.example.test/enrollment',
         :'groupID',
         'Approval Event',
         'USD',
@@ -142,6 +149,8 @@ insert into event (
         :'eventCategoryID',
         :'openEventID',
         'in-person',
+        null,
+        null,
         :'groupID',
         'Open Event',
         null,
@@ -360,6 +369,35 @@ insert into event_purchase (
     'https://example.test/checkout/resume'
 );
 
+-- Seed a pending external checkout with payment instructions.
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    7500,
+    'external',
+    'USD',
+    :'eventID',
+    :'externalPaymentID',
+    :'ticketTypeID',
+    '2099-01-01 12:00:00+00',
+    0,
+    0,
+    'pending',
+    'General admission',
+    :'externalPaymentUserID'
+);
+
 -- Seed a pending refund review for a confirmed attendee.
 insert into event_refund_request (
     event_purchase_id,
@@ -420,14 +458,42 @@ values (:'eventID', :'ticketTypeID', :'waitlistUserID');
 -- Should return confirmed attendance and check-in state
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'attendeeID')::jsonb,
-    '{"is_checked_in": true, "manually_invited": true, "purchase_amount_minor": 0, "refund_request_status": null, "resume_checkout_url": null, "status": "attendee"}'::jsonb,
+    '{"is_checked_in": true, "manually_invited": true, "purchase_amount_minor": 0, "purchase_charge_model": "ocg-free", "refund_request_status": null, "resume_checkout_url": null, "status": "attendee"}'::jsonb,
     'Should return confirmed attendance and check-in state'
+);
+
+-- Should return a pending external payment without a resume checkout URL
+select is(
+    get_event_enrollment(:'communityID', :'eventID', :'externalPaymentUserID')::jsonb,
+    format(
+        $$
+            {
+                "external_payment": {
+                    "amount_minor": 7500,
+                    "currency_code": "USD",
+                    "deadline": %s,
+                    "instructions": "Wire to account 123",
+                    "reference": "%s",
+                    "url": "https://pay.example.test/enrollment"
+                },
+                "is_checked_in": false,
+                "purchase_amount_minor": 7500,
+                "purchase_charge_model": "external",
+                "refund_request_status": null,
+                "resume_checkout_url": null,
+                "status": "pending-payment"
+            }
+        $$,
+        extract(epoch from timestamptz '2099-01-01 12:00:00+00')::bigint,
+        :'externalPaymentID'
+    )::jsonb,
+    'Should return a pending external payment without a resume checkout URL'
 );
 
 -- Should return a resumable pending checkout
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'pendingPaymentUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": 500, "refund_request_status": null, "resume_checkout_url": "https://example.test/checkout/resume", "status": "pending-payment"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": 500, "purchase_charge_model": "direct-charge", "refund_request_status": null, "resume_checkout_url": "https://example.test/checkout/resume", "status": "pending-payment"}'::jsonb,
     'Should return a resumable pending checkout'
 );
 
@@ -435,7 +501,7 @@ select is(
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'offeredUserID')::jsonb,
     format(
-        '{"admission_offer_id": "%s", "event_ticket_type_id": "%s", "is_checked_in": false, "manually_invited": true, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "invitation-approved"}',
+        '{"admission_offer_id": "%s", "event_ticket_type_id": "%s", "is_checked_in": false, "manually_invited": true, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "invitation-approved"}',
         :'offerID',
         :'ticketTypeID'
     )::jsonb,
@@ -445,63 +511,63 @@ select is(
 -- Should return a generic pending approval request
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'pendingRequestUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "pending-approval"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "pending-approval"}'::jsonb,
     'Should return a generic pending approval request'
 );
 
 -- Should return a rejected approval request
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'rejectedRequestUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "rejected"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "rejected"}'::jsonb,
     'Should return a rejected approval request'
 );
 
 -- Should return a tier-scoped waitlist entry
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'waitlistUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "waitlisted"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "waitlisted"}'::jsonb,
     'Should return a tier-scoped waitlist entry'
 );
 
 -- Should return the latest expired offer state
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'expiredUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "offer-expired"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "offer-expired"}'::jsonb,
     'Should return the latest expired offer state'
 );
 
 -- Should suppress offers already linked to a refunding purchase
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'refundOfferUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": 0, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": 0, "purchase_charge_model": "ocg-free", "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
     'Should suppress offers already linked to a refunding purchase'
 );
 
 -- Should return the refund request state for an attendee purchase
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'refundUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": 0, "refund_request_status": "pending", "resume_checkout_url": null, "status": "attendee"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": 0, "purchase_charge_model": "ocg-free", "refund_request_status": "pending", "resume_checkout_url": null, "status": "attendee"}'::jsonb,
     'Should return the refund request state for an attendee purchase'
 );
 
 -- Should return the reason for a rejected refund request
 select is(
     get_event_enrollment(:'communityID', :'eventID', :'rejectedRefundUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": 0, "refund_rejection_reason": "Outside the refund policy window", "refund_request_status": "rejected", "resume_checkout_url": null, "status": "attendee"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": 0, "purchase_charge_model": "ocg-free", "refund_rejection_reason": "Outside the refund policy window", "refund_request_status": "rejected", "resume_checkout_url": null, "status": "attendee"}'::jsonb,
     'Should return the reason for a rejected refund request'
 );
 
 -- Should ignore approval requests when approval is disabled
 select is(
     get_event_enrollment(:'communityID', :'openEventID', :'openRequestUserID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
     'Should ignore approval requests when approval is disabled'
 );
 
 -- Should not expose enrollment across communities
 select is(
     get_event_enrollment(:'otherCommunityID', :'eventID', :'attendeeID')::jsonb,
-    '{"is_checked_in": false, "purchase_amount_minor": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
+    '{"is_checked_in": false, "purchase_amount_minor": null, "purchase_charge_model": null, "refund_request_status": null, "resume_checkout_url": null, "status": "none"}'::jsonb,
     'Should not expose enrollment across communities'
 );
 
