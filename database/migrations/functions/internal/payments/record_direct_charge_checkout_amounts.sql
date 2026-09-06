@@ -13,6 +13,7 @@ create or replace function record_direct_charge_checkout_amounts(
 returns void as $$
 declare
     v_final_platform_fee_amount_minor bigint;
+    v_payment_job_id uuid;
     v_subtotal_excluding_tax_minor bigint := p_provider_total_minor - p_tax_amount_minor;
 begin
     -- Compute the platform fee owed on the tax-exclusive subtotal, rounding down
@@ -39,18 +40,27 @@ begin
 
     -- Queue the fee refund owed when tax lowered the final platform fee
     if p_purchase.provisional_platform_fee_amount_minor > v_final_platform_fee_amount_minor then
-        insert into event_purchase_application_fee_adjustment (
-            amount_minor,
-            event_purchase_id,
-            idempotency_key,
-            kind
-        ) values (
-            p_purchase.provisional_platform_fee_amount_minor - v_final_platform_fee_amount_minor,
+        v_payment_job_id := enqueue_payment_job(
+            'event-purchase-application-fee-adjustment',
+            p_purchase.payment_provider_id,
             p_purchase.event_purchase_id,
-            format('event-purchase-tax-fee-adjustment-%s', p_purchase.event_purchase_id),
-            'tax-reconciliation'
-        )
-        on conflict (event_purchase_id, kind) do nothing;
+            format('event-purchase-tax-fee-adjustment-%s', p_purchase.event_purchase_id)
+        );
+
+        -- Create the adjustment only once per purchase
+        if v_payment_job_id is not null then
+            insert into event_purchase_application_fee_adjustment (
+                amount_minor,
+                event_purchase_id,
+                kind,
+                payment_job_id
+            ) values (
+                p_purchase.provisional_platform_fee_amount_minor - v_final_platform_fee_amount_minor,
+                p_purchase.event_purchase_id,
+                'tax-reconciliation',
+                v_payment_job_id
+            );
+        end if;
     end if;
 end;
 $$ language plpgsql;

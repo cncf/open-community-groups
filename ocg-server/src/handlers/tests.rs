@@ -337,6 +337,7 @@ pub(crate) fn sample_attendee() -> Attendee {
         external_payment_reference: None,
         externally_paid: false,
         offer_expires_at: None,
+        refund_payment_job_id: None,
         refund_progress: None,
         refund_request_status: None,
         registration_answers: None,

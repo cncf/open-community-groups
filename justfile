@@ -189,14 +189,17 @@ db-tests-file file: db-migrate-tests db-install-tests-fixtures
 db-tests-seed-keys: db-migrate-tests db-install-tests-fixtures
     @PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" sh "{{ source_dir }}/database/scripts/check-seed-keys.sh" {{ pg_conn }} {{ db_name_tests }}
 
-# Test upgrading representative schema-68 enrollment data to the latest schema.
-db-migration-tests: db-drop-tests-migration db-create-tests-migration
-    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/schema" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_schema --destination 68
-    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/functions" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_functions
-    just pg psql {{ pg_conn }} {{ db_name_tests_migration }} -f "{{ source_dir }}/database/tests/migrations/0069_require_event_ticket_types_seed.sql"
+# Test upgrading representative data seeded at the schema before a migration to the latest schema.
+db-migration-test version: db-drop-tests-migration db-create-tests-migration
+    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/schema" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_schema --destination "$(expr "{{ version }}" - 1)"
+    just pg psql {{ pg_conn }} {{ db_name_tests_migration }} -q -v ON_ERROR_STOP=1 -f "$(ls "{{ source_dir }}"/database/tests/migrations/{{ version }}_*_seed.sql)"
     just pg tern migrate --migrations "{{ source_dir }}/database/migrations/schema" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_schema
-    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/functions" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_functions --destination -+1
-    @PGPASSWORD="{{ db_password }}" pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests_migration }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f "{{ source_dir }}/database/tests/migrations/0069_require_event_ticket_types.sql"
+    just pg tern migrate --migrations "{{ source_dir }}/database/migrations/functions" --host "{{ db_host }}" --port "{{ db_port }}" --user "{{ db_user }}" --database "{{ db_name_tests_migration }}" --version-table version_functions
+    @PGPASSWORD="{{ db_password }}" pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests_migration }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f "$(ls "{{ source_dir }}"/database/tests/migrations/{{ version }}_*.sql | grep -v '_seed\.sql$')"
+
+# Run every representative-data migration test.
+db-migration-tests:
+    @for seed in "{{ source_dir }}"/database/tests/migrations/*_seed.sql; do just db-migration-test "$(basename "$seed" | cut -d_ -f1)" || exit 1; done
 
 # Redirector
 

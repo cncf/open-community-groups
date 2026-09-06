@@ -22,6 +22,7 @@ select plan(20);
 \set durableEventID 'd3010000-0000-0000-0000-000000000008'
 \set durablePurchaseID 'd3010000-0000-0000-0000-000000000009'
 \set durableRefundID 'd3010000-0000-0000-0000-000000000010'
+\set durableRefundJobID 'd3010000-0000-0000-0000-000000000045'
 \set durableTicketTypeID 'd3010000-0000-0000-0000-000000000011'
 \set eventCategoryID 'd3010000-0000-0000-0000-000000000012'
 \set expiredPendingEventID 'd3010000-0000-0000-0000-000000000037'
@@ -30,6 +31,7 @@ select plan(20);
 \set finalizedEventID 'd3010000-0000-0000-0000-000000000032'
 \set finalizedPurchaseID 'd3010000-0000-0000-0000-000000000033'
 \set finalizedRefundID 'd3010000-0000-0000-0000-000000000034'
+\set finalizedRefundJobID 'd3010000-0000-0000-0000-000000000046'
 \set finalizedTicketTypeID 'd3010000-0000-0000-0000-000000000035'
 \set groupCategoryID 'd3010000-0000-0000-0000-000000000013'
 \set groupID 'd3010000-0000-0000-0000-000000000014'
@@ -52,6 +54,7 @@ select plan(20);
 \set recoveredEventID 'd3010000-0000-0000-0000-000000000025'
 \set recoveredPurchaseID 'd3010000-0000-0000-0000-000000000026'
 \set recoveredRefundID 'd3010000-0000-0000-0000-000000000027'
+\set recoveredRefundJobID 'd3010000-0000-0000-0000-000000000047'
 \set recoveredTicketTypeID 'd3010000-0000-0000-0000-000000000028'
 \set userID 'd3010000-0000-0000-0000-000000000029'
 \set waitlistDraftEventID 'd3010000-0000-0000-0000-000000000030'
@@ -281,14 +284,31 @@ insert into event_purchase (
     (0, 'USD', :'purchaseDraftEventID', :'purchaseDraftPurchaseID', :'purchaseDraftTicketTypeID', 'completed', 'Draft', :'userID', null, 'stripe', null, 'pi_draft', null),
     (0, 'USD', :'recoveredEventID', :'recoveredPurchaseID', :'recoveredTicketTypeID', 'refunded', 'Recovered', :'userID', null, 'stripe', null, 'pi_recovered', current_timestamp);
 
+-- Durable refund job that blocks deletion until provider work settles
+insert into payment_job (
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    :'durablePurchaseID',
+    'delete-eligibility-durable-refund-d301',
+    'event-purchase-refund',
+    :'durableRefundJobID',
+    'stripe',
+    'pending'
+);
+
 -- Durable refund that blocks deletion until provider work settles
 insert into event_purchase_refund (
     amount_minor,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status
 ) values (
@@ -296,10 +316,37 @@ insert into event_purchase_refund (
     'USD',
     :'durablePurchaseID',
     :'durableRefundID',
-    'refund-durable',
     'event-cancellation',
+    :'durableRefundJobID',
     'stripe',
     'provider-pending'
+);
+
+-- Recovered terminal refund job that no longer blocks deletion
+insert into payment_job (
+    completed_at,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    recovery_completed_at,
+    recovery_completed_by_user_id,
+    recovery_note,
+    recovery_reference,
+    status
+) values (
+    current_timestamp,
+    :'recoveredPurchaseID',
+    'delete-eligibility-recovered-refund-d301',
+    'event-purchase-refund',
+    :'recoveredRefundJobID',
+    'stripe',
+    current_timestamp,
+    :'actorID',
+    'Verified externally',
+    'bank-transfer-123',
+    'completed'
 );
 
 -- Recovered terminal refund that no longer blocks deletion
@@ -309,14 +356,10 @@ insert into event_purchase_refund (
     event_purchase_id,
     event_purchase_refund_id,
     finalized_at,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     provider_refund_id,
-    recovery_completed_at,
-    recovery_completed_by_user_id,
-    recovery_note,
-    recovery_reference,
     status,
     terminal_failure
 ) values (
@@ -325,16 +368,31 @@ insert into event_purchase_refund (
     :'recoveredPurchaseID',
     :'recoveredRefundID',
     current_timestamp,
-    'refund-recovered',
     'event-cancellation',
+    :'recoveredRefundJobID',
     'stripe',
     're_recovered',
-    current_timestamp,
-    :'actorID',
-    'Verified externally',
-    'bank-transfer-123',
     'provider-failed',
     true
+);
+
+-- Finalized refund job that no longer blocks deletion
+insert into payment_job (
+    completed_at,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    current_timestamp,
+    :'finalizedPurchaseID',
+    'delete-eligibility-finalized-refund-d301',
+    'event-purchase-refund',
+    :'finalizedRefundJobID',
+    'stripe',
+    'completed'
 );
 
 -- Finalized refund that no longer blocks deletion
@@ -344,8 +402,8 @@ insert into event_purchase_refund (
     event_purchase_id,
     event_purchase_refund_id,
     finalized_at,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     provider_refund_id,
     provider_refunded_at,
@@ -356,8 +414,8 @@ insert into event_purchase_refund (
     :'finalizedPurchaseID',
     :'finalizedRefundID',
     current_timestamp,
-    'refund-finalized',
     'event-cancellation',
+    :'finalizedRefundJobID',
     'stripe',
     're_finalized',
     current_timestamp,

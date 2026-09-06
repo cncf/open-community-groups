@@ -20,6 +20,7 @@ declare
     v_group "group";
     v_hold_expired boolean;
     v_manually_invited boolean;
+    v_payment_job_id uuid;
     v_provider_payment_reference text;
     v_purchase event_purchase;
     v_requires_refund boolean;
@@ -191,25 +192,35 @@ begin
     end if;
 
     -- Queue the provider refund for workers before acknowledging the webhook
-    insert into event_purchase_refund (
-        amount_minor,
-        currency_code,
-        event_purchase_id,
-        idempotency_key,
-        kind,
-        payment_provider_id,
-        status
-    ) values (
-        p_provider_total_minor,
-        v_purchase.currency_code,
-        v_purchase.event_purchase_id,
-        format('event-purchase-refund-%s', v_purchase.event_purchase_id),
-        'automatic-unfulfillable-checkout',
+    v_payment_job_id := enqueue_payment_job(
+        'event-purchase-refund',
         p_provider,
-        'provider-pending'
-    )
-    on conflict (event_purchase_id) do nothing;
+        v_purchase.event_purchase_id,
+        format('event-purchase-refund-%s', v_purchase.event_purchase_id)
+    );
 
+    -- Create the refund only when no durable work exists for the purchase
+    if v_payment_job_id is not null then
+        insert into event_purchase_refund (
+            amount_minor,
+            currency_code,
+            event_purchase_id,
+            kind,
+            payment_job_id,
+            payment_provider_id,
+            status
+        ) values (
+            p_provider_total_minor,
+            v_purchase.currency_code,
+            v_purchase.event_purchase_id,
+            'automatic-unfulfillable-checkout',
+            v_payment_job_id,
+            p_provider,
+            'provider-pending'
+        );
+    end if;
+
+    -- Return the queued refund outcome
     return jsonb_build_object('outcome', 'refund_queued');
 end;
 $$ language plpgsql;

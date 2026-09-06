@@ -4997,224 +4997,339 @@ values (
     '77777777-7777-7777-7777-777777777701'
 );
 
--- Durable refunds used by recovery and operational state coverage.
-insert into event_purchase_refund (
-    event_purchase_refund_id,
-    amount_minor,
+-- Durable refund jobs used by recovery and operational state coverage.
+insert into payment_job (
     attempt_count,
-    currency_code,
+    completed_at,
     event_purchase_id,
-    event_refund_request_id,
     failure_message,
-    finalized_at,
     idempotency_key,
     kind,
     next_attempt_at,
+    payment_job_id,
     payment_provider_id,
-    provider_refund_id,
-    status,
-    terminal_failure
+    status
 )
 values (
-    '61555555-5555-5555-5555-555555555522',
-    5000,
     1,
-    'USD',
-    '59555555-5555-5555-5555-555555555522',
-    '60555555-5555-5555-5555-555555555522',
-    'Provider refund requires manual recovery',
     null,
+    '59555555-5555-5555-5555-555555555522',
+    'Provider refund requires manual recovery',
     'event-purchase-refund-59555555-5555-5555-5555-555555555522',
-    'refund-request-approval',
+    'event-purchase-refund',
     now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555522',
     'stripe',
-    're_e2e_refund_recovery',
-    'provider-failed',
-    true
+    'failed'
 ), (
-    '61555555-5555-5555-5555-555555555526',
-    5000,
     1,
-    'USD',
+    null,
     '59555555-5555-5555-5555-555555555526',
     null,
-    null,
-    null,
     'event-purchase-refund-59555555-5555-5555-5555-555555555526',
-    'event-cancellation',
+    'event-purchase-refund',
     now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555526',
     'stripe',
-    're_e2e_refund_processing',
-    'provider-pending',
-    false
+    'pending'
 ), (
-    '61555555-5555-5555-5555-555555555527',
-    5000,
     10,
-    'USD',
+    null,
     '59555555-5555-5555-5555-555555555527',
-    null,
     'Provider refund attempts exhausted',
-    null,
     'event-purchase-refund-59555555-5555-5555-5555-555555555527',
-    'event-cancellation',
+    'event-purchase-refund',
     now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555527',
     'stripe',
-    null,
-    'provider-failed',
-    false
+    'failed'
 ), (
-    '61555555-5555-5555-5555-555555555528',
-    5000,
     1,
-    'USD',
+    now() - interval '1 day',
     '59555555-5555-5555-5555-555555555528',
     null,
+    'event-purchase-refund-59555555-5555-5555-5555-555555555528',
+    'event-purchase-refund',
+    now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555528',
+    'stripe',
+    'completed'
+), (
+    1,
+    null,
+    '59555555-5555-5555-5555-555555555530',
+    'Provider refund requires external recovery',
+    'event-purchase-refund-59555555-5555-5555-5555-555555555530',
+    'event-purchase-refund',
+    now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555530',
+    'stripe',
+    'failed'
+);
+
+-- Durable refunds used by recovery and operational state coverage.
+insert into event_purchase_refund (
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status,
+    terminal_failure,
+
+    event_refund_request_id,
+    finalized_at,
+    provider_refund_id
+)
+values (
+    5000,
+    'USD',
+    '59555555-5555-5555-5555-555555555522',
+    '61555555-5555-5555-5555-555555555522',
+    'refund-request-approval',
+    '64555555-5555-5555-5555-555555555522',
+    'stripe',
+    'provider-failed',
+    true,
+
+    '60555555-5555-5555-5555-555555555522',
+    null,
+    're_e2e_refund_recovery'
+), (
+    5000,
+    'USD',
+    '59555555-5555-5555-5555-555555555526',
+    '61555555-5555-5555-5555-555555555526',
+    'event-cancellation',
+    '64555555-5555-5555-5555-555555555526',
+    'stripe',
+    'provider-pending',
+    false,
+
+    null,
+    null,
+    're_e2e_refund_processing'
+), (
+    5000,
+    'USD',
+    '59555555-5555-5555-5555-555555555527',
+    '61555555-5555-5555-5555-555555555527',
+    'event-cancellation',
+    '64555555-5555-5555-5555-555555555527',
+    'stripe',
+    'provider-failed',
+    false,
+
+    null,
+    null,
+    null
+), (
+    5000,
+    'USD',
+    '59555555-5555-5555-5555-555555555528',
+    '61555555-5555-5555-5555-555555555528',
+    'event-cancellation',
+    '64555555-5555-5555-5555-555555555528',
+    'stripe',
+    'finalized',
+    false,
+
     null,
     now() - interval '1 day',
-    'event-purchase-refund-59555555-5555-5555-5555-555555555528',
-    'event-cancellation',
-    now() + interval '100 years',
-    'stripe',
-    're_e2e_refund_finalized',
-    'finalized',
-    false
+    're_e2e_refund_finalized'
 ), (
-    '61555555-5555-5555-5555-555555555530',
     5000,
-    1,
     'USD',
     '59555555-5555-5555-5555-555555555530',
-    '60555555-5555-5555-5555-555555555530',
-    'Provider refund requires external recovery',
-    null,
-    'event-purchase-refund-59555555-5555-5555-5555-555555555530',
+    '61555555-5555-5555-5555-555555555530',
     'refund-request-approval',
-    now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555530',
     'stripe',
-    're_e2e_refund_recovery_durable',
     'provider-failed',
-    true
+    true,
+
+    '60555555-5555-5555-5555-555555555530',
+    null,
+    're_e2e_refund_recovery_durable'
+);
+
+-- Exhausted application-fee adjustment shown in the financial recovery queue.
+insert into payment_job (
+    attempt_count,
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    next_attempt_at,
+    payment_job_id,
+    payment_provider_id,
+    status,
+    updated_at
+)
+values (
+    10,
+    '59555555-5555-5555-5555-555555555526',
+    'Application fee refund attempts exhausted',
+    'event-purchase-application-fee-adjustment-e2e-recovery',
+    'event-purchase-application-fee-adjustment',
+    now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555531',
+    'stripe',
+    'failed',
+    now() - interval '20 days'
 );
 
 -- Exhausted application-fee adjustment shown in the financial recovery queue.
 insert into event_purchase_application_fee_adjustment (
-    event_purchase_application_fee_adjustment_id,
     amount_minor,
+    event_purchase_application_fee_adjustment_id,
+    event_purchase_id,
+    kind,
+    payment_job_id,
+    updated_at
+)
+values (
+    500,
+    '63555555-5555-5555-5555-555555555526',
+    '59555555-5555-5555-5555-555555555526',
+    'purchase-refund',
+    '64555555-5555-5555-5555-555555555531',
+    now() - interval '20 days'
+);
+
+-- Credit note lifecycle jobs shown in the attendee purchase documents.
+insert into payment_job (
     attempt_count,
+    completed_at,
     event_purchase_id,
     idempotency_key,
     kind,
     next_attempt_at,
+    payment_job_id,
+    payment_provider_id,
     status,
-    updated_at,
-
-    failure_message
+    updated_at
 )
 values (
-    '63555555-5555-5555-5555-555555555526',
-    500,
-    10,
+    1,
+    null,
     '59555555-5555-5555-5555-555555555526',
-    'event-purchase-application-fee-adjustment-e2e-recovery',
-    'purchase-refund',
+    'event-purchase-credit-note-e2e-processing',
+    'event-purchase-credit-note',
+    now() + interval '1 hour',
+    '64555555-5555-5555-5555-555555555532',
+    'stripe',
+    'pending',
+    now() - interval '1 hour'
+), (
+    1,
+    now() - interval '1 day',
+    '59555555-5555-5555-5555-555555555528',
+    'event-purchase-credit-note-e2e-issued',
+    'event-purchase-credit-note',
     now() + interval '100 years',
-    'failed',
-    now() - interval '20 days',
-
-    'Application fee refund attempts exhausted'
+    '64555555-5555-5555-5555-555555555533',
+    'stripe',
+    'completed',
+    now() - interval '1 day'
 );
 
 -- Credit note lifecycle states shown in the attendee purchase documents.
 insert into event_purchase_credit_note (
-    event_purchase_credit_note_id,
     amount_minor,
-    attempt_count,
     currency_code,
+    event_purchase_credit_note_id,
     event_purchase_refund_id,
-    idempotency_key,
-    next_attempt_at,
+    payment_job_id,
     payment_provider_id,
     provider_object_account_id,
-    status,
     tax_amount_minor,
     updated_at,
 
-    completed_at,
     provider_credit_note_id,
     provider_hosted_url,
     provider_pdf_url
 )
 values (
-    '62555555-5555-5555-5555-555555555526',
     5000,
-    1,
     'USD',
+    '62555555-5555-5555-5555-555555555526',
     '61555555-5555-5555-5555-555555555526',
-    'event-purchase-credit-note-e2e-processing',
-    now() + interval '1 hour',
+    '64555555-5555-5555-5555-555555555532',
     'stripe',
     'acct_e2e_alpha',
-    'pending',
     0,
     now() - interval '1 hour',
 
     null,
     null,
-    null,
     null
 ), (
-    '62555555-5555-5555-5555-555555555528',
     5000,
-    1,
     'USD',
+    '62555555-5555-5555-5555-555555555528',
     '61555555-5555-5555-5555-555555555528',
-    'event-purchase-credit-note-e2e-issued',
-    now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555533',
     'stripe',
     'acct_e2e_alpha',
-    'issued',
     0,
     now() - interval '1 day',
 
-    now() - interval '1 day',
     'cn_e2e_refund_finalized',
     'https://documents.stripe.test/cn_e2e_refund_finalized',
     'https://documents.stripe.test/cn_e2e_refund_finalized.pdf'
 );
 
--- Exhausted credit note shown in the financial recovery queue.
-insert into event_purchase_credit_note (
-    event_purchase_credit_note_id,
-    amount_minor,
+-- Exhausted credit-note job shown in the financial recovery queue.
+insert into payment_job (
     attempt_count,
-    currency_code,
-    event_purchase_refund_id,
+    event_purchase_id,
+    failure_message,
     idempotency_key,
+    kind,
     next_attempt_at,
+    payment_job_id,
     payment_provider_id,
-    provider_object_account_id,
     status,
-    tax_amount_minor,
-    updated_at,
-
-    failure_message
+    updated_at
 )
 values (
-    '62555555-5555-5555-5555-555555555527',
-    5000,
     10,
-    'USD',
-    '61555555-5555-5555-5555-555555555527',
+    '59555555-5555-5555-5555-555555555527',
+    'Credit note attempts exhausted',
     'event-purchase-credit-note-e2e-recovery',
+    'event-purchase-credit-note',
     now() + interval '100 years',
+    '64555555-5555-5555-5555-555555555534',
+    'stripe',
+    'failed',
+    now() - interval '21 days'
+);
+
+-- Exhausted credit note shown in the financial recovery queue.
+insert into event_purchase_credit_note (
+    amount_minor,
+    currency_code,
+    event_purchase_credit_note_id,
+    event_purchase_refund_id,
+    payment_job_id,
+    payment_provider_id,
+    provider_object_account_id,
+    tax_amount_minor,
+    updated_at
+)
+values (
+    5000,
+    'USD',
+    '62555555-5555-5555-5555-555555555527',
+    '61555555-5555-5555-5555-555555555527',
+    '64555555-5555-5555-5555-555555555534',
     'stripe',
     'acct_e2e_alpha',
-    'failed',
     0,
-    now() - interval '21 days',
-
-    'Credit note attempts exhausted'
+    now() - interval '21 days'
 );
 
 -- ============================================================================

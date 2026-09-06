@@ -122,6 +122,29 @@ pub enum EventRefundRequestStatus {
     Rejected,
 }
 
+/// Durable provider-mediated payment job kind.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+#[allow(clippy::enum_variant_names)]
+pub enum PaymentJobKind {
+    /// Application-fee refund or tax correction.
+    EventPurchaseApplicationFeeAdjustment,
+    /// Customer credit-note creation.
+    EventPurchaseCreditNote,
+    /// Customer refund processing and finalization.
+    EventPurchaseRefund,
+}
+
+impl PaymentJobKind {
+    /// Lists every provider-mediated payment job kind workers should claim.
+    pub const ALL: [Self; 3] = [
+        Self::EventPurchaseApplicationFeeAdjustment,
+        Self::EventPurchaseCreditNote,
+        Self::EventPurchaseRefund,
+    ];
+}
+
 /// Mode used by a payments provider.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

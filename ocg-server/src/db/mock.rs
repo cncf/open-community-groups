@@ -1248,26 +1248,11 @@ mock! {
             user_id: Uuid,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<()>;
-        async fn claim_event_purchase_application_fee_adjustment(
+        async fn claim_payment_job(
             &self,
+            kind: crate::types::payments::PaymentJobKind,
             payment_provider: crate::types::payments::PaymentProvider,
-        ) -> Result<Option<crate::db::payments::ClaimedEventPurchaseApplicationFeeAdjustment>>;
-        async fn claim_event_purchase_credit_note(
-            &self,
-            payment_provider: crate::types::payments::PaymentProvider,
-        ) -> Result<Option<crate::db::payments::ClaimedEventPurchaseCreditNote>>;
-        async fn claim_event_purchase_refund(
-            &self,
-            payment_provider: crate::types::payments::PaymentProvider,
-        ) -> Result<Option<crate::db::payments::ClaimedEventPurchaseRefund>>;
-        async fn complete_event_purchase_application_fee_adjustment_recovery(
-            &self,
-            input: &crate::db::payments::CompleteEventPurchaseFinancialRecoveryInput,
-        ) -> Result<()>;
-        async fn complete_event_purchase_credit_note_recovery(
-            &self,
-            input: &crate::db::payments::CompleteEventPurchaseFinancialRecoveryInput,
-        ) -> Result<()>;
+        ) -> Result<Option<crate::db::payments::ClaimedPaymentJob>>;
         async fn complete_event_purchase_refund_recovery(
             &self,
             input: &crate::db::payments::CompleteEventPurchaseRefundRecoveryInput,
@@ -1285,6 +1270,10 @@ mock! {
             &self,
             event_purchase_id: Uuid,
         ) -> Result<crate::db::payments::CompletedEventPurchase>;
+        async fn complete_payment_job_recovery(
+            &self,
+            input: &crate::db::payments::CompletePaymentJobRecoveryInput,
+        ) -> Result<()>;
         async fn expire_event_purchase_for_checkout_session(
             &self,
             payment_provider: crate::types::payments::PaymentProvider,
@@ -1352,23 +1341,11 @@ mock! {
             &self,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Option<crate::types::event::EventEnrollmentReconciliationOutcome>>;
-        async fn record_event_purchase_application_fee_adjustment_failure(
-            &self,
-            adjustment_id: Uuid,
-            claim_id: Uuid,
-            failure_message: String,
-        ) -> Result<()>;
         async fn record_event_purchase_application_fee_adjustment_succeeded(
             &self,
             adjustment_id: Uuid,
             claim_id: Uuid,
             provider_application_fee_refund_id: String,
-        ) -> Result<()>;
-        async fn record_event_purchase_credit_note_failure(
-            &self,
-            credit_note_id: Uuid,
-            claim_id: Uuid,
-            failure_message: String,
         ) -> Result<()>;
         async fn record_event_purchase_credit_note_succeeded(
             &self,
@@ -1385,12 +1362,6 @@ mock! {
             provider_refund_id: String,
             expected_claim_id: Option<Uuid>,
         ) -> Result<crate::db::payments::EventPurchaseRefund>;
-        async fn record_event_purchase_refund_retryable_failure(
-            &self,
-            event_purchase_refund_id: Uuid,
-            claim_id: Uuid,
-            failure_message: String,
-        ) -> Result<()>;
         async fn record_event_purchase_refund_succeeded(
             &self,
             event_purchase_refund_id: Uuid,
@@ -1405,6 +1376,12 @@ mock! {
             provider_refund_id: String,
             failure_message: String,
             expected_claim_id: Option<Uuid>,
+        ) -> Result<()>;
+        async fn record_payment_job_failure(
+            &self,
+            payment_job_id: Uuid,
+            claim_id: Uuid,
+            failure_message: String,
         ) -> Result<()>;
         async fn reject_event_refund_request(
             &self,
@@ -1421,26 +1398,8 @@ mock! {
             requested_reason: Option<String>,
             notification_template_data: serde_json::Value,
         ) -> Result<()>;
-        async fn requeue_event_purchase_application_fee_adjustment(
-            &self,
-            group_id: Uuid,
-            adjustment_id: Uuid,
-        ) -> Result<()>;
-        async fn requeue_event_purchase_credit_note(
-            &self,
-            group_id: Uuid,
-            credit_note_id: Uuid,
-        ) -> Result<()>;
-        async fn requeue_event_purchase_refund(
-            &self,
-            group_id: Uuid,
-            event_purchase_id: Uuid,
-        ) -> Result<()>;
-        async fn requeue_stale_event_purchase_application_fee_adjustment_claims(
-            &self,
-        ) -> Result<i32>;
-        async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32>;
-        async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
+        async fn requeue_payment_job(&self, group_id: Uuid, payment_job_id: Uuid) -> Result<()>;
+        async fn requeue_stale_payment_job_claims(&self) -> Result<i32>;
         async fn sync_external_payments_config(
             &self,
             config: Option<crate::config::ExternalPaymentsConfig>,

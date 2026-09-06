@@ -14,12 +14,14 @@ select plan(4);
 \set communityID '79540000-0000-0000-0000-000000000001'
 \set eventCategoryID '79540000-0000-0000-0000-000000000002'
 \set eventID '79540000-0000-0000-0000-000000000003'
+\set finalizedJobID '79540000-0000-0000-0000-000000000014'
 \set finalizedPurchaseID '79540000-0000-0000-0000-000000000004'
 \set finalizedRefundID '79540000-0000-0000-0000-000000000005'
 \set groupCategoryID '79540000-0000-0000-0000-000000000006'
 \set groupID '79540000-0000-0000-0000-000000000007'
 \set missingPurchaseID '79540000-0000-0000-0000-000000000008'
 \set otherGroupID '79540000-0000-0000-0000-000000000009'
+\set pendingJobID '79540000-0000-0000-0000-000000000015'
 \set pendingPurchaseID '79540000-0000-0000-0000-000000000010'
 \set pendingRefundID '79540000-0000-0000-0000-000000000011'
 \set ticketTypeID '79540000-0000-0000-0000-000000000012'
@@ -116,19 +118,40 @@ insert into event_purchase (
     2500, 0, 'inclusive', 'manual', 'professional-event-admission', '{}'::jsonb
 );
 
+-- Failed payment jobs before and after local finalization
+insert into payment_job (
+    payment_job_id, event_purchase_id, failure_message, idempotency_key,
+    kind, payment_provider_id, status
+) values (
+    :'finalizedJobID',
+    :'finalizedPurchaseID',
+    'provider refund failed',
+    'event-purchase-refund-recovery-context-finalized-job',
+    'event-purchase-refund',
+    'stripe',
+    'failed'
+), (
+    :'pendingJobID',
+    :'pendingPurchaseID',
+    'provider refund failed',
+    'event-purchase-refund-recovery-context-pending-job',
+    'event-purchase-refund',
+    'stripe',
+    'failed'
+);
+
 -- Provider failures before and after local finalization
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
-    failure_message,
     finalized_at,
     provider_refund_id
 ) values (
@@ -136,13 +159,12 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'finalizedPurchaseID',
-    'event-purchase-refund-recovery-context-finalized',
     'automatic-unfulfillable-checkout',
+    :'finalizedJobID',
     'stripe',
     'provider-failed',
     true,
 
-    'provider refund failed',
     '2024-02-01 10:00:00+00',
     're_refund_recovery_context_finalized'
 ), (
@@ -150,13 +172,12 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'pendingPurchaseID',
-    'event-purchase-refund-recovery-context-pending',
     'event-cancellation',
+    :'pendingJobID',
     'stripe',
     'provider-failed',
     true,
 
-    'provider refund failed',
     null,
     're_refund_recovery_context_pending'
 );

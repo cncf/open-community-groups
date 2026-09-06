@@ -95,7 +95,7 @@ returns json as $$
                     jsonb_build_object(
                         'event_purchase_credit_note_id',
                             epcn.event_purchase_credit_note_id,
-                        'status', epcn.status
+                        'status', pj.status
                     )
                     || jsonb_strip_nulls(jsonb_build_object(
                         'provider_credit_note_id', epcn.provider_credit_note_id
@@ -105,6 +105,7 @@ returns json as $$
                 ) as items
                 from event_purchase_refund epr
                 join event_purchase_credit_note epcn using (event_purchase_refund_id)
+                join payment_job pj on pj.payment_job_id = epcn.payment_job_id
                 where epr.event_purchase_id = prp.event_purchase_id
             ) credit_notes on true
         ),

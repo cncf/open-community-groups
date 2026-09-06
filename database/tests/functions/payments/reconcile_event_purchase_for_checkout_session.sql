@@ -1233,10 +1233,16 @@ select lives_ok(
 select lives_ok(
     $$
         with claim as (
-            select claim_event_purchase_application_fee_adjustment('stripe') as payload
+            select claim_payment_job(
+                'event-purchase-application-fee-adjustment',
+                'stripe'
+            ) as payload
         )
         select record_event_purchase_application_fee_adjustment_succeeded(
-            (payload->>'event_purchase_application_fee_adjustment_id')::uuid,
+            (
+                payload->'application_fee_adjustment'
+                    ->>'event_purchase_application_fee_adjustment_id'
+            )::uuid,
             (payload->>'claim_id')::uuid,
             'fr_expired'
         )
@@ -1529,12 +1535,14 @@ select results_eq(
             count(*)::int,
             bool_and(epr.amount_minor = ep.amount_minor),
             bool_and(epr.currency_code = ep.currency_code),
-            bool_and(epr.idempotency_key = 'event-purchase-refund-' || ep.event_purchase_id),
             bool_and(epr.kind = 'automatic-unfulfillable-checkout'),
             bool_and(epr.payment_provider_id = 'stripe'),
-            bool_and(epr.status = 'provider-pending')
+            bool_and(epr.status = 'provider-pending'),
+            bool_and(pj.idempotency_key = 'event-purchase-refund-' || ep.event_purchase_id),
+            bool_and(pj.status = 'pending')
         from event_purchase ep
         join event_purchase_refund epr using (event_purchase_id)
+        join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where ep.event_purchase_id in (
             %L::uuid,
             %L::uuid,
@@ -1549,7 +1557,7 @@ select results_eq(
         :'purchaseRecoveryReplacementID',
         :'purchaseStartedID'
     ),
-    $$ values (5, true, true, true, true, true, true) $$,
+    $$ values (5, true, true, true, true, true, true, true) $$,
     'Should persist every automatic refund handoff for worker processing'
 );
 

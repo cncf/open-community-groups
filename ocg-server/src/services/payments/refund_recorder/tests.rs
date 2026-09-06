@@ -144,8 +144,9 @@ fn sample_refund() -> EventPurchaseRefund {
         event_purchase_refund_id: Uuid::from_u128(2),
         idempotency_key: "event-purchase-refund-test".to_string(),
         kind: EventPurchaseRefundKind::EventCancellation,
+        payment_job_id: Uuid::from_u128(4),
         payment_provider: PaymentProvider::Stripe,
-        status: EventPurchaseRefundStatus::Processing,
+        status: EventPurchaseRefundStatus::ProviderPending,
         terminal_failure: false,
 
         attempt_count: 1,

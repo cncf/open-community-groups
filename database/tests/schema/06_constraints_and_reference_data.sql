@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(192);
+select plan(181);
 
 -- ============================================================================
 -- VARIABLES
@@ -403,74 +403,23 @@ select col_has_check('payment_provider_tax_product', 'provider_tax_product_id');
 select col_has_check('payment_provider_tax_product', 'tax_code');
 select col_has_check('payment_provider_tax_product', 'title');
 
--- Test: durable financial work should constrain its lifecycles
+-- Test: durable financial work should constrain its domain values
 select col_has_check('event_purchase_application_fee_adjustment', 'amount_minor');
-select col_has_check('event_purchase_application_fee_adjustment', 'attempt_count');
-select col_has_check('event_purchase_application_fee_adjustment', 'failure_message');
-select col_has_check('event_purchase_application_fee_adjustment', 'idempotency_key');
 select col_has_check(
     'event_purchase_application_fee_adjustment',
     'provider_application_fee_refund_id'
-);
-select col_has_check('event_purchase_application_fee_adjustment', 'recovery_note');
-select col_has_check('event_purchase_application_fee_adjustment', 'recovery_reference');
-select has_check(
-    'event_purchase_application_fee_adjustment',
-    'event_purchase_application_fee_adjustment_claim_chk'
 );
 select has_check(
     'event_purchase_application_fee_adjustment',
     'event_purchase_application_fee_adjustment_kind_chk'
 );
-select has_check(
-    'event_purchase_application_fee_adjustment',
-    'event_purchase_application_fee_adjustment_recovery_chk'
-);
-select has_check(
-    'event_purchase_application_fee_adjustment',
-    'event_purchase_application_fee_adjustment_status_chk'
-);
-select has_check(
-    'event_purchase_application_fee_adjustment',
-    'event_purchase_application_fee_adjustment_terminal_chk'
-);
-select ok(
-    (
-        select pg_get_constraintdef(oid) like '%status = ''completed''%'
-            and pg_get_constraintdef(oid) like '%completed_at IS NOT NULL%'
-            and pg_get_constraintdef(oid)
-                like '%provider_application_fee_refund_id IS NOT NULL%'
-        from pg_constraint
-        where conname = 'event_purchase_application_fee_adjustment_terminal_chk'
-    ),
-    'Completed application-fee adjustments should require provider evidence'
-);
-select has_check('event_purchase_credit_note', 'event_purchase_credit_note_claim_chk');
 select col_has_check('event_purchase_credit_note', 'amount_minor');
-select col_has_check('event_purchase_credit_note', 'attempt_count');
 select col_has_check('event_purchase_credit_note', 'currency_code');
-select col_has_check('event_purchase_credit_note', 'failure_message');
-select col_has_check('event_purchase_credit_note', 'idempotency_key');
 select col_has_check('event_purchase_credit_note', 'provider_credit_note_id');
 select col_has_check('event_purchase_credit_note', 'provider_hosted_url');
 select col_has_check('event_purchase_credit_note', 'provider_object_account_id');
 select col_has_check('event_purchase_credit_note', 'provider_pdf_url');
-select col_has_check('event_purchase_credit_note', 'recovery_note');
-select col_has_check('event_purchase_credit_note', 'recovery_reference');
 select col_has_check('event_purchase_credit_note', 'tax_amount_minor');
-select has_check('event_purchase_credit_note', 'event_purchase_credit_note_recovery_chk');
-select has_check('event_purchase_credit_note', 'event_purchase_credit_note_status_chk');
-select has_check('event_purchase_credit_note', 'event_purchase_credit_note_terminal_chk');
-select ok(
-    (
-        select pg_get_constraintdef(oid) like '%status = ''issued''%'
-            and pg_get_constraintdef(oid) like '%completed_at IS NOT NULL%'
-            and pg_get_constraintdef(oid) like '%provider_credit_note_id IS NOT NULL%'
-        from pg_constraint
-        where conname = 'event_purchase_credit_note_terminal_chk'
-    ),
-    'Issued credit notes should require provider evidence'
-);
 
 -- Test: event purchase refund kinds should match expected values
 select results_eq(
@@ -497,7 +446,6 @@ select results_eq(
     $$,
     $$ values
         ('finalized'),
-        ('processing'),
         ('provider-failed'),
         ('provider-pending'),
         ('provider-succeeded')
@@ -508,19 +456,7 @@ select results_eq(
 -- Test: event purchase refund lifecycle constraints should exist
 select has_check(
     'event_purchase_refund',
-    'event_purchase_refund_attempt_count_check'
-);
-select has_check(
-    'event_purchase_refund',
-    'event_purchase_refund_claim_chk'
-);
-select has_check(
-    'event_purchase_refund',
     'event_purchase_refund_finalized_at_status_chk'
-);
-select has_check(
-    'event_purchase_refund',
-    'event_purchase_refund_recovery_completed_chk'
 );
 
 -- Test: only terminal provider failures should preserve local finalization
@@ -557,6 +493,49 @@ select has_check(
 select has_check(
     'event_purchase_refund',
     'event_purchase_refund_terminal_failure_chk'
+);
+
+-- Test: payment job lifecycle constraints should exist
+select col_has_check('payment_job', 'attempt_count');
+select col_has_check('payment_job', 'failure_message');
+select col_has_check('payment_job', 'idempotency_key');
+select col_has_check('payment_job', 'recovery_note');
+select col_has_check('payment_job', 'recovery_reference');
+select has_check('payment_job', 'payment_job_claim_chk');
+select has_check('payment_job', 'payment_job_completed_chk');
+select has_check('payment_job', 'payment_job_kind_chk');
+select has_check('payment_job', 'payment_job_recovery_chk');
+select has_check('payment_job', 'payment_job_status_chk');
+
+-- Test: payment job kinds should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'payment_job_kind_chk'
+    $$,
+    $$ values
+        ('event-purchase-application-fee-adjustment'),
+        ('event-purchase-credit-note'),
+        ('event-purchase-refund')
+    $$,
+    'Payment job kinds should match expected values'
+);
+
+-- Test: payment job statuses should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'payment_job_status_chk'
+    $$,
+    $$ values
+        ('completed'),
+        ('failed'),
+        ('pending'),
+        ('processing')
+    $$,
+    'Payment job statuses should match expected values'
 );
 
 -- Test: event refund request statuses should match expected values

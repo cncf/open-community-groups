@@ -14,12 +14,14 @@ select plan(4);
 \set claimID 'd7370000-0000-0000-0000-000000000001'
 \set communityID 'd7370000-0000-0000-0000-000000000002'
 \set creditNoteID 'd7370000-0000-0000-0000-000000000003'
+\set creditNoteJobID 'd7370000-0000-0000-0000-000000000012'
 \set eventCategoryID 'd7370000-0000-0000-0000-000000000004'
 \set eventID 'd7370000-0000-0000-0000-000000000005'
 \set groupCategoryID 'd7370000-0000-0000-0000-000000000006'
 \set groupID 'd7370000-0000-0000-0000-000000000007'
 \set purchaseID 'd7370000-0000-0000-0000-000000000008'
 \set refundID 'd7370000-0000-0000-0000-000000000009'
+\set refundJobID 'd7370000-0000-0000-0000-000000000013'
 \set ticketTypeID 'd7370000-0000-0000-0000-000000000010'
 \set userID 'd7370000-0000-0000-0000-000000000011'
 
@@ -63,25 +65,50 @@ insert into event_purchase (
     :'userID', '{}'::jsonb
 );
 
+-- Payment job for the successful provider refund
+insert into payment_job (
+    payment_job_id, event_purchase_id, idempotency_key, kind,
+    payment_provider_id
+) values (
+    :'refundJobID', :'purchaseID',
+    'refund-complete-credit-note-succeeded-refund-job',
+    'event-purchase-refund', 'stripe'
+);
+
 -- Successful provider refund awaiting its credit note
 insert into event_purchase_refund (
     amount_minor, currency_code, event_purchase_id, event_purchase_refund_id,
-    idempotency_key, kind, payment_provider_id, provider_refund_id,
+    kind, payment_job_id, payment_provider_id, provider_refund_id,
     provider_refunded_at, status
 ) values (
-    2500, 'USD', :'purchaseID', :'refundID', 'refund-complete-credit-note',
-    'automatic-unfulfillable-checkout', 'stripe', 're_credit_credit_note_succeeded', current_timestamp,
+    2500, 'USD', :'purchaseID', :'refundID',
+    'automatic-unfulfillable-checkout', :'refundJobID', 'stripe',
+    're_credit_credit_note_succeeded', current_timestamp,
     'provider-succeeded'
 );
 
--- Processing credit-note claim
-insert into event_purchase_credit_note (
-    amount_minor, attempt_count, claim_id, claimed_at, currency_code,
-    event_purchase_credit_note_id, event_purchase_refund_id, idempotency_key,
-    payment_provider_id, provider_object_account_id, status, tax_amount_minor
+-- Processing payment job for the credit-note claim
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, idempotency_key,
+    kind, payment_provider_id, status,
+
+    claim_id, claimed_at
 ) values (
-    2500, 1, :'claimID', current_timestamp, 'USD', :'creditNoteID', :'refundID',
-    'complete-credit-note', 'stripe', 'acct_credit', 'processing', 200
+    :'creditNoteJobID', 1, :'purchaseID',
+    'complete-credit-note-succeeded-job',
+    'event-purchase-credit-note', 'stripe', 'processing',
+
+    :'claimID', current_timestamp
+);
+
+-- Processing credit note pinned to the job
+insert into event_purchase_credit_note (
+    event_purchase_credit_note_id, amount_minor, currency_code,
+    event_purchase_refund_id, payment_job_id, payment_provider_id,
+    provider_object_account_id, tax_amount_minor
+) values (
+    :'creditNoteID', 2500, 'USD', :'refundID', :'creditNoteJobID',
+    'stripe', 'acct_credit', 200
 );
 
 -- ============================================================================
@@ -101,16 +128,22 @@ select lives_ok(
 -- Should persist the issued credit note and current URLs
 select results_eq(
     format($$
-        select provider_credit_note_id, provider_hosted_url,
-            provider_pdf_url, status
-        from event_purchase_credit_note
+        select
+            epcn.provider_credit_note_id,
+            epcn.provider_hosted_url,
+            epcn.provider_pdf_url,
+            pj.status,
+            pj.completed_at is not null
+        from event_purchase_credit_note epcn
+        join payment_job pj using (payment_job_id)
         where event_purchase_credit_note_id = %L::uuid
     $$, :'creditNoteID'),
     $$ values (
         'cn_credit'::text,
         'https://credit.test/one'::text,
         'https://credit.test/one.pdf'::text,
-        'issued'::text
+        'completed'::text,
+        true
     ) $$,
     'Should persist the issued credit note and current URLs'
 );

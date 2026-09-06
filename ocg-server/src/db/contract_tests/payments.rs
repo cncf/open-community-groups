@@ -8,49 +8,81 @@ use crate::{
     db::{
         dashboard::group::DBDashboardGroup,
         payments::{
-            DBPayments, EventPurchaseRefundKind, EventPurchaseRefundStatus,
-            PrepareEventCheckoutPurchaseInput, PrepareEventCheckoutPurchaseResult,
-            ReconcileEventPurchaseForCheckoutSessionInput, ReconcileEventPurchaseResult,
+            ClaimedPaymentJobWork, CompletePaymentJobRecoveryInput, DBPayments,
+            EventPurchaseRefundKind, EventPurchaseRefundStatus, PrepareEventCheckoutPurchaseInput,
+            PrepareEventCheckoutPurchaseResult, ReconcileEventPurchaseForCheckoutSessionInput,
+            ReconcileEventPurchaseResult,
         },
     },
-    types::payments::{EventPurchaseChargeModel, EventPurchaseStatus, PaymentProvider},
+    types::payments::{
+        EventPurchaseChargeModel, EventPurchaseStatus, PaymentJobKind, PaymentProvider,
+    },
 };
 
 use super::helpers::{
     checkout_buyer_id, community_id, contract_tests_db, contract_tests_pool,
-    document_adjustment_id, document_credit_note_id, document_purchase_id, document_refund_id,
+    document_adjustment_id, document_adjustment_job_id, document_credit_note_id,
+    document_credit_note_job_id, document_purchase_id, document_refund_id, document_refund_job_id,
     external_checkout_buyer_id, external_complete_purchase_id, external_complete_user_id,
     external_event_id, external_refund_purchase_id, external_refund_user_id,
     external_ticket_type_id, free_buyer_id, free_purchase_id, group_id, organizer_id,
     paid_event_id, paid_ticket_type_id, reconcile_buyer_id, reconcile_due_event_id,
-    refund_approve_purchase_id, refund_begin_purchase_id, refund_event_id,
-    refund_lifecycle_purchase_id, refund_recovery_purchase_id, refund_recovery_refund_id,
-    refund_reject_buyer_id, refund_reject_purchase_id, subgroup_id, summary_purchase_id,
+    refund_approve_job_id, refund_approve_purchase_id, refund_begin_purchase_id, refund_event_id,
+    refund_lifecycle_purchase_id, refund_recovery_job_id, refund_recovery_purchase_id,
+    refund_recovery_refund_id, refund_reject_buyer_id, refund_reject_purchase_id, subgroup_id,
+    summary_purchase_id,
 };
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<()> {
-    // Setup the contract database
+    // Setup the contract database and make the target refund claim deterministic
     let db = contract_tests_db()?;
+    contract_tests_pool()?
+        .get()
+        .await?
+        .execute(
+            "
+            update payment_job
+            set next_attempt_at = case
+                when payment_job_id = $1::uuid then current_timestamp - interval '1 minute'
+                else current_timestamp + interval '1 minute'
+            end
+            where kind = 'event-purchase-refund'
+            ",
+            &[&refund_approve_job_id()],
+        )
+        .await?;
 
     // Claim the provider-complete durable refund from contract fixtures
-    let refund = db
-        .claim_event_purchase_refund(PaymentProvider::Stripe)
+    let job = db
+        .claim_payment_job(PaymentJobKind::EventPurchaseRefund, PaymentProvider::Stripe)
         .await?
         .context("provider-complete contract refund should be claimable")?;
+    let ClaimedPaymentJobWork::EventPurchaseRefund { refund } = job.work else {
+        return Err(anyhow!("expected refund payment job"));
+    };
 
     // Check the claimed JSON contract and persisted provider outcome
+    assert_eq!(job.attempt_count, 1);
+    assert_eq!(job.event_purchase_id, refund_approve_purchase_id());
+    assert_eq!(
+        job.idempotency_key,
+        "event-purchase-refund-00000000-0000-0000-0000-00000000c0f6"
+    );
+    assert_eq!(job.payment_job_id, refund_approve_job_id());
+    assert_eq!(job.payment_provider, PaymentProvider::Stripe);
     assert_eq!(refund.community_id, community_id());
     assert_eq!(refund.event_id, paid_event_id());
     assert_eq!(refund.event_purchase_id, refund_approve_purchase_id());
-    assert_eq!(refund.status, EventPurchaseRefundStatus::Processing);
+    assert_eq!(refund.payment_job_id, refund_approve_job_id());
+    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderSucceeded);
     assert!(refund.provider_refunded_at.is_some());
 
     // Finalize local state with the current worker claim
     db.finalize_event_purchase_refund(
         refund.event_purchase_refund_id,
-        refund.claim_id.context("refund claim id should be present")?,
+        job.claim_id,
         serde_json::json!({"scenario": "contract"}),
         Some(PaymentProvider::Stripe),
     )
@@ -61,26 +93,38 @@ async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<(
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_claim_event_purchase_application_fee_adjustment_deserializes() -> Result<()> {
+async fn db_contracts_claim_payment_job_application_fee_adjustment_deserializes() -> Result<()> {
     // Setup the contract database and claim the pending adjustment fixture
     let db = contract_tests_db()?;
-    let adjustment = db
-        .claim_event_purchase_application_fee_adjustment(PaymentProvider::Stripe)
+    let job = db
+        .claim_payment_job(
+            PaymentJobKind::EventPurchaseApplicationFeeAdjustment,
+            PaymentProvider::Stripe,
+        )
         .await?
         .context("contract application-fee adjustment should be claimable")?;
+    let ClaimedPaymentJobWork::EventPurchaseApplicationFeeAdjustment {
+        application_fee_adjustment: adjustment,
+    } = job.work
+    else {
+        return Err(anyhow!("expected application-fee adjustment payment job"));
+    };
 
     // Check the complete provider request context deserializes
+    assert_eq!(job.attempt_count, 1);
+    assert_eq!(job.event_purchase_id, document_purchase_id());
+    assert_eq!(
+        job.idempotency_key,
+        "event-purchase-application-fee-adjustment-contract-documents"
+    );
+    assert_eq!(job.payment_job_id, document_adjustment_job_id());
+    assert_eq!(job.payment_provider, PaymentProvider::Stripe);
     assert_eq!(adjustment.amount_minor, 25);
     assert_eq!(adjustment.connected_seller_id, "acct_contract_documents");
     assert_eq!(adjustment.currency_code, "USD");
     assert_eq!(
         adjustment.event_purchase_application_fee_adjustment_id,
         document_adjustment_id()
-    );
-    assert_eq!(adjustment.event_purchase_id, document_purchase_id());
-    assert_eq!(
-        adjustment.idempotency_key,
-        "event-purchase-application-fee-adjustment-contract-documents"
     );
     assert_eq!(adjustment.kind, "purchase-refund");
     assert_eq!(
@@ -91,7 +135,7 @@ async fn db_contracts_claim_event_purchase_application_fee_adjustment_deserializ
     // Complete the claim so it cannot interfere with later worker contracts
     db.record_event_purchase_application_fee_adjustment_succeeded(
         adjustment.event_purchase_application_fee_adjustment_id,
-        adjustment.claim_id,
+        job.claim_id,
         "fr_contract_documents".to_string(),
     )
     .await?;
@@ -101,27 +145,36 @@ async fn db_contracts_claim_event_purchase_application_fee_adjustment_deserializ
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_claim_event_purchase_credit_note_deserializes() -> Result<()> {
+async fn db_contracts_claim_payment_job_credit_note_deserializes() -> Result<()> {
     // Setup the contract database and claim the pending credit-note fixture
     let db = contract_tests_db()?;
-    let credit_note = db
-        .claim_event_purchase_credit_note(PaymentProvider::Stripe)
+    let job = db
+        .claim_payment_job(
+            PaymentJobKind::EventPurchaseCreditNote,
+            PaymentProvider::Stripe,
+        )
         .await?
         .context("contract credit note should be claimable")?;
+    let ClaimedPaymentJobWork::EventPurchaseCreditNote { credit_note } = job.work else {
+        return Err(anyhow!("expected credit-note payment job"));
+    };
 
     // Check the complete provider request context deserializes
+    assert_eq!(job.attempt_count, 1);
+    assert_eq!(job.event_purchase_id, document_purchase_id());
+    assert_eq!(
+        job.idempotency_key,
+        "event-purchase-credit-note-contract-documents"
+    );
+    assert_eq!(job.payment_job_id, document_credit_note_job_id());
+    assert_eq!(job.payment_provider, PaymentProvider::Stripe);
     assert_eq!(credit_note.amount_minor, 2500);
     assert_eq!(credit_note.connected_seller_id, "acct_contract_documents");
     assert_eq!(
         credit_note.event_purchase_credit_note_id,
         document_credit_note_id()
     );
-    assert_eq!(credit_note.event_purchase_id, document_purchase_id());
     assert_eq!(credit_note.event_purchase_refund_id, document_refund_id());
-    assert_eq!(
-        credit_note.idempotency_key,
-        "event-purchase-credit-note-contract-documents"
-    );
     assert_eq!(credit_note.provider_invoice_id, "in_contract_documents");
     assert_eq!(credit_note.provider_refund_id, "re_contract_documents");
     assert_eq!(credit_note.tax_amount_minor, 0);
@@ -129,7 +182,7 @@ async fn db_contracts_claim_event_purchase_credit_note_deserializes() -> Result<
     // Issue the document so later attendee contracts cover the provider fields
     db.record_event_purchase_credit_note_succeeded(
         credit_note.event_purchase_credit_note_id,
-        credit_note.claim_id,
+        job.claim_id,
         "cn_contract_documents".to_string(),
         Some("https://invoice.stripe.test/cn/contract-documents".to_string()),
         Some("https://invoice.stripe.test/cn/contract-documents.pdf".to_string()),
@@ -188,6 +241,108 @@ async fn db_contracts_complete_external_event_purchase_deserializes() -> Result<
     assert_eq!(purchase.event_id, external_event_id());
     assert_eq!(purchase.transitioned, Some(true));
     assert_eq!(purchase.user_id, external_complete_user_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_complete_payment_job_recovery_records_evidence() -> Result<()> {
+    // Setup the contract database and a dedicated exhausted recovery job
+    let db = contract_tests_db()?;
+    let pool = contract_tests_pool()?;
+    let adjustment_id = Uuid::parse_str("00000000-0000-0000-0000-00000000c13c")?;
+    let payment_job_id = Uuid::parse_str("00000000-0000-0000-0000-00000000c13b")?;
+    let client = pool.get().await?;
+    client
+        .execute(
+            "
+            insert into payment_job (
+                attempt_count,
+                event_purchase_id,
+                failure_message,
+                idempotency_key,
+                kind,
+                payment_job_id,
+                payment_provider_id,
+                status
+            ) values (
+                10,
+                $1::uuid,
+                'contract recovery failure',
+                'contract-complete-payment-job-recovery',
+                'event-purchase-application-fee-adjustment',
+                $2::uuid,
+                'stripe',
+                'failed'
+            )
+            ",
+            &[&document_purchase_id(), &payment_job_id],
+        )
+        .await?;
+    client
+        .execute(
+            "
+            insert into event_purchase_application_fee_adjustment (
+                amount_minor,
+                event_purchase_application_fee_adjustment_id,
+                event_purchase_id,
+                kind,
+                payment_job_id
+            ) values (
+                25,
+                $3::uuid,
+                $1::uuid,
+                'tax-reconciliation',
+                $2::uuid
+            )
+            ",
+            &[&document_purchase_id(), &payment_job_id, &adjustment_id],
+        )
+        .await?;
+
+    // Complete the exhausted job with external provider evidence
+    db.complete_payment_job_recovery(&CompletePaymentJobRecoveryInput {
+        actor_user_id: organizer_id(),
+        group_id: group_id(),
+        payment_job_id,
+        provider_object_id: "fr_contract_recovery".to_string(),
+        recovery_note: "Recovered through Stripe dashboard".to_string(),
+        recovery_reference: "ticket-contract-recovery".to_string(),
+    })
+    .await?;
+
+    // Check the recovery evidence and provider outcome were persisted
+    let client = pool.get().await?;
+    let row = client
+        .query_one(
+            "
+            select
+                pj.recovery_note,
+                pj.recovery_reference,
+                pj.status,
+                epafa.provider_application_fee_refund_id
+            from payment_job pj
+            join event_purchase_application_fee_adjustment epafa
+                on epafa.payment_job_id = pj.payment_job_id
+            where pj.payment_job_id = $1::uuid
+            ",
+            &[&payment_job_id],
+        )
+        .await?;
+    assert_eq!(
+        row.get::<_, &str>("recovery_note"),
+        "Recovered through Stripe dashboard"
+    );
+    assert_eq!(
+        row.get::<_, &str>("recovery_reference"),
+        "ticket-contract-recovery"
+    );
+    assert_eq!(row.get::<_, &str>("status"), "completed");
+    assert_eq!(
+        row.get::<_, &str>("provider_application_fee_refund_id"),
+        "fr_contract_recovery"
+    );
 
     Ok(())
 }
@@ -352,6 +507,7 @@ async fn db_contracts_get_event_purchase_refund_deserializes() -> Result<()> {
         refund.kind,
         EventPurchaseRefundKind::AutomaticUnfulfillableCheckout
     );
+    assert_eq!(refund.payment_job_id, refund_recovery_job_id());
     assert_eq!(refund.payment_provider, PaymentProvider::Stripe);
     assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderFailed);
 
@@ -619,8 +775,63 @@ async fn db_contracts_queue_event_refund_request_approval_deserializes() -> Resu
     assert_eq!(refund.currency_code, "USD");
     assert_eq!(refund.event_purchase_id, refund_begin_purchase_id());
     assert_eq!(refund.kind, EventPurchaseRefundKind::RefundRequestApproval);
+    assert_ne!(refund.payment_job_id, Uuid::nil());
     assert_eq!(refund.payment_provider, PaymentProvider::Stripe);
     assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_record_payment_job_failure_releases_claim() -> Result<()> {
+    // Setup a processing payment job with a deterministic claim
+    let db = contract_tests_db()?;
+    let pool = contract_tests_pool()?;
+    let claim_id = Uuid::new_v4();
+    pool.get()
+        .await?
+        .execute(
+            "
+            update payment_job
+            set
+                attempt_count = 1,
+                claim_id = $2::uuid,
+                claimed_at = current_timestamp,
+                status = 'processing'
+            where payment_job_id = $1::uuid
+            ",
+            &[&document_refund_job_id(), &claim_id],
+        )
+        .await?;
+
+    // Release the claim through the Rust database wrapper
+    db.record_payment_job_failure(
+        document_refund_job_id(),
+        claim_id,
+        "contract retryable failure".to_string(),
+    )
+    .await?;
+
+    // Check the job is failed and unclaimed for a later retry
+    let row = pool
+        .get()
+        .await?
+        .query_one(
+            "
+            select claim_id, failure_message, status
+            from payment_job
+            where payment_job_id = $1::uuid
+            ",
+            &[&document_refund_job_id()],
+        )
+        .await?;
+    assert_eq!(row.get::<_, Option<Uuid>>("claim_id"), None);
+    assert_eq!(
+        row.get::<_, &str>("failure_message"),
+        "contract retryable failure"
+    );
+    assert_eq!(row.get::<_, &str>("status"), "failed");
 
     Ok(())
 }
@@ -657,6 +868,99 @@ async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes
     assert_eq!(purchase.community_id, community_id());
     assert_eq!(purchase.event_id, paid_event_id());
     assert_eq!(purchase.user_id, reconcile_buyer_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_requeue_payment_job_resets_exhausted_job() -> Result<()> {
+    // Setup the contract database and an exhausted refund job
+    let db = contract_tests_db()?;
+    let pool = contract_tests_pool()?;
+    pool.get()
+        .await?
+        .execute(
+            "
+            update payment_job
+            set
+                attempt_count = 10,
+                claim_id = null,
+                claimed_at = null,
+                failure_message = 'contract exhausted',
+                next_attempt_at = current_timestamp,
+                status = 'failed'
+            where payment_job_id = $1::uuid
+            ",
+            &[&document_refund_job_id()],
+        )
+        .await?;
+
+    // Requeue the exhausted job through the Rust wrapper
+    db.requeue_payment_job(group_id(), document_refund_job_id()).await?;
+
+    // Check the job is ready for a new automatic attempt cycle
+    let row = pool
+        .get()
+        .await?
+        .query_one(
+            "
+            select attempt_count, failure_message, status
+            from payment_job
+            where payment_job_id = $1::uuid
+            ",
+            &[&document_refund_job_id()],
+        )
+        .await?;
+    assert_eq!(row.get::<_, i32>("attempt_count"), 0);
+    assert_eq!(row.get::<_, Option<String>>("failure_message"), None);
+    assert_eq!(row.get::<_, &str>("status"), "pending");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_requeue_stale_payment_job_claims_releases_old_claims() -> Result<()> {
+    // Setup a stale payment job claim beyond the recovery timeout
+    let db = contract_tests_db()?;
+    let pool = contract_tests_pool()?;
+    let claim_id = Uuid::new_v4();
+    pool.get()
+        .await?
+        .execute(
+            "
+            update payment_job
+            set
+                attempt_count = 2,
+                claim_id = $2::uuid,
+                claimed_at = current_timestamp - interval '20 minutes',
+                status = 'processing'
+            where payment_job_id = $1::uuid
+            ",
+            &[&document_refund_job_id(), &claim_id],
+        )
+        .await?;
+
+    // Recover stale claims through the Rust database wrapper
+    let recovered = db.requeue_stale_payment_job_claims().await?;
+
+    // Check the stale claim was released without depending on total sweep count
+    let row = pool
+        .get()
+        .await?
+        .query_one(
+            "
+            select claim_id, status
+            from payment_job
+            where payment_job_id = $1::uuid
+            ",
+            &[&document_refund_job_id()],
+        )
+        .await?;
+    assert!(recovered >= 1);
+    assert_eq!(row.get::<_, Option<Uuid>>("claim_id"), None);
+    assert_eq!(row.get::<_, &str>("status"), "failed");
 
     Ok(())
 }

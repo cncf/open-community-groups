@@ -10,6 +10,7 @@ declare
     v_community_id uuid;
     v_event event;
     v_existing_refund_kind text;
+    v_payment_job_id uuid;
     v_purchase event_purchase;
     v_refund_request_id uuid;
 begin
@@ -120,12 +121,24 @@ begin
         end if;
 
         -- Insert durable worker work with the purchase-level idempotency key
+        v_payment_job_id := enqueue_payment_job(
+            'event-purchase-refund',
+            v_purchase.payment_provider_id,
+            v_purchase.event_purchase_id,
+            format('event-purchase-refund-%s', v_purchase.event_purchase_id)
+        );
+
+        -- Reject purchases whose refund work already exists
+        if v_payment_job_id is null then
+            raise exception 'event purchase refund already started' using errcode = 'OCG01';
+        end if;
+
         insert into event_purchase_refund (
             amount_minor,
             currency_code,
             event_purchase_id,
-            idempotency_key,
             kind,
+            payment_job_id,
             payment_provider_id,
             status,
 
@@ -135,8 +148,8 @@ begin
             v_purchase.provider_total_minor,
             v_purchase.currency_code,
             v_purchase.event_purchase_id,
-            format('event-purchase-refund-%s', v_purchase.event_purchase_id),
             'attendance-cancellation',
+            v_payment_job_id,
             v_purchase.payment_provider_id,
             'provider-pending',
 

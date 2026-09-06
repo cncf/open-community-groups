@@ -62,8 +62,8 @@ use super::helpers::{
     cfs_submission_id, check_in_code, claim_group_id, community_id, contract_active_user_badge,
     contract_badge_snapshot, contract_tests_db, contract_tests_pool, event_category_id, event_id,
     external_completed_purchase_id, external_completed_user_id, external_event_id,
-    external_pending_purchase_id, external_pending_user_id, financial_recovery_adjustment_id,
-    financial_recovery_credit_note_id, group_id, group_lock_event_update,
+    external_pending_purchase_id, external_pending_user_id, financial_recovery_adjustment_job_id,
+    financial_recovery_credit_note_job_id, group_id, group_lock_event_update,
     group_lock_first_event_id, group_lock_second_event_id, group_sponsor_id, invitation_offer_id,
     invitation_ticket_type_id, invite_event_id, invitee_id, mutation_event_id, mutation_offer_id,
     organizer_id, paid_cancellation_purchase_id, paid_cancellation_user_id, paid_event_id,
@@ -1143,11 +1143,14 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     assert_eq!(recovery.failure_message, "Contract application-fee failure");
     assert_eq!(
         recovery.kind,
-        FinancialRecoveryKind::ApplicationFeeAdjustment
+        FinancialRecoveryKind::EventPurchaseApplicationFeeAdjustment
     );
     assert_eq!(recovery.operation, "Application-fee refund");
+    assert_eq!(
+        recovery.payment_job_id,
+        financial_recovery_adjustment_job_id()
+    );
     assert_eq!(recovery.username, "contract-buyer-refund-reject");
-    assert_eq!(recovery.work_id, financial_recovery_adjustment_id());
     assert_eq!(
         recovery.name.as_deref(),
         Some("Contract Buyer Refund Reject")
@@ -1172,6 +1175,7 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     assert_eq!(refund.failure_message, None);
     assert_eq!(refund.kind.as_deref(), Some("refund-request-approval"));
     assert_eq!(refund.name.as_deref(), Some("Contract Buyer Refund Reject"));
+    assert_eq!(refund.payment_job_id, None);
     assert_eq!(refund.photo_url, None);
     assert_eq!(refund.provider_refund_id, None);
     assert_eq!(
@@ -1197,10 +1201,16 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     assert_eq!(recovery.email, "buyer-refund-approve.contract@example.com");
     assert_eq!(recovery.event_name, "Contract Paid Event");
     assert_eq!(recovery.failure_message, "Contract credit-note failure");
-    assert_eq!(recovery.kind, FinancialRecoveryKind::CreditNote);
+    assert_eq!(
+        recovery.kind,
+        FinancialRecoveryKind::EventPurchaseCreditNote
+    );
     assert_eq!(recovery.operation, "Credit note");
+    assert_eq!(
+        recovery.payment_job_id,
+        financial_recovery_credit_note_job_id()
+    );
     assert_eq!(recovery.username, "contract-buyer-refund-approve");
-    assert_eq!(recovery.work_id, financial_recovery_credit_note_id());
     assert_eq!(
         recovery.name.as_deref(),
         Some("Contract Buyer Refund Approve")

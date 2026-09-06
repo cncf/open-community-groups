@@ -13,6 +13,7 @@ select plan(3);
 
 \set communityID 'd7390000-0000-0000-0000-000000000001'
 \set creditNoteID 'd7390000-0000-0000-0000-000000000002'
+\set creditNoteJobID 'd7390000-0000-0000-0000-000000000012'
 \set eventCategoryID 'd7390000-0000-0000-0000-000000000003'
 \set eventID 'd7390000-0000-0000-0000-000000000004'
 \set groupCategoryID 'd7390000-0000-0000-0000-000000000005'
@@ -20,6 +21,7 @@ select plan(3);
 \set otherUserID 'd7390000-0000-0000-0000-000000000007'
 \set purchaseID 'd7390000-0000-0000-0000-000000000008'
 \set refundID 'd7390000-0000-0000-0000-000000000009'
+\set refundJobID 'd7390000-0000-0000-0000-000000000013'
 \set ticketTypeID 'd7390000-0000-0000-0000-000000000010'
 \set userID 'd7390000-0000-0000-0000-000000000011'
 
@@ -65,26 +67,46 @@ insert into event_purchase (
     :'userID', '{}'::jsonb
 );
 
+-- Payment job for the successful provider refund
+insert into payment_job (
+    payment_job_id, event_purchase_id, idempotency_key, kind,
+    payment_provider_id
+) values (
+    :'refundJobID', :'purchaseID',
+    'refund-document-context-refund-job',
+    'event-purchase-refund', 'stripe'
+);
+
 -- Successful provider refund linked to the purchase
 insert into event_purchase_refund (
     amount_minor, currency_code, event_purchase_id, event_purchase_refund_id,
-    idempotency_key, kind, payment_provider_id, provider_refund_id,
+    kind, payment_job_id, payment_provider_id, provider_refund_id,
     provider_refunded_at, status
 ) values (
-    2500, 'USD', :'purchaseID', :'refundID', 'refund-document-context',
-    'automatic-unfulfillable-checkout', 'stripe', 're_context', current_timestamp,
+    2500, 'USD', :'purchaseID', :'refundID',
+    'automatic-unfulfillable-checkout', :'refundJobID', 'stripe',
+    're_context', current_timestamp,
     'provider-succeeded'
+);
+
+-- Completed payment job for the issued credit note
+insert into payment_job (
+    payment_job_id, completed_at, event_purchase_id, idempotency_key,
+    kind, payment_provider_id, status
+) values (
+    :'creditNoteJobID', current_timestamp, :'purchaseID',
+    'document-context-credit-note-job',
+    'event-purchase-credit-note', 'stripe', 'completed'
 );
 
 -- Issued credit note linked to the successful refund
 insert into event_purchase_credit_note (
-    amount_minor, completed_at, currency_code, event_purchase_credit_note_id,
-    event_purchase_refund_id, idempotency_key, payment_provider_id,
-    provider_credit_note_id, provider_object_account_id, status, tax_amount_minor
+    event_purchase_credit_note_id, amount_minor, currency_code,
+    event_purchase_refund_id, payment_job_id, payment_provider_id,
+    provider_credit_note_id, provider_object_account_id, tax_amount_minor
 ) values (
-    2500, current_timestamp, 'USD', :'creditNoteID', :'refundID',
-    'document-context-credit-note', 'stripe', 'cn_context', 'acct_context',
-    'issued', 200
+    :'creditNoteID', 2500, 'USD', :'refundID', :'creditNoteJobID',
+    'stripe', 'cn_context', 'acct_context', 200
 );
 
 -- ============================================================================

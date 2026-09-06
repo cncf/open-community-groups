@@ -12,6 +12,7 @@ returns jsonb as $$
 declare
     v_event event;
     v_group "group";
+    v_job payment_job;
     v_locked record;
     v_purchase event_purchase;
     v_refund event_purchase_refund;
@@ -63,6 +64,7 @@ begin
         p_configured_provider
     );
 
+    -- Serialize with the checkout and enrollment paths of the same attendee
     perform pg_advisory_xact_lock(hashtext(v_purchase.event_id::text), hashtext(v_purchase.user_id::text));
 
     -- Lock the purchase and refund and load the event and group they belong to
@@ -86,15 +88,23 @@ begin
     v_purchase := v_locked.ep;
     v_refund := v_locked.epr;
 
+    -- Lock the payment job that carries the recovery evidence
+    select pj.*
+    into v_job
+    from payment_job pj
+    where pj.payment_job_id = v_refund.payment_job_id
+    for update;
+
     -- Treat an exact repeated completion as an idempotent operator retry
-    if v_refund.recovery_completed_at is not null then
+    if v_job.recovery_completed_at is not null then
         -- Reject a repeated completion carrying different evidence
-        if v_refund.recovery_completed_by_user_id <> p_actor_user_id
-           or v_refund.recovery_note <> btrim(p_recovery_note)
-           or v_refund.recovery_reference <> btrim(p_recovery_reference) then
+        if v_job.recovery_completed_by_user_id <> p_actor_user_id
+           or v_job.recovery_note <> btrim(p_recovery_note)
+           or v_job.recovery_reference <> btrim(p_recovery_reference) then
             raise exception 'refund recovery already completed with different evidence' using errcode = 'OCG01';
         end if;
 
+        -- Return the already recovered purchase context
         return jsonb_build_object(
             'event_id', v_event.event_id,
             'recovered_now', false,
@@ -211,16 +221,20 @@ begin
         end if;
     end if;
 
-    -- Preserve the failed provider attempt and append the external recovery evidence
+    -- Preserve the failed provider attempt and record local finalization
     update event_purchase_refund
     set
         finalized_at = coalesce(finalized_at, current_timestamp),
-        recovery_completed_at = current_timestamp,
-        recovery_completed_by_user_id = p_actor_user_id,
-        recovery_note = btrim(p_recovery_note),
-        recovery_reference = btrim(p_recovery_reference),
         updated_at = current_timestamp
     where event_purchase_refund_id = p_event_purchase_refund_id;
+
+    -- Complete the job with the external recovery evidence
+    perform record_payment_job_recovery(
+        v_job.payment_job_id,
+        p_actor_user_id,
+        p_recovery_reference,
+        p_recovery_note
+    );
 
     -- Mark the purchase refunded
     update event_purchase
@@ -249,6 +263,7 @@ begin
         jsonb_build_object(
             'event_purchase_id', v_purchase.event_purchase_id,
             'event_purchase_refund_id', p_event_purchase_refund_id,
+            'payment_job_id', v_job.payment_job_id,
             'provider_refund_id', v_refund.provider_refund_id,
             'recovery_note', btrim(p_recovery_note),
             'recovery_reference', btrim(p_recovery_reference),
@@ -266,6 +281,7 @@ begin
         );
     end if;
 
+    -- Return the recovered purchase context
     return jsonb_build_object(
         'event_id', v_event.event_id,
         'recovered_now', true,

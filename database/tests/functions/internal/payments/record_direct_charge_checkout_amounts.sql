@@ -220,20 +220,23 @@ select results_eq(
     format(
         $$
             select
-                amount_minor,
-                idempotency_key,
-                kind,
-                status
-            from event_purchase_application_fee_adjustment
-            where event_purchase_id = %L::uuid
+                epafa.amount_minor,
+                epafa.kind,
+                pj.idempotency_key,
+                pj.kind,
+                pj.status
+            from event_purchase_application_fee_adjustment epafa
+            join payment_job pj on pj.payment_job_id = epafa.payment_job_id
+            where epafa.event_purchase_id = %L::uuid
         $$,
         :'adjustmentPurchaseID'
     ),
     format(
         $$ values (
             6::bigint,
-            'event-purchase-tax-fee-adjustment-%s'::text,
             'tax-reconciliation'::text,
+            'event-purchase-tax-fee-adjustment-%s'::text,
+            'event-purchase-application-fee-adjustment'::text,
             'pending'::text
         ) $$,
         :'adjustmentPurchaseID'

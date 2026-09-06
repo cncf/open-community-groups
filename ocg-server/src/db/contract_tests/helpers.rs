@@ -45,9 +45,12 @@ const CLAIM_GROUP_ID: &str = "00000000-0000-0000-0000-00000000c0a0";
 const CO_SPEAKER_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c2";
 const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
 const DOCUMENT_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c11d";
+const DOCUMENT_ADJUSTMENT_JOB_ID: &str = "00000000-0000-0000-0000-00000000c134";
 const DOCUMENT_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-00000000c11e";
+const DOCUMENT_CREDIT_NOTE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c135";
 const DOCUMENT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c11b";
 const DOCUMENT_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c11c";
+const DOCUMENT_REFUND_JOB_ID: &str = "00000000-0000-0000-0000-00000000c136";
 const EVENT_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c013";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
 /// Buyer fixture used to prepare a new external checkout hold.
@@ -74,8 +77,8 @@ const EXTERNAL_REFUND_USER_ID: &str = "00000000-0000-0000-0000-00000000c129";
 /// Ticket fixture used by the external-payments event.
 const EXTERNAL_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c12c";
 const EXTERNAL_UPDATE_ID: &str = "00000000-0000-0000-0000-00000000c047";
-const FINANCIAL_RECOVERY_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c119";
-const FINANCIAL_RECOVERY_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-00000000c11a";
+const FINANCIAL_RECOVERY_ADJUSTMENT_JOB_ID: &str = "00000000-0000-0000-0000-00000000c137";
+const FINANCIAL_RECOVERY_CREDIT_NOTE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c138";
 const FREE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e4";
 const FREE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f3";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
@@ -111,6 +114,7 @@ const RECONCILE_DUE_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0de";
 const REFUND_OFFER_USER_ID: &str = "00000000-0000-0000-0000-00000000c101";
 /// Purchase fixture whose provider refund is ready for local finalization.
 const REFUND_APPROVE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f6";
+const REFUND_APPROVE_JOB_ID: &str = "00000000-0000-0000-0000-00000000c139";
 const REFUND_BEGIN_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f4";
 const REFUND_LIFECYCLE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fb";
 /// Paid event containing the refund contract fixtures.
@@ -119,6 +123,7 @@ const REFUND_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
 const REFUND_RECOVERY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fd";
 /// Durable refund fixture preserving post-finalization recovery state.
 const REFUND_RECOVERY_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c0fe";
+const REFUND_RECOVERY_JOB_ID: &str = "00000000-0000-0000-0000-00000000c13a";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
 /// Purchase fixture whose refund request is ready for rejection.
 const REFUND_REJECT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f8";
@@ -308,9 +313,19 @@ pub(super) fn document_adjustment_id() -> Uuid {
     parse_uuid(DOCUMENT_ADJUSTMENT_ID)
 }
 
+/// Returns the pending application-fee adjustment job used by worker contracts.
+pub(super) fn document_adjustment_job_id() -> Uuid {
+    parse_uuid(DOCUMENT_ADJUSTMENT_JOB_ID)
+}
+
 /// Returns the credit note used by worker and attendee document contracts.
 pub(super) fn document_credit_note_id() -> Uuid {
     parse_uuid(DOCUMENT_CREDIT_NOTE_ID)
+}
+
+/// Returns the credit-note job used by worker and attendee document contracts.
+pub(super) fn document_credit_note_job_id() -> Uuid {
+    parse_uuid(DOCUMENT_CREDIT_NOTE_JOB_ID)
 }
 
 /// Returns the provider-backed purchase used by attendee document contracts.
@@ -321,6 +336,11 @@ pub(super) fn document_purchase_id() -> Uuid {
 /// Returns the provider refund used by credit-note worker contracts.
 pub(super) fn document_refund_id() -> Uuid {
     parse_uuid(DOCUMENT_REFUND_ID)
+}
+
+/// Returns the provider refund job used by credit-note worker contracts.
+pub(super) fn document_refund_job_id() -> Uuid {
+    parse_uuid(DOCUMENT_REFUND_JOB_ID)
 }
 
 /// Returns the event cancellation target identifier used by the contract fixture.
@@ -502,14 +522,14 @@ pub(super) fn external_update_id() -> Uuid {
     parse_uuid(EXTERNAL_UPDATE_ID)
 }
 
-/// Returns the exhausted application-fee recovery work identifier.
-pub(super) fn financial_recovery_adjustment_id() -> Uuid {
-    parse_uuid(FINANCIAL_RECOVERY_ADJUSTMENT_ID)
+/// Returns the exhausted application-fee recovery job identifier.
+pub(super) fn financial_recovery_adjustment_job_id() -> Uuid {
+    parse_uuid(FINANCIAL_RECOVERY_ADJUSTMENT_JOB_ID)
 }
 
-/// Returns the exhausted credit-note recovery work identifier.
-pub(super) fn financial_recovery_credit_note_id() -> Uuid {
-    parse_uuid(FINANCIAL_RECOVERY_CREDIT_NOTE_ID)
+/// Returns the exhausted credit-note recovery job identifier.
+pub(super) fn financial_recovery_credit_note_job_id() -> Uuid {
+    parse_uuid(FINANCIAL_RECOVERY_CREDIT_NOTE_JOB_ID)
 }
 
 /// Returns the free checkout buyer identifier used by the contract fixture.
@@ -684,6 +704,11 @@ pub(super) fn refund_offer_user_id() -> Uuid {
     parse_uuid(REFUND_OFFER_USER_ID)
 }
 
+/// Returns the payment job fixture ready for local refund finalization.
+pub(super) fn refund_approve_job_id() -> Uuid {
+    parse_uuid(REFUND_APPROVE_JOB_ID)
+}
+
 /// Returns the purchase fixture ready for local refund finalization.
 pub(super) fn refund_approve_purchase_id() -> Uuid {
     parse_uuid(REFUND_APPROVE_PURCHASE_ID)
@@ -702,6 +727,11 @@ pub(super) fn refund_event_id() -> Uuid {
 /// Returns the purchase identifier used by the refund lifecycle fixture.
 pub(super) fn refund_lifecycle_purchase_id() -> Uuid {
     parse_uuid(REFUND_LIFECYCLE_PURCHASE_ID)
+}
+
+/// Returns the payment job identifier for the refund recovery fixture.
+pub(super) fn refund_recovery_job_id() -> Uuid {
+    parse_uuid(REFUND_RECOVERY_JOB_ID)
 }
 
 /// Returns the purchase identifier for the refund recovery fixture.

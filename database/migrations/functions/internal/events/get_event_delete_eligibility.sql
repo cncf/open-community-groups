@@ -27,14 +27,14 @@ returns text as $$
                 )
             )
         )
-        -- A durable refund remains active until finalized or recovered
+        -- A durable refund remains active until its job is finalized or recovered
         or exists (
             select 1
             from event_purchase ep
             join event_purchase_refund epr using (event_purchase_id)
+            join payment_job pj on pj.payment_job_id = epr.payment_job_id
             where ep.event_id = e.event_id
-            and epr.status <> 'finalized'
-            and epr.recovery_completed_at is null
+            and pj.status <> 'completed'
         ) then 'refunds-pending'
         -- Enrollment reservations and queues must be closed before deletion
         when exists (

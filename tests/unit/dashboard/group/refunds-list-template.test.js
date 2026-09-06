@@ -265,6 +265,9 @@ describe("dashboard group refunds list template", () => {
       'data-financial-work-kind="{{ recovery.kind }}"',
     );
     expect(template).to.include(
+      "financial-failure-{{ recovery.payment_job_id }}",
+    );
+    expect(template).to.include(
       '<th scope="col" class="px-3 py-3 xl:px-5">Attendee</th>',
     );
     expect(template).to.include(
@@ -308,14 +311,19 @@ describe("dashboard group refunds list template", () => {
       'class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800"',
     );
     expect(template).to.include("data-financial-recovery-open");
+    expect(template).to.include(
+      'data-financial-recovery-payment-job-id="{{ recovery.payment_job_id }}"',
+    );
     expect(template).to.include("svg-icon size-4 icon-pencil");
     expect(template).to.include(
-      'hx-put="/dashboard/group/financial-work/retry"',
+      'hx-put="/dashboard/group/payment-jobs/{{ recovery.payment_job_id }}/retry"',
     );
     expect(template).to.include('id="financial-recovery-modal"');
     expect(template).to.include(
-      'hx-put="/dashboard/group/financial-work/recovery"',
+      'hx-put="/dashboard/group/payment-jobs/recovery"',
     );
+    expect(template).to.include('id="financial-recovery-payment-job-id"');
+    expect(template).to.include('name="payment_job_id"');
     expect(template).to.include('name="provider_object_id"');
     expect(template).to.include('name="recovery_reference"');
     expect(template).to.include('name="recovery_note"');
@@ -341,7 +349,7 @@ describe("dashboard group refunds list template", () => {
     expect(template).not.to.include('class="mt-2 text-xs text-stone-600"');
   });
 
-  it("addresses review and retry actions by purchase identifier", async () => {
+  it("addresses review actions by purchase and retry actions by payment job", async () => {
     // Load the refunds list template before checking action markup.
     const template = normalizeWhitespace(await loadTemplate());
 
@@ -351,7 +359,10 @@ describe("dashboard group refunds list template", () => {
     );
     expect(template).to.include("data-refund-approve-open");
     expect(template).to.include(
-      'hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/retry"',
+      "{% if let Some(payment_job_id) = refund.payment_job_id -%}",
+    );
+    expect(template).to.include(
+      'hx-put="/dashboard/group/payment-jobs/{{ payment_job_id }}/retry"',
     );
     expect(template).to.include(
       'data-refund-reject-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/reject"',
@@ -378,6 +389,7 @@ describe("dashboard group refunds list template", () => {
     );
     expect(template).to.include("data-actions-menu");
     expect(template).to.include("refund.can_retry()");
+    expect(template).to.include("refund.payment_job_id.is_some()");
     expect(template).not.to.include('role="menu"');
     expect(template).not.to.include('role="menuitem"');
     expect(template).to.include(

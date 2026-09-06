@@ -18,6 +18,7 @@ select plan(6);
 \set groupID 'd7310000-0000-0000-0000-000000000005'
 \set purchaseID 'd7310000-0000-0000-0000-000000000006'
 \set refundID 'd7310000-0000-0000-0000-000000000007'
+\set refundJobID 'd7310000-0000-0000-0000-000000000010'
 \set ticketTypeID 'd7310000-0000-0000-0000-000000000008'
 \set userID 'd7310000-0000-0000-0000-000000000009'
 
@@ -62,14 +63,25 @@ insert into event_purchase (
     :'userID', '{}'::jsonb
 );
 
+-- Payment job for the successful provider refund that predates the invoice
+insert into payment_job (
+    payment_job_id, event_purchase_id, idempotency_key, kind,
+    payment_provider_id
+) values (
+    :'refundJobID', :'purchaseID',
+    'refund-attach-invoice-refund-job',
+    'event-purchase-refund', 'stripe'
+);
+
 -- Successful provider refund that predates the invoice
 insert into event_purchase_refund (
     amount_minor, currency_code, event_purchase_id, event_purchase_refund_id,
-    idempotency_key, kind, payment_provider_id, provider_refund_id,
+    kind, payment_job_id, payment_provider_id, provider_refund_id,
     provider_refunded_at, status
 ) values (
-    2500, 'USD', :'purchaseID', :'refundID', 'refund-attach-invoice',
-    'automatic-unfulfillable-checkout', 'stripe', 're_invoice', current_timestamp,
+    2500, 'USD', :'purchaseID', :'refundID',
+    'automatic-unfulfillable-checkout', :'refundJobID', 'stripe',
+    're_invoice', current_timestamp,
     'provider-succeeded'
 );
 
@@ -116,8 +128,9 @@ select results_eq(
 -- Should queue a full credit note when the refund predates the invoice
 select results_eq(
     format($$
-        select amount_minor, currency_code, status, tax_amount_minor
-        from event_purchase_credit_note
+        select epcn.amount_minor, epcn.currency_code, pj.status, epcn.tax_amount_minor
+        from event_purchase_credit_note epcn
+        join payment_job pj using (payment_job_id)
         where event_purchase_refund_id = %L::uuid
     $$, :'refundID'),
     $$ values (2500::bigint, 'USD'::text, 'pending'::text, 200::bigint) $$,

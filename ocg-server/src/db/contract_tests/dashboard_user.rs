@@ -478,6 +478,7 @@ async fn db_contracts_list_user_purchase_documents_deserializes() -> Result<()> 
         purchase.credit_notes[0].event_purchase_credit_note_id,
         document_credit_note_id()
     );
+    assert_eq!(purchase.credit_notes[0].status, "pending");
 
     // Check externally managed purchases omit provider invoice routing
     assert_eq!(external_output.total, 1);

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(34);
+select plan(35);
 
 -- ============================================================================
 -- VARIABLES
@@ -66,14 +66,23 @@ select plan(34);
 \set progressPurchase10ID '3a2e0000-0000-0000-0000-000000000049'
 \set progressPurchase11ID '3a2e0000-0000-0000-0000-000000000050'
 \set progressRefund1ID '3a2e0000-0000-0000-0000-000000000051'
+\set progressRefund1JobID '3a2e0000-0000-0000-0000-000000000080'
 \set progressRefund2ID '3a2e0000-0000-0000-0000-000000000052'
+\set progressRefund2JobID '3a2e0000-0000-0000-0000-000000000081'
 \set progressRefund3ID '3a2e0000-0000-0000-0000-000000000053'
+\set progressRefund3JobID '3a2e0000-0000-0000-0000-000000000082'
 \set progressRefund4ID '3a2e0000-0000-0000-0000-000000000054'
+\set progressRefund4JobID '3a2e0000-0000-0000-0000-000000000083'
 \set progressRefund5ID '3a2e0000-0000-0000-0000-000000000055'
+\set progressRefund5JobID '3a2e0000-0000-0000-0000-000000000084'
 \set progressRefund6ID '3a2e0000-0000-0000-0000-000000000056'
+\set progressRefund6JobID '3a2e0000-0000-0000-0000-000000000085'
 \set progressRefund7ID '3a2e0000-0000-0000-0000-000000000057'
+\set progressRefund7JobID '3a2e0000-0000-0000-0000-000000000086'
 \set progressRefund8ID '3a2e0000-0000-0000-0000-000000000058'
+\set progressRefund8JobID '3a2e0000-0000-0000-0000-000000000087'
 \set progressRefund9ID '3a2e0000-0000-0000-0000-000000000059'
+\set progressRefund9JobID '3a2e0000-0000-0000-0000-000000000088'
 \set progressUser7ID '3a2e0000-0000-0000-0000-000000000033'
 \set progressUser8ID '3a2e0000-0000-0000-0000-000000000034'
 \set registrationQuestionID '3a2e0000-0000-0000-0000-000000000017'
@@ -780,34 +789,57 @@ from (values
     refunded_at
 );
 
+-- Durable refund jobs representing every provider progress branch
+insert into payment_job (
+    attempt_count,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status,
+
+    claim_id,
+    claimed_at,
+    completed_at,
+    failure_message,
+    next_attempt_at
+) values
+    (0, :'progressPurchase3ID', 'search-attendees-progress-refund-1-3a2e', 'event-purchase-refund', :'progressRefund1JobID', 'stripe', 'completed', null, null, current_timestamp, null, current_timestamp),
+    (1, :'progressPurchase4ID', 'search-attendees-progress-refund-2-3a2e', 'event-purchase-refund', :'progressRefund2JobID', 'stripe', 'processing', :'progressClaimID', current_timestamp, null, null, current_timestamp),
+    (1, :'progressPurchase5ID', 'search-attendees-progress-refund-3-3a2e', 'event-purchase-refund', :'progressRefund3JobID', 'stripe', 'pending', null, null, null, null, current_timestamp),
+    (10, :'progressPurchase6ID', 'search-attendees-progress-refund-4-3a2e', 'event-purchase-refund', :'progressRefund4JobID', 'stripe', 'failed', null, null, null, 'Provider refund attempts exhausted', now() + interval '100 years'),
+    (1, :'progressPurchase7ID', 'search-attendees-progress-refund-5-3a2e', 'event-purchase-refund', :'progressRefund5JobID', 'stripe', 'pending', null, null, null, null, now() + interval '100 years'),
+    (1, :'progressPurchase8ID', 'search-attendees-progress-refund-6-3a2e', 'event-purchase-refund', :'progressRefund6JobID', 'stripe', 'pending', null, null, null, null, now() + interval '100 years'),
+    (1, :'progressPurchase9ID', 'search-attendees-progress-refund-7-3a2e', 'event-purchase-refund', :'progressRefund7JobID', 'stripe', 'failed', null, null, null, 'Provider refund terminal failure', now() + interval '100 years'),
+    (10, :'progressPurchase10ID', 'search-attendees-progress-refund-8-3a2e', 'event-purchase-refund', :'progressRefund8JobID', 'stripe', 'failed', null, null, null, 'Provider refund attempts exhausted', now() + interval '100 years'),
+    (1, :'progressPurchase11ID', 'search-attendees-progress-refund-9-3a2e', 'event-purchase-refund', :'progressRefund9JobID', 'stripe', 'failed', null, null, null, 'Provider refund failed', now() + interval '100 years');
+
 -- Durable refunds representing every provider progress branch
 insert into event_purchase_refund (
     amount_minor,
-    attempt_count,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
-    claim_id,
-    claimed_at,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
 ) values
-    (2500, 0, 'USD', :'progressPurchase3ID', :'progressRefund1ID', 'progress-refund-1', 'event-cancellation', 'stripe', 'finalized', false, null, null, current_timestamp, 're_progress_1', current_timestamp),
-    (2500, 1, 'USD', :'progressPurchase4ID', :'progressRefund2ID', 'progress-refund-2', 'event-cancellation', 'stripe', 'processing', false, :'progressClaimID', current_timestamp, null, null, null),
-    (2500, 1, 'USD', :'progressPurchase5ID', :'progressRefund3ID', 'progress-refund-3', 'event-cancellation', 'stripe', 'provider-succeeded', false, null, null, null, 're_progress_3', current_timestamp),
-    (2500, 10, 'USD', :'progressPurchase6ID', :'progressRefund4ID', 'progress-refund-4', 'event-cancellation', 'stripe', 'provider-pending', false, null, null, null, null, null),
-    (2500, 1, 'USD', :'progressPurchase7ID', :'progressRefund5ID', 'progress-refund-5', 'event-cancellation', 'stripe', 'provider-pending', false, null, null, null, 're_progress_5', null),
-    (2500, 1, 'USD', :'progressPurchase8ID', :'progressRefund6ID', 'progress-refund-6', 'event-cancellation', 'stripe', 'provider-pending', false, null, null, null, null, null),
-    (2500, 1, 'USD', :'progressPurchase9ID', :'progressRefund7ID', 'progress-refund-7', 'event-cancellation', 'stripe', 'provider-failed', true, null, null, null, 're_progress_7', null),
-    (2500, 10, 'USD', :'progressPurchase10ID', :'progressRefund8ID', 'progress-refund-8', 'event-cancellation', 'stripe', 'provider-failed', false, null, null, null, null, null),
-    (2500, 1, 'USD', :'progressPurchase11ID', :'progressRefund9ID', 'progress-refund-9', 'event-cancellation', 'stripe', 'provider-failed', false, null, null, null, null, null);
+    (2500, 'USD', :'progressPurchase3ID', :'progressRefund1ID', 'event-cancellation', :'progressRefund1JobID', 'stripe', 'finalized', false, current_timestamp, 're_progress_1', current_timestamp),
+    (2500, 'USD', :'progressPurchase4ID', :'progressRefund2ID', 'event-cancellation', :'progressRefund2JobID', 'stripe', 'provider-pending', false, null, null, null),
+    (2500, 'USD', :'progressPurchase5ID', :'progressRefund3ID', 'event-cancellation', :'progressRefund3JobID', 'stripe', 'provider-succeeded', false, null, 're_progress_3', current_timestamp),
+    (2500, 'USD', :'progressPurchase6ID', :'progressRefund4ID', 'event-cancellation', :'progressRefund4JobID', 'stripe', 'provider-pending', false, null, null, null),
+    (2500, 'USD', :'progressPurchase7ID', :'progressRefund5ID', 'event-cancellation', :'progressRefund5JobID', 'stripe', 'provider-pending', false, null, 're_progress_5', null),
+    (2500, 'USD', :'progressPurchase8ID', :'progressRefund6ID', 'event-cancellation', :'progressRefund6JobID', 'stripe', 'provider-pending', false, null, null, null),
+    (2500, 'USD', :'progressPurchase9ID', :'progressRefund7ID', 'event-cancellation', :'progressRefund7JobID', 'stripe', 'provider-failed', true, null, 're_progress_7', null),
+    (2500, 'USD', :'progressPurchase10ID', :'progressRefund8ID', 'event-cancellation', :'progressRefund8JobID', 'stripe', 'provider-failed', false, null, null, null),
+    (2500, 'USD', :'progressPurchase11ID', :'progressRefund9ID', 'event-cancellation', :'progressRefund9JobID', 'stripe', 'provider-failed', false, null, null, null);
 
 -- Users used by external payment-pending and completed attendee search rows
 select fx_user(:'externalCompletedUserID', jsonb_build_object(
@@ -1128,6 +1160,38 @@ select is(
         :'userStopwordSearchID', 'recovery-required'
     ),
     'Should expose every refund progress state'
+);
+
+-- Should expose refund payment job identifiers with refund progress
+select is(
+    (
+        select jsonb_object_agg(
+            attendee#>>'{user,user_id}',
+            attendee->>'refund_payment_job_id'
+        )
+        from jsonb_array_elements(
+            search_event_attendees(
+                :'groupID'::uuid,
+                :'refundProgressEventID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb->'attendees'
+        ) attendee
+        where attendee ? 'refund_progress'
+    ),
+    jsonb_build_object(
+        :'pendingCheckoutUserID', :'progressRefund5JobID',
+        :'progressUser7ID', :'progressRefund8JobID',
+        :'progressUser8ID', :'progressRefund9JobID',
+        :'questionsAttendeeUserID', :'progressRefund6JobID',
+        :'user1ID', null,
+        :'user2ID', null,
+        :'user3ID', :'progressRefund1JobID',
+        :'user4ID', :'progressRefund2JobID',
+        :'user5ID', :'progressRefund3JobID',
+        :'user6ID', :'progressRefund4JobID',
+        :'userStopwordSearchID', :'progressRefund7JobID'
+    ),
+    'Should expose refund payment job identifiers with refund progress'
 );
 
 -- Should omit refund progress for an abandoned pending checkout

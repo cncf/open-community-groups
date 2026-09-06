@@ -381,16 +381,16 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::events::update),
         )
         .route(
-            "/financial-work/recovery",
-            put(dashboard::group::refunds::complete_financial_recovery),
-        )
-        .route(
-            "/financial-work/retry",
-            put(dashboard::group::refunds::retry_financial_recovery),
-        )
-        .route(
             "/notifications/{event_id}",
             post(dashboard::group::attendees::send_event_custom_notification),
+        )
+        .route(
+            "/payment-jobs/{payment_job_id}/retry",
+            put(dashboard::group::refunds::retry_payment_job),
+        )
+        .route(
+            "/payment-jobs/recovery",
+            put(dashboard::group::refunds::complete_payment_job_recovery),
         )
         .route(
             "/refunds/{event_purchase_id}/approve",
@@ -399,10 +399,6 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/refunds/{event_purchase_id}/reject",
             put(dashboard::group::attendees::reject_refund_request),
-        )
-        .route(
-            "/refunds/{event_purchase_id}/retry",
-            put(dashboard::group::attendees::retry_refund),
         )
         .route(
             "/refunds/recovery",

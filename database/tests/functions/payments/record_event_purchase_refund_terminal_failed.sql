@@ -16,24 +16,29 @@ select plan(19);
 \set eventID '79520000-0000-0000-0000-000000000003'
 \set eventTicketTypeID '79520000-0000-0000-0000-000000000004'
 \set failedClaimID '79520000-0000-0000-0000-000000000025'
+\set failedJobID '79520000-0000-0000-0000-000000000027'
 \set failedPurchaseID '79520000-0000-0000-0000-000000000005'
 \set failedRefundID '79520000-0000-0000-0000-000000000006'
 \set failedUserID '79520000-0000-0000-0000-000000000007'
+\set finalizedJobID '79520000-0000-0000-0000-000000000028'
 \set finalizedPurchaseID '79520000-0000-0000-0000-000000000015'
 \set finalizedRefundID '79520000-0000-0000-0000-000000000016'
 \set finalizedUserID '79520000-0000-0000-0000-000000000017'
 \set groupCategoryID '79520000-0000-0000-0000-000000000008'
 \set groupID '79520000-0000-0000-0000-000000000009'
+\set invalidJobID '79520000-0000-0000-0000-000000000029'
 \set invalidPurchaseID '79520000-0000-0000-0000-000000000019'
 \set invalidRefundID '79520000-0000-0000-0000-000000000020'
 \set invalidUserID '79520000-0000-0000-0000-000000000021'
 \set missingRefundID '79520000-0000-0000-0000-000000000014'
 \set priceWindowID '79520000-0000-0000-0000-000000000010'
+\set recoveryJobID '79520000-0000-0000-0000-000000000030'
 \set recoveryPurchaseID '79520000-0000-0000-0000-000000000022'
 \set recoveryRefundID '79520000-0000-0000-0000-000000000023'
 \set recoveryUserID '79520000-0000-0000-0000-000000000024'
 \set replacementPurchaseID '79520000-0000-0000-0000-000000000018'
 \set staleClaimID '79520000-0000-0000-0000-000000000026'
+\set succeededJobID '79520000-0000-0000-0000-000000000031'
 \set succeededPurchaseID '79520000-0000-0000-0000-000000000011'
 \set succeededRefundID '79520000-0000-0000-0000-000000000012'
 \set succeededUserID '79520000-0000-0000-0000-000000000013'
@@ -204,100 +209,121 @@ from (values (
     refunded_at
 );
 
+-- Payment jobs for terminal-failure scenarios
+insert into payment_job (
+    payment_job_id, attempt_count, completed_at, event_purchase_id,
+    failure_message, idempotency_key, kind, payment_provider_id, status,
+
+    claim_id, claimed_at
+) values (
+    :'failedJobID', 1, null, :'failedPurchaseID', null,
+    'event-purchase-refund-' || :'failedPurchaseID',
+    'event-purchase-refund', 'stripe', 'processing',
+
+    :'failedClaimID', current_timestamp
+), (
+    :'finalizedJobID', 1, current_timestamp, :'finalizedPurchaseID', null,
+    'event-purchase-refund-' || :'finalizedPurchaseID',
+    'event-purchase-refund', 'stripe', 'completed',
+
+    null, null
+), (
+    :'invalidJobID', 1, current_timestamp, :'invalidPurchaseID', null,
+    'event-purchase-refund-' || :'invalidPurchaseID',
+    'event-purchase-refund', 'stripe', 'completed',
+
+    null, null
+), (
+    :'recoveryJobID', 1, null, :'recoveryPurchaseID',
+    'provider refund failed: re_recovery_original',
+    'event-purchase-refund-' || :'recoveryPurchaseID',
+    'event-purchase-refund', 'stripe', 'failed',
+
+    null, null
+), (
+    :'succeededJobID', 1, null, :'succeededPurchaseID', null,
+    'event-purchase-refund-' || :'succeededPurchaseID',
+    'event-purchase-refund', 'stripe', 'pending',
+
+    null, null
+);
+
 -- Provider refund records
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
-    attempt_count,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
 
-    claim_id,
-    claimed_at,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
 ) values (
     :'failedRefundID',
     2500,
-    1,
     'USD',
     :'failedPurchaseID',
-    'event-purchase-refund-' || :'failedPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'failedJobID',
     'stripe',
-    'processing',
+    'provider-pending',
 
-    :'failedClaimID',
-    current_timestamp,
     null,
     're_failed_123_refund_terminal_failed',
     null
 ), (
     :'finalizedRefundID',
     2500,
-    0,
     'USD',
     :'finalizedPurchaseID',
-    'event-purchase-refund-' || :'finalizedPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'finalizedJobID',
     'stripe',
     'finalized',
 
-    null,
-    null,
     current_timestamp,
     're_finalized_123',
     current_timestamp
 ), (
     :'invalidRefundID',
     2500,
-    0,
     'USD',
     :'invalidPurchaseID',
-    'event-purchase-refund-' || :'invalidPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'invalidJobID',
     'stripe',
     'finalized',
 
-    null,
-    null,
     current_timestamp,
     're_invalid_123',
     current_timestamp
 ), (
     :'recoveryRefundID',
     2500,
-    0,
     'USD',
     :'recoveryPurchaseID',
-    'event-purchase-refund-' || :'recoveryPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'recoveryJobID',
     'stripe',
     'provider-failed',
 
-    null,
-    null,
     current_timestamp,
     null,
     null
 ), (
     :'succeededRefundID',
     2500,
-    0,
     'USD',
     :'succeededPurchaseID',
-    'event-purchase-refund-' || :'succeededPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'succeededJobID',
     'stripe',
     'provider-succeeded',
 
-    null,
-    null,
     null,
     're_success_123',
     current_timestamp
@@ -385,14 +411,15 @@ select lives_ok(
 select results_eq(
     format($$
         select
-            claim_id,
-            claimed_at,
-            status,
-            terminal_failure,
-            failure_message,
-            provider_refund_id,
-            idempotency_key = 'event-purchase-refund-' || %L
-        from event_purchase_refund
+            pj.claim_id,
+            pj.claimed_at,
+            epr.status,
+            epr.terminal_failure,
+            pj.failure_message,
+            epr.provider_refund_id,
+            pj.idempotency_key = 'event-purchase-refund-' || %L
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
         where event_purchase_refund_id = %L::uuid
     $$, :'failedPurchaseID', :'failedRefundID'),
     $$ values (
@@ -422,11 +449,12 @@ select lives_ok(
 select results_eq(
     format($$
         select
-            status,
+            epr.status,
 
-            failure_message,
-            provider_refund_id
-        from event_purchase_refund
+            pj.failure_message,
+            epr.provider_refund_id
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
         where event_purchase_refund_id = %L::uuid
     $$, :'failedRefundID'),
     $$ values (
@@ -452,8 +480,9 @@ select lives_ok(
 -- Should keep the current attempt state after a delayed failure
 select results_eq(
     format($$
-        select status, failure_message, provider_refund_id
-        from event_purchase_refund
+        select epr.status, pj.failure_message, epr.provider_refund_id
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
         where event_purchase_refund_id = %L::uuid
     $$, :'failedRefundID'),
     $$ values (
@@ -478,8 +507,9 @@ select lives_ok(
 -- Should pin the provider-succeeded attempt after its delayed failure
 select results_eq(
     format($$
-        select status, failure_message, provider_refund_id, provider_refunded_at
-        from event_purchase_refund
+        select epr.status, pj.failure_message, epr.provider_refund_id, epr.provider_refunded_at
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
         where event_purchase_refund_id = %L::uuid
     $$, :'succeededRefundID'),
     $$ values (
@@ -510,6 +540,8 @@ select results_eq(
             epr.finalized_at is not null,
             epr.provider_refund_id,
             epr.provider_refunded_at,
+            pj.status,
+            pj.completed_at,
             ep.status,
             (
                 select status
@@ -518,12 +550,15 @@ select results_eq(
             )
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'replacementPurchaseID', :'finalizedRefundID'),
     $$ values (
         'provider-failed'::text,
         true,
         're_finalized_123'::text,
+        null::timestamptz,
+        'failed'::text,
         null::timestamptz,
         'refund-recovery-pending'::text,
         'completed'::text

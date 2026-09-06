@@ -264,19 +264,16 @@ returns json as $$
                             or ep.provider_checkout_session_id is not null
                         ) then 'awaiting-checkout'
                     when epr.status = 'finalized' or ep.purchase_status = 'refunded' then 'refunded'
-                    when epr.status in ('processing', 'provider-succeeded') then 'processing'
-                    when epr.status = 'provider-pending'
-                        and epr.attempt_count >= 10 then 'retryable-failure'
-                    when epr.status = 'provider-pending'
-                        and epr.provider_refund_id is not null then 'processing'
-                    when epr.status = 'provider-pending' then 'queued'
                     when epr.status = 'provider-failed'
                         and epr.terminal_failure then 'recovery-required'
-                    when epr.status = 'provider-failed'
-                        and epr.attempt_count >= 10 then 'retryable-failure'
-                    when epr.status = 'provider-failed' then 'queued'
+                    when payment_job_is_exhausted(pj) then 'retryable-failure'
+                    when pj.status = 'processing'
+                        or epr.status = 'provider-succeeded'
+                        or epr.provider_refund_id is not null then 'processing'
+                    when pj.status in ('failed', 'pending') then 'queued'
                     else null
                 end as refund_progress,
+                epr.payment_job_id as refund_payment_job_id,
                 err.status as refund_request_status,
                 u.twitter_url,
                 u.tsdoc,
@@ -327,6 +324,7 @@ returns json as $$
                 limit 1
             ) err on true
             left join event_purchase_refund epr on epr.event_purchase_id = ep.event_purchase_id
+            left join payment_job pj on pj.payment_job_id = epr.payment_job_id
             left join lateral (
                 select event_purchase_id
                 from event_purchase
@@ -445,6 +443,7 @@ returns json as $$
                 externally_paid,
                 offer_expires_at,
                 refund_progress,
+                refund_payment_job_id,
                 refund_request_status,
                 registration_answers,
                 ticket_title
@@ -485,6 +484,7 @@ returns json as $$
                     case
                         when refund_progress is null
                             then row_to_json(attendees)::jsonb - 'refund_progress'
+                                - 'refund_payment_job_id'
                         else row_to_json(attendees)::jsonb
                     end
                 ),

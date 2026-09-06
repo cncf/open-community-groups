@@ -146,6 +146,25 @@ contract.
   `list_group_parent_options`) or to compute notification recipients
   (`request_event_refund`).
 
+### Trust model
+
+These rules describe conventions inside one trust boundary, not enforcement
+the database provides on its own:
+
+- A database function trusts its caller to have authorized the actor. Given a
+  matching `p_group_id` or `p_community_id`, a mutation acts for any
+  `p_actor_user_id` it is handed; the actor is an audit identity, not proof of
+  permission. Every entry point that calls these functions (today: the Rust
+  server behind its route middleware, plus the operator-only functions run
+  through `psql` by a database administrator) is responsible for that
+  authorization. A second service, an administrative API or a job runner that
+  calls the functions directly must authorize before it calls, and the route
+  test in `ocg-server/src/router/tests.rs` covers only the routes of this
+  server.
+- `functions/internal/` is a layout and lint convention. Any role that can
+  execute the Rust-facing functions can execute the helpers too; the folder
+  answers "is this a contract change?", it does not isolate database access.
+
 ## Trigger functions
 
 - The schema migration that creates a trigger defines the trigger function's
@@ -174,27 +193,83 @@ restarted safely and external calls stay outside transactions:
 - **Claim**: a worker takes a row with `for update skip locked` and records a
   claim identity and timestamp (`claim_pending_notification`,
   `claim_meeting_out_of_sync`, `claim_meeting_for_auto_end`,
-  `claim_badge_award_job`, `claim_event_purchase_refund`,
-  `claim_event_purchase_credit_note`,
-  `claim_event_purchase_application_fee_adjustment`).
+  `claim_badge_award_job`, `claim_payment_job`).
 - **Outcome**: the worker records success, a retryable failure, or a terminal
   failure against its claim (`update_notification`, `requeue_notification`,
   `set_meeting_error`, `set_meeting_auto_end_check_outcome`,
-  `record_badge_award_job_failure`, `record_event_purchase_refund_*`,
-  `record_event_purchase_credit_note_*`,
-  `record_event_purchase_application_fee_adjustment_*`). Stale claims are
-  rejected so a delayed worker cannot overwrite a newer attempt.
+  `record_badge_award_job_failure`, `record_payment_job_failure`,
+  `record_event_purchase_refund_*`,
+  `record_event_purchase_credit_note_succeeded`,
+  `record_event_purchase_application_fee_adjustment_succeeded`). Stale claims
+  are rejected so a delayed worker cannot overwrite a newer attempt.
 - **Stale claim recovery**: periodic functions release claims whose worker
   disappeared (`mark_stale_processing_notifications_unknown`,
   `mark_stale_meeting_syncs_unknown`,
   `mark_stale_meeting_auto_end_checks_unknown`,
-  `recover_stale_badge_award_jobs`,
-  `requeue_stale_event_purchase_*_claims`).
+  `recover_stale_badge_award_jobs`, `requeue_stale_payment_job_claims`).
 - **Operator recovery**: exhausted payment work can be retried
-  (`requeue_event_purchase_*`) or completed with external evidence
-  (`complete_event_purchase_*_recovery`) from the group dashboard.
+  (`requeue_payment_job`) or completed with external evidence
+  (`complete_payment_job_recovery`,
+  `complete_event_purchase_refund_recovery`) from the group dashboard.
 - Idempotency keys and provider references are stored before any external
   side effect so retries and webhooks can be reconciled.
+
+### Payment jobs
+
+Every provider-mediated payment task (customer refund, credit note,
+application-fee adjustment) is one row in `payment_job` plus one typed domain
+row (`event_purchase_refund`, `event_purchase_credit_note`,
+`event_purchase_application_fee_adjustment`) that references it through
+`payment_job_id`. The job owns the worker mechanics only: `kind`,
+`payment_provider_id`, `event_purchase_id` (the purchase every kind hangs off,
+used for group scoping), `idempotency_key`, `status` (`pending`, `processing`,
+`failed`, `completed`), `attempt_count`, `next_attempt_at`, `claim_id` and
+`claimed_at`, `failure_message`, `completed_at` and the `recovery_*` evidence.
+The domain row keeps every typed outcome: the refund's provider status machine
+(`provider-pending`, `provider-succeeded`, `provider-failed` with
+`terminal_failure`, `finalized`), `provider_credit_note_id`,
+`provider_application_fee_refund_id`, amounts and references. No `jsonb`
+payload column exists.
+
+- Domain functions create work with `enqueue_payment_job(kind, provider,
+  purchase, idempotency_key)`, which returns `null` when the key already
+  exists so the domain insert is skipped; the idempotency key is the only
+  duplicate guard (`event-purchase-refund-<purchase>`,
+  `event-purchase-credit-note-<refund>`,
+  `event-purchase-refund-fee-adjustment-<purchase>`,
+  `event-purchase-tax-fee-adjustment-<purchase>`).
+- `claim_payment_job(kind, provider)` claims due work whose domain row is
+  ready (`payment_job_is_ready`: the purchase has its provider application fee,
+  the refund behind a credit note is provider-confirmed, the refund is not
+  pinned to a terminal failure), increments `attempt_count`, and returns
+  `payment_job_to_json(job) || payment_job_payload(job)`: the lifecycle fields
+  plus one nested object (`refund`, `credit_note`,
+  `application_fee_adjustment`) with the provider context of that kind. Every
+  claim counts toward `payment_job_max_attempts()` (10), including refund
+  finalization attempts; `record_event_purchase_refund_succeeded` resets the
+  count so finalization gets a fresh budget once the provider confirms.
+- Success paths write the typed outcome first
+  (`apply_event_purchase_*_outcome`, the refund `finalized_at`) and then call
+  `complete_payment_job(job, claim)`. Two trigger functions keep the
+  invariant "a `completed` job has its outcome on the domain row" in both
+  directions: `check_payment_job_completion_outcome` runs before a job is
+  updated to `completed` and, as a deferred constraint trigger, after a
+  `completed` job is inserted directly (so a job and its domain row can be
+  created in one transaction); `check_payment_job_domain_outcome` runs before
+  every insert or update of the three domain tables and rejects a row whose
+  job is `completed` while its outcome is null. Retryable failures call
+  `record_payment_job_failure` (bounded backoff via
+  `payment_job_retry_delay`); a refund that the provider reports as failed
+  stays `failed` on the job and `provider-failed`/`terminal_failure` on the
+  refund until an operator recovers it. A terminal failure reported after
+  finalization re-opens the completed job.
+- `payment_job_is_exhausted(job)` (`failed` or `pending` with
+  `attempt_count >= payment_job_max_attempts()`) is the single definition of
+  "needs an operator" used by `requeue_payment_job`,
+  `complete_payment_job_recovery`, `list_group_refunds` and
+  `search_event_attendees`.
+- Notifications, meetings and badges keep their own queue tables and claim
+  functions.
 
 ## Shared predicates and helpers
 
@@ -236,7 +311,8 @@ The rule-owning helpers are:
 - Projections and encodings: `epoch_seconds(timestamptz)` (whole seconds,
   truncated; the only timestamp encoding in JSON results),
   `public_user_summary("user")`, `event_venue_snapshot(event)`,
-  `event_purchase_refund_to_json(event_purchase_refund)` and
+  `event_purchase_refund_to_json(event_purchase_refund, payment_job)`,
+  `payment_job_to_json(payment_job)` and
   `event_ticket_type_current_price(event_ticket_type_id)`.
 - `release_meeting_sync(p_event_id, p_session_id, p_sync_claimed_at,
   p_sync_state_hash, p_error)`: completes a meeting sync claim for the
@@ -264,9 +340,16 @@ The rule-owning helpers are:
   are the single homes of the offer, attendee and refund-pending transitions
   used by the checkout webhook and the free and external completion flows.
 
-When a repeated predicate, status set or projection is found while changing a
-function, extract it into a named helper here and delegate from every
-occurrence in the same change.
+Extract by meaning, not by size or repetition alone. A predicate, status set
+or projection gets a named helper here when it encodes a domain rule with
+more than one home, so that the rule cannot drift; a short sequence with a
+single caller stays inline when reading it in place needs less context than
+following a call. When a change touches the second occurrence of such a rule,
+extract it and delegate from the occurrences the change already reads;
+sweeping every other occurrence is a follow-up, not a requirement of the
+change. The test of a good extraction is that a contributor can understand
+and safely change the workflow with less context, not that the caller became
+shorter.
 
 ## Prior state, row types and phases
 
@@ -296,9 +379,14 @@ occurrence in the same change.
   (`v_event := v_payload.resolved`). A column of a row type is read with
   parentheses in SQL (`(r.resolved).name`).
 - **Large mutations are split on phase boundaries.** An orchestrator keeps
-  the lock order and the decisions; each phase (validate, protect, mutate,
-  confirm, audit, return) that spans more than a few statements lives in an
-  `internal/` helper that takes the locked rows: `reconcile_event_enrollment`
+  the lock order and the decisions; a phase (validate, protect, mutate,
+  confirm, audit, return) moves to an `internal/` helper that takes the locked
+  rows when it is a unit a reader wants to name and reason about on its own or
+  when another flow needs the same transition, not merely because it is long.
+  Phases with one caller and a few statements stay inline
+  (`finalize_event_purchase_refund` keeps its attendance, purchase and request
+  updates; `record_event_purchase_refund_succeeded` keeps its two enqueues).
+  The split flows are: `reconcile_event_enrollment`
   delegates to `lock_event_enrollment_rows`, `expire_event_checkout_holds`,
   `remind_event_external_payment_holds`, `reconcile_event_admission_offers`
   and `promote_event_waitlist_entries`;
@@ -314,15 +402,22 @@ occurrence in the same change.
 ### Test ownership when extracting helpers
 
 - Every helper has its own test under `tests/functions/internal/<concern>/`
-  covering its full branch matrix.
-- A caller's test keeps exactly one scenario per delegated helper proving the
-  delegation is wired and that its rejection propagates; it does not re-test
-  the helper's branches.
+  covering its full branch matrix. Callers do not repeat that matrix.
+- A caller's test keeps every scenario that proves the caller's own decisions
+  (state transitions, audit rows, returned payload, label mapping) and at
+  least one wiring scenario per delegated rejection, proving the helper is
+  called and its error propagates.
+- Helpers can each be correct while their ordering, inputs or combined state
+  transitions are wrong, so workflows whose risk lives in that interaction
+  keep end-to-end scenarios that walk several helpers in sequence
+  (`refund_worker_lifecycle.sql`,
+  `reconcile_event_purchase_for_checkout_session.sql`, the enrollment
+  reconciliation tests, `tests/migrations/`). Assertions that overlap a
+  helper's test are acceptable there; what is not acceptable is a caller
+  re-testing a helper's branch matrix through its own fixtures.
 - Before removing a scenario from a caller, confirm the equivalent scenario
-  exists in the helper's test: coverage moves, it is never dropped. Seed rows
-  that only served a moved scenario go with it.
-- Scenarios proving the caller's own behavior (state transitions, audit rows,
-  returned payload, label mapping) stay.
+  exists in the helper's test or in a workflow test: coverage moves, it is
+  never dropped. Seed rows that only served a moved scenario go with it.
 
 ## Inline SQL in Rust
 
@@ -415,6 +510,20 @@ select fx_event(:'eventID', :'groupID', :'eventCategoryID', jsonb_build_object(
 indexes, functions and triggers, constraints and reference data. Every
 migration updates the relevant file.
 
+### Migration tests
+
+`tests/migrations/` holds representative-data upgrade tests for migrations
+that translate or destroy existing state. A migration `NNNN` has two files:
+`NNNN_<name>_seed.sql`, which inserts rows in the shape of schema `NNNN - 1`
+with raw `insert` statements (fixtures are not installed, and they follow the
+current schema), and `NNNN_<name>.sql`, a pgTAP file asserting the upgraded
+rows. `just db-migration-test NNNN` recreates the migration database, applies
+the schema up to `NNNN - 1`, loads the seed, applies every remaining schema
+migration and the function loader, and runs the assertions;
+`just db-migration-tests` runs every pair. The upgrade always continues to the
+latest schema because the function loader only resolves against it, so the
+seeded rows also prove they survive later migrations.
+
 ### Rust contract tests
 
 `ocg-server/src/db/contract_tests/` runs the ignored `db_contracts` tests
@@ -436,6 +545,7 @@ just db-tests
 just db-tests-file database/tests/functions/<folder>/<function>.sql
 just db-tests-seed-keys
 just db-contract-tests
+just db-migration-test 0081
 just db-migration-tests
 ```
 

@@ -14,6 +14,7 @@ select plan(25);
 \set actorID '3a070000-0000-0000-0000-000000000001'
 \set approvalRefundAttendeeID '3a070000-0000-0000-0000-00000000001f'
 \set approvalRefundID '3a070000-0000-0000-0000-000000000022'
+\set approvalRefundJobID '3a070000-0000-0000-0000-000000000037'
 \set approvalRefundPurchaseID '3a070000-0000-0000-0000-000000000020'
 \set approvalRefundRequestID '3a070000-0000-0000-0000-000000000021'
 \set approvedRequestAttendeeID '3a070000-0000-0000-0000-000000000023'
@@ -23,6 +24,7 @@ select plan(25);
 \set communityID '3a070000-0000-0000-0000-000000000003'
 \set conflictingRefundAttendeeID '3a070000-0000-0000-0000-000000000026'
 \set conflictingRefundID '3a070000-0000-0000-0000-000000000028'
+\set conflictingRefundJobID '3a070000-0000-0000-0000-000000000038'
 \set conflictingRefundPurchaseID '3a070000-0000-0000-0000-000000000027'
 \set eventCanceledID '3a070000-0000-0000-0000-000000000004'
 \set eventCategoryID '3a070000-0000-0000-0000-000000000005'
@@ -294,52 +296,87 @@ insert into event_refund_request (
         :'actorID'
     );
 
+-- Existing refund approval job used by the paid cancellation branch
+insert into payment_job (
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    :'approvalRefundPurchaseID',
+    'provider refund failed: re_approval_reuse',
+    'event-purchase-refund-approval-reuse-3a07',
+    'event-purchase-refund',
+    :'approvalRefundJobID',
+    'stripe',
+    'failed'
+);
+
+-- Existing conflicting refund job used by the paid cancellation branch
+insert into payment_job (
+    event_purchase_id,
+    failure_message,
+    idempotency_key,
+    kind,
+    payment_job_id,
+    payment_provider_id,
+    status
+) values (
+    :'conflictingRefundPurchaseID',
+    'provider refund failed: re_conflicting_kind',
+    'event-purchase-refund-conflicting-kind-3a07',
+    'event-purchase-refund',
+    :'conflictingRefundJobID',
+    'stripe',
+    'failed'
+);
+
 -- Existing durable refunds used by paid cancellation branch tests
 insert into event_purchase_refund (
-    event_purchase_refund_id,
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
+    event_purchase_refund_id,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
     event_refund_request_id,
-    failure_message,
     initiated_by_user_id,
     provider_refund_id
 ) values
     (
-        :'approvalRefundID',
         2500,
         'USD',
         :'approvalRefundPurchaseID',
-        'event-purchase-refund-approval-reuse',
+        :'approvalRefundID',
         'refund-request-approval',
+        :'approvalRefundJobID',
         'stripe',
         'provider-failed',
         true,
 
         :'approvalRefundRequestID',
-        'provider refund failed: re_approval_reuse',
         :'actorID',
         're_approval_reuse'
     ),
     (
-        :'conflictingRefundID',
         2500,
         'USD',
         :'conflictingRefundPurchaseID',
-        'event-purchase-refund-conflicting-kind',
+        :'conflictingRefundID',
         'event-cancellation',
+        :'conflictingRefundJobID',
         'stripe',
         'provider-failed',
         true,
 
         null,
-        'provider refund failed: re_conflicting_kind',
         :'actorID',
         're_conflicting_kind'
     );
@@ -566,16 +603,19 @@ select results_eq(
                 epr.kind,
                 epr.payment_provider_id,
                 epr.status,
-                epr.idempotency_key = format(
+                pj.idempotency_key = format(
                     'event-purchase-refund-%%s',
                     ep.event_purchase_id
-                )
+                ),
+                pj.kind,
+                pj.status
             from event_purchase ep
             join event_attendee ea
                 on ea.event_id = ep.event_id
                 and ea.user_id = ep.user_id
             join event_refund_request err using (event_purchase_id)
             join event_purchase_refund epr using (event_purchase_id)
+            join payment_job pj on pj.payment_job_id = epr.payment_job_id
             where ep.event_purchase_id = %L::uuid
         $$,
         :'purchaseID'
@@ -597,7 +637,9 @@ select results_eq(
                 'attendance-cancellation'::text,
                 'stripe'::text,
                 'provider-pending'::text,
-                true
+                true,
+                'event-purchase-refund'::text,
+                'pending'::text
             )
         $$,
         :'actorID',
@@ -635,20 +677,20 @@ select lives_ok(
     $$
         do $test$
         declare
-            v_refund jsonb;
+            v_job jsonb;
         begin
-            v_refund := claim_event_purchase_refund('stripe');
+            v_job := claim_payment_job('event-purchase-refund', 'stripe');
 
             perform record_event_purchase_refund_succeeded(
-                (v_refund->>'event_purchase_refund_id')::uuid,
-                v_refund->>'idempotency_key',
+                (v_job#>>'{refund,event_purchase_refund_id}')::uuid,
+                v_job->>'idempotency_key',
                 're_paid_attendance_cancel',
-                (v_refund->>'claim_id')::uuid
+                (v_job->>'claim_id')::uuid
             );
 
             perform finalize_event_purchase_refund(
-                (v_refund->>'event_purchase_refund_id')::uuid,
-                (v_refund->>'claim_id')::uuid,
+                (v_job#>>'{refund,event_purchase_refund_id}')::uuid,
+                (v_job->>'claim_id')::uuid,
                 '{"event_name": "Paid Event"}'::jsonb
             );
         end;

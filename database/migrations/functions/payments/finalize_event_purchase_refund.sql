@@ -12,6 +12,7 @@ declare
     v_event_id uuid;
     v_event_ticket_type_id uuid;
     v_group_id uuid;
+    v_job payment_job;
     v_refund event_purchase_refund;
     v_user_id uuid;
 begin
@@ -33,6 +34,7 @@ begin
     join event_purchase ep on ep.event_purchase_id = epr.event_purchase_id
     where epr.event_purchase_refund_id = p_event_purchase_refund_id;
 
+    -- Reject unknown refunds
     if not found then
         raise exception 'event purchase refund not found';
     end if;
@@ -52,6 +54,7 @@ begin
 
     perform pg_advisory_xact_lock(hashtext(v_event_id::text), hashtext(v_user_id::text));
 
+    -- Lock the purchase and durable refund and resolve their group context
     select
         g.community_id,
         ep.event_discount_code_id,
@@ -69,6 +72,7 @@ begin
     where epr.event_purchase_refund_id = p_event_purchase_refund_id
     for update of ep, epr;
 
+    -- Reject refunds whose purchase disappeared while waiting for the locks
     if not found then
         raise exception 'event purchase not found';
     end if;
@@ -79,16 +83,29 @@ begin
     from event_purchase_refund epr
     where epr.event_purchase_refund_id = p_event_purchase_refund_id;
 
+    -- Treat a repeated finalization as an idempotent replay
     if v_refund.status = 'finalized' then
         return;
     end if;
 
-    if v_refund.claim_id is distinct from p_claim_id
-       or v_refund.provider_refunded_at is null then
+    -- Lock the payment job that owns the worker claim
+    select pj.*
+    into v_job
+    from payment_job pj
+    where pj.payment_job_id = v_refund.payment_job_id
+    for update;
+
+    -- Reject finalization from a worker that no longer owns the job
+    if v_job.claim_id is distinct from p_claim_id then
+        raise exception 'payment job claim is stale';
+    end if;
+
+    -- Require provider confirmation before local finalization
+    if v_refund.provider_refunded_at is null then
         raise exception 'event purchase refund claim is not provider-complete';
     end if;
 
-    -- Remove active access only when this refund owns the attendee relationship.
+    -- Remove active access only when this refund owns the attendee relationship
     update event_attendee
     set
         attendance_canceled_at = current_timestamp,
@@ -116,6 +133,7 @@ begin
         updated_at = current_timestamp
     where event_purchase_id = v_refund.event_purchase_id;
 
+    -- Release the discount seat held by every refund except abandoned checkouts
     if v_refund.kind <> 'automatic-unfulfillable-checkout'
        and v_event_discount_code_id is not null then
         perform release_event_discount_code_availability(v_event_discount_code_id);
@@ -137,21 +155,15 @@ begin
         and status = 'approving';
     end if;
 
-    -- Complete the durable job only for the current worker claim
+    -- Record local finalization and complete the job for the current worker claim
     update event_purchase_refund
     set
-        claim_id = null,
-        claimed_at = null,
-        failure_message = null,
         finalized_at = current_timestamp,
         status = 'finalized',
         updated_at = current_timestamp
-    where event_purchase_refund_id = p_event_purchase_refund_id
-    and claim_id = p_claim_id;
+    where event_purchase_refund_id = p_event_purchase_refund_id;
 
-    if not found then
-        raise exception 'event purchase refund claim is no longer current';
-    end if;
+    perform complete_payment_job(v_refund.payment_job_id, p_claim_id);
 
     -- Fill capacity released only after the refund is locally terminal
     perform reconcile_event_enrollment(

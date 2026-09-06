@@ -54,7 +54,7 @@ impl CreditNoteDocument {
     /// Returns the attendee-facing lifecycle label.
     pub(crate) fn status_label(&self) -> &'static str {
         match self.status.as_str() {
-            "issued" => "Issued",
+            "completed" => "Issued",
             "failed" => "Needs review",
             _ => "Processing",
         }
@@ -182,7 +182,7 @@ mod tests {
         purchase.credit_notes = vec![CreditNoteDocument {
             event_purchase_credit_note_id,
             provider_credit_note_id: Some("cn_purchase".to_string()),
-            status: "issued".to_string(),
+            status: "completed".to_string(),
         }];
         let html = render_purchase(purchase);
 

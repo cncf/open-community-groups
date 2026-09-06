@@ -48,21 +48,15 @@ pub(crate) fn start_payment_workers(
     server_cfg: &HttpServerConfig,
     background_tasks: &BackgroundTasks,
 ) {
-    // Start provider-mediated application-fee adjustment workers
-    workers::application_fee_adjustment::start(db, payments_provider, background_tasks);
-
-    // Start provider-mediated credit-note workers
-    workers::credit_note::start(db, payments_provider, background_tasks);
-
-    // Start provider-independent recovery for every durable payment queue
-    workers::recovery::start(db, background_tasks);
-
-    // Start provider-mediated refunds with their notification boundary
-    workers::refund::start(
+    // Start provider-mediated payment job workers
+    workers::payment_job::start(
         db,
         notifications_manager,
         payments_provider,
         server_cfg.clone(),
         background_tasks,
     );
+
+    // Start provider-independent recovery for every durable payment queue
+    workers::recovery::start(db, background_tasks);
 }

@@ -317,7 +317,10 @@ describe("dashboard group attendees list template", () => {
       'id="retry-refund-{{ attendee.user.user_id }}"',
     );
     expect(template).to.include(
-      'hx-put="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/retry"',
+      "{% if let Some(payment_job_id) = attendee.refund_payment_job_id -%}",
+    );
+    expect(template).to.include(
+      'hx-put="/dashboard/group/payment-jobs/{{ payment_job_id }}/retry"',
     );
     expect(template).to.include("data-actions-menu");
     expect(template).to.include(

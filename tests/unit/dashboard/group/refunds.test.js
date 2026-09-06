@@ -47,8 +47,7 @@ describe("dashboard group refunds", () => {
           <button
             type="button"
             data-financial-recovery-open
-            data-financial-recovery-kind="application-fee-adjustment"
-            data-financial-recovery-work-id="work-123"
+            data-financial-recovery-payment-job-id="job-123"
             data-financial-recovery-operation="Application-fee refund"
             data-financial-recovery-attendee="Alice"
             data-financial-recovery-event="Community meetup"
@@ -94,8 +93,7 @@ describe("dashboard group refunds", () => {
           <button id="close-financial-recovery-modal" type="button">Close</button>
           <div id="overlay-financial-recovery-modal"></div>
           <form id="financial-recovery-form">
-            <input id="financial-recovery-kind" name="kind" />
-            <input id="financial-recovery-work-id" name="work_id" />
+            <input id="financial-recovery-payment-job-id" name="payment_job_id" />
             <input id="financial-recovery-provider-object" name="provider_object_id" />
             <input id="financial-recovery-reference" name="recovery_reference" />
             <div id="financial-recovery-operation"></div>
@@ -317,8 +315,7 @@ describe("dashboard group refunds", () => {
 
     // Verify the selected operation populates the modal and resets its fields.
     expect(document.getElementById("financial-recovery-modal")?.classList.contains("hidden")).to.equal(false);
-    expect(document.getElementById("financial-recovery-kind")?.value).to.equal("application-fee-adjustment");
-    expect(document.getElementById("financial-recovery-work-id")?.value).to.equal("work-123");
+    expect(document.getElementById("financial-recovery-payment-job-id")?.value).to.equal("job-123");
     expect(document.getElementById("financial-recovery-operation")?.textContent).to.equal(
       "Application-fee refund",
     );

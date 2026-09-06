@@ -16,6 +16,7 @@ select plan(14);
 \set blankRequestID 'd4050000-0000-0000-0000-000000000003'
 \set blankUserID 'd4050000-0000-0000-0000-000000000004'
 \set communityID 'd4050000-0000-0000-0000-000000000005'
+\set conflictJobID 'd4050000-0000-0000-0000-00000000002d'
 \set conflictPurchaseID 'd4050000-0000-0000-0000-000000000006'
 \set conflictRefundID 'd4050000-0000-0000-0000-000000000007'
 \set conflictRequestID 'd4050000-0000-0000-0000-000000000008'
@@ -187,14 +188,24 @@ insert into event_refund_request (
     (:'freePurchaseID', :'freeRequestID', :'freeUserID', 'pending'),
     (:'happyPurchaseID', :'happyRequestID', :'happyUserID', 'pending');
 
+-- Existing payment job that conflicts with attendee-request approval
+insert into payment_job (
+    payment_job_id, event_purchase_id, idempotency_key, kind,
+    payment_provider_id
+) values (
+    :'conflictJobID', :'conflictPurchaseID',
+    'refund-conflict-queue-event-refund-request-approval-job',
+    'event-purchase-refund', 'stripe'
+);
+
 -- Existing cancellation refund that conflicts with attendee-request approval
 insert into event_purchase_refund (
     amount_minor,
     currency_code,
     event_purchase_id,
     event_purchase_refund_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status
 ) values (
@@ -202,8 +213,8 @@ insert into event_purchase_refund (
     'USD',
     :'conflictPurchaseID',
     :'conflictRefundID',
-    'refund-conflict',
     'event-cancellation',
+    :'conflictJobID',
     'stripe',
     'provider-pending'
 );
@@ -248,34 +259,37 @@ select results_eq(
         select
             epr.amount_minor,
             epr.currency_code,
-            epr.idempotency_key,
             epr.initiated_by_user_id,
             epr.kind,
             epr.payment_provider_id,
             epr.review_note,
             epr.status,
+            pj.idempotency_key,
+            pj.status,
             err.review_note,
             err.reviewed_at is not null,
             err.reviewed_by_user_id,
             err.status
         from event_purchase_refund epr
         join event_refund_request err using (event_refund_request_id)
+        join payment_job pj using (payment_job_id)
         where epr.event_purchase_id = %L::uuid
     $$, :'happyPurchaseID'),
     format($$ values (
         2500::bigint,
         'USD'::text,
-        %L::text,
         %L::uuid,
         'refund-request-approval'::text,
         'stripe'::text,
         'Approved by organizer'::text,
         'provider-pending'::text,
+        %L::text,
+        'pending'::text,
         'Approved by organizer'::text,
         true,
         %L::uuid,
         'approving'::text
-    ) $$, 'event-purchase-refund-' || :'happyPurchaseID', :'actorID', :'actorID'),
+    ) $$, :'actorID', 'event-purchase-refund-' || :'happyPurchaseID', :'actorID'),
     'Should persist the review decision and stable worker handoff'
 );
 

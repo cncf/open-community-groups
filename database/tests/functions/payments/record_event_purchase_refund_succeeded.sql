@@ -5,24 +5,27 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '79490000-0000-0000-0000-000000000001'
+\set claimedJobID '79490000-0000-0000-0000-000000000027'
 \set claimedPurchaseID '79490000-0000-0000-0000-000000000024'
 \set claimedRefundID '79490000-0000-0000-0000-000000000025'
 \set claimedUserID '79490000-0000-0000-0000-000000000026'
 \set eventCategoryID '79490000-0000-0000-0000-000000000002'
 \set eventID '79490000-0000-0000-0000-000000000003'
 \set eventTicketTypeID '79490000-0000-0000-0000-000000000004'
+\set finalizedJobID '79490000-0000-0000-0000-000000000028'
 \set finalizedPurchaseID '79490000-0000-0000-0000-000000000013'
 \set finalizedRefundID '79490000-0000-0000-0000-000000000014'
 \set finalizedUserID '79490000-0000-0000-0000-000000000015'
 \set groupCategoryID '79490000-0000-0000-0000-000000000005'
 \set groupID '79490000-0000-0000-0000-000000000006'
+\set invalidJobID '79490000-0000-0000-0000-000000000029'
 \set invalidPurchaseID '79490000-0000-0000-0000-000000000016'
 \set invalidRefundID '79490000-0000-0000-0000-000000000017'
 \set invalidUserID '79490000-0000-0000-0000-000000000018'
@@ -31,8 +34,10 @@ select plan(15);
 \set processingClaimID '79490000-0000-0000-0000-000000000022'
 \set purchaseID '79490000-0000-0000-0000-000000000008'
 \set refundID '79490000-0000-0000-0000-000000000009'
+\set refundJobID '79490000-0000-0000-0000-000000000030'
 \set refundRequestID '79490000-0000-0000-0000-000000000010'
 \set staleClaimID '79490000-0000-0000-0000-000000000023'
+\set terminalJobID '79490000-0000-0000-0000-000000000031'
 \set terminalPurchaseID '79490000-0000-0000-0000-000000000019'
 \set terminalRefundID '79490000-0000-0000-0000-000000000020'
 \set terminalUserID '79490000-0000-0000-0000-000000000021'
@@ -182,22 +187,60 @@ insert into event_refund_request (
     'approving'
 );
 
+-- Payment jobs for claimed, pending, finalized, and invalid recovery scenarios
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, failure_message,
+    idempotency_key, kind, payment_provider_id, status,
+
+    claim_id, claimed_at
+) values (
+    :'claimedJobID', 1, :'claimedPurchaseID', null,
+    'event-purchase-refund-' || :'claimedPurchaseID',
+    'event-purchase-refund', 'stripe', 'processing',
+
+    :'processingClaimID', current_timestamp
+), (
+    :'finalizedJobID', 4, :'finalizedPurchaseID',
+    'provider refund failed: re_failed_123',
+    'event-purchase-refund-' || :'finalizedPurchaseID',
+    'event-purchase-refund', 'stripe', 'failed',
+
+    null, null
+), (
+    :'invalidJobID', 4, :'invalidPurchaseID',
+    'provider refund failed: re_invalid_123',
+    'event-purchase-refund-' || :'invalidPurchaseID',
+    'event-purchase-refund', 'stripe', 'failed',
+
+    null, null
+), (
+    :'refundJobID', 3, :'purchaseID', 'prior provider retry',
+    'event-purchase-refund-' || :'purchaseID',
+    'event-purchase-refund', 'stripe', 'failed',
+
+    null, null
+), (
+    :'terminalJobID', 5, :'terminalPurchaseID',
+    'provider refund failed: re_terminal_123_refund_succeeded',
+    'event-purchase-refund-' || :'terminalPurchaseID',
+    'event-purchase-refund', 'stripe', 'failed',
+
+    null, null
+);
+
 -- Provider records for claimed, pending, finalized, and invalid recovery scenarios
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
     currency_code,
     event_purchase_id,
-    idempotency_key,
     kind,
+    payment_job_id,
     payment_provider_id,
     status,
     terminal_failure,
 
-    claim_id,
-    claimed_at,
     event_refund_request_id,
-    failure_message,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
@@ -206,15 +249,12 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'claimedPurchaseID',
-    'event-purchase-refund-' || :'claimedPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'claimedJobID',
     'stripe',
-    'processing',
+    'provider-pending',
     false,
 
-    :'processingClaimID',
-    current_timestamp,
-    null,
     null,
     null,
     null,
@@ -224,16 +264,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'finalizedPurchaseID',
-    'event-purchase-refund-' || :'finalizedPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'finalizedJobID',
     'stripe',
     'provider-failed',
     false,
 
     null,
-    null,
-    null,
-    'provider refund failed: re_failed_123',
     current_timestamp,
     null,
     null
@@ -242,16 +279,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'invalidPurchaseID',
-    'event-purchase-refund-' || :'invalidPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'invalidJobID',
     'stripe',
     'provider-failed',
     false,
 
     null,
-    null,
-    null,
-    'provider refund failed: re_invalid_123',
     current_timestamp,
     null,
     null
@@ -260,16 +294,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'purchaseID',
-    'event-purchase-refund-' || :'purchaseID',
     'refund-request-approval',
+    :'refundJobID',
     'stripe',
     'provider-pending',
     false,
 
-    null,
-    null,
     :'refundRequestID',
-    null,
     null,
     null,
     null
@@ -278,16 +309,13 @@ insert into event_purchase_refund (
     2500,
     'USD',
     :'terminalPurchaseID',
-    'event-purchase-refund-' || :'terminalPurchaseID',
     'automatic-unfulfillable-checkout',
+    :'terminalJobID',
     'stripe',
     'provider-failed',
     true,
 
     null,
-    null,
-    null,
-    'provider refund failed: re_terminal_123_refund_succeeded',
     null,
     're_terminal_123_refund_succeeded',
     null
@@ -333,6 +361,7 @@ select is(
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
+        'payment_job_id', :'refundJobID'::uuid,
         'payment_provider', 'stripe',
         'provider_refund_id', 're_success_123_refund_succeeded',
         'status', 'provider-succeeded',
@@ -355,6 +384,7 @@ select is(
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
+        'payment_job_id', :'refundJobID'::uuid,
         'payment_provider', 'stripe',
         'provider_refund_id', 're_success_123_refund_succeeded',
         'status', 'provider-succeeded',
@@ -372,6 +402,17 @@ select throws_ok(
     )$$, :'refundID', 'event-purchase-refund-' || :'purchaseID'),
     'event purchase refund already has a different provider refund id',
     'Should reject conflicting provider refund ids'
+);
+
+-- Should reset the job for local finalization after provider success
+select results_eq(
+    format($$
+        select attempt_count, failure_message, next_attempt_at <= current_timestamp, status
+        from payment_job
+        where payment_job_id = %L::uuid
+    $$, :'refundJobID'),
+    $$ values (0, null::text, true, 'pending'::text) $$,
+    'Should reset the job for local finalization after provider success'
 );
 
 -- Should ignore a successful result from a superseded attempt
@@ -403,8 +444,9 @@ select results_eq(
                 're_terminal_123_refund_succeeded'
             )
         )
-        select failure_message, provider_refund_id, status
-        from event_purchase_refund
+        select pj.failure_message, epr.provider_refund_id, epr.status
+        from event_purchase_refund epr
+        join payment_job pj using (payment_job_id)
         cross join delayed_success
         where event_purchase_refund_id = %L::uuid
     $$,
@@ -434,9 +476,10 @@ select throws_ok(
 -- Should preserve invalid refund and purchase state after rejection
 select results_eq(
     format($$
-        select epr.failure_message, epr.provider_refund_id, epr.status, ep.status
+        select pj.failure_message, epr.provider_refund_id, epr.status, ep.status
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'invalidRefundID'),
     $$ values (
@@ -463,15 +506,17 @@ select is(
 select results_eq(
     format($$
         select
-            epr.failure_message,
+            pj.failure_message,
             epr.provider_refund_id,
             epr.provider_refunded_at is not null,
+            pj.status,
             ep.status
         from event_purchase_refund epr
         join event_purchase ep using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         where epr.event_purchase_refund_id = %L::uuid
     $$, :'finalizedRefundID'),
-    $$ values (null::text, 're_recovery_123'::text, true, 'refunded'::text) $$,
+    $$ values (null::text, 're_recovery_123'::text, true, 'completed'::text, 'refunded'::text) $$,
     'Should restore the refunded purchase after provider recovery'
 );
 
@@ -540,9 +585,33 @@ select is(
         'event-purchase-refund-' || :'claimedPurchaseID',
         're_claimed_123',
         :'processingClaimID'::uuid
-    )->>'status',
-    'processing',
+    ) - 'event_purchase_refund_id' - 'provider_refunded_at',
+    jsonb_build_object(
+        'amount_minor', 2500,
+        'attempt_count', 0,
+        'claim_id', :'processingClaimID'::uuid,
+        'currency_code', 'USD',
+        'event_purchase_id', :'claimedPurchaseID'::uuid,
+        'idempotency_key', 'event-purchase-refund-' || :'claimedPurchaseID',
+        'kind', 'automatic-unfulfillable-checkout',
+        'payment_job_id', :'claimedJobID'::uuid,
+        'payment_provider', 'stripe',
+        'provider_refund_id', 're_claimed_123',
+        'status', 'provider-succeeded',
+        'terminal_failure', false
+    ),
     'Should accept provider success from the current worker claim'
+);
+
+-- Should preserve the claim while resetting local finalization attempts
+select results_eq(
+    format($$
+        select attempt_count, claim_id, status
+        from payment_job
+        where payment_job_id = %L::uuid
+    $$, :'claimedJobID'),
+    format($$ values (0, %L::uuid, 'processing'::text) $$, :'processingClaimID'),
+    'Should preserve the claim while resetting local finalization attempts'
 );
 
 -- ============================================================================

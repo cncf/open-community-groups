@@ -436,17 +436,25 @@ select isnt(
 -- Should finalize free purchases and queue provider-backed refunds
 select results_eq(
     format($$
-        select ep.event_purchase_id, ep.status, epr.kind, epr.status
+        select
+            ep.event_purchase_id,
+            ep.status,
+            epr.kind,
+            epr.status,
+            pj.idempotency_key,
+            pj.kind,
+            pj.status
         from event_purchase ep
         left join event_purchase_refund epr using (event_purchase_id)
+        left join payment_job pj on pj.payment_job_id = epr.payment_job_id
         where ep.event_id = %L::uuid
         order by ep.event_purchase_id
     $$, :'eventID'),
     format($$ values
-        (%L::uuid, 'refunded'::text, null::text, null::text),
-        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text),
-        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text)
-    $$, :'freePurchaseID', :'paidPurchaseID', :'rejectedPaidPurchaseID'),
+        (%L::uuid, 'refunded'::text, null::text, null::text, null::text, null::text, null::text),
+        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text, 'event-purchase-refund-%s'::text, 'event-purchase-refund'::text, 'pending'::text),
+        (%L::uuid, 'refund-pending'::text, 'event-cancellation'::text, 'provider-pending'::text, 'event-purchase-refund-%s'::text, 'event-purchase-refund'::text, 'pending'::text)
+    $$, :'freePurchaseID', :'paidPurchaseID', :'paidPurchaseID', :'rejectedPaidPurchaseID', :'rejectedPaidPurchaseID'),
     'Should finalize free purchases and queue provider-backed refunds'
 );
 

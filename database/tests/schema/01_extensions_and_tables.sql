@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(81);
+select plan(82);
 
 -- ============================================================================
 -- TESTS
@@ -82,6 +82,7 @@ select has_table('notification');
 select has_table('notification_attachment');
 select has_table('notification_kind');
 select has_table('notification_template_data');
+select has_table('payment_job');
 select has_table('payment_provider');
 select has_table('payment_provider_tax_location');
 select has_table('payment_provider_tax_product');

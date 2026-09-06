@@ -12,6 +12,7 @@ select plan(4);
 -- ============================================================================
 
 \set adjustmentID 'd7340000-0000-0000-0000-000000000001'
+\set adjustmentJobID 'd7340000-0000-0000-0000-000000000011'
 \set claimID 'd7340000-0000-0000-0000-000000000002'
 \set communityID 'd7340000-0000-0000-0000-000000000003'
 \set eventCategoryID 'd7340000-0000-0000-0000-000000000004'
@@ -62,14 +63,27 @@ insert into event_purchase (
     :'userID', '{}'::jsonb
 );
 
--- Processing application-fee adjustment claim
-insert into event_purchase_application_fee_adjustment (
-    amount_minor, attempt_count, claim_id, claimed_at,
-    event_purchase_application_fee_adjustment_id, event_purchase_id,
-    idempotency_key, kind, status
+-- Processing payment job for the application-fee adjustment
+insert into payment_job (
+    payment_job_id, attempt_count, event_purchase_id, idempotency_key,
+    kind, payment_provider_id, status,
+
+    claim_id, claimed_at
 ) values (
-    20, 1, :'claimID', current_timestamp, :'adjustmentID', :'purchaseID',
-    'complete-fee-adjustment', 'tax-reconciliation', 'processing'
+    :'adjustmentJobID', 1, :'purchaseID',
+    'complete-fee-adjustment-succeeded-job',
+    'event-purchase-application-fee-adjustment', 'stripe', 'processing',
+
+    :'claimID', current_timestamp
+);
+
+-- Processing application-fee adjustment pinned to the job
+insert into event_purchase_application_fee_adjustment (
+    event_purchase_application_fee_adjustment_id, amount_minor,
+    event_purchase_id, kind, payment_job_id
+) values (
+    :'adjustmentID', 20,
+    :'purchaseID', 'tax-reconciliation', :'adjustmentJobID'
 );
 
 -- ============================================================================
@@ -88,13 +102,17 @@ select lives_ok(
 -- Should mark the tax-reconciled purchase financially reconciled
 select results_eq(
     format($$
-        select a.status, a.provider_application_fee_refund_id,
-            p.financially_reconciled_at is not null
+        select
+            a.provider_application_fee_refund_id,
+            p.financially_reconciled_at is not null,
+            pj.status,
+            pj.completed_at is not null
         from event_purchase_application_fee_adjustment a
         join event_purchase p using (event_purchase_id)
+        join payment_job pj using (payment_job_id)
         where a.event_purchase_application_fee_adjustment_id = %L::uuid
     $$, :'adjustmentID'),
-    $$ values ('completed'::text, 'fr_adjust'::text, true) $$,
+    $$ values ('fr_adjust'::text, true, 'completed'::text, true) $$,
     'Should mark the tax-reconciled purchase financially reconciled'
 );
 

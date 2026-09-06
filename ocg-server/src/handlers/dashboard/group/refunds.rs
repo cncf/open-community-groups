@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{RawQuery, State},
+    extract::{Path, RawQuery, State},
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
@@ -13,16 +13,14 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{DynDB, payments::CompleteEventPurchaseFinancialRecoveryInput},
+    db::{DynDB, payments::CompletePaymentJobRecoveryInput},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager},
-    templates::dashboard::group::refunds::{
-        self, FinancialRecoveryKind, RefundsFilters, RefundsView, RefundsViewOption,
-    },
+    templates::dashboard::group::refunds::{self, RefundsFilters, RefundsView, RefundsViewOption},
     types::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
@@ -67,34 +65,26 @@ pub(crate) async fn list_page(
 
 // Actions handlers.
 
-/// Completes exhausted financial work resolved outside OCG.
+/// Completes exhausted payment job work resolved outside OCG.
 #[instrument(skip_all, err)]
-pub(crate) async fn complete_financial_recovery(
+pub(crate) async fn complete_payment_job_recovery(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    ValidatedForm(input): ValidatedForm<FinancialRecoveryInput>,
+    ValidatedForm(input): ValidatedForm<PaymentJobRecoveryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Compose the durable recovery evidence
-    let recovery = CompleteEventPurchaseFinancialRecoveryInput {
+    let recovery = CompletePaymentJobRecoveryInput {
         actor_user_id: user.user_id,
         group_id,
+        payment_job_id: input.payment_job_id,
         provider_object_id: input.provider_object_id,
         recovery_note: input.recovery_note,
         recovery_reference: input.recovery_reference,
-        work_id: input.work_id,
     };
 
     // Complete the selected provider operation
-    match input.kind {
-        FinancialRecoveryKind::ApplicationFeeAdjustment => {
-            db.complete_event_purchase_application_fee_adjustment_recovery(&recovery)
-                .await?;
-        }
-        FinancialRecoveryKind::CreditNote => {
-            db.complete_event_purchase_credit_note_recovery(&recovery).await?;
-        }
-    }
+    db.complete_payment_job_recovery(&recovery).await?;
 
     // Refresh the operator's current refund view
     Ok((
@@ -133,28 +123,23 @@ pub(crate) async fn complete_refund_recovery(
         .into_response())
 }
 
-/// Requeues exhausted financial work for another bounded attempt cycle.
+/// Requeues exhausted payment work for another bounded attempt cycle.
 #[instrument(skip_all, err)]
-pub(crate) async fn retry_financial_recovery(
+pub(crate) async fn retry_payment_job(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    ValidatedForm(input): ValidatedForm<FinancialRetryInput>,
+    Path(payment_job_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Requeue the selected provider operation
-    match input.kind {
-        FinancialRecoveryKind::ApplicationFeeAdjustment => {
-            db.requeue_event_purchase_application_fee_adjustment(group_id, input.work_id)
-                .await?;
-        }
-        FinancialRecoveryKind::CreditNote => {
-            db.requeue_event_purchase_credit_note(group_id, input.work_id).await?;
-        }
-    }
+    db.requeue_payment_job(group_id, payment_job_id).await?;
 
     // Refresh the operator's current refund view
     Ok((
         StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-group-refunds")],
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-group-refunds",
+        )],
     )
         .into_response())
 }
@@ -218,12 +203,12 @@ pub(crate) async fn prepare_list_page(
 
 // Types.
 
-/// Form data for completing exhausted financial work outside OCG.
+/// Form data for completing exhausted payment job work outside OCG.
 #[derive(Debug, Deserialize, Serialize, Validate)]
-pub(crate) struct FinancialRecoveryInput {
-    /// Durable kind used to select the recovery function.
+pub(crate) struct PaymentJobRecoveryInput {
+    /// Durable payment job identifier.
     #[garde(skip)]
-    pub kind: FinancialRecoveryKind,
+    pub payment_job_id: Uuid,
     /// Provider object created outside OCG.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub provider_object_id: String,
@@ -233,20 +218,6 @@ pub(crate) struct FinancialRecoveryInput {
     /// Reference for the external operation.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub recovery_reference: String,
-    /// Durable work-item identifier.
-    #[garde(skip)]
-    pub work_id: Uuid,
-}
-
-/// Form data for requeueing exhausted financial work.
-#[derive(Debug, Deserialize, Serialize, Validate)]
-pub(crate) struct FinancialRetryInput {
-    /// Durable kind used to select the retry function.
-    #[garde(skip)]
-    pub kind: FinancialRecoveryKind,
-    /// Durable work-item identifier.
-    #[garde(skip)]
-    pub work_id: Uuid,
 }
 
 /// Form data for completing an externally resolved refund.
