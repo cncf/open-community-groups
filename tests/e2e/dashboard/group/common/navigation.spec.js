@@ -2,6 +2,7 @@ import { expect, test } from "../../../fixtures.js";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  TEST_EVENT_NAME,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
@@ -10,9 +11,7 @@ import {
 } from "../../../utils.js";
 
 test.describe("group dashboard navigation", () => {
-  test("leaving Check-In keeps the page header mounted", async ({
-    organizerGroupPage,
-  }) => {
+  test("leaving Check-In keeps the page header mounted", async ({ organizerGroupPage }) => {
     // Load Check-In and mark the header node before desktop tab navigation.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=check-in");
     const header = organizerGroupPage.locator("#dashboard-header");
@@ -21,8 +20,8 @@ test.describe("group dashboard navigation", () => {
     });
 
     // Open Events through the dashboard menu and wait for its HTMX response.
-    const eventsResponse = organizerGroupPage.waitForResponse(
-      (response) => response.url().includes("/dashboard/group?tab=events"),
+    const eventsResponse = organizerGroupPage.waitForResponse((response) =>
+      response.url().includes("/dashboard/group?tab=events"),
     );
     await organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]').click();
     expect((await eventsResponse).ok()).toBe(true);
@@ -33,80 +32,89 @@ test.describe("group dashboard navigation", () => {
     await expect(organizerGroupPage.getByRole("button", { name: "Add Event" })).toBeVisible();
   });
 
-  test("shows the dashboard shell, selectors, and primary navigation", async ({
-    organizerGroupPage,
-  }) => {
+  test("closes confirmation alerts across dashboard and page navigation", async ({ organizerGroupPage }) => {
+    const openCancellationAlert = async () => {
+      const eventRow = organizerGroupPage.locator("#dashboard-content tbody tr", {
+        hasText: TEST_EVENT_NAME,
+      });
+      await eventRow.locator(".btn-actions").click();
+      await eventRow.locator('button[id^="cancel-event-"]').click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toBeVisible();
+    };
+
+    // A dashboard tab swap closes the confirmation before replacing its view.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openCancellationAlert();
+    const settingsResponse = organizerGroupPage.waitForResponse(
+      (response) => response.url().includes("/dashboard/group?tab=settings") && response.ok(),
+    );
+    await organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=settings"]').click();
+    await settingsResponse;
+    await expect(organizerGroupPage.locator(".swal2-popup")).toBeHidden();
+
+    // A full-page link also leaves no confirmation dialog behind.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openCancellationAlert();
+    await organizerGroupPage.getByRole("link", { name: "Group public site" }).click();
+    await expect(organizerGroupPage).toHaveURL(/\/e2e-test-community\/group\/test-group-alpha$/u);
+    await expect(organizerGroupPage.locator(".swal2-popup")).toHaveCount(0);
+  });
+
+  test("shows the dashboard shell, selectors, and primary navigation", async ({ organizerGroupPage }) => {
     // Load the group events tab before checking the dashboard shell.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     // Verify shows the dashboard shell, selectors, and primary navigation.
-    await expect(
-      organizerGroupPage.getByText("Group Dashboard", { exact: true }).last(),
-    ).toBeVisible();
-    await expect(
-      organizerGroupPage.locator("#dashboard-content"),
-    ).toBeVisible();
-    await expect(
-      organizerGroupPage.locator("#community-selector-button"),
-    ).toBeVisible();
-    await expect(
-      organizerGroupPage.locator("#group-selector-button"),
-    ).toBeVisible();
+    await expect(organizerGroupPage.getByText("Group Dashboard", { exact: true }).last()).toBeVisible();
+    await expect(organizerGroupPage.locator("#dashboard-content")).toBeVisible();
+    await expect(organizerGroupPage.locator("#community-selector-button")).toBeVisible();
+    await expect(organizerGroupPage.locator("#group-selector-button")).toBeVisible();
 
     // Assert the expected text is rendered.
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=settings"]'),
-    ).toContainText("Settings");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=team"]'),
-    ).toContainText("Team");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]'),
-    ).toContainText("Events");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=check-in"]'),
-    ).toBeHidden();
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=settings"]')).toContainText(
+      "Settings",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=team"]')).toContainText("Team");
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=events"]')).toContainText(
+      "Events",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=check-in"]')).toBeHidden();
     if (E2E_PAYMENTS_ENABLED) {
-      await expect(
-        organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=refunds"]'),
-      ).toContainText("Refunds");
+      await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=refunds"]')).toContainText(
+        "Refunds",
+      );
     }
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=badges"]'),
-    ).toContainText("Badges");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=artwork"]'),
-    ).toContainText("Artwork");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=awards"]'),
-    ).toContainText("Awards");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=members"]'),
-    ).toContainText("Members");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=sponsors"]'),
-    ).toContainText("Sponsors");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=analytics"]'),
-    ).toContainText("Analytics");
-    await expect(
-      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=logs"]'),
-    ).toContainText("Logs");
-    await expect(
-      organizerGroupPage.getByRole("link", { name: "Group public site" }),
-    ).toHaveAttribute("href", /\/e2e-test-community\/group\/test-group-alpha$/);
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=badges"]')).toContainText(
+      "Badges",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=artwork"]')).toContainText(
+      "Artwork",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=awards"]')).toContainText(
+      "Awards",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=members"]')).toContainText(
+      "Members",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=sponsors"]')).toContainText(
+      "Sponsors",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=analytics"]')).toContainText(
+      "Analytics",
+    );
+    await expect(organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=logs"]')).toContainText("Logs");
+    await expect(organizerGroupPage.getByRole("link", { name: "Group public site" })).toHaveAttribute(
+      "href",
+      /\/e2e-test-community\/group\/test-group-alpha$/,
+    );
   });
 
-  test("organizer can filter groups in the dashboard selector", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can filter groups in the dashboard selector", async ({ organizerGroupPage }) => {
     // Load the group events tab before opening the group selector.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     // Find the group selector button.
-    const groupSelectorButton = organizerGroupPage.locator(
-      "#group-selector-button",
-    );
+    const groupSelectorButton = organizerGroupPage.locator("#group-selector-button");
 
     // Verify organizer can filter groups in the dashboard selector.
     await expect(groupSelectorButton).toContainText("Platform Ops Meetup");
@@ -120,17 +128,13 @@ test.describe("group dashboard navigation", () => {
     await groupSearchInput.fill("Platform");
 
     // Find the group option.
-    const groupOption = organizerGroupPage.locator(
-      `#group-option-${TEST_GROUP_IDS.community1.alpha}`,
-    );
+    const groupOption = organizerGroupPage.locator(`#group-option-${TEST_GROUP_IDS.community1.alpha}`);
     await expect(groupOption).toBeVisible();
     await expect(groupOption).toBeDisabled();
 
     // Fill the form field.
     await groupSearchInput.fill("No matching group");
-    await expect(
-      organizerGroupPage.getByText("No groups found.", { exact: true }),
-    ).toBeVisible();
+    await expect(organizerGroupPage.getByText("No groups found.", { exact: true })).toBeVisible();
 
     // Close the group selector with Escape.
     await groupSearchInput.press("Escape");
@@ -138,54 +142,37 @@ test.describe("group dashboard navigation", () => {
     await expect(groupSelectorButton).toContainText("Platform Ops Meetup");
   });
 
-  test("organizer can switch groups and restore the original selection", async ({
-    organizerGroupPage,
-  }) => {
+  test("organizer can switch groups and restore the original selection", async ({ organizerGroupPage }) => {
     // Load the group dashboard before changing the active group.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     // Find the selector and verify the primary group is active.
-    const groupSelectorButton = organizerGroupPage.locator(
-      "#group-selector-button",
-    );
+    const groupSelectorButton = organizerGroupPage.locator("#group-selector-button");
     await expect(groupSelectorButton).toContainText(TEST_GROUP_NAMES.alpha);
 
     try {
       // Select the secondary group and verify its restricted dashboard state.
       await groupSelectorButton.click();
-      const secondaryGroup = organizerGroupPage.locator(
-        `#group-option-${TEST_GROUP_IDS.community1.gamma}`,
-      );
+      const secondaryGroup = organizerGroupPage.locator(`#group-option-${TEST_GROUP_IDS.community1.gamma}`);
       await expect(secondaryGroup).toContainText(TEST_GROUP_NAMES.gamma);
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => secondaryGroup.click(),
-        {
-          method: "PUT",
-          urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.gamma}/select`,
-        },
-      );
+      await waitForActionResponse(organizerGroupPage, () => secondaryGroup.click(), {
+        method: "PUT",
+        urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.gamma}/select`,
+      });
       await expect(groupSelectorButton).toContainText(TEST_GROUP_NAMES.gamma);
-      await expect(
-        organizerGroupPage.locator("#dashboard-content"),
-      ).toHaveAttribute("data-group-slug", TEST_GROUP_SLUGS.community1.gamma);
-      await expect(
-        organizerGroupPage.getByRole("button", { name: "Add Event" }),
-      ).toBeDisabled();
+      await expect(organizerGroupPage.locator("#dashboard-content")).toHaveAttribute(
+        "data-group-slug",
+        TEST_GROUP_SLUGS.community1.gamma,
+      );
+      await expect(organizerGroupPage.getByRole("button", { name: "Add Event" })).toBeDisabled();
     } finally {
       // Restore the primary group so later scenarios retain their fixture state.
       await groupSelectorButton.click();
-      const primaryGroup = organizerGroupPage.locator(
-        `#group-option-${TEST_GROUP_IDS.community1.alpha}`,
-      );
-      await waitForActionResponse(
-        organizerGroupPage,
-        () => primaryGroup.click(),
-        {
-          method: "PUT",
-          urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.alpha}/select`,
-        },
-      );
+      const primaryGroup = organizerGroupPage.locator(`#group-option-${TEST_GROUP_IDS.community1.alpha}`);
+      await waitForActionResponse(organizerGroupPage, () => primaryGroup.click(), {
+        method: "PUT",
+        urlEndsWith: `/dashboard/group/${TEST_GROUP_IDS.community1.alpha}/select`,
+      });
       await expect(groupSelectorButton).toContainText(TEST_GROUP_NAMES.alpha);
     }
   });

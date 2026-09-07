@@ -262,7 +262,8 @@
               {% if event.is_paid_capable() -%}
                 <div class="grid gap-4 md:grid-cols-2">
                   <div class="min-w-0">
-                    <label for="discount-code-{{ attendance_instance }}" class="form-label">Discount code</label>
+                    <label for="discount-code-{{ attendance_instance }}"
+                           class="form-label">Discount code</label>
                     <div class="mt-2">
                       <input id="discount-code-{{ attendance_instance }}"
                              data-attendance-role="discount-code-input"

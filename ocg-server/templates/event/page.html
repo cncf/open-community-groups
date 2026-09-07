@@ -390,10 +390,9 @@
         <button type="button"
                 class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center opacity-50 cursor-not-allowed"
                 {% if event.cfs_is_upcoming() -%}
-                title="Call for Speakers will open soon"
+                  title="Call for Speakers will open soon"
                 {% elif event.cfs_is_closed() -%}
-                title="Call for Speakers is now closed"
-                {%- endif -%}
+                  title="Call for Speakers is now closed" {%- endif -%}
                 disabled>Submit session proposal</button>
       {% endif -%}
     </div>

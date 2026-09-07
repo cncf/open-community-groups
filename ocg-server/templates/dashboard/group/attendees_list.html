@@ -698,16 +698,16 @@
               <div class="relative inline-flex justify-end">
                 {% if (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || (can_manage_events
-                  && (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed
-                  || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
-                  || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending
-                  || (!event.canceled && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending && attendee.event_purchase_id.is_some())
-                  || (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending && attendee.manually_invited)
-                  || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
-                  || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)
-                  || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
-                  || (!event.canceled && attendee.can_receive_attendee_email)
-                  || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
+                    && (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed
+                      || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
+                      || attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::InvitationPending
+                      || (!event.canceled && attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::PaymentPending && attendee.event_purchase_id.is_some())
+                      || (attendee.enrollment_status == crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::RegistrationPending && attendee.manually_invited)
+                      || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::CheckoutPending)
+                      || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Expired)
+                      || attendee.admission_offer_status == Some(crate::types::event::EventAdmissionOfferStatus::Pending)
+                      || (!event.canceled && attendee.can_receive_attendee_email)
+                      || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
                   || attendee.refund_progress == Some(crate::types::payments::EventRefundProgress::RetryableFailure))) -%}
                   <details data-actions-menu class="group relative">
                     <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"

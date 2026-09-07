@@ -25,20 +25,29 @@
              margin: 0 0 30px;
              padding-left: 22px">
     <li><strong>Ticket:</strong> {{ ticket_title }}</li>
+    <li><strong>Event:</strong> {{ event_name }}</li>
+    <li><strong>Group:</strong> {{ group_name }}</li>
     <li><strong>Amount:</strong> {{ self.price_label() }}</li>
-    <li><strong>Payment reference:</strong> {{ event_purchase_id }}</li>
     <li>
-      <strong>Organizer confirmation deadline:</strong>
+      <strong>Reference:</strong>
+      <span style="overflow-wrap: anywhere; word-break: break-word">{{ event_purchase_id }}</span>
+    </li>
+    <li>
+      <strong>Deadline:</strong>
       {{ deadline.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}
     </li>
+    <li>
+      <strong>Instructions:</strong>
+      {% if let Some(instructions) = external_payment_instructions -%}
+        <span style="display: block;
+                     white-space: pre-wrap;
+                     overflow-wrap: anywhere;
+                     word-break: break-word">{{- instructions -}}</span>
+      {% else -%}
+        None provided.
+      {% endif -%}
+    </li>
   </ul>
-
-  {% if let Some(instructions) = external_payment_instructions -%}
-    <p class="default"><strong>Organizer payment instructions</strong></p>
-    <blockquote class="join-instructions" style="margin-bottom: 30px">
-      {{- instructions -}}
-    </blockquote>
-  {% endif -%}
 
   {{ email::button(link = external_payment_url, text = "Open payment page", color = theme.primary_color) }}
 

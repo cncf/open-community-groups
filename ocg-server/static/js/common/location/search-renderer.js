@@ -50,31 +50,35 @@ export const renderLocationSearchInterface = (state) => {
             aria-label="Search for a location"
             ?disabled=${state.disabled}
           />
-          ${state.searchQuery
-            ? html`
-                <div class="absolute end-1.5 top-1.5">
-                  <button
-                    type="button"
-                    class="cursor-pointer mt-0.5"
-                    @click=${state.onClearSearch}
-                    ?disabled=${state.disabled}
-                  >
-                    <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-                  </button>
-                </div>
-              `
-            : ""}
-          ${shouldRenderDropdown
-            ? renderLocationSearchDropdown({
-                highlightedIndex: state.highlightedIndex,
-                isSearching: state.isSearching,
-                onHighlight: state.onHighlight,
-                onSelect: state.onSelect,
-                searchError: state.searchError,
-                searchQuery: state.searchQuery,
-                searchResults: state.searchResults,
-              })
-            : ""}
+          ${
+            state.searchQuery
+              ? html`
+                  <div class="absolute end-1.5 top-1.5">
+                    <button
+                      type="button"
+                      class="cursor-pointer mt-0.5"
+                      @click=${state.onClearSearch}
+                      ?disabled=${state.disabled}
+                    >
+                      <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+                    </button>
+                  </div>
+                `
+              : ""
+          }
+          ${
+            shouldRenderDropdown
+              ? renderLocationSearchDropdown({
+                  highlightedIndex: state.highlightedIndex,
+                  isSearching: state.isSearching,
+                  onHighlight: state.onHighlight,
+                  onSelect: state.onSelect,
+                  searchError: state.searchError,
+                  searchQuery: state.searchQuery,
+                  searchResults: state.searchResults,
+                })
+              : ""
+          }
         </div>
         <button
           type="button"
@@ -105,11 +109,13 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
     <div class="${field.className}">
       <label for="${inputId}" class="form-label">
         ${field.label}
-        ${field.requiredForPaidTickets
-          ? html`<span class="asterisk">
-              * <sup class="text-xs font-normal">(required for paid tickets)</sup>
-            </span>`
-          : ""}
+        ${
+          field.requiredForPaidTickets
+            ? html`<span class="asterisk">
+                * <sup class="text-xs font-normal">(required for paid tickets)</sup>
+              </span>`
+            : ""
+        }
       </label>
       <div class="mt-2">
         <input
