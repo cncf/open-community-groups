@@ -223,11 +223,11 @@
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
-  <div class="shrink-0 w-auto mt-1.5 mb-1.5 flex gap-3 flex-row">
+  <div class="mt-1.5 mb-1.5 flex w-auto shrink-0 self-end flex-row gap-3 lg:self-auto">
     {% if can_manage_check_ins -%}
       <div class="hidden md:block">
         <button type="button"
-                class="btn-primary-outline w-full lg:w-auto disabled:cursor-not-allowed disabled:opacity-50"
+                class="btn-primary-outline w-full whitespace-nowrap md:w-auto disabled:cursor-not-allowed disabled:opacity-50"
                 data-group-check-in-open
                 data-refresh-attendees-on-close
                 data-event-id="{{ event.event_id }}"
@@ -241,16 +241,19 @@
                   disabled title="Publish this event before scanning attendees."
                 {% else if event.is_past() -%}
                   disabled title="Past events cannot scan attendees."
-                {% endif -%}>Scan Attendee Codes</button>
+                {% endif -%}>
+          <span class="lg:hidden">Scan codes</span>
+          <span class="hidden lg:inline">Scan Attendee Codes</span>
+        </button>
       </div>
     {% endif -%}
-    <div class="group relative w-full lg:w-auto
+    <div class="group relative w-full md:w-auto
                 {% if !can_manage_events -%}
                   hidden
                 {% endif -%}">
       <button id="attendee-email-actions-button"
               type="button"
-              class="btn-primary-outline w-full lg:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
+              class="btn-primary-outline w-full whitespace-nowrap md:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
                      {% if all_attendees_email_recipient_total == 0 || !can_manage_events || event.canceled -%}
                        opacity-50 cursor-not-allowed
                      {% endif -%}"
@@ -262,7 +265,10 @@
                 disabled title="Canceled events cannot send attendee emails."
               {% else if all_attendees_email_recipient_total == 0 -%}
                 disabled title="No attendees with verified email addresses and email notifications enabled."
-              {% endif -%}>Send email</button>
+              {% endif -%}>
+        <span class="lg:hidden">Email</span>
+        <span class="hidden lg:inline">Send email</span>
+      </button>
       <div id="attendee-email-actions-menu"
            data-attendee-email-actions-dropdown
            class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
@@ -292,13 +298,13 @@
         </ul>
       </div>
     </div>
-    <div class="group relative w-full lg:w-auto
+    <div class="group relative w-full md:w-auto
                 {% if !can_manage_events -%}
                   hidden
                 {% endif -%}">
       <button id="attendee-badge-actions-button"
               type="button"
-              class="btn-primary-outline w-full lg:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
+              class="btn-primary-outline w-full whitespace-nowrap md:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
                      {% if total == 0 || !can_manage_events || event.canceled -%}
                        opacity-50 cursor-not-allowed
                      {% endif -%}"
@@ -310,7 +316,10 @@
                 disabled title="Canceled events cannot award badges."
               {% else if total == 0 -%}
                 disabled title="No confirmed attendees with verified email addresses."
-              {% endif -%}>Award badge</button>
+              {% endif -%}>
+        <span class="lg:hidden">Award</span>
+        <span class="hidden lg:inline">Award badge</span>
+      </button>
       <div id="attendee-badge-actions-menu"
            data-attendee-badge-actions-dropdown
            class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
@@ -587,11 +596,15 @@
                 </div>
               </div>
               {% endcall -%}
-              <div class="mt-2 lg:hidden">{{ attendee_status(attendee, event, "mobile") -}}</div>
-              {% if attendee.ticket_title.is_some() -%}
-                <div class="mt-1 truncate text-xs text-stone-600 lg:hidden">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
-              {% endif -%}
-              <div class="mt-1 lg:hidden">{{ attendee_external_payment_detail(attendee) -}}</div>
+              <div class="ms-[60px] mt-1 min-w-0 lg:hidden">
+                {% if attendee.ticket_title.is_some() -%}
+                  <div class="truncate text-xs text-stone-600">{{ attendee.ticket_title|assigned_or("RSVP invitation") }}</div>
+                {% endif -%}
+                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                  {{ attendee_status(attendee, event, "mobile") -}}
+                  {{ attendee_external_payment_detail(attendee, "mobile") -}}
+                </div>
+              </div>
             </td>
             {# End attendee -#}
 
@@ -620,12 +633,13 @@
                        title="{{ attendee.ticket_title|assigned_or("RSVP invitation") }}">
                     {{ attendee.ticket_title|assigned_or("RSVP invitation") }}
                   </div>
-                  {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
-                    <div class="text-xs text-stone-600 truncate">
+                  <div class="flex items-center gap-1.5 whitespace-nowrap text-xs text-stone-600">
+                    {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
                       <span data-localized-currency>{{ amount_label }}</span>
-                    </div>
-                  {% endif -%}
-                  {{ attendee_external_payment_detail(attendee) -}}
+                    {% endif -%}
+                    {{ attendee_external_payment_detail(attendee, "offer-ticket") -}}
+                    <div class="2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>
+                  </div>
                 </div>
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-1">
@@ -633,19 +647,21 @@
                        title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}">
                     {{ attendee.ticket_title|assigned_or("Paid RSVP") }}
                   </div>
-                  {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
-                    <div class="text-xs text-stone-600 truncate">
+                  <div class="flex items-center gap-1.5 whitespace-nowrap text-xs text-stone-600">
+                    {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
                       <span data-localized-currency>{{ amount_label }}</span>
-                    </div>
-                  {% endif -%}
-                  {{ attendee_external_payment_detail(attendee) -}}
+                    {% endif -%}
+                    {{ attendee_external_payment_detail(attendee, "ticket") -}}
+                    <div class="2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>
+                  </div>
                 </div>
               {% else if attendee.enrollment_status != crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed -%}
                 <div class="text-stone-500">-</div>
+                <div class="mt-2 2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>
               {% else -%}
                 <div class="text-stone-500">Free RSVP</div>
+                <div class="mt-2 2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>
               {% endif -%}
-              <div class="mt-2 2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>
             </td>
             {# End ticket type -#}
 
@@ -1343,22 +1359,55 @@
 {% endmacro attendee_status -%}
 {# End attendee status. #}
 
-{# External payment paid marker. #}
-{% macro attendee_external_payment_detail(attendee) -%}
+{# External payment paid badge and details tooltip. #}
+{% macro attendee_external_payment_detail(attendee, detail_instance) -%}
   {% if attendee.externally_paid -%}
-    <div class="text-xs text-stone-500">
-      Paid externally
-      {% if let Some(paid_at) = attendee.completed_at -%}
-        on {{ paid_at.format("%b %d, %Y at %H:%M UTC") }}
-      {% endif -%}
-      {% if let Some(marked_by) = &attendee.external_payment_marked_by -%}
-        by {{ marked_by }}
-      {% endif -%}
-    </div>
-    {% if let Some(details) = &attendee.external_payment_details -%}
-      <div class="whitespace-pre-wrap text-xs text-stone-500">{{ details }}</div>
+    {% let external_payment_paid_tooltip_id -%}attendee-external-payment-paid-{{ attendee.user.user_id }}-{{ detail_instance }}{%- endlet %}
+  <span class="group/external-payment-paid relative inline-flex shrink-0">
+    <button type="button"
+            class="relative inline-flex cursor-help rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            aria-describedby="{{ external_payment_paid_tooltip_id }}">
+      {{ badges::common_badge(content = "External", extra_styles = Some("border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700")) -}}
+      <span class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500"
+            aria-hidden="true"></span>
+    </button>
+    {% call dashboard::tooltip_panel(
+      id = external_payment_paid_tooltip_id,
+      title = "External payment",
+      visibility_classes = "group-hover/external-payment-paid:visible group-hover/external-payment-paid:opacity-100 group-focus-within/external-payment-paid:visible group-focus-within/external-payment-paid:opacity-100",
+      width_classes = "w-80"
+    ) -%}
+    <span class="block">
+      <span class="block font-semibold text-stone-500">Status</span>
+      <span class="mt-0.5 block text-stone-900">Paid externally</span>
+    </span>
+    {% if let Some(paid_at) = attendee.completed_at -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">Confirmed on</span>
+        <span class="mt-0.5 block text-stone-900">{{ paid_at.format("%b %d, %Y at %H:%M UTC") }}</span>
+      </span>
     {% endif -%}
-  {% endif -%}
+    {% if let Some(marked_by) = &attendee.external_payment_marked_by -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">Marked by</span>
+        <span class="mt-0.5 block text-stone-900">{{ marked_by }}</span>
+      </span>
+    {% endif -%}
+    {% if let Some(reference) = attendee.external_payment_reference -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">Reference</span>
+        <span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>
+      </span>
+    {% endif -%}
+    {% if let Some(details) = &attendee.external_payment_details -%}
+      <span class="block">
+        <span class="block font-semibold text-stone-500">Note</span>
+        <span class="mt-0.5 block whitespace-pre-wrap text-stone-900">{{ details }}</span>
+      </span>
+    {% endif -%}
+    {% endcall -%}
+  </span>
+{% endif -%}
 {% endmacro attendee_external_payment_detail -%}
 {# End external payment detail. #}
 

@@ -82,6 +82,18 @@ describe("dashboard macros template", () => {
     expect(template).to.include("<span>{{ label }}</span>");
   });
 
+  it("uses compact line height and safe wrapping for dashboard titles", async () => {
+    // Load the dashboard macros template before checking title layout.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Page and form titles share wrapping and line-height behavior.
+    expect(template).to.include('<div class="min-w-0">');
+    expect(template).to.include(
+      'class="min-w-0 text-xl leading-tight font-medium text-stone-900 lg:text-2xl"',
+    );
+    expect(template).to.include('class="text-xl leading-tight font-medium text-stone-900 lg:text-2xl"');
+  });
+
   it("renders a consistent titled tooltip panel", async () => {
     const template = normalizeWhitespace(await loadTemplate());
 

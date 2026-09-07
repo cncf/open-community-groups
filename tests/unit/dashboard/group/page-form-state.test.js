@@ -50,6 +50,39 @@ describe("page form state helpers", () => {
     expect(visitedSections).to.deep.equal(["sessions"]);
   });
 
+  it("activates a lazy section through its tab button once", () => {
+    // Render a lazy section whose tab owns the HTMX load trigger.
+    document.body.innerHTML = `
+      <div id="page-root">
+        <button data-section="details" data-active="true" class="active">Details</button>
+        <button data-section="attendees" data-active="false">Attendees</button>
+        <section data-content="details">Details content</section>
+        <section data-content="attendees" class="hidden">Attendees content</section>
+      </div>
+    `;
+
+    // Track the synthetic tab click and the resulting section update.
+    const pageRoot = document.getElementById("page-root");
+    const attendeesTab = pageRoot.querySelector('[data-section="attendees"]');
+    const visitedSections = [];
+    let tabClicks = 0;
+    attendeesTab.addEventListener("click", () => {
+      tabClicks += 1;
+    });
+    const { activateSection } = initializeSectionTabs({
+      root: pageRoot,
+      onSectionChange: (sectionName) => visitedSections.push(sectionName),
+    });
+
+    // Activate the lazy section through the shared programmatic path.
+    activateSection("attendees");
+
+    // HTMX receives one click while the visible section is updated once.
+    expect(tabClicks).to.equal(1);
+    expect(visitedSections).to.deep.equal(["attendees"]);
+    expect(attendeesTab.getAttribute("data-active")).to.equal("true");
+  });
+
   it("handles section buttons added after initialization", () => {
     // Start with a single initialized section in the page root.
     document.body.innerHTML = `
@@ -76,14 +109,26 @@ describe("page form state helpers", () => {
     pageRoot.querySelector('[data-section="date-venue"] span').click();
 
     // The dynamically-added tab becomes active and its panel is shown.
-    expect(pageRoot.querySelector('[data-section="details"]').getAttribute("data-active")).to.equal("false");
-    expect(pageRoot.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
-      "true",
-    );
-    expect(pageRoot.querySelector('[data-content="details"]').classList.contains("hidden")).to.equal(true);
-    expect(pageRoot.querySelector('[data-content="date-venue"]').classList.contains("hidden")).to.equal(
-      false,
-    );
+    expect(
+      pageRoot
+        .querySelector('[data-section="details"]')
+        .getAttribute("data-active"),
+    ).to.equal("false");
+    expect(
+      pageRoot
+        .querySelector('[data-section="date-venue"]')
+        .getAttribute("data-active"),
+    ).to.equal("true");
+    expect(
+      pageRoot
+        .querySelector('[data-content="details"]')
+        .classList.contains("hidden"),
+    ).to.equal(true);
+    expect(
+      pageRoot
+        .querySelector('[data-content="date-venue"]')
+        .classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("syncs section selects with active sections", () => {
@@ -111,8 +156,16 @@ describe("page form state helpers", () => {
     sectionSelect.dispatchEvent(new Event("change", { bubbles: true }));
 
     // The matching tab state and content panel follow the select.
-    expect(pageRoot.querySelector('[data-section="sessions"]').getAttribute("data-active")).to.equal("true");
-    expect(pageRoot.querySelector('[data-content="sessions"]').classList.contains("hidden")).to.equal(false);
+    expect(
+      pageRoot
+        .querySelector('[data-section="sessions"]')
+        .getAttribute("data-active"),
+    ).to.equal("true");
+    expect(
+      pageRoot
+        .querySelector('[data-content="sessions"]')
+        .classList.contains("hidden"),
+    ).to.equal(false);
 
     // Programmatic tab changes keep the compact select in sync too.
     displayActiveSection("details");
@@ -157,7 +210,11 @@ describe("page form state helpers", () => {
     // The compact select activates the same tab button path used on desktop.
     expect(tabClicks).to.be.greaterThan(0);
     expect(attendeesTab.getAttribute("data-active")).to.equal("true");
-    expect(pageRoot.querySelector('[data-content="attendees"]').classList.contains("hidden")).to.equal(false);
+    expect(
+      pageRoot
+        .querySelector('[data-content="attendees"]')
+        .classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("advances to the next section from bottom navigation", () => {
@@ -194,9 +251,11 @@ describe("page form state helpers", () => {
       nextButton.click();
 
       // Bottom navigation remains available while another section follows.
-      expect(pageRoot.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
-        "true",
-      );
+      expect(
+        pageRoot
+          .querySelector('[data-section="date-venue"]')
+          .getAttribute("data-active"),
+      ).to.equal("true");
       expect(dateSection.classList.contains("hidden")).to.equal(false);
       expect(nextButton.classList.contains("hidden")).to.equal(false);
       expect(nextButton.disabled).to.equal(false);
@@ -205,7 +264,11 @@ describe("page form state helpers", () => {
       nextButton.click();
 
       // The final section hides bottom navigation and records both scrolls.
-      expect(pageRoot.querySelector('[data-section="cfs"]').getAttribute("data-active")).to.equal("true");
+      expect(
+        pageRoot
+          .querySelector('[data-section="cfs"]')
+          .getAttribute("data-active"),
+      ).to.equal("true");
       expect(cfsSection.classList.contains("hidden")).to.equal(false);
       expect(nextButton.classList.contains("hidden")).to.equal(true);
       expect(nextButton.disabled).to.equal(true);
@@ -242,8 +305,16 @@ describe("page form state helpers", () => {
     pageRoot.querySelector("[data-section-next]").click();
 
     // The next visible tab in the DOM order becomes active.
-    expect(pageRoot.querySelector('[data-section="payments"]').getAttribute("data-active")).to.equal("true");
-    expect(pageRoot.querySelector('[data-content="payments"]').classList.contains("hidden")).to.equal(false);
+    expect(
+      pageRoot
+        .querySelector('[data-section="payments"]')
+        .getAttribute("data-active"),
+    ).to.equal("true");
+    expect(
+      pageRoot
+        .querySelector('[data-content="payments"]')
+        .classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("hides bottom navigation when initialized on the final section", () => {
@@ -290,7 +361,8 @@ describe("page form state helpers", () => {
     });
     initializeSectionTabs({
       root: pageRoot,
-      onSectionChange: (sectionName) => visitedSections.push(`again:${sectionName}`),
+      onSectionChange: (sectionName) =>
+        visitedSections.push(`again:${sectionName}`),
     });
 
     // Click the sessions tab after duplicate initialization.
@@ -369,7 +441,12 @@ describe("page form state helpers", () => {
 
     // Missing optional form ids are skipped.
     expect(
-      collectExistingFormIds(["details-form", "payments-form", "sessions-form", "cfs-form"]),
+      collectExistingFormIds([
+        "details-form",
+        "payments-form",
+        "sessions-form",
+        "cfs-form",
+      ]),
     ).to.deep.equal(["details-form", "sessions-form"]);
   });
 });

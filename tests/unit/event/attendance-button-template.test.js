@@ -139,7 +139,10 @@ describe("event attendance button template", () => {
 
     // Hover and keyboard focus expose an amber-indicated, labeled summary.
     expect(template).to.include(
-      '<span class="group/external-payment-details relative inline-flex">',
+      '<span class="group/external-payment-details relative hidden has-[button:not(.hidden)]:inline-flex">',
+    );
+    expect(template).to.include(
+      '<span class="group/refund-reason relative hidden has-[button:not(.hidden)]:inline-flex">',
     );
     expect(template).to.include(
       'data-attendance-role="external-payment-details-indicator"',
@@ -150,7 +153,10 @@ describe("event attendance button template", () => {
     expect(template).to.include(
       'data-attendance-role="refund-rejection-trigger"',
     );
-    expect(template.match(/-end-0\.5 -top-0\.5[^"]*size-3[^"]*bg-primary-500/gu) ?? []).to.have.lengthOf(2);
+    expect(
+      template.match(/-end-0\.5 -top-0\.5[^"]*size-3[^"]*bg-primary-500/gu) ??
+        [],
+    ).to.have.lengthOf(2);
     expect(template).to.include(
       "attendance::external_payment_tooltip(attendance_instance = attendance_instance)",
     );

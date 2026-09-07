@@ -1,6 +1,8 @@
 import { expect } from "@open-wc/testing";
 
-const loadTemplate = async (templatePath = "/ocg-server/templates/dashboard/group/attendees_list.html") => {
+const loadTemplate = async (
+  templatePath = "/ocg-server/templates/dashboard/group/attendees_list.html",
+) => {
   const response = await fetch(templatePath);
 
   expect(response.ok).to.equal(true);
@@ -25,12 +27,20 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees actions and shared scanner modal contracts.
     const template = normalizeWhitespace(await loadTemplate());
     const scannerModal = normalizeWhitespace(
-      await loadTemplate("/ocg-server/templates/dashboard/group/check_in_scanner_modal.html"),
+      await loadTemplate(
+        "/ocg-server/templates/dashboard/group/check_in_scanner_modal.html",
+      ),
     );
 
     // Verify the desktop action carries event context and explicit disabled states.
-    expect(template).to.include('{% if can_manage_check_ins -%} <div class="hidden md:block">');
+    expect(template).to.include(
+      '{% if can_manage_check_ins -%} <div class="hidden md:block">',
+    );
     expect(template).to.include("data-group-check-in-open");
+    expect(template).to.include('<span class="lg:hidden">Scan codes</span>');
+    expect(template).to.include(
+      '<span class="hidden lg:inline">Scan Attendee Codes</span>',
+    );
     expect(template).to.include("data-refresh-attendees-on-close");
     expect(template).to.include('data-event-id="{{ event.event_id }}"');
     expect(template).to.include('data-event-name="{{ event.name }}"');
@@ -38,12 +48,20 @@ describe("dashboard group attendees list template", () => {
       'data-scan-url="/dashboard/group/events/{{ event.event_id }}/check-ins/scan"',
     );
     expect(template).to.include("{% if event.canceled -%}");
-    expect(template).to.include('disabled title="Canceled events cannot scan attendees."');
+    expect(template).to.include(
+      'disabled title="Canceled events cannot scan attendees."',
+    );
     expect(template).to.include("{% else if !event.published -%}");
-    expect(template).to.include('disabled title="Publish this event before scanning attendees."');
+    expect(template).to.include(
+      'disabled title="Publish this event before scanning attendees."',
+    );
     expect(template).to.include("{% else if event.is_past() -%}");
-    expect(template).to.include('disabled title="Past events cannot scan attendees."');
-    expect(template).to.include('{% include "dashboard/group/check_in_scanner_modal.html" -%}');
+    expect(template).to.include(
+      'disabled title="Past events cannot scan attendees."',
+    );
+    expect(template).to.include(
+      '{% include "dashboard/group/check_in_scanner_modal.html" -%}',
+    );
     expect(scannerModal).to.include('id="group-check-in-scanner-modal"');
     expect(scannerModal).to.include('title = "Scan Attendee Codes"');
   });
@@ -93,8 +111,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'data-external-payment-url="/dashboard/group/events/{{ event.event_id }}/purchases/{{ event_purchase_id }}/external-payment"',
     );
-    expect(template).to.include('data-external-payment-attendee="{{ attendee.user.name.as_deref()');
-    expect(template).to.include('data-external-payment-ticket="{{ attendee.ticket_title.as_deref()');
+    expect(template).to.include(
+      'data-external-payment-attendee="{{ attendee.user.name.as_deref()',
+    );
+    expect(template).to.include(
+      'data-external-payment-ticket="{{ attendee.ticket_title.as_deref()',
+    );
     expect(template).to.include(
       'data-external-payment-reference="{{ attendee.external_payment_reference.as_ref()',
     );
@@ -126,8 +148,12 @@ describe("dashboard group attendees list template", () => {
       'class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5"',
     );
     expect(template).to.include('id="submit-attendee-external-payment"');
-    expect(template).to.include("attendee_external_payment_detail(attendee)");
-    expect(template).to.include("attendee_external_payment_status_badge(attendee, status_instance)");
+    expect(template).to.include(
+      'attendee_external_payment_detail(attendee, "ticket")',
+    );
+    expect(template).to.include(
+      "attendee_external_payment_status_badge(attendee, status_instance)",
+    );
     expect(template).to.include(
       'class="group/external-payment-details relative inline-flex shrink-0"',
     );
@@ -140,29 +166,56 @@ describe("dashboard group attendees list template", () => {
       'class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ reference }}</span>',
     );
     expect(template).to.include("group-hover/external-payment-details:visible");
-    expect(template).to.include("group-focus-within/external-payment-details:visible");
+    expect(template).to.include(
+      "group-focus-within/external-payment-details:visible",
+    );
     expect(template).to.include(">Confirm by</span>");
     expect(template).to.include(">Reference</span>");
     expect(template).to.not.include(">Due {{ deadline.format");
+    expect(template).to.include('content = "External"');
+    expect(template).to.include(
+      'extra_styles = Some("border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700")',
+    );
+    expect(template).to.include(
+      'class="pointer-events-none absolute -end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500"',
+    );
+    expect(template).to.include("group-hover/external-payment-paid:visible");
+    expect(template).to.include(
+      "group-focus-within/external-payment-paid:visible",
+    );
     expect(template).to.include("Paid externally");
-    expect(template).to.include("{% if let Some(paid_at) = attendee.completed_at -%}");
-    expect(template).to.include('on {{ paid_at.format("%b %d, %Y at %H:%M UTC") }}');
+    expect(template).to.include(
+      "{% if let Some(paid_at) = attendee.completed_at -%}",
+    );
+    expect(template).to.include(">Confirmed on</span>");
+    expect(template).to.include(
+      '{{ paid_at.format("%b %d, %Y at %H:%M UTC") }}',
+    );
     expect(template).to.include(
       "{% if let Some(marked_by) = &attendee.external_payment_marked_by -%}",
     );
-    expect(template).to.include("by {{ marked_by }}");
-    expect(
-      template.match(/data-refund-external="true"/gu),
-    ).to.have.lengthOf(2);
+    expect(template).to.include(">Marked by</span>");
+    expect(template).to.include("{{ marked_by }}");
+    expect(template).to.include(
+      "{% if let Some(reference) = attendee.external_payment_reference -%}",
+    );
+    expect(template).to.include(">Note</span>");
+    expect(template.match(/data-refund-external="true"/gu)).to.have.lengthOf(2);
   });
 
   it("uses filter-aware empty states", async () => {
     // Load the list and filtered-empty placeholder templates.
     const template = normalizeWhitespace(await loadTemplate());
     const placeholder = normalizeWhitespace(
-      await loadTemplate("/ocg-server/templates/dashboard/placeholders/group_attendees_no_results.html"),
+      await loadTemplate(
+        "/ocg-server/templates/dashboard/placeholders/group_attendees_no_results.html",
+      ),
     );
-    const emptyState = sliceTemplateSection(template, "{# Empty state -#}", "{# End empty state -#}");
+    const emptyState = sliceTemplateSection(
+      template,
+      "{# Empty state -#}",
+      "{# End empty state -#}",
+    );
 
     // Verify every table filter selects useful filtered-empty guidance.
     expect(emptyState).to.include(
@@ -175,8 +228,12 @@ describe("dashboard group attendees list template", () => {
     expect(emptyState).to.include("event_ticket_type_ids.is_some()");
     expect(emptyState).to.include("title.is_some()");
     expect(emptyState).to.include("has_active_attendee_filters");
-    expect(emptyState.match(/group_attendees_empty\.html/g)).to.have.lengthOf(1);
-    expect(emptyState.match(/group_attendees_no_results\.html/g)).to.have.lengthOf(1);
+    expect(emptyState.match(/group_attendees_empty\.html/g)).to.have.lengthOf(
+      1,
+    );
+    expect(
+      emptyState.match(/group_attendees_no_results\.html/g),
+    ).to.have.lengthOf(1);
     expect(placeholder).to.include("No attendees found matching your filters.");
     expect(placeholder).to.include("Try adjusting your search or filters");
   });
@@ -196,14 +253,24 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify historical enrollments retain their date and accurate check-in label.
-    expect(enrollmentDate).to.include('attendee.created_at.format("%b %d, %Y")');
-    expect(checkInToggle).to.include("Canceled attendance cannot be checked in");
+    expect(enrollmentDate).to.include(
+      'attendee.created_at.format("%b %d, %Y")',
+    );
+    expect(checkInToggle).to.include(
+      "Canceled attendance cannot be checked in",
+    );
     expect(checkInToggle).to.include("Pending checkout cannot be checked in");
-    expect(checkInToggle).to.include("Canceled invitation cannot be checked in");
-    expect(checkInToggle).to.include("Declined invitation cannot be checked in");
+    expect(checkInToggle).to.include(
+      "Canceled invitation cannot be checked in",
+    );
+    expect(checkInToggle).to.include(
+      "Declined invitation cannot be checked in",
+    );
     expect(checkInToggle).to.include("Expired invitation cannot be checked in");
     expect(checkInToggle).to.include("Pending invitation cannot be checked in");
-    expect(checkInToggle).to.include("Pending registration cannot be checked in");
+    expect(checkInToggle).to.include(
+      "Pending registration cannot be checked in",
+    );
     expect(checkInToggle).to.include("Your role cannot manage check-in");
   });
 
@@ -215,20 +282,40 @@ describe("dashboard group attendees list template", () => {
       "{# Attendee status badge and active offer deadline. #}",
       "{# End attendee status. #}",
     );
-    const ticketType = sliceTemplateSection(template, "{# Ticket type -#}", "{# End ticket type -#}");
+    const ticketType = sliceTemplateSection(
+      template,
+      "{# Ticket type -#}",
+      "{# End ticket type -#}",
+    );
 
     // Verify refund status labels use the shared status badge outside Ticket type.
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Waiting for checkout")');
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund queued")');
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund processing")');
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund needs retry", canceled = true)');
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Recovery required", canceled = true)');
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Refunded", published = true)');
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Refund rejected", canceled = true)');
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Waiting for checkout")',
+    );
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Refund queued")',
+    );
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Refund processing")',
+    );
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Refund needs retry", canceled = true)',
+    );
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Recovery required", canceled = true)',
+    );
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Refunded", published = true)',
+    );
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Refund rejected", canceled = true)',
+    );
     expect(ticketType).to.not.include("Refund rejected");
 
     // Verify retryable refund work remains available from attendee actions.
-    expect(template).to.include('id="retry-refund-{{ attendee.user.user_id }}"');
+    expect(template).to.include(
+      'id="retry-refund-{{ attendee.user.user_id }}"',
+    );
     expect(template).to.include(
       'hx-put="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/retry"',
     );
@@ -250,7 +337,9 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       "AttendeeEnrollmentStatus::Confirmed && attendee.manually_invited && self::is_paid_attendee(attendee.amount_minor)",
     );
-    expect(template).to.include('badges::status_badge(label = "Ticket claimed", published = true)');
+    expect(template).to.include(
+      'badges::status_badge(label = "Ticket claimed", published = true)',
+    );
   });
 
   it("shows confirmed attendees as active when no other status applies", async () => {
@@ -263,8 +352,12 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify confirmed attendees receive the final green status fallback.
-    expect(attendeeStatus).to.include("AttendeeEnrollmentStatus::Confirmed -%}");
-    expect(attendeeStatus).to.include('badges::status_badge(label = "Active", published = true)');
+    expect(attendeeStatus).to.include(
+      "AttendeeEnrollmentStatus::Confirmed -%}",
+    );
+    expect(attendeeStatus).to.include(
+      'badges::status_badge(label = "Active", published = true)',
+    );
     expect(attendeeStatus.indexOf("Registration pending")).to.be.lessThan(
       attendeeStatus.indexOf('label = "Active"'),
     );
@@ -273,12 +366,25 @@ describe("dashboard group attendees list template", () => {
   it("displays ticket names above their prices", async () => {
     // Load the ticket type cell before checking its two-line layout.
     const template = normalizeWhitespace(await loadTemplate());
-    const ticketType = sliceTemplateSection(template, "{# Ticket type -#}", "{# End ticket type -#}");
+    const ticketType = sliceTemplateSection(
+      template,
+      "{# Ticket type -#}",
+      "{# End ticket type -#}",
+    );
 
     // Verify ticket names truncate above prices styled like attendee usernames.
-    expect(ticketType).to.include('class="max-w-full truncate font-medium text-stone-900"');
-    expect(ticketType).to.include('class="text-xs text-stone-600 truncate"');
-    expect(ticketType).to.include("<span data-localized-currency>{{ amount_label }}</span>");
+    expect(ticketType).to.include(
+      'class="max-w-full truncate font-medium text-stone-900"',
+    );
+    expect(ticketType).to.include(
+      'class="flex items-center gap-1.5 whitespace-nowrap text-xs text-stone-600"',
+    );
+    expect(ticketType).to.include(
+      "<span data-localized-currency>{{ amount_label }}</span>",
+    );
+    expect(ticketType).to.include(
+      'attendee_external_payment_detail(attendee, "ticket")',
+    );
     expect(ticketType).to.not.include("(<span data-localized-currency>");
   });
 
@@ -312,7 +418,9 @@ describe("dashboard group attendees list template", () => {
     expect(rejectAction).not.to.include("data-confirm-action");
     expect(template).to.include("dashboard::refund_review_modal");
     expect(template).to.include('id_prefix = "attendee-refund-reject"');
-    expect(template).to.include('review_note_id = "attendee-refund-review-note"');
+    expect(template).to.include(
+      'review_note_id = "attendee-refund-review-note"',
+    );
     expect(template).to.include("review_note_required = true");
   });
 
@@ -332,7 +440,9 @@ describe("dashboard group attendees list template", () => {
     );
     expect(approveAction).not.to.include("hx-put");
     expect(template).to.include('id_prefix = "attendee-refund-approve"');
-    expect(template).to.include('review_note_id = "attendee-refund-approve-review-note"');
+    expect(template).to.include(
+      'review_note_id = "attendee-refund-approve-review-note"',
+    );
     expect(template).not.to.include('id="attendee-refund-modal"');
     expect(template).not.to.include("data-refund-review-trigger");
   });
@@ -368,7 +478,9 @@ describe("dashboard group attendees list template", () => {
     expect(cancelAttendanceAction).to.include(
       'data-confirm-message="Are you sure you want to cancel this attendance?"',
     );
-    expect(cancelAttendanceAction).to.include('data-success-message="Attendance canceled."');
+    expect(cancelAttendanceAction).to.include(
+      'data-success-message="Attendance canceled."',
+    );
     expect(cancelAttendanceAction).to.include(
       'data-error-message="Something went wrong canceling this attendance. Please try again later."',
     );
@@ -395,7 +507,9 @@ describe("dashboard group attendees list template", () => {
     );
 
     // Verify external attendees confirm money returned outside the platform.
-    expect(externalCancellation).to.include('data-confirm-text="Confirm returned"');
+    expect(externalCancellation).to.include(
+      'data-confirm-text="Confirm returned"',
+    );
     expect(externalCancellation).to.include(
       'data-confirm-message="Cancel this attendance and confirm the money was returned outside this platform?"',
     );
@@ -414,7 +528,9 @@ describe("dashboard group attendees list template", () => {
     expect(paidCancellation).to.include(
       'data-error-message="Something went wrong queueing this refund. Please try again later."',
     );
-    expect(cancelAttendanceAction).to.include("<span>Cancel attendance and refund</span>");
+    expect(cancelAttendanceAction).to.include(
+      "<span>Cancel attendance and refund</span>",
+    );
   });
 
   it("keeps cancel attendance disabled for unsupported attendee states", async () => {
@@ -428,10 +544,18 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       "attendee.refund_request_status != Some(crate::types::payments::EventRefundRequestStatus::Approved)",
     );
-    expect(template).to.include('title="A refund is already in progress for this attendee."');
-    expect(template).to.include('title="This attendee\'s refund has already been approved."');
-    expect(template).to.include('title="Canceled event attendance cannot be canceled."');
-    expect(template).to.include('title="Past event attendance cannot be canceled."');
+    expect(template).to.include(
+      'title="A refund is already in progress for this attendee."',
+    );
+    expect(template).to.include(
+      'title="This attendee\'s refund has already been approved."',
+    );
+    expect(template).to.include(
+      'title="Canceled event attendance cannot be canceled."',
+    );
+    expect(template).to.include(
+      'title="Past event attendance cannot be canceled."',
+    );
   });
 
   it("renders exact offer cancellation for pending invitations", async () => {
@@ -440,23 +564,37 @@ describe("dashboard group attendees list template", () => {
 
     // Verify manual invitations cancel the exact admission offer.
     expect(template).to.include("AttendeeEnrollmentStatus::InvitationPending");
-    expect(template).to.include("AttendeeEnrollmentStatus::RegistrationPending && attendee.manually_invited");
-    expect(template).to.include("{% if let Some(admission_offer_id) = attendee.admission_offer_id -%}");
-    expect(template).to.include('id="cancel-admission-offer-{{ admission_offer_id }}"');
-    expect(template).to.include('hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"');
+    expect(template).to.include(
+      "AttendeeEnrollmentStatus::RegistrationPending && attendee.manually_invited",
+    );
+    expect(template).to.include(
+      "{% if let Some(admission_offer_id) = attendee.admission_offer_id -%}",
+    );
+    expect(template).to.include(
+      'id="cancel-admission-offer-{{ admission_offer_id }}"',
+    );
+    expect(template).to.include(
+      'hx-put="/dashboard/group/admission-offers/{{ admission_offer_id }}/cancel"',
+    );
     expect(template).not.to.include("/invitation/cancel");
   });
 
   it("renders organizer invitation tiers, deadlines, and state-specific actions", async () => {
     // Load the attendees list template before checking organizer invitation states.
     const template = normalizeWhitespace(await loadTemplate());
-    const attendeeCell = sliceTemplateSection(template, "{# Attendee -#}", "{# End attendee -#}");
+    const attendeeCell = sliceTemplateSection(
+      template,
+      "{# Attendee -#}",
+      "{# End attendee -#}",
+    );
 
     // Verify invitations always use the ticket type select contract.
     expect(template).not.to.include("{% if ticket_types.len() == 1 -%}");
     expect(template).to.include('id="attendee-invitation-ticket-type"');
     expect(template).to.include('name="event_ticket_type_id"');
-    expect(template).to.include("{% if ticket_types.len() == 1 %}selected{% endif %}");
+    expect(template).to.include(
+      "{% if ticket_types.len() == 1 %}selected{% endif %}",
+    );
     expect(template).to.include(
       "ticket_type.availability == crate::types::payments::EventTicketTypeAvailability::InvitationOnly",
     );
@@ -473,24 +611,40 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'attendee_offer_status_badge(attendee, event, "Offer expired", true, status_instance)',
     );
-    expect(template).to.include('{{ attendee_status(attendee, event, "mobile") -}}');
-    expect(template).to.include('{{ attendee_status(attendee, event, "ticket") -}}');
-    expect(template).to.include('{{ attendee_status(attendee, event, "desktop") -}}');
+    expect(template).to.include(
+      '{{ attendee_status(attendee, event, "mobile") -}}',
+    );
+    expect(template).to.include(
+      '{{ attendee_status(attendee, event, "ticket") -}}',
+    );
+    expect(template).to.include(
+      '{{ attendee_status(attendee, event, "desktop") -}}',
+    );
     expect(template).to.not.include("Awaiting claim");
     expect(template).to.not.include("Checkout in progress");
     expect(template).to.not.include("badges::invitation_badge");
 
     // Verify offer deadlines appear from the status badge on hover and focus.
     expect(template).not.to.include("icon-info");
-    expect(template).to.include("relative inline-flex cursor-help rounded-full");
-    expect(template).to.include("attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}");
-    expect(template).to.include('aria-describedby="{{ attendee_offer_tooltip_id }}"');
+    expect(template).to.include(
+      "relative inline-flex cursor-help rounded-full",
+    );
+    expect(template).to.include(
+      "attendee-offer-deadline-{{ attendee.user.user_id }}-{{ status_instance }}",
+    );
+    expect(template).to.include(
+      'aria-describedby="{{ attendee_offer_tooltip_id }}"',
+    );
     expect(template).to.include("dashboard::tooltip_panel(");
     expect(template).to.include('title = "Ticket offer"');
-    expect(template).to.include("-end-1 -top-1 size-2.5 rounded-full border-2 border-white");
+    expect(template).to.include(
+      "-end-1 -top-1 size-2.5 rounded-full border-2 border-white",
+    );
     expect(template).to.include("bg-red-800");
     expect(template).to.include("bg-amber-800");
-    expect(template).to.include('<span class="block font-semibold text-stone-500">');
+    expect(template).to.include(
+      '<span class="block font-semibold text-stone-500">',
+    );
     expect(template).to.include('<span class="mt-0.5 block text-stone-900">');
     expect(template).to.include("group-hover/offer-deadline:visible");
     expect(template).to.include("group-focus-within/offer-deadline:visible");
@@ -523,6 +677,16 @@ describe("dashboard group attendees list template", () => {
     // Verify the primary entrypoint uses all-attendee eligibility.
     expect(template).to.include('id="attendee-email-actions-button"');
     expect(template).to.include("data-attendee-email-actions-dropdown");
+    expect(template).to.include(
+      'class="mt-1.5 mb-1.5 flex w-auto shrink-0 self-end flex-row gap-3 lg:self-auto"',
+    );
+    expect(template).to.include(
+      'class="btn-primary-outline w-full whitespace-nowrap md:w-auto group-has-[.dropdown:not(.hidden)]',
+    );
+    expect(template).to.include('<span class="lg:hidden">Email</span>');
+    expect(template).to.include(
+      '<span class="hidden lg:inline">Send email</span>',
+    );
     expect(template).to.include("all_attendees_email_recipient_total == 0");
     expect(template).to.include(
       'data-notification-recipient-total="{{ all_attendees_email_recipient_total }}"',
@@ -552,7 +716,9 @@ describe("dashboard group attendees list template", () => {
     expect(actionsMenu).to.include("Invite attendee");
     expect(actionsMenu).to.include("border-t border-stone-100");
     expect(actionsMenu).to.include("Attendees list CSV");
-    expect(actionsMenu).to.include("{% if !registration_questions.is_empty() -%}");
+    expect(actionsMenu).to.include(
+      "{% if !registration_questions.is_empty() -%}",
+    );
     expect(actionsMenu).to.include("Attendees list CSV (including answers)");
     expect(actionsMenu).not.to.include("> Actions <");
     expect(actionsMenu).not.to.include("> Exports <");
@@ -566,20 +732,34 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('id="attendees-search-form"');
     expect(template).to.include('hx-trigger="change, submit"');
     expect(template).to.include('hx-target="#attendees-content"');
-    expect(template).to.include('<label for="search_attendees" class="sr-only">Search attendees</label>');
+    expect(template).to.include(
+      '<label for="search_attendees" class="sr-only">Search attendees</label>',
+    );
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('placeholder="Search attendees"');
     expect(template).to.include('aria-label="Clear attendee search"');
-    expect(template).to.include("flex flex-col gap-6 2xl:flex-row 2xl:items-start 2xl:justify-between");
+    expect(template).to.include(
+      "flex flex-col gap-6 2xl:flex-row 2xl:items-start 2xl:justify-between",
+    );
     expect(template).to.include("flex-wrap items-center justify-start gap-6");
-    expect(template).to.include("dashboard/placeholders/group_attendees_no_results.html");
+    expect(template).to.include(
+      "dashboard/placeholders/group_attendees_no_results.html",
+    );
   });
 
   it("renders attendee sort select and table filter controls", async () => {
     // Load the attendees list template before checking table controls.
     const template = normalizeWhitespace(await loadTemplate());
-    const tableHeader = sliceTemplateSection(template, "{# Table header -#}", "{# End table header -#}");
-    const attendeeRow = sliceTemplateSection(template, "{# Attendee row -#}", "{# End attendee row -#}");
+    const tableHeader = sliceTemplateSection(
+      template,
+      "{# Table header -#}",
+      "{# End table header -#}",
+    );
+    const attendeeRow = sliceTemplateSection(
+      template,
+      "{# Attendee row -#}",
+      "{# End attendee row -#}",
+    );
 
     // Verify attendee filters preserve current table state.
     expect(template).to.include('name="checked_in" value="{{ checked_in }}"');
@@ -606,27 +786,46 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 xl:w-[30%]"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
-    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"');
-    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"');
-    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44"');
-    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"');
-    expect(template).to.include('class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"');
     expect(template).to.include(
-      '<div class="mt-2 lg:hidden">{{ attendee_status(attendee, event, "mobile") -}}</div>',
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5"',
     );
     expect(template).to.include(
-      '<div class="mt-2 2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>',
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-1.5 w-40"',
     );
-    expect(template).to.include('class="mt-1 truncate text-xs text-stone-600 lg:hidden"');
+    expect(template).to.include(
+      'class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-44"',
+    );
+    expect(template).to.include(
+      'class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"',
+    );
+    expect(template).to.include(
+      'class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"',
+    );
+    expect(template).to.include(
+      'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 max-w-0"',
+    );
+    expect(template).to.include('class="ms-[60px] mt-1 min-w-0 lg:hidden"');
+    expect(template).to.include(
+      '<div class="mt-1 flex flex-wrap items-center gap-1.5"> {{ attendee_status(attendee, event, "mobile") -}} {{ attendee_external_payment_detail(attendee, "mobile") -}} </div>',
+    );
+    expect(template).to.include(
+      '<div class="2xl:hidden">{{ attendee_status(attendee, event, "ticket") -}}</div>',
+    );
+    expect(template).to.include('class="truncate text-xs text-stone-600"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
-    expect(template).to.include('<span class="whitespace-nowrap">Attendee</span>');
-    expect(template).to.include('<span class="whitespace-nowrap">Enrollment Date</span>');
+    expect(template).to.include(
+      '<span class="whitespace-nowrap">Attendee</span>',
+    );
+    expect(template).to.include(
+      '<span class="whitespace-nowrap">Enrollment Date</span>',
+    );
     expect(template).to.include(
       'class="hidden min-[1920px]:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"',
     );
-    expect(template).to.include('<td class="px-8 py-12 text-center" colspan="7">');
+    expect(template).to.include(
+      '<td class="px-8 py-12 text-center" colspan="7">',
+    );
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
     );
@@ -655,17 +854,35 @@ describe("dashboard group attendees list template", () => {
       'dashboard::table_filter_option_button(label = "Not checked in", name = "checked_in", value = "false"',
     );
     expect(template).to.include("Reset all");
-    expect(template).to.include('dashboard::active_table_filter_badge("Checked In", "Yes")');
-    expect(template).to.include('dashboard::active_table_filter_badge("Checked In", "No")');
-    expect(template).to.include('dashboard::active_table_filter_badge("Position", "Present")');
-    expect(template).to.include('dashboard::active_table_filter_badge("Position", "Missing")');
-    expect(template).to.include('dashboard::active_table_filter_badge("Ticket type", "Selected")');
-    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort"');
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Checked In", "Yes")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Checked In", "No")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Present")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Missing")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Ticket type", "Selected")',
+    );
+    expect(template).to.not.include(
+      'dashboard::active_table_filter_badge("Sort"',
+    );
     expect(template).to.not.include('id = "attendees-name-filter"');
     expect(template).to.include("Ticket type");
-    expect(tableHeader.indexOf("Status")).to.be.lessThan(tableHeader.indexOf("Ticket type"));
-    expect(tableHeader.indexOf("Ticket type")).to.be.lessThan(tableHeader.indexOf("Enrollment Date"));
-    expect(attendeeRow.indexOf("{# Status -#}")).to.be.lessThan(attendeeRow.indexOf("{# Ticket type -#}"));
+    expect(tableHeader.indexOf("Status")).to.be.lessThan(
+      tableHeader.indexOf("Ticket type"),
+    );
+    expect(tableHeader.indexOf("Ticket type")).to.be.lessThan(
+      tableHeader.indexOf("Enrollment Date"),
+    );
+    expect(attendeeRow.indexOf("{# Status -#}")).to.be.lessThan(
+      attendeeRow.indexOf("{# Ticket type -#}"),
+    );
     expect(attendeeRow.indexOf("{# Ticket type -#}")).to.be.lessThan(
       attendeeRow.indexOf("{# Enrollment Date -#}"),
     );
@@ -680,8 +897,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-start");
     expect(template).to.include("data-attendee-email-selection-bar");
     expect(template).to.include("data-attendee-email-selection-count");
-    expect(template).to.include("<span data-attendee-email-selection-count>0</span>");
-    expect(template).to.include("<span data-attendee-email-selection-label>attendees selected</span>");
+    expect(template).to.include(
+      "<span data-attendee-email-selection-count>0</span>",
+    );
+    expect(template).to.include(
+      "<span data-attendee-email-selection-label>attendees selected</span>",
+    );
     expect(template).not.to.include(
       "Only attendees eligible for optional email notifications can be selected.",
     );
@@ -689,8 +910,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-checkbox");
     expect(template).to.include('class="checkbox-primary"');
     expect(template).to.include("attendee.can_receive_attendee_email");
-    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include('class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"');
+    expect(template).to.include(
+      'class="hidden lg:table-cell px-3 xl:px-5 py-1.5 w-48"',
+    );
+    expect(template).to.include(
+      'class="hidden lg:table-cell px-3 xl:px-5 py-4 align-middle"',
+    );
     expect(template).to.include('class="btn-primary-outline btn-mini h-7!"');
     expect(template).to.include('class="btn-primary btn-mini h-7!"');
     expect(template).to.include("Continue");
@@ -706,6 +931,11 @@ describe("dashboard group attendees list template", () => {
 
     expect(template).to.include('id="attendee-badge-actions-button"');
     expect(template).to.include("data-attendee-badge-actions-dropdown");
+    expect(template).to.include('class="group relative w-full md:w-auto');
+    expect(template).to.include('<span class="lg:hidden">Award</span>');
+    expect(template).to.include(
+      '<span class="hidden lg:inline">Award badge</span>',
+    );
     expect(template).to.include('data-recipient-scope="all-attendees"');
     expect(template).to.include("<span>All attendees</span>");
     expect(template).to.include('data-recipient-scope="checked-in-attendees"');

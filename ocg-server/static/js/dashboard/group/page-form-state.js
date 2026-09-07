@@ -57,7 +57,7 @@ export const bindBooleanToggle = ({ toggle, hiddenInput, onChange = () => {}, sy
  * @param {object} config Tabs config.
  * @param {Document|Element} [config.root=document] Query root.
  * @param {(sectionName: string) => void} [config.onSectionChange] Section hook.
- * @returns {{displayActiveSection: (sectionName: string) => void}} Section API.
+ * @returns {{activateSection: (sectionName: string) => void, displayActiveSection: (sectionName: string) => void}} Section API.
  */
 export const initializeSectionTabs = ({ root = document, onSectionChange = () => {} } = {}) => {
   let skipSectionClickActivation = false;
@@ -130,6 +130,15 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     onSectionChange(sectionName);
   };
 
+  const activateSection = (sectionName) => {
+    const sectionButton = getTabButtons().find(
+      (button) => button.getAttribute("data-section") === sectionName,
+    );
+
+    clickSectionButton(sectionButton);
+    displayActiveSection(sectionName);
+  };
+
   const bindSectionTabsClick =
     !(root instanceof HTMLElement) || markDatasetReady(root, SECTION_TABS_BOUND_KEY);
 
@@ -150,8 +159,7 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
           return;
         }
 
-        clickSectionButton(nextTabButton);
-        displayActiveSection(nextSectionName);
+        activateSection(nextSectionName);
         scrollToTop();
         return;
       }
@@ -175,12 +183,7 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
       }
 
       const selectedSectionName = select.value || "";
-      const selectedTabButton = getTabButtons().find(
-        (button) => button.getAttribute("data-section") === selectedSectionName,
-      );
-
-      clickSectionButton(selectedTabButton);
-      displayActiveSection(selectedSectionName);
+      activateSection(selectedSectionName);
     });
   }
 
@@ -192,5 +195,5 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     "";
   updateNextButtons(activeSectionName);
 
-  return { displayActiveSection };
+  return { activateSection, displayActiveSection };
 };

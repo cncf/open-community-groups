@@ -91,8 +91,8 @@
 {# Form title #}
 {# Used by dashboard and profile forms for section titles and descriptions. #}
 {% macro form_title(title, description = "", button = "") -%}
-  <div>
-    <div class="text-xl lg:text-2xl font-medium text-stone-900">{{ title }}</div>
+  <div class="min-w-0">
+    <div class="text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ title }}</div>
     {% if !description.is_empty() -%}
       <div class="mt-1 flex flex-wrap items-center gap-3">
         <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
@@ -226,9 +226,9 @@
 {# Page title #}
 {# Used by dashboard pages for the primary title and documentation link. #}
 {% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "") -%}
-  <div>
+  <div class="min-w-0">
     <div class="flex items-center justify-between gap-3">
-      <div class="text-xl lg:text-2xl font-medium text-stone-900">{{ title }}</div>
+      <div class="min-w-0 text-xl leading-tight font-medium text-stone-900 lg:text-2xl">{{ title }}</div>
       <a href="{{ docs_href }}"
          target="_blank"
          rel="noopener noreferrer"

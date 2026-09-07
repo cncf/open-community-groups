@@ -21,6 +21,17 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group refunds list template", () => {
+  it("uses the shared page-title spacing for its description", async () => {
+    // Load the refunds list template before checking its title treatment.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // The description is rendered by the same macro as other dashboard pages.
+    expect(template).to.include(
+      'dashboard::page_title(title = "Refunds", docs_href = "/docs#/guides/group-dashboard?id=refunds", description = "Review attendee requests and track provider and external refunds through completion.")',
+    );
+    expect(template).not.to.include('class="mt-2 max-w-3xl');
+  });
+
   it("requires an attendee-visible reason only for refund rejections", async () => {
     // Load the shared modal macro before checking both review variants.
     const macros = normalizeWhitespace(await loadDashboardMacros());
@@ -185,11 +196,12 @@ describe("dashboard group refunds list template", () => {
 
     // Keep the payment source visually attached to the refund amount.
     expect(template).to.include(
-      'class="flex flex-wrap items-center gap-1.5"',
+      'class="flex flex-wrap items-center gap-1.5 md:flex-nowrap"',
     );
     expect(template).to.include(
-      'badges::common_badge(content = "External", extra_styles = Some("border-primary-200 bg-primary-50 px-2.5 py-0.5 text-primary-700"))',
+      'badges::common_badge(content = "External", extra_styles = Some("shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"))',
     );
+    expect(template).to.include('<div class="shrink-0 xl:hidden">');
     expect(
       template.match(/badges::common_badge\(content = "External"/gu) ?? [],
     ).to.have.lengthOf(1);
@@ -348,9 +360,7 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include(
       'data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"',
     );
-    expect(
-      template.match(/data-refund-external="true"/gu),
-    ).to.have.lengthOf(2);
+    expect(template.match(/data-refund-external="true"/gu)).to.have.lengthOf(2);
     expect(template).to.include("dashboard::refund_review_modal");
     expect(template).to.include('id_prefix = "refund-reject"');
     expect(template).to.include('review_note_id = "refund-review-note"');

@@ -191,4 +191,19 @@ describe("modal lifecycle", () => {
     expect(document.body.style.overflow).to.equal("");
     expect(document.body.dataset.modalOpenCount).to.equal(undefined);
   });
+
+  it("hides accessible dialogs without requiring a restoration marker", () => {
+    // Build a modal that manages its own controls but uses the shared dialog contract.
+    document.body.innerHTML = `
+      <div id="managed-modal" role="dialog" aria-modal="true" aria-hidden="false"></div>
+    `;
+
+    // Reset the page before its dashboard content is replaced.
+    resetRestoredModalState(document);
+
+    // Accessible modal markup is enough for shared navigation cleanup.
+    const modal = document.getElementById("managed-modal");
+    expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
+  });
 });

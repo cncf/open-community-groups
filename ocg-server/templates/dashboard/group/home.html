@@ -155,34 +155,37 @@
 
 {% block dashboard_main -%}
   {% let current_selection = current_selection_details() -%}
-  <div id="dashboard-content"
-       data-community="{{ current_selection.0.name }}"
-       data-community-name="{{ current_selection.0.name }}"
-       data-community-display-name="{{ current_selection.0.display_name }}"
-       data-community-logo-url="{{ current_selection.0.logo_url }}"
-       data-community-banner-url="{{ current_selection.0.banner_url }}"
-       data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
-       data-group-name="{{ current_selection.1.name }}"
-       data-group-slug="{{ current_selection.1.public_slug() }}"
-       hx-get="/dashboard/group/{%- if content.is_artwork() -%}artwork{%- else if content.is_awards() -%}awards{%- else if content.is_badges() -%}badges{%- else if content.is_check_in() -%}check-in{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
-       hx-trigger="refresh-group-dashboard-table"
-       hx-swap="innerHTML show:window:top"
-       hx-indicator="#dashboard-spinner"
-       class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 lg:p-12">
-    {% if is_check_in_fallback -%}
-      {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden") -}}
-    {% endif -%}
+  {# Keep page-level warnings outside partial content swaps. -#}
+  <div class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 lg:p-12">
     {% if content.is_refunds() && !payments_ready -%}
       {{ dashboard::permission_warning(message = "Automatic payment processing is unavailable. Historical records remain accessible, and external refunds can still be recorded after the money is returned outside OCG.") -}}
     {% endif -%}
-    {# Content -#}
-    {% if is_check_in_fallback -%}
-      {# The fallback keeps mobile users on the warning; content stays desktop-only. -#}
-      <div class="max-md:hidden">{{ content|safe }}</div>
-    {% else -%}
-      {{ content|safe }}
-    {% endif -%}
-    {# End Content -#}
+    <div id="dashboard-content"
+         data-community="{{ current_selection.0.name }}"
+         data-community-name="{{ current_selection.0.name }}"
+         data-community-display-name="{{ current_selection.0.display_name }}"
+         data-community-logo-url="{{ current_selection.0.logo_url }}"
+         data-community-banner-url="{{ current_selection.0.banner_url }}"
+         data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
+         data-group-name="{{ current_selection.1.name }}"
+         data-group-slug="{{ current_selection.1.public_slug() }}"
+         hx-get="/dashboard/group/{%- if content.is_artwork() -%}artwork{%- else if content.is_awards() -%}awards{%- else if content.is_badges() -%}badges{%- else if content.is_check_in() -%}check-in{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
+         hx-trigger="refresh-group-dashboard-table"
+         hx-swap="innerHTML show:window:top"
+         hx-indicator="#dashboard-spinner"
+         class="contents">
+      {% if is_check_in_fallback -%}
+        {{ dashboard::permission_warning(message = "You cannot manage check-ins for the selected group.", extra_classes = "mb-6 md:hidden") -}}
+      {% endif -%}
+      {# Content -#}
+      {% if is_check_in_fallback -%}
+        {# The fallback keeps mobile users on the warning; content stays desktop-only. -#}
+        <div class="max-md:hidden">{{ content|safe }}</div>
+      {% else -%}
+        {{ content|safe }}
+      {% endif -%}
+      {# End Content -#}
+    </div>
   </div>
 
   {# Messages -#}

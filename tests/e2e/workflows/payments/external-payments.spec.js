@@ -497,7 +497,7 @@ test.describe("external payment journeys", () => {
     await expect(getAttendButton(member2Page)).toBeVisible();
     await expect(getAttendButton(member2Page)).toBeDisabled();
     await expect(getAttendButton(member2Page)).toHaveAccessibleName(
-      "Paid tickets temporarily unavailable",
+      "Tickets unavailable",
     );
     await expect(
       member2Page.getByText("Sold out", { exact: true }).first(),
@@ -814,7 +814,7 @@ test.describe("external payment journeys", () => {
       // Verify eligibility loss disables only new paid registrations.
       await openExternalEvent(member2Page, event);
       await expect(getAttendButton(member2Page)).toContainText(
-        "Paid tickets temporarily unavailable",
+        "Tickets unavailable",
       );
       await expect(getAttendButton(member2Page)).toBeDisabled();
 

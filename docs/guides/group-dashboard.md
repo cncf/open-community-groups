@@ -183,7 +183,7 @@ Organizers with read access can still view attendee refund status in `Event -> A
 Groups in countries that Stripe Connect does not serve can collect ticket
 payments outside OCG when the operator has allowlisted the group's country.
 When that is the case, `Settings` shows an `External payments` section next to
-the fiscal-sponsor section with a `Collect paid tickets outside this platform`
+the fiscal-sponsor section with a `Collect ticket payments outside this platform`
 checkbox. Enabling it is an explicit, group-wide opt-in: every paid event in
 the group then requires a payment URL instead of Stripe Connect readiness, even
 if a fiscal sponsor is also configured.

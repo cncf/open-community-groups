@@ -105,6 +105,7 @@ describe("dashboard group home template", () => {
     expect(template).to.include(
       'class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 lg:p-12"',
     );
+    expect(template).to.include('hx-indicator="#dashboard-spinner" class="contents"');
   });
 
   it("keeps refund history accessible without globally refreshing its partial", async () => {
@@ -120,6 +121,10 @@ describe("dashboard group home template", () => {
     expect(template).to.include("external refunds can still be recorded");
     expect(template).to.include("else if content.is_refunds() -%}refunds");
     expect(template).not.to.include("refresh-group-refunds");
+
+    const refundsWarningIndex = template.indexOf("{% if content.is_refunds() && !payments_ready -%}");
+    const dashboardContentIndex = template.indexOf('<div id="dashboard-content"');
+    expect(refundsWarningIndex).to.be.lessThan(dashboardContentIndex);
   });
 
   it("loads the shared user profile modal wiring", async () => {

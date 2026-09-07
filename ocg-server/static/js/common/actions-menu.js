@@ -2,7 +2,67 @@ import { closestElement, markDatasetReady } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 
 const ACTIONS_MENU_SELECTOR = "[data-actions-menu]";
+const ACTIONS_MENU_DROPDOWN_SELECTOR = ":scope > .dropdown";
 const DATA_KEY = "actionsMenuReady";
+const VIEWPORT_GAP = 8;
+const CLIPPING_OVERFLOW_VALUES = new Set(["auto", "clip", "hidden", "scroll"]);
+
+/**
+ * Finds the visible vertical bounds imposed by the viewport and ancestors.
+ * @param {HTMLElement} menu Action menu trigger wrapper.
+ * @returns {{top: number, bottom: number}} Visible vertical bounds.
+ */
+const getVisibleVerticalBounds = (menu) => {
+  const bounds = {
+    top: VIEWPORT_GAP,
+    bottom: window.innerHeight - VIEWPORT_GAP,
+  };
+  let ancestor = menu.parentElement;
+
+  while (ancestor) {
+    const styles = window.getComputedStyle(ancestor);
+    if (CLIPPING_OVERFLOW_VALUES.has(styles.overflowY) || CLIPPING_OVERFLOW_VALUES.has(styles.overflow)) {
+      const ancestorBounds = ancestor.getBoundingClientRect();
+      bounds.top = Math.max(bounds.top, ancestorBounds.top + VIEWPORT_GAP);
+      bounds.bottom = Math.min(bounds.bottom, ancestorBounds.bottom - VIEWPORT_GAP);
+    }
+    ancestor = ancestor.parentElement;
+  }
+
+  return bounds;
+};
+
+/**
+ * Opens an action menu above its trigger when it would cross the viewport edge.
+ * @param {HTMLDetailsElement} menu Open action menu.
+ * @returns {void}
+ */
+export const positionActionsMenu = (menu) => {
+  if (!(menu instanceof HTMLDetailsElement)) {
+    return;
+  }
+
+  const dropdown = menu.querySelector(ACTIONS_MENU_DROPDOWN_SELECTOR);
+  if (!(dropdown instanceof HTMLElement)) {
+    return;
+  }
+
+  dropdown.style.insetBlockStart = "";
+  dropdown.style.insetBlockEnd = "";
+  if (!menu.open) {
+    return;
+  }
+
+  const menuBounds = menu.getBoundingClientRect();
+  const dropdownBounds = dropdown.getBoundingClientRect();
+  const visibleBounds = getVisibleVerticalBounds(menu);
+  const availableAbove = menuBounds.top - visibleBounds.top;
+  const availableBelow = visibleBounds.bottom - menuBounds.bottom;
+  if (dropdownBounds.bottom > visibleBounds.bottom && availableAbove > availableBelow) {
+    dropdown.style.insetBlockStart = "auto";
+    dropdown.style.insetBlockEnd = `calc(100% + ${VIEWPORT_GAP}px)`;
+  }
+};
 
 /**
  * Closes details-based action menus within a root.
@@ -70,6 +130,17 @@ export const initializeActionsMenus = () => {
       summary.focus();
     }
   });
+
+  document.addEventListener(
+    "toggle",
+    (event) => {
+      const menu = event.target;
+      if (menu instanceof HTMLDetailsElement && menu.matches(ACTIONS_MENU_SELECTOR)) {
+        positionActionsMenu(menu);
+      }
+    },
+    true,
+  );
 };
 
 initializeActionsMenus();

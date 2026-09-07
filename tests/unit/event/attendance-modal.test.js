@@ -3,7 +3,10 @@ import { expect } from "@open-wc/testing";
 import "/static/js/event/attendance.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
+import {
+  dispatchHtmxAfterRequest,
+  dispatchHtmxBeforeRequest,
+} from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 // Initialize attendance dom for the test.
@@ -34,7 +37,8 @@ const renderPaidAttendanceDom = ({
     registrationWindowOpen === "true" &&
     (attendeeApprovalRequired === "true" || ticketPurchaseAvailable === "true");
   const soldOutTicketSelectable =
-    registrationWindowOpen === "true" && (attendeeApprovalRequired === "true" || waitlistEnabled === "true");
+    registrationWindowOpen === "true" &&
+    (attendeeApprovalRequired === "true" || waitlistEnabled === "true");
 
   document.body.innerHTML = `
     <div
@@ -302,61 +306,123 @@ const renderPaidAttendanceDom = ({
 
   return {
     container: document.querySelector("[data-attendance-container]"),
-    checker: document.querySelector('[data-attendance-role="attendance-checker"]'),
+    checker: document.querySelector(
+      '[data-attendance-role="attendance-checker"]',
+    ),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
-    actionsMenu: document.querySelector('[data-attendance-role="actions-menu"]'),
-    checkoutCancelButton: document.querySelector('[data-attendance-role="checkout-cancel-btn"]'),
-    checkoutResumeButton: document.querySelector('[data-attendance-role="checkout-resume-btn"]'),
-    externalPaymentAmount: document.querySelector('[data-attendance-role="external-payment-amount"]'),
-    externalPaymentDeadline: document.querySelector('[data-attendance-role="external-payment-deadline"]'),
-    externalPaymentDetails: document.querySelector('[data-attendance-role="external-payment-details"]'),
+    actionsMenu: document.querySelector(
+      '[data-attendance-role="actions-menu"]',
+    ),
+    checkoutCancelButton: document.querySelector(
+      '[data-attendance-role="checkout-cancel-btn"]',
+    ),
+    checkoutResumeButton: document.querySelector(
+      '[data-attendance-role="checkout-resume-btn"]',
+    ),
+    externalPaymentAmount: document.querySelector(
+      '[data-attendance-role="external-payment-amount"]',
+    ),
+    externalPaymentDeadline: document.querySelector(
+      '[data-attendance-role="external-payment-deadline"]',
+    ),
+    externalPaymentDetails: document.querySelector(
+      '[data-attendance-role="external-payment-details"]',
+    ),
     externalPaymentDetailsIndicator: document.querySelector(
       '[data-attendance-role="external-payment-details-indicator"]',
     ),
     externalPaymentInstructions: document.querySelector(
       '[data-attendance-role="external-payment-instructions"]',
     ),
-    externalPaymentReference: document.querySelector('[data-attendance-role="external-payment-reference"]'),
-    questionsModal: document.querySelector('[data-attendance-role="registration-modal"]'),
-    questionsModalClose: document.querySelector('[data-attendance-role="registration-modal-close"]'),
-    registrationForm: document.querySelector('[data-attendance-role="registration-form"]'),
+    externalPaymentReference: document.querySelector(
+      '[data-attendance-role="external-payment-reference"]',
+    ),
+    questionsModal: document.querySelector(
+      '[data-attendance-role="registration-modal"]',
+    ),
+    questionsModalClose: document.querySelector(
+      '[data-attendance-role="registration-modal-close"]',
+    ),
+    registrationForm: document.querySelector(
+      '[data-attendance-role="registration-form"]',
+    ),
     registrationAnswer: document.querySelector("[data-question-answer]"),
-    registrationAnswersInput: document.querySelector('[data-attendance-role="registration-answers-input"]'),
+    registrationAnswersInput: document.querySelector(
+      '[data-attendance-role="registration-answers-input"]',
+    ),
     refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
     refundForm: document.querySelector('[data-attendance-role="refund-form"]'),
-    refundModal: document.querySelector('[data-attendance-role="refund-modal"]'),
-    refundModalCancel: document.querySelector('[data-attendance-role="refund-modal-cancel"]'),
-    refundModalOverlay: document.querySelector('[data-attendance-role="refund-modal-overlay"]'),
-    refundReasonInput: document.querySelector('[data-attendance-role="refund-reason-input"]'),
-    refundSubmitButton: document.querySelector('[data-attendance-role="refund-modal-submit"]'),
-    refundSubmitButtonLabel: document.querySelector('[data-attendance-role="refund-modal-submit-label"]'),
-    refundSubmitButtonSpinner: document.querySelector('[data-attendance-role="refund-modal-submit-spinner"]'),
-    discountCodeInput: document.querySelector('[data-attendance-role="discount-code-input"]'),
-    ticketModal: document.querySelector('[data-attendance-role="ticket-modal"]'),
-    checkoutForm: document.querySelector('[data-attendance-role="checkout-form"]'),
+    refundModal: document.querySelector(
+      '[data-attendance-role="refund-modal"]',
+    ),
+    refundModalCancel: document.querySelector(
+      '[data-attendance-role="refund-modal-cancel"]',
+    ),
+    refundModalOverlay: document.querySelector(
+      '[data-attendance-role="refund-modal-overlay"]',
+    ),
+    refundReasonInput: document.querySelector(
+      '[data-attendance-role="refund-reason-input"]',
+    ),
+    refundSubmitButton: document.querySelector(
+      '[data-attendance-role="refund-modal-submit"]',
+    ),
+    refundSubmitButtonLabel: document.querySelector(
+      '[data-attendance-role="refund-modal-submit-label"]',
+    ),
+    refundSubmitButtonSpinner: document.querySelector(
+      '[data-attendance-role="refund-modal-submit-spinner"]',
+    ),
+    discountCodeInput: document.querySelector(
+      '[data-attendance-role="discount-code-input"]',
+    ),
+    ticketModal: document.querySelector(
+      '[data-attendance-role="ticket-modal"]',
+    ),
+    checkoutForm: document.querySelector(
+      '[data-attendance-role="checkout-form"]',
+    ),
     checkoutRegistrationAnswersInput: document.querySelector(
       '[data-attendance-role="checkout-registration-answers-input"]',
     ),
-    ticketModalForm: document.querySelector('[data-attendance-role="ticket-modal-form"]'),
-    ticketTypeOptions: document.querySelectorAll('[data-attendance-role="ticket-type-option"]'),
-    ticketTypeTitles: () =>
-      Array.from(document.querySelectorAll('[data-attendance-role="ticket-type-title"]')).map(
-        (node) => node.textContent,
-      ),
-    ticketStatusLabels: () =>
-      Array.from(document.querySelectorAll('[data-attendance-role="ticket-type-status-label"]')).map(
-        (node) => node.textContent,
-      ),
-    ticketCardBodies: document.querySelectorAll('[data-attendance-role="ticket-type-card-body"]'),
-    checkoutButton: document.querySelector('[data-attendance-role="checkout-btn"]'),
-    checkoutButtonSpinner: document.querySelector('[data-attendance-role="checkout-btn-spinner"]'),
-    checkoutButtonLabel: document.querySelector('[data-attendance-role="checkout-btn-label"]'),
-    ticketPriceBadge: Array.from(document.querySelectorAll(".ticket-price-badge")).find(
-      (node) => node.textContent?.trim() === "EUR 50.00",
+    ticketModalForm: document.querySelector(
+      '[data-attendance-role="ticket-modal-form"]',
     ),
-    ticketModalOverlay: document.querySelector('[data-attendance-role="ticket-modal-overlay"]'),
-    ticketModalCancel: document.querySelector('[data-attendance-role="ticket-modal-cancel"]'),
+    ticketTypeOptions: document.querySelectorAll(
+      '[data-attendance-role="ticket-type-option"]',
+    ),
+    ticketTypeTitles: () =>
+      Array.from(
+        document.querySelectorAll('[data-attendance-role="ticket-type-title"]'),
+      ).map((node) => node.textContent),
+    ticketStatusLabels: () =>
+      Array.from(
+        document.querySelectorAll(
+          '[data-attendance-role="ticket-type-status-label"]',
+        ),
+      ).map((node) => node.textContent),
+    ticketCardBodies: document.querySelectorAll(
+      '[data-attendance-role="ticket-type-card-body"]',
+    ),
+    checkoutButton: document.querySelector(
+      '[data-attendance-role="checkout-btn"]',
+    ),
+    checkoutButtonSpinner: document.querySelector(
+      '[data-attendance-role="checkout-btn-spinner"]',
+    ),
+    checkoutButtonLabel: document.querySelector(
+      '[data-attendance-role="checkout-btn-label"]',
+    ),
+    ticketPriceBadge: Array.from(
+      document.querySelectorAll(".ticket-price-badge"),
+    ).find((node) => node.textContent?.trim() === "EUR 50.00"),
+    ticketModalOverlay: document.querySelector(
+      '[data-attendance-role="ticket-modal-overlay"]',
+    ),
+    ticketModalCancel: document.querySelector(
+      '[data-attendance-role="ticket-modal-cancel"]',
+    ),
   };
 };
 
@@ -379,7 +445,9 @@ describe("event attendance paid modal", () => {
 
     // Verify the paid action stays on the signed-out button.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
-    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Get ticket");
+    expect(
+      signinButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Get ticket");
 
     // Click the signed-out paid attendance button.
     signinButton.click();
@@ -390,16 +458,21 @@ describe("event attendance paid modal", () => {
     expect(env.current.swal.calls.at(-1)).to.include({
       icon: "info",
     });
-    expect(env.current.swal.calls.at(-1)?.html).to.include("get a ticket for this event");
-    expect(env.current.swal.calls.at(-1)?.html).to.include("/log-in?next_url=%2Fevents%2Ftest-event");
+    expect(env.current.swal.calls.at(-1)?.html).to.include(
+      "get a ticket for this event",
+    );
+    expect(env.current.swal.calls.at(-1)?.html).to.include(
+      "/log-in?next_url=%2Fevents%2Ftest-event",
+    );
   });
 
   it("shows invitation-only ticketing as information while signed out", async () => {
     // Render a private ticketed event while the visitor is signed out.
-    const { attendButton, checker, signinButton, ticketModal } = renderPaidAttendanceDom({
-      hasVisibleTicketTypes: "false",
-      ticketPurchaseAvailable: "false",
-    });
+    const { attendButton, checker, signinButton, ticketModal } =
+      renderPaidAttendanceDom({
+        hasVisibleTicketTypes: "false",
+        ticketPurchaseAvailable: "false",
+      });
     await initializeAttendanceDom();
 
     // Apply the signed-out attendance fallback.
@@ -410,8 +483,12 @@ describe("event attendance paid modal", () => {
     // Invitation-only ticketing remains informational rather than prompting sign-in.
     expect(signinButton.classList.contains("hidden")).to.equal(true);
     expect(attendButton.disabled).to.equal(true);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Invitation only");
-    expect(attendButton.title).to.equal("Tickets for this event are available by invitation only.");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Invitation only");
+    expect(attendButton.title).to.equal(
+      "Tickets for this event are available by invitation only.",
+    );
     attendButton.click();
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
     expect(env.current.swal.calls).to.deep.equal([]);
@@ -419,9 +496,10 @@ describe("event attendance paid modal", () => {
 
   it("shows unavailable paid ticketing as information while signed out", async () => {
     // Render a paid event without an available checkout path.
-    const { attendButton, checker, signinButton, ticketModal } = renderPaidAttendanceDom({
-      ticketPurchaseAvailable: "false",
-    });
+    const { attendButton, checker, signinButton, ticketModal } =
+      renderPaidAttendanceDom({
+        ticketPurchaseAvailable: "false",
+      });
     await initializeAttendanceDom();
 
     // Apply the signed-out attendance fallback.
@@ -432,10 +510,12 @@ describe("event attendance paid modal", () => {
     // Payment unavailability cannot be bypassed by signing in.
     expect(signinButton.classList.contains("hidden")).to.equal(true);
     expect(attendButton.disabled).to.equal(true);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Paid tickets temporarily unavailable",
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Tickets unavailable");
+    expect(attendButton.title).to.equal(
+      "Tickets are not currently available for this event.",
     );
-    expect(attendButton.title).to.equal("Tickets are not currently available for this event.");
     attendButton.click();
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
     expect(env.current.swal.calls).to.deep.equal([]);
@@ -443,8 +523,14 @@ describe("event attendance paid modal", () => {
 
   it("opens the paid ticket modal for guests and enables checkout after a ticket is selected", async () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutButton, discountCodeInput } =
-      renderPaidAttendanceDom();
+    const {
+      checker,
+      attendButton,
+      ticketModal,
+      ticketTypeOptions,
+      checkoutButton,
+      discountCodeInput,
+    } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     // Dispatch the HTMX after-request event.
@@ -454,10 +540,20 @@ describe("event attendance paid modal", () => {
 
     // Verify opens the paid ticket modal for guests and enables checkout.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Get ticket");
-    expect(attendButton.querySelector(".ticket-price-badge")?.textContent?.trim()).to.equal("From EUR 50.00");
-    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(false);
-    expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(false);
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Get ticket");
+    expect(
+      attendButton.querySelector(".ticket-price-badge")?.textContent?.trim(),
+    ).to.equal("From EUR 50.00");
+    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(
+      false,
+    );
+    expect(
+      attendButton
+        .querySelector(".ticket-price-badge")
+        ?.classList.contains("hidden"),
+    ).to.equal(false);
 
     // Verify opens the paid ticket modal for guests.
     attendButton.click();
@@ -476,9 +572,11 @@ describe("event attendance paid modal", () => {
     expect(checkoutButton.disabled).to.equal(false);
     expect(checkoutButton.hasAttribute("title")).to.equal(false);
     expect(discountCodeInput.disabled).to.equal(true);
-    expect(checkoutButton.querySelector("[data-attendance-role='checkout-btn-label']")?.textContent).to.equal(
-      "Get free ticket",
-    );
+    expect(
+      checkoutButton.querySelector(
+        "[data-attendance-role='checkout-btn-label']",
+      )?.textContent,
+    ).to.equal("Get free ticket");
 
     // Paid selections make discount codes available.
     ticketTypeOptions[1].checked = true;
@@ -546,7 +644,9 @@ describe("event attendance paid modal", () => {
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request ticket");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request ticket");
     attendButton.click();
     expect(ticketModal.classList.contains("hidden")).to.equal(false);
     expect(discountCodeInput.disabled).to.equal(true);
@@ -555,9 +655,11 @@ describe("event attendance paid modal", () => {
     ticketTypeOptions[2].checked = true;
     ticketTypeOptions[2].dispatchEvent(new Event("change", { bubbles: true }));
     expect(ticketTypeOptions[2].disabled).to.equal(false);
-    expect(checkoutButton.querySelector("[data-attendance-role='checkout-btn-label']")?.textContent).to.equal(
-      "Request ticket",
-    );
+    expect(
+      checkoutButton.querySelector(
+        "[data-attendance-role='checkout-btn-label']",
+      )?.textContent,
+    ).to.equal("Request ticket");
 
     // The modal submits the selected tier to the attendance request endpoint.
     const configEvent = new CustomEvent("htmx:configRequest", {
@@ -566,18 +668,22 @@ describe("event attendance paid modal", () => {
         parameters: {
           discount_code: "CODE",
           event_ticket_type_id: "ticket-3",
-          registration_answers: '{"answers":[{"question_id":"question-1","value":"Vegetarian"}]}',
+          registration_answers:
+            '{"answers":[{"question_id":"question-1","value":"Vegetarian"}]}',
         },
         path: "/test-community/event/event-1/checkout",
         unfilteredParameters: {
           discount_code: "CODE",
           event_ticket_type_id: "ticket-3",
-          registration_answers: '{"answers":[{"question_id":"question-1","value":"Vegetarian"}]}',
+          registration_answers:
+            '{"answers":[{"question_id":"question-1","value":"Vegetarian"}]}',
         },
       },
     });
     checkoutForm.dispatchEvent(configEvent);
-    expect(configEvent.detail.path).to.equal("/test-community/event/event-1/attend");
+    expect(configEvent.detail.path).to.equal(
+      "/test-community/event/event-1/attend",
+    );
     expect(configEvent.detail.parameters).to.not.have.property("discount_code");
     expect(configEvent.detail.parameters.registration_answers).to.equal(
       '{"answers":[{"question_id":"question-1","value":"Vegetarian"}]}',
@@ -597,16 +703,25 @@ describe("event attendance paid modal", () => {
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request ticket");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Request ticket");
 
     // The primary request remains on the attendance endpoint instead of opening an empty modal.
-    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    });
     attendButton.dispatchEvent(clickEvent);
     expect(clickEvent.defaultPrevented).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
 
     // The matching HTMX request is still allowed for the generic request path.
-    const beforeRequestEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const beforeRequestEvent = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
     expect(beforeRequestEvent.defaultPrevented).to.equal(false);
   });
 
@@ -621,17 +736,26 @@ describe("event attendance paid modal", () => {
     });
 
     // The direct HTMX request is canceled because the click opens ticket selection.
-    const beforeRequestEvent = dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true });
+    const beforeRequestEvent = dispatchHtmxBeforeRequest(
+      attendButton,
+      {},
+      { cancelable: true },
+    );
     expect(beforeRequestEvent.defaultPrevented).to.equal(true);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
   });
 
   it("routes sold-out direct tiers through their waiting list", async () => {
     // Render a direct ticket event where sold-out tiers may join a waiting list.
-    const { attendButton, checker, checkoutButton, checkoutForm, ticketTypeOptions } =
-      renderPaidAttendanceDom({
-        waitlistEnabled: "true",
-      });
+    const {
+      attendButton,
+      checker,
+      checkoutButton,
+      checkoutForm,
+      ticketTypeOptions,
+    } = renderPaidAttendanceDom({
+      waitlistEnabled: "true",
+    });
     await initializeAttendanceDom();
 
     // Open the tier selector and choose the sold-out tier.
@@ -644,9 +768,11 @@ describe("event attendance paid modal", () => {
 
     // The selected tier exposes its own waiting-list action.
     expect(ticketTypeOptions[2].disabled).to.equal(false);
-    expect(checkoutButton.querySelector("[data-attendance-role='checkout-btn-label']")?.textContent).to.equal(
-      "Join waiting list",
-    );
+    expect(
+      checkoutButton.querySelector(
+        "[data-attendance-role='checkout-btn-label']",
+      )?.textContent,
+    ).to.equal("Join waiting list");
 
     // The ticket form submits the tier to the attendance endpoint without discounts.
     const configEvent = new CustomEvent("htmx:configRequest", {
@@ -664,7 +790,9 @@ describe("event attendance paid modal", () => {
       },
     });
     checkoutForm.dispatchEvent(configEvent);
-    expect(configEvent.detail.path).to.equal("/test-community/event/event-1/attend");
+    expect(configEvent.detail.path).to.equal(
+      "/test-community/event/event-1/attend",
+    );
     expect(configEvent.detail.parameters).to.not.have.property("discount_code");
   });
 
@@ -681,7 +809,9 @@ describe("event attendance paid modal", () => {
     });
 
     // The primary action describes the ticket as free without currency wording.
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Get free ticket");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Get free ticket");
   });
 
   it("collects registration questions after ticket selection without showing a checkout alert", async () => {
@@ -724,9 +854,13 @@ describe("event attendance paid modal", () => {
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
 
     // Answer the required form question.
-    checkoutForm.addEventListener("submit", (event) => event.preventDefault(), { once: true });
+    checkoutForm.addEventListener("submit", (event) => event.preventDefault(), {
+      once: true,
+    });
     registrationAnswer.value = "Vegetarian lunch";
-    registrationForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    registrationForm.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
 
     // Answers close the question modal and resume the selected checkout form.
     expect(questionsModal.classList.contains("hidden")).to.equal(true);
@@ -735,7 +869,9 @@ describe("event attendance paid modal", () => {
     expect(JSON.parse(registrationAnswersInput.value)).to.deep.equal({
       answers: [{ question_id: "question-1", value: "Vegetarian lunch" }],
     });
-    expect(checkoutRegistrationAnswersInput.value).to.equal(registrationAnswersInput.value);
+    expect(checkoutRegistrationAnswersInput.value).to.equal(
+      registrationAnswersInput.value,
+    );
 
     // Recoverable validation keeps the resumed ticket controls and pending state visible.
     dispatchHtmxBeforeRequest(checkoutForm);
@@ -779,7 +915,9 @@ describe("event attendance paid modal", () => {
     expect(ticketTypeOptions[1].checked).to.equal(true);
 
     dispatchHtmxBeforeRequest(checkoutForm);
-    document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+    );
     expect(questionsModal.classList.contains("hidden")).to.equal(true);
     expect(ticketModal.classList.contains("hidden")).to.equal(false);
     expect(ticketTypeOptions[1].checked).to.equal(true);
@@ -799,7 +937,9 @@ describe("event attendance paid modal", () => {
 
     // Verify keeps the paid button flow working when button price badges are omitted.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Get ticket");
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Get ticket");
     expect(attendButton.querySelector(".ticket-price-badge")).to.equal(null);
 
     // Verify keeps the paid button flow working.
@@ -811,9 +951,10 @@ describe("event attendance paid modal", () => {
 
   it("hides the button price badge when tickets are unavailable", async () => {
     // Render the paid attendance fixture.
-    const { checker, attendButton, ticketTypeOptions, ticketCardBodies } = renderPaidAttendanceDom({
-      ticketPurchaseAvailable: "false",
-    });
+    const { checker, attendButton, ticketTypeOptions, ticketCardBodies } =
+      renderPaidAttendanceDom({
+        ticketPurchaseAvailable: "false",
+      });
     await initializeAttendanceDom();
 
     // Dispatch the HTMX after-request event.
@@ -822,22 +963,33 @@ describe("event attendance paid modal", () => {
     });
 
     // Verify hides the button price badge when tickets are unavailable.
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Paid tickets temporarily unavailable",
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Tickets unavailable");
+    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(
+      true,
     );
-    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
-    expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
-    expect(Array.from(ticketTypeOptions).every((option) => option.disabled)).to.equal(true);
+    expect(
+      attendButton
+        .querySelector(".ticket-price-badge")
+        ?.classList.contains("hidden"),
+    ).to.equal(true);
+    expect(
+      Array.from(ticketTypeOptions).every((option) => option.disabled),
+    ).to.equal(true);
     ticketCardBodies.forEach((cardBody) => {
       expect(cardBody.classList.contains("cursor-not-allowed")).to.equal(true);
-      expect(cardBody.classList.contains("hover:border-primary-300")).to.equal(false);
+      expect(cardBody.classList.contains("hover:border-primary-300")).to.equal(
+        false,
+      );
       expect(cardBody.classList.contains("hover:shadow-sm")).to.equal(false);
     });
   });
 
   it("keeps sold-out ticket types visible but disabled in the modal", async () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, attendButton, ticketTypeOptions, checkoutButton } = renderPaidAttendanceDom();
+    const { checker, attendButton, ticketTypeOptions, checkoutButton } =
+      renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     // Dispatch the HTMX after-request event.
@@ -858,9 +1010,10 @@ describe("event attendance paid modal", () => {
 
   it("keeps active not-on-sale ticket types visible and disabled in the modal", async () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, attendButton, ticketTypeOptions } = renderPaidAttendanceDom({
-      disabledTicketStatusLabel: "Not on sale",
-    });
+    const { checker, attendButton, ticketTypeOptions } =
+      renderPaidAttendanceDom({
+        disabledTicketStatusLabel: "Not on sale",
+      });
     await initializeAttendanceDom();
 
     // Dispatch the HTMX after-request event.
@@ -872,7 +1025,9 @@ describe("event attendance paid modal", () => {
     attendButton.click();
 
     // Prepare disabled ticket card for keeping active not-on-sale ticket types.
-    const disabledTicketCard = ticketTypeOptions[2]?.closest('[data-attendance-role="ticket-type-card"]');
+    const disabledTicketCard = ticketTypeOptions[2]?.closest(
+      '[data-attendance-role="ticket-type-card"]',
+    );
     expect(ticketTypeOptions).to.have.length(3);
     expect(ticketTypeOptions[2].disabled).to.equal(true);
     expect(disabledTicketCard?.textContent).to.include("Staff");
@@ -882,10 +1037,11 @@ describe("event attendance paid modal", () => {
 
   it("updates a not-on-sale ticket label when availability makes it sellable", async () => {
     // Keep references to the fixture controls under assertion.
-    const { ticketCardBodies, ticketTypeOptions, ticketStatusLabels } = renderPaidAttendanceDom({
-      availabilityUrl: "/events/test-event/availability",
-      disabledTicketStatusLabel: "Not on sale",
-    });
+    const { ticketCardBodies, ticketTypeOptions, ticketStatusLabels } =
+      renderPaidAttendanceDom({
+        availabilityUrl: "/events/test-event/availability",
+        disabledTicketStatusLabel: "Not on sale",
+      });
     const fetchMock = mockFetch({
       response: {
         ok: true,
@@ -918,10 +1074,18 @@ describe("event attendance paid modal", () => {
       // Verify updates a not-on-sale ticket label when availability makes it.
       expect(ticketTypeOptions[2].disabled).to.equal(false);
       expect(ticketCardBodies[2].classList.contains("bg-white")).to.equal(true);
-      expect(ticketCardBodies[2].classList.contains("cursor-pointer")).to.equal(true);
-      expect(ticketCardBodies[2].classList.contains("bg-stone-50")).to.equal(false);
-      expect(ticketCardBodies[2].classList.contains("cursor-not-allowed")).to.equal(false);
-      expect(ticketCardBodies[2].classList.contains("opacity-60")).to.equal(false);
+      expect(ticketCardBodies[2].classList.contains("cursor-pointer")).to.equal(
+        true,
+      );
+      expect(ticketCardBodies[2].classList.contains("bg-stone-50")).to.equal(
+        false,
+      );
+      expect(
+        ticketCardBodies[2].classList.contains("cursor-not-allowed"),
+      ).to.equal(false);
+      expect(ticketCardBodies[2].classList.contains("opacity-60")).to.equal(
+        false,
+      );
       expect(ticketStatusLabels()).to.deep.equal(["Available now"]);
     } finally {
       fetchMock.restore();
@@ -930,11 +1094,12 @@ describe("event attendance paid modal", () => {
 
   it("keeps an inactive approval tier disabled when opening the refreshed modal", async () => {
     // Render an approval event whose cached sold-out tier is no longer active.
-    const { attendButton, checker, ticketTypeOptions } = renderPaidAttendanceDom({
-      attendeeApprovalRequired: "true",
-      availabilityUrl: "/events/test-event/availability",
-      ticketPurchaseAvailable: "false",
-    });
+    const { attendButton, checker, ticketTypeOptions } =
+      renderPaidAttendanceDom({
+        attendeeApprovalRequired: "true",
+        availabilityUrl: "/events/test-event/availability",
+        ticketPurchaseAvailable: "false",
+      });
     const fetchMock = mockFetch({
       response: {
         ok: true,
@@ -987,10 +1152,11 @@ describe("event attendance paid modal", () => {
 
   it("keeps an inactive waitlist tier disabled when opening the refreshed modal", async () => {
     // Render a waitlist event whose cached sold-out tier is no longer active.
-    const { attendButton, checker, ticketTypeOptions } = renderPaidAttendanceDom({
-      availabilityUrl: "/events/test-event/availability",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, checker, ticketTypeOptions } =
+      renderPaidAttendanceDom({
+        availabilityUrl: "/events/test-event/availability",
+        waitlistEnabled: "true",
+      });
     const fetchMock = mockFetch({
       response: {
         ok: true,
@@ -1043,13 +1209,14 @@ describe("event attendance paid modal", () => {
 
   it("hydrates a cached simple-RSVP shell when another tier becomes sellable", async () => {
     // Render the stable modal shell from a cached simple-RSVP event.
-    const { attendButton, checker, checkoutButton, ticketModal } = renderPaidAttendanceDom({
-      availabilityUrl: "/events/test-event/availability",
-      hasVisibleTicketTypes: "false",
-      includeTicketOptions: false,
-      isSimpleRsvp: "true",
-      ticketPurchaseAvailable: "false",
-    });
+    const { attendButton, checker, checkoutButton, ticketModal } =
+      renderPaidAttendanceDom({
+        availabilityUrl: "/events/test-event/availability",
+        hasVisibleTicketTypes: "false",
+        includeTicketOptions: false,
+        isSimpleRsvp: "true",
+        ticketPurchaseAvailable: "false",
+      });
     const fetchMock = mockFetch({
       response: {
         ok: true,
@@ -1095,7 +1262,9 @@ describe("event attendance paid modal", () => {
       const newTicketOption = document.querySelector(
         '[data-attendance-role="ticket-type-option"][value="ticket-4"]',
       );
-      const newTicketCard = newTicketOption?.closest('[data-attendance-role="ticket-type-card"]');
+      const newTicketCard = newTicketOption?.closest(
+        '[data-attendance-role="ticket-type-card"]',
+      );
 
       // Verify the new tier is available in an operable modal.
       expect(ticketModal.classList.contains("hidden")).to.equal(false);
@@ -1104,7 +1273,10 @@ describe("event attendance paid modal", () => {
       expect(newTicketOption.dataset.ticketPurchasable).to.equal("true");
       expect(newTicketCard?.textContent).to.include("Late release");
       expect(newTicketCard?.textContent).to.include(
-        new Intl.NumberFormat(undefined, { currency: "EUR", style: "currency" }).format(75),
+        new Intl.NumberFormat(undefined, {
+          currency: "EUR",
+          style: "currency",
+        }).format(75),
       );
 
       // Update the checkbox state before asserting the new state.
@@ -1157,7 +1329,9 @@ describe("event attendance paid modal", () => {
       // Verify the stale cached option and its containing card are no longer visible.
       expect(ticketTypeOptions[1].isConnected).to.equal(false);
       expect(
-        document.querySelector('[data-attendance-role="ticket-type-option"][value="ticket-1"]'),
+        document.querySelector(
+          '[data-attendance-role="ticket-type-option"][value="ticket-1"]',
+        ),
       ).to.equal(null);
     } finally {
       fetchMock.restore();
@@ -1194,8 +1368,13 @@ describe("event attendance paid modal", () => {
 
   it("omits an empty discount code from checkout params and trims a filled one", async () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, attendButton, ticketTypeOptions, checkoutForm, ticketModalForm } =
-      renderPaidAttendanceDom();
+    const {
+      checker,
+      attendButton,
+      ticketTypeOptions,
+      checkoutForm,
+      ticketModalForm,
+    } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     // Dispatch the HTMX after-request event.
@@ -1209,7 +1388,9 @@ describe("event attendance paid modal", () => {
     ticketTypeOptions[0].dispatchEvent(new Event("change", { bubbles: true }));
 
     // Read the discount field before checkout.
-    const discountCodeInput = ticketModalForm.querySelector('[data-attendance-role="discount-code-input"]');
+    const discountCodeInput = ticketModalForm.querySelector(
+      '[data-attendance-role="discount-code-input"]',
+    );
     const blankEvent = new CustomEvent("htmx:configRequest", {
       bubbles: true,
       detail: {
@@ -1229,7 +1410,9 @@ describe("event attendance paid modal", () => {
 
     // Confirm blank discount codes are removed from submitted parameters.
     expect(blankEvent.detail.parameters).to.not.have.property("discount_code");
-    expect(blankEvent.detail.unfilteredParameters).to.not.have.property("discount_code");
+    expect(blankEvent.detail.unfilteredParameters).to.not.have.property(
+      "discount_code",
+    );
 
     // Update the input before asserting it omits an empty discount code from checkout.
     ticketTypeOptions[1].checked = true;
@@ -1257,12 +1440,20 @@ describe("event attendance paid modal", () => {
     // Confirm filled discount codes are trimmed before submission.
     expect(discountCodeInput.value).to.equal("SPRING25");
     expect(filledEvent.detail.parameters.discount_code).to.equal("SPRING25");
-    expect(filledEvent.detail.unfilteredParameters.discount_code).to.equal("SPRING25");
+    expect(filledEvent.detail.unfilteredParameters.discount_code).to.equal(
+      "SPRING25",
+    );
   });
 
   it("opens and closes the refund modal with focus and keyboard support", async () => {
-    const { checker, refundButton, refundModal, refundModalCancel, refundModalOverlay, refundReasonInput } =
-      renderPaidAttendanceDom();
+    const {
+      checker,
+      refundButton,
+      refundModal,
+      refundModalCancel,
+      refundModalOverlay,
+      refundReasonInput,
+    } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     dispatchHtmxAfterRequest(checker, {
@@ -1279,7 +1470,9 @@ describe("event attendance paid modal", () => {
     expect(document.activeElement).to.equal(refundReasonInput);
     expect(document.body.style.overflow).to.equal("hidden");
 
-    document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+    );
     expect(refundModal.classList.contains("hidden")).to.equal(true);
     expect(document.activeElement).to.equal(refundButton);
 
@@ -1294,7 +1487,8 @@ describe("event attendance paid modal", () => {
   });
 
   it("omits a blank refund reason and trims a provided reason", async () => {
-    const { checker, refundButton, refundForm, refundReasonInput } = renderPaidAttendanceDom();
+    const { checker, refundButton, refundForm, refundReasonInput } =
+      renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     dispatchHtmxAfterRequest(checker, {
@@ -1316,8 +1510,12 @@ describe("event attendance paid modal", () => {
     });
     refundForm.dispatchEvent(blankEvent);
 
-    expect(blankEvent.detail.parameters).to.not.have.property("requested_reason");
-    expect(blankEvent.detail.unfilteredParameters).to.not.have.property("requested_reason");
+    expect(blankEvent.detail.parameters).to.not.have.property(
+      "requested_reason",
+    );
+    expect(blankEvent.detail.unfilteredParameters).to.not.have.property(
+      "requested_reason",
+    );
 
     refundReasonInput.value = "  Unable to attend  ";
     const filledEvent = new CustomEvent("htmx:configRequest", {
@@ -1330,8 +1528,12 @@ describe("event attendance paid modal", () => {
     refundForm.dispatchEvent(filledEvent);
 
     expect(refundReasonInput.value).to.equal("Unable to attend");
-    expect(filledEvent.detail.parameters.requested_reason).to.equal("Unable to attend");
-    expect(filledEvent.detail.unfilteredParameters.requested_reason).to.equal("Unable to attend");
+    expect(filledEvent.detail.parameters.requested_reason).to.equal(
+      "Unable to attend",
+    );
+    expect(filledEvent.detail.unfilteredParameters.requested_reason).to.equal(
+      "Unable to attend",
+    );
   });
 
   it("preserves the refund reason on failure and closes the modal on success", async () => {
@@ -1359,8 +1561,12 @@ describe("event attendance paid modal", () => {
 
     dispatchHtmxBeforeRequest(refundForm);
     expect(refundSubmitButton.disabled).to.equal(true);
-    expect(refundSubmitButtonSpinner.classList.contains("hidden")).to.equal(false);
-    expect(refundSubmitButtonLabel.classList.contains("invisible")).to.equal(true);
+    expect(refundSubmitButtonSpinner.classList.contains("hidden")).to.equal(
+      false,
+    );
+    expect(refundSubmitButtonLabel.classList.contains("invisible")).to.equal(
+      true,
+    );
 
     dispatchHtmxAfterRequest(refundForm, {
       responseText: "refund failed",
@@ -1369,7 +1575,9 @@ describe("event attendance paid modal", () => {
     expect(refundModal.classList.contains("hidden")).to.equal(false);
     expect(refundReasonInput.value).to.equal("Unable to attend");
     expect(refundSubmitButton.disabled).to.equal(false);
-    expect(refundSubmitButtonSpinner.classList.contains("hidden")).to.equal(true);
+    expect(refundSubmitButtonSpinner.classList.contains("hidden")).to.equal(
+      true,
+    );
 
     dispatchHtmxBeforeRequest(refundForm);
     dispatchHtmxAfterRequest(refundForm, {
@@ -1408,20 +1616,33 @@ describe("event attendance paid modal", () => {
 
     // Verify keeps pending-payment on the main button instead of opening the ticket.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Continue to checkout",
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Continue to checkout");
+    expect(attendButton.dataset.resumeUrl).to.equal(
+      "https://example.test/checkout/resume",
     );
-    expect(attendButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
     expect(attendButton.dataset.openInNewTab).to.equal(undefined);
     expect(attendButton.hasAttribute("rel")).to.equal(false);
     expect(checkoutResumeButton.classList.contains("hidden")).to.equal(true);
-    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
-    expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
-    expect(signinButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
+    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(
+      true,
+    );
+    expect(
+      attendButton
+        .querySelector(".ticket-price-badge")
+        ?.classList.contains("hidden"),
+    ).to.equal(true);
+    expect(signinButton.querySelector(".ticket-price-badge")?.hidden).to.equal(
+      true,
+    );
     expect(actionsMenu.classList.contains("hidden")).to.equal(false);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
-    expect(dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true }).defaultPrevented).to.equal(true);
+    expect(
+      dispatchHtmxBeforeRequest(attendButton, {}, { cancelable: true })
+        .defaultPrevented,
+    ).to.equal(true);
   });
 
   it("clears external pending-payment details when enrollment leaves that state", async () => {
@@ -1466,9 +1687,13 @@ describe("event attendance paid modal", () => {
       externalPaymentInstructions,
       externalPaymentReference,
     ].forEach((detail) => {
-      expect(detail.querySelector("[data-attendance-detail-value]")?.textContent).to.equal("");
+      expect(
+        detail.querySelector("[data-attendance-detail-value]")?.textContent,
+      ).to.equal("");
     });
-    expect(externalPaymentDetailsIndicator.classList.contains("hidden")).to.equal(true);
+    expect(
+      externalPaymentDetailsIndicator.classList.contains("hidden"),
+    ).to.equal(true);
     expect(attendButton.hasAttribute("aria-describedby")).to.equal(false);
     expect(attendButton.dataset.openInNewTab).to.equal(undefined);
     expect(attendButton.hasAttribute("rel")).to.equal(false);
@@ -1533,15 +1758,18 @@ describe("event attendance paid modal", () => {
       currency: "EUR",
       style: "currency",
     }).format(50);
-    const expectedDeadline = new Date(deadlineSeconds * 1000).toLocaleString(undefined, {
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      month: "short",
-      timeZone: "Asia/Seoul",
-      timeZoneName: "short",
-      year: "numeric",
-    });
+    const expectedDeadline = new Date(deadlineSeconds * 1000).toLocaleString(
+      undefined,
+      {
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        month: "short",
+        timeZone: "Asia/Seoul",
+        timeZoneName: "short",
+        year: "numeric",
+      },
+    );
 
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({
@@ -1558,37 +1786,48 @@ describe("event attendance paid modal", () => {
     });
 
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Open payment page",
-    );
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Open payment page");
     expect(attendButton.title).to.equal("");
     expect(attendButton.getAttribute("aria-describedby")).to.equal(
       "external-payment-details-tooltip",
     );
-    expect(attendButton.dataset.resumeUrl).to.equal("https://pay.example.test/event");
+    expect(attendButton.dataset.resumeUrl).to.equal(
+      "https://pay.example.test/event",
+    );
     expect(attendButton.dataset.openInNewTab).to.equal("true");
     expect(externalPaymentDetails.classList.contains("hidden")).to.equal(false);
-    expect(externalPaymentDetailsIndicator.classList.contains("hidden")).to.equal(false);
     expect(
-      externalPaymentAmount.querySelector("[data-attendance-detail-value]")?.textContent,
+      externalPaymentDetailsIndicator.classList.contains("hidden"),
+    ).to.equal(false);
+    expect(
+      externalPaymentAmount.querySelector("[data-attendance-detail-value]")
+        ?.textContent,
     ).to.equal(expectedAmount);
     expect(externalPaymentAmount.classList.contains("hidden")).to.equal(false);
     expect(
-      externalPaymentDeadline.querySelector("[data-attendance-detail-value]")?.textContent,
+      externalPaymentDeadline.querySelector("[data-attendance-detail-value]")
+        ?.textContent,
     ).to.equal(expectedDeadline);
-    expect(externalPaymentDeadline.classList.contains("hidden")).to.equal(false);
-    expect(
-      externalPaymentReference.querySelector("[data-attendance-detail-value]")?.textContent,
-    ).to.equal(
-      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    expect(externalPaymentDeadline.classList.contains("hidden")).to.equal(
+      false,
     );
-    expect(externalPaymentReference.classList.contains("hidden")).to.equal(false);
     expect(
-      externalPaymentInstructions.querySelector("[data-attendance-detail-value]")?.textContent,
-    ).to.equal(
-      "Use the reference on your bank transfer.",
+      externalPaymentReference.querySelector("[data-attendance-detail-value]")
+        ?.textContent,
+    ).to.equal("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    expect(externalPaymentReference.classList.contains("hidden")).to.equal(
+      false,
     );
-    expect(externalPaymentInstructions.classList.contains("hidden")).to.equal(false);
+    expect(
+      externalPaymentInstructions.querySelector(
+        "[data-attendance-detail-value]",
+      )?.textContent,
+    ).to.equal("Use the reference on your bank transfer.");
+    expect(externalPaymentInstructions.classList.contains("hidden")).to.equal(
+      false,
+    );
     expect(actionsMenu.classList.contains("hidden")).to.equal(false);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
@@ -1621,10 +1860,12 @@ describe("event attendance paid modal", () => {
     });
 
     expect(
-      externalPaymentAmount.querySelector("[data-attendance-detail-value]")?.textContent,
+      externalPaymentAmount.querySelector("[data-attendance-detail-value]")
+        ?.textContent,
     ).to.equal("INVALID 50.00");
     expect(
-      externalPaymentDeadline.querySelector("[data-attendance-detail-value]")?.textContent,
+      externalPaymentDeadline.querySelector("[data-attendance-detail-value]")
+        ?.textContent,
     ).not.to.equal("");
 
     dispatchHtmxAfterRequest(checker, {
@@ -1640,9 +1881,9 @@ describe("event attendance paid modal", () => {
       }),
     });
 
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Open payment page",
-    );
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Open payment page");
     expect(externalPaymentDetails.classList.contains("hidden")).to.equal(false);
     [
       externalPaymentAmount,
@@ -1651,16 +1892,19 @@ describe("event attendance paid modal", () => {
       externalPaymentReference,
     ].forEach((detail) => {
       expect(detail.classList.contains("hidden")).to.equal(true);
-      expect(detail.querySelector("[data-attendance-detail-value]")?.textContent).to.equal("");
+      expect(
+        detail.querySelector("[data-attendance-detail-value]")?.textContent,
+      ).to.equal("");
     });
   });
 
   it("keeps pending-payment available after the registration window closes", async () => {
     // Render an active pending payment after public registration has closed.
-    const { checker, attendButton, checkoutCancelButton } = renderPaidAttendanceDom({
-      registrationWindowOpen: "false",
-      registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
-    });
+    const { checker, attendButton, checkoutCancelButton } =
+      renderPaidAttendanceDom({
+        registrationWindowOpen: "false",
+        registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
+      });
     await initializeAttendanceDom();
 
     // Dispatch the pending-payment attendance state.
@@ -1675,10 +1919,12 @@ describe("event attendance paid modal", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(false);
     expect(attendButton.hasAttribute("title")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Continue to checkout",
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Continue to checkout");
+    expect(attendButton.dataset.resumeUrl).to.equal(
+      "https://example.test/checkout/resume",
     );
-    expect(attendButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
   });
 
@@ -1691,10 +1937,16 @@ describe("event attendance paid modal", () => {
     const fetchMock = mockFetch({
       impl: async () => availabilityResponse,
     });
-    const { actionsMenu, checker, checkoutCancelButton, checkoutResumeButton, container, attendButton } =
-      renderPaidAttendanceDom({
-        availabilityUrl: "/events/test-event/availability",
-      });
+    const {
+      actionsMenu,
+      checker,
+      checkoutCancelButton,
+      checkoutResumeButton,
+      container,
+      attendButton,
+    } = renderPaidAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
 
     // Restore the page state after the check.
     try {
@@ -1735,10 +1987,12 @@ describe("event attendance paid modal", () => {
       // Assert that availability hydration finished.
       expect(container.dataset.availabilityHydrated).to.equal("true");
       expect(attendButton.classList.contains("hidden")).to.equal(false);
-      expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-        "Continue to checkout",
+      expect(
+        attendButton.querySelector("[data-attendance-label]")?.textContent,
+      ).to.equal("Continue to checkout");
+      expect(attendButton.dataset.resumeUrl).to.equal(
+        "https://example.test/checkout/resume",
       );
-      expect(attendButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
       expect(actionsMenu.classList.contains("hidden")).to.equal(false);
       expect(checkoutResumeButton.classList.contains("hidden")).to.equal(true);
       expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
@@ -1875,7 +2129,13 @@ describe("event attendance paid modal", () => {
 
   it("does not show a checkout alert when payment remains pending", async () => {
     // Render paid attendance controls before submitting checkout.
-    const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom();
+    const {
+      checker,
+      attendButton,
+      ticketModal,
+      ticketTypeOptions,
+      checkoutForm,
+    } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     dispatchHtmxAfterRequest(checker, {
@@ -1922,7 +2182,9 @@ describe("event attendance paid modal", () => {
     dispatchHtmxBeforeRequest(checkoutForm);
     dispatchHtmxAfterRequest(checkoutForm, {
       status: 409,
-      responseText: JSON.stringify({ conflict: "registration-answers-required" }),
+      responseText: JSON.stringify({
+        conflict: "registration-answers-required",
+      }),
     });
 
     // Preserve the selection and collect answers before retrying the same action.
@@ -1935,7 +2197,13 @@ describe("event attendance paid modal", () => {
 
   it("shows invitation guidance when checkout requires a pending offer", async () => {
     // Render paid attendance controls before submitting checkout.
-    const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom();
+    const {
+      checker,
+      attendButton,
+      ticketModal,
+      ticketTypeOptions,
+      checkoutForm,
+    } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
@@ -1994,7 +2262,10 @@ describe("event attendance paid modal", () => {
   });
 
   for (const [conflict, message] of [
-    ["ticket-type-sold-out", "This ticket has just sold out. Event availability has been updated."],
+    [
+      "ticket-type-sold-out",
+      "This ticket has just sold out. Event availability has been updated.",
+    ],
     [
       "payment-setup-unavailable",
       "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
@@ -2002,8 +2273,16 @@ describe("event attendance paid modal", () => {
   ]) {
     it(`refreshes availability after the ${conflict} checkout conflict`, async () => {
       // Render checkout controls with an authoritative availability endpoint.
-      const { checker, attendButton, container, ticketModal, ticketTypeOptions, checkoutForm } =
-        renderPaidAttendanceDom({ availabilityUrl: "/events/test-event/availability" });
+      const {
+        checker,
+        attendButton,
+        container,
+        ticketModal,
+        ticketTypeOptions,
+        checkoutForm,
+      } = renderPaidAttendanceDom({
+        availabilityUrl: "/events/test-event/availability",
+      });
       const fetchMock = mockFetch({
         response: {
           ok: true,
@@ -2043,8 +2322,13 @@ describe("event attendance paid modal", () => {
         await waitForMicrotask();
 
         expect(ticketModal.classList.contains("hidden")).to.equal(true);
-        expect(env.current.swal.calls.at(-1)).to.include({ icon: "error", text: message });
-        expect(fetchMock.calls[0]?.[0]).to.equal("/events/test-event/availability");
+        expect(env.current.swal.calls.at(-1)).to.include({
+          icon: "error",
+          text: message,
+        });
+        expect(fetchMock.calls[0]?.[0]).to.equal(
+          "/events/test-event/availability",
+        );
         expect(container.dataset.remainingCapacity).to.equal("0");
       } finally {
         fetchMock.restore();
@@ -2054,10 +2338,11 @@ describe("event attendance paid modal", () => {
 
   it("reports approval request failures without checkout language", async () => {
     // Render approval ticket controls before simulating a request failure.
-    const { checker, attendButton, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom({
-      attendeeApprovalRequired: "true",
-      ticketPurchaseAvailable: "false",
-    });
+    const { checker, attendButton, ticketTypeOptions, checkoutForm } =
+      renderPaidAttendanceDom({
+        attendeeApprovalRequired: "true",
+        ticketPurchaseAvailable: "false",
+      });
     await initializeAttendanceDom();
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
@@ -2076,10 +2361,11 @@ describe("event attendance paid modal", () => {
 
   it("reports ticket waitlist failures without checkout language", async () => {
     // Render ticket waitlist controls before simulating a join failure.
-    const { checker, attendButton, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom({
-      ticketPurchaseAvailable: "false",
-      waitlistEnabled: "true",
-    });
+    const { checker, attendButton, ticketTypeOptions, checkoutForm } =
+      renderPaidAttendanceDom({
+        ticketPurchaseAvailable: "false",
+        waitlistEnabled: "true",
+      });
     await initializeAttendanceDom();
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
@@ -2132,8 +2418,13 @@ describe("event attendance paid modal", () => {
 
   it("closes the ticket modal from the overlay and cancel button", async () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, attendButton, ticketModal, ticketModalOverlay, ticketModalCancel } =
-      renderPaidAttendanceDom();
+    const {
+      checker,
+      attendButton,
+      ticketModal,
+      ticketModalOverlay,
+      ticketModalCancel,
+    } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     // Dispatch the HTMX after-request event.

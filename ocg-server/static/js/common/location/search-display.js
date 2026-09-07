@@ -168,11 +168,13 @@ export const getLocationTextFieldDefinitions = (state) => {
     {
       autocomplete: false,
       className: "col-span-full lg:col-span-3",
-      fieldName: state.stateCodeFieldName ? state.countryCodeFieldName : "",
+      fieldName: state.countryCodeFieldName,
       handlerName: "countryCode",
       label: "Country Code",
-      legend: "Country code used to calculate taxes.",
-      requiredForPaidTickets: true,
+      legend: isVenue
+        ? "Country code used to calculate taxes."
+        : "Two-letter country code used for regional features.",
+      requiredForPaidTickets: isVenue,
       value: state.countryCodeValue,
     },
   ];

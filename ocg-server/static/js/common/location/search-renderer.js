@@ -50,35 +50,31 @@ export const renderLocationSearchInterface = (state) => {
             aria-label="Search for a location"
             ?disabled=${state.disabled}
           />
-          ${
-            state.searchQuery
-              ? html`
-                  <div class="absolute end-1.5 top-1.5">
-                    <button
-                      type="button"
-                      class="cursor-pointer mt-0.5"
-                      @click=${state.onClearSearch}
-                      ?disabled=${state.disabled}
-                    >
-                      <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-                    </button>
-                  </div>
-                `
-              : ""
-          }
-          ${
-            shouldRenderDropdown
-              ? renderLocationSearchDropdown({
-                  highlightedIndex: state.highlightedIndex,
-                  isSearching: state.isSearching,
-                  onHighlight: state.onHighlight,
-                  onSelect: state.onSelect,
-                  searchError: state.searchError,
-                  searchQuery: state.searchQuery,
-                  searchResults: state.searchResults,
-                })
-              : ""
-          }
+          ${state.searchQuery
+            ? html`
+                <div class="absolute end-1.5 top-1.5">
+                  <button
+                    type="button"
+                    class="cursor-pointer mt-0.5"
+                    @click=${state.onClearSearch}
+                    ?disabled=${state.disabled}
+                  >
+                    <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+                  </button>
+                </div>
+              `
+            : ""}
+          ${shouldRenderDropdown
+            ? renderLocationSearchDropdown({
+                highlightedIndex: state.highlightedIndex,
+                isSearching: state.isSearching,
+                onHighlight: state.onHighlight,
+                onSelect: state.onSelect,
+                searchError: state.searchError,
+                searchQuery: state.searchQuery,
+                searchResults: state.searchResults,
+              })
+            : ""}
         </div>
         <button
           type="button"
@@ -109,13 +105,11 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
     <div class="${field.className}">
       <label for="${inputId}" class="form-label">
         ${field.label}
-        ${
-          field.requiredForPaidTickets
-            ? html`<span class="asterisk">
-                * <sup class="text-xs font-normal">(required for paid tickets)</sup>
-              </span>`
-            : ""
-        }
+        ${field.requiredForPaidTickets
+          ? html`<span class="asterisk">
+              * <sup class="text-xs font-normal">(required for paid tickets)</sup>
+            </span>`
+          : ""}
       </label>
       <div class="mt-2">
         <input
@@ -143,24 +137,12 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
  * @returns {import('lit').TemplateResult}
  */
 export const renderLocationTextFields = (state) => {
-  const hiddenCountryCodeInput =
-    state.countryCodeFieldName && !state.stateCodeFieldName
-      ? html`
-          <input
-            type="hidden"
-            name="${state.countryCodeFieldName}"
-            id="${getLocationInputId(state.componentId, state.countryCodeFieldName)}"
-            .value=${state.countryCodeValue}
-          />
-        `
-      : "";
   const disabledClasses = getLocationDisabledInputClasses(state.disabled);
   const textFields = getLocationTextFieldDefinitions(state);
   const getInputId = (inputName) => getLocationInputId(state.componentId, inputName);
 
   return html`
     <div class="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      ${hiddenCountryCodeInput}
       ${textFields.map((field) =>
         renderLocationTextField({
           disabled: state.disabled,

@@ -781,11 +781,11 @@
                   </div>
 
                   <input type="hidden" name="tax_calculation_mode" value="none">
-                  <p class="col-span-full text-sm/6 text-stone-600">
+                  <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900">
                     Organizers are responsible for tax and receipts for payments collected outside
                     this platform. Paid tickets require a complete venue in the group country
                     {%- if let Some(country_code) = external_payments.country_code %} ({{ country_code }}){% endif -%}.
-                  </p>
+                  </div>
                 {% else -%}
                   <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
                     <div class="flex flex-wrap items-center gap-2">

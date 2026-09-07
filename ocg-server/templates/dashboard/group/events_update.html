@@ -57,7 +57,7 @@
         <button id="event-preview-button"
                 type="button"
                 aria-label="Preview"
-                class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0 disabled:cursor-not-allowed disabled:opacity-50"
                 {% if !can_manage_events -%}
                   disabled title="Your role cannot preview events."
                 {% else -%}
@@ -73,7 +73,7 @@
             <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
             </path>
           </svg>
-          <span>Preview</span>
+          <span class="hidden xl:inline">Preview</span>
         </button>
         {% if event_public_url_enabled -%}
           <a id="event-public-page-link"
@@ -82,9 +82,9 @@
              rel="noopener noreferrer"
              aria-label="Public page"
              title="Public page"
-             class="group btn-primary-outline-anchor inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs">
-            <div class="svg-icon size-3 icon-eye shrink-0"></div>
-            <span>Public page</span>
+             class="group btn-primary-outline-anchor inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0">
+            <div class="svg-icon size-4 icon-eye shrink-0"></div>
+            <span class="hidden xl:inline">Public page</span>
           </a>
         {% else -%}
           <button id="event-public-page-link"
@@ -92,9 +92,9 @@
                   disabled
                   aria-label="Public page"
                   title="Event must be published."
-                  class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50">
-            <div class="svg-icon size-3 icon-eye shrink-0"></div>
-            <span>Public page</span>
+                  class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0 disabled:cursor-not-allowed disabled:opacity-50">
+            <div class="svg-icon size-4 icon-eye shrink-0"></div>
+            <span class="hidden xl:inline">Public page</span>
           </button>
         {% endif -%}
         <button id="publish-event-button"
@@ -113,7 +113,7 @@
                 data-series-success-message="You have successfully published the events."
                 data-series-error-message="An error occurred publishing these events. Please try again later."
                 data-error-message="An error occurred publishing this event. Please try again later."
-                class="group btn-primary inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                class="group btn-primary inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0 disabled:cursor-not-allowed disabled:opacity-50"
                 {% if event.canceled -%}
                   disabled title="Canceled events cannot be published."
                 {% else if event.published -%}
@@ -123,8 +123,8 @@
                 {% else -%}
                   title="Publish"
                 {% endif -%}>
-          <div class="svg-icon size-3 icon-check shrink-0 bg-white"></div>
-          <span>Publish</span>
+          <div class="svg-icon size-4 icon-check shrink-0 bg-white"></div>
+          <span class="hidden xl:inline">Publish</span>
         </button>
       </div>
     </div>
@@ -973,11 +973,11 @@
               </div>
 
               <input type="hidden" name="tax_calculation_mode" value="none">
-              <p class="col-span-full text-sm/6 text-stone-600">
+              <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900">
                 Organizers are responsible for tax and receipts for payments collected outside
                 this platform. Paid tickets require a complete venue in the group country
                 {%- if let Some(country_code) = external_payments.country_code %} ({{ country_code }}){% endif -%}.
-              </p>
+              </div>
             {% else -%}
               <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
                 <div class="flex flex-wrap items-center gap-2">
