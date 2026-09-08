@@ -76,7 +76,7 @@ pub(crate) async fn update_page(
         db.list_regions(community_id)
     )?;
     let Some(region) = regions.into_iter().find(|region| region.region_id == region_id) else {
-        return Err(HandlerError::Database("region not found".to_string()));
+        return Err(HandlerError::Rejected("region not found".to_string()));
     };
     let template = regions::UpdatePage {
         can_manage_taxonomy,

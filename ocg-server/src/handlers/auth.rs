@@ -209,7 +209,7 @@ pub(crate) async fn log_in(
     let Some(user) = auth_session
         .authenticate(Credentials::Password(creds))
         .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?
+        .map_err(|_| HandlerError::Auth)?
     else {
         messages
             .error("Invalid credentials. Please make sure you have verified your email address.");
@@ -218,10 +218,7 @@ pub(crate) async fn log_in(
     };
 
     // Log user in
-    auth_session
-        .login(&user)
-        .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?;
+    auth_session.login(&user).await.map_err(|_| HandlerError::Auth)?;
 
     // Select the first community and group as selected in the session
     select_first_community_and_group(&db, &session, &user.user_id).await?;
@@ -238,10 +235,7 @@ pub(crate) async fn log_in(
 pub(crate) async fn log_out(
     mut auth_session: AuthSession,
 ) -> Result<impl IntoResponse, HandlerError> {
-    auth_session
-        .logout()
-        .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?;
+    auth_session.logout().await.map_err(|_| HandlerError::Auth)?;
 
     Ok(Redirect::to(LOG_IN_URL))
 }
@@ -515,7 +509,7 @@ impl CallbackAuth for AuthSession {
     }
 
     async fn log_in(&mut self, user: &auth::User) -> Result<(), HandlerError> {
-        self.login(user).await.map_err(|e| HandlerError::Auth(e.to_string()))
+        self.login(user).await.map_err(|_| HandlerError::Auth)
     }
 }
 
@@ -859,7 +853,7 @@ async fn build_email_verification_notification(
     let code = Uuid::new_v4();
     let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     if base_url.is_empty() {
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "base URL is required to send verification email".to_string(),
         ));
     }
@@ -920,10 +914,7 @@ pub(crate) async fn log_out_for_stale_dashboard_context(
     auth_session: &mut AuthSession,
     headers: &HeaderMap,
 ) -> Result<Response, HandlerError> {
-    auth_session
-        .logout()
-        .await
-        .map_err(|e| HandlerError::Auth(e.to_string()))?;
+    auth_session.logout().await.map_err(|_| HandlerError::Auth)?;
 
     Ok(redirect_to_log_in_for_request(headers))
 }

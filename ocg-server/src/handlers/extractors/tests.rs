@@ -20,7 +20,10 @@ use crate::{
     auth::AuthnBackend,
     config::{HttpServerConfig, OAuth2ProviderConfig},
     db::{DynDB, mock::MockDB},
-    handlers::tests::{sample_auth_user, test_state},
+    handlers::{
+        error::INVALID_REQUEST_PAYLOAD,
+        tests::{sample_auth_user, test_state},
+    },
     services::{
         images::{DynImageStorage, MockImageStorage},
         notifications::{DynNotificationsManager, MockNotificationsManager},
@@ -695,6 +698,42 @@ async fn test_validated_form_success() {
 }
 
 #[tokio::test]
+async fn test_validated_form_deserialization_error() {
+    // Setup database mock
+    let db: DynDB = Arc::new(MockDB::new());
+
+    // Setup services mocks
+    let is: DynImageStorage = Arc::new(MockImageStorage::new());
+    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+    // Setup router with a handler that uses ValidatedForm
+    let state = test_state(db, is, nm);
+    let router = Router::new()
+        .route(
+            "/test",
+            axum::routing::post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move {
+                StatusCode::OK
+            }),
+        )
+        .with_state(state);
+
+    // Send request without the required field (deserialization should fail)
+    let request = Request::builder()
+        .method("POST")
+        .uri("/test")
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(Body::from("other=value"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the fixed body hides the parser detail
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
+}
+
+#[tokio::test]
 async fn test_validated_form_validation_error() {
     // Setup database mock
     let db: DynDB = Arc::new(MockDB::new());
@@ -722,9 +761,48 @@ async fn test_validated_form_validation_error() {
         .body(Body::from("name=+++"))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Check the garde report is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("name"));
+}
+
+#[tokio::test]
+async fn test_validated_form_qs_deserialization_error() {
+    // Setup database mock
+    let db: DynDB = Arc::new(MockDB::new());
+
+    // Setup services mocks
+    let is: DynImageStorage = Arc::new(MockImageStorage::new());
+    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+    // Setup router with a handler that uses ValidatedFormQs
+    let state = test_state(db, is, nm);
+    let router = Router::new()
+        .route(
+            "/test",
+            axum::routing::post(
+                |ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move { StatusCode::OK },
+            ),
+        )
+        .with_state(state);
+
+    // Send request without the required field (deserialization should fail)
+    let request = Request::builder()
+        .method("POST")
+        .uri("/test")
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(Body::from("tags[0]=tag1"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the fixed body hides the parser detail
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
 }
 
 #[tokio::test]
@@ -795,9 +873,12 @@ async fn test_validated_form_qs_validation_error() {
         .body(Body::from("name=+++"))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Check the garde report is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("name"));
 }
 
 // Test form structs for validation.

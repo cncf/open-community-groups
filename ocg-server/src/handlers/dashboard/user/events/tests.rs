@@ -293,9 +293,12 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    // Check the user-state rejection is surfaced instead of a 500
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        bytes.as_ref(),
+        b"only attendee attendance can be canceled from My Events"
+    );
 }
 
 #[tokio::test]

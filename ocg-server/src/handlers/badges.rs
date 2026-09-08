@@ -213,7 +213,7 @@ pub(crate) async fn user_profile_badges(
     let limit = query.limit.unwrap_or(USER_PROFILE_BADGES_LIMIT);
     let offset = query.offset.unwrap_or_default();
     if limit == 0 || limit > USER_PROFILE_BADGES_LIMIT || i32::try_from(offset).is_err() {
-        return Err(HandlerError::Deserialization(
+        return Err(HandlerError::Rejected(
             "badge pagination is outside the supported range".to_string(),
         ));
     }

@@ -207,11 +207,12 @@ user-facing rejections raise `OCG01`, everything else stays internal.
 
 | Variant | Status | Body |
 | --- | --- | --- |
-| `Auth(_)` | 401 | empty |
+| `Auth` | 401 | empty |
 | `Database(msg)` | 422 | `msg`, the `OCG01` message raised by SQL |
-| `Deserialization(msg)` | 422 | `msg` |
+| `Deserialization(detail)` | 422 | `invalid request payload`; detail logged |
 | `Forbidden` | 403 | empty |
 | `NotFound` | 404 | empty |
+| `Rejected(msg)` | 422 | `msg`, a business rejection decided in Rust |
 | `Validation(report)` | 422 | the `garde` report |
 | `Other`, `Serde`, `Session`, `Template` | 500 | empty |
 
@@ -221,13 +222,25 @@ Rules:
   SQLSTATE and maps `OCG01` to `Database(msg)`; any other database error and
   every non-database error become `Other`. Handlers propagate `anyhow`
   results with `?` and never match on message text.
+- `Database` is constructed only by `From<anyhow::Error>`. A rejection decided
+  in Rust (a missing prerequisite, an invalid state transition, a form rule
+  that `garde` cannot express) is `Rejected(msg)` with a concise, lowercase,
+  user-facing message. Wrapping such a rejection in `anyhow!` turns it into a
+  500.
 - A typed service error with an `Other(anyhow::Error)` variant converts to
   `HandlerError` through `HandlerError::from(err)`, never by wrapping in
   `HandlerError::Other(err)` directly. Wrapping directly turns an `OCG01`
-  rejection raised inside the service into a 500.
-- `Database` is meant for `OCG01` messages. Application-side rejections in
-  handlers that still construct it are being migrated to a dedicated
-  variant; do not add new sites.
+  rejection raised inside the service into a 500. Its user-facing variants
+  map to `Rejected` (`FiscalSponsorReadinessError::NotReady`,
+  `AutomaticTaxReadinessError` correctable variants).
+- `Deserialization` carries parser output that is never returned to the
+  client. `HandlerError::into_response` logs it and answers with the fixed
+  body. The `ValidatedForm` and `ValidatedFormQs` extractors,
+  `From<serde_qs::Error>`, and `FilterError::Parse` all use this variant;
+  `garde` failures (the extractors' `validate()` step, `FilterError::
+  Validation`) keep returning the field-level report through `Validation`.
+- `Auth` carries no payload. Callers that need the underlying cause in logs
+  record it before mapping.
 - Internal detail (database errors, provider errors, panics) is logged
   through the handler span and never written to the response body.
 
@@ -340,21 +353,32 @@ Deadlines, worker exit observation, readiness semantics, and blocking-work
 bounds are documented here as they land, together with the configuration
 that controls them.
 
-## Transactional reads and cache ownership
+## Cached reads and transactions
 
-Rule: process caches hold committed data only. A read inside a
-`PgUnitOfWork` must not be served from a shared cache, because the cached
-value may predate the transaction's own writes, and must not populate it,
-because uncommitted data must not become visible to other requests.
+Rule: a `#[cached]` read caches data that is long-lived and that no
+transaction mutates before reading back. The cache is a performance tool for
+reference data (`get_site_settings`, community lookups, kinds, roles,
+currency codes, timezones, dashboard statistics, notification attachments),
+not a consistency mechanism.
 
-Current behavior: the `#[cached]` reads (`get_site_settings`, community
-lookups, dashboard statistics) sit on blanket `impl<T: PgExecutor>` blocks,
-so `PgDB` and `PgUnitOfWork` share the same cache entries. Inside a
-transaction, a cache hit can return a value older than the transaction
-snapshot, and a cache miss caches the transaction's uncommitted view for the
-TTL. Until the bypass exists, code that reads a cached value after writing
-it inside the same transaction must not rely on seeing its own write, and a
-new `#[cached]` read is added only for data that transactions never mutate
-before reading. Acceptable staleness is the cache TTL; invalidation is
-unchanged. The bypass mechanism and its tests are documented here when they
-land.
+The `#[cached]` reads sit on blanket `impl<T: PgExecutor>` blocks, so `PgDB`
+and `PgUnitOfWork` share the same cache entries and there is no transactional
+bypass. A cached read inside a transaction is served from the cache like any
+other call, and a miss populates the cache from the transaction's view.
+Bypassing the cache for every transactional read was considered and rejected:
+it makes each such call a database round-trip that is invisible at the call
+site, and no current transaction reads a cached value it has written.
+
+Consequences:
+
+- Code that reads a cached value after writing it inside the same
+  transaction must not rely on seeing its own write.
+- A new `#[cached]` read is added only for data that transactions never
+  mutate before reading. If such a path is needed, read the row directly
+  with an uncached query rather than adding a bypass to the cached method.
+- Acceptable staleness is the cache TTL; invalidation is unchanged.
+
+Cache entries are keyed by the data they describe (a constant for singletons
+such as `site_settings`, otherwise the row identifier) and are global to the
+process. Every `PgDB` in a process shares them, which is the intended
+production shape (one pool, one database).

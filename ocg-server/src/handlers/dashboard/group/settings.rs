@@ -145,7 +145,7 @@ fn upcoming_event_automatic_tax_error(
     error: AutomaticTaxReadinessError,
 ) -> HandlerError {
     match automatic_tax_handler_error(error) {
-        HandlerError::Database(message) => HandlerError::Database(format!(
+        HandlerError::Rejected(message) => HandlerError::Rejected(format!(
             "cannot update fiscal sponsor: upcoming event \"{event_name}\" is not ready for payments: {message}"
         )),
         other => other,

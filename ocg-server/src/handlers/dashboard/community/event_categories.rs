@@ -82,7 +82,7 @@ pub(crate) async fn update_page(
         .into_iter()
         .find(|category| category.event_category_id == event_category_id)
     else {
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "event category not found".to_string(),
         ));
     };

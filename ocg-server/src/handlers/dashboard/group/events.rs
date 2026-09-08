@@ -301,7 +301,7 @@ pub(crate) async fn tax_rates(
         .get_group_payment_recipient(community_id, group_id)
         .await?
         .ok_or_else(|| {
-            HandlerError::Database(
+            HandlerError::Rejected(
                 "configure a fiscal sponsor before selecting Stripe Tax Rates".to_string(),
             )
         })?;
@@ -356,7 +356,7 @@ pub(crate) async fn add(
         bind_payment_validation(&mut event_payload, &payment_validation)?;
     }
     let recurring_event_payloads = RecurringEventPayloads::from_event(&event, &event_payload)
-        .map_err(|err| HandlerError::Deserialization(err.to_string()))?;
+        .map_err(|err| HandlerError::Rejected(err.to_string()))?;
 
     // Persist the events and required notifications atomically
     let event_ids = db
@@ -765,7 +765,7 @@ pub(crate) async fn update(
                 .get_group_payment_recipient(community_id, group_id)
                 .await?
                 .ok_or_else(|| {
-                HandlerError::Database(
+                HandlerError::Rejected(
                     "configure a fiscal sponsor before updating this published event".to_string(),
                 )
             })?;
@@ -918,10 +918,9 @@ fn automatic_tax_error_response(error: &AutomaticTaxReadinessError) -> axum::res
 
 /// Converts readiness failures used by event mutations into handler responses.
 pub(super) fn automatic_tax_handler_error(error: AutomaticTaxReadinessError) -> HandlerError {
-    if error.is_correctable() {
-        HandlerError::Database(error.to_string())
-    } else {
-        HandlerError::Other(anyhow::Error::new(error))
+    match error {
+        AutomaticTaxReadinessError::Unexpected(err) => HandlerError::from(err),
+        error => HandlerError::Rejected(error.to_string()),
     }
 }
 
@@ -1167,7 +1166,7 @@ async fn validate_group_fiscal_sponsor(
         && !manual_tax_rate_ids.is_empty()
     {
         // Reject manual Tax Rate selections without a connected sponsor
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "configure a fiscal sponsor before selecting Stripe Tax Rates".to_string(),
         ));
     }
@@ -1250,14 +1249,14 @@ async fn validate_publish_fiscal_sponsor(
         .iter()
         .any(|event| event.tax_calculation_mode == TicketTaxCalculationMode::Automatic)
     {
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "configure a fiscal sponsor before publishing this automatic-tax event".to_string(),
         ));
     } else if events.iter().any(|event| {
         event.tax_calculation_mode == TicketTaxCalculationMode::Manual
             && !event.manual_tax_rate_ids.is_empty()
     }) {
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "configure a fiscal sponsor before selecting Stripe Tax Rates".to_string(),
         ));
     }

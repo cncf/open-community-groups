@@ -132,7 +132,7 @@ pub(crate) async fn delete(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let Some(user) = auth_session.user.clone() else {
-        return Err(HandlerError::Auth("user not logged in".to_string()));
+        return Err(HandlerError::Auth);
     };
 
     // Remove team member from database

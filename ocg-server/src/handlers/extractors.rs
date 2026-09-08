@@ -6,6 +6,7 @@ use axum::{
     Form,
     extract::{FromRequest, FromRequestParts, Path, Request},
     http::{StatusCode, request::Parts},
+    response::{IntoResponse, Response},
 };
 use garde::Validate;
 use serde::de::DeserializeOwned;
@@ -15,6 +16,7 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails, User as AuthUser},
     config::{OAuth2Provider, OidcProvider},
+    handlers::error::HandlerError,
     router,
 };
 
@@ -174,7 +176,9 @@ impl FromRequestParts<router::State> for SelectedGroupId {
 /// Extractor that deserializes and validates form data using Axum's Form extractor.
 ///
 /// Use this for simple, flat form structures. For complex nested structures
-/// (arrays, maps), use `ValidatedFormQs` instead.
+/// (arrays, maps), use `ValidatedFormQs` instead. Deserialization failures
+/// follow the `HandlerError::Deserialization` contract (fixed body, detail
+/// logged) and validation failures return the `garde` report.
 pub(crate) struct ValidatedForm<T>(pub T);
 
 impl<T> FromRequest<router::State> for ValidatedForm<T>
@@ -182,18 +186,18 @@ where
     T: DeserializeOwned + Validate,
     T::Context: Default,
 {
-    type Rejection = (StatusCode, String);
+    type Rejection = Response;
 
     async fn from_request(req: Request, state: &router::State) -> Result<Self, Self::Rejection> {
         // Deserialize form data
         let Form(value) = Form::<T>::from_request(req, state)
             .await
-            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+            .map_err(|e| HandlerError::Deserialization(e.to_string()).into_response())?;
 
         // Validate the deserialized value
         value
             .validate()
-            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+            .map_err(|report| HandlerError::Validation(report).into_response())?;
 
         Ok(ValidatedForm(value))
     }
@@ -202,7 +206,8 @@ where
 /// Extractor that deserializes and validates form data using `serde_qs`.
 ///
 /// Use this for complex form structures with nested arrays, maps, or deep
-/// nesting that Axum's Form extractor cannot handle.
+/// nesting that Axum's Form extractor cannot handle. Failures follow the same
+/// contract as `ValidatedForm`.
 pub(crate) struct ValidatedFormQs<T>(pub T);
 
 impl<T> FromRequest<router::State> for ValidatedFormQs<T>
@@ -210,24 +215,24 @@ where
     T: DeserializeOwned + Validate,
     T::Context: Default,
 {
-    type Rejection = (StatusCode, String);
+    type Rejection = Response;
 
     async fn from_request(req: Request, state: &router::State) -> Result<Self, Self::Rejection> {
         // Read body as string
         let body = String::from_request(req, state)
             .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+            .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()).into_response())?;
 
         // Deserialize using serde_qs
         let value: T = state
             .serde_qs_de
             .deserialize_str(&body)
-            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+            .map_err(|e| HandlerError::Deserialization(e.to_string()).into_response())?;
 
         // Validate the deserialized value
         value
             .validate()
-            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+            .map_err(|report| HandlerError::Validation(report).into_response())?;
 
         Ok(ValidatedFormQs(value))
     }

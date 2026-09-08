@@ -82,7 +82,7 @@ pub(crate) async fn update_page(
         .into_iter()
         .find(|category| category.group_category_id == group_category_id)
     else {
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "group category not found".to_string(),
         ));
     };

@@ -924,7 +924,7 @@ async fn create_checkout_hold(
     // Require an explicit ticket selection before opening checkout
     let event_ticket_type_id = input
         .event_ticket_type_id
-        .ok_or_else(|| HandlerError::Database("ticket type is required".to_string()))?;
+        .ok_or_else(|| HandlerError::Rejected("ticket type is required".to_string()))?;
 
     // Prepare the attendee's current checkout purchase state
     db.prepare_event_checkout_purchase(
@@ -986,13 +986,13 @@ fn get_checkout_status_response(
     match purchase_status {
         EventPurchaseStatus::Completed => Ok(Some(EventEnrollmentStatus::Attendee)),
         EventPurchaseStatus::Pending => Ok(None),
-        EventPurchaseStatus::RefundRecoveryPending => Err(HandlerError::Database(
+        EventPurchaseStatus::RefundRecoveryPending => Err(HandlerError::Rejected(
             "checkout is unavailable while refund recovery is in progress".to_string(),
         )),
-        EventPurchaseStatus::RefundRequested => Err(HandlerError::Database(
+        EventPurchaseStatus::RefundRequested => Err(HandlerError::Rejected(
             "checkout is unavailable while a refund is in progress".to_string(),
         )),
-        _ => Err(HandlerError::Database(
+        _ => Err(HandlerError::Rejected(
             "checkout is unavailable for this purchase".to_string(),
         )),
     }

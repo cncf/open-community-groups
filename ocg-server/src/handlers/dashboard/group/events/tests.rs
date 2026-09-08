@@ -3471,7 +3471,7 @@ async fn test_publish_validation_requires_automatic_tax_location_readiness() {
 
     assert!(matches!(
         error,
-        HandlerError::Database(message)
+        HandlerError::Rejected(message)
             if message == "the state code ZZ is invalid for ES"
     ));
 }

@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB,
-    handlers::tests::*,
+    handlers::{error::INVALID_REQUEST_PAYLOAD, tests::*},
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::notifications::MockNotificationsManager,
     types::{
@@ -320,7 +320,7 @@ async fn test_page_events_invalid_filters() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(body, "invalid type: string \"invalid\", expected usize");
+    assert_eq!(body, INVALID_REQUEST_PAYLOAD);
 }
 
 #[tokio::test]
@@ -348,7 +348,7 @@ async fn test_page_groups_invalid_filters() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(body, "invalid type: string \"invalid\", expected usize");
+    assert_eq!(body, INVALID_REQUEST_PAYLOAD);
 }
 
 #[tokio::test]

@@ -2215,7 +2215,7 @@ fn test_get_checkout_status_response_rejects_refund_recovery_pending() {
     // Check the UI receives the specific recovery state error
     assert!(matches!(
         err,
-        HandlerError::Database(message)
+        HandlerError::Rejected(message)
             if message == "checkout is unavailable while refund recovery is in progress"
     ));
 }

@@ -175,7 +175,7 @@ pub(crate) async fn update(
         .get_session_proposal_co_speaker_user_id(user.user_id, session_proposal_id)
         .await?;
     let Some(previous_session_proposal) = previous_session_proposal else {
-        return Err(HandlerError::Database(
+        return Err(HandlerError::Rejected(
             "session proposal not found".to_string(),
         ));
     };

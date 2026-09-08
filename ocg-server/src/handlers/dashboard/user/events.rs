@@ -77,9 +77,9 @@ pub(crate) async fn cancel_attendance(
     // Validate the row still represents cancelable attendance
     let enrollment = db.get_event_enrollment(community_id, event_id, user.user_id).await?;
     if enrollment.status != EventEnrollmentStatus::Attendee {
-        return Err(
-            anyhow::anyhow!("only attendee attendance can be canceled from My Events").into(),
-        );
+        return Err(HandlerError::Rejected(
+            "only attendee attendance can be canceled from My Events".to_string(),
+        ));
     }
 
     // Cancel attendance and enqueue required notifications
