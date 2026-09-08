@@ -390,6 +390,7 @@ const NAVIGATION_ASSET_TIMEOUT_MS = 5_000;
 const NAVIGATION_ATTEMPT_TIMEOUT_MS = 15_000;
 const NAVIGATION_RETRY_ATTEMPTS = 12;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
+const HTMX_SETTLE_TIMEOUT_MS = 10_000;
 
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
 
@@ -790,6 +791,19 @@ export const navigateToPath = async (page, path) => {
 };
 
 /**
+ * Waits until HTMX has finished swapping and settling any in-flight content.
+ * HTMX wires swapped nodes (hx-* handlers, htmx:load) on a delayed settle step, so
+ * interacting right after a response can hit visible but not yet processed elements.
+ */
+export const waitForHtmxSettle = async (page) => {
+  await page.waitForFunction(
+    () => !document.querySelector(".htmx-request, .htmx-swapping, .htmx-settling, .htmx-added"),
+    undefined,
+    { timeout: HTMX_SETTLE_TIMEOUT_MS },
+  );
+};
+
+/**
  * Runs an action and waits for a response matching method, URL, and status.
  * Status defaults to any successful response when not provided.
  */
@@ -804,6 +818,7 @@ export const waitForActionResponse = async (page, action, { method, urlIncludes,
     ),
     action(),
   ]);
+  await waitForHtmxSettle(page);
 
   return response;
 };

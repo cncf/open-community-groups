@@ -172,7 +172,7 @@ describe("event attendance button template", () => {
       'class="mt-0.5 block text-sm font-medium text-stone-900"',
     );
     expect(macros).to.include(
-      'class="mt-0.5 block whitespace-nowrap font-mono text-stone-900"',
+      'class="mt-0.5 block break-words font-mono text-stone-900"',
     );
     ["Status", "Amount due", "Confirm by", "Reference", "Instructions"].forEach(
       (label) => expect(macros).to.include(`>${label}</span>`),

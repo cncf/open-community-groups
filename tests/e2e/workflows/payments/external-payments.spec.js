@@ -1031,9 +1031,10 @@ test.describe("external payment journeys", () => {
       // An eligible country change still cannot strand events in another country.
       queryE2eDatabase("select sync_external_payments_config(array['US', 'CA']::text[], 72, 336);");
       await navigateToPath(organizerExternalGroupPage, settingsPath);
+      // The component clears the code whenever the country name changes, so set it last.
       for (const [fieldId, value] of [
-        ["group-location-search-country_code", "CA"],
         ["group-location-search-country_name", "Canada"],
+        ["group-location-search-country_code", "CA"],
       ]) {
         await organizerExternalGroupPage.locator(`#${fieldId}`).evaluate((field, nextValue) => {
           field.value = nextValue;
@@ -1086,9 +1087,11 @@ test.describe("external payment journeys", () => {
     await expect(unpublishAlert).toBeHidden();
   });
 
-  test("copies and clears external payment form values as one unit", async ({
-    organizerExternalGroupPage,
-  }) => {
+  /**
+   * Exercises copying external payment values into a blank event form.
+   * @param {import("@playwright/test").Page} organizerExternalGroupPage
+   */
+  const copyExternalPaymentFormValues = async (organizerExternalGroupPage) => {
     // Open a blank event form in the external-payment test group.
     await organizerExternalGroupPage.setViewportSize({
       height: 900,
@@ -1100,8 +1103,9 @@ test.describe("external payment journeys", () => {
     await organizerExternalGroupPage.locator('button[data-section="payments"]').click();
     await expect(organizerExternalGroupPage.locator('[data-content="payments"]')).toBeVisible();
 
-    // Select a source event through the reusable event-copy control.
+    // Copy a source event from the details section and return to the payments section.
     const copyEvent = async (eventName) => {
+      await organizerExternalGroupPage.locator('button[data-section="details"]').click();
       const selector = organizerExternalGroupPage.locator("event-selector");
       await selector.getByRole("button", { name: "Select event" }).click();
       await selector.getByPlaceholder("Search events").fill(eventName);
@@ -1111,6 +1115,8 @@ test.describe("external payment journeys", () => {
       await expect(eventOption).toBeVisible();
       await eventOption.click();
       await expect(selector.getByRole("button", { name: "Select event" })).toContainText(eventName);
+      await organizerExternalGroupPage.locator('button[data-section="payments"]').click();
+      await expect(organizerExternalGroupPage.locator('[data-content="payments"]')).toBeVisible();
     };
 
     const externalUrl = organizerExternalGroupPage.locator("#external_payment_url");
@@ -1186,6 +1192,26 @@ test.describe("external payment journeys", () => {
     await expect(externalWindow).toHaveValue("");
     await expect(externalUrl).toHaveJSProperty("required", false);
     await expect(externalUrl).toHaveJSProperty("validationMessage", "");
+  };
+
+  test("copies and clears external payment form values as one unit", async ({
+    organizerExternalGroupPage,
+  }) => {
+    // The copy selector searches public events, which exclude seeded test events.
+    const copySourceIds = [
+      TEST_EXTERNAL_PAYMENT_EVENTS.lifecycle.id,
+      TEST_EXTERNAL_PAYMENT_EVENTS.capacity.id,
+      TEST_EXTERNAL_PAYMENT_EVENTS.copyFree.id,
+    ]
+      .map((eventId) => `'${eventId}'`)
+      .join(", ");
+    queryE2eDatabase(`update event set test_event = false where event_id in (${copySourceIds});`);
+
+    try {
+      await copyExternalPaymentFormValues(organizerExternalGroupPage);
+    } finally {
+      queryE2eDatabase(`update event set test_event = true where event_id in (${copySourceIds});`);
+    }
   });
 
   test("keeps mark-paid modal focus contained and restores page state", async ({
