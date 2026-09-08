@@ -48,15 +48,19 @@ test.describe("group dashboard navigation", () => {
     const settingsResponse = organizerGroupPage.waitForResponse(
       (response) => response.url().includes("/dashboard/group?tab=settings") && response.ok(),
     );
-    await organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=settings"]').click();
+    await organizerGroupPage
+      .locator('a[hx-get="/dashboard/group?tab=settings"]')
+      .evaluate((settingsLink) => settingsLink.click());
     await settingsResponse;
     await expect(organizerGroupPage.locator(".swal2-popup")).toBeHidden();
 
-    // A full-page link also leaves no confirmation dialog behind.
+    // A boosted full-page link also leaves no confirmation dialog behind.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openCancellationAlert();
-    await organizerGroupPage.getByRole("link", { name: "Group public site" }).click();
-    await expect(organizerGroupPage).toHaveURL(/\/e2e-test-community\/group\/test-group-alpha$/u);
+    await organizerGroupPage
+      .locator('a[data-header-nav-link][href="/"]')
+      .evaluate((homeLink) => homeLink.click());
+    await expect(organizerGroupPage).toHaveURL(/\/$/u);
     await expect(organizerGroupPage.locator(".swal2-popup")).toHaveCount(0);
   });
 

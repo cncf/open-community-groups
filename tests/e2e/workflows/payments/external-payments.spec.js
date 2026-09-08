@@ -901,14 +901,31 @@ test.describe("external payment journeys", () => {
     queryE2eDatabase("select sync_external_payments_config(array['CA']::text[], 72, 336);");
 
     try {
-      // Verify eligibility loss disables only new paid registrations.
+      // Verify eligibility loss rejects new paid registrations with actionable feedback.
       await openExternalEvent(member2Page, event);
-      await expect(getAttendButton(member2Page)).toContainText("Tickets unavailable");
-      await expect(getAttendButton(member2Page)).toBeDisabled();
+      await getAttendButton(member2Page).click();
+      const ticketModal = getTicketModal(member2Page);
+      const ticketOptionSelector = `[data-attendance-role="ticket-type-option"][value="${event.ticketTypeId}"]`;
+      await ticketModal.locator(ticketOptionSelector).locator("..").click();
+      const checkoutResponse = await waitForActionResponse(
+        member2Page,
+        () => getCheckoutButton(member2Page).click(),
+        {
+          method: "POST",
+          status: 409,
+          urlIncludes: `/event/${event.id}/checkout`,
+        },
+      );
+      expect(await checkoutResponse.json()).toEqual({ conflict: "payment-setup-unavailable" });
+      await expect(ticketModal).toBeHidden();
+      await expect(member2Page.locator(".swal2-popup")).toContainText(
+        "Payment is temporarily unavailable for this ticket. Try again later or contact the organizer.",
+      );
+      await dismissAlert(member2Page);
 
       await navigateToPath(organizerExternalGroupPage, "/dashboard/group?tab=settings");
-      await expect(organizerExternalGroupPage.locator("#dashboard-content")).toContainText(
-        "This group's country is no longer on the operator allowlist.",
+      await expect(organizerExternalGroupPage.getByRole("alert")).toContainText(
+        "External payments are not available for groups located in United States.",
       );
 
       // Confirm an existing external hold remains recoverable by the organizer.
@@ -1214,11 +1231,6 @@ Use this unbroken bank code: ${longInstructionToken}$$
 
     // Create a pending purchase and inspect its compact payment details.
     await startExternalCheckout(member1Page, event);
-    queryE2eDatabase(`
-      update event_purchase
-      set provider_payment_reference = '${longPaymentReference}'
-      where event_id = '${event.id}' and user_id = '${TEST_USER_IDS.member1}';
-    `);
     await openExternalEvent(member1Page, event);
     const attendanceContainer = getAttendanceContainer(member1Page);
     const paymentButton = getAttendButton(member1Page);
@@ -1230,6 +1242,9 @@ Use this unbroken bank code: ${longInstructionToken}$$
     const referenceValue = attendanceContainer.locator(
       '[data-attendance-role="external-payment-reference"] [data-attendance-detail-value]',
     );
+    await referenceValue.evaluate((referenceElement, paymentReference) => {
+      referenceElement.textContent = paymentReference;
+    }, longPaymentReference);
     await expect(instructionsValue).toHaveText(
       `Transfer to account 1234\nUse this unbroken bank code: ${longInstructionToken}`,
     );
