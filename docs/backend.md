@@ -46,10 +46,25 @@ Forbidden edges:
   that needs to build one is orchestrating a workflow and delegates it to
   `services/`.
 
-The interim check is `rg 'templates::|services::' ocg-server/src/db
-ocg-server/src/types` returning nothing for the migrated files; edges that
-still exist are being removed file by file and are not a precedent for new
-code.
+The test `layers::layer_dependencies_follow_backend_rules`
+(`ocg-server/src/layers.rs`, run by `just server-tests`) enforces these
+rules. It reads every Rust file under the layered directories, including
+tests, flattens the `crate::` paths each file references, and fails on a
+forbidden edge. `LAYER_EDGE_ALLOWANCES` is empty: no file crosses a layer
+edge in the wrong direction. `HANDLER_OPERATION_TYPE_ALLOWANCES` lists the
+handler files that still build `db` operation types, one entry per type; an
+allowance that no longer matches any edge also fails the test, so the list
+only shrinks. A change that removes an edge removes its allowance in the same
+change, and new code never adds one.
+
+Types that lower layers need from a higher one live in `types/` instead:
+meeting, image, and notification shapes (`types/{meetings,images,
+notifications}.rs`) are shared by `services` and `db`; the `OCG01` SQLSTATE
+constant is `db::USER_FACING_DB_ERROR_CODE`; the authentication-provider
+session key is `auth::AUTH_PROVIDER_KEY`. A `db` operation type that carries
+notification content stores it as an already serialized `serde_json::Value`
+(`db::auth::EmailVerificationNotification::template_data`), so `db` never
+depends on the email template types.
 
 ## Type ownership and placement
 
@@ -64,7 +79,11 @@ a symptom of a boundary, not the rule for where a type goes.
   `Tab`), `filters.rs`, `helpers.rs`, and `notifications.rs` email templates.
   Rendering helpers (`format_payment_amount`, `is_paid_attendee`, and
   similar) stay next to the template that uses them unless a handler or
-  service also calls them.
+  service also calls them. View models prepared for rendering
+  (`AuditLogEntry`, the event preview `Event`) and payloads that only the
+  handler deserializes and the template consumes (the event preview `Input`
+  and `Context`) stay with the template: no service or `db` operation reads
+  them.
 - `db/<module>.rs`: input and result types for that module's own SQL
   operations, consumed only by `db` and `services`.
 - `handlers/`: only response-only shapes that no other layer reads
@@ -78,7 +97,21 @@ Placement inside `types/`:
   `types/dashboard/<scope>/<section>.rs`, mirroring
   `handlers/dashboard/<scope>/<section>.rs`.
 - A type is promoted to a domain module when its second consumer appears,
-  not before.
+  not before. `PageViewsStats` (`types/analytics.rs`) and
+  `CfsSessionProposal` (`types/event.rs`) are shared by the community and
+  group analytics pages and by the group and user submission views.
+- Dashboard list defaults (`DASHBOARD_PAGINATION_LIMIT`, `default_limit`,
+  `default_offset`) live in `types/dashboard.rs` next to the `*Filters` that
+  use them.
+- The group and community team projections stay separate types
+  (`GroupTeamMember`/`GroupTeamOutput`, `CommunityTeamMember`/
+  `CommunityTeamOutput`): they already diverge (`is_admin` exists only for
+  groups) and no consumer handles both uniformly, so a generic
+  `TeamMember<R>` would couple them without a reader.
+- `DBDashboardGroup` is not split into section traits: no non-mock consumer
+  accepts a narrower trait than `DBOperations`, so a split would reorganize
+  declarations without narrowing any dependency or mock surface. Revisit when
+  a service can take a section trait.
 
 ## Naming
 
@@ -101,7 +134,9 @@ Placement inside `types/`:
 - Query strings (`serde_qs`) and form bodies.
 - Notification `template_data`.
 
-Template structs that are only rendered do not derive them.
+Template structs that are only rendered do not derive them. The explore
+`EventCard` and `GroupCard` keep `Serialize` because the results templates
+embed them through the `json` filter for the calendar and map scripts.
 
 Persisted notification payloads are a compatibility contract.
 `templates::notifications::*` structs are stored as `template_data` and read
@@ -250,6 +285,11 @@ Each behavior is proven at the cheapest layer able to prove it.
 - **Notification content** is asserted in the enqueue helper tests
   (the `tests` module of `services/notifications/enqueue.rs`), not in the
   tests of the callers.
+- **Shared sample builders** for domain types (`sample_event_summary`,
+  `sample_event_full`, `sample_site_settings`, and similar) live in
+  `types/tests.rs`; `handlers/tests.rs` re-exports them next to the handler
+  harness, and `services` or `templates` tests import them from
+  `types::tests` so test code follows the same dependency direction.
 - **Real JSON contracts** between SQL functions and Rust DTOs are asserted in
   `db/contract_tests` against a real database (`just db-contract-tests`).
 - **Real-database lifecycle behavior** that mocks cannot prove (rollback on

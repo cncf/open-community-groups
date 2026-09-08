@@ -13,11 +13,12 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::{auth::LOG_IN_URL, tests::*},
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    services::notifications::MockNotificationsManager,
     templates::notifications::GroupTeamInvitation,
-    types::group::GroupRole,
-    types::permissions::GroupPermission,
+    types::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT, group::GroupRole, notifications::NotificationKind,
+        permissions::GroupPermission,
+    },
 };
 
 use super::{GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP, NewTeamMember};
@@ -40,7 +41,7 @@ async fn test_list_page_success() {
     let member = sample_team_member(true);
     let members = vec![member.clone(), sample_team_member(false)];
     let role = sample_group_role_summary();
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 1,
@@ -137,7 +138,7 @@ async fn test_list_page_with_pagination_params() {
     let member = sample_team_member(true);
     let members = vec![member.clone(), sample_team_member(true)];
     let role = sample_group_role_summary();
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 2,
@@ -229,7 +230,7 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
     );
     let members = vec![sample_team_member(true), sample_team_member(true)];
     let role = sample_group_role_summary();
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 2,

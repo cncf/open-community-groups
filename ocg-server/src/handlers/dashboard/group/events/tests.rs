@@ -20,22 +20,21 @@ use crate::{
     db::mock::MockDB,
     handlers::{error::HandlerError, tests::*},
     services::{
-        meetings::MeetingProvider,
-        notifications::{MockNotificationsManager, NotificationKind},
+        notifications::MockNotificationsManager,
         payments::{
             AutomaticTaxReadiness, AutomaticTaxReadinessError, DynPaymentsManager,
             FiscalSponsorReadinessError, MockPaymentsManager,
         },
     },
-    templates::{
-        dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
-        notifications::{
-            EventCanceled, EventPaidConfigured, EventPublished, EventRescheduled,
-            EventSeriesCanceled, EventSeriesPublished, SpeakerWelcome,
-        },
+    templates::notifications::{
+        EventCanceled, EventPaidConfigured, EventPublished, EventRescheduled, EventSeriesCanceled,
+        EventSeriesPublished, SpeakerWelcome,
     },
     types::{
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
         event::{EventFull, EventSummary, Speaker},
+        meetings::MeetingProvider,
+        notifications::NotificationKind,
         payments::{
             EventTicketPriceWindow, EventTicketType, GroupExternalPaymentsContext, PaymentMode,
             PaymentProvider, TicketTaxBehavior, TicketTaxCalculationMode,
@@ -118,7 +117,7 @@ async fn test_add_page_renders_external_ticketing_without_payment_recipient() {
         })
         .returning(move |_, _, _| {
             Ok(
-                crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+                crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
                     sponsors: vec![sponsor.clone()],
                     total: 1,
                 },
@@ -255,7 +254,7 @@ async fn test_add_page_success() {
         })
         .returning(move |_, _, _| {
             Ok(
-                crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+                crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
                     sponsors: vec![sponsor.clone()],
                     total: 1,
                 },
@@ -505,7 +504,7 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
         })
         .returning(move |_, _, _| {
             Ok(
-                crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+                crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
                     sponsors: vec![sponsor.clone()],
                     total: 1,
                 },
@@ -653,7 +652,7 @@ async fn test_update_page_success() {
         })
         .returning(move |_, _, _| {
             Ok(
-                crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+                crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
                     sponsors: vec![sponsor.clone()],
                     total: 1,
                 },

@@ -14,7 +14,7 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{
+    types::dashboard::{
         DASHBOARD_PAGINATION_LIMIT,
         user::groups::{UserGroup, UserGroupsOutput},
     },

@@ -16,7 +16,10 @@ use crate::{
     router::serde_qs_config,
     services::payments::DynPaymentsManager,
     templates::dashboard::user::purchases,
-    types::pagination::{self, NavigationLinks},
+    types::{
+        dashboard::user::purchases::PurchaseDocumentsFilters,
+        pagination::{self, NavigationLinks},
+    },
 };
 
 #[cfg(test)]
@@ -79,9 +82,8 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<(purchases::PurchaseDocumentsFilters, purchases::ListPage), HandlerError> {
-    let filters: purchases::PurchaseDocumentsFilters =
-        serde_qs_config().deserialize_str(raw_query)?;
+) -> Result<(PurchaseDocumentsFilters, purchases::ListPage), HandlerError> {
+    let filters: PurchaseDocumentsFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
     let results = db.list_user_purchase_documents(user_id, &filters).await?;
     let navigation_links =
@@ -90,7 +92,6 @@ pub(crate) async fn prepare_list_page(
     Ok((
         filters.clone(),
         purchases::ListPage {
-            limit: filters.limit,
             navigation_links,
             offset: filters.offset,
             purchases: results.purchases,

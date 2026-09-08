@@ -13,10 +13,12 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::{dashboard::group::members::GroupCustomNotification, tests::*},
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    services::notifications::MockNotificationsManager,
     templates::notifications::GroupCustom,
-    types::permissions::GroupPermission,
+    types::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::NotificationKind,
+        permissions::GroupPermission,
+    },
 };
 
 #[tokio::test]
@@ -36,7 +38,7 @@ async fn test_list_page_success() {
     );
     let member = sample_group_member();
     let group = sample_group_summary(group_id);
-    let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+    let output = crate::types::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
     };
@@ -125,7 +127,7 @@ async fn test_list_page_with_pagination_params() {
     );
     let member = sample_group_member();
     let group = sample_group_summary(group_id);
-    let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+    let output = crate::types::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
     };

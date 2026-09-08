@@ -10,7 +10,7 @@ use crate::{
     config::HttpServerConfig,
     db::DBOperations,
     services::notifications::{
-        NewNotification, NotificationKind, load_event_notification_context,
+        load_event_notification_context,
         payloads::{
             build_event_attendance_canceled_notification, build_event_canceled_notification,
             build_event_paid_configured_notification, build_event_published_notification,
@@ -21,7 +21,10 @@ use crate::{
         EventSeriesCanceled, EventSeriesNotificationItem, EventSeriesPublished,
         SpeakerSeriesWelcome,
     },
-    types::event::{EventFull, EventSummary},
+    types::{
+        event::{EventFull, EventSummary},
+        notifications::{NewNotification, NotificationKind},
+    },
     util::{base_url_without_trailing_slash, build_event_page_link},
 };
 
@@ -500,16 +503,18 @@ mod tests {
     use crate::{
         config::HttpServerConfig,
         db::mock::MockDB,
-        handlers::tests::{
-            sample_event_full, sample_event_summary, sample_site_settings,
-            sample_template_user_with_id,
-        },
-        services::notifications::{NewNotification, NotificationKind},
         templates::notifications::{
             EventPaidConfigured, EventRescheduled, EventSeriesCanceled, EventSeriesPublished,
             SpeakerSeriesWelcome, SpeakerWelcome,
         },
-        types::event::{EventFull, EventSummary, Speaker},
+        types::{
+            event::{EventFull, EventSummary, Speaker},
+            notifications::{NewNotification, NotificationKind},
+            tests::{
+                sample_event_full, sample_event_summary, sample_site_settings,
+                sample_template_user_with_id,
+            },
+        },
     };
 
     use super::*;

@@ -10,8 +10,8 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, audit::AuditLogSort},
     types::{
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, common::AuditLogSort},
         payments::GroupExternalPaymentsContext,
         permissions::GroupPermission::{self, CheckInsWrite},
     },
@@ -502,7 +502,7 @@ async fn test_page_members_tab_success() {
     let groups = sample_user_groups_by_community(community_id, group_id);
     let group = sample_group_summary(group_id);
     let member = sample_group_member();
-    let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+    let output = crate::types::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
     };
@@ -735,7 +735,7 @@ async fn test_page_sponsors_tab_success() {
     );
     let groups = sample_user_groups_by_community(community_id, group_id);
     let sponsor = sample_group_sponsor();
-    let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+    let output = crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
         sponsors: vec![sponsor.clone()],
         total: 1,
     };
@@ -838,7 +838,7 @@ async fn test_page_team_tab_success() {
     let team_member = sample_team_member(true);
     let role = sample_group_role_summary();
     let members = vec![team_member.clone(), sample_team_member(false)];
-    let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+    let output = crate::types::dashboard::group::team::GroupTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 1,
@@ -942,7 +942,7 @@ async fn test_page_refunds_tab_preserves_history_without_payments_setup() {
         Some(group_id),
     );
     let groups = sample_user_groups_by_community(community_id, group_id);
-    let output = crate::templates::dashboard::group::refunds::RefundsOutput {
+    let output = crate::types::dashboard::group::refunds::RefundsOutput {
         events: vec![],
         financial_recoveries: vec![],
         refunds: vec![],
@@ -978,7 +978,7 @@ async fn test_page_refunds_tab_preserves_history_without_payments_setup() {
             *gid == group_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.view == crate::templates::dashboard::group::refunds::RefundsView::Active
+                && filters.view == crate::types::dashboard::group::refunds::RefundsView::Active
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_list_user_groups()
@@ -1051,7 +1051,7 @@ async fn test_page_refunds_tab_success() {
         Some(group_id),
     );
     let groups = sample_user_groups_by_community(community_id, group_id);
-    let output = crate::templates::dashboard::group::refunds::RefundsOutput {
+    let output = crate::types::dashboard::group::refunds::RefundsOutput {
         events: vec![],
         financial_recoveries: vec![],
         refunds: vec![],
@@ -1115,7 +1115,7 @@ async fn test_page_refunds_tab_success() {
             *gid == group_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.view == crate::templates::dashboard::group::refunds::RefundsView::Active
+                && filters.view == crate::types::dashboard::group::refunds::RefundsView::Active
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_site_settings()

@@ -40,7 +40,7 @@ pub(crate) struct Page {
 }
 
 /// Content section for the user dashboard home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) enum Content {
     /// User account page.
     Account(Box<auth::UpdateUserPage>),

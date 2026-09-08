@@ -20,8 +20,9 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
     router::serde_qs_config,
-    templates::dashboard::community::groups::{self, CommunityGroupsFilters, GroupInput},
+    templates::dashboard::community::groups,
     types::{
+        dashboard::community::groups::{CommunityGroupsFilters, GroupInput},
         pagination::{self, NavigationLinks},
         permissions::CommunityPermission,
         search::SearchGroupsFilters,
@@ -70,18 +71,12 @@ pub(crate) async fn add_page(
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (can_manage_groups, categories, parent_options, regions) = tokio::try_join!(
-        db.user_has_community_permission(
-            &community_id,
-            &user.user_id,
-            CommunityPermission::GroupsWrite
-        ),
+    let (categories, parent_options, regions) = tokio::try_join!(
         db.list_group_categories(community_id),
         db.list_group_parent_options(community_id, user.user_id, None),
         db.list_regions(community_id)
     )?;
     let template = groups::AddPage {
-        can_manage_groups,
         categories,
         parent_options,
         regions,
@@ -282,7 +277,6 @@ pub(crate) async fn prepare_list_page(
         groups: results.groups,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
         ts_query: filters.ts_query.clone(),
     };

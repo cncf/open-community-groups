@@ -11,11 +11,14 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::{common::SearchGroupsOutput, mock::MockDB},
+    db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, audit::AuditLogSort},
-    types::permissions::CommunityPermission,
+    types::{
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, common::AuditLogSort},
+        permissions::CommunityPermission,
+        search::SearchGroupsOutput,
+    },
 };
 
 #[tokio::test]
@@ -315,7 +318,7 @@ async fn test_page_team_tab_success() {
         sample_community_team_member(true),
         sample_community_team_member(false),
     ];
-    let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
+    let output = crate::types::dashboard::community::team::CommunityTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 1,

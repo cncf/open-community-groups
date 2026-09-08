@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    templates::community,
     types::{
+        community::CommunityStats,
         event::{EventKind, EventSummary},
         group::GroupSummary,
     },
@@ -31,7 +31,7 @@ pub(crate) trait DBCommunity {
     ) -> Result<Vec<GroupSummary>>;
 
     /// Retrieves statistical data for the community page.
-    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats>;
+    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
 
     /// Retrieves upcoming events for the community.
     async fn get_community_upcoming_events(
@@ -111,7 +111,7 @@ where
 
     /// [`DB::get_community_site_stats`]
     #[instrument(skip(self), err)]
-    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats> {
+    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<CommunityStats> {
         self.fetch_json_one(
             "select get_community_site_stats($1::uuid)",
             &[&community_id],

@@ -8,8 +8,8 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgExecutor, templates::dashboard::community::groups::GroupInput,
-    types::group::GroupParentOption,
+    db::PgExecutor,
+    types::{dashboard::community::groups::GroupInput, group::GroupParentOption},
 };
 
 /// Common database operations for dashboards.

@@ -12,39 +12,39 @@ use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    services::meetings::MeetingProvider,
-    templates::dashboard::{
-        audit::{AuditLogFilters, AuditLogsOutput},
-        group::{
-            analytics::GroupDashboardStats,
-            attendees::{AttendeesFilters, AttendeesOutput},
-            check_in::{CheckInScanResult, GroupCheckInEvent},
-            events::{
-                ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
-            },
-            home::UserGroupsByCommunity,
-            invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
-            members::{GroupMembersFilters, GroupMembersOutput},
-            refunds::{RefundsFilters, RefundsOutput},
-            sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, SponsorInput},
-            submissions::{
-                CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters,
-                CfsSubmissionsOutput,
-            },
-            team::{GroupTeamFilters, GroupTeamOutput},
-            waitlist::{WaitlistFilters, WaitlistOutput},
-        },
-    },
     types::{
         badges::{
             AwardBadgeOutcome, AwardedBadgesFilters, BadgeArtwork, BadgeAwardInput, BadgeFilters,
             BadgeInput, GroupAwardedBadges, GroupBadges,
+        },
+        dashboard::{
+            common::{AuditLogFilters, AuditLogsOutput},
+            group::{
+                analytics::GroupDashboardStats,
+                attendees::{AttendeesFilters, AttendeesOutput},
+                check_in::{CheckInScanResult, GroupCheckInEvent},
+                events::{
+                    ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
+                },
+                home::UserGroupsByCommunity,
+                invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
+                members::{GroupMembersFilters, GroupMembersOutput},
+                refunds::{RefundsFilters, RefundsOutput},
+                sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, SponsorInput},
+                submissions::{
+                    CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters,
+                    CfsSubmissionsOutput,
+                },
+                team::{GroupTeamFilters, GroupTeamOutput},
+                waitlist::{WaitlistFilters, WaitlistOutput},
+            },
         },
         event::{
             EventCategory, EventEnrollmentReconciliationOutcome, EventKindSummary as EventKind,
             EventSummary, SessionKindSummary as SessionKind,
         },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
+        meetings::MeetingProvider,
         payments::{
             GroupExternalPaymentsContext, GroupPaymentRecipient, PaymentConfigurationValidation,
             PaymentProvider,

@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{DynDB, payments::CompleteEventPurchaseRefundRecoveryInput},
+    db::{
+        DynDB,
+        payments::{AttachCheckoutSessionInput, CompleteEventPurchaseRefundRecoveryInput},
+    },
     services::notifications::DynNotificationsManager,
     types::payments::{
         GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
@@ -552,11 +555,17 @@ impl PaymentsManager for PgPaymentsManager {
 
         // Persist the canonical checkout session used for webhook reconciliation
         self.db
-            .attach_checkout_session_to_event_purchase(
-                prepared_checkout.purchase.event_purchase_id,
-                payments_provider.provider(),
-                &checkout_session,
-            )
+            .attach_checkout_session_to_event_purchase(&AttachCheckoutSessionInput {
+                event_purchase_id: prepared_checkout.purchase.event_purchase_id,
+                payment_provider: payments_provider.provider(),
+                provider_object_account_id: checkout_session.provider_object_account_id,
+                provider_session_id: checkout_session.provider_session_id,
+                redirect_url: checkout_session.redirect_url,
+                performance_location_fingerprint: checkout_session.performance_location_fingerprint,
+                product_fingerprint: checkout_session.product_fingerprint,
+                provider_tax_location_id: checkout_session.provider_tax_location_id,
+                provider_tax_product_id: checkout_session.provider_tax_product_id,
+            })
             .await?;
 
         // Reload the purchase so concurrent requests return the canonical

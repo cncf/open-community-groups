@@ -16,7 +16,10 @@ use crate::{
     handlers::{error::HandlerError, extractors::CurrentUser},
     router::serde_qs_config,
     templates::dashboard::user::submissions,
-    types::pagination::{self, NavigationLinks},
+    types::{
+        dashboard::user::submissions::CfsSubmissionsFilters,
+        pagination::{self, NavigationLinks},
+    },
 };
 
 #[cfg(test)]
@@ -91,10 +94,9 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<(submissions::CfsSubmissionsFilters, submissions::ListPage), HandlerError> {
+) -> Result<(CfsSubmissionsFilters, submissions::ListPage), HandlerError> {
     // Fetch submissions
-    let filters: submissions::CfsSubmissionsFilters =
-        serde_qs_config().deserialize_str(raw_query)?;
+    let filters: CfsSubmissionsFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
     let results = db.list_user_cfs_submissions(user_id, &filters).await?;
 
@@ -105,7 +107,6 @@ pub(crate) async fn prepare_list_page(
         submissions: results.submissions,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

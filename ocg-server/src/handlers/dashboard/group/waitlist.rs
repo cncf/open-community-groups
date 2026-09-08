@@ -16,8 +16,9 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
     router::serde_qs_config,
-    templates::dashboard::group::waitlist::{self, WaitlistFilters},
+    templates::dashboard::group::waitlist,
     types::{
+        dashboard::group::waitlist::WaitlistFilters,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },

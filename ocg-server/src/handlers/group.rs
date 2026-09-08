@@ -20,14 +20,18 @@ use crate::{
         trim_public_gallery_images,
     },
     router::PUBLIC_SHARED_CACHE_HEADERS,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::notifications::DynNotificationsManager,
     templates::{
         PageId,
         auth::UserMenuState,
         group::{self, Page},
         notifications::GroupWelcome,
     },
-    types::{event::EventKind, group::GroupFull},
+    types::{
+        event::EventKind,
+        group::GroupFull,
+        notifications::{NewNotification, NotificationKind},
+    },
     util::base_url_without_trailing_slash,
 };
 

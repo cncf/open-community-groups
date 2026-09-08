@@ -3,19 +3,20 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::cached;
-use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{BBox, PgClient, PgExecutor, Total},
+    db::{PgClient, PgExecutor},
     types::{
         badges::{BadgeStatusList, PublicUserBadge, UserBadge},
         community::{CommunityFull, CommunitySummary},
         event::{EventCfsLabel, EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
-        search::{SearchEventsFilters, SearchGroupsFilters},
+        search::{
+            SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
+        },
     },
 };
 
@@ -239,28 +240,4 @@ where
         self.fetch_json_one("select search_groups($1::jsonb)", &[&Json(filters)])
             .await
     }
-}
-
-/// Output structure for events search operations.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchEventsOutput {
-    /// Events on the current result page.
-    pub events: Vec<EventSummary>,
-    /// Total matching event count.
-    pub total: Total,
-
-    /// Optional geographic bounds covering the results.
-    pub bbox: Option<BBox>,
-}
-
-/// Output structure for groups search operations.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchGroupsOutput {
-    /// Groups on the current result page.
-    pub groups: Vec<GroupSummary>,
-    /// Total matching group count.
-    pub total: Total,
-
-    /// Optional geographic bounds covering the results.
-    pub bbox: Option<BBox>,
 }

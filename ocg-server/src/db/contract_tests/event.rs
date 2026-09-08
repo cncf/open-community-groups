@@ -5,8 +5,7 @@ use chrono::{DateTime, Utc};
 use tokio_postgres::error::{DbError, SqlState};
 
 use crate::{
-    db::{DB, event::DBEvent},
-    handlers::error::USER_FACING_DB_ERROR_CODE,
+    db::{DB, USER_FACING_DB_ERROR_CODE, event::DBEvent},
     types::{
         event::{EventEnrollmentStatus, EventKind},
         payments::{

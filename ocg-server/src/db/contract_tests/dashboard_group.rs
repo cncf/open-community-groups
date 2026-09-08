@@ -11,7 +11,7 @@ use tokio_postgres::{
 
 use crate::{
     db::{
-        DB,
+        DB, USER_FACING_DB_ERROR_CODE,
         common::DBCommon,
         dashboard::{
             group::{
@@ -22,29 +22,28 @@ use crate::{
         },
         payments::{DBPayments, EventPurchaseRefundKind, EventPurchaseRefundStatus},
     },
-    handlers::error::USER_FACING_DB_ERROR_CODE,
-    templates::dashboard::{
-        audit::AuditLogFilters,
-        group::{
-            attendees::{
-                AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
-            },
-            check_in::CheckInOutcome,
-            events::{EventInput, EventsListFilters},
-            invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
-            members::GroupMembersFilters,
-            refunds::{FinancialRecoveryKind, GroupRefundStatus, RefundsFilters, RefundsView},
-            sponsors::GroupSponsorsFilters,
-            submissions::CfsSubmissionsFilters as GroupCfsSubmissionsFilters,
-            team::GroupTeamFilters,
-            waitlist::WaitlistFilters,
-        },
-    },
     types::{
         badges::{
             AwardedBadgesFilters, Badge, BadgeArtwork, BadgeAwardDefinition, BadgeAwardInput,
             BadgeAwardSource, BadgeAwardSourceFilter, BadgeFilters, BadgeStatusList,
             PublicBadgeSnapshot, PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
+        },
+        dashboard::{
+            common::AuditLogFilters,
+            group::{
+                attendees::{
+                    AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
+                },
+                check_in::CheckInOutcome,
+                events::{EventInput, EventsListFilters},
+                invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
+                members::GroupMembersFilters,
+                refunds::{FinancialRecoveryKind, GroupRefundStatus, RefundsFilters, RefundsView},
+                sponsors::GroupSponsorsFilters,
+                submissions::CfsSubmissionsFilters as GroupCfsSubmissionsFilters,
+                team::GroupTeamFilters,
+                waitlist::WaitlistFilters,
+            },
         },
         event::{
             EventAdmissionOfferSource, EventAdmissionOfferStatus, EventDeleteEligibility,

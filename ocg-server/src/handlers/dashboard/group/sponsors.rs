@@ -19,8 +19,9 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    templates::dashboard::group::sponsors::{self, GroupSponsorsFilters, SponsorInput},
+    templates::dashboard::group::sponsors,
     types::{
+        dashboard::group::sponsors::{GroupSponsorsFilters, SponsorInput},
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -37,25 +38,9 @@ const PARTIAL_URL: &str = "/dashboard/group/sponsors";
 
 /// Displays the page to add a new sponsor.
 #[instrument(skip_all, err)]
-pub(crate) async fn add_page(
-    CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let can_manage_sponsors = db
-        .user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GroupPermission::SponsorsWrite,
-        )
-        .await?;
-    let template = sponsors::AddPage {
-        can_manage_sponsors,
-        group_id,
-    };
+    let template = sponsors::AddPage;
 
     Ok(Html(template.render()?))
 }
@@ -107,7 +92,6 @@ pub(crate) async fn update_page(
     )?;
     let template = sponsors::UpdatePage {
         can_manage_sponsors,
-        group_id,
         sponsor,
     };
 
@@ -232,7 +216,6 @@ pub(crate) async fn prepare_list_page(
         navigation_links,
         sponsors: results.sponsors,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

@@ -32,6 +32,9 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+/// Key used to store the authentication provider in the session.
+pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
+
 /// Error raised when an external-auth email is already owned by another user.
 pub(crate) const EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR: &str =
     "external auth email belongs to another user";

@@ -28,9 +28,7 @@ use crate::{
         badges::start_badge_award_workers,
         enrollment::start_enrollment_workers,
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
-        meetings::{
-            DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider,
-        },
+        meetings::{DynMeetingsProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
         payments::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
@@ -38,6 +36,7 @@ use crate::{
         },
         workers::BackgroundTasks,
     },
+    types::meetings::MeetingProvider,
 };
 
 /// Activity tracking.
@@ -50,6 +49,9 @@ mod config;
 mod db;
 /// HTTP request handlers.
 mod handlers;
+/// Layer dependency rules enforced at test time.
+#[cfg(test)]
+mod layers;
 /// HTTP router configuration and setup.
 mod router;
 /// Background services and workers.

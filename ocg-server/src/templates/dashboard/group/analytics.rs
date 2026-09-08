@@ -1,15 +1,14 @@
-//! Templates and data types for the analytics page in the group dashboard.
+//! Templates for the analytics page in the group dashboard.
 
 use askama::Template;
-use garde::Validate;
-use serde::{Deserialize, Serialize};
 
 use crate::templates::filters;
+use crate::types::dashboard::group::analytics::GroupDashboardStats;
 
 // Pages templates.
 
 /// Analytics page template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/analytics.html")]
 pub(crate) struct Page {
     /// Whether statistics include active subgroups.
@@ -18,84 +17,4 @@ pub(crate) struct Page {
     pub has_subgroups: bool,
     /// Statistics to render.
     pub stats: GroupDashboardStats,
-}
-
-// Types.
-
-/// Analytics query parameters.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct AnalyticsQuery {
-    /// Whether to include active subgroup data.
-    #[garde(skip)]
-    pub include_subgroups: Option<bool>,
-}
-
-/// Aggregated group statistics used across charts.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupDashboardStats {
-    /// Attendees statistics.
-    pub attendees: GroupAttendeesStats,
-    /// Events statistics.
-    pub events: GroupEventsStats,
-    /// Members statistics.
-    pub members: GroupMembersStats,
-    /// Page views statistics.
-    pub page_views: GroupPageViewsStats,
-}
-
-/// Statistics for attendees across a single group.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupAttendeesStats {
-    /// Monthly attendee counts.
-    pub per_month: Vec<(String, i64)>,
-    /// Running total of attendees.
-    pub running_total: Vec<(i64, i64)>,
-    /// Total attendees.
-    pub total: i64,
-}
-
-/// Statistics for events in a single group.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupEventsStats {
-    /// Monthly event counts.
-    pub per_month: Vec<(String, i64)>,
-    /// Running total of events.
-    pub running_total: Vec<(i64, i64)>,
-    /// Total events.
-    pub total: i64,
-}
-
-/// Statistics for members in a single group.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupMembersStats {
-    /// Monthly member counts.
-    pub per_month: Vec<(String, i64)>,
-    /// Running total of members.
-    pub running_total: Vec<(i64, i64)>,
-    /// Total members.
-    pub total: i64,
-}
-
-/// Statistics for group dashboard page views.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupPageViewsStats {
-    /// Event page views statistics.
-    pub events: PageViewsStats,
-    /// Group page views statistics.
-    pub group: PageViewsStats,
-    /// Total page views statistics.
-    pub total: PageViewsStats,
-    /// Total views across all tracked pages.
-    pub total_views: i64,
-}
-
-/// Statistics for page views.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct PageViewsStats {
-    /// Daily page views during the last month.
-    pub per_day_views: Vec<(String, i64)>,
-    /// Monthly page views.
-    pub per_month_views: Vec<(String, i64)>,
-    /// Total page views.
-    pub total_views: i64,
 }

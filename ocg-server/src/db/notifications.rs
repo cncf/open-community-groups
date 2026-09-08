@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    services::notifications::{Attachment, NewNotification, Notification},
+    types::notifications::{Attachment, NewNotification, Notification},
 };
 
 /// Trait that defines database operations used to manage notifications.

@@ -24,15 +24,15 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
     router::serde_qs_config,
-    services::images::{DynImageStorage, Image},
-    templates::dashboard::group::badges::{
-        ArtworkPage, AwardsFilters, AwardsPage, BadgesFilters, BadgesPage,
-    },
+    services::images::DynImageStorage,
+    templates::dashboard::group::badges::{ArtworkPage, AwardsPage, BadgesPage},
     types::{
         badges::{
             AwardedBadgesFilters, BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS,
             BADGE_NAME_MAX_CHARS, BadgeAwardInput, BadgeFilters, BadgeInput,
         },
+        dashboard::group::badges::{AwardsFilters, BadgesFilters},
+        images::Image,
         pagination::{self, NavigationLinks},
     },
 };

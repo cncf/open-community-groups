@@ -29,11 +29,9 @@ use crate::{
         },
         tests::*,
     },
-    services::{
-        notifications::{MockNotificationsManager, NotificationKind},
-        payments::MockPaymentsManager,
-    },
-    templates::{
+    services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
+    templates::notifications::{EventAttendanceCanceled, EventCustom},
+    types::{
         dashboard::{
             DASHBOARD_PAGINATION_LIMIT,
             group::{
@@ -43,10 +41,8 @@ use crate::{
                 },
             },
         },
-        notifications::{EventAttendanceCanceled, EventCustom},
-    },
-    types::{
         event::EventEnrollmentReconciliationOutcome,
+        notifications::NotificationKind,
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -784,7 +780,7 @@ async fn test_download_csv_success() {
     rejected_invitation.user.name = Some("Rejected Invite".to_string());
     rejected_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationDeclined;
     let event = sample_event_summary(event_id, group_id);
-    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
         attendees: vec![
             attendee,
@@ -944,7 +940,7 @@ async fn test_download_csv_with_answers_success() {
             ],
         },
     ];
-    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
         attendees: vec![attendee, attendee_without_answers, pending_invitation],
         total: 3,
@@ -1502,7 +1498,7 @@ async fn test_list_page_success() {
     pending_questions_attendee.manually_invited = false;
     pending_questions_attendee.user.user_id = pending_questions_attendee_id;
     let event = sample_event_summary(event_id, group_id);
-    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
         attendees: vec![attendee.clone(), pending_questions_attendee],
         total: 2,
@@ -1767,7 +1763,7 @@ async fn test_list_page_with_pagination_params() {
     );
     let attendee = sample_attendee();
     let event = sample_event_summary(event_id, group_id);
-    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 0,
         attendees: vec![attendee.clone()],
         total: 1,
@@ -1877,7 +1873,7 @@ async fn test_list_page_with_search_query() {
     attendee.user.name = Some("Ana Lopez".to_string());
     attendee.user.company = Some("Example Co".to_string());
     let event = sample_event_summary(event_id, group_id);
-    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 1,
         attendees: vec![attendee],
         total: 1,

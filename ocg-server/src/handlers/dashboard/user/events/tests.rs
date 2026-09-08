@@ -14,10 +14,13 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, user::events::UserEventRole},
+    services::notifications::MockNotificationsManager,
     templates::notifications::EventAttendanceCanceled,
-    types::event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
+    types::{
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, user::events::UserEventRole},
+        event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
+        notifications::NotificationKind,
+    },
 };
 
 #[tokio::test]
@@ -398,8 +401,8 @@ async fn test_list_page_success() {
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let output = crate::templates::dashboard::user::events::UserEventsOutput {
-        events: vec![crate::templates::dashboard::user::events::UserEvent {
+    let output = crate::types::dashboard::user::events::UserEventsOutput {
+        events: vec![crate::types::dashboard::user::events::UserEvent {
             event: sample_event_summary(event_id, group_id),
             has_paid_purchase: false,
             manually_invited: false,
@@ -474,7 +477,7 @@ async fn test_list_page_with_pagination_params() {
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let output = crate::templates::dashboard::user::events::UserEventsOutput {
+    let output = crate::types::dashboard::user::events::UserEventsOutput {
         events: vec![],
         total: 0,
     };

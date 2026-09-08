@@ -21,10 +21,13 @@ use crate::{
     handlers::tests::{TestRouterBuilder, assert_empty_response, expect_authenticated_session},
     services::{
         badges::{BadgesManager, png},
-        images::{Image, MockImageStorage},
+        images::MockImageStorage,
         notifications::MockNotificationsManager,
     },
-    types::badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge, UserBadgeIdentity},
+    types::{
+        badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge, UserBadgeIdentity},
+        images::Image,
+    },
     util::compute_hash,
 };
 

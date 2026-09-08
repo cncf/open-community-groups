@@ -10,17 +10,17 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    services::meetings::MeetingProvider,
     types::{
         community::CommunitySummary,
         group::GroupSummary,
         location::{LocationParts, build_location},
+        meetings::MeetingProvider,
         payments::{
             EventDiscountCode, EventPurchaseChargeModel, EventRefundRequestStatus, EventTicketType,
             ExternalPaymentInfo, TicketTaxBehavior, TicketTaxCalculationMode, format_amount_minor,
         },
         questionnaire::QuestionnaireQuestion,
-        user::User,
+        user::{User, UserSummary},
     },
     validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
 };
@@ -731,6 +731,27 @@ impl From<&EventFull> for EventSummary {
 
 // Other related types.
 
+/// Session proposal summary for a submission.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CfsSessionProposal {
+    /// Session proposal identifier.
+    pub session_proposal_id: Uuid,
+    /// Proposal title.
+    pub title: String,
+
+    /// Co-speaker information.
+    pub co_speaker: Option<UserSummary>,
+    /// Proposal description.
+    pub description: Option<String>,
+    /// Duration in minutes.
+    pub duration_minutes: Option<i32>,
+    /// Session proposal level identifier.
+    pub session_proposal_level_id: Option<String>,
+    /// Session proposal level display name.
+    pub session_proposal_level_name: Option<String>,
+}
+
 /// Origin of an event admission offer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
@@ -1036,6 +1057,43 @@ pub struct SessionKindSummary {
     pub display_name: String,
     /// Kind identifier.
     pub session_kind_id: String,
+}
+
+/// Session proposal details for CFS modal.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct SessionProposal {
+    /// Proposal creation time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+    /// Proposal description.
+    pub description: String,
+    /// Duration in minutes.
+    pub duration_minutes: i32,
+    /// Whether the proposal has already been submitted.
+    pub is_submitted: bool,
+    /// Session proposal identifier.
+    pub session_proposal_id: Uuid,
+    /// Session proposal level identifier.
+    pub session_proposal_level_id: String,
+    /// Session proposal level display name.
+    pub session_proposal_level_name: String,
+    /// Proposal status identifier.
+    pub session_proposal_status_id: String,
+    /// Proposal status name.
+    pub status_name: String,
+    /// Proposal title.
+    pub title: String,
+
+    /// Co-speaker information.
+    pub co_speaker: Option<UserSummary>,
+    /// Submission status identifier.
+    pub submission_status_id: Option<String>,
+    /// Submission status name.
+    pub submission_status_name: Option<String>,
+    /// Proposal last update time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 /// Event/session speaker details.

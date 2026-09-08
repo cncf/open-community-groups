@@ -16,8 +16,9 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
     router::serde_qs_config,
-    templates::dashboard::group::invitation_requests::{self, InvitationRequestsFilters},
+    templates::dashboard::group::invitation_requests,
     types::{
+        dashboard::group::invitation_requests::InvitationRequestsFilters,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },

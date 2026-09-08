@@ -15,8 +15,11 @@ use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser},
     router::serde_qs_config,
-    templates::dashboard::audit::{AuditLogFilters, AuditScope, ListPage},
-    types::pagination::{self, NavigationLinks},
+    templates::dashboard::audit::{AuditScope, ListPage},
+    types::{
+        dashboard::common::AuditLogFilters,
+        pagination::{self, NavigationLinks},
+    },
 };
 
 #[cfg(test)]

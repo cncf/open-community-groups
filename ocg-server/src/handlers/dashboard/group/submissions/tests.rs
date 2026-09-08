@@ -14,9 +14,12 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::{dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::CfsSubmissionUpdated},
-    types::permissions::GroupPermission,
+    services::notifications::MockNotificationsManager,
+    templates::notifications::CfsSubmissionUpdated,
+    types::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::NotificationKind,
+        permissions::GroupPermission,
+    },
 };
 
 #[tokio::test]
@@ -39,16 +42,14 @@ async fn test_list_page_success() {
     let cfs_submission_id = Uuid::new_v4();
     let speaker_id = Uuid::new_v4();
     let event = sample_event_summary(event_id, group_id);
-    let submissions_output =
-        crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
-            submissions: vec![sample_group_cfs_submission(
-                cfs_submission_id,
-                session_proposal_id,
-                speaker_id,
-            )],
-            total: 1,
-        };
-    let statuses = vec![sample_group_cfs_submission_status("submitted", "Submitted")];
+    let submissions_output = crate::types::dashboard::group::submissions::CfsSubmissionsOutput {
+        submissions: vec![sample_group_cfs_submission(
+            cfs_submission_id,
+            session_proposal_id,
+            speaker_id,
+        )],
+        total: 1,
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -86,9 +87,6 @@ async fn test_list_page_success() {
         .times(1)
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));
-    db.expect_list_cfs_submission_statuses_for_review()
-        .times(1)
-        .returning(move || Ok(statuses.clone()));
     db.expect_list_event_cfs_submissions()
         .times(1)
         .withf(move |eid, filters| {
@@ -139,12 +137,10 @@ async fn test_list_page_with_pagination_params() {
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
-    let submissions_output =
-        crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
-            submissions: vec![],
-            total: 0,
-        };
-    let statuses = vec![sample_group_cfs_submission_status("submitted", "Submitted")];
+    let submissions_output = crate::types::dashboard::group::submissions::CfsSubmissionsOutput {
+        submissions: vec![],
+        total: 0,
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -182,9 +178,6 @@ async fn test_list_page_with_pagination_params() {
         .times(1)
         .withf(move |eid| *eid == event_id)
         .returning(|_| Ok(vec![]));
-    db.expect_list_cfs_submission_statuses_for_review()
-        .times(1)
-        .returning(move || Ok(statuses.clone()));
     db.expect_list_event_cfs_submissions()
         .times(1)
         .withf(move |eid, filters| {
@@ -424,7 +417,7 @@ async fn test_update_success() {
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
-    let update = crate::templates::dashboard::group::submissions::CfsSubmissionUpdate {
+    let update = crate::types::dashboard::group::submissions::CfsSubmissionUpdate {
         label_ids: vec![],
         status_id: "approved".to_string(),
         action_required_message: Some("Please update your slides.".to_string()),
@@ -433,7 +426,7 @@ async fn test_update_success() {
     };
     let form_data = serde_qs::to_string(&update).unwrap();
     let notification_data =
-        crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData {
+        crate::types::dashboard::group::submissions::CfsSubmissionNotificationData {
             status_id: update.status_id.clone(),
             status_name: "Approved".to_string(),
             user_id: notification_user_id,

@@ -12,8 +12,10 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    templates::dashboard::audit::AuditLogSort, types::permissions::GroupPermission,
+    db::mock::MockDB,
+    handlers::tests::*,
+    services::notifications::MockNotificationsManager,
+    types::{dashboard::common::AuditLogSort, permissions::GroupPermission},
 };
 
 #[tokio::test]

@@ -18,14 +18,13 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{
-        dashboard::group::submissions::{
-            self, CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsSort,
-        },
-        notifications::CfsSubmissionUpdated,
-    },
+    services::notifications::DynNotificationsManager,
+    templates::{dashboard::group::submissions, notifications::CfsSubmissionUpdated},
     types::{
+        dashboard::group::submissions::{
+            CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsSort,
+        },
+        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -51,7 +50,7 @@ pub(crate) async fn list_page(
     let filters: CfsSubmissionsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     filters.validate()?;
-    let (can_manage_events, _event, labels, statuses, submissions) = tokio::try_join!(
+    let (can_manage_events, _event, labels, submissions) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -60,7 +59,6 @@ pub(crate) async fn list_page(
         ),
         db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
         db.list_event_cfs_labels(event_id),
-        db.list_cfs_submission_statuses_for_review(),
         db.list_event_cfs_submissions(event_id, &filters)
     )?;
 
@@ -73,15 +71,12 @@ pub(crate) async fn list_page(
         can_manage_events,
         event_cfs_labels: labels,
         event_id,
-        statuses,
         submissions: submissions.submissions,
         navigation_links,
         refresh_url,
         selected_event_cfs_label_ids: filters.label_ids.clone(),
         sort: filters.sort.unwrap_or(CfsSubmissionsSort::CreatedDesc).to_string(),
         total: submissions.total,
-        limit: filters.limit,
-        offset: filters.offset,
     };
 
     Ok(Html(template.render()?))

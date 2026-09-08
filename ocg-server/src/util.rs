@@ -4,7 +4,7 @@ use chrono::{DateTime, Datelike, Timelike, Utc};
 use icalendar::{Calendar, Component as _, Event, EventLike as _, EventStatus, Property};
 use sha2::{Digest, Sha256};
 
-use crate::{services::notifications::Attachment, types::event::EventSummary};
+use crate::types::{event::EventSummary, notifications::Attachment};
 
 /// Returns a base URL without trailing slashes.
 pub(crate) fn base_url_without_trailing_slash(base_url: &str) -> &str {

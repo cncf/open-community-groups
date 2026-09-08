@@ -21,13 +21,11 @@ use crate::{
     },
     handlers::tests::*,
     router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
-    services::{
-        notifications::{MockNotificationsManager, NotificationKind},
-        payments::MockPaymentsManager,
-    },
+    services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
     templates::notifications::{EventAttendanceCanceled, EventWaitlistJoined, EventWaitlistLeft},
     types::{
         event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
+        notifications::NotificationKind,
         payments::{
             EventPurchaseChargeModel, EventPurchaseStatus, EventTicketCurrentPrice,
             EventTicketType, EventTicketTypeAvailability, PreparedEventCheckout,

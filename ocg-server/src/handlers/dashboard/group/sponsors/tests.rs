@@ -15,8 +15,7 @@ use crate::{
     db::mock::MockDB,
     handlers::{dashboard::group::sponsors::SponsorFeatured, tests::*},
     services::notifications::MockNotificationsManager,
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
-    types::permissions::GroupPermission,
+    types::{dashboard::DASHBOARD_PAGINATION_LIMIT, permissions::GroupPermission},
 };
 
 #[tokio::test]
@@ -126,13 +125,6 @@ async fn test_add_page_success() {
         group_id,
         user_id,
         GroupPermission::Read,
-    );
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::SponsorsWrite,
     );
 
     // Setup notifications manager mock
@@ -378,7 +370,7 @@ async fn test_list_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let sponsor = sample_group_sponsor();
-    let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+    let output = crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
         sponsors: vec![sponsor.clone()],
         total: 1,
     };
@@ -442,7 +434,7 @@ async fn test_list_page_with_pagination_params() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let sponsor = sample_group_sponsor();
-    let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+    let output = crate::types::dashboard::group::sponsors::GroupSponsorsOutput {
         sponsors: vec![sponsor.clone()],
         total: 1,
     };

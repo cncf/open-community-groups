@@ -20,12 +20,15 @@ use crate::{
         extractors::{CurrentUser, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::notifications::DynNotificationsManager,
     templates::{
-        dashboard::user::session_proposals::{self, SessionProposalInput},
-        notifications::SessionProposalCoSpeakerInvitation,
+        dashboard::user::session_proposals, notifications::SessionProposalCoSpeakerInvitation,
     },
-    types::pagination::{self, NavigationLinks},
+    types::{
+        dashboard::user::session_proposals::{SessionProposalInput, SessionProposalsFilters},
+        notifications::{NewNotification, NotificationKind},
+        pagination::{self, NavigationLinks},
+    },
     util::base_url_without_trailing_slash,
 };
 
@@ -262,16 +265,9 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<
-    (
-        session_proposals::SessionProposalsFilters,
-        session_proposals::ListPage,
-    ),
-    HandlerError,
-> {
+) -> Result<(SessionProposalsFilters, session_proposals::ListPage), HandlerError> {
     // Fetch pending invitations, session proposal levels, and session proposals
-    let filters: session_proposals::SessionProposalsFilters =
-        serde_qs_config().deserialize_str(raw_query)?;
+    let filters: SessionProposalsFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
     let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
         db.list_user_pending_session_proposal_co_speaker_invitations(user_id),
@@ -293,7 +289,6 @@ pub(crate) async fn prepare_list_page(
         pending_co_speaker_invitations,
         navigation_links,
         total: session_proposals_output.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

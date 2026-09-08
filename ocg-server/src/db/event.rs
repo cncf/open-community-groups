@@ -9,10 +9,10 @@ use uuid::Uuid;
 
 use crate::{
     db::PgExecutor,
-    templates::event::SessionProposal,
     types::{
         event::{
-            EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome, EventSummary,
+            EventEnrollmentState, EventEnrollmentStatus, EventFull, EventLeaveOutcome,
+            EventSummary, SessionProposal,
         },
         payments::PaymentProvider,
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},

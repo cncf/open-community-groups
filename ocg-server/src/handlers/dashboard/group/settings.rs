@@ -17,8 +17,11 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     services::payments::{AutomaticTaxReadinessError, DynPaymentsManager},
-    templates::dashboard::{community::groups::GroupInput, group::settings},
-    types::{payments::PaymentConfigurationValidation, permissions::GroupPermission},
+    templates::dashboard::group::settings,
+    types::{
+        dashboard::community::groups::GroupInput, payments::PaymentConfigurationValidation,
+        permissions::GroupPermission,
+    },
 };
 
 use super::events::{automatic_tax_handler_error, event_venue};

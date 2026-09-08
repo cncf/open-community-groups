@@ -19,10 +19,8 @@ use crate::{
         TestRouterBuilder, sample_auth_user, sample_session_record, sample_tracking_server_cfg,
         test_state_with_server_cfg,
     },
-    services::{
-        images::{Image, MockImageStorage},
-        notifications::MockNotificationsManager,
-    },
+    services::{images::MockImageStorage, notifications::MockNotificationsManager},
+    types::images::Image,
 };
 
 use super::*;

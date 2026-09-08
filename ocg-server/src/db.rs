@@ -5,7 +5,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use deadpool_postgres::{Client, Pool};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::de::DeserializeOwned;
 use tokio_postgres::types::{FromSql, Json, ToSql};
 
 use crate::db::{
@@ -64,6 +64,13 @@ pub(crate) mod pool;
 
 /// Module containing database functionality for global site.
 pub(crate) mod site;
+
+/// SQLSTATE raised by database functions for user-facing rejections.
+///
+/// Database functions raise `using errcode = 'OCG01'` when the message is safe
+/// to show to the user. Any other database error, including the default
+/// `P0001` of `raise exception`, is an internal failure.
+pub(crate) const USER_FACING_DB_ERROR_CODE: &str = "OCG01";
 
 /// Database operations supported by root and transaction-scoped handles.
 pub(crate) trait DBOperations:
@@ -370,22 +377,6 @@ where
 
 /// Boxed transaction callback future.
 pub(crate) type TransactionFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
-
-/// Geographic bounding box coordinates.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct BBox {
-    /// Northeastern latitude.
-    pub ne_lat: f64,
-    /// Northeastern longitude.
-    pub ne_lon: f64,
-    /// Southwestern latitude.
-    pub sw_lat: f64,
-    /// Southwestern longitude.
-    pub sw_lon: f64,
-}
-
-/// Type alias for result counts, used in pagination.
-pub(crate) type Total = usize;
 
 #[cfg(test)]
 mod tests {

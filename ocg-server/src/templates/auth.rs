@@ -3,27 +3,19 @@
 use anyhow::Result;
 use askama::Template;
 use axum_messages::Message;
-use garde::Validate;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 
+use crate::types::user::UserDetailsInput;
 use crate::{
-    auth::AuthSession,
+    auth::{AUTH_PROVIDER_KEY, AuthSession},
     config::LoginOptions,
-    handlers::auth::AUTH_PROVIDER_KEY,
     templates::{PageId, filters, helpers::user_initials},
     types::site::SiteSettings,
-    validation::{
-        MAX_LEN_BIO, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_TIMEZONE,
-        MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt,
-        trimmed_non_empty_tag_vec, web_url_opt,
-    },
 };
 
 // Pages and sections templates.
 
 /// Template for the log in page.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "auth/log_in.html")]
 pub(crate) struct LogInPage {
     /// Login options.
@@ -44,7 +36,7 @@ pub(crate) struct LogInPage {
 }
 
 /// Template for the sign up page.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "auth/sign_up.html")]
 pub(crate) struct SignUpPage {
     /// Login options.
@@ -65,7 +57,7 @@ pub(crate) struct SignUpPage {
 }
 
 /// Template for the update user page.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "auth/update_user.html")]
 pub(crate) struct UpdateUserPage {
     /// Whether the user has a password set.
@@ -77,7 +69,7 @@ pub(crate) struct UpdateUserPage {
 }
 
 /// Template for the user menu section.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "auth/user_menu_section.html")]
 pub(crate) struct UserMenuSection {
     /// Authenticated user information.
@@ -86,87 +78,9 @@ pub(crate) struct UserMenuSection {
 
 // Types.
 
-/// User details that can be updated.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct UserDetailsInput {
-    /// User's display name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
-    pub name: String,
-    /// Whether the user receives optional notifications.
-    #[garde(skip)]
-    pub optional_notifications_enabled: bool,
-
-    /// User's biography.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_BIO))]
-    pub bio: Option<String>,
-    /// User's Bluesky URL.
-    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
-    pub bluesky_url: Option<String>,
-    /// User's city.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub city: Option<String>,
-    /// User's company.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub company: Option<String>,
-    /// User's country.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub country: Option<String>,
-    /// User's Facebook URL.
-    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
-    pub facebook_url: Option<String>,
-    /// User's GitHub URL.
-    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
-    pub github_url: Option<String>,
-    /// User's interests.
-    #[garde(custom(trimmed_non_empty_tag_vec))]
-    pub interests: Option<Vec<String>>,
-    /// User's `LinkedIn` URL.
-    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
-    pub linkedin_url: Option<String>,
-    /// User's photo URL.
-    #[garde(custom(image_url_opt))]
-    pub photo_url: Option<String>,
-    /// User's timezone.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_TIMEZONE))]
-    pub timezone: Option<String>,
-    /// User's title.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub title: Option<String>,
-    /// User's Twitter URL.
-    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
-    pub twitter_url: Option<String>,
-    /// User's website URL.
-    #[garde(custom(web_url_opt), length(max = MAX_LEN_L))]
-    pub website_url: Option<String>,
-}
-
-impl From<crate::auth::User> for UserDetailsInput {
-    fn from(user: crate::auth::User) -> Self {
-        Self {
-            name: user.name,
-            optional_notifications_enabled: user.optional_notifications_enabled,
-            bio: user.bio,
-            bluesky_url: user.bluesky_url,
-            city: user.city,
-            company: user.company,
-            country: user.country,
-            facebook_url: user.facebook_url,
-            github_url: user.github_url,
-            interests: user.interests,
-            linkedin_url: user.linkedin_url,
-            photo_url: user.photo_url,
-            timezone: user.timezone,
-            title: user.title,
-            twitter_url: user.twitter_url,
-            website_url: user.website_url,
-        }
-    }
-}
-
 /// User menu view state derived from the session (login, profile completion,
 /// and team membership flags).
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct UserMenuState {
     /// Whether the user is logged in.
     pub logged_in: bool,
@@ -200,15 +114,4 @@ impl UserMenuState {
         };
         Ok(user)
     }
-}
-
-/// Input for updating a user's password.
-#[derive(Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct UserPasswordInput {
-    /// The new password to set.
-    #[garde(length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
-    pub new_password: String,
-    /// The user's current password.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
-    pub old_password: String,
 }

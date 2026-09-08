@@ -22,7 +22,7 @@ use tower_sessions::{MemoryStore, Session};
 use uuid::Uuid;
 
 use crate::{
-    auth::{OAuth2ProviderDetails, OidcProviderDetails},
+    auth::{AUTH_PROVIDER_KEY, OAuth2ProviderDetails, OidcProviderDetails},
     config::{HttpServerConfig, LoginOptions, OAuth2Provider, OAuth2ProviderConfig},
     db::{DynDB, mock::MockDB},
     handlers::{
@@ -1540,9 +1540,9 @@ async fn test_sign_up_success() {
         .withf(move |summary, verification| {
             summary.email == "test@example.test"
                 && !matches!(summary.password.as_deref(), Some("secret-password"))
-                && verification.template_data.link
+                && verification.template_data["link"]
                     == format!("https://app.example/verify-email/{}", verification.code)
-                && verification.template_data.theme.primary_color == activation_primary_color
+                && verification.template_data["theme"]["primary_color"] == activation_primary_color
         })
         .returning(|_, _| Ok(None));
     db.expect_sign_up_user()
@@ -1551,9 +1551,10 @@ async fn test_sign_up_success() {
             !matches!(summary.password.as_deref(), Some("secret-password"))
                 && !*verify
                 && verification.as_ref().is_some_and(|verification| {
-                    verification.template_data.link
+                    verification.template_data["link"]
                         == format!("https://app.example/verify-email/{}", verification.code)
-                        && verification.template_data.theme.primary_color == sign_up_primary_color
+                        && verification.template_data["theme"]["primary_color"]
+                            == sign_up_primary_color
                 })
         })
         .returning({
@@ -1636,9 +1637,9 @@ async fn test_sign_up_activates_pre_registered_user() {
                 && summary.name == "Invited User"
                 && summary.username == "invited-user"
                 && !matches!(summary.password.as_deref(), Some("secret-password"))
-                && verification.template_data.link
+                && verification.template_data["link"]
                     == format!("https://app.example/verify-email/{}", verification.code)
-                && verification.template_data.theme.primary_color == activation_primary_color
+                && verification.template_data["theme"]["primary_color"] == activation_primary_color
         })
         .returning({
             let user = user_for_db;

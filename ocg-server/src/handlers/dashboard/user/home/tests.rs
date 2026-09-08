@@ -11,9 +11,9 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{
+    types::dashboard::{
         DASHBOARD_PAGINATION_LIMIT,
-        audit::AuditLogSort,
+        common::AuditLogSort,
         user::{
             events::UserEventsOutput, groups::UserGroupsOutput, purchases::PurchaseDocumentsOutput,
             session_proposals::SessionProposalsOutput,
@@ -401,7 +401,7 @@ async fn test_page_submissions_tab_success() {
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let submissions_output = crate::templates::dashboard::user::submissions::CfsSubmissionsOutput {
+    let submissions_output = crate::types::dashboard::user::submissions::CfsSubmissionsOutput {
         submissions: vec![],
         total: 0,
     };

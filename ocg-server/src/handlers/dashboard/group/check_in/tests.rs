@@ -14,8 +14,10 @@ use crate::{
         TestRouterBuilder, assert_html_response, sample_auth_user, sample_session_record,
     },
     services::notifications::MockNotificationsManager,
-    templates::dashboard::group::check_in::{CheckInAttendee, CheckInOutcome, CheckInScanResult},
-    types::permissions::GroupPermission,
+    types::{
+        dashboard::group::check_in::{CheckInAttendee, CheckInOutcome, CheckInScanResult},
+        permissions::GroupPermission,
+    },
 };
 
 use super::{parse_credential, scan_database_error_response};

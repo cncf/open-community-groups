@@ -15,7 +15,10 @@ use crate::{
     handlers::{error::HandlerError, extractors::CurrentUser},
     router::serde_qs_config,
     templates::dashboard::user::groups,
-    types::pagination::{self, NavigationLinks},
+    types::{
+        dashboard::user::groups::UserGroupsFilters,
+        pagination::{self, NavigationLinks},
+    },
 };
 
 #[cfg(test)]
@@ -79,9 +82,9 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<(groups::UserGroupsFilters, groups::ListPage), HandlerError> {
+) -> Result<(UserGroupsFilters, groups::ListPage), HandlerError> {
     // Fetch the user's groups
-    let filters: groups::UserGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let filters: UserGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
     let results = db.list_user_dashboard_groups(user_id, &filters).await?;
 
@@ -92,7 +95,6 @@ pub(crate) async fn prepare_list_page(
         groups: results.groups,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

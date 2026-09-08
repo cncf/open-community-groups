@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    templates::dashboard::audit::AuditLogSort,
+    types::dashboard::common::AuditLogSort,
 };
 
 #[tokio::test]

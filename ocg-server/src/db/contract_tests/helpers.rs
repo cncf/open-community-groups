@@ -10,9 +10,9 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::group::events::EventInput,
     types::{
         badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
+        dashboard::group::events::EventInput,
         payments::{EventTicketType, EventTicketTypeAvailability},
     },
 };

@@ -15,15 +15,13 @@ use crate::{
         TestRouterBuilder, assert_empty_hx_trigger_response, assert_empty_response,
         expect_authenticated_group_session, expect_group_permission,
     },
-    services::{
-        images::{Image, MockImageStorage},
-        notifications::MockNotificationsManager,
-    },
+    services::{images::MockImageStorage, notifications::MockNotificationsManager},
     types::{
         badges::{
             AwardBadgeOutcome, BadgeAwardInput, BadgeAwardSourceFilter, BadgeInput,
             GroupAwardedBadges, GroupBadges,
         },
+        images::Image,
         permissions::GroupPermission,
     },
 };

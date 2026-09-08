@@ -16,9 +16,9 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     router::CACHE_CONTROL_PUBLIC_SHARED,
-    services::notifications::{MockNotificationsManager, NotificationKind},
+    services::notifications::MockNotificationsManager,
     templates::notifications::GroupWelcome,
-    types::event::EventKind,
+    types::{event::EventKind, notifications::NotificationKind},
 };
 
 #[tokio::test]

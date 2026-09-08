@@ -24,12 +24,7 @@ use crate::{
         BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig,
         PaymentsConfig, PaymentsStripeConfig,
     },
-    db::{
-        BBox, DynDB,
-        common::{SearchEventsOutput, SearchGroupsOutput},
-        dashboard::common::User as DashboardUser,
-        mock::MockDB,
-    },
+    db::{DynDB, dashboard::common::User as DashboardUser, mock::MockDB},
     handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
@@ -37,14 +32,15 @@ use crate::{
         notifications::{DynNotificationsManager, MockNotificationsManager},
         payments::{DynPaymentsManager, MockPaymentsManager},
     },
-    templates::{
+    types::{
+        analytics::PageViewsStats,
+        community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
         dashboard::{
-            audit::{AuditLogRecord, AuditLogsOutput},
+            common::{AuditLogRecord, AuditLogsOutput},
             community::{
                 analytics::{
                     CommunityAttendeesStats, CommunityDashboardStats, CommunityMembersStats,
                     CommunityPageViewsStats, EventsStats, GroupsStats,
-                    PageViewsStats as CommunityPageViewsEntry,
                 },
                 groups::GroupInput,
                 settings::CommunityUpdate,
@@ -53,18 +49,15 @@ use crate::{
             group::{
                 analytics::{
                     GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats,
-                    GroupPageViewsStats, PageViewsStats as GroupPageViewsEntry,
+                    GroupPageViewsStats,
                 },
                 attendees::Attendee,
-                events::{CfsSubmissionStatus, EventInput, GroupEvents},
+                events::{EventInput, GroupEvents},
                 home::UserGroupsByCommunity,
                 invitation_requests::InvitationRequest,
                 members::GroupMember,
                 sponsors::SponsorInput,
-                submissions::{
-                    CfsSessionProposal as GroupCfsSessionProposal,
-                    CfsSubmission as GroupCfsSubmission,
-                },
+                submissions::CfsSubmission as GroupCfsSubmission,
                 team::GroupTeamMember,
                 waitlist::WaitlistEntry,
             },
@@ -74,31 +67,27 @@ use crate::{
                     PendingCoSpeakerInvitation, SessionProposal as UserSessionProposal,
                     SessionProposalLevel as UserSessionProposalLevel,
                 },
-                submissions::{
-                    CfsSessionProposal as UserCfsSessionProposal,
-                    CfsSubmission as UserCfsSubmission,
-                },
+                submissions::CfsSubmission as UserCfsSubmission,
             },
         },
-        event::SessionProposal as EventSessionProposal,
-    },
-    types::{
-        community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
         event::{
-            EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary,
+            CfsSessionProposal, EventCategory, EventKindSummary, SessionKindSummary,
+            SessionProposal as EventSessionProposal,
         },
-        group::{
-            GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary,
-            GroupSponsor, GroupSummary,
-        },
+        group::{GroupFull, GroupMinimal, GroupRole, GroupRoleSummary, GroupSponsor},
         payments::{
             EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentMode,
             PaymentProvider,
         },
         permissions::{CommunityPermission, GroupPermission},
-        site::{SiteSettings, Theme},
+        search::{BBox, SearchEventsOutput, SearchGroupsOutput},
         user::{User as TemplateUser, UserSummary},
     },
+};
+
+pub(crate) use crate::types::tests::{
+    sample_community_summary, sample_event_full, sample_event_summary, sample_group_category,
+    sample_group_region, sample_group_summary, sample_site_settings, sample_template_user_with_id,
 };
 
 // Helpers.
@@ -309,7 +298,7 @@ pub(crate) fn sample_attendee() -> Attendee {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         email: "attendee@example.test".to_string(),
         enrollment_status:
-            crate::templates::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed,
+            crate::types::dashboard::group::attendees::AttendeeEnrollmentStatus::Confirmed,
         manually_invited: false,
         user: sample_dashboard_user_profile(
             user_id,
@@ -405,21 +394,6 @@ pub(crate) fn sample_community_full(community_id: Uuid) -> CommunityFull {
         logo_url: "/static/images/placeholder_cncf.png".to_string(),
         name: "test".to_string(),
         ..Default::default()
-    }
-}
-
-/// Sample community summary used across tests.
-pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
-    CommunitySummary {
-        banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
-        banner_url: "https://example.test/banner.png".to_string(),
-        community_id,
-        display_name: "Test".to_string(),
-        logo_url: "/static/images/placeholder_cncf.png".to_string(),
-        name: "test".to_string(),
-        ad_banner_link_url: None,
-        ad_banner_url: None,
-        og_image_url: None,
     }
 }
 
@@ -519,22 +493,22 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             total_by_region: vec![],
         },
         page_views: CommunityPageViewsStats {
-            community: CommunityPageViewsEntry {
+            community: PageViewsStats {
                 per_day_views: vec![("2024-01-10".to_string(), 2), ("2024-01-20".to_string(), 2)],
                 per_month_views: vec![("2024-01".to_string(), 4)],
                 total_views: 4,
             },
-            events: CommunityPageViewsEntry {
+            events: PageViewsStats {
                 per_day_views: vec![("2024-01-11".to_string(), 5), ("2024-01-21".to_string(), 7)],
                 per_month_views: vec![("2024-01".to_string(), 12)],
                 total_views: 12,
             },
-            groups: CommunityPageViewsEntry {
+            groups: PageViewsStats {
                 per_day_views: vec![("2024-01-12".to_string(), 4), ("2024-01-22".to_string(), 5)],
                 per_month_views: vec![("2024-01".to_string(), 9)],
                 total_views: 9,
             },
-            total: CommunityPageViewsEntry {
+            total: PageViewsStats {
                 per_day_views: vec![
                     ("2024-01-10".to_string(), 2),
                     ("2024-01-11".to_string(), 5),
@@ -660,50 +634,6 @@ pub(crate) fn sample_event_form() -> EventInput {
     }
 }
 
-/// Sample full event with hosts, sponsors, and schedule.
-pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uuid) -> EventFull {
-    let starts_at = Utc::now() + chrono::Duration::hours(1);
-    let mut sessions = BTreeMap::new();
-    sessions.insert(starts_at.date_naive(), Vec::new());
-
-    EventFull {
-        canceled: false,
-        category_name: "Cloud Native".to_string(),
-        community: sample_community_summary(community_id),
-        created_at: Utc::now(),
-        description: "A detailed event description".to_string(),
-        event_id,
-        group: sample_group_summary(group_id),
-        hosts: vec![sample_template_user()],
-        kind: EventKind::InPerson,
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Test Event".to_string(),
-        organizers: vec![sample_template_user()],
-        published: true,
-        sessions,
-        slug: "abc1234".to_string(),
-        timezone: UTC,
-
-        banner_url: Some("https://example.test/banner.png".to_string()),
-        capacity: Some(100),
-        description_short: Some("A test event".to_string()),
-        ends_at: Some(starts_at + chrono::Duration::hours(1)),
-        latitude: Some(37.0),
-        longitude: Some(-122.0),
-        starts_at: Some(starts_at),
-        venue_address: Some("123 Main St".to_string()),
-        venue_city: Some("San Francisco".to_string()),
-        venue_country_code: Some("US".to_string()),
-        venue_country_name: Some("United States".to_string()),
-        venue_name: Some("Main Venue".to_string()),
-        venue_state_code: Some("CA".to_string()),
-        venue_state_name: Some("California".to_string()),
-        waitlist_count: 0,
-        waitlist_enabled: false,
-        ..Default::default()
-    }
-}
-
 /// Sample event invitation used in dashboard user invitation tests.
 pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
     EventInvitation {
@@ -740,85 +670,14 @@ pub(crate) fn sample_event_kind_summary() -> EventKindSummary {
     }
 }
 
-/// Sample event summary used in listings.
-pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSummary {
-    let starts_at = Utc::now() + chrono::Duration::hours(1);
-    EventSummary {
-        attendee_approval_required: false,
-        canceled: false,
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
-        event_id,
-        group_category_name: "Meetup".to_string(),
-        group_name: "Test Group".to_string(),
-        group_slug: "def5678".to_string(),
-        has_external_payment: false,
-        has_registration_questions: false,
-        has_related_events: false,
-        kind: EventKind::Virtual,
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Sample Event".to_string(),
-        published: true,
-        slug: "ghi9abc".to_string(),
-        test_event: false,
-        timezone: UTC,
-
-        attendee_count: None,
-        capacity: None,
-        created_by_display_name: None,
-        created_by_username: None,
-        delete_eligibility: None,
-        description_short: Some("A brief summary of the sample event".to_string()),
-        ends_at: Some(starts_at + chrono::Duration::hours(2)),
-        event_series_id: None,
-        group_slug_pretty: None,
-        latitude: Some(42.3601),
-        longitude: Some(-71.0589),
-        meeting_join_instructions: None,
-        meeting_join_url: Some("https://example.test/meeting".to_string()),
-        meeting_password: None,
-        meeting_provider: None,
-        payment_currency_code: None,
-        popover_html: None,
-        registration_ends_at: None,
-        registration_starts_at: None,
-        remaining_capacity: None,
-        starts_at: Some(starts_at),
-        ticket_types: None,
-        venue_address: Some("456 Sample Rd".to_string()),
-        venue_city: Some("Boston".to_string()),
-        venue_country_code: Some("US".to_string()),
-        venue_country_name: Some("United States".to_string()),
-        venue_name: Some("Sample Venue".to_string()),
-        venue_state_code: Some("MA".to_string()),
-        venue_state_name: Some("Massachusetts".to_string()),
-        waitlist_count: 0,
-        waitlist_enabled: false,
-        zip_code: Some("02101".to_string()),
-    }
-}
-
 /// Sample filters options for explore page tests.
-pub(crate) fn sample_filters_options() -> crate::templates::site::explore::FiltersOptions {
-    crate::templates::site::explore::FiltersOptions::default()
-}
-
-/// Sample group category reused across tests.
-pub(crate) fn sample_group_category() -> GroupCategory {
-    GroupCategory {
-        groups_count: Some(0),
-        group_category_id: Uuid::new_v4(),
-        name: "Meetup".to_string(),
-        normalized_name: "meetup".to_string(),
-        order: Some(1),
-    }
+pub(crate) fn sample_filters_options() -> crate::types::site::explore::FiltersOptions {
+    crate::types::site::explore::FiltersOptions::default()
 }
 
 /// Sample CFS session proposal used in group dashboard tests.
-pub(crate) fn sample_group_cfs_session_proposal(
-    session_proposal_id: Uuid,
-) -> GroupCfsSessionProposal {
-    GroupCfsSessionProposal {
+pub(crate) fn sample_group_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
+    CfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
 
@@ -855,26 +714,15 @@ pub(crate) fn sample_group_cfs_submission(
     }
 }
 
-/// Sample CFS submission status used in group dashboard tests.
-pub(crate) fn sample_group_cfs_submission_status(
-    status_id: &str,
-    display_name: &str,
-) -> CfsSubmissionStatus {
-    CfsSubmissionStatus {
-        cfs_submission_status_id: status_id.to_string(),
-        display_name: display_name.to_string(),
-    }
-}
-
 /// Sample group events aggregation for dashboard pages.
 pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents {
     let summary = sample_event_summary(event_id, group_id);
     GroupEvents {
-        past: crate::templates::dashboard::group::events::PaginatedEvents {
+        past: crate::types::dashboard::group::events::PaginatedEvents {
             events: vec![summary.clone()],
             total: 1,
         },
-        upcoming: crate::templates::dashboard::group::events::PaginatedEvents {
+        upcoming: crate::types::dashboard::group::events::PaginatedEvents {
             events: vec![summary],
             total: 1,
         },
@@ -960,18 +808,6 @@ pub(crate) fn sample_group_payment_recipient() -> GroupPaymentRecipient {
     }
 }
 
-/// Sample group region definition reused across tests.
-pub(crate) fn sample_group_region() -> GroupRegion {
-    GroupRegion {
-        name: "North America".to_string(),
-        normalized_name: "north-america".to_string(),
-        region_id: Uuid::new_v4(),
-
-        groups_count: Some(0),
-        order: Some(1),
-    }
-}
-
 /// Sample group stats used in analytics tests.
 pub(crate) fn sample_group_stats() -> GroupDashboardStats {
     GroupDashboardStats {
@@ -991,17 +827,17 @@ pub(crate) fn sample_group_stats() -> GroupDashboardStats {
             total: 2,
         },
         page_views: GroupPageViewsStats {
-            events: GroupPageViewsEntry {
+            events: PageViewsStats {
                 per_day_views: vec![("2024-01-10".to_string(), 3), ("2024-01-20".to_string(), 4)],
                 per_month_views: vec![("2024-01".to_string(), 7)],
                 total_views: 7,
             },
-            group: GroupPageViewsEntry {
+            group: PageViewsStats {
                 per_day_views: vec![("2024-01-11".to_string(), 1), ("2024-01-21".to_string(), 3)],
                 per_month_views: vec![("2024-01".to_string(), 4)],
                 total_views: 4,
             },
-            total: GroupPageViewsEntry {
+            total: PageViewsStats {
                 per_day_views: vec![
                     ("2024-01-10".to_string(), 3),
                     ("2024-01-11".to_string(), 1),
@@ -1033,35 +869,6 @@ pub(crate) fn sample_group_sponsor() -> GroupSponsor {
         name: "Sponsor".to_string(),
 
         website_url: Some("https://example.test".to_string()),
-    }
-}
-
-/// Sample group summary used by multiple fixtures.
-pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
-    GroupSummary {
-        active: true,
-        category: sample_group_category(),
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
-        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-        group_id,
-        logo_url: "https://example.test/logo.png".to_string(),
-        name: "Test Group".to_string(),
-        slug: "npq6789".to_string(),
-
-        banner_mobile_url: Some("https://example.test/banner_mobile.png".to_string()),
-        banner_url: Some("https://example.test/banner.png".to_string()),
-        city: Some("San Francisco".to_string()),
-        country_code: Some("US".to_string()),
-        country_name: Some("United States".to_string()),
-        description_short: Some("An example summary for the sample group".to_string()),
-        latitude: Some(37.0),
-        longitude: Some(-122.0),
-        og_image_url: None,
-        popover_html: None,
-        region: Some(sample_group_region()),
-        slug_pretty: None,
-        state: Some("CA".to_string()),
     }
 }
 
@@ -1272,39 +1079,25 @@ pub(crate) fn sample_site_home_stats() -> crate::types::site::SiteHomeStats {
     crate::types::site::SiteHomeStats::default()
 }
 
-/// Sample site settings used across tests.
-pub(crate) fn sample_site_settings() -> SiteSettings {
-    SiteSettings {
-        description: "Test site".to_string(),
-        site_id: Uuid::new_v4(),
-        theme: Theme {
-            palette: BTreeMap::new(),
-            primary_color: "#000000".to_string(),
-        },
-        title: "Test Site".to_string(),
-        ..Default::default()
-    }
-}
-
 /// Sample site stats for stats page tests.
-pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
-    crate::templates::site::stats::SiteStats {
-        attendees: crate::templates::site::stats::SiteStatsSection {
+pub(crate) fn sample_site_stats() -> crate::types::site::stats::SiteStats {
+    crate::types::site::stats::SiteStats {
+        attendees: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
         },
-        events: crate::templates::site::stats::SiteStatsSection {
+        events: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
         },
-        groups: crate::templates::site::stats::SiteStatsSection {
+        groups: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
         },
-        members: crate::templates::site::stats::SiteStatsSection {
+        members: crate::types::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
             total: 0,
@@ -1338,28 +1131,6 @@ pub(crate) fn sample_team_member(accepted: bool) -> GroupTeamMember {
     }
 }
 
-/// Sample template user used in event fixtures.
-pub(crate) fn sample_template_user() -> TemplateUser {
-    TemplateUser {
-        user_id: Uuid::new_v4(),
-        username: "organizer".to_string(),
-
-        name: Some("Organizer".to_string()),
-        ..Default::default()
-    }
-}
-
-/// Sample template user with a specific user ID.
-pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
-    TemplateUser {
-        user_id,
-        username: "speaker".to_string(),
-
-        name: Some("Speaker".to_string()),
-        ..Default::default()
-    }
-}
-
 /// Sample paid event payload for dashboard group event form tests.
 pub(crate) fn sample_paid_event_body() -> String {
     let event_form = sample_event_form();
@@ -1388,10 +1159,8 @@ pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
 }
 
 /// Sample CFS session proposal used in user dashboard tests.
-pub(crate) fn sample_user_cfs_session_proposal(
-    session_proposal_id: Uuid,
-) -> UserCfsSessionProposal {
-    UserCfsSessionProposal {
+pub(crate) fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> CfsSessionProposal {
+    CfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
 

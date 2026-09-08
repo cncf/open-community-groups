@@ -37,20 +37,17 @@ use crate::{
     router::serde_qs_config,
     services::{
         notifications::{
-            NewNotification, NotificationKind,
             enqueue::enqueue_event_attendance_cancellation_notifications,
             load_event_notification_context,
         },
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
-    templates::{
-        dashboard::group::attendees::{
-            self, Attendee, AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter,
-            AttendeesFilters,
-        },
-        notifications::EventCustom,
-    },
+    templates::{dashboard::group::attendees, notifications::EventCustom},
     types::{
+        dashboard::group::attendees::{
+            Attendee, AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
+        },
+        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
         payments::EventPurchaseChargeModel,
         permissions::GroupPermission,

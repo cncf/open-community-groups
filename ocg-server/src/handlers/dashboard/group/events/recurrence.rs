@@ -10,7 +10,7 @@ use serde_json::{Map, Value, json};
 use uuid::Uuid;
 
 use crate::{
-    templates::dashboard::group::events::{EventInput, EventRecurrencePattern},
+    types::dashboard::group::events::{EventInput, EventRecurrencePattern},
     validation::MAX_RECURRING_ADDITIONAL_OCCURRENCES,
 };
 

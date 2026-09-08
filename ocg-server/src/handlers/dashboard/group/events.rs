@@ -25,7 +25,6 @@ use crate::{
     },
     router::serde_qs_config,
     services::{
-        meetings::MeetingProvider,
         notifications::enqueue::{
             enqueue_event_canceled_notification, enqueue_event_paid_configured_notifications,
             enqueue_event_published_notifications, enqueue_event_rescheduled_notification,
@@ -34,12 +33,14 @@ use crate::{
         },
         payments::{AutomaticTaxReadinessError, DynPaymentsManager},
     },
-    templates::dashboard::group::{
-        events::{self, EventInput, EventsListFilters, EventsTab},
-        sponsors::GroupSponsorsFilters,
-    },
+    templates::dashboard::group::events,
     types::{
+        dashboard::group::{
+            events::{EventInput, EventsListFilters, EventsTab},
+            sponsors::GroupSponsorsFilters,
+        },
         event::{EventFull, EventSummary},
+        meetings::MeetingProvider,
         pagination::{self, NavigationLinks},
         payments::{
             PaymentConfigurationValidation, TicketTaxBehavior, TicketTaxCalculationMode,
@@ -114,13 +115,11 @@ pub(crate) async fn add_page(
         group_id,
         meetings_enabled,
         meetings_max_participants,
-        payments_enabled: payments_cfg.is_some(),
         payment_currency_codes,
         payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         session_kinds,
         sponsors: sponsors.sponsors,
         timezones,
-        payment_recipient,
     };
 
     Ok(Html(template.render()?))
@@ -225,16 +224,13 @@ pub(crate) async fn update_page(
         event,
         event_kinds,
         external_payments,
-        group_id,
         meetings_enabled,
         meetings_max_participants,
-        payments_enabled: payments_cfg.is_some(),
         payment_currency_codes,
         payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         session_kinds,
         sponsors: sponsors.sponsors,
         timezones,
-        payment_recipient,
     };
 
     Ok(Html(template.render()?))
@@ -975,7 +971,6 @@ pub(crate) async fn prepare_list_page(
         events_tab: filters.current_tab(),
         past_navigation_links,
         upcoming_navigation_links,
-        limit: filters.limit,
         past_offset: filters.past_offset,
         upcoming_offset: filters.upcoming_offset,
     };

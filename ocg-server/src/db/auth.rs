@@ -10,9 +10,10 @@ use uuid::Uuid;
 use crate::{
     auth::{ExternalUserProfile, User},
     db::PgExecutor,
-    templates::{auth::UserDetailsInput, notifications::EmailVerification},
-    types::permissions::{CommunityPermission, GroupPermission},
-    types::user::UserProvider,
+    types::{
+        permissions::{CommunityPermission, GroupPermission},
+        user::{UserDetailsInput, UserProvider},
+    },
 };
 
 /// Trait for database operations related to authentication and authorization.
@@ -130,7 +131,6 @@ where
         profile: &ExternalUserProfile,
         verification: &EmailVerificationNotification,
     ) -> Result<Option<(User, Uuid)>> {
-        let template_data = serde_json::to_value(&verification.template_data)?;
         let db = self.client().await?;
         let row = db
             .query_opt(
@@ -142,7 +142,11 @@ where
                     $3::jsonb
                 );
                 ",
-                &[&Json(profile), &verification.code, &template_data],
+                &[
+                    &Json(profile),
+                    &verification.code,
+                    &verification.template_data,
+                ],
             )
             .await?;
 
@@ -287,10 +291,8 @@ where
         verification: Option<EmailVerificationNotification>,
     ) -> Result<(User, Option<Uuid>)> {
         let verification_code = verification.as_ref().map(|verification| verification.code);
-        let verification_template_data = verification
-            .as_ref()
-            .map(|verification| serde_json::to_value(&verification.template_data))
-            .transpose()?;
+        let verification_template_data =
+            verification.as_ref().map(|verification| &verification.template_data);
 
         let db = self.client().await?;
         let row = db
@@ -422,6 +424,6 @@ where
 pub(crate) struct EmailVerificationNotification {
     /// Verification code stored in the database and sent to the user.
     pub(crate) code: Uuid,
-    /// Typed notification template data serialized for enqueueing.
-    pub(crate) template_data: EmailVerification,
+    /// Serialized `EmailVerification` template data for enqueueing.
+    pub(crate) template_data: serde_json::Value,
 }

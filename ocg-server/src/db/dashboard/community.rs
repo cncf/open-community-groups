@@ -9,20 +9,20 @@ use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    templates::dashboard::{
-        audit::{AuditLogFilters, AuditLogsOutput},
-        community::{
-            analytics::CommunityDashboardStats,
-            event_categories::EventCategoryInput,
-            group_categories::GroupCategoryInput,
-            groups::GroupInput,
-            regions::RegionInput,
-            settings::CommunityUpdate,
-            team::{CommunityTeamFilters, CommunityTeamOutput},
-        },
-    },
     types::{
         community::{CommunityRole, CommunityRoleSummary, CommunitySummary},
+        dashboard::{
+            common::{AuditLogFilters, AuditLogsOutput},
+            community::{
+                analytics::CommunityDashboardStats,
+                event_categories::EventCategoryInput,
+                group_categories::GroupCategoryInput,
+                groups::GroupInput,
+                regions::RegionInput,
+                settings::CommunityUpdate,
+                team::{CommunityTeamFilters, CommunityTeamOutput},
+            },
+        },
         group::{GroupCategory, GroupRegion},
     },
 };

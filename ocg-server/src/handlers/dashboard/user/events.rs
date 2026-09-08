@@ -21,6 +21,7 @@ use crate::{
     services::notifications::enqueue::enqueue_event_attendance_cancellation_notifications,
     templates::dashboard::user::events,
     types::{
+        dashboard::user::events::UserEventsFilters,
         event::EventEnrollmentStatus,
         pagination::{self, NavigationLinks},
         questionnaire::RequiredQuestionnaireAnswersForm,
@@ -158,9 +159,9 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
     raw_query: &str,
-) -> Result<(events::UserEventsFilters, events::ListPage), HandlerError> {
+) -> Result<(UserEventsFilters, events::ListPage), HandlerError> {
     // Fetch upcoming events
-    let filters: events::UserEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let filters: UserEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
     let results = db.list_user_events(user_id, &filters).await?;
 
@@ -171,7 +172,6 @@ pub(crate) async fn prepare_list_page(
         events: results.events,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

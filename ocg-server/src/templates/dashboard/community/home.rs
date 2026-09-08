@@ -44,7 +44,7 @@ pub(crate) struct Page {
 }
 
 /// Content section for the community dashboard home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) enum Content {
     /// Analytics page.
     Analytics(Box<analytics::Page>),

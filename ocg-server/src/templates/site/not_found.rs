@@ -1,7 +1,6 @@
 //! Templates for the global site not found page.
 
 use askama::Template;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     templates::{PageId, auth::UserMenuState, filters, helpers::user_initials},
@@ -11,7 +10,7 @@ use crate::{
 // Pages templates.
 
 /// Template for rendering the not found page.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template)]
 #[template(path = "site/not_found/page.html")]
 pub(crate) struct Page {
     /// Identifier for the current page.

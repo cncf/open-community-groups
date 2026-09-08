@@ -13,8 +13,7 @@ use crate::{
     handlers::tests::*,
     router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::MockNotificationsManager,
-    templates::community::Stats,
-    types::event::EventKind,
+    types::{community::CommunityStats, event::EventKind},
 };
 
 #[tokio::test]
@@ -56,7 +55,7 @@ async fn test_page_success() {
     db.expect_get_community_site_stats()
         .times(1)
         .withf(move |id| *id == community_id)
-        .returning(move |_| Ok(Stats::default()));
+        .returning(move |_| Ok(CommunityStats::default()));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));

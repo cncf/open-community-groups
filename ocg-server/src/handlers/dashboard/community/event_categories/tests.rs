@@ -104,46 +104,6 @@ async fn test_add_invalid_payload() {
 }
 
 #[tokio::test]
-async fn test_add_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
-    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Err(anyhow!("db error")));
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/community/event-categories/add")
-        .header(HOST, "example.test")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
 async fn test_add_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -154,12 +114,6 @@ async fn test_add_page_success() {
     let mut db = MockDB::new();
     expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
-    expect_community_permission(
-        &mut db,
-        community_id,
-        user_id,
-        CommunityPermission::TaxonomyWrite,
-    );
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

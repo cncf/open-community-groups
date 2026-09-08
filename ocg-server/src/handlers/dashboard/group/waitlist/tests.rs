@@ -14,14 +14,16 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{
-        DASHBOARD_PAGINATION_LIMIT,
-        group::{
-            PresenceFilter,
-            waitlist::{WaitlistOutput, WaitlistSort},
+    types::{
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            group::{
+                PresenceFilter,
+                waitlist::{WaitlistOutput, WaitlistSort},
+            },
         },
+        permissions::GroupPermission,
     },
-    types::permissions::GroupPermission,
 };
 
 #[tokio::test]

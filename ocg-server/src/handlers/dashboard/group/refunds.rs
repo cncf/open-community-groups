@@ -20,8 +20,9 @@ use crate::{
     },
     router::serde_qs_config,
     services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager},
-    templates::dashboard::group::refunds::{self, RefundsFilters, RefundsView, RefundsViewOption},
+    templates::dashboard::group::refunds,
     types::{
+        dashboard::group::refunds::RefundsFilters,
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -169,19 +170,10 @@ pub(crate) async fn prepare_list_page(
         db.list_group_refunds(group_id, &filters)
     )?;
 
-    // Build pagination and operational view links
+    // Build pagination links
     let navigation_links =
         NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
     let refresh_url = pagination::build_url(PARTIAL_URL, &filters)?;
-    let views = [
-        (RefundsView::Active, "Active"),
-        (RefundsView::Attention, "Needs attention"),
-        (RefundsView::Completed, "Completed"),
-        (RefundsView::All, "All"),
-    ]
-    .into_iter()
-    .map(|(view, label)| build_view_option(&filters, view, label))
-    .collect::<Result<Vec<_>>>()?;
     let template = refunds::ListPage {
         can_manage_events,
         events: results.events,
@@ -191,9 +183,7 @@ pub(crate) async fn prepare_list_page(
         refunds: results.refunds,
         total: results.total,
         view: filters.view,
-        views,
         event_id: filters.event_id,
-        limit: filters.limit,
         offset: filters.offset,
         ts_query: filters.ts_query.clone(),
     };
@@ -232,23 +222,4 @@ pub(crate) struct RefundRecoveryInput {
     /// Reference for the external refund.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub recovery_reference: String,
-}
-
-/// Builds a dashboard and partial link for one operational refund view.
-fn build_view_option(
-    filters: &RefundsFilters,
-    view: RefundsView,
-    label: &str,
-) -> Result<RefundsViewOption> {
-    // Reset pagination when moving between operational views
-    let mut view_filters = filters.clone();
-    view_filters.offset = Some(0);
-    view_filters.view = view;
-
-    Ok(RefundsViewOption {
-        dashboard_url: pagination::build_url(DASHBOARD_URL, &view_filters)?,
-        is_selected: filters.view == view,
-        label: label.to_string(),
-        partial_url: pagination::build_url(PARTIAL_URL, &view_filters)?,
-    })
 }

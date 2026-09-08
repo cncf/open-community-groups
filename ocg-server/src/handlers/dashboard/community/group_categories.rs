@@ -16,8 +16,11 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
-    templates::dashboard::community::group_categories::{self, GroupCategoryInput},
-    types::permissions::CommunityPermission,
+    templates::dashboard::community::group_categories,
+    types::{
+        dashboard::community::group_categories::GroupCategoryInput,
+        permissions::CommunityPermission,
+    },
 };
 
 #[cfg(test)]
@@ -51,22 +54,9 @@ pub(crate) async fn list_page(
 
 /// Displays the form to create a new group category.
 #[instrument(skip_all, err)]
-pub(crate) async fn add_page(
-    CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
-    State(db): State<DynDB>,
-) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let can_manage_taxonomy = db
-        .user_has_community_permission(
-            &community_id,
-            &user.user_id,
-            CommunityPermission::TaxonomyWrite,
-        )
-        .await?;
-    let template = group_categories::AddPage {
-        can_manage_taxonomy,
-    };
+    let template = group_categories::AddPage;
 
     Ok(Html(template.render()?))
 }

@@ -12,11 +12,13 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::{common::SearchGroupsOutput, mock::MockDB},
+    db::mock::MockDB,
     handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
     services::notifications::MockNotificationsManager,
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
-    types::{group::GroupParentOption, permissions::CommunityPermission},
+    types::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT, group::GroupParentOption,
+        permissions::CommunityPermission, search::SearchGroupsOutput,
+    },
 };
 
 #[tokio::test]
@@ -266,14 +268,6 @@ async fn test_add_page_success() {
             *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
-        })
-        .returning(|_, _, _| Ok(true));
     db.expect_list_group_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)
@@ -331,14 +325,6 @@ async fn test_add_page_db_error() {
         .times(1)
         .withf(move |cid, uid, permission| {
             *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_group_categories()

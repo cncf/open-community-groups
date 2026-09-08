@@ -14,7 +14,7 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
-    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, user::purchases::PurchaseDocumentsOutput},
+    types::dashboard::{DASHBOARD_PAGINATION_LIMIT, user::purchases::PurchaseDocumentsOutput},
 };
 
 #[tokio::test]

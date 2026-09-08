@@ -20,12 +20,10 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::{NewNotification, NotificationKind},
-    templates::{
-        dashboard::group::members::{self, GroupMembersFilters},
-        notifications::GroupCustom,
-    },
+    templates::{dashboard::group::members, notifications::GroupCustom},
     types::{
+        dashboard::group::members::GroupMembersFilters,
+        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -183,7 +181,6 @@ pub(crate) async fn prepare_list_page(
         members: results.members,
         navigation_links,
         total: results.total,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

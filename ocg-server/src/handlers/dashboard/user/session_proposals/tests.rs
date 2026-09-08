@@ -13,9 +13,10 @@ use uuid::Uuid;
 use crate::{
     db::{dashboard::user::SessionProposalCoSpeakerUser, mock::MockDB},
     handlers::tests::*,
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::{
-        DASHBOARD_PAGINATION_LIMIT, user::session_proposals::SessionProposalsOutput,
+    services::notifications::MockNotificationsManager,
+    types::{
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, user::session_proposals::SessionProposalsOutput},
+        notifications::NotificationKind,
     },
 };
 

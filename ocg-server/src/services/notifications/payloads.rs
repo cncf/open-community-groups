@@ -289,12 +289,14 @@ mod tests {
 
     use crate::{
         config::HttpServerConfig,
-        handlers::tests::{sample_event_summary, sample_site_settings},
-        services::notifications::NotificationKind,
         templates::notifications::{
             EventAttendanceCanceled, EventCanceled, EventPaidConfigured, EventPublished,
             EventRefundApproved, EventRefundRejected, EventRescheduled, EventWaitlistJoined,
             EventWaitlistLeft, EventWelcome, SpeakerWelcome,
+        },
+        types::{
+            notifications::NotificationKind,
+            tests::{sample_event_summary, sample_site_settings},
         },
     };
 

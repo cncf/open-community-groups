@@ -22,11 +22,12 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::dashboard::community::team::{self, CommunityTeamFilters},
-    templates::notifications::CommunityTeamInvitation,
+    services::notifications::DynNotificationsManager,
+    templates::{dashboard::community::team, notifications::CommunityTeamInvitation},
     types::{
         community::CommunityRole,
+        dashboard::community::team::CommunityTeamFilters,
+        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
         permissions::CommunityPermission,
     },
@@ -217,9 +218,7 @@ pub(crate) async fn prepare_list_page(
         navigation_links,
         roles,
         total: results.total,
-        total_accepted: results.total_accepted,
         total_admins_accepted: results.total_admins_accepted,
-        limit: filters.limit,
         offset: filters.offset,
     };
 

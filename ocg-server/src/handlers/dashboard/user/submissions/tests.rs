@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    types::dashboard::DASHBOARD_PAGINATION_LIMIT,
 };
 
 #[tokio::test]
@@ -73,7 +73,7 @@ async fn test_list_page_success() {
     let group_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
     let cfs_submission_id = Uuid::new_v4();
-    let output = crate::templates::dashboard::user::submissions::CfsSubmissionsOutput {
+    let output = crate::types::dashboard::user::submissions::CfsSubmissionsOutput {
         submissions: vec![sample_user_cfs_submission(
             cfs_submission_id,
             event_id,
@@ -133,7 +133,7 @@ async fn test_list_page_with_pagination_params() {
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let output = crate::templates::dashboard::user::submissions::CfsSubmissionsOutput {
+    let output = crate::types::dashboard::user::submissions::CfsSubmissionsOutput {
         submissions: vec![],
         total: 0,
     };

@@ -14,11 +14,13 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::{notifications::MockNotificationsManager, payments::MockPaymentsManager},
-    templates::dashboard::group::refunds::{
-        FinancialRecoveryKind, GroupFinancialRecovery, GroupRefund, GroupRefundStatus, RefundEvent,
-        RefundsFilters, RefundsOutput, RefundsView,
+    types::{
+        dashboard::group::refunds::{
+            FinancialRecoveryKind, GroupFinancialRecovery, GroupRefund, GroupRefundStatus,
+            RefundEvent, RefundsFilters, RefundsOutput, RefundsView,
+        },
+        permissions::GroupPermission,
     },
-    types::permissions::GroupPermission,
 };
 
 #[tokio::test]
@@ -58,7 +60,7 @@ async fn test_list_page_renders_history_without_payments_setup() {
         .times(1)
         .withf(move |gid, filters| {
             *gid == group_id
-                && filters.limit == Some(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT)
+                && filters.limit == Some(crate::types::dashboard::DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
                 && filters.view == RefundsView::Active
         })

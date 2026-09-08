@@ -96,10 +96,10 @@ fn test_meeting_provider_error_retry_after_other() {
     );
 }
 
-// Meeting::sync_action tests.
+// SyncAction::for_meeting tests.
 
 #[test]
-fn test_meeting_sync_action_create() {
+fn test_sync_action_for_meeting_create() {
     // Setup meeting without provider_meeting_id
     let meeting = Meeting {
         provider_meeting_id: None,
@@ -108,11 +108,14 @@ fn test_meeting_sync_action_create() {
     };
 
     // Check sync action is Create
-    assert!(matches!(meeting.sync_action(), SyncAction::Create));
+    assert!(matches!(
+        SyncAction::for_meeting(&meeting),
+        SyncAction::Create
+    ));
 }
 
 #[test]
-fn test_meeting_sync_action_delete() {
+fn test_sync_action_for_meeting_delete() {
     // Setup meeting with delete flag
     let meeting = Meeting {
         provider_meeting_id: Some("provider-123".to_string()),
@@ -121,11 +124,14 @@ fn test_meeting_sync_action_delete() {
     };
 
     // Check sync action is Delete
-    assert!(matches!(meeting.sync_action(), SyncAction::Delete));
+    assert!(matches!(
+        SyncAction::for_meeting(&meeting),
+        SyncAction::Delete
+    ));
 }
 
 #[test]
-fn test_meeting_sync_action_update() {
+fn test_sync_action_for_meeting_update() {
     // Setup meeting with provider_meeting_id
     let meeting = Meeting {
         provider_meeting_id: Some("provider-123".to_string()),
@@ -134,7 +140,10 @@ fn test_meeting_sync_action_update() {
     };
 
     // Check sync action is Update
-    assert!(matches!(meeting.sync_action(), SyncAction::Update));
+    assert!(matches!(
+        SyncAction::for_meeting(&meeting),
+        SyncAction::Update
+    ));
 }
 
 // Meetings workers tests.

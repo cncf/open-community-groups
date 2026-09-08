@@ -14,16 +14,17 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::{
-        DASHBOARD_PAGINATION_LIMIT,
-        group::{
-            PresenceFilter,
-            invitation_requests::{
-                InvitationRequestsOutput, InvitationRequestsSort, InvitationRequestsStatusFilter,
+    types::{
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            group::{
+                PresenceFilter,
+                invitation_requests::{
+                    InvitationRequestsOutput, InvitationRequestsSort,
+                    InvitationRequestsStatusFilter,
+                },
             },
         },
-    },
-    types::{
         permissions::GroupPermission,
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,

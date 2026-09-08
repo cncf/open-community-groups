@@ -76,7 +76,7 @@ pub(crate) async fn page(
             .map(|group| community::GroupCard { group })
             .collect(),
         site_settings,
-        stats,
+        stats: community::Stats { stats },
         upcoming_in_person_events: upcoming_in_person_events
             .into_iter()
             .map(|event| community::EventCard { event })

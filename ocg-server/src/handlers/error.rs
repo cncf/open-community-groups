@@ -7,17 +7,13 @@ use axum::{
 };
 use tokio_postgres::error::SqlState;
 
-use crate::{services::payments::FiscalSponsorReadinessError, types::search::FilterError};
+use crate::{
+    db::USER_FACING_DB_ERROR_CODE, services::payments::FiscalSponsorReadinessError,
+    types::search::FilterError,
+};
 
 #[cfg(test)]
 mod tests;
-
-/// SQLSTATE raised by database functions for user-facing rejections.
-///
-/// Database functions raise `using errcode = 'OCG01'` when the message is safe
-/// to show to the user. Any other database error, including the default
-/// `P0001` of `raise exception`, is an internal failure.
-pub(crate) const USER_FACING_DB_ERROR_CODE: &str = "OCG01";
 
 /// Represents all possible errors that can occur in a handler.
 #[derive(thiserror::Error, Debug)]

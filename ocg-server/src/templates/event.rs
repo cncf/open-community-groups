@@ -1,11 +1,8 @@
 //! This module defines the templates for the event page.
 
 use askama::Template;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
-use uuid::Uuid;
 
+use crate::types::event::SessionProposal;
 use crate::{
     templates::{
         PageId,
@@ -16,7 +13,6 @@ use crate::{
     types::{
         event::{EventCfsLabel, EventFull, EventKind, EventSummary},
         site::SiteSettings,
-        user::UserSummary,
     },
 };
 
@@ -98,43 +94,6 @@ pub(crate) struct CfsModal {
 
     /// Notice message displayed after submissions.
     pub notice: Option<String>,
-}
-
-/// Session proposal details for CFS modal.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct SessionProposal {
-    /// Proposal creation time.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub created_at: DateTime<Utc>,
-    /// Proposal description.
-    pub description: String,
-    /// Duration in minutes.
-    pub duration_minutes: i32,
-    /// Whether the proposal has already been submitted.
-    pub is_submitted: bool,
-    /// Session proposal identifier.
-    pub session_proposal_id: Uuid,
-    /// Session proposal level identifier.
-    pub session_proposal_level_id: String,
-    /// Session proposal level display name.
-    pub session_proposal_level_name: String,
-    /// Proposal status identifier.
-    pub session_proposal_status_id: String,
-    /// Proposal status name.
-    pub status_name: String,
-    /// Proposal title.
-    pub title: String,
-
-    /// Co-speaker information.
-    pub co_speaker: Option<UserSummary>,
-    /// Submission status identifier.
-    pub submission_status_id: Option<String>,
-    /// Submission status name.
-    pub submission_status_name: Option<String>,
-    /// Proposal last update time.
-    #[serde(default, with = "chrono::serde::ts_seconds_option")]
-    pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[cfg(test)]

@@ -13,11 +13,12 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::{auth::LOG_IN_URL, tests::*},
-    services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    services::notifications::MockNotificationsManager,
     templates::notifications::CommunityTeamInvitation as CommunityTeamInvitationTemplate,
-    types::community::CommunityRole,
-    types::permissions::CommunityPermission,
+    types::{
+        community::CommunityRole, dashboard::DASHBOARD_PAGINATION_LIMIT,
+        notifications::NotificationKind, permissions::CommunityPermission,
+    },
 };
 
 use super::NewTeamMember;
@@ -39,7 +40,7 @@ async fn test_list_page_success() {
         community_role_id: "admin".to_string(),
         display_name: "Admin".to_string(),
     };
-    let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
+    let output = crate::types::dashboard::community::team::CommunityTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 1,
@@ -119,7 +120,7 @@ async fn test_list_page_with_pagination_params() {
         community_role_id: "admin".to_string(),
         display_name: "Admin".to_string(),
     };
-    let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
+    let output = crate::types::dashboard::community::team::CommunityTeamOutput {
         members: members.clone(),
         total: members.len(),
         total_accepted: 2,

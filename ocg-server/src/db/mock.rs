@@ -109,7 +109,7 @@ mock! {
         async fn update_user_details(
             &self,
             actor_user_id: &Uuid,
-            user: &crate::templates::auth::UserDetailsInput,
+            user: &crate::types::user::UserDetailsInput,
         ) -> Result<()>;
         async fn update_user_external_auth(
             &self,
@@ -197,11 +197,11 @@ mock! {
         async fn search_events(
             &self,
             filters: &crate::types::search::SearchEventsFilters,
-        ) -> Result<crate::db::common::SearchEventsOutput>;
+        ) -> Result<crate::types::search::SearchEventsOutput>;
         async fn search_groups(
             &self,
             filters: &crate::types::search::SearchGroupsFilters,
-        ) -> Result<crate::db::common::SearchGroupsOutput>;
+        ) -> Result<crate::types::search::SearchGroupsOutput>;
     }
 
     #[async_trait]
@@ -215,7 +215,7 @@ mock! {
         async fn get_community_site_stats(
             &self,
             community_id: Uuid,
-        ) -> Result<crate::templates::community::Stats>;
+        ) -> Result<crate::types::community::CommunityStats>;
         async fn get_community_upcoming_events(
             &self,
             community_id: Uuid,
@@ -252,7 +252,7 @@ mock! {
             actor_user_id: Uuid,
             community_id: Uuid,
             group_id: Uuid,
-            group: &crate::templates::dashboard::community::groups::GroupInput,
+            group: &crate::types::dashboard::community::groups::GroupInput,
         ) -> Result<()>;
     }
 
@@ -270,25 +270,25 @@ mock! {
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
-            event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
+            event_category: &crate::types::dashboard::community::event_categories::EventCategoryInput,
         ) -> Result<Uuid>;
         async fn add_group(
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
-            group: &crate::templates::dashboard::community::groups::GroupInput,
+            group: &crate::types::dashboard::community::groups::GroupInput,
         ) -> Result<Uuid>;
         async fn add_group_category(
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
-            group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
+            group_category: &crate::types::dashboard::community::group_categories::GroupCategoryInput,
         ) -> Result<Uuid>;
         async fn add_region(
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
-            region: &crate::templates::dashboard::community::regions::RegionInput,
+            region: &crate::types::dashboard::community::regions::RegionInput,
         ) -> Result<Uuid>;
         async fn deactivate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid)
             -> Result<()>;
@@ -315,17 +315,17 @@ mock! {
         async fn get_community_stats(
             &self,
             community_id: Uuid,
-        ) -> Result<crate::templates::dashboard::community::analytics::CommunityDashboardStats>;
+        ) -> Result<crate::types::dashboard::community::analytics::CommunityDashboardStats>;
         async fn list_community_audit_logs(
             &self,
             community_id: Uuid,
-            filters: &crate::templates::dashboard::audit::AuditLogFilters,
-        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
+            filters: &crate::types::dashboard::common::AuditLogFilters,
+        ) -> Result<crate::types::dashboard::common::AuditLogsOutput>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
-            filters: &crate::templates::dashboard::community::team::CommunityTeamFilters,
-        ) -> Result<crate::templates::dashboard::community::team::CommunityTeamOutput>;
+            filters: &crate::types::dashboard::community::team::CommunityTeamFilters,
+        ) -> Result<crate::types::dashboard::community::team::CommunityTeamOutput>;
         async fn list_community_roles(
             &self,
         ) -> Result<Vec<crate::types::community::CommunityRoleSummary>>;
@@ -345,7 +345,7 @@ mock! {
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
-            community: &crate::templates::dashboard::community::settings::CommunityUpdate,
+            community: &crate::types::dashboard::community::settings::CommunityUpdate,
         ) -> Result<()>;
         async fn update_community_team_member_role(
             &self,
@@ -359,21 +359,21 @@ mock! {
             actor_user_id: Uuid,
             community_id: Uuid,
             event_category_id: Uuid,
-            event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
+            event_category: &crate::types::dashboard::community::event_categories::EventCategoryInput,
         ) -> Result<()>;
         async fn update_group_category(
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
             group_category_id: Uuid,
-            group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
+            group_category: &crate::types::dashboard::community::group_categories::GroupCategoryInput,
         ) -> Result<()>;
         async fn update_region(
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
             region_id: Uuid,
-            region: &crate::templates::dashboard::community::regions::RegionInput,
+            region: &crate::types::dashboard::community::regions::RegionInput,
         ) -> Result<()>;
     }
 
@@ -407,7 +407,7 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event: &serde_json::Value,
-            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
+            cfg_max_participants: &HashMap<crate::types::meetings::MeetingProvider, i32>,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Uuid>;
         async fn add_event_series(
@@ -416,14 +416,14 @@ mock! {
             group_id: Uuid,
             events: &[serde_json::Value],
             recurrence: &serde_json::Value,
-            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
+            cfg_max_participants: &HashMap<crate::types::meetings::MeetingProvider, i32>,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<Vec<Uuid>>;
         async fn add_group_sponsor(
             &self,
             actor_user_id: Uuid,
             group_id: Uuid,
-            sponsor: &crate::templates::dashboard::group::sponsors::SponsorInput,
+            sponsor: &crate::types::dashboard::group::sponsors::SponsorInput,
         ) -> Result<Uuid>;
         async fn add_group_team_member(
             &self,
@@ -468,7 +468,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             group_id: Uuid,
-        ) -> Result<crate::templates::dashboard::group::check_in::CheckInScanResult>;
+        ) -> Result<crate::types::dashboard::group::check_in::CheckInScanResult>;
         async fn check_in_event(
             &self,
             actor_user_id: Uuid,
@@ -520,7 +520,7 @@ mock! {
             &self,
             event_id: Uuid,
             cfs_submission_id: Uuid,
-        ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData>;
+        ) -> Result<crate::types::dashboard::group::submissions::CfsSubmissionNotificationData>;
         async fn get_event_summary_dashboard(
             &self,
             community_id: Uuid,
@@ -547,7 +547,7 @@ mock! {
             community_id: Uuid,
             group_id: Uuid,
             include_subgroups: bool,
-        ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
+        ) -> Result<crate::types::dashboard::group::analytics::GroupDashboardStats>;
         async fn group_requires_automatic_tax_readiness(
             &self,
             community_id: Uuid,
@@ -577,7 +577,7 @@ mock! {
         ) -> Result<crate::types::badges::GroupBadges>;
         async fn list_cfs_submission_statuses_for_review(
             &self,
-        ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
+        ) -> Result<Vec<crate::types::dashboard::group::events::CfsSubmissionStatus>>;
         async fn list_community_admin_ids(
             &self,
             community_id: Uuid,
@@ -595,12 +595,12 @@ mock! {
         async fn list_event_approved_cfs_submissions(
             &self,
             event_id: Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::group::events::ApprovedSubmissionSummary>>;
+        ) -> Result<Vec<crate::types::dashboard::group::events::ApprovedSubmissionSummary>>;
         async fn list_event_cfs_submissions(
             &self,
             event_id: Uuid,
-            filters: &crate::templates::dashboard::group::submissions::CfsSubmissionsFilters,
-        ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionsOutput>;
+            filters: &crate::types::dashboard::group::submissions::CfsSubmissionsFilters,
+        ) -> Result<crate::types::dashboard::group::submissions::CfsSubmissionsOutput>;
         async fn list_event_kinds(&self)
             -> Result<Vec<crate::types::event::EventKindSummary>>;
         async fn list_event_series_cancelable_event_ids(
@@ -626,8 +626,8 @@ mock! {
         async fn list_group_audit_logs(
             &self,
             group_id: Uuid,
-            filters: &crate::templates::dashboard::audit::AuditLogFilters,
-        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
+            filters: &crate::types::dashboard::common::AuditLogFilters,
+        ) -> Result<crate::types::dashboard::common::AuditLogsOutput>;
         async fn list_group_automatic_tax_readiness_event_ids(
             &self,
             community_id: Uuid,
@@ -636,17 +636,17 @@ mock! {
         async fn list_group_check_in_events(
             &self,
             group_id: Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::group::check_in::GroupCheckInEvent>>;
+        ) -> Result<Vec<crate::types::dashboard::group::check_in::GroupCheckInEvent>>;
         async fn list_group_events(
             &self,
             group_id: Uuid,
-            filters: &crate::templates::dashboard::group::events::EventsListFilters,
-        ) -> Result<crate::templates::dashboard::group::events::GroupEvents>;
+            filters: &crate::types::dashboard::group::events::EventsListFilters,
+        ) -> Result<crate::types::dashboard::group::events::GroupEvents>;
         async fn list_group_members(
             &self,
             group_id: Uuid,
-            filters: &crate::templates::dashboard::group::members::GroupMembersFilters,
-        ) -> Result<crate::templates::dashboard::group::members::GroupMembersOutput>;
+            filters: &crate::types::dashboard::group::members::GroupMembersFilters,
+        ) -> Result<crate::types::dashboard::group::members::GroupMembersOutput>;
         async fn list_group_members_ids(
             &self,
             group_id: Uuid,
@@ -654,21 +654,21 @@ mock! {
         async fn list_group_refunds(
             &self,
             group_id: Uuid,
-            filters: &crate::templates::dashboard::group::refunds::RefundsFilters,
-        ) -> Result<crate::templates::dashboard::group::refunds::RefundsOutput>;
+            filters: &crate::types::dashboard::group::refunds::RefundsFilters,
+        ) -> Result<crate::types::dashboard::group::refunds::RefundsOutput>;
         async fn list_group_roles(&self)
             -> Result<Vec<crate::types::group::GroupRoleSummary>>;
         async fn list_group_sponsors(
             &self,
             group_id: Uuid,
-            filters: &crate::templates::dashboard::group::sponsors::GroupSponsorsFilters,
+            filters: &crate::types::dashboard::group::sponsors::GroupSponsorsFilters,
             full_list: bool,
-        ) -> Result<crate::templates::dashboard::group::sponsors::GroupSponsorsOutput>;
+        ) -> Result<crate::types::dashboard::group::sponsors::GroupSponsorsOutput>;
         async fn list_group_team_members(
             &self,
             group_id: Uuid,
-            filters: &crate::templates::dashboard::group::team::GroupTeamFilters,
-        ) -> Result<crate::templates::dashboard::group::team::GroupTeamOutput>;
+            filters: &crate::types::dashboard::group::team::GroupTeamFilters,
+        ) -> Result<crate::types::dashboard::group::team::GroupTeamOutput>;
         async fn list_group_team_members_ids(
             &self,
             group_id: Uuid,
@@ -679,7 +679,7 @@ mock! {
         async fn list_user_groups(
             &self,
             user_id: &Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::group::home::UserGroupsByCommunity>>;
+        ) -> Result<Vec<crate::types::dashboard::group::home::UserGroupsByCommunity>>;
         async fn lock_events_for_cancellation(
             &self,
             group_id: Uuid,
@@ -732,20 +732,20 @@ mock! {
             &self,
             group_id: Uuid,
             event_id: Uuid,
-            filters: &crate::templates::dashboard::group::attendees::AttendeesFilters,
-        ) -> Result<crate::templates::dashboard::group::attendees::AttendeesOutput>;
+            filters: &crate::types::dashboard::group::attendees::AttendeesFilters,
+        ) -> Result<crate::types::dashboard::group::attendees::AttendeesOutput>;
         async fn search_event_invitation_requests(
             &self,
             group_id: Uuid,
             event_id: Uuid,
-            filters: &crate::templates::dashboard::group::invitation_requests::InvitationRequestsFilters,
-        ) -> Result<crate::templates::dashboard::group::invitation_requests::InvitationRequestsOutput>;
+            filters: &crate::types::dashboard::group::invitation_requests::InvitationRequestsFilters,
+        ) -> Result<crate::types::dashboard::group::invitation_requests::InvitationRequestsOutput>;
         async fn search_event_waitlist(
             &self,
             group_id: Uuid,
             event_id: Uuid,
-            filters: &crate::templates::dashboard::group::waitlist::WaitlistFilters,
-        ) -> Result<crate::templates::dashboard::group::waitlist::WaitlistOutput>;
+            filters: &crate::types::dashboard::group::waitlist::WaitlistFilters,
+        ) -> Result<crate::types::dashboard::group::waitlist::WaitlistOutput>;
         async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
             -> Result<()>;
         async fn unpublish_event_series_events(&self, actor_user_id: Uuid, group_id: Uuid, event_ids: &[Uuid])
@@ -763,7 +763,7 @@ mock! {
             reviewer_id: Uuid,
             event_id: Uuid,
             cfs_submission_id: Uuid,
-            submission: &crate::templates::dashboard::group::submissions::CfsSubmissionUpdate,
+            submission: &crate::types::dashboard::group::submissions::CfsSubmissionUpdate,
         ) -> Result<bool>;
         async fn update_event(
             &self,
@@ -771,7 +771,7 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
             event: &serde_json::Value,
-            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
+            cfg_max_participants: &HashMap<crate::types::meetings::MeetingProvider, i32>,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<bool>;
         async fn update_group_sponsor(
@@ -779,7 +779,7 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             group_sponsor_id: Uuid,
-            sponsor: &crate::templates::dashboard::group::sponsors::SponsorInput,
+            sponsor: &crate::types::dashboard::group::sponsors::SponsorInput,
         ) -> Result<()>;
         async fn update_group_sponsor_featured(
             &self,
@@ -817,7 +817,7 @@ mock! {
         async fn add_session_proposal(
             &self,
             actor_user_id: Uuid,
-            session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
+            session_proposal: &crate::types::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<Uuid>;
         async fn decline_event_admission_offer(
             &self,
@@ -847,12 +847,12 @@ mock! {
         ) -> Result<Option<Uuid>>;
         async fn list_session_proposal_levels(
             &self,
-        ) -> Result<Vec<crate::templates::dashboard::user::session_proposals::SessionProposalLevel>>;
+        ) -> Result<Vec<crate::types::dashboard::user::session_proposals::SessionProposalLevel>>;
         async fn list_user_audit_logs(
             &self,
             actor_user_id: Uuid,
-            filters: &crate::templates::dashboard::audit::AuditLogFilters,
-        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
+            filters: &crate::types::dashboard::common::AuditLogFilters,
+        ) -> Result<crate::types::dashboard::common::AuditLogsOutput>;
         async fn list_user_badges(
             &self,
             user_id: Uuid,
@@ -860,56 +860,56 @@ mock! {
         async fn list_user_cfs_submissions(
             &self,
             user_id: Uuid,
-            filters: &crate::templates::dashboard::user::submissions::CfsSubmissionsFilters,
-        ) -> Result<crate::templates::dashboard::user::submissions::CfsSubmissionsOutput>;
+            filters: &crate::types::dashboard::user::submissions::CfsSubmissionsFilters,
+        ) -> Result<crate::types::dashboard::user::submissions::CfsSubmissionsOutput>;
         async fn list_user_check_in_events(
             &self,
             user_id: Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::user::check_in::UserCheckInEvent>>;
+        ) -> Result<Vec<crate::types::dashboard::user::check_in::UserCheckInEvent>>;
         async fn list_user_community_team_invitations(
             &self,
             user_id: Uuid,
         ) -> Result<Vec<
-            crate::templates::dashboard::user::invitations::CommunityTeamInvitation,
+            crate::types::dashboard::user::invitations::CommunityTeamInvitation,
         >>;
         async fn list_user_dashboard_groups(
             &self,
             user_id: Uuid,
-            filters: &crate::templates::dashboard::user::groups::UserGroupsFilters,
-        ) -> Result<crate::templates::dashboard::user::groups::UserGroupsOutput>;
+            filters: &crate::types::dashboard::user::groups::UserGroupsFilters,
+        ) -> Result<crate::types::dashboard::user::groups::UserGroupsOutput>;
         async fn list_user_event_invitations(
             &self,
             user_id: Uuid,
         ) -> Result<Vec<
-            crate::templates::dashboard::user::invitations::EventInvitation,
+            crate::types::dashboard::user::invitations::EventInvitation,
         >>;
         async fn list_user_events(
             &self,
             user_id: Uuid,
-            filters: &crate::templates::dashboard::user::events::UserEventsFilters,
-        ) -> Result<crate::templates::dashboard::user::events::UserEventsOutput>;
+            filters: &crate::types::dashboard::user::events::UserEventsFilters,
+        ) -> Result<crate::types::dashboard::user::events::UserEventsOutput>;
         async fn list_user_group_team_invitations(
             &self,
             user_id: Uuid,
         ) -> Result<Vec<
-            crate::templates::dashboard::user::invitations::GroupTeamInvitation,
+            crate::types::dashboard::user::invitations::GroupTeamInvitation,
         >>;
         async fn list_user_pending_session_proposal_co_speaker_invitations(
             &self,
             user_id: Uuid,
         ) -> Result<Vec<
-            crate::templates::dashboard::user::session_proposals::PendingCoSpeakerInvitation,
+            crate::types::dashboard::user::session_proposals::PendingCoSpeakerInvitation,
         >>;
         async fn list_user_purchase_documents(
             &self,
             user_id: Uuid,
-            filters: &crate::templates::dashboard::user::purchases::PurchaseDocumentsFilters,
-        ) -> Result<crate::templates::dashboard::user::purchases::PurchaseDocumentsOutput>;
+            filters: &crate::types::dashboard::user::purchases::PurchaseDocumentsFilters,
+        ) -> Result<crate::types::dashboard::user::purchases::PurchaseDocumentsOutput>;
         async fn list_user_session_proposals(
             &self,
             user_id: Uuid,
-            filters: &crate::templates::dashboard::user::session_proposals::SessionProposalsFilters,
-        ) -> Result<crate::templates::dashboard::user::session_proposals::SessionProposalsOutput>;
+            filters: &crate::types::dashboard::user::session_proposals::SessionProposalsFilters,
+        ) -> Result<crate::types::dashboard::user::session_proposals::SessionProposalsOutput>;
         async fn refresh_user_badge_identity(
             &self,
             user_id: Uuid,
@@ -951,7 +951,7 @@ mock! {
             &self,
             actor_user_id: Uuid,
             session_proposal_id: Uuid,
-            session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
+            session_proposal: &crate::types::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<()>;
         async fn update_user_badge_listing(
             &self,
@@ -1027,7 +1027,7 @@ mock! {
             &self,
             user_id: Uuid,
             event_id: Uuid,
-        ) -> Result<Vec<crate::templates::event::SessionProposal>>;
+        ) -> Result<Vec<crate::types::event::SessionProposal>>;
     }
 
     #[async_trait]
@@ -1083,7 +1083,7 @@ mock! {
         async fn get_image(
             &self,
             file_name: &str,
-        ) -> Result<Option<crate::services::images::Image>>;
+        ) -> Result<Option<crate::types::images::Image>>;
         async fn is_badge_image(
             &self,
             file_name: &str,
@@ -1105,17 +1105,17 @@ mock! {
     impl crate::db::meetings::DBMeetings for DB {
         async fn add_meeting(
             &self,
-            meeting: &crate::services::meetings::Meeting,
+            meeting: &crate::types::meetings::Meeting,
         ) -> Result<()>;
         async fn append_meeting_recording_url(
             &self,
-            provider: crate::services::meetings::MeetingProvider,
+            provider: crate::types::meetings::MeetingProvider,
             provider_meeting_id: &str,
             recording_url: &str,
         ) -> Result<()>;
         async fn assign_zoom_host_user(
             &self,
-            meeting: &crate::services::meetings::Meeting,
+            meeting: &crate::types::meetings::Meeting,
             pool_users: &[String],
             max_simultaneous_meetings_per_user: i32,
             starts_at: chrono::DateTime<chrono::Utc>,
@@ -1126,10 +1126,10 @@ mock! {
         ) -> Result<Option<crate::db::meetings::MeetingAutoEndCandidate>>;
         async fn claim_meeting_out_of_sync(
             &self,
-        ) -> Result<Option<crate::services::meetings::Meeting>>;
+        ) -> Result<Option<crate::types::meetings::Meeting>>;
         async fn delete_meeting(
             &self,
-            meeting: &crate::services::meetings::Meeting,
+            meeting: &crate::types::meetings::Meeting,
         ) -> Result<()>;
         async fn mark_stale_meeting_auto_end_checks_unknown(
             &self,
@@ -1145,21 +1145,21 @@ mock! {
         ) -> Result<()>;
         async fn release_meeting_sync_claim(
             &self,
-            meeting: &crate::services::meetings::Meeting,
+            meeting: &crate::types::meetings::Meeting,
         ) -> Result<()>;
         async fn set_meeting_auto_end_check_outcome(
             &self,
             candidate: &crate::db::meetings::MeetingAutoEndCandidate,
-            outcome: crate::services::meetings::MeetingAutoEndCheckOutcome,
+            outcome: crate::types::meetings::MeetingAutoEndCheckOutcome,
         ) -> Result<()>;
         async fn set_meeting_error(
             &self,
-            meeting: &crate::services::meetings::Meeting,
+            meeting: &crate::types::meetings::Meeting,
             error: &str,
         ) -> Result<()>;
         async fn update_meeting(
             &self,
-            meeting: &crate::services::meetings::Meeting,
+            meeting: &crate::types::meetings::Meeting,
         ) -> Result<()>;
     }
 
@@ -1167,27 +1167,27 @@ mock! {
     impl crate::db::notifications::DBNotifications for DB {
         async fn claim_pending_notification(
             &self,
-        ) -> Result<Option<crate::services::notifications::Notification>>;
+        ) -> Result<Option<crate::types::notifications::Notification>>;
         async fn enqueue_due_event_reminders(
             &self,
             base_url: &str,
         ) -> Result<usize>;
         async fn enqueue_notification(
             &self,
-            notification: &crate::services::notifications::NewNotification,
+            notification: &crate::types::notifications::NewNotification,
         ) -> Result<()>;
         async fn enqueue_tracked_custom_notification(
             &self,
-            notification: &crate::services::notifications::NewNotification,
+            notification: &crate::types::notifications::NewNotification,
             tracking: crate::db::notifications::CustomNotificationTracking,
         ) -> Result<()>;
         async fn get_notification_attachment(
             &self,
             attachment_id: Uuid
-        ) -> Result<crate::services::notifications::Attachment>;
+        ) -> Result<crate::types::notifications::Attachment>;
         async fn mark_notification_delivery_unknown(
             &self,
-            notification: &crate::services::notifications::Notification,
+            notification: &crate::types::notifications::Notification,
             error: &str,
         ) -> Result<()>;
         async fn mark_stale_processing_notifications_unknown(
@@ -1196,7 +1196,7 @@ mock! {
         ) -> Result<usize>;
         async fn requeue_notification(
             &self,
-            notification: &crate::services::notifications::Notification,
+            notification: &crate::types::notifications::Notification,
             error: &str,
             base_retry_after: std::time::Duration,
             max_retry_after: std::time::Duration,
@@ -1204,7 +1204,7 @@ mock! {
         ) -> Result<()>;
         async fn update_notification(
             &self,
-            notification: &crate::services::notifications::Notification,
+            notification: &crate::types::notifications::Notification,
             error: Option<String>,
         ) -> Result<()>;
     }
@@ -1229,9 +1229,7 @@ mock! {
         ) -> Result<()>;
         async fn attach_checkout_session_to_event_purchase(
             &self,
-            event_purchase_id: Uuid,
-            payment_provider: crate::types::payments::PaymentProvider,
-            checkout_session: &crate::services::payments::CheckoutSession,
+            input: &crate::db::payments::AttachCheckoutSessionInput,
         ) -> Result<()>;
         async fn attach_invoice_to_event_purchase(
             &self,
@@ -1419,14 +1417,14 @@ mock! {
         async fn get_filters_options(
             &self,
             community_name: Option<String>,
-            entity: Option<crate::templates::site::explore::Entity>,
-        ) -> Result<crate::templates::site::explore::FiltersOptions>;
+            entity: Option<crate::types::site::explore::Entity>,
+        ) -> Result<crate::types::site::explore::FiltersOptions>;
         async fn get_site_home_stats(&self) -> Result<crate::types::site::SiteHomeStats>;
         async fn get_site_recently_added_groups(
             &self,
         ) -> Result<Vec<crate::types::group::GroupSummary>>;
         async fn get_site_settings(&self) -> Result<crate::types::site::SiteSettings>;
-        async fn get_site_stats(&self) -> Result<crate::templates::site::stats::SiteStats>;
+        async fn get_site_stats(&self) -> Result<crate::types::site::stats::SiteStats>;
         async fn get_site_upcoming_events(
             &self,
             event_kinds: Vec<crate::types::event::EventKind>,

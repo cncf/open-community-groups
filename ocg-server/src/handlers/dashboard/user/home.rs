@@ -17,9 +17,10 @@ use crate::{
     handlers::{error::HandlerError, extractors::CurrentUser},
     templates::{
         PageId,
-        auth::{self, UserDetailsInput, UserMenuState},
+        auth::{self, UserMenuState},
         dashboard::user::home::{Content, Page, Tab},
     },
+    types::user::UserDetailsInput,
 };
 
 use super::{

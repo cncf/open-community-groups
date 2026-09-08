@@ -23,7 +23,8 @@ use uuid::Uuid;
 
 use crate::{
     auth::{
-        self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials,
+        self, AUTH_PROVIDER_KEY, AuthSession, Credentials, OAuth2Credentials, OidcCredentials,
+        PasswordCredentials,
     },
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
     db::{DynDB, auth::EmailVerificationNotification},
@@ -34,21 +35,17 @@ use crate::{
             ValidatedFormQs,
         },
     },
-    templates::{
-        self, PageId,
-        auth::{UserDetailsInput, UserMenuState},
-        notifications::EmailVerification,
+    templates::{self, PageId, auth::UserMenuState, notifications::EmailVerification},
+    types::{
+        permissions::{CommunityPermission, GroupPermission},
+        user::{UserDetailsInput, UserPasswordInput},
     },
-    types::permissions::{CommunityPermission, GroupPermission},
     util::base_url_without_trailing_slash,
     validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
 #[cfg(test)]
 mod tests;
-
-/// Key used to store the authentication provider in the session.
-pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 
 /// Session value for password authentication.
 pub(crate) const AUTH_PROVIDER_EMAIL: &str = "email";
@@ -427,7 +424,7 @@ pub(crate) async fn update_user_password(
     mut auth_session: AuthSession,
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    ValidatedForm(mut input): ValidatedForm<templates::auth::UserPasswordInput>,
+    ValidatedForm(mut input): ValidatedForm<UserPasswordInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the old password provided is correct
     let Some(old_password_hash) = db.get_user_password(&user.user_id).await? else {
@@ -869,10 +866,10 @@ async fn build_email_verification_notification(
 
     // Build template data from the current site theme
     let site_settings = db.get_site_settings().await?;
-    let template_data = EmailVerification {
+    let template_data = serde_json::to_value(EmailVerification {
         link: format!("{base_url}/verify-email/{code}"),
         theme: site_settings.theme,
-    };
+    })?;
 
     // Return the database-ready verification notification payload
     Ok(EmailVerificationNotification {

@@ -12,7 +12,7 @@ use serde_with::skip_serializing_none;
 use tokio::{sync::Mutex, time::sleep};
 use tracing::{instrument, trace};
 
-use crate::{config::MeetingsZoomConfig, services::meetings::Meeting};
+use crate::{config::MeetingsZoomConfig, types::meetings::Meeting};
 
 use super::MeetingProviderError;
 
@@ -569,7 +569,7 @@ fn default_meeting_settings(recording_requested: Option<bool>) -> MeetingSetting
 mod tests {
     use serde_json::json;
 
-    use crate::services::meetings::Meeting;
+    use crate::types::meetings::Meeting;
 
     use super::{CreateMeetingRequest, UpdateMeetingRequest};
 

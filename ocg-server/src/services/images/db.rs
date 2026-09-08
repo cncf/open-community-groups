@@ -4,9 +4,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use tracing::{instrument, trace};
 
-use crate::db::DynDB;
+use crate::{db::DynDB, types::images::Image};
 
-use super::{Image, ImageStorage, NewImage};
+use super::{ImageStorage, NewImage};
 
 /// Database-backed image storage implementation.
 pub(crate) struct DbImageStorage {

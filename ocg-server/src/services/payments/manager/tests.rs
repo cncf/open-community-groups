@@ -15,17 +15,19 @@ use crate::{
         },
     },
     services::{
-        notifications::{MockNotificationsManager, NotificationKind},
+        notifications::MockNotificationsManager,
         payments::{
             ApproveRefundRequestInput, AutomaticTaxReadiness, AutomaticTaxReadinessError,
-            CheckoutSession, CompleteRefundRecoveryInput, DynPaymentsProvider, FinancialDocument,
+            CompleteRefundRecoveryInput, DynPaymentsProvider, FinancialDocument,
             FinancialDocumentKind, HandleWebhookError, MockPaymentsProvider, PaymentsManager,
             PaymentsWebhookEvent, PgPaymentsManager, RejectRefundRequestInput, RequestRefundInput,
+            provider::CheckoutSession,
         },
     },
     templates::notifications::EventRefundRequested,
     types::{
         event::{EventKind, EventSummary},
+        notifications::NotificationKind,
         payments::{
             EventPurchaseChargeModel, EventPurchaseSummary, FiscalSponsorSeller,
             GroupPaymentRecipient, PaymentProvider, PreparedEventCheckout, TicketTaxBehavior,
@@ -471,13 +473,13 @@ async fn get_or_create_checkout_redirect_url_creates_and_persists_session() {
     // Setup checkout attachment and canonical reload expectations
     let mut db = MockDB::new();
     db.expect_attach_checkout_session_to_event_purchase()
-        .withf(move |purchase_id, provider, checkout_session| {
-            *purchase_id == event_purchase_id
-                && *provider == PaymentProvider::Stripe
-                && checkout_session.provider_session_id == "cs_test_123"
+        .withf(move |input| {
+            input.event_purchase_id == event_purchase_id
+                && input.payment_provider == PaymentProvider::Stripe
+                && input.provider_session_id == "cs_test_123"
         })
         .times(1)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_| Ok(()));
     db.expect_get_event_purchase_summary()
         .withf(move |purchase_id| *purchase_id == event_purchase_id)
         .times(1)
@@ -569,7 +571,7 @@ async fn get_or_create_checkout_redirect_url_allows_manual_tax_without_tax_code(
     let mut db = MockDB::new();
     db.expect_attach_checkout_session_to_event_purchase()
         .times(1)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_| Ok(()));
     db.expect_get_event_purchase_summary().times(1).returning(move |_| {
         Ok(sample_event_purchase_summary(
             event_purchase_id,
@@ -633,14 +635,14 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
     // Setup attachment and canonical purchase reload expectations
     let mut db = MockDB::new();
     db.expect_attach_checkout_session_to_event_purchase()
-        .withf(move |purchase_id, provider, checkout_session| {
-            *purchase_id == event_purchase_id
-                && *provider == PaymentProvider::Stripe
-                && checkout_session.provider_session_id == "cs_test_racing"
-                && checkout_session.redirect_url == "https://example.test/checkout/racing"
+        .withf(move |input| {
+            input.event_purchase_id == event_purchase_id
+                && input.payment_provider == PaymentProvider::Stripe
+                && input.provider_session_id == "cs_test_racing"
+                && input.redirect_url == "https://example.test/checkout/racing"
         })
         .times(1)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_| Ok(()));
     db.expect_get_event_purchase_summary()
         .withf(move |purchase_id| *purchase_id == event_purchase_id)
         .times(1)
@@ -705,7 +707,7 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_
     let mut db = MockDB::new();
     db.expect_attach_checkout_session_to_event_purchase()
         .times(1)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_| Ok(()));
     db.expect_get_event_purchase_summary()
         .withf(move |purchase_id| *purchase_id == event_purchase_id)
         .times(1)

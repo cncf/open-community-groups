@@ -22,11 +22,12 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::dashboard::group::team::{self, GroupTeamFilters},
-    templates::notifications::GroupTeamInvitation,
+    services::notifications::DynNotificationsManager,
+    templates::{dashboard::group::team, notifications::GroupTeamInvitation},
     types::{
+        dashboard::group::team::GroupTeamFilters,
         group::GroupRole,
+        notifications::{NewNotification, NotificationKind},
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
@@ -265,9 +266,7 @@ pub(crate) async fn prepare_list_page(
         navigation_links,
         roles,
         total: results.total,
-        total_accepted: results.total_accepted,
         total_admins_accepted: results.total_admins_accepted,
-        limit: filters.limit,
         offset: filters.offset,
     };
 
