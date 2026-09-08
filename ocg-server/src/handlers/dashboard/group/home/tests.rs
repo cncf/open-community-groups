@@ -1030,7 +1030,8 @@ async fn test_page_refunds_tab_preserves_history_without_payments_setup() {
     // Check history remains visible and current-provider actions are explained
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).expect("refunds response to be UTF-8");
-    assert!(body.contains("Historical refunds and recovery records remain accessible"));
+    assert!(body.contains("Automatic payment processing is unavailable"));
+    assert!(body.contains("external refunds can still be recorded"));
     assert!(body.contains("tab=refunds"));
 }
 
