@@ -1584,8 +1584,8 @@ insert into event (
     '10001'
 ), (
     '55555555-5555-5555-5555-555555555927',
-    'External Payment Free Copy Source',
-    'external-payment-free-copy-source',
+    'External Payment Free Ticket Lab',
+    'external-payment-free-ticket-lab',
     'Free event used to verify copied external payment fields are cleared.',
     'Free event copy coverage.',
     'America/New_York',

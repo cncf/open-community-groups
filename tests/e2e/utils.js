@@ -304,8 +304,8 @@ export const TEST_EXTERNAL_PAYMENT_EVENTS = {
   },
   copyFree: {
     id: "55555555-5555-5555-5555-555555555927",
-    name: "External Payment Free Copy Source",
-    slug: "external-payment-free-copy-source",
+    name: "External Payment Free Ticket Lab",
+    slug: "external-payment-free-ticket-lab",
   },
   invitation: {
     id: "55555555-5555-5555-5555-555555555926",
