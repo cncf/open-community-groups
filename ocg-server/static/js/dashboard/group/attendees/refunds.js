@@ -1,6 +1,7 @@
 import { closestElementWithinRoot, getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import {
+  applyExternalRefundReviewCopy,
   bindScopedModalEscape,
   closeScopedModalFromEvent,
   setScopedModalVisibility,
@@ -14,6 +15,7 @@ const refundReviewConfigs = [
     eventId: "attendee-refund-approve-event",
     formId: "attendee-refund-approve-form",
     modalId: "attendee-refund-approve-modal",
+    externalSuccessMessage: "Refund recorded. Attendance canceled.",
     reviewNoteId: "attendee-refund-approve-review-note",
     triggerSelector: "[data-attendee-refund-approve-open]",
     urlDataKey: "refundApproveUrl",
@@ -162,6 +164,14 @@ const openRefundReviewModal = (trigger, config, root = document) => {
   if (event) {
     event.textContent = trigger.dataset.refundEventName || "-";
   }
+
+  applyExternalRefundReviewCopy(
+    form,
+    trigger,
+    `${config.modalId.replace(/-modal$/, "")}-external-note`,
+    root,
+    config.externalSuccessMessage,
+  );
 
   const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");
   const focusOrigin = actionsMenuSummary instanceof HTMLElement ? actionsMenuSummary : trigger;

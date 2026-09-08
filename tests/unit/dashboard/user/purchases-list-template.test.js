@@ -66,11 +66,27 @@ describe("dashboard user purchases list template", () => {
     expect(template).to.not.include("badges::status_badge");
   });
 
+  it("marks externally managed purchases with a shared badge", async () => {
+    // Load the purchases list before checking external-payment presentation.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("{% if purchase.externally_managed -%}");
+    expect(template).to.include(
+      'badges::common_badge(content = "Externally managed", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700"))',
+    );
+    expect(template.match(/Externally managed/g)).to.have.lengthOf(2);
+    expect(template).to.include("<span>Managed outside OCG</span>");
+  });
+
   it("renders invoice and credit note actions in a labelled dropdown", async () => {
     // Load the purchases list template before checking the document actions.
     const template = normalizeWhitespace(await loadTemplate());
-    const downloadIconPosition = template.indexOf("icon-refund-download");
-    const invoiceIconPosition = template.indexOf("icon-invoice");
+    const downloadIconPosition = template.indexOf(
+      'class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-600"',
+    );
+    const invoiceIconPosition = template.indexOf(
+      'class="svg-icon size-4 icon-invoice shrink-0 bg-stone-600"',
+    );
 
     // Verify the shared three-dot menu exposes an accessible document trigger.
     expect(template).to.include(

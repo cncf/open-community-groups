@@ -837,7 +837,8 @@ test.describe("group dashboard attendees tab", () => {
     );
     const csvContents = await readFile(downloadPath, "utf8");
     expect(csvContents).toContain(
-      "Name,Company,Title,Invited\nE2E Organizer One,,,No\n",
+      "Name,Company,Title,Invited,Payment method,Amount,Payment deadline,Paid at,Marked by,Payment details\n" +
+        "E2E Organizer One,,,No,Free,Free,,,,\n",
     );
   });
 

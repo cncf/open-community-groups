@@ -6,8 +6,9 @@
 
 {# Events update form -#}
 {% let event_read_only = event.canceled || !can_manage_events -%}
-{% let paid_ticketing_read_only = !payments_ready && event.is_paid_capable() -%}
-{% let ticketing_free_only = !payments_ready && !event.is_paid_capable() -%}
+{% let paid_ticketing_available = self.is_paid_ticketing_available() -%}
+{% let paid_ticketing_read_only = !paid_ticketing_available && event.is_paid_capable() && event.external_payment_url.is_none() -%}
+{% let ticketing_free_only = !paid_ticketing_available && !event.is_paid_capable() -%}
 {% let ticketing_read_only = event_read_only || paid_ticketing_read_only -%}
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
@@ -56,7 +57,7 @@
         <button id="event-preview-button"
                 type="button"
                 aria-label="Preview"
-                class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0 disabled:cursor-not-allowed disabled:opacity-50"
                 {% if !can_manage_events -%}
                   disabled title="Your role cannot preview events."
                 {% else -%}
@@ -72,7 +73,7 @@
             <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
             </path>
           </svg>
-          <span>Preview</span>
+          <span class="hidden xl:inline">Preview</span>
         </button>
         {% if event_public_url_enabled -%}
           <a id="event-public-page-link"
@@ -81,9 +82,9 @@
              rel="noopener noreferrer"
              aria-label="Public page"
              title="Public page"
-             class="group btn-primary-outline-anchor inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs">
-            <div class="svg-icon size-3 icon-eye shrink-0"></div>
-            <span>Public page</span>
+             class="group btn-primary-outline-anchor inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0">
+            <div class="svg-icon size-4 icon-eye shrink-0"></div>
+            <span class="hidden xl:inline">Public page</span>
           </a>
         {% else -%}
           <button id="event-public-page-link"
@@ -91,9 +92,9 @@
                   disabled
                   aria-label="Public page"
                   title="Event must be published."
-                  class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50">
-            <div class="svg-icon size-3 icon-eye shrink-0"></div>
-            <span>Public page</span>
+                  class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0 disabled:cursor-not-allowed disabled:opacity-50">
+            <div class="svg-icon size-4 icon-eye shrink-0"></div>
+            <span class="hidden xl:inline">Public page</span>
           </button>
         {% endif -%}
         <button id="publish-event-button"
@@ -112,7 +113,7 @@
                 data-series-success-message="You have successfully published the events."
                 data-series-error-message="An error occurred publishing these events. Please try again later."
                 data-error-message="An error occurred publishing this event. Please try again later."
-                class="group btn-primary inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                class="group btn-primary inline-flex items-center justify-center gap-2 whitespace-nowrap max-xl:size-10 max-xl:gap-0 max-xl:p-0 disabled:cursor-not-allowed disabled:opacity-50"
                 {% if event.canceled -%}
                   disabled title="Canceled events cannot be published."
                 {% else if event.published -%}
@@ -122,8 +123,8 @@
                 {% else -%}
                   title="Publish"
                 {% endif -%}>
-          <div class="svg-icon size-3 icon-check shrink-0 bg-white"></div>
-          <span>Publish</span>
+          <div class="svg-icon size-4 icon-check shrink-0 bg-white"></div>
+          <span class="hidden xl:inline">Publish</span>
         </button>
       </div>
     </div>
@@ -724,7 +725,7 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Location search -#}
         <div class="col-span-full">
-          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state_name" state-code-field-name="venue_state_code" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}  {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}  {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}  {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}  {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %}  {% if let Some(venue_state_code) = &event.venue_state_code %}initial-state-code="{{ venue_state_code }}"{% endif %}  {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %}  {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %}  {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
+          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" state-field-name="venue_state_name" state-code-field-name="venue_state_code" country-name-field-name="venue_country_name" country-code-field-name="venue_country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %} {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %} {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %} {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %} {% if let Some(venue_state_name) = &event.venue_state_name %}initial-state="{{ venue_state_name }}"{% endif %} {% if let Some(venue_state_code) = &event.venue_state_code %}initial-state-code="{{ venue_state_code }}"{% endif %} {% if let Some(venue_country_name) = &event.venue_country_name %}initial-country-name="{{ venue_country_name }}"{% endif %} {% if let Some(venue_country_code) = &event.venue_country_code %}initial-country-code="{{ venue_country_code }}"{% endif %} {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %} {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}>
           </location-search-field>
         </div>
         {# End location search -#}
@@ -738,7 +739,7 @@
       {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
       <div class="mt-10 max-w-5xl">
         {% if meetings_enabled %}
-          <online-event-details id="online-event-details" kind="{{ event.kind }}" {% if event.is_past() %}event-past{% endif %}  {% if let Some(meeting_join_url) = &event.meeting_join_url %} meeting-join-url="{{ meeting_join_url }}" {% endif %}  {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %} meeting-join-instructions="{{ meeting_join_instructions|json }}" {% endif %}  {% if let Some(meeting_recording_url) = &event.meeting_recording_url %} meeting-recording-url="{{ meeting_recording_url }}" {% endif %} meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}" {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %} meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}" {% endif %}  {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %} meeting-recording-requested="{{ meeting_recording_requested }}" {% endif %}  {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}  {% if let Some(meeting_in_sync) = &event.meeting_in_sync %}  {% if meeting_in_sync %}meeting-in-sync="true"{% endif %}  {% endif %}  {% if let Some(meeting_password) = &event.meeting_password %} meeting-password="{{ meeting_password }}" {% endif %}  {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}  {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %} meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"></online-event-details>
+          <online-event-details id="online-event-details" kind="{{ event.kind }}" {% if event.is_past() %}event-past{% endif %} {% if let Some(meeting_join_url) = &event.meeting_join_url %} meeting-join-url="{{ meeting_join_url }}" {% endif %} {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %} meeting-join-instructions="{{ meeting_join_instructions|json }}" {% endif %} {% if let Some(meeting_recording_url) = &event.meeting_recording_url %} meeting-recording-url="{{ meeting_recording_url }}" {% endif %} meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}" {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %} meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}" {% endif %} {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %} meeting-recording-requested="{{ meeting_recording_requested }}" {% endif %} {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %} {% if let Some(meeting_in_sync) = &event.meeting_in_sync %} {% if meeting_in_sync %}meeting-in-sync="true"{% endif %} {% endif %} {% if let Some(meeting_password) = &event.meeting_password %} meeting-password="{{ meeting_password }}" {% endif %} {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %} {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %} meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}"></online-event-details>
         {% else %}
           <div class="space-y-6">
             <div class="grid grid-cols-1 gap-6">
@@ -788,7 +789,8 @@
                 </div>
               {% endif %}
               <div class="space-y-2">
-                <label for="meeting_recording_url" class="form-label">Final public recording URL (optional)</label>
+                <label for="meeting_recording_url"
+                       class="form-label">Final public recording URL (optional)</label>
                 <div class="mt-2">
                   <input type="url"
                          id="meeting_recording_url"
@@ -856,7 +858,7 @@
     <div class="pb-12">
       {{ dashboard::form_title(title = "Sessions") -}}
       <div class="mt-10">
-        <sessions-section sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" {% if event.is_past() %}event-past{% endif %}  {% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
+        <sessions-section sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone()) }}" {% if event.is_past() %}event-past{% endif %} {% if meetings_enabled %}meetings-enabled{% endif %}></sessions-section>
       </div>
     </div>
   </form>
@@ -867,7 +869,7 @@
 <div data-content="payments" class="hidden">
   <form id="payments-form">
     <div class="space-y-12">
-      {% if payments_ready || event.is_paid_capable() -%}
+      {% if paid_ticketing_available || event.is_paid_capable() -%}
         <div>
           {{ dashboard::form_title(title = "Tickets", description = "Configure ticket tiers for this event. Payments are required only for nonzero prices.") -}}
 
@@ -900,136 +902,216 @@
               <p class="form-legend">Single currency used for all nonzero ticket prices on this event.</p>
             </div>
 
-            <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
-                <button type="button"
-                        class="btn-primary-outline btn-mini"
-                        aria-describedby="automatic-tax-readiness-status"
-                        data-automatic-tax-readiness-action="check"
-                        title="Check the saved venue with the automatic-tax provider"
-                        {% if event_read_only %}disabled{% endif %}>Check readiness</button>
+            {% if self.uses_external_ticketing() || event.external_payment_url.is_some() -%}
+              {% if !self.uses_external_ticketing() -%}
+                <p class="form-legend col-span-full text-amber-700">
+                  External payments are no longer available for this group.
+                  Clear the external payment URL to save changes; paid tickets
+                  will then require the group's Stripe configuration.
+                </p>
+              {% endif -%}
+              <div class="col-span-full 2xl:col-span-4 2xl:col-start-1">
+                <input type="hidden" name="external_payment_url_present" value="true">
+                <label for="external_payment_url" class="form-label">
+                  External payment URL
+                  <span class="asterisk">* <sup class="text-xs font-normal">(required for paid tickets)</sup></span>
+                </label>
+                <div class="mt-2">
+                  <input type="url"
+                         id="external_payment_url"
+                         name="external_payment_url"
+                         data-external-ticketing-enabled="{{ self.uses_external_ticketing() }}"
+                         class="input-primary"
+                         maxlength="{{ crate::validation::MAX_LEN_L }}"
+                         placeholder="https://"
+                         {% if let Some(url) = event.external_payment_url %}value="{{ url }}"{% endif %}
+                         {% if event_read_only || (ticketing_read_only && self.uses_external_ticketing()) %}disabled{% endif %}>
+                </div>
+                <p class="form-legend">
+                  Attendees open this page to pay outside the platform. Include the purchase
+                  reference shown after they reserve a ticket.
+                </p>
               </div>
-              <div class="mt-2">
-                <select id="tax_calculation_mode"
-                        name="tax_calculation_mode"
-                        class="select-primary"
-                        {% if ticketing_read_only %}disabled{% endif %}>
-                  <option value="automatic"
-                          {% if !self.uses_manual_ticket_tax() && !self.uses_no_ticket_tax() %}selected{% endif %}>Automatic Stripe Tax</option>
-                  <option value="manual"
-                          {% if self.uses_manual_ticket_tax() %}selected{% endif %}>Manual Stripe Tax Rates</option>
-                  <option value="none" {% if self.uses_no_ticket_tax() %}selected{% endif %}>Do not collect tax</option>
-                </select>
-                {% if ticketing_read_only -%}
-                  <input type="hidden"
-                         name="tax_calculation_mode"
-                         value="{% if self.uses_manual_ticket_tax() %}manual{% else if self.uses_no_ticket_tax() %}none{% else %}automatic{% endif %}">
-                {% endif -%}
+
+              <div class="col-span-full 2xl:col-span-2">
+                <input type="hidden"
+                       name="external_payment_window_hours_present"
+                       value="true">
+                <label for="external_payment_window_hours" class="form-label">Payment window (hours)</label>
+                <div class="mt-2">
+                  <input type="number"
+                         id="external_payment_window_hours"
+                         name="external_payment_window_hours"
+                         class="input-primary"
+                         min="1"
+                         {% if let Some(max_hours) = external_payments.max_payment_window_hours %}max="{{ max_hours }}"{% endif %}
+                         {% if let Some(default_hours) = external_payments.default_payment_window_hours %}placeholder="{{ default_hours }}"{% endif %}
+                         {% if let Some(hours) = event.external_payment_window_hours %}value="{{ hours }}"{% endif %}
+                         {% if ticketing_read_only %}disabled{% endif %}>
+                </div>
+                <p class="form-legend">
+                  Organizer-confirmation deadline, capped by registration close and event start.
+                  {% if let Some(max_hours) = external_payments.max_payment_window_hours -%}
+                    Maximum {{ max_hours }} hours.
+                  {% endif -%}
+                </p>
               </div>
-              <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
-            </div>
 
-            <div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">
-              <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
-              <div class="mt-2">
-                <select id="tax_behavior"
-                        name="tax_behavior"
-                        class="select-primary"
-                        {% if ticketing_read_only || self.uses_no_ticket_tax() %}disabled{% endif %}>
-                  <option value="inclusive"
-                          {% if !self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax included in ticket price</option>
-                  <option value="exclusive"
-                          {% if self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax added at Checkout</option>
-                </select>
-                {% if ticketing_read_only -%}
-                  <input type="hidden"
-                         name="tax_behavior"
-                         value="{% if self.uses_exclusive_ticket_tax() %}exclusive{% else %}inclusive{% endif %}">
-                {% endif -%}
+              <div class="col-span-full">
+                <input type="hidden"
+                       name="external_payment_instructions_present"
+                       value="true">
+                <label for="external_payment_instructions" class="form-label">Payment instructions</label>
+                <div class="mt-2">
+                  <textarea id="external_payment_instructions"
+                            name="external_payment_instructions"
+                            class="input-primary"
+                            rows="4"
+                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                            {% if ticketing_read_only %}disabled{% endif %}>{% if let Some(instructions) = event.external_payment_instructions %}{{ instructions }}{% endif %}</textarea>
+                </div>
+                <p class="form-legend">Optional plain-text instructions shown with the payment page.</p>
               </div>
-              <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
-            </div>
 
-            <div class="col-span-full hidden rounded-md border px-4 py-3"
-                 data-automatic-tax-readiness
-                 data-saved="true"
-                 data-readiness-url="/dashboard/group/events/{{ event.event_id }}/automatic-tax/readiness">
-              <p id="automatic-tax-readiness-status"
-                 class="text-sm/6"
-                 data-automatic-tax-readiness-role="status"
-                 role="status"
-                 aria-live="polite"></p>
-              <button type="button"
-                      class="btn-primary-outline btn-mini mt-3 me-3"
-                      data-automatic-tax-readiness-action="review-state"
-                      hidden>Review State code</button>
-              <a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 hx-boost="false"
-                 class="mt-3 inline-block text-sm font-medium text-primary-700 hover:text-primary-800 hover:underline"
-                 data-automatic-tax-readiness-role="manual-tax-help"
-                 hidden>Learn how to configure manual tax</a>
-            </div>
-
-            <div id="manual-tax-rates-fieldset"
-                 class="col-span-full max-w-3xl"
-                 data-disabled="{{ ticketing_read_only }}"
-                 data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'
-                 data-tax-rates-url="/dashboard/group/events/tax-rates"
-                 tabindex="-1"
-                 {% if !self.uses_manual_ticket_tax() %}hidden{% endif %}>
-              <div class="form-label">
-                <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
-                <span class="group/manual-tax-info relative inline-flex align-super">
+              <input type="hidden" name="tax_calculation_mode" value="none">
+              <div class="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900">
+                Organizers are responsible for tax and receipts for payments collected outside
+                this platform. Paid tickets require a complete venue in the group country
+                {%- if let Some(country_code) = external_payments.country_code %} ({{ country_code }}){% endif -%}.
+              </div>
+            {% else -%}
+              <div class="col-span-full 2xl:col-span-2 2xl:col-start-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <label for="tax_calculation_mode" class="form-label">Ticket Tax Calculation</label>
                   <button type="button"
-                          class="inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                          aria-label="About Manual Stripe Tax Rates"
-                          aria-describedby="manual-tax-rates-info">
-                    <span class="svg-icon size-3 icon-question-mark bg-stone-500"
-                          aria-hidden="true"></span>
-                  </button>
-                  {% call dashboard::tooltip_panel(
-                    id = "manual-tax-rates-info",
-                    title = "Stripe Tax Rates",
-                    visibility_classes = "group-hover/manual-tax-info:visible group-hover/manual-tax-info:opacity-100 group-focus-within/manual-tax-info:visible group-focus-within/manual-tax-info:opacity-100",
-                    width_classes = "w-72"
-                  ) -%}
-                  <span class="block text-stone-900">Create Tax Rates in the fiscal sponsor's Stripe account.</span>
-                  {% endcall -%}
-                </span>
+                          class="btn-primary-outline btn-mini"
+                          aria-describedby="automatic-tax-readiness-status"
+                          data-automatic-tax-readiness-action="check"
+                          title="Check the saved venue with the automatic-tax provider"
+                          {% if event_read_only %}disabled{% endif %}>Check readiness</button>
+                </div>
+                <div class="mt-2">
+                  <select id="tax_calculation_mode"
+                          name="tax_calculation_mode"
+                          class="select-primary"
+                          {% if ticketing_read_only %}disabled{% endif %}>
+                    <option value="automatic"
+                            {% if !self.uses_manual_ticket_tax() && !self.uses_no_ticket_tax() %}selected{% endif %}>Automatic Stripe Tax</option>
+                    <option value="manual"
+                            {% if self.uses_manual_ticket_tax() %}selected{% endif %}>Manual Stripe Tax Rates</option>
+                    <option value="none"
+                            {% if self.uses_no_ticket_tax() %}selected{% endif %}>Do not collect tax</option>
+                  </select>
+                  {% if ticketing_read_only -%}
+                    <input type="hidden"
+                           name="tax_calculation_mode"
+                           value="{% if self.uses_manual_ticket_tax() %}manual{% else if self.uses_no_ticket_tax() %}none{% else %}automatic{% endif %}">
+                  {% endif -%}
+                </div>
+                <p class="form-legend">Choose how tax is calculated for every paid ticket tier.</p>
               </div>
-              <div class="mt-2 flex items-end gap-3">
-                <select id="manual-tax-rates"
-                        name="manual_tax_rate_ids[]"
-                        class="select-primary flex-1"
-                        data-tax-rates-role="select"
-                        aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>
+
+              <div class="col-span-full 2xl:col-span-2" data-tax-control="behavior">
+                <label for="tax_behavior" class="form-label">Ticket Tax Display</label>
+                <div class="mt-2">
+                  <select id="tax_behavior"
+                          name="tax_behavior"
+                          class="select-primary"
+                          {% if ticketing_read_only || self.uses_no_ticket_tax() %}disabled{% endif %}>
+                    <option value="inclusive"
+                            {% if !self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax included in ticket price</option>
+                    <option value="exclusive"
+                            {% if self.uses_exclusive_ticket_tax() %}selected{% endif %}>Tax added at Checkout</option>
+                  </select>
+                  {% if ticketing_read_only -%}
+                    <input type="hidden"
+                           name="tax_behavior"
+                           value="{% if self.uses_exclusive_ticket_tax() %}exclusive{% else %}inclusive{% endif %}">
+                  {% endif -%}
+                </div>
+                <p class="form-legend">Controls whether the advertised ticket amount includes tax.</p>
+              </div>
+
+              <div class="col-span-full hidden rounded-md border px-4 py-3"
+                   data-automatic-tax-readiness
+                   data-saved="true"
+                   data-readiness-url="/dashboard/group/events/{{ event.event_id }}/automatic-tax/readiness">
+                <p id="automatic-tax-readiness-status"
+                   class="text-sm/6"
+                   data-automatic-tax-readiness-role="status"
+                   role="status"
+                   aria-live="polite"></p>
                 <button type="button"
-                        class="btn-primary-outline inline-flex min-w-28 shrink-0 items-center justify-center whitespace-nowrap"
-                        data-tax-rates-action="retry"
-                        aria-label="Retry loading Stripe Tax Rates"
-                        hidden>
-                  <span data-tax-rates-role="retry-label">Retry</span>
-                  <span class="inline-flex items-center"
-                        data-tax-rates-role="retry-loading"
-                        hidden>
-                    <svg-spinner size="size-4" label="Loading Stripe Tax Rates">
-                    </svg-spinner>
-                  </span>
-                </button>
+                        class="btn-primary-outline btn-mini mt-3 me-3"
+                        data-automatic-tax-readiness-action="review-state"
+                        hidden>Review State code</button>
+                <a href="/docs#/guides/event-operations?id=tickets-discounts-and-refunds"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   hx-boost="false"
+                   class="mt-3 inline-block text-sm font-medium text-primary-700 hover:text-primary-800 hover:underline"
+                   data-automatic-tax-readiness-role="manual-tax-help"
+                   hidden>Learn how to configure manual tax</a>
               </div>
-              <p id="manual-tax-rates-help" class="form-legend">
-                Select an active rate owned by this group's fiscal sponsor. The same rate applies to every paid ticket tier.
-              </p>
-              <p id="manual-tax-rates-state"
-                 class="mt-2 rounded-md border px-4 py-3 text-sm/6"
-                 data-tax-rates-role="state"
-                 role="status"
-                 aria-live="polite"
-                 hidden></p>
-            </div>
+
+              <div id="manual-tax-rates-fieldset"
+                   class="col-span-full max-w-3xl"
+                   data-disabled="{{ ticketing_read_only }}"
+                   data-selected-rate-ids='{{ event.manual_tax_rate_ids|json }}'
+                   data-tax-rates-url="/dashboard/group/events/tax-rates"
+                   tabindex="-1"
+                   {% if !self.uses_manual_ticket_tax() %}hidden{% endif %}>
+                <div class="form-label">
+                  <label for="manual-tax-rates">Manual Stripe Tax Rates</label>
+                  <span class="group/manual-tax-info relative inline-flex align-super">
+                    <button type="button"
+                            class="inline-flex cursor-help rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                            aria-label="About Manual Stripe Tax Rates"
+                            aria-describedby="manual-tax-rates-info">
+                      <span class="svg-icon size-3 icon-question-mark bg-stone-500"
+                            aria-hidden="true"></span>
+                    </button>
+                    {% call dashboard::tooltip_panel(
+                      id = "manual-tax-rates-info",
+                      title = "Stripe Tax Rates",
+                      visibility_classes = "group-hover/manual-tax-info:visible group-hover/manual-tax-info:opacity-100 group-focus-within/manual-tax-info:visible group-focus-within/manual-tax-info:opacity-100",
+                      width_classes = "w-72"
+                    ) -%}
+                    <span class="block text-stone-900">Create Tax Rates in the fiscal sponsor's Stripe account.</span>
+                    {% endcall -%}
+                  </span>
+                </div>
+                <div class="mt-2 flex items-end gap-3">
+                  <select id="manual-tax-rates"
+                          name="manual_tax_rate_ids[]"
+                          class="select-primary flex-1"
+                          data-tax-rates-role="select"
+                          aria-describedby="manual-tax-rates-help manual-tax-rates-state"></select>
+                  <button type="button"
+                          class="btn-primary-outline inline-flex min-w-28 shrink-0 items-center justify-center whitespace-nowrap"
+                          data-tax-rates-action="retry"
+                          aria-label="Retry loading Stripe Tax Rates"
+                          hidden>
+                    <span data-tax-rates-role="retry-label">Retry</span>
+                    <span class="inline-flex items-center"
+                          data-tax-rates-role="retry-loading"
+                          hidden>
+                      <svg-spinner size="size-4" label="Loading Stripe Tax Rates">
+                      </svg-spinner>
+                    </span>
+                  </button>
+                </div>
+                <p id="manual-tax-rates-help" class="form-legend">
+                  Select an active rate owned by this group's fiscal sponsor. The same rate applies to every paid ticket tier.
+                </p>
+                <p id="manual-tax-rates-state"
+                   class="mt-2 rounded-md border px-4 py-3 text-sm/6"
+                   data-tax-rates-role="state"
+                   role="status"
+                   aria-live="polite"
+                   hidden></p>
+              </div>
+            {% endif -%}
           </div>
         </div>
       {% endif -%}
@@ -1062,7 +1144,7 @@
         </div>
       </div>
 
-      {% if payments_ready || event.is_paid_capable() -%}
+      {% if paid_ticketing_available || event.is_paid_capable() -%}
         <div class="pb-12">
           <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
           <p class="mt-1 text-sm/6 text-stone-500">

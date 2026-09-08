@@ -37,6 +37,7 @@ returns json as $$
         'ends_at', floor(extract(epoch from e.ends_at)),
         'event_series_id', e.event_series_id,
         'group_slug_pretty', g.slug_pretty,
+        'has_external_payment', nullif(e.external_payment_url is not null, false),
         'latitude', st_y(e.location::geometry),
         'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
         'longitude', st_x(e.location::geometry),

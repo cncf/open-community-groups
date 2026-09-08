@@ -375,8 +375,6 @@ returns json as $$
                             erp.registration_answers,
                             'registration_questions',
                             rq.registration_questions,
-                            'resume_checkout_url',
-                            erp.resume_checkout_url,
                             'roles',
                             erp.roles
                         )
@@ -393,12 +391,46 @@ returns json as $$
                             erp.currency_code,
                             'event_ticket_type_id',
                             erp.event_ticket_type_id,
+                            'external_payment',
+                            (
+                                select jsonb_strip_nulls(jsonb_build_object(
+                                    'amount_minor', ep.amount_minor,
+                                    'currency_code', ep.currency_code,
+                                    'deadline', extract(epoch from ep.hold_expires_at)::bigint,
+                                    'instructions', e.external_payment_instructions,
+                                    'reference', ep.event_purchase_id,
+                                    'url', e.external_payment_url
+                                ))
+                                from event_purchase ep
+                                join event e using (event_id)
+                                where ep.event_id = erp.event_id
+                                and ep.user_id = p_user_id
+                                and ep.status = 'pending'
+                                and ep.charge_model = 'external'
+                                and ep.hold_expires_at > current_timestamp
+                                order by ep.created_at desc, ep.event_purchase_id desc
+                                limit 1
+                            ),
                             'offer_expires_at',
                             extract(epoch from erp.offer_expires_at)::bigint,
                             'refund_rejection_reason',
                             erp.refund_rejection_reason,
                             'refund_request_status',
                             erp.refund_request_status,
+                            'resume_checkout_url',
+                            case
+                                when erp.resume_checkout_url is not null
+                                    and not exists (
+                                        select 1
+                                        from event_purchase ep
+                                        where ep.event_id = erp.event_id
+                                        and ep.user_id = p_user_id
+                                        and ep.status = 'pending'
+                                        and ep.charge_model = 'external'
+                                        and ep.hold_expires_at > current_timestamp
+                                    )
+                                then erp.resume_checkout_url
+                            end,
                             'ticket_title',
                             erp.ticket_title
                         ))

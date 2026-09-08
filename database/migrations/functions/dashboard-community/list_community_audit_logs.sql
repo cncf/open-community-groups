@@ -40,6 +40,7 @@ returns json as $$
                 'group_category_updated',
                 'group_deactivated',
                 'group_deleted',
+                'group_external_payments_updated',
                 'group_payment_recipient_updated',
                 'group_updated',
                 'region_added',

@@ -195,7 +195,12 @@ test.describe("group page", () => {
       page.getByText("Primary meetup used for end-to-end dashboard and site coverage.", { exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/\d+ members/)).toBeVisible();
-    await expect(page.getByText("August 2026", { exact: true })).toBeVisible();
+    const currentMonth = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      timeZone: "UTC",
+      year: "numeric",
+    }).format(new Date());
+    await expect(page.getByText(currentMonth, { exact: true })).toBeVisible();
     await expect(page.getByAltText("Tech Corp logo")).toBeVisible();
   });
 

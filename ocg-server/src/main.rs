@@ -23,7 +23,7 @@ use tracing::{error, info};
 
 use crate::{
     config::{Config, HttpServerConfig, ImageStorageConfig, MeetingsConfig, PaymentsConfig},
-    db::{DynDB, PgDB, pool as db_pool},
+    db::{DynDB, PgDB, payments::DBPayments, pool as db_pool},
     services::{
         badges::start_badge_award_workers,
         enrollment::start_enrollment_workers,
@@ -86,6 +86,11 @@ async fn main() -> Result<()> {
     let background_tasks = BackgroundTasks::new();
     let db = setup_db(&cfg)?;
     let image_storage = setup_image_storage(&cfg, db.clone());
+
+    // Sync operator-managed external payments configuration before serving
+    db.sync_external_payments_config(cfg.external_payments.clone())
+        .await
+        .context("error syncing external payments configuration")?;
 
     // Configure background services that depend on the database
     let workers_db = db.clone() as DynDB;

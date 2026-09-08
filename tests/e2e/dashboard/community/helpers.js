@@ -1,5 +1,5 @@
 import { expect } from "../../fixtures.js";
-import { navigateToPath, waitForActionResponse } from "../../utils.js";
+import { navigateToPath, waitForActionResponse, waitForHtmxSettle } from "../../utils.js";
 
 export const taxonomyCases = [
   {
@@ -74,4 +74,5 @@ export const waitForCommunityDashboardMutation = async (
     }),
     waitForActionResponse(page, action, responseOptions),
   ]);
+  await waitForHtmxSettle(page);
 };

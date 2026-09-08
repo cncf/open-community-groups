@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,9 @@ select plan(4);
 \set creditNoteID 'd7380000-0000-0000-0000-000000000002'
 \set eventCategoryID 'd7380000-0000-0000-0000-000000000003'
 \set eventID 'd7380000-0000-0000-0000-000000000004'
+\set externalCompletedPurchaseID 'd7380000-0000-0000-0000-000000000011'
+\set externalRefundedPurchaseID 'd7380000-0000-0000-0000-000000000012'
+\set externalUserID 'd7380000-0000-0000-0000-000000000013'
 \set groupCategoryID 'd7380000-0000-0000-0000-000000000005'
 \set groupID 'd7380000-0000-0000-0000-000000000006'
 \set purchaseID 'd7380000-0000-0000-0000-000000000007'
@@ -48,9 +51,13 @@ values (:'communityID', :'groupCategoryID', 'Groups');
 insert into "group" (community_id, group_category_id, group_id, name, slug)
 values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
 
--- Attendee owning the purchase documents
+-- Attendee owning the direct-charge purchase documents
 insert into "user" (auth_hash, email, user_id, username)
 values ('user', 'user@example.test', :'userID', 'user');
+
+-- Attendee owning external completed and refunded purchases
+insert into "user" (auth_hash, email, user_id, username)
+values ('external-user', 'external@example.test', :'externalUserID', 'external-user');
 
 -- Event associated with the direct-charge purchase
 insert into event (
@@ -113,9 +120,102 @@ insert into event_purchase_credit_note (
     'https://credit.test/one.pdf', 'issued', 200
 );
 
+-- Completed external purchase listed without provider invoice links
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    external_payment_details,
+    external_payment_marked_by_user_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    4000,
+    'external',
+    '2026-01-02 12:00:00+00',
+    'USD',
+    :'eventID',
+    :'externalCompletedPurchaseID',
+    :'ticketTypeID',
+    'Paid by bank transfer',
+    :'userID',
+    0,
+    0,
+    'completed',
+    'General admission',
+    :'externalUserID'
+);
+
+-- Refunded external purchase listed without invoice or credit-note links
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    external_payment_details,
+    external_payment_marked_by_user_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    4000,
+    'external',
+    '2026-01-01 12:00:00+00',
+    'USD',
+    :'eventID',
+    :'externalRefundedPurchaseID',
+    :'ticketTypeID',
+    'Paid by bank transfer',
+    :'userID',
+    0,
+    0,
+    'refunded',
+    'General admission',
+    :'externalUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should list completed and refunded external purchases as externally managed
+select results_eq(
+    format($$
+        select
+            item->>'event_purchase_id',
+            item->>'status',
+            (item->>'externally_managed')::boolean,
+            json_array_length(item->'credit_notes')
+        from json_array_elements(
+            list_user_purchase_documents(
+                %L::uuid,
+                '{"limit":20,"offset":0}'::jsonb
+            )->'purchases'
+        ) item
+        order by item->>'event_purchase_id'
+    $$, :'externalUserID'),
+    format(
+        $$ values
+            (%L::text, 'completed'::text, true, 0),
+            (%L::text, 'refunded'::text, true, 0)
+        $$,
+        :'externalCompletedPurchaseID',
+        :'externalRefundedPurchaseID'
+    ),
+    'Should list completed and refunded external purchases as externally managed'
+);
 
 -- Should list the authenticated attendee direct-charge purchase
 select is(
@@ -126,29 +226,21 @@ select is(
     'Should list the authenticated attendee direct-charge purchase'
 );
 
--- Should return the attendee invoice and linked issued credit note
-select results_eq(
-    format($$
-        select
-            item->>'provider_invoice_id',
-            item->>'seller_display_name',
-            item->'credit_notes'->0->>'provider_credit_note_id',
-            item->'credit_notes'->0->>'status'
-        from json_array_elements(
-            list_user_purchase_documents(
-                %L::uuid,
-                '{"limit":20,"offset":0}'::jsonb
-            )->'purchases'
-        ) item
-    $$, :'userID'),
-    $$ values (
-        'in_documents'::text,
-        'Fiscal Sponsor'::text,
-        'cn_documents'::text,
-        'issued'::text
-    ) $$,
-    'Should return the attendee invoice and linked issued credit note'
-);
+-- Should omit invoice and seller fields from external purchase documents
+select ok(
+    not (purchase ?| array[
+        'provider_invoice_id',
+        'seller_display_name'
+    ]),
+    'Should omit invoice and seller fields from external purchase documents'
+)
+from (
+    select (
+        list_user_purchase_documents(
+            :'externalUserID', '{"limit":20,"offset":0}'::jsonb
+        )->'purchases'->0
+    )::jsonb as purchase
+) documents;
 
 -- Should omit provider snapshots and unused display fields from the response
 select ok(
@@ -185,6 +277,30 @@ select is(
     ),
     0,
     'Should paginate purchase documents while retaining their total'
+);
+
+-- Should return the attendee invoice and linked issued credit note
+select results_eq(
+    format($$
+        select
+            item->>'provider_invoice_id',
+            item->>'seller_display_name',
+            item->'credit_notes'->0->>'provider_credit_note_id',
+            item->'credit_notes'->0->>'status'
+        from json_array_elements(
+            list_user_purchase_documents(
+                %L::uuid,
+                '{"limit":20,"offset":0}'::jsonb
+            )->'purchases'
+        ) item
+    $$, :'userID'),
+    $$ values (
+        'in_documents'::text,
+        'Fiscal Sponsor'::text,
+        'cn_documents'::text,
+        'issued'::text
+    ) $$,
+    'Should return the attendee invoice and linked issued credit note'
 );
 
 -- ============================================================================

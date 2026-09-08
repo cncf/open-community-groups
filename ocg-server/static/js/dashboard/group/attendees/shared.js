@@ -70,3 +70,28 @@ export const bindScopedModalEscape = (root, closeModal) => {
     }
   });
 };
+
+/**
+ * Branch approval copy for external purchases that settle immediately.
+ * @param {HTMLFormElement} form Refund review form.
+ * @param {HTMLElement} trigger Refund review trigger button.
+ * @param {string} noteId External-note element id.
+ * @param {Document|Element} root Query root.
+ * @param {string} [externalSuccessMessage=""] Success copy for an external approval.
+ * @returns {void}
+ */
+export const applyExternalRefundReviewCopy = (form, trigger, noteId, root, externalSuccessMessage = "") => {
+  const externalNote = getElementById(root, noteId);
+  const isExternal = trigger.dataset.refundExternal === "true";
+  if (externalNote instanceof HTMLElement) {
+    externalNote.hidden = !isExternal;
+    externalNote.classList.toggle("hidden", !isExternal);
+  }
+
+  if (!("defaultSuccessMessage" in form.dataset)) {
+    form.dataset.defaultSuccessMessage = form.dataset.successMessage || "";
+  }
+
+  form.dataset.successMessage =
+    isExternal && externalSuccessMessage ? externalSuccessMessage : form.dataset.defaultSuccessMessage;
+};

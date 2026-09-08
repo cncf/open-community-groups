@@ -154,16 +154,7 @@ where
         }
 
         // Prepare attachments payload
-        let attachments = notification
-            .attachments
-            .iter()
-            .map(|attachment| EnqueueNotificationAttachment {
-                content_type: &attachment.content_type,
-                data_base64: BASE64.encode(&attachment.data),
-                file_name: &attachment.file_name,
-            })
-            .collect::<Vec<_>>();
-        let attachments = serde_json::to_value(attachments)?;
+        let attachments = serialize_notification_attachments(&notification.attachments)?;
 
         // Enqueue notification in database
         let kind = notification.kind.to_string();
@@ -206,16 +197,7 @@ where
             .map_err(|_| anyhow!("recipient count cannot exceed i32::MAX"))?;
 
         // Prepare attachments payload
-        let attachments = notification
-            .attachments
-            .iter()
-            .map(|attachment| EnqueueNotificationAttachment {
-                content_type: &attachment.content_type,
-                data_base64: BASE64.encode(&attachment.data),
-                file_name: &attachment.file_name,
-            })
-            .collect::<Vec<_>>();
-        let attachments = serde_json::to_value(attachments)?;
+        let attachments = serialize_notification_attachments(&notification.attachments)?;
 
         // Enqueue notification and store the custom-notification audit atomically
         let kind = notification.kind.to_string();
@@ -427,6 +409,22 @@ struct EnqueueNotificationAttachment<'a> {
     data_base64: String,
     /// File name shown to recipients.
     file_name: &'a str,
+}
+
+/// Serializes notification attachments into the JSON shape stored by SQL enqueue.
+pub(crate) fn serialize_notification_attachments(
+    attachments: &[Attachment],
+) -> Result<serde_json::Value> {
+    let attachments = attachments
+        .iter()
+        .map(|attachment| EnqueueNotificationAttachment {
+            content_type: &attachment.content_type,
+            data_base64: BASE64.encode(&attachment.data),
+            file_name: &attachment.file_name,
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::to_value(attachments).map_err(Into::into)
 }
 
 /// Convert a duration to the database integer type.

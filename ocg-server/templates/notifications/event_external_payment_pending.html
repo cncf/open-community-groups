@@ -1,0 +1,65 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Event External Payment Pending Notification -#}
+{% block subject -%}
+  Complete your payment for {{ event_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Pay {{ self.price_label() }} for {{ ticket_title }} and include reference {{ event_purchase_id }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-15" style="margin-bottom: 15px">
+    Your <strong>{{ ticket_title }}</strong> place for
+    <strong>{{ event_name }}</strong> with
+    <strong>{{ group_name }}</strong> is reserved while payment is pending.
+    The reservation is confirmed after the organizer records your payment.
+  </p>
+
+  <ul class="default"
+      style="font-family: sans-serif;
+             font-size: 14px;
+             line-height: 1.6;
+             margin: 0 0 30px;
+             padding-left: 22px">
+    <li><strong>Ticket:</strong> {{ ticket_title }}</li>
+    <li><strong>Event:</strong> {{ event_name }}</li>
+    <li><strong>Group:</strong> {{ group_name }}</li>
+    <li><strong>Amount:</strong> {{ self.price_label() }}</li>
+    <li>
+      <strong>Reference:</strong>
+      <span style="overflow-wrap: anywhere; word-break: break-word">{{ event_purchase_id }}</span>
+    </li>
+    <li>
+      <strong>Deadline:</strong>
+      {{ deadline.with_timezone(timezone).format("%b %d, %Y at %H:%M %Z") }}
+    </li>
+    <li>
+      <strong>Instructions:</strong>
+      {% if let Some(instructions) = external_payment_instructions -%}
+        <span style="display: block;
+                     white-space: pre-wrap;
+                     overflow-wrap: anywhere;
+                     word-break: break-word">{{- instructions -}}</span>
+      {% else -%}
+        None provided.
+      {% endif -%}
+    </li>
+  </ul>
+
+  {{ email::button(link = external_payment_url, text = "Open payment page", color = theme.primary_color) }}
+
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">
+    You can also review this reservation from your
+    <a href="{{ dashboard_url }}">dashboard</a>.
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you reserved a paid ticket for {{ event_name }}.
+{% endblock footer -%}
+{# End event external payment pending notification -#}

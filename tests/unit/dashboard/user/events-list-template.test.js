@@ -66,7 +66,7 @@ describe("dashboard user events list template", () => {
 
     // Verify role and status columns stay distinct on desktop.
     expect(template).to.include(
-      "{% if let Some(enrollment_status_label) = item.enrollment_status_label() -%}",
+      "{% else if let Some(enrollment_status_label) = item.enrollment_status_label() -%}",
     );
     expect(template).to.include(
       "{{ badges::payment_status_badge(label = enrollment_status_label) -}}",
@@ -181,6 +181,70 @@ describe("dashboard user events list template", () => {
       'data-success-message="Your checkout has been canceled and the ticket hold released."',
     );
     expect(template).to.include("<span>Cancel checkout</span>");
+  });
+
+  it("renders external payment details in a status badge tooltip", async () => {
+    // Load the user events template before checking external payment recovery.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("{% if let Some(external_payment) = &item.external_payment -%}");
+    expect(template).to.include(
+      "{% macro external_payment_status_badge(external_payment, timezone, status_instance) -%}",
+    );
+    expect(template).to.include(
+      "external-payment-details-{{ external_payment.reference }}-{{ status_instance }}",
+    );
+    expect(template).to.include(
+      'aria-describedby="{{ external_payment_tooltip_id }}"',
+    );
+    expect(template).to.include(
+      '{{ badges::payment_status_badge(label = "Payment pending") -}}',
+    );
+    expect(template).to.include(
+      "-end-1 -top-1 size-2.5 rounded-full border-2 border-white bg-stone-500",
+    );
+    expect(template).to.include("dashboard::tooltip_panel(");
+    expect(template).to.include('title = "Payment details"');
+    expect(template).to.include(
+      "group-hover/external-payment-details:visible",
+    );
+    expect(template).to.include(
+      "group-focus-within/external-payment-details:visible",
+    );
+    expect(template).to.include(
+      '<span class="block font-semibold text-stone-500">Deadline</span>',
+    );
+    expect(template).to.include(
+      'external_payment.deadline.with_timezone(timezone).format("%b %-e, %Y at %-I:%M %p %Z")',
+    );
+    expect(template).to.include(
+      '<span class="block font-semibold text-stone-500">Reference</span>',
+    );
+    expect(template).to.include(
+      '<span class="mt-0.5 block whitespace-nowrap font-mono text-stone-900">{{ external_payment.reference }}</span>',
+    );
+    expect(template).to.include(
+      "{% if let Some(instructions) = &external_payment.instructions -%}",
+    );
+    expect(template).to.include(
+      '<span class="block font-semibold text-stone-500">Instructions</span>',
+    );
+    expect(template).to.include(
+      '{{ external_payment_status_badge(external_payment, item.event.timezone, "mobile") -}}',
+    );
+    expect(template).to.include(
+      '{{ external_payment_status_badge(external_payment, item.event.timezone, "desktop") -}}',
+    );
+    expect(template).not.to.include("external_payment_details(");
+  });
+
+  it("renders Open payment page actions for pending external payments", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('href="{{ external_payment.url }}"');
+    expect(template).to.include('target="_blank"');
+    expect(template).to.include('rel="noopener noreferrer"');
+    expect(template).to.include("<span>Open payment page</span>");
   });
 
   it("links eligible paid attendees to the event refund control", async () => {

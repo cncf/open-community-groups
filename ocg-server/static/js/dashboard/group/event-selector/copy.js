@@ -81,6 +81,23 @@ const copyVenueFields = (details) => {
 };
 
 /**
+ * Copies or clears the external payment configuration as one unit.
+ * @param {object} details Event details payload
+ */
+const copyExternalPaymentFields = (details) => {
+  const externalPaymentUrl = details.external_payment_url || "";
+  setTextValue("external_payment_url", externalPaymentUrl);
+  setTextValue(
+    "external_payment_instructions",
+    externalPaymentUrl ? details.external_payment_instructions || "" : "",
+  );
+  setTextValue(
+    "external_payment_window_hours",
+    externalPaymentUrl ? details.external_payment_window_hours || "" : "",
+  );
+};
+
+/**
  * Applies copied event details into the event form.
  * @param {object} details Event details payload
  * @returns {Promise<void>}
@@ -111,6 +128,7 @@ export const applyCopiedEventDetails = async (details) => {
   setGalleryImages(details.photos_urls);
   setTags(details.tags);
   setPaymentCurrencyCode(details.payment_currency_code);
+  copyExternalPaymentFields(details);
   setTicketTaxConfiguration(details);
   await setTicketTypes(details.ticket_types);
   setDiscountCodes(details.discount_codes);

@@ -29,8 +29,8 @@ use crate::{
     types::{
         event::{EventEnrollmentState, EventEnrollmentStatus, EventLeaveOutcome},
         payments::{
-            EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType,
-            EventTicketTypeAvailability, PreparedEventCheckout,
+            EventPurchaseChargeModel, EventPurchaseStatus, EventTicketCurrentPrice,
+            EventTicketType, EventTicketTypeAvailability, PreparedEventCheckout,
         },
         questionnaire::{
             QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
@@ -1517,8 +1517,10 @@ async fn test_enrollment_state_success() {
 
                 admission_offer_id: None,
                 event_ticket_type_id: None,
+                external_payment: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                purchase_charge_model: None,
                 refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -1553,6 +1555,7 @@ async fn test_enrollment_state_success() {
             "admission_offer_id": null,
             "can_request_refund": false,
             "event_ticket_type_id": null,
+            "external_payment": null,
             "is_checked_in": false,
             "manually_invited": false,
             "purchase_amount_minor": null,
@@ -1598,8 +1601,10 @@ async fn test_enrollment_state_stale_event_returns_none_without_summary_lookup()
 
                 admission_offer_id: None,
                 event_ticket_type_id: None,
+                external_payment: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                purchase_charge_model: None,
                 refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -1630,6 +1635,7 @@ async fn test_enrollment_state_stale_event_returns_none_without_summary_lookup()
             "admission_offer_id": null,
             "can_request_refund": false,
             "event_ticket_type_id": null,
+            "external_payment": null,
             "is_checked_in": false,
             "manually_invited": false,
             "purchase_amount_minor": null,
@@ -1684,8 +1690,10 @@ async fn test_cancel_checkout_success() {
 
                 admission_offer_id: Some(Uuid::from_u128(1)),
                 event_ticket_type_id: Some(Uuid::from_u128(2)),
+                external_payment: None,
                 manually_invited: false,
                 purchase_amount_minor: None,
+                purchase_charge_model: None,
                 refund_rejection_reason: None,
                 refund_request_status: None,
                 resume_checkout_url: None,
@@ -2774,6 +2782,138 @@ async fn test_start_checkout_rejects_inactive_event_before_ticket_checks() {
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
         "event not found or inactive"
+    );
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_start_checkout_returns_external_pending_payment() {
+    // Setup a paid external hold without creating a provider checkout
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let mut event_summary = sample_event_summary(event_id, group_id);
+    event_summary.payment_currency_code = Some("USD".to_string());
+    event_summary.ticket_types = Some(vec![EventTicketType {
+        active: true,
+        availability: EventTicketTypeAvailability::Public,
+        event_ticket_type_id: ticket_type_id,
+        order: 1,
+        title: "General admission".to_string(),
+
+        current_price: Some(EventTicketCurrentPrice {
+            amount_minor: 2_500,
+            ends_at: None,
+            starts_at: None,
+        }),
+        description: None,
+        price_windows: vec![],
+        remaining_seats: Some(10),
+        seats_total: Some(10),
+        sold_out: false,
+    }]);
+    let hold_expires_at = chrono::Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
+    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
+    purchase.amount_minor = 2_500;
+    purchase.charge_model = EventPurchaseChargeModel::External;
+    purchase.currency_code = Some("USD".to_string());
+    purchase.event_purchase_id = event_purchase_id;
+    purchase.event_ticket_type_id = ticket_type_id;
+    purchase.external_payment_instructions = Some("Use reference on the transfer.".to_string());
+    purchase.external_payment_url = Some("https://pay.example.test/event".to_string());
+    purchase.hold_expires_at = Some(hold_expires_at);
+
+    // Prepare the external checkout through the database boundary
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_ensure_event_is_active()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(()));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_prepare_event_checkout_purchase()
+        .times(1)
+        .withf(move |cid, input| {
+            *cid == community_id
+                && input.admission_offer_id.is_none()
+                && input.event_id == event_id
+                && input.event_ticket_type_id == ticket_type_id
+                && input.user_id == user_id
+        })
+        .returning(move |_, _| {
+            Ok(PrepareEventCheckoutPurchaseResult::Prepared(Box::new(
+                PreparedEventCheckout {
+                    community_name: "test-community".to_string(),
+                    event_id,
+                    event_slug: "event".to_string(),
+                    group_slug: "group".to_string(),
+                    purchase: purchase.clone(),
+                    group_slug_pretty: None,
+                    ..PreparedEventCheckout::default()
+                },
+            )))
+        });
+
+    // Skip provider checkout creation for external purchases
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager.expect_complete_free_checkout().times(0);
+    payments_manager.expect_get_or_create_checkout_redirect_url().times(0);
+
+    // Submit checkout for the external ticket
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the pending-payment payload uses the purchase snapshot
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["status"], json!("pending-payment"));
+    assert_eq!(body["hold_expires_at"], json!(hold_expires_at.timestamp()));
+    assert_eq!(
+        body["external_payment"],
+        json!({
+            "amount_minor": 2500,
+            "currency_code": "USD",
+            "deadline": hold_expires_at.timestamp(),
+            "instructions": "Use reference on the transfer.",
+            "reference": event_purchase_id,
+            "url": "https://pay.example.test/event",
+        })
     );
 }
 

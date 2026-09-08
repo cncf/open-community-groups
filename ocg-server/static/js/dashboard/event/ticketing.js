@@ -44,6 +44,7 @@ const PAID_VENUE_FIELD_NAMES = new Set(
  *   attendeeApprovalRequiredInput: HTMLElement|null,
  *   attendeeApprovalToggleLabel: HTMLElement|null,
  *   discountCodesRoot: HTMLElement|null,
+ *   externalPaymentUrlInput: HTMLElement|null,
  *   paymentCurrencyInput: HTMLElement|null,
  *   ticketTypesRoot: HTMLElement|null,
  *   timezoneInput: HTMLElement|null,
@@ -57,6 +58,7 @@ const resolveEventEnrollmentControls = (root = document) => ({
   attendeeApprovalRequiredInput: getElementById(root, "attendee_approval_required"),
   attendeeApprovalToggleLabel: root.querySelector('[data-enrollment-toggle-label="attendee-approval"]'),
   discountCodesRoot: getElementById(root, "discount-codes-ui"),
+  externalPaymentUrlInput: getElementById(root, "external_payment_url"),
   paymentCurrencyInput: getElementById(root, "payment_currency_code"),
   ticketTypesRoot: getElementById(root, "ticket-types-ui"),
   timezoneInput: root.querySelector('[name="timezone"]'),
@@ -75,6 +77,7 @@ export function initializeEventEnrollmentState(root = document) {
   const {
     attendeeApprovalRequiredInput,
     attendeeApprovalToggleLabel,
+    externalPaymentUrlInput,
     paymentCurrencyInput,
     ticketTypesRoot,
     toggleAttendeeApprovalRequired,
@@ -91,6 +94,16 @@ export function initializeEventEnrollmentState(root = document) {
         : false;
     const kindInput = getElementById(root, "kind_id");
     const hasEligibleKind = PAID_EVENT_KINDS.has(kindInput?.value || "");
+    const usesExternalTicketing = externalPaymentUrlInput?.dataset.externalTicketingEnabled !== "false";
+
+    if (externalPaymentUrlInput instanceof HTMLInputElement && !externalPaymentUrlInput.disabled) {
+      externalPaymentUrlInput.required = hasPositivePrices && usesExternalTicketing;
+      externalPaymentUrlInput.setCustomValidity(
+        hasPositivePrices && usesExternalTicketing && externalPaymentUrlInput.value.trim() === ""
+          ? "Paid tickets require an external payment URL."
+          : "",
+      );
+    }
 
     kindInput?.setCustomValidity(
       hasPositivePrices && !hasEligibleKind ? "Paid tickets require an in-person or hybrid event." : "",
@@ -204,6 +217,10 @@ export function initializeEventEnrollmentState(root = document) {
   if (paymentCurrencyInput) {
     paymentCurrencyInput.addEventListener("input", syncEventEnrollmentState);
     paymentCurrencyInput.addEventListener("change", syncEventEnrollmentState);
+  }
+
+  if (externalPaymentUrlInput) {
+    externalPaymentUrlInput.addEventListener("input", syncEventEnrollmentState);
   }
 
   root.addEventListener("input", (event) => {

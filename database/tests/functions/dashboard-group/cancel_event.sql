@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(24);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,15 +14,22 @@ select plan(20);
 \set communityID '3a060000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a060000-0000-0000-0000-000000000002'
 \set eventAlreadyCanceledID '3a060000-0000-0000-0000-000000000023'
+\set eventExternalID '3a060000-0000-0000-0000-00000000002b'
 \set eventID '3a060000-0000-0000-0000-000000000003'
 \set eventInvalidPaymentID '3a060000-0000-0000-0000-000000000019'
 \set eventNoMeetingID '3a060000-0000-0000-0000-000000000004'
 \set eventPastID '3a060000-0000-0000-0000-000000000024'
+\set externalCompletedPurchaseID '3a060000-0000-0000-0000-00000000002c'
+\set externalCompletedUserID '3a060000-0000-0000-0000-00000000002d'
+\set externalPendingPurchaseID '3a060000-0000-0000-0000-00000000002e'
+\set externalPendingUserID '3a060000-0000-0000-0000-00000000002f'
+\set externalTicketTypeID '3a060000-0000-0000-0000-000000000030'
 \set freePurchaseID '3a060000-0000-0000-0000-000000000011'
 \set freeRefundRequestID '3a060000-0000-0000-0000-000000000012'
 \set freeUserID '3a060000-0000-0000-0000-000000000013'
 \set groupCategoryID '3a060000-0000-0000-0000-000000000005'
 \set groupID '3a060000-0000-0000-0000-000000000006'
+\set siteID '3a060000-0000-0000-0000-000000000031'
 \set invalidPaymentPurchaseID '3a060000-0000-0000-0000-000000000022'
 \set invalidPaymentTicketTypeID '3a060000-0000-0000-0000-000000000021'
 \set invalidPaymentUserID '3a060000-0000-0000-0000-000000000020'
@@ -45,6 +52,15 @@ select plan(20);
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Site theme used by external payment expiry notifications
+insert into site (description, site_id, theme, title)
+values (
+    'Cancel event site',
+    :'siteID',
+    '{"primary_color": "#2563eb"}'::jsonb,
+    'Cancel Event Site'
+);
 
 -- Community
 insert into community (
@@ -105,6 +121,8 @@ insert into "user" (
 
 -- Attendees covering free, paid, invalid-payment, and invitation scenarios
 insert into "user" (user_id, auth_hash, email, username) values
+    (:'externalCompletedUserID', 'external-completed', 'external-completed@test.local', 'external-completed'),
+    (:'externalPendingUserID', 'external-pending', 'external-pending@test.local', 'external-pending'),
     (:'freeUserID', 'free', 'free@test.local', 'free-user'),
     (:'invalidPaymentUserID', 'invalid', 'invalid@test.local', 'invalid-user'),
     (:'invitationUserID', 'invited', 'invited@test.local', 'invited-user'),
@@ -392,6 +410,112 @@ insert into event_waitlist (
     :'waitlistUserID'
 );
 
+-- External-marked event canceled with pending and completed external purchases
+insert into event (
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    false,
+    'External cancellation event',
+    :'eventCategoryID',
+    :'eventExternalID',
+    'in-person',
+    'https://pay.example.test/cancel',
+    :'groupID',
+    'External Cancel Event',
+    true,
+    'external-cancel-event',
+    current_timestamp + interval '2 days',
+    'UTC'
+);
+
+-- Ticket type for the external cancellation event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'externalTicketTypeID',
+    :'eventExternalID',
+    1,
+    50,
+    'External admission'
+);
+
+-- Confirmed attendee for the completed external purchase
+insert into event_attendee (event_id, status, user_id)
+values (:'eventExternalID', 'confirmed', :'externalCompletedUserID');
+
+-- Pending external hold expired with a do-not-pay notice on cancellation
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'KRW',
+    :'eventExternalID',
+    :'externalPendingPurchaseID',
+    :'externalTicketTypeID',
+    current_timestamp + interval '2 days',
+    0,
+    0,
+    'pending',
+    'External admission',
+    :'externalPendingUserID'
+);
+
+-- Completed external purchase refunded locally on cancellation
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    current_timestamp - interval '1 hour',
+    'KRW',
+    :'eventExternalID',
+    :'externalCompletedPurchaseID',
+    :'externalTicketTypeID',
+    0,
+    0,
+    'completed',
+    'External admission',
+    :'externalCompletedUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -619,6 +743,65 @@ select throws_ok(
     ),
     'event not found or inactive',
     'Should throw error when group_id does not match'
+);
+
+-- Should cancel an external-marked event with pending and completed purchases
+select lives_ok(
+    format(
+        $$select cancel_event(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'userID', :'groupID', :'eventExternalID'
+    ),
+    'Should cancel an external-marked event with pending and completed purchases'
+);
+
+-- Should expire pending external holds and refund completed purchases locally
+select results_eq(
+    format(
+        $$
+            select ep.event_purchase_id, ep.status, epr.event_purchase_refund_id
+            from event_purchase ep
+            left join event_purchase_refund epr using (event_purchase_id)
+            where ep.event_id = %L::uuid
+            order by ep.event_purchase_id
+        $$,
+        :'eventExternalID'
+    ),
+    format(
+        $$
+            values
+                (%L::uuid, 'refunded'::text, null::uuid),
+                (%L::uuid, 'expired'::text, null::uuid)
+        $$,
+        :'externalCompletedPurchaseID',
+        :'externalPendingPurchaseID'
+    ),
+    'Should expire pending external holds and refund completed purchases locally'
+);
+
+-- Should enqueue a do-not-pay notice for expired external payment holds
+select ok(
+    exists(
+        select 1
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-external-payment-expired'
+        and n.user_id = :'externalPendingUserID'::uuid
+        and (ntd.data->>'do_not_pay')::boolean = true
+        and (ntd.data->>'event_purchase_id')::uuid = :'externalPendingPurchaseID'::uuid
+    ),
+    'Should enqueue a do-not-pay notice for expired external payment holds'
+);
+
+-- Should preserve attendance history for completed external purchases
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventExternalID'::uuid
+        and user_id = :'externalCompletedUserID'::uuid
+    ),
+    'attendance-canceled',
+    'Should preserve attendance history for completed external purchases'
 );
 
 -- ============================================================================

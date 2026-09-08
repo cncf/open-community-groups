@@ -22,6 +22,11 @@ Once this setup is complete:
 Events with only free ticket types work when Stripe is not configured. Enrollment requires
 Stripe only when a configured or claim-time final price may be positive.
 
+Deployments that serve groups in countries without Stripe Connect can also enable
+[External Payments](#external-payments), which lets allowlisted groups collect
+paid tickets outside OCG. That feature is configured separately and does not
+require Stripe.
+
 ## Stripe Requirements
 
 OCG's payments integration is built around Stripe Connect and Stripe Checkout.
@@ -115,6 +120,87 @@ error.
 
 `platform_fee_bps` cannot exceed `9999`, because an application fee must remain
 strictly below a positive charge.
+
+### External Payments
+
+Groups whose country is not served by Stripe Connect can collect paid tickets
+outside OCG. The operator allowlists ISO 3166-1 alpha-2 country codes; groups
+in those countries can then opt in from group settings. Payments happen at an
+event-specific URL with optional instructions, and attendees are emailed a
+payment reference (the purchase ID) to include with their transfer. Organizers
+match incoming transfers to that reference and mark purchases paid from the
+event attendees table. Unpaid holds expire through the existing enrollment
+reconcile path.
+
+External payments are independent of the Stripe `payments` section. A
+deployment can enable external payments without configuring Stripe at all, run
+both side by side, or run Stripe only. When a group turns on external payments,
+every paid event in that group uses the external path even if the group also
+has a fiscal sponsor configured.
+
+Helm values:
+
+```yaml
+externalPayments:
+  enabled: true
+  allowedCountries: [KR, NG, AR]
+  defaultPaymentWindowHours: 72
+  maxPaymentWindowHours: 336
+```
+
+Notes:
+
+- `enabled: false` (the default) renders `external_payments: null` in the
+  server config, which removes the synced `external_payments_config` row at
+  startup.
+- `enabled: true` requires a non-empty allowlist of unique ISO 3166-1 alpha-2
+  country codes. An empty allowlist is invalid and the server refuses to start.
+- Country codes are normalized to uppercase.
+- `defaultPaymentWindowHours` and `maxPaymentWindowHours` are optional and
+  default to `72` and `336`. Both must be at least `1`, and the default cannot
+  exceed the max. SQL enforces the max at event validation and hold creation.
+- These limits are operator-only. Group and event dashboards can pick a window
+  within the max but cannot change the allowlist or the limits.
+
+Equivalent `server.yml` section:
+
+```yaml
+external_payments:
+  allowed_countries: [KR, NG, AR]
+  default_payment_window_hours: 72
+  max_payment_window_hours: 336
+```
+
+Omitting the section, or setting Helm `enabled: false`, is the kill switch:
+the server deletes the config row and new external activity stops immediately.
+Existing pending purchases stay confirmable, cancelable, and refundable, and
+they keep using the live event payment URL until they complete, expire, or
+are canceled.
+
+Runtime revalidation uses the synced table. Every new hold, offer claim, paid
+invitation, and waitlist promotion re-checks that the config row is present,
+the group toggle is on, the group country is still allowlisted, and the event
+has a payment URL. An external event that loses eligibility returns
+`payment-setup-unavailable` to attendees and never falls back to Stripe.
+
+Editing or publishing an event that still has an external payment URL is
+rejected while the group is ineligible (toggle off, country delisted, or
+operator config absent). Paid external events must also hold their venue in
+the group country; saving or publishing one with a venue elsewhere is rejected,
+and the group cannot change country or turn the toggle on while an upcoming
+published external event has a venue outside the resulting group country. An
+eligible group cannot turn the toggle off while it has upcoming published
+external paid events; those must be canceled or unpublished first. A group
+that is already ineligible can always turn the toggle off.
+Organizers can clear the URL to move the event onto Stripe validation only
+after every pending external purchase has completed, expired, or been
+canceled. Changing the URL or instructions while holds are open updates the
+live copy shown to those attendees.
+
+OCG does not calculate tax, issue invoices, or produce credit notes for
+external purchases; the organizer handles receipts, tax, and returning money.
+Attendees see an `Externally managed` label on those purchases in their
+dashboard.
 
 ### Platform Fee
 
@@ -513,6 +599,21 @@ Check that:
 Events with only free ticket types remain available without this section. Its absence
 blocks only paid-capable ticket configuration and positive final-price claims.
 
+### External Payments Section Cannot Be Enabled In Group Settings
+
+The `External payments` section in group settings explains which condition
+blocks the opt-in. Check that:
+
+- The deployment sets `externalPayments.enabled: true` (or a non-null
+  `external_payments` section) with a non-empty allowlist, and the server was
+  restarted or rolled out with the new config.
+- The group has a country set through its location field, and that country's
+  ISO 3166-1 alpha-2 code is on the allowlist.
+- The user saving the setting has group settings write access.
+
+Eligibility is evaluated from the group's country, not from event venues. Once
+eligible, paid external events must place their venue in that same country.
+
 ### Stripe Returns Signature Errors
 
 Check that:
@@ -541,6 +642,11 @@ organizer with events write access can then complete recovery from the group
 dashboard `Refunds` tab.
 
 ### Paid Events Are Still Unavailable For A Group
+
+These checks apply to Stripe paid events. For a group that uses external
+payments, verify instead that the operator config is present, the group opt-in
+is on, the group country is allowlisted, the event has a payment URL, and the
+event venue is in the group country.
 
 Check that:
 

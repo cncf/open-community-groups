@@ -11,11 +11,8 @@
 {# End refunds refresh trigger -#}
 
 {# Refunds header -#}
-{{ dashboard::page_title(title = "Refunds", docs_href = "/docs#/guides/group-dashboard?id=refunds") -}}
-
-<p class="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-  Review attendee requests and track every refund through provider processing and local completion.
-</p>
+{{ dashboard::page_title(title = "Refunds", docs_href = "/docs#/guides/group-dashboard?id=refunds",
+  description = "Review attendee requests and track provider and external refunds through completion.") -}}
 {# End refunds header -#}
 
 {% if !financial_recoveries.is_empty() -%}
@@ -266,7 +263,7 @@
               <td class="px-3 xl:px-5 py-4 max-w-72">
                 <div class="mb-2 truncate font-medium text-stone-900 xl:hidden"
                      title="{{ refund.event_name }}">{{ refund.event_name }}</div>
-                <div class="inline-flex items-center">
+                <div class="flex flex-wrap items-center gap-1.5 md:flex-nowrap">
                   {% let refund_details_tooltip_id -%}refund-details-{{ refund.event_purchase_id }}{%- endlet %}
                 <span class="group/refund-details relative inline-flex shrink-0">
                   <button type="button"
@@ -331,16 +328,19 @@
                   {% endif -%}
                   {% endcall -%}
                 </span>
-              </div>
-              <div class="mt-2 xl:hidden">
-                {% let attempt_count = refund.attempt_count.unwrap_or(0) -%}
-                {% if attempt_count > 0 && refund.can_retry() -%}
-                  <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">
-                    {{ refund.status.label() }} ({{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %})
-                  </span>
-                {% else -%}
-                  {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
+                {% if refund.external -%}
+                  {{ badges::common_badge(content = "External", extra_styles = Some("shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700")) -}}
                 {% endif -%}
+                <div class="shrink-0 xl:hidden">
+                  {% let attempt_count = refund.attempt_count.unwrap_or(0) -%}
+                  {% if attempt_count > 0 && refund.can_retry() -%}
+                    <span class="custom-badge border-red-800 bg-red-100 px-2.5 py-0.5 text-red-800">
+                      {{ refund.status.label() }} ({{ attempt_count }} attempt{% if attempt_count != 1 %}s{% endif %})
+                    </span>
+                  {% else -%}
+                    {{ badges::payment_status_badge(label = refund.status.label() , tone = refund.status.tone()) -}}
+                  {% endif -%}
+                </div>
               </div>
             </td>
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
@@ -375,6 +375,7 @@
                                   data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
                                   data-refund-event="{{ refund.event_name }}"
                                   data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
+                                  {% if refund.external %}data-refund-external="true"{% endif %}
                                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
                             <div class="svg-icon size-4 icon-check shrink-0 bg-stone-600"></div>
                             <span>Approve refund</span>
@@ -389,6 +390,7 @@
                                   data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
                                   data-refund-event="{{ refund.event_name }}"
                                   data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
+                                  {% if refund.external %}data-refund-external="true"{% endif %}
                                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
                             <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-600"></div>
                             <span>Reject refund</span>

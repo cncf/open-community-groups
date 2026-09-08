@@ -404,6 +404,46 @@ insert into "user" (
         'contract-status-pending-payment'
     ),
     (
+        'contract_hash_external_pending',
+        'external-pending.contract@example.com',
+        true,
+        'Contract External Pending',
+        '00000000-0000-0000-0000-00000000c127',
+        'contract-external-pending'
+    ),
+    (
+        'contract_hash_external_completed',
+        'external-completed.contract@example.com',
+        true,
+        'Contract External Completed',
+        '00000000-0000-0000-0000-00000000c128',
+        'contract-external-completed'
+    ),
+    (
+        'contract_hash_external_refund',
+        'external-refund.contract@example.com',
+        true,
+        'Contract External Refund',
+        '00000000-0000-0000-0000-00000000c129',
+        'contract-external-refund'
+    ),
+    (
+        'contract_hash_external_checkout',
+        'external-checkout.contract@example.com',
+        true,
+        'Contract External Checkout',
+        '00000000-0000-0000-0000-00000000c12a',
+        'contract-external-checkout'
+    ),
+    (
+        'contract_hash_external_complete',
+        'external-complete.contract@example.com',
+        true,
+        'Contract External Complete',
+        '00000000-0000-0000-0000-00000000c132',
+        'contract-external-complete'
+    ),
+    (
         'contract_hash_reconcile_stale',
         'reconcile-stale.contract@example.com',
         true,
@@ -493,6 +533,7 @@ insert into "group" (
     created_at,
     description,
     description_short,
+    external_payments_enabled,
     group_category_id,
     group_id,
     location,
@@ -515,6 +556,7 @@ insert into "group" (
     '2024-01-01 10:00:00+00',
     'A group used by Rust database contract tests',
     'Rust database contract group',
+    true,
     '00000000-0000-0000-0000-00000000c012',
     '00000000-0000-0000-0000-00000000c021',
     ST_SetSRID(ST_MakePoint(-122.4194, 37.7749), 4326),
@@ -2961,6 +3003,286 @@ insert into audit_log (
     '00000000-0000-0000-0000-00000000c031',
     '00000000-0000-0000-0000-00000000c031',
     'event'
+);
+
+-- ============================================================================
+-- EXTERNAL PAYMENTS
+-- ============================================================================
+
+-- Operator allowlist used by external-payments contract fixtures
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['US']::text[],
+    72,
+    336
+);
+
+-- Published external-payments event used by enrollment, attendee, and checkout contracts
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    external_payment_window_hours,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_state_code,
+    venue_state_name,
+    venue_zip_code
+) values (
+    100,
+    'An external-payments event used by Rust database contract tests',
+    '2099-09-01 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000c12b',
+    'in-person',
+    'Wire transfer using the purchase reference.',
+    'https://pay.example.test/contract-external',
+    72,
+    '00000000-0000-0000-0000-00000000c021',
+    'Contract External Event',
+    'USD',
+    true,
+    'contract-external-event',
+    '2099-09-01 10:00:00+00',
+    true,
+    'UTC',
+    '123 Contract Street',
+    'San Francisco',
+    'US',
+    'Contract Hall',
+    'CA',
+    'California',
+    '94105'
+);
+
+-- Paid ticket type for the external-payments event
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    '00000000-0000-0000-0000-00000000c12b',
+    '00000000-0000-0000-0000-00000000c12c',
+    1,
+    50,
+    'External Admission'
+);
+
+-- Positive price window for the external-payments event
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    5000,
+    '00000000-0000-0000-0000-00000000c12d',
+    '00000000-0000-0000-0000-00000000c12c'
+);
+
+-- Pending external purchase awaiting organizer confirmation
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'USD',
+    0,
+    '00000000-0000-0000-0000-00000000c12b',
+    '00000000-0000-0000-0000-00000000c12e',
+    '00000000-0000-0000-0000-00000000c12c',
+    '2099-08-30 10:00:00+00',
+    0,
+    0,
+    'pending',
+    'External Admission',
+    '00000000-0000-0000-0000-00000000c127'
+);
+
+-- Registration-pending attendee row that surfaces as payment-pending
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-03-01 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c12b',
+    'registration-questions-pending',
+    '00000000-0000-0000-0000-00000000c127'
+);
+
+-- Completed externally managed purchase used by document and attendee contracts
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    external_payment_details,
+    external_payment_marked_by_user_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-03-02 10:00:00+00',
+    'USD',
+    0,
+    '00000000-0000-0000-0000-00000000c12b',
+    '00000000-0000-0000-0000-00000000c12f',
+    '00000000-0000-0000-0000-00000000c12c',
+    'Bank transfer received',
+    '00000000-0000-0000-0000-00000000c041',
+    0,
+    0,
+    'completed',
+    'External Admission',
+    '00000000-0000-0000-0000-00000000c128'
+);
+
+-- Confirmed attendee for the completed external purchase
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-03-02 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c12b',
+    'confirmed',
+    '00000000-0000-0000-0000-00000000c128'
+);
+
+-- External purchase waiting for local refund approval
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    external_payment_details,
+    external_payment_marked_by_user_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-03-03 10:00:00+00',
+    'USD',
+    0,
+    '00000000-0000-0000-0000-00000000c12b',
+    '00000000-0000-0000-0000-00000000c130',
+    '00000000-0000-0000-0000-00000000c12c',
+    'Bank transfer received',
+    '00000000-0000-0000-0000-00000000c041',
+    0,
+    0,
+    'refund-requested',
+    'External Admission',
+    '00000000-0000-0000-0000-00000000c129'
+);
+
+-- Pending refund request approved through the external refund contract
+insert into event_refund_request (
+    event_purchase_id,
+    event_refund_request_id,
+    requested_by_user_id,
+    requested_reason,
+    status
+) values (
+    '00000000-0000-0000-0000-00000000c130',
+    '00000000-0000-0000-0000-00000000c131',
+    '00000000-0000-0000-0000-00000000c129',
+    'Cannot attend anymore',
+    'pending'
+);
+
+-- Confirmed attendee canceled by external refund approval
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-03-03 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c12b',
+    'confirmed',
+    '00000000-0000-0000-0000-00000000c129'
+);
+
+-- Pending external purchase dedicated to the completion mutation contract
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    'USD',
+    0,
+    '00000000-0000-0000-0000-00000000c12b',
+    '00000000-0000-0000-0000-00000000c133',
+    '00000000-0000-0000-0000-00000000c12c',
+    '2099-08-30 10:00:00+00',
+    0,
+    0,
+    'pending',
+    'External Admission',
+    '00000000-0000-0000-0000-00000000c132'
 );
 
 -- Every remaining event uses a default free tier in the contract fixture

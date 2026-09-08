@@ -46,13 +46,16 @@
                 class="block w-56 px-3 text-sm h-[42px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
           <option value="created-desc"
                   {% if sort == "created-desc" %}selected{% endif %}>Submitted (newest)</option>
-          <option value="created-asc" {% if sort == "created-asc" %}selected{% endif %}>Submitted (oldest)</option>
+          <option value="created-asc"
+                  {% if sort == "created-asc" %}selected{% endif %}>Submitted (oldest)</option>
           <option value="ratings-count-desc"
                   {% if sort == "ratings-count-desc" %}selected{% endif %}>Ratings count (high to low)</option>
           <option value="ratings-count-asc"
                   {% if sort == "ratings-count-asc" %}selected{% endif %}>Ratings count (low to high)</option>
-          <option value="stars-desc" {% if sort == "stars-desc" %}selected{% endif %}>Stars (high to low)</option>
-          <option value="stars-asc" {% if sort == "stars-asc" %}selected{% endif %}>Stars (low to high)</option>
+          <option value="stars-desc"
+                  {% if sort == "stars-desc" %}selected{% endif %}>Stars (high to low)</option>
+          <option value="stars-asc"
+                  {% if sort == "stars-asc" %}selected{% endif %}>Stars (low to high)</option>
         </select>
       </div>
     </div>

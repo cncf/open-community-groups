@@ -236,6 +236,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "event_published",
     },
     AuditActionDefinition {
+        label: "Event external payment completed",
+        scopes: GROUP_SCOPES,
+        value: "event_purchase_external_payment_completed",
+    },
+    AuditActionDefinition {
         label: "Event refund approved",
         scopes: GROUP_SCOPES,
         value: "event_refund_approved",
@@ -309,6 +314,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         label: "Group deleted",
         scopes: COMMUNITY_SCOPES,
         value: "group_deleted",
+    },
+    AuditActionDefinition {
+        label: "Group external payments updated",
+        scopes: COMMUNITY_GROUP_SCOPES,
+        value: "group_external_payments_updated",
     },
     AuditActionDefinition {
         label: "Group payment recipient updated",

@@ -1,6 +1,7 @@
 import { getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
 
 const MODAL_AUTOFOCUS_SELECTOR = "[autofocus]";
+const RESTORABLE_MODAL_SELECTOR = '[data-restorable-modal], [role="dialog"][aria-modal="true"]';
 const MODAL_FOCUS_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
   'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -260,7 +261,7 @@ export const bindModalControlClicks = (controls, handler) => {
 };
 
 /**
- * Closes declarative modals and clears scroll locks after history restoration.
+ * Closes modal dialogs and clears scroll locks after navigation or restoration.
  * @param {Document|Element} root Root restored by the browser or HTMX.
  * @returns {void}
  */
@@ -270,9 +271,9 @@ export const resetRestoredModalState = (root = document) => {
       ? [root, ...root.querySelectorAll("[data-modal-toggle]")]
       : [...(root.querySelectorAll?.("[data-modal-toggle]") || [])];
   const restorableModals =
-    root instanceof Element && root.matches("[data-restorable-modal]")
-      ? [root, ...root.querySelectorAll("[data-restorable-modal]")]
-      : [...(root.querySelectorAll?.("[data-restorable-modal]") || [])];
+    root instanceof Element && root.matches(RESTORABLE_MODAL_SELECTOR)
+      ? [root, ...root.querySelectorAll(RESTORABLE_MODAL_SELECTOR)]
+      : [...(root.querySelectorAll?.(RESTORABLE_MODAL_SELECTOR) || [])];
 
   triggers.forEach((trigger) => {
     const modalId = trigger.dataset.modalToggle;

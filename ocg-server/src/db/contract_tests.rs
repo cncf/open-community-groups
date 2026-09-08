@@ -81,8 +81,8 @@ use crate::{
         },
         group::GroupRole,
         payments::{
-            EventPurchaseStatus, EventRefundRequestStatus, EventTicketType,
-            EventTicketTypeAvailability, PaymentProvider,
+            EventPurchaseChargeModel, EventPurchaseStatus, EventRefundRequestStatus,
+            EventTicketType, EventTicketTypeAvailability, ExternalPaymentInfo, PaymentProvider,
         },
         questionnaire::QuestionnaireAnswerValue,
         search::{SearchEventsFilters, SearchGroupsFilters},
@@ -910,6 +910,78 @@ async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_approve_external_event_refund_request_deserializes() -> Result<()> {
+    // Setup the contract database and pending external refund fixture
+    let db = contract_tests_db()?;
+
+    // Approve the external refund request through the Rust contract
+    let purchase = db
+        .approve_external_event_refund_request(
+            organizer_id(),
+            group_id(),
+            external_refund_purchase_id(),
+            Some("Approved for contract coverage".to_string()),
+            None,
+        )
+        .await?;
+
+    // Check the completed refund ownership fields
+    assert_eq!(purchase.community_id, community_id());
+    assert_eq!(purchase.event_id, external_event_id());
+    assert_eq!(purchase.transitioned, Some(true));
+    assert_eq!(purchase.user_id, external_refund_user_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_complete_external_event_purchase_deserializes() -> Result<()> {
+    // Setup the contract database and pending external purchase fixture
+    let db = contract_tests_db()?;
+
+    // Complete the external purchase through the Rust contract
+    let purchase = db
+        .complete_external_event_purchase(
+            organizer_id(),
+            group_id(),
+            external_complete_purchase_id(),
+            Some("Bank transfer matched".to_string()),
+            None,
+            None,
+        )
+        .await?;
+
+    // Check the completed purchase ownership fields
+    assert_eq!(purchase.community_id, community_id());
+    assert_eq!(purchase.event_id, external_event_id());
+    assert_eq!(purchase.transitioned, Some(true));
+    assert_eq!(purchase.user_id, external_complete_user_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_purchase_notification_context_deserializes() -> Result<()> {
+    // Setup the contract database and pending external purchase fixture
+    let db = contract_tests_db()?;
+
+    // Load the notification identifiers through the Rust contract
+    let context = db
+        .get_event_purchase_notification_context(group_id(), external_complete_purchase_id())
+        .await?
+        .expect("purchase notification context to exist");
+
+    // Check the required identifier contract
+    assert_eq!(context.community_id, community_id());
+    assert_eq!(context.event_id, external_event_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> {
     // Setup the contract database and free purchase fixture
     let db = contract_tests_db()?;
@@ -1234,6 +1306,7 @@ async fn db_contracts_get_community_upcoming_events_deserializes() -> Result<()>
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_enrollment_deserializes() -> Result<()> {
     // Setup the contract database and enrollment identifiers
@@ -1324,8 +1397,51 @@ async fn db_contracts_get_event_enrollment_deserializes() -> Result<()> {
         EventEnrollmentStatus::PendingPayment
     );
     assert_eq!(
+        pending_payment_enrollment.purchase_charge_model,
+        Some(EventPurchaseChargeModel::DirectCharge)
+    );
+    assert_eq!(
         pending_payment_enrollment.resume_checkout_url.as_deref(),
         Some("https://example.test/checkout/status-pending")
+    );
+    assert!(pending_payment_enrollment.external_payment.is_none());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_enrollment_external_payment_deserializes() -> Result<()> {
+    // Setup the contract database and pending external purchase fixture
+    let db = contract_tests_db()?;
+
+    // Load pending external enrollment through the Rust contract
+    let enrollment = db
+        .get_event_enrollment(
+            community_id(),
+            external_event_id(),
+            external_pending_user_id(),
+        )
+        .await?;
+
+    // Check pending external purchases expose payment instructions without a checkout URL
+    assert_eq!(enrollment.status, EventEnrollmentStatus::PendingPayment);
+    assert_eq!(enrollment.purchase_amount_minor, Some(5000));
+    assert_eq!(
+        enrollment.purchase_charge_model,
+        Some(EventPurchaseChargeModel::External)
+    );
+    assert!(enrollment.resume_checkout_url.is_none());
+    assert_eq!(
+        enrollment.external_payment,
+        Some(ExternalPaymentInfo {
+            amount_minor: 5000,
+            currency_code: "USD".to_string(),
+            deadline: DateTime::parse_from_rfc3339("2099-08-30T10:00:00Z")?.with_timezone(&Utc),
+            reference: external_pending_purchase_id(),
+            url: "https://pay.example.test/contract-external".to_string(),
+            instructions: Some("Wire transfer using the purchase reference.".to_string()),
+        })
     );
 
     Ok(())
@@ -1339,6 +1455,9 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
 
     // Load the full event through the Rust contract
     let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
+    let external_event = db
+        .get_event_full(community_id(), group_id(), external_event_id())
+        .await?;
 
     // Check community and event details
     assert_eq!(event.attendee_count, 2);
@@ -1375,6 +1494,18 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
         event.organizers[0].github_url.as_deref(),
         Some("https://github.com/contract-organizer")
     );
+
+    // Check external-payment event fields deserialize completely
+    assert_eq!(external_event.event_id, external_event_id());
+    assert_eq!(
+        external_event.external_payment_instructions.as_deref(),
+        Some("Wire transfer using the purchase reference.")
+    );
+    assert_eq!(
+        external_event.external_payment_url.as_deref(),
+        Some("https://pay.example.test/contract-external")
+    );
+    assert_eq!(external_event.external_payment_window_hours, Some(72));
 
     Ok(())
 }
@@ -1492,10 +1623,13 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
 
     // Check pricing, hold, status, and ticket fields
     assert_eq!(summary.amount_minor, 2500);
+    assert_eq!(summary.charge_model, EventPurchaseChargeModel::DirectCharge);
     assert_eq!(summary.currency_code.as_deref(), Some("USD"));
     assert_eq!(summary.discount_amount_minor, 0);
     assert_eq!(summary.event_purchase_id, summary_purchase_id());
     assert_eq!(summary.event_ticket_type_id, paid_ticket_type_id());
+    assert!(summary.external_payment_instructions.is_none());
+    assert!(summary.external_payment_url.is_none());
     assert!(summary.hold_expires_at.is_some());
     assert_eq!(summary.provisional_platform_fee_amount_minor, 250);
     assert_eq!(summary.status, EventPurchaseStatus::Pending);
@@ -1553,6 +1687,7 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
 
     // Check required and computed event fields
     assert_eq!(event.event_id, event_id());
+    assert!(!event.has_external_payment);
     assert!(event.has_registration_questions);
     assert!(
         event
@@ -1565,6 +1700,24 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     );
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.waitlist_count, 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_summary_external_payment_deserializes() -> Result<()> {
+    // Setup the contract database and external-payments event
+    let db = contract_tests_db()?;
+
+    // Load the external-payments event summary through the Rust contract
+    let event = db
+        .get_event_summary(community_id(), group_id(), external_event_id())
+        .await?;
+
+    // Check the summary marks off-platform payment collection
+    assert_eq!(event.event_id, external_event_id());
+    assert!(event.has_external_payment);
 
     Ok(())
 }
@@ -1674,6 +1827,28 @@ async fn db_contracts_get_filters_options_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_group_external_payments_context_deserializes() -> Result<()> {
+    // Setup the contract database and group fixture
+    let db = contract_tests_db()?;
+
+    // Load the external-payments settings context through the Rust contract
+    let context = db
+        .get_group_external_payments_context(community_id(), group_id())
+        .await?;
+
+    // Check eligibility, toggle, and window limits
+    assert!(context.configured);
+    assert!(context.eligible);
+    assert!(context.enabled);
+    assert_eq!(context.country_code.as_deref(), Some("US"));
+    assert_eq!(context.default_payment_window_hours, Some(72));
+    assert_eq!(context.max_payment_window_hours, Some(336));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_full_deserializes() -> Result<()> {
     // Setup the contract database and group fixtures
     let db = contract_tests_db()?;
@@ -1691,6 +1866,7 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
         Some("https://example.com/community-ad-banner.png")
     );
     assert_eq!(group.group_id, group_id());
+    assert!(group.external_payments_enabled);
     assert_eq!(group.organizers.len(), 1);
     assert_eq!(group.sponsors.len(), 1);
     assert_eq!(group.subgroups.len(), 1);
@@ -2454,7 +2630,7 @@ async fn db_contracts_list_group_events_deserializes() -> Result<()> {
 
     // Check collection totals
     assert_eq!(events.past.total, 1);
-    assert_eq!(events.upcoming.total, 3);
+    assert_eq!(events.upcoming.total, 4);
 
     // Check event capacity and occupied reservations deserialize together
     let event = events
@@ -2507,7 +2683,7 @@ async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
     let output = db.list_group_refunds(group_id(), &filters).await?;
 
     // Check event options and refund pagination
-    assert_eq!(output.events.len(), 2);
+    assert_eq!(output.events.len(), 3);
     assert!(
         output.events.iter().any(|event| {
             event.event_id == paid_event_id() && event.name == "Contract Paid Event"
@@ -2911,6 +3087,7 @@ async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
         invitations[0].expires_at,
         DateTime::parse_from_rfc3339("2099-05-20T18:30:00Z")?.with_timezone(&Utc)
     );
+    assert!(invitations[0].external_payment.is_none());
     assert!(invitations[0].registration_answers.is_none());
     assert_eq!(invitations[0].registration_questions.len(), 1);
     assert_eq!(
@@ -2928,6 +3105,7 @@ async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     // Setup the contract database and event filters
@@ -2960,6 +3138,7 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
     assert_eq!(output.events[0].currency_code, None);
     assert!(output.events[0].event.has_registration_questions);
     assert_eq!(output.events[0].event_ticket_type_id, None);
+    assert!(output.events[0].external_payment.is_none());
     assert_eq!(output.events[0].offer_expires_at, None);
     assert_eq!(output.events[0].registration_questions.len(), 1);
     assert!(!output.events[0].registration_questions_pending());
@@ -2988,6 +3167,7 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
         pending_checkout.event_ticket_type_id,
         Some(status_ticket_type_id())
     );
+    assert!(pending_checkout.external_payment.is_none());
     assert_eq!(pending_checkout.offer_expires_at, None);
     assert!(pending_checkout.registration_answers.is_none());
     assert_eq!(
@@ -3040,6 +3220,46 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_events_external_payment_deserializes() -> Result<()> {
+    // Setup the contract database and pending external buyer fixture
+    let db = contract_tests_db()?;
+    let filters = UserEventsFilters {
+        limit: Some(10),
+        offset: Some(0),
+    };
+
+    // Load the pending external purchase through the Rust contract
+    let output = db.list_user_events(external_pending_user_id(), &filters).await?;
+
+    // Check pending external purchases expose payment instructions without a checkout URL
+    assert_eq!(output.total, 1);
+    assert_eq!(output.events.len(), 1);
+    let event = &output.events[0];
+    assert_eq!(event.event.event_id, external_event_id());
+    assert_eq!(
+        event.enrollment_status,
+        Some(EventEnrollmentStatus::PendingPayment)
+    );
+    assert_eq!(event.amount_minor, Some(5000));
+    assert_eq!(event.currency_code.as_deref(), Some("USD"));
+    assert!(event.resume_checkout_url.is_none());
+    assert_eq!(
+        event.external_payment,
+        Some(ExternalPaymentInfo {
+            amount_minor: 5000,
+            currency_code: "USD".to_string(),
+            deadline: DateTime::parse_from_rfc3339("2099-08-30T10:00:00Z")?.with_timezone(&Utc),
+            reference: external_pending_purchase_id(),
+            url: "https://pay.example.test/contract-external".to_string(),
+            instructions: Some("Wire transfer using the purchase reference.".to_string()),
+        })
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_purchase_documents_deserializes() -> Result<()> {
     // Setup the contract database and attendee document filters
     let db = contract_tests_db()?;
@@ -3050,6 +3270,9 @@ async fn db_contracts_list_user_purchase_documents_deserializes() -> Result<()> 
 
     // Load invoice and credit-note history through the production wrapper
     let output = db.list_user_purchase_documents(free_buyer_id(), &filters).await?;
+    let external_output = db
+        .list_user_purchase_documents(external_completed_user_id(), &filters)
+        .await?;
 
     // Check the purchase and nested credit-note JSON contracts
     assert_eq!(output.total, 1);
@@ -3057,6 +3280,7 @@ async fn db_contracts_list_user_purchase_documents_deserializes() -> Result<()> 
     let purchase = &output.purchases[0];
     assert_eq!(purchase.amount_minor, 2500);
     assert_eq!(purchase.event_purchase_id, document_purchase_id());
+    assert!(!purchase.externally_managed);
     assert_eq!(
         purchase.provider_invoice_id.as_deref(),
         Some("in_contract_documents")
@@ -3070,6 +3294,20 @@ async fn db_contracts_list_user_purchase_documents_deserializes() -> Result<()> 
         purchase.credit_notes[0].event_purchase_credit_note_id,
         document_credit_note_id()
     );
+
+    // Check externally managed purchases omit provider invoice routing
+    assert_eq!(external_output.total, 1);
+    assert_eq!(external_output.purchases.len(), 1);
+    let external_purchase = &external_output.purchases[0];
+    assert_eq!(external_purchase.amount_minor, 5000);
+    assert_eq!(
+        external_purchase.event_purchase_id,
+        external_completed_purchase_id()
+    );
+    assert!(external_purchase.externally_managed);
+    assert!(external_purchase.provider_invoice_id.is_none());
+    assert!(external_purchase.seller_display_name.is_none());
+    assert!(external_purchase.credit_notes.is_empty());
 
     Ok(())
 }
@@ -3378,9 +3616,15 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
     );
     assert_eq!(checkout.purchase.amount_minor, 2500);
     assert_eq!(
+        checkout.purchase.charge_model,
+        EventPurchaseChargeModel::DirectCharge
+    );
+    assert_eq!(
         checkout.purchase.event_ticket_type_id,
         paid_ticket_type_id()
     );
+    assert!(checkout.purchase.external_payment_instructions.is_none());
+    assert!(checkout.purchase.external_payment_url.is_none());
     assert!(checkout.purchase.hold_expires_at.is_some());
     assert_eq!(checkout.purchase.provisional_platform_fee_amount_minor, 62);
     assert_eq!(checkout.purchase.status, EventPurchaseStatus::Pending);
@@ -3396,6 +3640,61 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
             .map(|seller| seller.connected_account_id.as_str()),
         Some("acct_contract")
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_prepare_event_checkout_purchase_external_deserializes() -> Result<()> {
+    // Setup the contract database and external checkout input
+    let db = contract_tests_db()?;
+    let input = PrepareEventCheckoutPurchaseInput {
+        event_id: external_event_id(),
+        event_ticket_type_id: external_ticket_type_id(),
+        platform_fee_bps: 0,
+        user_id: external_checkout_buyer_id(),
+
+        admission_offer_id: None,
+        discount_code: None,
+        payment_provider: None,
+        registration_answers: None,
+    };
+
+    // Prepare the external checkout purchase through the Rust contract
+    let checkout = match db.prepare_event_checkout_purchase(community_id(), &input).await? {
+        PrepareEventCheckoutPurchaseResult::Conflict(conflict) => {
+            return Err(anyhow!("unexpected checkout conflict: {conflict:?}"));
+        }
+        PrepareEventCheckoutPurchaseResult::Prepared(checkout) => *checkout,
+    };
+
+    // Check external purchase summary fields
+    assert_eq!(checkout.event_id, external_event_id());
+    assert_eq!(checkout.event_slug, "contract-external-event");
+    assert_eq!(checkout.purchase.amount_minor, 5000);
+    assert_eq!(
+        checkout.purchase.charge_model,
+        EventPurchaseChargeModel::External
+    );
+    assert_eq!(checkout.purchase.currency_code.as_deref(), Some("USD"));
+    assert_eq!(
+        checkout.purchase.event_ticket_type_id,
+        external_ticket_type_id()
+    );
+    assert_eq!(
+        checkout.purchase.external_payment_instructions.as_deref(),
+        Some("Wire transfer using the purchase reference.")
+    );
+    assert_eq!(
+        checkout.purchase.external_payment_url.as_deref(),
+        Some("https://pay.example.test/contract-external")
+    );
+    assert!(checkout.purchase.hold_expires_at.is_some());
+    assert_eq!(checkout.purchase.provisional_platform_fee_amount_minor, 0);
+    assert_eq!(checkout.purchase.status, EventPurchaseStatus::Pending);
+    assert_eq!(checkout.purchase.ticket_title, "External Admission");
+    assert!(checkout.seller.is_none());
 
     Ok(())
 }
@@ -3719,6 +4018,99 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_search_event_attendees_external_payment_deserializes() -> Result<()> {
+    // Setup the contract database and unfiltered external-event search
+    let db = contract_tests_db()?;
+    let filters = AttendeesFilters {
+        checked_in: None,
+        event_ticket_type_ids: None,
+        limit: Some(10),
+        offset: Some(0),
+        sort: None,
+        status: Some(AttendeeEnrollmentStatusFilter::All),
+        title: None,
+        ts_query: None,
+    };
+
+    // Search external-payment attendees through the Rust contract
+    let output = db
+        .search_event_attendees(group_id(), external_event_id(), &filters)
+        .await?;
+
+    // Check pending and completed external purchase encodings
+    assert!(output.total >= 2);
+    let pending = output
+        .attendees
+        .iter()
+        .find(|attendee| attendee.user.user_id == external_pending_user_id())
+        .expect("pending external attendee to be returned");
+    assert_eq!(pending.amount_minor, Some(5000));
+    assert_eq!(
+        pending.charge_model,
+        Some(EventPurchaseChargeModel::External)
+    );
+    assert_eq!(pending.currency_code.as_deref(), Some("USD"));
+    assert_eq!(
+        pending.enrollment_status,
+        AttendeeEnrollmentStatus::PaymentPending
+    );
+    assert_eq!(
+        pending.event_purchase_id,
+        Some(external_pending_purchase_id())
+    );
+    assert_eq!(
+        pending.external_payment_deadline,
+        Some(DateTime::parse_from_rfc3339("2099-08-30T10:00:00Z")?.with_timezone(&Utc))
+    );
+    assert!(pending.external_payment_details.is_none());
+    assert!(pending.external_payment_marked_by.is_none());
+    assert_eq!(
+        pending.external_payment_reference,
+        Some(external_pending_purchase_id())
+    );
+    assert!(!pending.externally_paid);
+    assert_eq!(pending.ticket_title.as_deref(), Some("External Admission"));
+
+    let completed = output
+        .attendees
+        .iter()
+        .find(|attendee| attendee.user.user_id == external_completed_user_id())
+        .expect("completed external attendee to be returned");
+    assert_eq!(
+        completed.charge_model,
+        Some(EventPurchaseChargeModel::External)
+    );
+    assert_eq!(
+        completed.completed_at,
+        Some(DateTime::parse_from_rfc3339("2024-03-02T10:00:00Z")?.with_timezone(&Utc))
+    );
+    assert_eq!(
+        completed.enrollment_status,
+        AttendeeEnrollmentStatus::Confirmed
+    );
+    assert_eq!(
+        completed.event_purchase_id,
+        Some(external_completed_purchase_id())
+    );
+    assert_eq!(
+        completed.external_payment_details.as_deref(),
+        Some("Bank transfer received")
+    );
+    assert_eq!(
+        completed.external_payment_marked_by.as_deref(),
+        Some("contract-organizer")
+    );
+    assert_eq!(
+        completed.external_payment_reference,
+        Some(external_completed_purchase_id())
+    );
+    assert!(completed.externally_paid);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_attendees_terminal_offer_statuses_deserialize() -> Result<()> {
     // Setup the contract database and unfiltered status event search
     let db = contract_tests_db()?;
@@ -3949,6 +4341,33 @@ async fn db_contracts_search_user_deserializes() -> Result<()> {
     assert_eq!(users[0].user_id, attendee_id());
     assert_eq!(users[0].username, "contract-attendee");
     assert_eq!(users[0].name.as_deref(), Some("Contract Attendee"));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_sync_external_payments_config_deserializes() -> Result<()> {
+    // Setup the contract database and operator allowlist payload
+    let db = contract_tests_db()?;
+    let config = crate::config::ExternalPaymentsConfig {
+        allowed_countries: vec!["US".to_string()],
+        default_payment_window_hours: 72,
+        max_payment_window_hours: 336,
+    };
+
+    // Sync the singleton configuration through the Rust contract
+    db.sync_external_payments_config(Some(config)).await?;
+
+    // Check the group settings context still deserializes after the sync
+    let context = db
+        .get_group_external_payments_context(community_id(), group_id())
+        .await?;
+    assert!(context.configured);
+    assert!(context.eligible);
+    assert!(context.enabled);
+    assert_eq!(context.default_payment_window_hours, Some(72));
+    assert_eq!(context.max_payment_window_hours, Some(336));
 
     Ok(())
 }
@@ -4196,7 +4615,29 @@ const DOCUMENT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c11b";
 const DOCUMENT_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c11c";
 const EVENT_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c013";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
+/// Buyer fixture used to prepare a new external checkout hold.
+const EXTERNAL_CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c12a";
+/// Pending external purchase dedicated to the completion mutation contract.
+const EXTERNAL_COMPLETE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c133";
+/// Buyer fixture dedicated to the external completion mutation contract.
+const EXTERNAL_COMPLETE_USER_ID: &str = "00000000-0000-0000-0000-00000000c132";
+/// Completed externally managed purchase used by document and attendee contracts.
+const EXTERNAL_COMPLETED_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c12f";
+/// Buyer fixture with a completed externally managed purchase.
+const EXTERNAL_COMPLETED_USER_ID: &str = "00000000-0000-0000-0000-00000000c128";
+/// Event fixture dedicated to external-payments contracts.
+const EXTERNAL_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c12b";
 const EXTERNAL_LOOKUP_ID: &str = "00000000-0000-0000-0000-00000000c046";
+/// Pending external purchase awaiting organizer confirmation.
+const EXTERNAL_PENDING_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c12e";
+/// Buyer fixture with a pending external purchase.
+const EXTERNAL_PENDING_USER_ID: &str = "00000000-0000-0000-0000-00000000c127";
+/// External purchase waiting for local refund approval.
+const EXTERNAL_REFUND_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c130";
+/// Buyer fixture whose external refund request is ready for approval.
+const EXTERNAL_REFUND_USER_ID: &str = "00000000-0000-0000-0000-00000000c129";
+/// Ticket fixture used by the external-payments event.
+const EXTERNAL_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c12c";
 const EXTERNAL_UPDATE_ID: &str = "00000000-0000-0000-0000-00000000c047";
 const FINANCIAL_RECOVERY_ADJUSTMENT_ID: &str = "00000000-0000-0000-0000-00000000c119";
 const FINANCIAL_RECOVERY_CREDIT_NOTE_ID: &str = "00000000-0000-0000-0000-00000000c11a";
@@ -4561,9 +5002,64 @@ fn event_id() -> Uuid {
     parse_uuid(EVENT_ID)
 }
 
+/// Returns the buyer used to prepare a new external checkout hold.
+fn external_checkout_buyer_id() -> Uuid {
+    parse_uuid(EXTERNAL_CHECKOUT_BUYER_ID)
+}
+
+/// Returns the pending external purchase dedicated to completion.
+fn external_complete_purchase_id() -> Uuid {
+    parse_uuid(EXTERNAL_COMPLETE_PURCHASE_ID)
+}
+
+/// Returns the buyer dedicated to the external completion contract.
+fn external_complete_user_id() -> Uuid {
+    parse_uuid(EXTERNAL_COMPLETE_USER_ID)
+}
+
+/// Returns the completed externally managed purchase identifier.
+fn external_completed_purchase_id() -> Uuid {
+    parse_uuid(EXTERNAL_COMPLETED_PURCHASE_ID)
+}
+
+/// Returns the buyer with a completed externally managed purchase.
+fn external_completed_user_id() -> Uuid {
+    parse_uuid(EXTERNAL_COMPLETED_USER_ID)
+}
+
+/// Returns the event dedicated to external-payments contracts.
+fn external_event_id() -> Uuid {
+    parse_uuid(EXTERNAL_EVENT_ID)
+}
+
 /// Returns the external identity lookup identifier used by the contract fixture.
 fn external_lookup_id() -> Uuid {
     parse_uuid(EXTERNAL_LOOKUP_ID)
+}
+
+/// Returns the pending external purchase awaiting organizer confirmation.
+fn external_pending_purchase_id() -> Uuid {
+    parse_uuid(EXTERNAL_PENDING_PURCHASE_ID)
+}
+
+/// Returns the buyer with a pending external purchase.
+fn external_pending_user_id() -> Uuid {
+    parse_uuid(EXTERNAL_PENDING_USER_ID)
+}
+
+/// Returns the external purchase waiting for local refund approval.
+fn external_refund_purchase_id() -> Uuid {
+    parse_uuid(EXTERNAL_REFUND_PURCHASE_ID)
+}
+
+/// Returns the buyer whose external refund request is ready for approval.
+fn external_refund_user_id() -> Uuid {
+    parse_uuid(EXTERNAL_REFUND_USER_ID)
+}
+
+/// Returns the ticket used by the external-payments event.
+fn external_ticket_type_id() -> Uuid {
+    parse_uuid(EXTERNAL_TICKET_TYPE_ID)
 }
 
 /// Returns the external identity update identifier used by the contract fixture.

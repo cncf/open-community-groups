@@ -29,6 +29,10 @@
   {% for event in events -%}
     <p class="default mb-15" style="margin-bottom: 15px">
       <strong>{{ event.name }}</strong>
+      {% if event.has_external_payment -%}
+        <br />
+        Collects payments outside this platform.
+      {% endif -%}
       {% if let Some(starts_at) = &event.starts_at -%}
         <br />
         {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %Y · %I:%M %p %Z") }}

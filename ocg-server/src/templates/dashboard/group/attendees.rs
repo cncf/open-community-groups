@@ -12,7 +12,10 @@ use crate::{
     types::{
         event::{EventAdmissionOfferSource, EventAdmissionOfferStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
-        payments::{EventRefundProgress, EventRefundRequestStatus, format_amount_minor},
+        payments::{
+            EventPurchaseChargeModel, EventRefundProgress, EventRefundRequestStatus,
+            format_amount_minor,
+        },
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
         user::User,
     },
@@ -66,6 +69,7 @@ pub(crate) struct ListPage {
 // Types.
 
 /// Event attendee summary information.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attendee {
     /// Whether the attendee can receive attendee emails.
@@ -92,9 +96,14 @@ pub struct Attendee {
     pub admission_offer_status: Option<EventAdmissionOfferStatus>,
     /// Purchase amount in minor units.
     pub amount_minor: Option<i64>,
+    /// Charge model of the attendee's current purchase.
+    pub charge_model: Option<EventPurchaseChargeModel>,
     /// Timestamp when the attendee checked in.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub checked_in_at: Option<DateTime<Utc>>,
+    /// Time when the purchase was marked paid.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub completed_at: Option<DateTime<Utc>>,
     /// Currency used for the purchase.
     pub currency_code: Option<String>,
     /// Discount code applied to the purchase.
@@ -103,6 +112,18 @@ pub struct Attendee {
     pub event_purchase_id: Option<Uuid>,
     /// Ticket type assigned by an offer or purchase.
     pub event_ticket_type_id: Option<Uuid>,
+    /// Organizer-confirmation deadline for a pending external payment.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub external_payment_deadline: Option<DateTime<Utc>>,
+    /// Organizer-entered details recorded when the payment was marked paid.
+    pub external_payment_details: Option<String>,
+    /// Username of the organizer who marked the external payment paid.
+    pub external_payment_marked_by: Option<String>,
+    /// Stable payment reference used to match the external transfer.
+    pub external_payment_reference: Option<Uuid>,
+    /// Whether the attendee was marked paid through external payments.
+    #[serde(default)]
+    pub externally_paid: bool,
     /// Latest organizer offer expiration time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub offer_expires_at: Option<DateTime<Utc>>,
@@ -135,6 +156,8 @@ pub enum AttendeeEnrollmentStatus {
     InvitationExpired,
     /// An organizer invitation is waiting for the recipient.
     InvitationPending,
+    /// An external payment is waiting for organizer confirmation.
+    PaymentPending,
     /// Registration questions still need to be completed.
     RegistrationPending,
 }
@@ -165,6 +188,8 @@ pub(crate) enum AttendeeEnrollmentStatusFilter {
     InvitationExpired,
     /// Show only pending invitation rows.
     InvitationPending,
+    /// Show only pending external-payment rows.
+    PaymentPending,
     /// Show only pending registration rows.
     RegistrationPending,
 }

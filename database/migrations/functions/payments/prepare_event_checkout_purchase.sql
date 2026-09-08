@@ -25,11 +25,15 @@ declare
     v_cached_product_fingerprint text;
     v_cached_provider_tax_location_id text;
     v_cached_provider_tax_product_id text;
+    v_charge_model text;
     v_community_display_name text;
     v_community_name text;
     v_currency_code text;
     v_discount_amount_minor bigint;
     v_event_discount_code_id uuid;
+    v_event_external_payment_instructions text;
+    v_event_external_payment_url text;
+    v_event_external_payment_window_hours int;
     v_event_name text;
     v_event_registration_ends_at timestamptz;
     v_event_registration_starts_at timestamptz;
@@ -44,6 +48,7 @@ declare
     v_group_slug text;
     v_group_slug_pretty text;
     v_hold_expires_at timestamptz := current_timestamp + interval '15 minutes';
+    v_is_external_paid boolean := false;
     v_manual_tax_rate_ids text[];
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_provisional_platform_fee_amount_minor bigint;
@@ -53,9 +58,11 @@ declare
     v_seller_snapshot jsonb;
     v_tax_behavior text;
     v_tax_calculation_mode text;
+    v_theme jsonb;
     v_ticket_title text;
     v_use_offer_snapshot boolean := false;
     v_venue_snapshot jsonb;
+    v_window_hours int;
 begin
     -- Reject platform fee configuration outside the valid basis-point range
     if p_platform_fee_bps is null or p_platform_fee_bps < 0 or p_platform_fee_bps >= 10000 then
@@ -83,6 +90,9 @@ begin
     select
         c.display_name,
         c.name,
+        e.external_payment_instructions,
+        e.external_payment_url,
+        e.external_payment_window_hours,
         e.manual_tax_rate_ids,
         e.name,
         e.registration_ends_at,
@@ -109,6 +119,9 @@ begin
     into
         v_community_display_name,
         v_community_name,
+        v_event_external_payment_instructions,
+        v_event_external_payment_url,
+        v_event_external_payment_window_hours,
         v_manual_tax_rate_ids,
         v_event_name,
         v_event_registration_ends_at,
@@ -380,23 +393,69 @@ begin
 
     -- Require payment configuration only when the final amount needs a provider
     if v_final_amount_minor > 0 then
-        -- Translate readiness failures into a stable checkout conflict
-        begin
-            perform validate_event_ticketing_payment_readiness(
-                p_configured_provider,
-                true,
-                v_currency_code,
-                v_recipient,
-                p_event_id
-            );
-        exception
-            -- Hide provider-readiness details behind the stable checkout conflict
-            when raise_exception then
+        -- Never fall through to Stripe for events marked with an external payment URL
+        if v_event_external_payment_url is not null then
+            -- Reject new external holds when the group is no longer eligible
+            if not is_event_external_payments_ready(p_event_id) then
                 return jsonb_build_object('conflict', 'payment-setup-unavailable');
-        end;
-        perform validate_payment_amount(v_currency_code, v_final_amount_minor);
+            end if;
+
+            v_is_external_paid := true;
+            v_charge_model := 'external';
+            perform validate_payment_amount(v_currency_code, v_final_amount_minor);
+
+            -- Compute the organizer-confirmation deadline once at hold creation
+            select least(
+                coalesce(v_event_external_payment_window_hours, cfg.default_payment_window_hours),
+                cfg.max_payment_window_hours
+            )
+            into v_window_hours
+            from external_payments_config cfg
+            where cfg.singleton;
+
+            -- Reject missing window configuration after the eligibility check
+            if not found or v_window_hours is null then
+                return jsonb_build_object('conflict', 'payment-setup-unavailable');
+            end if;
+
+            v_hold_expires_at := least(
+                current_timestamp + make_interval(hours => v_window_hours),
+                case
+                    -- Cap direct checkout by the public registration window
+                    when p_admission_offer_id is null then
+                        coalesce(v_event_registration_ends_at, 'infinity'::timestamptz)
+                    -- Invitation and approval claims skip the public registration window
+                    else 'infinity'::timestamptz
+                end,
+                coalesce(v_event_starts_at, 'infinity'::timestamptz)
+            );
+
+            -- Reject holds that would expire immediately
+            if v_hold_expires_at <= current_timestamp then
+                return jsonb_build_object('conflict', 'payment-window-unavailable');
+            end if;
+
+        -- Translate Stripe readiness failures into a stable checkout conflict
+        else
+            begin
+                perform validate_event_ticketing_payment_readiness(
+                    p_configured_provider,
+                    true,
+                    v_currency_code,
+                    v_recipient,
+                    p_event_id
+                );
+            exception
+                -- Hide provider-readiness details behind the stable checkout conflict
+                when raise_exception then
+                    return jsonb_build_object('conflict', 'payment-setup-unavailable');
+            end;
+            perform validate_payment_amount(v_currency_code, v_final_amount_minor);
+            v_charge_model := 'direct-charge';
+        end if;
     -- Retain the configured currency for discounted-to-zero purchases
     elsif v_discount_amount_minor > 0 then
+        v_charge_model := 'ocg-free';
         -- Discounted-to-zero purchases retain the event currency snapshot
         if v_currency_code is null then
             return jsonb_build_object('conflict', 'payment-setup-unavailable');
@@ -412,12 +471,13 @@ begin
         end;
     -- Remove payment configuration from intrinsically free purchases
     else
+        v_charge_model := 'ocg-free';
         v_currency_code := null;
         v_recipient := null;
     end if;
 
     -- Snapshot the immutable seller and selected manual-rate components
-    if v_final_amount_minor > 0 then
+    if v_final_amount_minor > 0 and not v_is_external_paid then
         v_seller_snapshot := jsonb_build_object(
             'connected_account_id', v_recipient->>'recipient_id',
             'display_name', v_recipient->>'seller_display_name',
@@ -476,10 +536,13 @@ begin
 
     -- Snapshot the pending offer claim and move its reservation into checkout
     if p_admission_offer_id is not null then
-        v_hold_expires_at := least(
-            v_hold_expires_at,
-            coalesce(v_admission_offer_expires_at, 'infinity'::timestamptz)
-        );
+        -- Keep the 15-minute Stripe hold from outliving a shorter offer deadline
+        if not v_is_external_paid then
+            v_hold_expires_at := least(
+                v_hold_expires_at,
+                coalesce(v_admission_offer_expires_at, 'infinity'::timestamptz)
+            );
+        end if;
 
         -- Replace the issue snapshot with the claimed price on first checkout
         if v_admission_offer_status = 'pending' then
@@ -490,6 +553,13 @@ begin
                 discount_amount_minor = v_discount_amount_minor,
                 discount_code = v_normalized_discount_code,
                 event_discount_code_id = v_event_discount_code_id,
+                expires_at = case
+                    -- Raise the offer deadline so it cannot truncate an external hold
+                    when v_is_external_paid
+                    then greatest(expires_at, v_hold_expires_at)
+                    -- Preserve the original offer deadline for Stripe checkouts
+                    else expires_at
+                end,
                 status = 'checkout_pending',
                 ticket_title = v_ticket_title,
                 updated_at = current_timestamp
@@ -500,6 +570,13 @@ begin
         else
             update admission_offer
             set
+                expires_at = case
+                    -- Raise the offer deadline so it cannot truncate an external hold
+                    when v_is_external_paid
+                    then greatest(expires_at, v_hold_expires_at)
+                    -- Preserve the original offer deadline for Stripe checkouts
+                    else expires_at
+                end,
                 status = 'checkout_pending',
                 updated_at = current_timestamp
             where admission_offer_id = p_admission_offer_id
@@ -526,8 +603,12 @@ begin
     end if;
 
     -- Snapshot the platform fee deducted from the group's proceeds, rounding down
-    v_provisional_platform_fee_amount_minor :=
-        (v_final_amount_minor * p_platform_fee_bps) / 10000;
+    v_provisional_platform_fee_amount_minor := case
+        -- External purchases never collect a platform fee
+        when v_is_external_paid then 0
+        -- Stripe purchases apply the configured basis-point fee
+        else (v_final_amount_minor * p_platform_fee_bps) / 10000
+    end;
 
     -- Insert the new pending purchase and return the attendee-facing summary
     insert into event_purchase (
@@ -559,15 +640,10 @@ begin
     ) values (
         p_admission_offer_id,
         v_final_amount_minor,
+        v_charge_model,
         case
-            -- Use connected-account direct charges for paid purchases
-            when v_final_amount_minor > 0 then 'direct-charge'
-            -- Complete free purchases inside OCG
-            else 'ocg-free'
-        end,
-        case
-            -- Snapshot the connected seller for paid purchases
-            when v_final_amount_minor > 0 then v_recipient->>'recipient_id'
+            -- Snapshot the connected seller for Stripe purchases
+            when v_charge_model = 'direct-charge' then v_recipient->>'recipient_id'
         end,
         v_currency_code,
         v_discount_amount_minor,
@@ -577,46 +653,80 @@ begin
         p_event_ticket_type_id,
         v_hold_expires_at,
         case
-            -- Snapshot manual Tax Rate identifiers for paid purchases
-            when v_final_amount_minor > 0 then v_manual_tax_rate_ids
+            -- Snapshot manual Tax Rate identifiers for Stripe purchases
+            when v_charge_model = 'direct-charge' then v_manual_tax_rate_ids
         end,
         case
-            -- Snapshot the payment provider for paid purchases
-            when v_final_amount_minor > 0 then p_configured_provider
-        end,
-        p_platform_fee_bps,
-        case
-            -- Bind provider objects to the connected seller for paid purchases
-            when v_final_amount_minor > 0 then v_recipient->>'recipient_id'
+            -- Snapshot the payment provider for Stripe purchases
+            when v_charge_model = 'direct-charge' then p_configured_provider
         end,
         case
-            -- Classify automatic-tax purchases as professional event admission
-            when v_final_amount_minor > 0 and v_tax_calculation_mode = 'automatic'
+            -- External purchases never collect a platform fee
+            when v_is_external_paid then 0
+            -- Stripe purchases persist the configured basis-point fee
+            else p_platform_fee_bps
+        end,
+        case
+            -- Bind provider objects to the connected seller for Stripe purchases
+            when v_charge_model = 'direct-charge' then v_recipient->>'recipient_id'
+        end,
+        case
+            -- Classify automatic-tax Stripe purchases as professional event admission
+            when v_charge_model = 'direct-charge' and v_tax_calculation_mode = 'automatic'
                 then 'txcd_50013001'
         end,
         v_provisional_platform_fee_amount_minor,
         v_seller_snapshot,
         'pending',
         case
-            -- Snapshot the tax display behavior for paid purchases
-            when v_final_amount_minor > 0 then v_tax_behavior
+            -- Snapshot the tax display behavior for Stripe purchases
+            when v_charge_model = 'direct-charge' then v_tax_behavior
         end,
         case
-            -- Snapshot the tax calculation mode for paid purchases
-            when v_final_amount_minor > 0 then v_tax_calculation_mode
+            -- Snapshot the tax calculation mode for Stripe purchases
+            when v_charge_model = 'direct-charge' then v_tax_calculation_mode
         end,
         case
-            -- Snapshot the admission tax classification for paid purchases
-            when v_final_amount_minor > 0 then 'professional-event-admission'
+            -- Snapshot the admission tax classification for Stripe purchases
+            when v_charge_model = 'direct-charge' then 'professional-event-admission'
         end,
         v_ticket_title,
         p_user_id,
         case
-            -- Snapshot the taxable venue for paid purchases
-            when v_final_amount_minor > 0 then v_venue_snapshot
+            -- Snapshot the taxable venue for Stripe purchases
+            when v_charge_model = 'direct-charge' then v_venue_snapshot
         end
     )
     returning event_purchase_id into v_purchase_id;
+
+    -- Enqueue pending-payment instructions only when a new external hold is created
+    if v_is_external_paid then
+        select s.theme
+        into v_theme
+        from site s
+        limit 1;
+
+        perform enqueue_notification(
+            'event-external-payment-pending',
+            jsonb_strip_nulls(jsonb_build_object(
+                'amount_minor', v_final_amount_minor,
+                'currency_code', v_currency_code,
+                'dashboard_url', '/dashboard/user?tab=events',
+                'deadline', extract(epoch from v_hold_expires_at)::bigint,
+                'event_id', p_event_id,
+                'event_name', v_event_name,
+                'event_purchase_id', v_purchase_id,
+                'external_payment_instructions', v_event_external_payment_instructions,
+                'external_payment_url', v_event_external_payment_url,
+                'group_name', v_group_name,
+                'theme', v_theme,
+                'ticket_title', v_ticket_title,
+                'timezone', v_event_timezone
+            )),
+            '[]'::jsonb,
+            array[p_user_id]
+        );
+    end if;
 
     -- Return the pending purchase summary used by the checkout flow
     return prepare_event_checkout_get_purchase_summary(v_purchase_id)

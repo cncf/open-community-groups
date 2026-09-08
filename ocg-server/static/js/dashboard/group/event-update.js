@@ -147,7 +147,7 @@ export const initializeEventUpdatePage = (root = document) => {
     });
   }
 
-  const { displayActiveSection } = initializeSectionTabs({
+  const { activateSection, displayActiveSection } = initializeSectionTabs({
     root: pageRoot,
     onSectionChange: (sectionName) => {
       // Maps need a visible container before MapLibre can size the preview.
@@ -176,7 +176,7 @@ export const initializeEventUpdatePage = (root = document) => {
 
   const stashedSection = consumeStashedActiveEventSection();
   if (stashedSection && pageRoot.querySelector(`[data-section="${CSS.escape(stashedSection)}"]`)) {
-    displayActiveSection(stashedSection);
+    activateSection(stashedSection);
   }
 
   const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =

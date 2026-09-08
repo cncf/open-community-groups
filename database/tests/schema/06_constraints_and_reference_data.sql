@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(182);
+select plan(192);
 
 -- ============================================================================
 -- VARIABLES
@@ -196,6 +196,9 @@ select has_check('event', 'event_check2');
 select has_check('event', 'event_cfs_fields_chk');
 select has_check('event', 'event_cfs_window_chk');
 select has_check('event', 'event_attendee_approval_waitlist_exclusive_chk');
+select has_check('event', 'event_external_payment_instructions_check');
+select has_check('event', 'event_external_payment_url_check');
+select has_check('event', 'event_external_payment_window_hours_check');
 select has_check('event', 'event_luma_url_check');
 select has_check('event', 'event_meeting_capacity_required_chk');
 select has_check('event', 'event_meeting_conflict_chk');
@@ -260,6 +263,8 @@ select has_check('event_ticket_type', 'event_ticket_type_availability_chk');
 select has_check('group', 'group_check');
 select has_check('group', 'group_og_image_url_check');
 select has_check('group', 'group_slug_pretty_chk');
+select col_not_null('group', 'external_payments_enabled');
+select col_default_is('group', 'external_payments_enabled', 'false');
 
 -- Test: site table expected constraints exist
 select has_check('site', 'site_og_image_url_check');
@@ -325,6 +330,7 @@ select has_check('event', 'event_tax_calculation_mode_chk');
 -- Test: purchase charge-model and financial snapshots should remain consistent
 select col_default_is('event_purchase', 'charge_model', 'ocg-free');
 select col_has_check('event_purchase', 'connected_seller_id');
+select col_has_check('event_purchase', 'external_payment_details');
 select col_has_check('event_purchase', 'performance_location_fingerprint');
 select col_has_check('event_purchase', 'platform_fee_bps');
 select col_has_check('event_purchase', 'provider_application_fee_id');
@@ -339,6 +345,30 @@ select col_has_check('event_purchase', 'provider_tax_location_id');
 select col_has_check('event_purchase', 'provider_tax_product_id');
 select has_check('event_purchase', 'event_purchase_charge_model_chk');
 select has_check('event_purchase', 'event_purchase_direct_charge_context_chk');
+select has_check('event_purchase', 'event_purchase_external_chk');
+select ok(
+    (
+        select pg_get_constraintdef(oid)
+                like '%connected_seller_id IS NULL%'
+            and pg_get_constraintdef(oid)
+                like '%payment_provider_id IS NULL%'
+            and pg_get_constraintdef(oid)
+                like '%seller_snapshot IS NULL%'
+            and pg_get_constraintdef(oid)
+                like '%tax_calculation_mode IS NULL%'
+        from pg_constraint
+        where conname = 'event_purchase_external_chk'
+    ),
+    'External purchases should keep provider, seller, and tax snapshots null'
+);
+select has_check(
+    'external_payments_config',
+    'external_payments_config_allowed_countries_chk'
+);
+select has_check(
+    'external_payments_config',
+    'external_payments_config_window_hours_chk'
+);
 select has_check('event_purchase', 'event_purchase_financial_amounts_chk');
 select has_check('event_purchase', 'event_purchase_completed_direct_charge_amounts_chk');
 select has_check('event_purchase', 'event_purchase_manual_tax_rate_ids_chk');
@@ -622,6 +652,9 @@ select results_eq(
         ('event-attendance-canceled', false),
         ('event-canceled', false),
         ('event-custom', true),
+        ('event-external-payment-expired', false),
+        ('event-external-payment-pending', false),
+        ('event-external-payment-reminder', false),
         ('event-invitation', false),
         ('event-paid-configured', false),
         ('event-published', true),

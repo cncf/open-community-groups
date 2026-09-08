@@ -7,6 +7,7 @@ returns boolean as $$
 declare
     v_discount_codes jsonb;
     v_ends_at timestamptz;
+    v_external_configuration_changed boolean;
     v_payment_became_active boolean;
     v_payment_currency_code text;
     v_performance_context_changed boolean;
@@ -152,9 +153,34 @@ begin
                 'automatic'
             );
 
+    -- Compare external-payment URL, instructions, and window
+    v_external_configuration_changed :=
+        case
+            when p_event ? 'external_payment_instructions'
+            then nullif(btrim(p_event->>'external_payment_instructions'), '')
+            else nullif(btrim(p_event_before->>'external_payment_instructions'), '')
+        end
+            is distinct from nullif(
+                btrim(p_event_before->>'external_payment_instructions'),
+                ''
+            )
+        or case
+            when p_event ? 'external_payment_url'
+            then nullif(btrim(p_event->>'external_payment_url'), '')
+            else nullif(btrim(p_event_before->>'external_payment_url'), '')
+        end
+            is distinct from nullif(btrim(p_event_before->>'external_payment_url'), '')
+        or case
+            when p_event ? 'external_payment_window_hours'
+            then nullif(p_event->>'external_payment_window_hours', '')
+            else nullif(p_event_before->>'external_payment_window_hours', '')
+        end
+            is distinct from nullif(p_event_before->>'external_payment_window_hours', '');
+
     -- Report changes that can govern a paid purchase
     return is_event_ticketing_payload_paid_capable(v_ticket_types) and (
-        v_payment_became_active
+        v_external_configuration_changed
+        or v_payment_became_active
         or v_performance_context_changed
         or v_pricing_configuration_changed
         or v_tax_configuration_changed

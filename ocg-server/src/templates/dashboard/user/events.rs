@@ -13,7 +13,7 @@ use crate::{
             EventSummary,
         },
         pagination::{self, Pagination, ToRawQuery},
-        payments::EventRefundRequestStatus,
+        payments::{EventRefundRequestStatus, ExternalPaymentInfo},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
     validation::MAX_PAGINATION_LIMIT,
@@ -73,6 +73,8 @@ pub(crate) struct UserEvent {
     pub enrollment_status: Option<EventEnrollmentStatus>,
     /// Ticket type assigned to the active offer.
     pub event_ticket_type_id: Option<uuid::Uuid>,
+    /// Snapshot of an unpaid external purchase the attendee must complete.
+    pub external_payment: Option<ExternalPaymentInfo>,
     /// Active offer expiration time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub offer_expires_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -355,6 +357,7 @@ mod tests {
             currency_code: None,
             enrollment_status: Some(EventEnrollmentStatus::Attendee),
             event_ticket_type_id: None,
+            external_payment: None,
             offer_expires_at: None,
             registration_answers: None,
             refund_rejection_reason: None,

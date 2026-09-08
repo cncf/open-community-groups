@@ -87,6 +87,7 @@ pub(crate) async fn add_page(
         session_kinds,
         sponsors,
         timezones,
+        external_payments,
     ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -100,7 +101,8 @@ pub(crate) async fn add_page(
         db.get_group_payment_recipient(community_id, group_id),
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
-        db.list_timezones()
+        db.list_timezones(),
+        db.get_group_external_payments_context(community_id, group_id)
     )?;
 
     // Prepare template
@@ -108,6 +110,7 @@ pub(crate) async fn add_page(
         can_manage_events,
         categories,
         event_kinds,
+        external_payments,
         group_id,
         meetings_enabled,
         meetings_max_participants,
@@ -193,6 +196,7 @@ pub(crate) async fn update_page(
         session_kinds,
         sponsors,
         timezones,
+        external_payments,
     ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -210,6 +214,7 @@ pub(crate) async fn update_page(
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones(),
+        db.get_group_external_payments_context(community_id, group_id),
     )?;
     let template = events::UpdatePage {
         approved_submissions,
@@ -219,6 +224,7 @@ pub(crate) async fn update_page(
         current_user_id: user.user_id,
         event,
         event_kinds,
+        external_payments,
         group_id,
         meetings_enabled,
         meetings_max_participants,
@@ -340,7 +346,9 @@ pub(crate) async fn add(
     // Validate the group fiscal sponsor with the provider before persisting a
     // paid event, embedding the validated recipient in the payload so the
     // database can verify it did not change before committing
-    if (payment_provider.is_some() && is_paid_capable) || has_manual_tax_selection {
+    if event.external_payment_url.is_none()
+        && ((payment_provider.is_some() && is_paid_capable) || has_manual_tax_selection)
+    {
         let payment_validation = validate_group_fiscal_sponsor(
             db.as_ref(),
             &payments_manager,
@@ -735,7 +743,9 @@ pub(crate) async fn update(
             .manual_tax_rate_ids
             .as_ref()
             .is_some_and(|rate_ids| !rate_ids.is_empty());
-    if ticketing_configuration_changed || has_manual_tax_selection {
+    if event.external_payment_url.is_none()
+        && (ticketing_configuration_changed || has_manual_tax_selection)
+    {
         let payment_validation = validate_group_fiscal_sponsor(
             db.as_ref(),
             &payments_manager,
@@ -748,7 +758,8 @@ pub(crate) async fn update(
     }
 
     // Revalidate provider location readiness before changing a published automatic-tax event
-    if ticketing_configuration_changed
+    if event.external_payment_url.is_none()
+        && ticketing_configuration_changed
         && event.tax_calculation_mode == TicketTaxCalculationMode::Automatic
         && is_event_payload_paid_capable(&event_json)
     {
@@ -1193,7 +1204,7 @@ async fn validate_publish_fiscal_sponsor(
     // Load each event and aggregate the strongest paid sponsor readiness need
     for event_id in event_ids {
         let event = db.get_event_full(community_id, group_id, *event_id).await?;
-        if event.is_paid_capable() {
+        if event.is_paid_capable() && event.external_payment_url.is_none() {
             require_automatic_tax |=
                 event.tax_calculation_mode == TicketTaxCalculationMode::Automatic;
             paid_events.push(event.clone());
@@ -1205,7 +1216,8 @@ async fn validate_publish_fiscal_sponsor(
     let manual_events = events
         .iter()
         .filter(|event| {
-            event.tax_calculation_mode == TicketTaxCalculationMode::Manual
+            event.external_payment_url.is_none()
+                && event.tax_calculation_mode == TicketTaxCalculationMode::Manual
                 && (event.is_paid_capable() || !event.manual_tax_rate_ids.is_empty())
         })
         .collect::<Vec<_>>();

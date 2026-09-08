@@ -29,6 +29,9 @@
 {{ template "common/get_community_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_occupied_seat_count.sql" }} -- Dependency for event capacity counts
 {{ template "common/get_event_ticket_type_allocated_seat_count.sql" }} -- Dependency for ticket inventory checks
+{{ template "common/is_country_external_payments_allowlisted.sql" }}
+{{ template "common/is_group_external_payments_ready.sql" }} -- Dependency for is_event_external_payments_ready
+{{ template "common/is_event_external_payments_ready.sql" }}
 {{ template "common/is_event_paid_capable.sql" }}
 {{ template "common/is_event_simple_rsvp.sql" }}
 {{ template "common/is_event_ticketing_payload_paid_capable.sql" }}
@@ -51,6 +54,7 @@
 {{ template "common/get_public_event_full.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_event_registration_questions.sql" }} -- Do not sort alphabetically, dependency for dashboard-user/list_user_events
+{{ template "common/get_group_external_payments_context.sql" }}
 {{ template "common/get_group_full.sql" }}
 {{ template "common/get_public_user_badge.sql" }}
 {{ template "common/insert_audit_log.sql" }}
@@ -295,9 +299,12 @@
 {{ template "payments/complete_event_purchase_application_fee_adjustment_recovery.sql" }}
 {{ template "payments/complete_event_purchase_credit_note_recovery.sql" }}
 {{ template "payments/complete_event_purchase_refund_recovery.sql" }}
+{{ template "payments/approve_external_event_refund_request.sql" }}
+{{ template "payments/complete_external_event_purchase.sql" }}
 {{ template "payments/complete_free_event_purchase.sql" }}
 {{ template "payments/expire_event_purchase_for_checkout_session.sql" }}
 {{ template "payments/finalize_event_purchase_refund.sql" }}
+{{ template "payments/get_event_purchase_notification_context.sql" }}
 {{ template "payments/get_event_purchase_refund.sql" }}
 {{ template "payments/get_event_purchase_refund_recovery_context.sql" }}
 {{ template "payments/get_user_purchase_document_context.sql" }}
@@ -330,6 +337,7 @@
 {{ template "payments/requeue_stale_event_purchase_application_fee_adjustment_claims.sql" }}
 {{ template "payments/requeue_stale_event_purchase_credit_note_claims.sql" }}
 {{ template "payments/requeue_stale_event_purchase_refund_claims.sql" }}
+{{ template "payments/sync_external_payments_config.sql" }}
 {{ template "payments/upsert_payment_provider_tax_location.sql" }}
 
 {{ template "site/get_filters_options.sql" }}

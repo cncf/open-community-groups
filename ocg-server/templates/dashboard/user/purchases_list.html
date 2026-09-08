@@ -61,6 +61,9 @@
               </div>
               <div class="mt-1 flex flex-wrap gap-1.5 lg:hidden">
                 {{ badges::payment_status_badge(label = purchase.status_label()) -}}
+                {% if purchase.externally_managed -%}
+                  {{ badges::common_badge(content = "Externally managed", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
+                {% endif -%}
                 {% if purchase.event_canceled -%}
                   {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
                 {% endif -%}
@@ -89,6 +92,9 @@
             <td class="hidden px-3 py-4 lg:table-cell xl:px-5">
               <div class="flex flex-wrap gap-1.5">
                 {{ badges::payment_status_badge(label = purchase.status_label()) -}}
+                {% if purchase.externally_managed -%}
+                  {{ badges::common_badge(content = "Externally managed", extra_styles = Some("border-stone-200 bg-stone-50 px-2.5 py-0.5 text-stone-700")) -}}
+                {% endif -%}
                 {% if purchase.event_canceled -%}
                   {{ badges::common_badge(content = "Event canceled", extra_styles = Some("border-red-200 bg-red-50 px-2.5 py-0.5 text-red-800")) -}}
                 {% endif -%}
@@ -103,17 +109,50 @@
                 </summary>
                 <div class="dropdown absolute end-0 top-8 z-10 w-[230px] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
                   <ul class="text-sm text-stone-700" role="menu">
-                    {% for credit_note in purchase.credit_notes -%}
+                    {% if purchase.externally_managed -%}
                       <li>
-                        {% if credit_note.status.as_str() == "issued" && credit_note.provider_credit_note_id.is_some() -%}
-                          <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/credit-notes/{{ credit_note.event_purchase_credit_note_id }}"
+                        <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-500">
+                          <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-400"
+                                aria-hidden="true"></span>
+                          <span>Managed outside OCG</span>
+                        </span>
+                      </li>
+                    {% else -%}
+                      {% for credit_note in purchase.credit_notes -%}
+                        <li>
+                          {% if credit_note.status.as_str() == "issued" && credit_note.provider_credit_note_id.is_some() -%}
+                            <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/credit-notes/{{ credit_note.event_purchase_credit_note_id }}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               role="menuitem"
+                               class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
+                              <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-600"
+                                    aria-hidden="true"></span>
+                              <span>Download credit note</span>
+                            </a>
+                          {% else -%}
+                            <button type="button"
+                                    role="menuitem"
+                                    disabled
+                                    aria-disabled="true"
+                                    class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400">
+                              <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-400"
+                                    aria-hidden="true"></span>
+                              <span>Credit note {{ credit_note.status_label().to_lowercase() }}</span>
+                            </button>
+                          {% endif -%}
+                        </li>
+                      {% endfor -%}
+                      <li>
+                        {% if purchase.provider_invoice_id.is_some() -%}
+                          <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/invoice"
                              target="_blank"
                              rel="noopener noreferrer"
                              role="menuitem"
                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                            <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-600"
+                            <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-600"
                                   aria-hidden="true"></span>
-                            <span>Download credit note</span>
+                            <span>View invoice</span>
                           </a>
                         {% else -%}
                           <button type="button"
@@ -121,36 +160,13 @@
                                   disabled
                                   aria-disabled="true"
                                   class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400">
-                            <span class="svg-icon size-4 icon-refund-download shrink-0 bg-stone-400"
+                            <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-400"
                                   aria-hidden="true"></span>
-                            <span>Credit note {{ credit_note.status_label().to_lowercase() }}</span>
+                            <span>Invoice processing</span>
                           </button>
                         {% endif -%}
                       </li>
-                    {% endfor -%}
-                    <li>
-                      {% if purchase.provider_invoice_id.is_some() -%}
-                        <a href="/dashboard/user/purchases/{{ purchase.event_purchase_id }}/invoice"
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           role="menuitem"
-                           class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900">
-                          <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-600"
-                                aria-hidden="true"></span>
-                          <span>View invoice</span>
-                        </a>
-                      {% else -%}
-                        <button type="button"
-                                role="menuitem"
-                                disabled
-                                aria-disabled="true"
-                                class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-sm text-stone-400">
-                          <span class="svg-icon size-4 icon-invoice shrink-0 bg-stone-400"
-                                aria-hidden="true"></span>
-                          <span>Invoice processing</span>
-                        </button>
-                      {% endif -%}
-                    </li>
+                    {% endif -%}
                   </ul>
                 </div>
               </details>

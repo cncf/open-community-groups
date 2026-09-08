@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(12);
 \set communityID '0c090000-0000-0000-0000-000000000004'
 \set eventCategoryID '0c090000-0000-0000-0000-000000000005'
 \set eventCommunityLogoFallbackID '0c090000-0000-0000-0000-000000000006'
+\set eventExternalID '0c090000-0000-0000-0000-00000000001d'
 \set eventGroupLogoFallbackID '0c090000-0000-0000-0000-000000000007'
 \set eventID '0c090000-0000-0000-0000-000000000008'
 \set eventPaidID '0c090000-0000-0000-0000-000000000009'
@@ -406,6 +407,31 @@ insert into event (
     ))
 );
 
+-- Event that collects payment outside the platform
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone,
+
+    external_payment_url
+) values (
+    :'eventExternalID',
+    'External payment summary event',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'External Payment Event',
+    'external-payment-event',
+    'UTC',
+
+    'https://pay.example.test/summary'
+);
+
 -- Event ticket type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -609,6 +635,19 @@ select is(
     )->>'has_registration_questions',
     'true',
     'Should indicate whether registration questions are configured'
+);
+
+-- Should mark summaries that collect payment outside the platform
+select is(
+    (
+        get_event_summary(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventExternalID'::uuid
+        )::jsonb
+    )->>'has_external_payment',
+    'true',
+    'Should mark summaries that collect payment outside the platform'
 );
 
 -- Should include configured registration window timestamps in event summaries

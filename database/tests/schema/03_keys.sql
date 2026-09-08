@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(207);
+select plan(209);
 
 -- ============================================================================
 -- TESTS
@@ -54,6 +54,7 @@ select has_pk('event_speaker');
 select has_pk('event_sponsor');
 select hasnt_pk('event_views');
 select has_pk('event_waitlist');
+select has_pk('external_payments_config');
 select has_pk('group');
 select has_pk('group_category');
 select has_pk('group_member');
@@ -142,6 +143,7 @@ select col_is_fk('event_organizer', 'event_id', 'event');
 select col_is_fk('event_organizer', 'user_id', 'user');
 select col_is_fk('event_purchase', 'event_discount_code_id', 'event_discount_code');
 select col_is_fk('event_purchase', 'event_id', 'event');
+select col_is_fk('event_purchase', 'external_payment_marked_by_user_id', 'user');
 select col_is_fk('event_purchase', 'payment_provider_id', 'payment_provider');
 select col_is_fk('event_purchase', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_purchase', 'user_id', 'user');

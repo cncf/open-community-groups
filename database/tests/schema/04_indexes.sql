@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(104);
+select plan(105);
 
 -- ============================================================================
 -- TESTS
@@ -300,6 +300,11 @@ select index_is_unique('event_purchase', 'event_purchase_provider_charge_id_idx'
 select index_is_unique('event_purchase', 'event_purchase_provider_checkout_session_idx');
 select index_is_unique('event_purchase', 'event_purchase_provider_invoice_id_idx');
 select index_is_unique('event_purchase', 'event_purchase_provider_payment_reference_idx');
+
+-- Test: external_payments_config indexes should match expected
+select indexes_are('external_payments_config', array[
+    'external_payments_config_pkey'
+]);
 
 -- Test: durable financial-work indexes should match expected
 select indexes_are('event_purchase_application_fee_adjustment', array[

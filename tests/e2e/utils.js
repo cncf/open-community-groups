@@ -155,6 +155,7 @@ export const TEST_GROUP_NAMES = {
   alpha: "Platform Ops Meetup",
   beta: "Inactive Local Chapter",
   empty: "Empty Coverage Group",
+  externalPayments: "External Payments Lab",
   gamma: "Observability Guild",
 };
 
@@ -171,6 +172,7 @@ export const TEST_GROUP_SLUGS = {
     alpha: "test-group-alpha",
     beta: "test-group-beta",
     empty: "empty-coverage-group",
+    externalPayments: "external-payments-lab",
     gamma: "test-group-gamma",
   },
   community2: {
@@ -186,6 +188,7 @@ export const TEST_GROUP_IDS = {
     alpha: "44444444-4444-4444-4444-444444444441",
     beta: "44444444-4444-4444-4444-444444444442",
     empty: "44444444-4444-4444-4444-444444444447",
+    externalPayments: "44444444-4444-4444-4444-444444444448",
     gamma: "44444444-4444-4444-4444-444444444443",
   },
   community2: {
@@ -291,6 +294,34 @@ export const TEST_TICKETING_EVENTS = {
   },
 };
 
+/** Isolated events used by the external payment E2E journeys. */
+export const TEST_EXTERNAL_PAYMENT_EVENTS = {
+  capacity: {
+    id: "55555555-5555-5555-5555-555555555925",
+    name: "External Payment Capacity Lab",
+    slug: "external-payment-capacity",
+    ticketTypeId: "56555555-5555-5555-5555-555555555925",
+  },
+  copyFree: {
+    id: "55555555-5555-5555-5555-555555555927",
+    name: "External Payment Free Ticket Lab",
+    slug: "external-payment-free-ticket-lab",
+  },
+  invitation: {
+    id: "55555555-5555-5555-5555-555555555926",
+    name: "External Payment Invitation Lab",
+    slug: "external-payment-invitation",
+    ticketTypeId: "56555555-5555-5555-5555-555555555926",
+  },
+  lifecycle: {
+    discountCode: "EXTERNALFREE",
+    id: "55555555-5555-5555-5555-555555555924",
+    name: "External Payment Lifecycle Lab",
+    slug: "external-payment-lifecycle",
+    ticketTypeId: "56555555-5555-5555-5555-555555555924",
+  },
+};
+
 /** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
 export const TEST_PAYMENT_GROUP_RECIPIENT = "acct_e2e_alpha";
 export const E2E_PAYMENTS_ENABLED =
@@ -359,6 +390,7 @@ const NAVIGATION_ASSET_TIMEOUT_MS = 5_000;
 const NAVIGATION_ATTEMPT_TIMEOUT_MS = 15_000;
 const NAVIGATION_RETRY_ATTEMPTS = 12;
 const NAVIGATION_RETRY_DELAY_MS = 1_000;
+const HTMX_SETTLE_TIMEOUT_MS = 10_000;
 
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
 
@@ -647,6 +679,9 @@ export const waitForAttendanceState = async (page) => {
   await Promise.race([
     getAttendButton(page).waitFor({ state: "visible" }),
     getLeaveButton(page).waitFor({ state: "visible" }),
+    attendanceContainer
+      .locator('[data-attendance-role="refund-btn"]')
+      .waitFor({ state: "visible" }),
   ]);
 };
 
@@ -756,6 +791,19 @@ export const navigateToPath = async (page, path) => {
 };
 
 /**
+ * Waits until HTMX has finished swapping and settling any in-flight content.
+ * HTMX wires swapped nodes (hx-* handlers, htmx:load) on a delayed settle step, so
+ * interacting right after a response can hit visible but not yet processed elements.
+ */
+export const waitForHtmxSettle = async (page) => {
+  await page.waitForFunction(
+    () => !document.querySelector(".htmx-request, .htmx-swapping, .htmx-settling, .htmx-added"),
+    undefined,
+    { timeout: HTMX_SETTLE_TIMEOUT_MS },
+  );
+};
+
+/**
  * Runs an action and waits for a response matching method, URL, and status.
  * Status defaults to any successful response when not provided.
  */
@@ -770,6 +818,7 @@ export const waitForActionResponse = async (page, action, { method, urlIncludes,
     ),
     action(),
   ]);
+  await waitForHtmxSettle(page);
 
   return response;
 };

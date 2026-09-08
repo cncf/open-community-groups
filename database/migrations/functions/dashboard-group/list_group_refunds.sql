@@ -28,6 +28,7 @@ returns json as $$
                     ep.amount_minor
                 ) as amount_minor,
                 coalesce(epr.created_at, err.created_at, ep.updated_at) as created_at_sort,
+                ep.charge_model,
                 ep.currency_code,
                 u.email,
                 e.event_id,
@@ -265,6 +266,7 @@ returns json as $$
                 fr.event_id,
                 fr.event_name,
                 fr.event_purchase_id,
+                fr.charge_model = 'external' as external,
                 fr.status,
                 fr.ticket_title,
                 extract(epoch from fr.updated_at_sort)::bigint as updated_at,

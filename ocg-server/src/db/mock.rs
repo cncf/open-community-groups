@@ -527,6 +527,11 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
+        async fn get_group_external_payments_context(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<crate::types::payments::GroupExternalPaymentsContext>;
         async fn get_group_payment_recipient(
             &self,
             community_id: Uuid,
@@ -1206,6 +1211,14 @@ mock! {
 
     #[async_trait]
     impl crate::db::payments::DBPayments for DB {
+        async fn approve_external_event_refund_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_purchase_id: Uuid,
+            review_note: Option<String>,
+            notification_template_data: Option<serde_json::Value>,
+        ) -> Result<crate::db::payments::CompletedEventPurchase>;
         async fn attach_application_fee_to_event_purchase(
             &self,
             payment_provider: crate::types::payments::PaymentProvider,
@@ -1259,6 +1272,15 @@ mock! {
             &self,
             input: &crate::db::payments::CompleteEventPurchaseRefundRecoveryInput,
         ) -> Result<()>;
+        async fn complete_external_event_purchase(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_purchase_id: Uuid,
+            details: Option<String>,
+            notification_attachments: Option<serde_json::Value>,
+            notification_template_data: Option<serde_json::Value>,
+        ) -> Result<crate::db::payments::CompletedEventPurchase>;
         async fn complete_free_event_purchase(
             &self,
             event_purchase_id: Uuid,
@@ -1276,6 +1298,15 @@ mock! {
             notification_template_data: serde_json::Value,
             payment_provider: Option<crate::types::payments::PaymentProvider>,
         ) -> Result<()>;
+        async fn get_event_purchase_charge_model(
+            &self,
+            event_purchase_id: Uuid,
+        ) -> Result<crate::types::payments::EventPurchaseChargeModel>;
+        async fn get_event_purchase_notification_context(
+            &self,
+            group_id: Uuid,
+            event_purchase_id: Uuid,
+        ) -> Result<Option<crate::db::payments::EventPurchaseNotificationContext>>;
         async fn get_event_purchase_refund(
             &self,
             event_purchase_id: Uuid,
@@ -1410,6 +1441,10 @@ mock! {
         ) -> Result<i32>;
         async fn requeue_stale_event_purchase_credit_note_claims(&self) -> Result<i32>;
         async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
+        async fn sync_external_payments_config(
+            &self,
+            config: Option<crate::config::ExternalPaymentsConfig>,
+        ) -> Result<()>;
         async fn upsert_payment_provider_tax_location(
             &self,
             payment_provider: crate::types::payments::PaymentProvider,

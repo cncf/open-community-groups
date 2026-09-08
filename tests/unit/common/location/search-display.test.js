@@ -15,48 +15,26 @@ import {
 describe("location search display", () => {
   it("detects venue location field configurations", () => {
     // Venue field names mark the location context as venue-specific.
-    expect(
-      isVenueLocationContext({ venueNameFieldName: "venue_name" }),
-    ).to.equal(true);
-    expect(
-      isVenueLocationContext({ venueAddressFieldName: "venue_address" }),
-    ).to.equal(true);
-    expect(
-      isVenueLocationContext({ venueZipCodeFieldName: "venue_zip" }),
-    ).to.equal(true);
-    expect(
-      isVenueLocationContext({ countryNameFieldName: "country" }),
-    ).to.equal(false);
+    expect(isVenueLocationContext({ venueNameFieldName: "venue_name" })).to.equal(true);
+    expect(isVenueLocationContext({ venueAddressFieldName: "venue_address" })).to.equal(true);
+    expect(isVenueLocationContext({ venueZipCodeFieldName: "venue_zip" })).to.equal(true);
+    expect(isVenueLocationContext({ countryNameFieldName: "country" })).to.equal(false);
   });
 
   it("builds stable ids for generated location inputs", () => {
     // Input ids include the component id when available.
-    expect(getLocationInputId("event-location", "venue_city")).to.equal(
-      "event-location-venue_city",
-    );
-    expect(getLocationInputId("", "venue_city")).to.equal(
-      "location-search-venue_city",
-    );
+    expect(getLocationInputId("event-location", "venue_city")).to.equal("event-location-venue_city");
+    expect(getLocationInputId("", "venue_city")).to.equal("location-search-venue_city");
     expect(getLocationInputId("event-location", "")).to.equal("");
   });
 
   it("returns venue-aware helper text", () => {
     // City and country helper text changes for venue contexts.
-    expect(getLocationLegendText("city", true)).to.equal(
-      "City where the venue is located.",
-    );
-    expect(getLocationLegendText("city", false)).to.equal(
-      "Primary city where the group is located.",
-    );
-    expect(getLocationLegendText("country", true)).to.equal(
-      "Country where the venue is located.",
-    );
-    expect(getLocationLegendText("zip", false)).to.equal(
-      "Postal/zip code of the venue.",
-    );
-    expect(getLocationLegendText("state", false)).to.equal(
-      "State, province, or region.",
-    );
+    expect(getLocationLegendText("city", true)).to.equal("City where the venue is located.");
+    expect(getLocationLegendText("city", false)).to.equal("Primary city where the group is located.");
+    expect(getLocationLegendText("country", true)).to.equal("Country where the venue is located.");
+    expect(getLocationLegendText("zip", false)).to.equal("Postal/zip code of the venue.");
+    expect(getLocationLegendText("state", false)).to.equal("State, province, or region.");
     expect(getLocationLegendText("unknown", false)).to.equal("");
   });
 
@@ -71,9 +49,7 @@ describe("location search display", () => {
       mainText: "Main Hall",
       secondaryText: "Main Hall, Málaga, Spain",
     });
-    expect(
-      getLocationResultText({ display_name: "Málaga, Andalusia, Spain" }),
-    ).to.deep.equal({
+    expect(getLocationResultText({ display_name: "Málaga, Andalusia, Spain" })).to.deep.equal({
       mainText: "Málaga",
       secondaryText: "Málaga, Andalusia, Spain",
     });
@@ -87,9 +63,7 @@ describe("location search display", () => {
         searchQuery: "Málaga",
       }),
     ).to.equal(true);
-    expect(
-      shouldRenderLocationDropdown({ showDropdown: true, searchQuery: "Má" }),
-    ).to.equal(false);
+    expect(shouldRenderLocationDropdown({ showDropdown: true, searchQuery: "Má" })).to.equal(false);
 
     // Search is disabled for disabled fields, short queries, or active requests.
     expect(
@@ -110,9 +84,7 @@ describe("location search display", () => {
 
   it("returns disabled input classes only when fields are disabled", () => {
     // Disabled classes are shared by generated location inputs.
-    expect(getLocationDisabledInputClasses(true)).to.equal(
-      "cursor-not-allowed bg-stone-100 text-stone-500",
-    );
+    expect(getLocationDisabledInputClasses(true)).to.equal("cursor-not-allowed bg-stone-100 text-stone-500");
     expect(getLocationDisabledInputClasses(false)).to.equal("");
   });
 
@@ -132,28 +104,14 @@ describe("location search display", () => {
 
   it("returns value keys for generated text field handlers", () => {
     // Handler names map generated inputs to their component value fields.
-    expect(getLocationTextFieldValueKey("venueName")).to.equal(
-      "_venueNameValue",
-    );
-    expect(getLocationTextFieldValueKey("venueAddress")).to.equal(
-      "_venueAddressValue",
-    );
-    expect(getLocationTextFieldValueKey("venueCity")).to.equal(
-      "_venueCityValue",
-    );
-    expect(getLocationTextFieldValueKey("venueZipCode")).to.equal(
-      "_venueZipCodeValue",
-    );
+    expect(getLocationTextFieldValueKey("venueName")).to.equal("_venueNameValue");
+    expect(getLocationTextFieldValueKey("venueAddress")).to.equal("_venueAddressValue");
+    expect(getLocationTextFieldValueKey("venueCity")).to.equal("_venueCityValue");
+    expect(getLocationTextFieldValueKey("venueZipCode")).to.equal("_venueZipCodeValue");
     expect(getLocationTextFieldValueKey("state")).to.equal("_stateValue");
-    expect(getLocationTextFieldValueKey("stateCode")).to.equal(
-      "_stateCodeValue",
-    );
-    expect(getLocationTextFieldValueKey("countryName")).to.equal(
-      "_countryNameValue",
-    );
-    expect(getLocationTextFieldValueKey("countryCode")).to.equal(
-      "_countryCodeValue",
-    );
+    expect(getLocationTextFieldValueKey("stateCode")).to.equal("_stateCodeValue");
+    expect(getLocationTextFieldValueKey("countryName")).to.equal("_countryNameValue");
+    expect(getLocationTextFieldValueKey("countryCode")).to.equal("_countryCodeValue");
     expect(getLocationTextFieldValueKey("unknown")).to.equal("");
   });
 
@@ -225,6 +183,22 @@ describe("location search display", () => {
       label: "Country Code",
       legend: "Country code used to calculate taxes.",
       requiredForPaidTickets: true,
+      value: "ES",
+    });
+  });
+
+  it("shows a configured country code without requiring a state code", () => {
+    const fields = getLocationTextFieldDefinitions({
+      countryCodeFieldName: "country_code",
+      countryCodeValue: "ES",
+    });
+
+    expect(fields).to.have.length(1);
+    expect(fields[0]).to.include({
+      fieldName: "country_code",
+      label: "Country Code",
+      legend: "Two-letter country code used for regional features.",
+      requiredForPaidTickets: false,
       value: "ES",
     });
   });

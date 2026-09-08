@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(65);
+select plan(68);
 
 -- ============================================================================
 -- VARIABLES
@@ -30,8 +30,18 @@ select plan(65);
 \set eventInactiveGroupID '3a010000-0000-0000-0000-000000000008'
 \set eventPastID '3a010000-0000-0000-0000-000000000009'
 \set eventPendingInvitationID '3a010000-0000-0000-0000-000000000010'
+\set eventExternalReadyApprovalID '3a010000-0000-0000-0000-000000000070'
+\set eventExternalUnreadyApprovalID '3a010000-0000-0000-0000-000000000071'
 \set eventPaidNoRecipientApprovalID '3a010000-0000-0000-0000-000000000038'
 \set eventPaidReadyApprovalID '3a010000-0000-0000-0000-000000000063'
+\set externalReadyPriceWindowID '3a010000-0000-0000-0000-000000000072'
+\set externalReadyRequesterID '3a010000-0000-0000-0000-000000000073'
+\set externalReadyTicketTypeID '3a010000-0000-0000-0000-000000000074'
+\set externalUnreadyPriceWindowID '3a010000-0000-0000-0000-000000000075'
+\set externalUnreadyRequesterID '3a010000-0000-0000-0000-000000000076'
+\set externalUnreadyTicketTypeID '3a010000-0000-0000-0000-000000000077'
+\set groupExternalReadyID '3a010000-0000-0000-0000-000000000078'
+\set groupExternalUnreadyID '3a010000-0000-0000-0000-000000000079'
 \set eventPrivateTicketApprovalID '3a010000-0000-0000-0000-000000000027'
 \set eventPublicTicketApprovalID '3a010000-0000-0000-0000-000000000028'
 \set eventQuestionsApprovalID '3a010000-0000-0000-0000-000000000011'
@@ -106,6 +116,17 @@ select plan(65);
 -- SEED DATA
 -- ============================================================================
 
+-- Operator allowlist used by external approval readiness scenarios
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
+
 -- Community
 insert into site (description, site_id, theme, title)
 values (
@@ -164,6 +185,8 @@ values
     (:'requester12ID', 'h', 'requester12@test.com', 'requester12'),
     (:'requester13ID', 'h', 'requester13@test.com', 'requester13'),
     (:'paidReadyRequesterID', 'h', 'paid-ready@test.com', 'paid-ready'),
+    (:'externalReadyRequesterID', 'h', 'external-ready@test.com', 'external-ready'),
+    (:'externalUnreadyRequesterID', 'h', 'external-unready@test.com', 'external-unready'),
     (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request'),
     (:'queuePriorityRequesterID', 'h', 'queue-priority-requester@test.com', 'queue-priority-requester'),
     (:'queuePriorityWaitlistUserID', 'h', 'queue-priority-waitlist@test.com', 'queue-priority-waitlist'),
@@ -234,6 +257,44 @@ insert into "group" (
         "recipient_id": "acct_paid_ready",
         "seller_display_name": "Paid Ready Fiscal Sponsor"
     }'::jsonb
+);
+
+-- Allowlisted group with external payments enabled for ready approvals
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'KR',
+    true,
+    :'groupCategoryID',
+    :'groupExternalReadyID',
+    'External Ready Approval Group',
+    'external-ready-approval-group'
+);
+
+-- External-marked group outside the allowlist for approval rejection
+insert into "group" (
+    community_id,
+    country_code,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'communityID',
+    'US',
+    true,
+    :'groupCategoryID',
+    :'groupExternalUnreadyID',
+    'External Unready Approval Group',
+    'external-unready-approval-group'
 );
 
 -- Events
@@ -749,6 +810,88 @@ insert into event (
     '97201'
 );
 
+-- External-marked approval event that is ready without Stripe
+insert into event (
+    attendee_approval_required,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    true,
+    'External ready ticket approval event',
+    :'eventCategoryID',
+    :'eventExternalReadyApprovalID',
+    'in-person',
+    'https://pay.example.test/accept-ready',
+    :'groupExternalReadyID',
+    'External Ready Ticket Approval',
+    'KRW',
+    true,
+    'external-ready-ticket-approval',
+    current_timestamp + interval '1 day',
+    'UTC',
+    '1 Test Street',
+    'Seoul',
+    'KR',
+    'Test Hall',
+    '00000'
+);
+
+-- External-marked approval event that is not allowlisted
+insert into event (
+    attendee_approval_required,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    true,
+    'External unready ticket approval event',
+    :'eventCategoryID',
+    :'eventExternalUnreadyApprovalID',
+    'in-person',
+    'https://pay.example.test/accept-unready',
+    :'groupExternalUnreadyID',
+    'External Unready Ticket Approval',
+    'USD',
+    true,
+    'external-unready-ticket-approval',
+    current_timestamp + interval '1 day',
+    'UTC',
+    '123 Main St',
+    'San Francisco',
+    'US',
+    'Community Hall',
+    '94105'
+);
+
 -- Ticket tiers assigned or checked by the approval workflows
 insert into event_ticket_type (
     active,
@@ -870,6 +1013,24 @@ insert into event_ticket_type (
     (
         true,
         'public',
+        :'eventExternalReadyApprovalID',
+        :'externalReadyTicketTypeID',
+        1,
+        1,
+        'External ready admission'
+    ),
+    (
+        true,
+        'public',
+        :'eventExternalUnreadyApprovalID',
+        :'externalUnreadyTicketTypeID',
+        1,
+        1,
+        'External unready admission'
+    ),
+    (
+        true,
+        'public',
         :'eventReissueOfferBlockID',
         :'reissueOfferBlockTicketTypeID',
         1,
@@ -898,6 +1059,8 @@ insert into event_ticket_price_window (
     (0, :'privateTicketPriceWindowID', :'privateTicketTypeID'),
     (2500, :'paidTicketPriceWindowID', :'paidTicketTypeID'),
     (2500, :'paidReadyPriceWindowID', :'paidReadyTicketTypeID'),
+    (5000, :'externalReadyPriceWindowID', :'externalReadyTicketTypeID'),
+    (2500, :'externalUnreadyPriceWindowID', :'externalUnreadyTicketTypeID'),
     (0, :'publicAlternateTicketPriceWindowID', :'publicAlternateTicketTypeID'),
     (0, :'publicGenericTicketPriceWindowID', :'publicGenericTicketTypeID'),
     (0, :'publicTicketPriceWindowID', :'publicTicketTypeID'),
@@ -966,6 +1129,8 @@ values
     (:'eventUnavailableTicketApprovalID', :'unavailableTicketTypeID', :'requester9ID'),
     (:'eventPaidNoRecipientApprovalID', :'paidTicketTypeID', :'requester10ID'),
     (:'eventPaidReadyApprovalID', :'paidReadyTicketTypeID', :'paidReadyRequesterID'),
+    (:'eventExternalReadyApprovalID', :'externalReadyTicketTypeID', :'externalReadyRequesterID'),
+    (:'eventExternalUnreadyApprovalID', :'externalUnreadyTicketTypeID', :'externalUnreadyRequesterID'),
     (:'eventQueuePriorityID', :'queuePriorityTicketTypeID', :'queuePriorityRequesterID'),
     (:'eventTicketSoldOutID', :'soldOutTicketTypeID', :'soldOutRequesterID');
 
@@ -1497,6 +1662,30 @@ select is(
     'Should leave active-purchase reissue requests accepted without an offer'
 );
 
+-- Should accept a paid request when the external event is ready
+select lives_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,null,null)',
+        :'actorID',
+        :'groupExternalReadyID',
+        :'eventExternalReadyApprovalID',
+        :'externalReadyRequesterID'
+    ),
+    'Should accept a paid request when the external event is ready'
+);
+
+select is(
+    (
+        select count(*)::int
+        from admission_offer
+        where event_id = :'eventExternalReadyApprovalID'::uuid
+        and user_id = :'externalReadyRequesterID'::uuid
+        and status = 'pending'
+    ),
+    1,
+    'Should create an offer when the external event is ready'
+);
+
 -- Should reject paid approval when the group payment recipient is missing
 select throws_ok(
     format(
@@ -1509,6 +1698,19 @@ select throws_ok(
     ),
     'paid-capable events require a payment recipient',
     'Should reject paid approval when the group payment recipient is missing'
+);
+
+-- Should reject paid approval when an external-marked event is not ready
+select throws_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid,null,null)',
+        :'actorID',
+        :'groupExternalUnreadyID',
+        :'eventExternalUnreadyApprovalID',
+        :'externalUnreadyRequesterID'
+    ),
+    'external payments are not available for this event',
+    'Should reject paid approval when an external-marked event is not ready'
 );
 
 -- Should leave paid-readiness failures pending without an offer

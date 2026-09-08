@@ -45,7 +45,10 @@ use crate::{
             EventSummary, SessionKindSummary as SessionKind,
         },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
-        payments::{GroupPaymentRecipient, PaymentConfigurationValidation, PaymentProvider},
+        payments::{
+            GroupExternalPaymentsContext, GroupPaymentRecipient, PaymentConfigurationValidation,
+            PaymentProvider,
+        },
     },
 };
 
@@ -247,6 +250,13 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventSummary>;
+
+    /// Loads group-level external-payments eligibility and window limits.
+    async fn get_group_external_payments_context(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<GroupExternalPaymentsContext>;
 
     /// Gets the configured payment recipient for a group.
     async fn get_group_payment_recipient(
@@ -1016,7 +1026,21 @@ where
         .await
     }
 
-    /// [`DBDashboardGroup::get_group_payment_recipient`]
+    /// [`DBDashboardGroup::get_group_external_payments_context`].
+    #[instrument(skip(self), err)]
+    async fn get_group_external_payments_context(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<GroupExternalPaymentsContext> {
+        self.fetch_json_one(
+            "select get_group_external_payments_context($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_group_payment_recipient`].
     #[instrument(skip(self), err)]
     async fn get_group_payment_recipient(
         &self,

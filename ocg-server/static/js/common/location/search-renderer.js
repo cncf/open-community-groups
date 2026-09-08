@@ -143,24 +143,12 @@ const renderLocationTextField = ({ disabled, disabledClasses, field, getInputId,
  * @returns {import('lit').TemplateResult}
  */
 export const renderLocationTextFields = (state) => {
-  const hiddenCountryCodeInput =
-    state.countryCodeFieldName && !state.stateCodeFieldName
-      ? html`
-          <input
-            type="hidden"
-            name="${state.countryCodeFieldName}"
-            id="${getLocationInputId(state.componentId, state.countryCodeFieldName)}"
-            .value=${state.countryCodeValue}
-          />
-        `
-      : "";
   const disabledClasses = getLocationDisabledInputClasses(state.disabled);
   const textFields = getLocationTextFieldDefinitions(state);
   const getInputId = (inputName) => getLocationInputId(state.componentId, inputName);
 
   return html`
     <div class="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      ${hiddenCountryCodeInput}
       ${textFields.map((field) =>
         renderLocationTextField({
           disabled: state.disabled,

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(34);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,20 @@ select plan(29);
 \set event1ID '3a2e0000-0000-0000-0000-000000000002'
 \set event2ID '3a2e0000-0000-0000-0000-000000000003'
 \set eventCategoryID '3a2e0000-0000-0000-0000-000000000004'
+\set eventExternalID '3a2e0000-0000-0000-0000-000000000070'
+\set eventExternalTicketTypeID '3a2e0000-0000-0000-0000-000000000071'
+\set externalCompletedPurchaseID '3a2e0000-0000-0000-0000-000000000072'
+\set externalCompletedUserID '3a2e0000-0000-0000-0000-000000000073'
+\set externalMarkedByUserID '3a2e0000-0000-0000-0000-000000000074'
+\set externalOfferAdmissionOfferID '3a2e0000-0000-0000-0000-000000000077'
+\set externalOfferPurchaseID '3a2e0000-0000-0000-0000-000000000078'
+\set externalOfferUserID '3a2e0000-0000-0000-0000-000000000079'
+\set externalPendingPurchaseID '3a2e0000-0000-0000-0000-000000000075'
+\set externalPendingUserID '3a2e0000-0000-0000-0000-000000000076'
+\set externalReregisterPurchaseID '3a2e0000-0000-0000-0000-00000000007c'
+\set externalReregisterUserID '3a2e0000-0000-0000-0000-00000000007d'
+\set externalReplacementPurchaseID '3a2e0000-0000-0000-0000-00000000007a'
+\set externalReplacementUserID '3a2e0000-0000-0000-0000-00000000007b'
 \set eventDiscountCode1ID '3a2e0000-0000-0000-0000-000000000005'
 \set expiredInvitationOfferID '3a2e0000-0000-0000-0000-000000000065'
 \set eventPurchase1ID '3a2e0000-0000-0000-0000-000000000006'
@@ -1030,6 +1044,291 @@ insert into event_purchase_refund (
     (2500, 10, 'USD', :'progressPurchase10ID', :'progressRefund8ID', 'progress-refund-8', 'event-cancellation', 'stripe', 'provider-failed', false, null, null, null, null, null),
     (2500, 1, 'USD', :'progressPurchase11ID', :'progressRefund9ID', 'progress-refund-9', 'event-cancellation', 'stripe', 'provider-failed', false, null, null, null, null, null);
 
+-- Users used by external payment-pending and completed attendee search rows
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values
+    (:'externalCompletedUserID', 'hash-external-completed', 'external-completed@example.com', true, 'external-completed'),
+    (:'externalMarkedByUserID', 'hash-external-marked-by', 'external-marked-by@example.com', true, 'external-marked-by'),
+    (:'externalOfferUserID', 'hash-external-offer', 'external-offer@example.com', true, 'external-offer'),
+    (:'externalPendingUserID', 'hash-external-pending', 'external-pending@example.com', true, 'external-pending'),
+    (:'externalReregisterUserID', 'hash-external-reregister', 'external-reregister@example.com', true, 'external-reregister'),
+    (:'externalReplacementUserID', 'hash-external-replacement', 'external-replacement@example.com', true, 'external-replacement');
+
+-- External-marked event exposing payment-pending and externally paid attendees
+insert into event (
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    false,
+    'External attendee search event',
+    :'eventCategoryID',
+    :'eventExternalID',
+    'in-person',
+    'https://pay.example.test/search',
+    :'groupID',
+    'External Search Event',
+    true,
+    'external-search-event',
+    '2030-01-01 10:00:00+00',
+    'UTC'
+);
+
+-- Ticket type for the external attendee search event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventExternalTicketTypeID',
+    :'eventExternalID',
+    1,
+    50,
+    'External admission'
+);
+
+-- Pending external hold shown as payment-pending
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-01-08 00:00:00+00',
+    'KRW',
+    :'eventExternalID',
+    :'externalPendingPurchaseID',
+    :'eventExternalTicketTypeID',
+    '2030-01-02 00:00:00+00',
+    0,
+    0,
+    'pending',
+    'External admission',
+    :'externalPendingUserID'
+);
+
+-- Completed external purchase exposing marked-by and reference fields
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    completed_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    external_payment_details,
+    external_payment_marked_by_user_id,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-01-10 12:00:00+00',
+    'KRW',
+    :'eventExternalID',
+    :'externalCompletedPurchaseID',
+    :'eventExternalTicketTypeID',
+    'bank transfer received',
+    :'externalMarkedByUserID',
+    0,
+    0,
+    'completed',
+    'External admission',
+    :'externalCompletedUserID'
+);
+
+-- Confirmed attendee holding the completed external purchase
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-09 00:00:00+00',
+    :'eventExternalID',
+    'confirmed',
+    :'externalCompletedUserID'
+);
+
+-- Previously canceled attendee who later reserved a new external hold
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-07 00:00:00+00',
+    :'externalReregisterUserID',
+    '2024-01-07 00:00:00+00',
+    :'eventExternalID',
+    'attendance-canceled',
+    :'externalReregisterUserID'
+);
+
+-- Pending external hold after re-registration without questionnaire answers
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-01-12 00:00:00+00',
+    'KRW',
+    :'eventExternalID',
+    :'externalReregisterPurchaseID',
+    :'eventExternalTicketTypeID',
+    '2030-01-02 00:00:00+00',
+    0,
+    0,
+    'pending',
+    'External admission',
+    :'externalReregisterUserID'
+);
+
+-- Confirmed attendee who also holds a pending replacement purchase
+insert into event_attendee (
+    created_at,
+    event_id,
+    status,
+    user_id
+) values (
+    '2024-01-09 12:00:00+00',
+    :'eventExternalID',
+    'confirmed',
+    :'externalReplacementUserID'
+);
+
+-- Pending external hold that must not duplicate the confirmed attendee
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    '2024-01-11 00:00:00+00',
+    'KRW',
+    :'eventExternalID',
+    :'externalReplacementPurchaseID',
+    :'eventExternalTicketTypeID',
+    '2030-01-02 00:00:00+00',
+    0,
+    0,
+    'pending',
+    'External admission',
+    :'externalReplacementUserID'
+);
+
+-- Organizer invitation claimed into a pending external hold
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    created_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalOfferAdmissionOfferID',
+    5000,
+    '2024-01-11 00:00:00+00',
+    'KRW',
+    0,
+    :'eventExternalID',
+    :'eventExternalTicketTypeID',
+    '2030-01-02 00:00:00+00',
+    'organizer_invitation',
+    'checkout_pending',
+    'External admission',
+    :'externalOfferUserID'
+);
+
+-- Pending external purchase for the claimed organizer invitation
+insert into event_purchase (
+    admission_offer_id,
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalOfferAdmissionOfferID',
+    5000,
+    'external',
+    '2024-01-11 00:00:00+00',
+    'KRW',
+    :'eventExternalID',
+    :'externalOfferPurchaseID',
+    :'eventExternalTicketTypeID',
+    '2030-01-02 00:00:00+00',
+    0,
+    0,
+    'pending',
+    'External admission',
+    :'externalOfferUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -1224,11 +1523,34 @@ select is(
 
 -- Should return attendees for event1 with expected fields and order
 select is(
-    search_event_attendees(
-        :'groupID'::uuid,
-        :'event1ID'::uuid,
-        jsonb_build_object('limit', 50, 'offset', 0, 'status', 'all')
-    )::jsonb,
+    (
+        select jsonb_set(
+            result,
+            '{attendees}',
+            coalesce((
+                select jsonb_agg(
+                    attendee
+                        - 'charge_model'
+                        - 'completed_at'
+                        - 'external_payment_deadline'
+                        - 'external_payment_details'
+                        - 'external_payment_marked_by'
+                        - 'external_payment_reference'
+                        - 'externally_paid'
+                    order by ordinality
+                )
+                from jsonb_array_elements(result->'attendees')
+                    with ordinality as t(attendee, ordinality)
+            ), '[]'::jsonb)
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'event1ID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0, 'status', 'all')
+            )::jsonb as result
+        ) s
+    ),
     jsonb_build_object(
         'attendees', '[
             {"can_receive_attendee_email": true, "checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "manually_invited": true, "registration_answers": null, "enrollment_status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000018", "username": "alice", "bio": "Maintains event infrastructure", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "checked_in_at": 1704103200, "amount_minor": 2500, "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "3a2e0000-0000-0000-0000-000000000006", "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": null},
@@ -1246,11 +1568,34 @@ select is(
 
 -- Should return paginated attendees when limit and offset are provided
 select is(
-    search_event_attendees(
-        :'groupID'::uuid,
-        :'event1ID'::uuid,
-        jsonb_build_object('limit', 1, 'offset', 1, 'status', 'all')
-    )::jsonb,
+    (
+        select jsonb_set(
+            result,
+            '{attendees}',
+            coalesce((
+                select jsonb_agg(
+                    attendee
+                        - 'charge_model'
+                        - 'completed_at'
+                        - 'external_payment_deadline'
+                        - 'external_payment_details'
+                        - 'external_payment_marked_by'
+                        - 'external_payment_reference'
+                        - 'externally_paid'
+                    order by ordinality
+                )
+                from jsonb_array_elements(result->'attendees')
+                    with ordinality as t(attendee, ordinality)
+            ), '[]'::jsonb)
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'event1ID'::uuid,
+                jsonb_build_object('limit', 1, 'offset', 1, 'status', 'all')
+            )::jsonb as result
+        ) s
+    ),
     jsonb_build_object(
         'attendees', '[
             {"can_receive_attendee_email": false, "checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "enrollment_status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": null, "amount_minor": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "refund_request_status": null, "ticket_title": null, "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": null, "offer_expires_at": null}
@@ -1263,11 +1608,34 @@ select is(
 
 -- Should return full attendee list when pagination is omitted
 select is(
-    search_event_attendees(
-        :'groupID'::uuid,
-        :'event1ID'::uuid,
-        jsonb_build_object('status', 'all')
-    )::jsonb,
+    (
+        select jsonb_set(
+            result,
+            '{attendees}',
+            coalesce((
+                select jsonb_agg(
+                    attendee
+                        - 'charge_model'
+                        - 'completed_at'
+                        - 'external_payment_deadline'
+                        - 'external_payment_details'
+                        - 'external_payment_marked_by'
+                        - 'external_payment_reference'
+                        - 'externally_paid'
+                    order by ordinality
+                )
+                from jsonb_array_elements(result->'attendees')
+                    with ordinality as t(attendee, ordinality)
+            ), '[]'::jsonb)
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'event1ID'::uuid,
+                jsonb_build_object('status', 'all')
+            )::jsonb as result
+        ) s
+    ),
     jsonb_build_object(
         'attendees', '[
             {"can_receive_attendee_email": true, "checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "manually_invited": true, "registration_answers": null, "enrollment_status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000018", "username": "alice", "bio": "Maintains event infrastructure", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "checked_in_at": 1704103200, "amount_minor": 2500, "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "3a2e0000-0000-0000-0000-000000000006", "refund_request_status": null, "ticket_title": "General admission", "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000010", "offer_expires_at": null},
@@ -1285,11 +1653,34 @@ select is(
 
 -- Should return attendees for event2
 select is(
-    search_event_attendees(
-        :'groupID'::uuid,
-        :'event2ID'::uuid,
-        jsonb_build_object('limit', 50, 'offset', 0)
-    )::jsonb,
+    (
+        select jsonb_set(
+            result,
+            '{attendees}',
+            coalesce((
+                select jsonb_agg(
+                    attendee
+                        - 'charge_model'
+                        - 'completed_at'
+                        - 'external_payment_deadline'
+                        - 'external_payment_details'
+                        - 'external_payment_marked_by'
+                        - 'external_payment_reference'
+                        - 'externally_paid'
+                    order by ordinality
+                )
+                from jsonb_array_elements(result->'attendees')
+                    with ordinality as t(attendee, ordinality)
+            ), '[]'::jsonb)
+        )
+        from (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'event2ID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0)
+            )::jsonb as result
+        ) s
+    ),
     jsonb_build_object(
         'attendees', '[
             {"can_receive_attendee_email": false, "checked_in": true, "created_at": 1704240000, "email": "bob@example.com", "manually_invited": false, "registration_answers": null, "enrollment_status": "confirmed", "user": {"user_id": "3a2e0000-0000-0000-0000-000000000019", "username": "bob", "photo_url": "https://example.com/bob.png"}, "checked_in_at": 1704294000, "amount_minor": 4000, "currency_code": "USD", "discount_code": null, "event_purchase_id": "3a2e0000-0000-0000-0000-000000000007", "refund_request_status": "pending", "ticket_title": "VIP", "admission_offer_id": null, "admission_offer_source": null, "admission_offer_status": null, "event_ticket_type_id": "3a2e0000-0000-0000-0000-000000000011", "offer_expires_at": null}
@@ -1591,6 +1982,164 @@ select ok(
         from result
     ),
     'Should exclude pending organizer offers from attendee email eligibility'
+);
+
+-- Should expose payment-pending status and external purchase fields
+select is(
+    (
+        select attendee
+        from jsonb_array_elements(
+            search_event_attendees(
+                :'groupID'::uuid,
+                :'eventExternalID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0, 'status', 'payment-pending')
+            )::jsonb->'attendees'
+        ) attendee
+        where (attendee#>>'{user,user_id}')::uuid = :'externalPendingUserID'::uuid
+    ),
+    jsonb_build_object(
+        'can_receive_attendee_email', false,
+        'checked_in', false,
+        'created_at', 1704672000,
+        'email', 'external-pending@example.com',
+        'enrollment_status', 'payment-pending',
+        'manually_invited', false,
+        'registration_answers', null,
+        'user', jsonb_build_object(
+            'user_id', :'externalPendingUserID'::uuid,
+            'username', 'external-pending'
+        ),
+        'admission_offer_id', null,
+        'admission_offer_source', null,
+        'admission_offer_status', null,
+        'amount_minor', 5000,
+        'charge_model', 'external',
+        'checked_in_at', null,
+        'completed_at', null,
+        'currency_code', 'KRW',
+        'discount_code', null,
+        'event_purchase_id', :'externalPendingPurchaseID'::uuid,
+        'event_ticket_type_id', :'eventExternalTicketTypeID'::uuid,
+        'external_payment_deadline', 1893542400,
+        'external_payment_details', null,
+        'external_payment_marked_by', null,
+        'external_payment_reference', :'externalPendingPurchaseID'::uuid,
+        'externally_paid', false,
+        'offer_expires_at', null,
+        'refund_request_status', null,
+        'ticket_title', 'External admission'
+    ),
+    'Should expose payment-pending status and external purchase fields'
+);
+
+-- Should expose completed external payment metadata for organizers
+select is(
+    (
+        select attendee
+        from jsonb_array_elements(
+            search_event_attendees(
+                :'groupID'::uuid,
+                :'eventExternalID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0, 'status', 'confirmed')
+            )::jsonb->'attendees'
+        ) attendee
+        where (attendee#>>'{user,user_id}')::uuid = :'externalCompletedUserID'::uuid
+    ),
+    jsonb_build_object(
+        'can_receive_attendee_email', true,
+        'checked_in', false,
+        'created_at', 1704758400,
+        'email', 'external-completed@example.com',
+        'enrollment_status', 'confirmed',
+        'manually_invited', false,
+        'registration_answers', null,
+        'user', jsonb_build_object(
+            'user_id', :'externalCompletedUserID'::uuid,
+            'username', 'external-completed'
+        ),
+        'admission_offer_id', null,
+        'admission_offer_source', null,
+        'admission_offer_status', null,
+        'amount_minor', 5000,
+        'charge_model', 'external',
+        'checked_in_at', null,
+        'completed_at', 1704888000,
+        'currency_code', 'KRW',
+        'discount_code', null,
+        'event_purchase_id', :'externalCompletedPurchaseID'::uuid,
+        'event_ticket_type_id', :'eventExternalTicketTypeID'::uuid,
+        'external_payment_deadline', null,
+        'external_payment_details', 'bank transfer received',
+        'external_payment_marked_by', 'external-marked-by',
+        'external_payment_reference', :'externalCompletedPurchaseID'::uuid,
+        'externally_paid', true,
+        'offer_expires_at', null,
+        'refund_request_status', null,
+        'ticket_title', 'External admission'
+    ),
+    'Should expose completed external payment metadata for organizers'
+);
+
+-- Should expose claimed organizer invitations holding a pending external purchase
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'eventExternalID'::uuid,
+                '{}'::jsonb
+            )::jsonb as data
+        )
+        select (attendee->>'enrollment_status') = 'payment-pending'
+        and (attendee->>'event_purchase_id') = :'externalOfferPurchaseID'
+        and (attendee->>'external_payment_reference') = :'externalOfferPurchaseID'
+        from result
+        cross join lateral jsonb_array_elements(data->'attendees') attendee
+        where (attendee#>>'{user,user_id}')::uuid = :'externalOfferUserID'::uuid
+    ),
+    'Should expose claimed organizer invitations holding a pending external purchase'
+);
+
+-- Should expose payment-pending after re-registering over an attendance-canceled row
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'eventExternalID'::uuid,
+                jsonb_build_object('limit', 50, 'offset', 0, 'status', 'payment-pending')
+            )::jsonb as data
+        )
+        select (attendee->>'enrollment_status') = 'payment-pending'
+        and (attendee->>'event_purchase_id') = :'externalReregisterPurchaseID'
+        from result
+        cross join lateral jsonb_array_elements(data->'attendees') attendee
+        where (attendee#>>'{user,user_id}')::uuid = :'externalReregisterUserID'::uuid
+    ),
+    'Should expose payment-pending after re-registering over an attendance-canceled row'
+);
+
+-- Should keep a confirmed attendee ahead of a replacement external hold
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                :'eventExternalID'::uuid,
+                '{}'::jsonb
+            )::jsonb as data
+        )
+        select count(*) filter (
+            where (attendee#>>'{user,user_id}')::uuid = :'externalReplacementUserID'::uuid
+        ) = 1
+        and bool_and(attendee->>'enrollment_status' = 'confirmed')
+            filter (
+                where (attendee#>>'{user,user_id}')::uuid = :'externalReplacementUserID'::uuid
+            )
+        from result
+        cross join lateral jsonb_array_elements(data->'attendees') attendee
+    ),
+    'Should keep a confirmed attendee ahead of a replacement external hold'
 );
 
 -- ============================================================================

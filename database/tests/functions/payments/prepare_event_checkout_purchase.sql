@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(60);
+select plan(78);
 
 -- ============================================================================
 -- VARIABLES
@@ -111,10 +111,63 @@ select plan(60);
 \set unavailableDiscountUserID '79100000-0000-0000-0000-000000000026'
 \set underMinimumDiscountID '79100000-0000-0000-0000-000000000034'
 \set underMinimumUserID '79100000-0000-0000-0000-000000000033'
+\set externalClosedRegEventID '79100000-0000-0000-0000-00000000009c'
+\set externalClosedRegOfferID '79100000-0000-0000-0000-00000000009d'
+\set externalClosedRegPriceWindowID '79100000-0000-0000-0000-00000000009e'
+\set externalClosedRegTicketTypeID '79100000-0000-0000-0000-00000000009f'
+\set externalClosedRegUserID '79100000-0000-0000-0000-0000000000a0'
+\set externalCapEventID '79100000-0000-0000-0000-000000000084'
+\set externalCapPriceWindowID '79100000-0000-0000-0000-00000000008e'
+\set externalCapTicketTypeID '79100000-0000-0000-0000-000000000089'
+\set externalCapUserID '79100000-0000-0000-0000-000000000093'
+\set externalEventID '79100000-0000-0000-0000-000000000083'
+\set externalMaxEventID '79100000-0000-0000-0000-000000000085'
+\set externalMaxPriceWindowID '79100000-0000-0000-0000-00000000008f'
+\set externalMaxTicketTypeID '79100000-0000-0000-0000-00000000008a'
+\set externalMaxUserID '79100000-0000-0000-0000-000000000094'
+\set externalOfferID '79100000-0000-0000-0000-000000000098'
+\set externalOfferUserID '79100000-0000-0000-0000-000000000097'
+\set externalRetryOfferID '79100000-0000-0000-0000-00000000009a'
+\set externalRetryUserID '79100000-0000-0000-0000-00000000009b'
+\set externalPriceWindowID '79100000-0000-0000-0000-00000000008d'
+\set externalReadyGroupID '79100000-0000-0000-0000-000000000081'
+\set externalTicketTypeID '79100000-0000-0000-0000-000000000088'
+\set externalUnreadyEventID '79100000-0000-0000-0000-000000000087'
+\set externalUnreadyGroupID '79100000-0000-0000-0000-000000000082'
+\set externalUnreadyPriceWindowID '79100000-0000-0000-0000-000000000091'
+\set externalUnreadyTicketTypeID '79100000-0000-0000-0000-00000000008c'
+\set externalUnreadyUserID '79100000-0000-0000-0000-000000000096'
+\set externalUserID '79100000-0000-0000-0000-000000000092'
+\set externalWindowEventID '79100000-0000-0000-0000-000000000086'
+\set externalWindowOfferID '79100000-0000-0000-0000-000000000099'
+\set externalWindowPriceWindowID '79100000-0000-0000-0000-000000000090'
+\set externalWindowTicketTypeID '79100000-0000-0000-0000-00000000008b'
+\set externalWindowUserID '79100000-0000-0000-0000-000000000095'
+\set siteID '79100000-0000-0000-0000-000000000080'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Site theme used by external pending-payment notifications
+insert into site (description, site_id, theme, title)
+values (
+    'Prepare checkout site',
+    :'siteID',
+    '{"primary_color": "#2563eb"}'::jsonb,
+    'Prepare Checkout Site'
+);
+
+-- Operator allowlist and payment window limits for external checkout
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
 
 -- Community
 insert into community (
@@ -180,7 +233,15 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'offerPaidUserID', 'hash-25', 'offer-paid@example.com', true, 'offer-paid-user'),
     (:'offerWrongUserID', 'hash-26', 'offer-wrong@example.com', true, 'offer-wrong-user'),
     (:'paymentSetupUnavailableUserID', 'hash-27', 'payment-setup-unavailable@example.com', true, 'payment-setup-unavailable-user'),
-    (:'priceUnavailableUserID', 'hash-28', 'price-unavailable@example.com', true, 'price-unavailable-user');
+    (:'priceUnavailableUserID', 'hash-28', 'price-unavailable@example.com', true, 'price-unavailable-user'),
+    (:'externalClosedRegUserID', 'hash-44', 'external-closed-reg@example.com', true, 'external-closed-reg-user'),
+    (:'externalCapUserID', 'hash-37', 'external-cap@example.com', true, 'external-cap-user'),
+    (:'externalMaxUserID', 'hash-38', 'external-max@example.com', true, 'external-max-user'),
+    (:'externalOfferUserID', 'hash-39', 'external-offer@example.com', true, 'external-offer-user'),
+    (:'externalRetryUserID', 'hash-43', 'external-retry@example.com', true, 'external-retry-user'),
+    (:'externalUnreadyUserID', 'hash-40', 'external-unready@example.com', true, 'external-unready-user'),
+    (:'externalUserID', 'hash-41', 'external@example.com', true, 'external-user'),
+    (:'externalWindowUserID', 'hash-42', 'external-window@example.com', true, 'external-window-user');
 
 -- Group
 insert into "group" (
@@ -215,6 +276,50 @@ values
         ),
         'prepare-group-pretty'
     );
+
+-- Allowlisted group with external payments enabled for ready checkout
+insert into "group" (
+    country_code,
+    community_id,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    'KR',
+    :'communityID',
+    true,
+    :'groupCategoryID',
+    :'externalReadyGroupID',
+    'External Ready Prepare Group',
+    'external-ready-prepare-group'
+);
+
+-- Stripe-ready group with external payments disabled for no-fallback conflicts
+insert into "group" (
+    country_code,
+    community_id,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    payment_recipient,
+    slug
+) values (
+    'KR',
+    :'communityID',
+    false,
+    :'groupCategoryID',
+    :'externalUnreadyGroupID',
+    'External Unready Prepare Group',
+    jsonb_build_object(
+        'provider', 'stripe',
+        'recipient_id', 'acct_external_unready',
+        'seller_display_name', 'External Unready Fiscal Sponsor'
+    ),
+    'external-unready-prepare-group'
+);
 
 -- Events
 insert into event (
@@ -452,6 +557,212 @@ insert into event (
     '1 Main St', 'Portland', 'US', 'Venue', '97201'
 );
 
+-- External-ready event with a 48-hour payment window
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_instructions,
+    external_payment_url,
+    external_payment_window_hours,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'External ready checkout event',
+    :'eventCategoryID',
+    :'externalEventID',
+    'in-person',
+    'Wire to account 123',
+    'https://pay.example.test/prepare',
+    48,
+    :'externalReadyGroupID',
+    'External Prepare Event',
+    'KRW',
+    true,
+    now(),
+    'external-prepare-event',
+    now() + interval '7 days',
+    'UTC'
+);
+
+-- External-ready event whose hold is capped by a near starts_at
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'External hold-cap checkout event',
+    :'eventCategoryID',
+    :'externalCapEventID',
+    'in-person',
+    'https://pay.example.test/prepare-cap',
+    :'externalReadyGroupID',
+    'External Cap Prepare Event',
+    'KRW',
+    true,
+    now(),
+    'external-cap-prepare-event',
+    now() + interval '2 hours',
+    'UTC'
+);
+
+-- External-ready event whose window hours exceed the configured max
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    external_payment_window_hours,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'External max-window checkout event',
+    :'eventCategoryID',
+    :'externalMaxEventID',
+    'in-person',
+    'https://pay.example.test/prepare-max',
+    500,
+    :'externalReadyGroupID',
+    'External Max Prepare Event',
+    'KRW',
+    true,
+    now(),
+    'external-max-prepare-event',
+    now() + interval '60 days',
+    'UTC'
+);
+
+-- Started event whose external hold would expire immediately on offer claim
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'External payment-window unavailable event',
+    now() + interval '90 minutes',
+    :'eventCategoryID',
+    :'externalWindowEventID',
+    'in-person',
+    'https://pay.example.test/prepare-window',
+    :'externalReadyGroupID',
+    'External Window Prepare Event',
+    'KRW',
+    true,
+    now(),
+    'external-window-prepare-event',
+    now() - interval '30 minutes',
+    'UTC'
+);
+
+-- External-ready event whose public registration window has already closed
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    registration_ends_at,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'External closed-registration claim event',
+    :'eventCategoryID',
+    :'externalClosedRegEventID',
+    'in-person',
+    'https://pay.example.test/prepare-closed-reg',
+    :'externalReadyGroupID',
+    'External Closed Registration Prepare Event',
+    'KRW',
+    true,
+    now(),
+    now() - interval '1 hour',
+    'external-closed-reg-prepare-event',
+    now() + interval '7 days',
+    'UTC'
+);
+
+-- External-marked event on a Stripe-ready group that is not externally eligible
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    published_at,
+    slug,
+    starts_at,
+    timezone,
+    venue_address,
+    venue_city,
+    venue_country_code,
+    venue_name,
+    venue_zip_code
+) values (
+    'External unready no-fallback event',
+    :'eventCategoryID',
+    :'externalUnreadyEventID',
+    'in-person',
+    'https://pay.example.test/prepare-unready',
+    :'externalUnreadyGroupID',
+    'External Unready Prepare Event',
+    'USD',
+    true,
+    now(),
+    'external-unready-prepare-event',
+    now() + interval '2 days',
+    'UTC',
+    '1 Main St',
+    'Portland',
+    'US',
+    'Venue',
+    '97201'
+);
+
 -- Ticket types
 insert into event_ticket_type (
     active,
@@ -489,7 +800,37 @@ values
         10,
         'Invitation admission'
     ),
-    (true, 'public', :'questionsEventID', :'questionsTicketTypeID', 1, 10, 'General admission');
+    (true, 'public', :'questionsEventID', :'questionsTicketTypeID', 1, 10, 'General admission'),
+    (true, 'public', :'externalEventID', :'externalTicketTypeID', 1, 10, 'External admission'),
+    (true, 'public', :'externalCapEventID', :'externalCapTicketTypeID', 1, 10, 'External cap admission'),
+    (true, 'public', :'externalMaxEventID', :'externalMaxTicketTypeID', 1, 10, 'External max admission'),
+    (
+        true,
+        'public',
+        :'externalWindowEventID',
+        :'externalWindowTicketTypeID',
+        1,
+        10,
+        'External window admission'
+    ),
+    (
+        true,
+        'public',
+        :'externalClosedRegEventID',
+        :'externalClosedRegTicketTypeID',
+        1,
+        10,
+        'External closed registration admission'
+    ),
+    (
+        true,
+        'public',
+        :'externalUnreadyEventID',
+        :'externalUnreadyTicketTypeID',
+        1,
+        10,
+        'External unready admission'
+    );
 
 -- Ticket types dedicated to mutable configuration conflict scenarios
 insert into event_ticket_type (
@@ -562,6 +903,127 @@ insert into event_ticket_price_window (
     :'priceUnavailableTicketTypeID',
     current_timestamp - interval '1 minute',
     current_timestamp - interval '2 days'
+);
+
+-- Positive price windows for external checkout scenarios
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values
+    (:'externalPriceWindowID', 5000, :'externalTicketTypeID'),
+    (:'externalCapPriceWindowID', 5000, :'externalCapTicketTypeID'),
+    (:'externalMaxPriceWindowID', 5000, :'externalMaxTicketTypeID'),
+    (:'externalWindowPriceWindowID', 5000, :'externalWindowTicketTypeID'),
+    (:'externalClosedRegPriceWindowID', 5000, :'externalClosedRegTicketTypeID'),
+    (:'externalUnreadyPriceWindowID', 2500, :'externalUnreadyTicketTypeID');
+
+-- Pending offer claimed into a longer external payment window
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalOfferID',
+    5000,
+    'KRW',
+    0,
+    :'externalEventID',
+    :'externalTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    'External admission',
+    :'externalOfferUserID'
+);
+
+-- Checkout-pending offer retried into a longer external hold
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalRetryOfferID',
+    5000,
+    'KRW',
+    0,
+    :'externalEventID',
+    :'externalTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'checkout_pending',
+    'External admission',
+    :'externalRetryUserID'
+);
+
+-- Pending offer used to claim after the event start has passed
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalWindowOfferID',
+    5000,
+    'KRW',
+    0,
+    :'externalWindowEventID',
+    :'externalWindowTicketTypeID',
+    current_timestamp + interval '1 hour',
+    'organizer_invitation',
+    'pending',
+    'External window admission',
+    :'externalWindowUserID'
+);
+
+-- Pending invitation used to claim after the public registration window closed
+insert into admission_offer (
+    admission_offer_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    expires_at,
+    source,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'externalClosedRegOfferID',
+    5000,
+    'KRW',
+    0,
+    :'externalClosedRegEventID',
+    :'externalClosedRegTicketTypeID',
+    current_timestamp + interval '2 days',
+    'organizer_invitation',
+    'pending',
+    'External closed registration admission',
+    :'externalClosedRegUserID'
 );
 
 -- Discount codes
@@ -1302,7 +1764,7 @@ select results_eq(
     'Should create the requested pending purchase and expire the previous one'
 );
 
--- Should return an existing completed purchase without internal charge metadata
+-- Should return an existing completed purchase with its public charge model
 select results_eq(
     format($$
         with prepared as (
@@ -1316,19 +1778,19 @@ select results_eq(
             ) as checkout
         )
         select
-            checkout ? 'charge_model',
+            checkout->>'charge_model',
             checkout->>'event_purchase_id',
             checkout->'seller'->>'connected_account_id',
             checkout->>'status'
         from prepared
     $$, :'communityID', :'mainEventID', :'ticketTypeBID', :'completedUserID'),
     format($$ values (
-        false,
+        'direct-charge'::text,
         %L::text,
         'acct_prepare'::text,
         'completed'::text
     ) $$, :'completedPurchaseID'),
-    'Should return an existing completed purchase without internal charge metadata'
+    'Should return an existing completed purchase with its public charge model'
 );
 
 -- Should snapshot the platform fee from the final amount rounding down
@@ -2433,6 +2895,323 @@ select is(
     ),
     '{"conflict":"ticket-type-price-unavailable"}'::jsonb,
     'Should require a live price window for waitlist claims after sales end'
+);
+
+-- Should prepare an external paid checkout with zero fees
+select lives_ok(
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            null,
+            250
+        )$$,
+        :'communityID',
+        :'externalEventID',
+        :'externalTicketTypeID',
+        :'externalUserID'
+    ),
+    'Should prepare an external paid checkout with zero fees'
+);
+
+-- Should persist an external charge model without a provider or fee snapshot
+select results_eq(
+    format(
+        $$
+            select
+                charge_model,
+                payment_provider_id,
+                platform_fee_bps,
+                provisional_platform_fee_amount_minor,
+                seller_snapshot
+            from event_purchase
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+            and status = 'pending'
+        $$,
+        :'externalEventID',
+        :'externalUserID'
+    ),
+    $$
+        values (
+            'external'::text,
+            null::text,
+            0,
+            0::bigint,
+            null::jsonb
+        )
+    $$,
+    'Should persist an external charge model without a provider or fee snapshot'
+);
+
+-- Should cap the external hold by the event payment window hours
+select ok(
+    (
+        select
+            hold_expires_at > current_timestamp + interval '47 hours 50 minutes'
+            and hold_expires_at <= current_timestamp + interval '48 hours'
+        from event_purchase
+        where event_id = :'externalEventID'::uuid
+        and user_id = :'externalUserID'::uuid
+        and status = 'pending'
+    ),
+    'Should cap the external hold by the event payment window hours'
+);
+
+-- Should enqueue one external pending-payment notification for a new hold
+select is(
+    (
+        select count(*)::int
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-external-payment-pending'
+        and n.user_id = :'externalUserID'
+        and (ntd.data->>'event_id')::uuid = :'externalEventID'::uuid
+    ),
+    1,
+    'Should enqueue one external pending-payment notification for a new hold'
+);
+
+-- Should reuse an equivalent external hold
+select lives_ok(
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe'
+        )$$,
+        :'communityID',
+        :'externalEventID',
+        :'externalTicketTypeID',
+        :'externalUserID'
+    ),
+    'Should reuse an equivalent external hold'
+);
+
+-- Should keep a single external pending-payment notification after reuse
+select is(
+    (
+        select count(*)::int
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-external-payment-pending'
+        and n.user_id = :'externalUserID'
+        and (ntd.data->>'event_id')::uuid = :'externalEventID'::uuid
+    ),
+    1,
+    'Should keep a single external pending-payment notification after reuse'
+);
+
+-- Should claim an offer into an external checkout hold
+select lives_ok(
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            %L::uuid
+        )$$,
+        :'communityID',
+        :'externalEventID',
+        :'externalTicketTypeID',
+        :'externalOfferUserID',
+        :'externalOfferID'
+    ),
+    'Should claim an offer into an external checkout hold'
+);
+
+-- Should persist the raised offer deadline with the external hold
+select ok(
+    (
+        select ao.expires_at = ep.hold_expires_at
+        from admission_offer ao
+        join event_purchase ep on ep.admission_offer_id = ao.admission_offer_id
+        where ao.admission_offer_id = :'externalOfferID'::uuid
+        and ep.status = 'pending'
+        and ao.expires_at > current_timestamp + interval '47 hours'
+    ),
+    'Should persist the raised offer deadline with the external hold'
+);
+
+-- Should prepare an external checkout capped by event start
+select lives_ok(
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe'
+        )$$,
+        :'communityID',
+        :'externalCapEventID',
+        :'externalCapTicketTypeID',
+        :'externalCapUserID'
+    ),
+    'Should prepare an external checkout capped by event start'
+);
+
+-- Should set hold expiry to the event start for a near-term external event
+select results_eq(
+    format(
+        $$
+            select ep.hold_expires_at = e.starts_at
+            from event_purchase ep
+            join event e using (event_id)
+            where ep.event_id = %L::uuid
+            and ep.user_id = %L::uuid
+            and ep.status = 'pending'
+        $$,
+        :'externalCapEventID',
+        :'externalCapUserID'
+    ),
+    $$ values (true) $$,
+    'Should set hold expiry to the event start for a near-term external event'
+);
+
+-- Should prepare an external checkout with an oversized event window
+select lives_ok(
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe'
+        )$$,
+        :'communityID',
+        :'externalMaxEventID',
+        :'externalMaxTicketTypeID',
+        :'externalMaxUserID'
+    ),
+    'Should prepare an external checkout with an oversized event window'
+);
+
+-- Should persist a hold capped at the maximum payment window
+select ok(
+    (
+        select
+            hold_expires_at > current_timestamp + interval '335 hours 50 minutes'
+            and hold_expires_at <= current_timestamp + interval '336 hours'
+        from event_purchase
+        where event_id = :'externalMaxEventID'::uuid
+        and user_id = :'externalMaxUserID'::uuid
+        and status = 'pending'
+    ),
+    'Should persist a hold capped at the maximum payment window'
+);
+
+-- Should reject external checkout when eligibility is lost without Stripe fallback
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'externalUnreadyEventID'::uuid,
+        :'externalUnreadyTicketTypeID'::uuid,
+        :'externalUnreadyUserID'::uuid,
+        null,
+        'stripe'
+    ),
+    '{"conflict":"payment-setup-unavailable"}'::jsonb,
+    'Should reject external checkout when eligibility is lost without Stripe fallback'
+);
+
+-- Should reject an external hold that would expire immediately
+select is(
+    prepare_event_checkout_purchase(
+        :'communityID'::uuid,
+        :'externalWindowEventID'::uuid,
+        :'externalWindowTicketTypeID'::uuid,
+        :'externalWindowUserID'::uuid,
+        null,
+        'stripe',
+        null,
+        :'externalWindowOfferID'::uuid
+    ),
+    '{"conflict":"payment-window-unavailable"}'::jsonb,
+    'Should reject an external hold that would expire immediately'
+);
+
+-- Should create an external hold for an invitation after registration has closed
+select lives_ok(
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            %L::uuid
+        )$$,
+        :'communityID',
+        :'externalClosedRegEventID',
+        :'externalClosedRegTicketTypeID',
+        :'externalClosedRegUserID',
+        :'externalClosedRegOfferID'
+    ),
+    'Should create an external hold for an invitation after registration has closed'
+);
+
+-- Should keep an invitation hold open after the public registration window closes
+select ok(
+    (
+        select hold_expires_at > current_timestamp + interval '71 hours'
+        from event_purchase
+        where event_id = :'externalClosedRegEventID'::uuid
+        and user_id = :'externalClosedRegUserID'::uuid
+        and status = 'pending'
+    ),
+    'Should keep an invitation hold open after the public registration window closes'
+);
+
+-- Should raise a checkout-pending offer deadline on external hold retry
+select lives_ok(
+    format(
+        $$select prepare_event_checkout_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null,
+            'stripe',
+            null,
+            %L::uuid
+        )$$,
+        :'communityID',
+        :'externalEventID',
+        :'externalTicketTypeID',
+        :'externalRetryUserID',
+        :'externalRetryOfferID'
+    ),
+    'Should raise a checkout-pending offer deadline on external hold retry'
+);
+
+-- Should persist the retry deadline with the new external hold
+select ok(
+    (
+        select ao.expires_at = ep.hold_expires_at
+        from admission_offer ao
+        join event_purchase ep on ep.admission_offer_id = ao.admission_offer_id
+        where ao.admission_offer_id = :'externalRetryOfferID'::uuid
+        and ep.status = 'pending'
+        and ao.expires_at > current_timestamp + interval '47 hours'
+    ),
+    'Should persist the retry deadline with the new external hold'
 );
 
 -- ============================================================================

@@ -10,6 +10,8 @@ declare
     v_allocated_seat_count int;
     v_community_id uuid;
     v_event_active boolean;
+    v_event_external_payment_instructions text;
+    v_event_external_payment_url text;
     v_event_name text;
     v_event_purchase record;
     v_event_registration_open boolean;
@@ -39,6 +41,8 @@ begin
             and e.deleted = false
             and e.published = true
             and (e.starts_at is null or e.starts_at > current_timestamp),
+        e.external_payment_instructions,
+        e.external_payment_url,
         e.name,
         e.group_id,
         g.name,
@@ -51,6 +55,8 @@ begin
     into
         v_community_id,
         v_event_active,
+        v_event_external_payment_instructions,
+        v_event_external_payment_url,
         v_event_name,
         v_group_id,
         v_group_name,
@@ -136,12 +142,23 @@ begin
     order by ep.event_purchase_id
     for update of ep;
 
+    -- Load the site theme once for enrollment notifications
+    select s.theme
+    into v_theme
+    from site s
+    limit 1;
+
     -- Expire stale checkout holds, including holds that outlive their offer
     for v_event_purchase in
         select
             ep.admission_offer_id,
+            ep.amount_minor,
+            ep.charge_model,
+            ep.currency_code,
             ep.event_discount_code_id,
             ep.event_purchase_id,
+            ep.hold_expires_at,
+            ep.ticket_title,
             ep.user_id
         from event_purchase ep
         left join admission_offer ao
@@ -179,6 +196,88 @@ begin
         perform release_event_checkout_attendee_hold(
             p_event_id,
             v_event_purchase.user_id
+        );
+
+        -- Notify attendees whose external payment window expired
+        if v_event_purchase.charge_model = 'external' then
+            perform enqueue_notification(
+                'event-external-payment-expired',
+                jsonb_strip_nulls(jsonb_build_object(
+                    'amount_minor', v_event_purchase.amount_minor,
+                    'currency_code', v_event_purchase.currency_code,
+                    'dashboard_url', '/dashboard/user?tab=events',
+                    'deadline', extract(epoch from v_event_purchase.hold_expires_at)::bigint,
+                    'event_id', p_event_id,
+                    'event_name', v_event_name,
+                    'event_purchase_id', v_event_purchase.event_purchase_id,
+                    'external_payment_instructions',
+                        v_event_external_payment_instructions,
+                    'external_payment_url', v_event_external_payment_url,
+                    'group_name', v_group_name,
+                    'theme', v_theme,
+                    'ticket_title', v_event_purchase.ticket_title,
+                    'timezone', v_timezone
+                )),
+                '[]'::jsonb,
+                array[v_event_purchase.user_id]
+            );
+        end if;
+    end loop;
+
+    -- Send one reminder for external holds that expire within 24 hours
+    for v_event_purchase in
+        select
+            ep.amount_minor,
+            ep.currency_code,
+            ep.event_purchase_id,
+            ep.hold_expires_at,
+            ep.ticket_title,
+            ep.user_id
+        from event_purchase ep
+        where ep.event_id = p_event_id
+        and ep.status = 'pending'
+        and ep.charge_model = 'external'
+        and ep.external_payment_reminder_sent_at is null
+        and ep.hold_expires_at is not null
+        and ep.created_at <= ep.hold_expires_at - interval '24 hours'
+        and ep.hold_expires_at - interval '24 hours' <= current_timestamp
+        and ep.hold_expires_at > current_timestamp
+        order by ep.event_purchase_id
+    loop
+        -- Mark the reminder before enqueueing so retries cannot duplicate it
+        update event_purchase
+        set
+            external_payment_reminder_sent_at = current_timestamp,
+            updated_at = current_timestamp
+        where event_purchase_id = v_event_purchase.event_purchase_id
+        and external_payment_reminder_sent_at is null
+        and status = 'pending';
+
+        -- Skip purchases claimed by a concurrent reminder
+        if not found then
+            continue;
+        end if;
+
+        perform enqueue_notification(
+            'event-external-payment-reminder',
+            jsonb_strip_nulls(jsonb_build_object(
+                'amount_minor', v_event_purchase.amount_minor,
+                'currency_code', v_event_purchase.currency_code,
+                'dashboard_url', '/dashboard/user?tab=events',
+                'deadline', extract(epoch from v_event_purchase.hold_expires_at)::bigint,
+                'event_id', p_event_id,
+                'event_name', v_event_name,
+                'event_purchase_id', v_event_purchase.event_purchase_id,
+                'external_payment_instructions',
+                    v_event_external_payment_instructions,
+                'external_payment_url', v_event_external_payment_url,
+                'group_name', v_group_name,
+                'theme', v_theme,
+                'ticket_title', v_event_purchase.ticket_title,
+                'timezone', v_timezone
+            )),
+            '[]'::jsonb,
+            array[v_event_purchase.user_id]
         );
     end loop;
 
@@ -258,12 +357,6 @@ begin
         return coalesce(v_promoted_user_ids, array[]::uuid[]);
     end if;
 
-    -- Load the site theme once for promotion notifications
-    select s.theme
-    into v_theme
-    from site s
-    limit 1;
-
     -- Fill public tier capacity from each FIFO queue without skipping blocked heads
     for v_ticket_type in
         select
@@ -325,19 +418,26 @@ begin
             end if;
 
             -- Keep a paid queue head in place until payment configuration is ready
-            if v_price_amount_minor > 0
-               and (
-                    p_configured_provider is null
-                    or v_payment_currency_code is null
-                    or v_group_payment_recipient is null
-                    or coalesce(v_group_payment_recipient->>'provider', '')
+            if v_price_amount_minor > 0 then
+                -- External-marked events promote only while external payments remain ready
+                if v_event_external_payment_url is not null then
+                    -- Pause the queue head when the group is no longer eligible
+                    if not is_event_external_payments_ready(p_event_id) then
+                        exit;
+                    end if;
+
+                -- Stripe-marked events keep the provider-readiness gate
+                elsif p_configured_provider is null
+                   or v_payment_currency_code is null
+                   or v_group_payment_recipient is null
+                   or coalesce(v_group_payment_recipient->>'provider', '')
                         <> p_configured_provider
-                    or nullif(
+                   or nullif(
                         btrim(v_group_payment_recipient->>'recipient_id'),
                         ''
-                    ) is null
-               ) then
-                exit;
+                   ) is null then
+                    exit;
+                end if;
             end if;
 
             -- Bound the offer lifetime by registration close and event start

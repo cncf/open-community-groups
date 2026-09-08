@@ -1,3 +1,5 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
 {# Control content -#}
 {# Used by event attendance buttons for their icon and label content. -#}
 {% macro control_content(label, icon_class) -%}
@@ -5,6 +7,50 @@
   <span data-attendance-label>{{ label }}</span>
 {% endmacro control_content -%}
 {# End control content -#}
+
+{# External payment details tooltip -#}
+{# Shared by event attendance controls with an external pending payment. -#}
+{% macro external_payment_tooltip(attendance_instance) -%}
+  {% let external_payment_tooltip_id -%}external-payment-details-{{ attendance_instance }}{%- endlet %}
+<span data-attendance-role="external-payment-details"
+      class="hidden contents">
+  {% call dashboard::tooltip_panel(
+    id = external_payment_tooltip_id,
+    title = "Payment details",
+    visibility_classes = "group-hover/external-payment-details:visible group-hover/external-payment-details:opacity-100 group-focus-within/external-payment-details:visible group-focus-within/external-payment-details:opacity-100",
+    width_classes = "w-80",
+    alignment_classes = "start-0 sm:start-1/2 sm:-translate-x-1/2"
+  ) -%}
+  <span class="block">
+    <span class="block font-semibold text-stone-500">Status</span>
+    <span data-attendance-role="external-payment-awaiting"
+          class="mt-0.5 block text-stone-900">Awaiting organizer confirmation</span>
+  </span>
+  <span data-attendance-role="external-payment-amount" class="hidden block">
+    <span class="block font-semibold text-stone-500">Amount due</span>
+    <span data-attendance-detail-value
+          class="mt-0.5 block text-sm font-medium text-stone-900"></span>
+  </span>
+  <span data-attendance-role="external-payment-deadline" class="hidden block">
+    <span class="block font-semibold text-stone-500">Confirm by</span>
+    <span data-attendance-detail-value class="mt-0.5 block text-stone-900"></span>
+  </span>
+  <span data-attendance-role="external-payment-reference"
+        class="hidden block">
+    <span class="block font-semibold text-stone-500">Reference</span>
+    <span data-attendance-detail-value
+          class="mt-0.5 block break-words font-mono text-stone-900"></span>
+  </span>
+  <span data-attendance-role="external-payment-instructions"
+        class="hidden block">
+    <span class="block font-semibold text-stone-500">Instructions</span>
+    <span data-attendance-detail-value
+          class="mt-0.5 block whitespace-pre-wrap break-words text-stone-900"></span>
+  </span>
+  {% endcall -%}
+</span>
+{% endmacro external_payment_tooltip -%}
+{# End external payment details tooltip -#}
 
 {# Initial attendance control content -#}
 {# Shared by the signed-out and signed-in primary attendance controls. -#}

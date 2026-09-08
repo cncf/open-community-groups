@@ -91,7 +91,7 @@ impl Worker {
         // Build the durable notification payload before finalizing local state
         let notification_template_data = self
             .notification_composer
-            .build_refund_approval_template_data(refund.community_id, refund.event_id)
+            .build_refund_approval_template_data(refund.community_id, refund.event_id, false)
             .await
             .context("failed to build refund approval notification")?;
 

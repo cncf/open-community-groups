@@ -14,6 +14,7 @@ declare
     v_community_id uuid;
     v_create_pre_registered_user boolean := false;
     v_ends_at timestamptz;
+    v_event_external_payment_url text;
     v_event_name text;
     v_existing_status text;
     v_existing_user_email_verified boolean;
@@ -48,6 +49,7 @@ begin
     select
         g.community_id,
         e.ends_at,
+        e.external_payment_url,
         e.name,
         g.name,
         e.payment_currency_code,
@@ -58,6 +60,7 @@ begin
     into
         v_community_id,
         v_ends_at,
+        v_event_external_payment_url,
         v_event_name,
         v_group_name,
         v_payment_currency_code,
@@ -259,13 +262,23 @@ begin
     end if;
 
     -- Ensure payments can be collected before reserving a paid seat
-    perform validate_event_ticketing_payment_readiness(
-        p_configured_provider,
-        v_ticket_current_price > 0,
-        v_payment_currency_code,
-        v_payment_recipient,
-        p_event_id
-    );
+    if v_event_external_payment_url is not null then
+        -- Reject paid invitations when the external event is no longer eligible
+        if v_ticket_current_price > 0
+           and not is_event_external_payments_ready(p_event_id) then
+            raise exception 'external payments are not available for this event';
+        end if;
+
+    -- Keep the Stripe provider requirement for non-external events
+    else
+        perform validate_event_ticketing_payment_readiness(
+            p_configured_provider,
+            v_ticket_current_price > 0,
+            v_payment_currency_code,
+            v_payment_recipient,
+            p_event_id
+        );
+    end if;
 
     -- Reject attendee and offer states that should not be invited again
     select ea.status

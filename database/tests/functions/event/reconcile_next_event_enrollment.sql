@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,14 @@ select plan(10);
 \set dueOfferID '4a170000-0000-0000-0000-000000000002'
 \set eventCategoryID '4a170000-0000-0000-0000-000000000003'
 \set eventID '4a170000-0000-0000-0000-000000000004'
+\set externalGroupID '4a170000-0000-0000-0000-000000000011'
+\set externalQueueEventID '4a170000-0000-0000-0000-000000000012'
+\set externalQueueRecipientID '4a170000-0000-0000-0000-000000000013'
+\set externalQueueTicketTypeID '4a170000-0000-0000-0000-000000000014'
+\set externalReminderEventID '4a170000-0000-0000-0000-000000000015'
+\set externalReminderPurchaseID '4a170000-0000-0000-0000-000000000016'
+\set externalReminderRecipientID '4a170000-0000-0000-0000-000000000017'
+\set externalReminderTicketTypeID '4a170000-0000-0000-0000-000000000018'
 \set futureOfferID '4a170000-0000-0000-0000-000000000005'
 \set futureRecipientID '4a170000-0000-0000-0000-000000000006'
 \set groupCategoryID '4a170000-0000-0000-0000-000000000007'
@@ -31,6 +39,17 @@ select plan(10);
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
+
+-- Operator allowlist used by external-ready worker claims
+insert into external_payments_config (
+    allowed_countries,
+    default_payment_window_hours,
+    max_payment_window_hours
+) values (
+    array['KR']::text[],
+    72,
+    336
+);
 
 -- Community hosting the reconciliation worker scenarios
 insert into community (
@@ -62,6 +81,8 @@ values (:'communityID', :'groupCategoryID', 'Technology');
 -- Users owning due, future, and queued enrollment state
 insert into "user" (auth_hash, email, email_verified, user_id, username)
 values
+    ('hash-external-queue', 'external-queue@example.com', true, :'externalQueueRecipientID', 'external-queue'),
+    ('hash-external-reminder', 'external-reminder@example.com', true, :'externalReminderRecipientID', 'external-reminder'),
     ('hash-future', 'future@example.com', true, :'futureRecipientID', 'future'),
     ('hash-queue', 'queue@example.com', true, :'queueRecipientID', 'queue'),
     ('hash-recipient', 'recipient@example.com', true, :'recipientID', 'recipient'),
@@ -84,6 +105,26 @@ values (
     'Enrollment Reconciliation Group',
     '{"provider": "stripe", "recipient_id": "acct_reconciliation_worker", "seller_display_name": "Worker Fiscal Sponsor"}'::jsonb,
     'enrollment-reconciliation-group'
+);
+
+-- Allowlisted group with external payments enabled for worker claims
+insert into "group" (
+    country_code,
+    community_id,
+    external_payments_enabled,
+    group_category_id,
+    group_id,
+    name,
+    slug
+)
+values (
+    'KR',
+    :'communityID',
+    true,
+    :'groupCategoryID',
+    :'externalGroupID',
+    'External Enrollment Reconciliation Group',
+    'external-enrollment-reconciliation-group'
 );
 
 -- Published event with one due and one future admission offer
@@ -272,6 +313,157 @@ values (
     :'rsvpQueueRecipientID'
 );
 
+-- External-ready paid event claimed after Stripe work is exhausted
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone,
+    waitlist_enabled
+) values (
+    'External-ready paid queue worker event',
+    :'eventCategoryID',
+    :'externalQueueEventID',
+    'in-person',
+    'https://pay.example.test/worker-queue',
+    :'externalGroupID',
+    'External Queue Reconciliation Event',
+    'KRW',
+    true,
+    'external-queue-reconciliation-event',
+    current_timestamp + interval '1 day',
+    'UTC',
+    true
+);
+
+-- Paid ticket tier for the external-ready worker queue
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'externalQueueEventID',
+    :'externalQueueTicketTypeID',
+    1,
+    1,
+    'External queue admission'
+);
+
+-- Current positive price for the external-ready worker queue
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    5000,
+    gen_random_uuid(),
+    :'externalQueueTicketTypeID'
+);
+
+-- External-ready paid queue head promoted without a Stripe provider
+insert into event_waitlist (event_id, event_ticket_type_id, user_id)
+values (
+    :'externalQueueEventID',
+    :'externalQueueTicketTypeID',
+    :'externalQueueRecipientID'
+);
+
+-- Event hosting a reminder-due external pending hold
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    external_payment_url,
+    group_id,
+    name,
+    payment_currency_code,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'External reminder-due worker event',
+    :'eventCategoryID',
+    :'externalReminderEventID',
+    'in-person',
+    'https://pay.example.test/worker-reminder',
+    :'externalGroupID',
+    'External Reminder Reconciliation Event',
+    'KRW',
+    true,
+    'external-reminder-reconciliation-event',
+    current_timestamp + interval '1 day',
+    'UTC'
+);
+
+-- Ticket tier for the reminder-due external hold
+insert into event_ticket_type (
+    event_id,
+    event_ticket_type_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'externalReminderEventID',
+    :'externalReminderTicketTypeID',
+    1,
+    1,
+    'External reminder admission'
+);
+
+-- Current positive price for the reminder-due external hold
+insert into event_ticket_price_window (
+    amount_minor,
+    event_ticket_price_window_id,
+    event_ticket_type_id
+) values (
+    5000,
+    gen_random_uuid(),
+    :'externalReminderTicketTypeID'
+);
+
+-- Reminder-due external hold claimed by the background worker
+insert into event_purchase (
+    amount_minor,
+    charge_model,
+    created_at,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    platform_fee_bps,
+    provisional_platform_fee_amount_minor,
+    status,
+    ticket_title,
+    user_id
+) values (
+    5000,
+    'external',
+    current_timestamp - interval '48 hours',
+    'KRW',
+    :'externalReminderEventID',
+    :'externalReminderPurchaseID',
+    :'externalReminderTicketTypeID',
+    current_timestamp + interval '12 hours',
+    0,
+    0,
+    'pending',
+    'External reminder admission',
+    :'externalReminderRecipientID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -347,6 +539,75 @@ select results_eq(
     ),
     $$ values ('pending'::text, true) $$,
     'Should persist a claim offer during background reconciliation'
+);
+
+-- Should claim an external-ready paid queue without a Stripe provider
+select is(
+    reconcile_next_event_enrollment()::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'externalQueueEventID'::uuid,
+        'group_id', :'externalGroupID'::uuid
+    ),
+    'Should claim an external-ready paid queue without a Stripe provider'
+);
+
+-- Should promote the external-ready paid queue head into an offer
+select results_eq(
+    format(
+        $$
+            select
+                ao.event_ticket_type_id,
+                ao.source,
+                ao.status,
+                not exists (
+                    select 1
+                    from event_waitlist ew
+                    where ew.event_id = %L::uuid
+                    and ew.user_id = %L::uuid
+                )
+            from admission_offer ao
+            where ao.event_id = %L::uuid
+            and ao.user_id = %L::uuid
+        $$,
+        :'externalQueueEventID',
+        :'externalQueueRecipientID',
+        :'externalQueueEventID',
+        :'externalQueueRecipientID'
+    ),
+    format(
+        $$
+            values (
+                %L::uuid,
+                'waitlist'::text,
+                'pending'::text,
+                true
+            )
+        $$,
+        :'externalQueueTicketTypeID'
+    ),
+    'Should promote the external-ready paid queue head into an offer'
+);
+
+-- Should claim a reminder-due external hold without a Stripe provider
+select is(
+    reconcile_next_event_enrollment()::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'externalReminderEventID'::uuid,
+        'group_id', :'externalGroupID'::uuid
+    ),
+    'Should claim a reminder-due external hold without a Stripe provider'
+);
+
+-- Should mark the claimed external hold reminder as sent
+select ok(
+    (
+        select external_payment_reminder_sent_at is not null
+        from event_purchase
+        where event_purchase_id = :'externalReminderPurchaseID'
+    ),
+    'Should mark the claimed external hold reminder as sent'
 );
 
 -- Should leave a paid queue idle while payment setup is unavailable

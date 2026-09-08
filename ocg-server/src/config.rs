@@ -27,6 +27,12 @@ use tracing::instrument;
 
 use crate::types::payments::{PaymentMode, PaymentProvider};
 
+/// Default organizer-confirmation window in hours for external payments.
+const DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 72;
+
+/// Default maximum organizer-confirmation window in hours for external payments.
+const DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS: i32 = 336;
+
 /// Maximum platform fee expressed in basis points (99.99% of the amount).
 const MAX_PLATFORM_FEE_BPS: u16 = 9_999;
 
@@ -47,6 +53,8 @@ pub(crate) struct Config {
     /// HTTP server configuration.
     pub server: HttpServerConfig,
 
+    /// External payments configuration for countries without Stripe Connect.
+    pub external_payments: Option<ExternalPaymentsConfig>,
     /// Meetings configuration.
     pub meetings: Option<MeetingsConfig>,
     /// Payments configuration.
@@ -96,6 +104,10 @@ impl Config {
         badges_cfg.validate()?;
 
         // Validate optional provider configuration
+        if let Some(external_payments_cfg) = &self.external_payments {
+            external_payments_cfg.validate()?;
+        }
+
         if let Some(meetings_cfg) = &self.meetings
             && let Some(zoom_cfg) = &meetings_cfg.zoom
         {
@@ -118,6 +130,7 @@ impl fmt::Debug for Config {
             .field("images", &self.images)
             .field("log", &self.log)
             .field("server", &self.server)
+            .field("external_payments", &self.external_payments)
             .field("meetings", &self.meetings)
             .field("payments", &self.payments)
             .finish()
@@ -178,6 +191,69 @@ impl fmt::Debug for ImageStorageConfigS3 {
             .field("endpoint", &self.endpoint)
             .field("force_path_style", &self.force_path_style)
             .finish()
+    }
+}
+
+/// External payments configuration for countries without Stripe Connect.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct ExternalPaymentsConfig {
+    /// ISO 3166-1 alpha-2 country codes allowed to enable external payments.
+    pub allowed_countries: Vec<String>,
+
+    /// Default organizer-confirmation window in hours when an event omits one.
+    #[serde(default = "default_external_payment_window_hours")]
+    pub default_payment_window_hours: i32,
+    /// Maximum organizer-confirmation window in hours an event may request.
+    #[serde(default = "default_max_external_payment_window_hours")]
+    pub max_payment_window_hours: i32,
+}
+
+impl ExternalPaymentsConfig {
+    /// Return allowlisted country codes normalized to uppercase.
+    pub(crate) fn allowed_countries_normalized(&self) -> Vec<String> {
+        self.allowed_countries
+            .iter()
+            .map(|country| country.trim().to_ascii_uppercase())
+            .collect()
+    }
+
+    /// Validate the allowlist and payment-window limits.
+    pub(crate) fn validate(&self) -> Result<()> {
+        // Reject an empty allowlist because it would look configured while disabling the feature
+        if self.allowed_countries.is_empty() {
+            bail!("external_payments.allowed_countries cannot be empty");
+        }
+
+        // Reject invalid or duplicate ISO 3166-1 alpha-2 country codes
+        let mut seen = HashSet::new();
+        for country in &self.allowed_countries {
+            let normalized = country.trim().to_ascii_uppercase();
+            if normalized.len() != 2 || !normalized.bytes().all(|byte| byte.is_ascii_uppercase()) {
+                bail!(
+                    "external_payments.allowed_countries contains invalid country code '{country}'"
+                );
+            }
+            if !seen.insert(normalized) {
+                bail!(
+                    "external_payments.allowed_countries contains duplicate country code '{country}'"
+                );
+            }
+        }
+
+        // Reject non-positive windows and a default above the configured maximum
+        if self.default_payment_window_hours < 1 {
+            bail!("external_payments.default_payment_window_hours must be at least 1");
+        }
+        if self.max_payment_window_hours < 1 {
+            bail!("external_payments.max_payment_window_hours must be at least 1");
+        }
+        if self.default_payment_window_hours > self.max_payment_window_hours {
+            bail!(
+                "external_payments.default_payment_window_hours cannot exceed max_payment_window_hours"
+            );
+        }
+
+        Ok(())
     }
 }
 
@@ -595,6 +671,16 @@ impl fmt::Debug for OidcProviderConfig {
 
 // Helpers.
 
+/// Default organizer-confirmation window used when the config omits it.
+fn default_external_payment_window_hours() -> i32 {
+    DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS
+}
+
+/// Default maximum organizer-confirmation window used when the config omits it.
+fn default_max_external_payment_window_hours() -> i32 {
+    DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS
+}
+
 /// Validate a stable badge verification key identifier.
 fn validate_badge_key_id(key_id: &str) -> Result<()> {
     // Check length, allowed characters, and identifier boundaries
@@ -749,6 +835,141 @@ mod tests {
 
         // Check startup rejects a partially configured public badge service
         assert_eq!(result.unwrap_err().to_string(), "server.badges is required");
+    }
+
+    #[test]
+    fn test_external_payments_config_accepts_mixed_case_country_codes() {
+        // Setup a valid allowlist that still needs case normalization
+        let cfg = ExternalPaymentsConfig {
+            allowed_countries: vec!["kr".to_string(), "NG".to_string()],
+            default_payment_window_hours: DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS,
+            max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
+        };
+
+        // Validate and normalize the allowlist
+        let result = cfg.validate();
+
+        // Check mixed-case alpha-2 codes are accepted and uppercased for sync
+        assert!(result.is_ok());
+        assert_eq!(
+            cfg.allowed_countries_normalized(),
+            vec!["KR".to_string(), "NG".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_external_payments_config_defaults_window_hours() {
+        // Setup serialized config that omits optional window limits
+        let cfg: ExternalPaymentsConfig = serde_json::from_value(serde_json::json!({
+            "allowed_countries": ["KR"],
+        }))
+        .unwrap();
+
+        // Check omitted windows use the documented operator defaults
+        assert_eq!(
+            cfg.default_payment_window_hours,
+            DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS
+        );
+        assert_eq!(
+            cfg.max_payment_window_hours,
+            DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS
+        );
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn test_external_payments_config_rejects_default_window_above_max() {
+        // Setup a default window longer than the configured maximum
+        let cfg = ExternalPaymentsConfig {
+            allowed_countries: vec!["KR".to_string()],
+            default_payment_window_hours: 48,
+            max_payment_window_hours: 24,
+        };
+
+        // Validate the inconsistent window limits
+        let result = cfg.validate();
+
+        // Check startup rejects a default that cannot be enforced
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "external_payments.default_payment_window_hours cannot exceed max_payment_window_hours"
+        );
+    }
+
+    #[test]
+    fn test_external_payments_config_rejects_duplicate_country_codes() {
+        // Setup an allowlist with the same country in different case
+        let cfg = ExternalPaymentsConfig {
+            allowed_countries: vec!["KR".to_string(), "kr".to_string()],
+            default_payment_window_hours: DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS,
+            max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
+        };
+
+        // Validate the duplicated country codes
+        let result = cfg.validate();
+
+        // Check case-insensitive duplicates are rejected
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "external_payments.allowed_countries contains duplicate country code 'kr'"
+        );
+    }
+
+    #[test]
+    fn test_external_payments_config_rejects_empty_allowlist() {
+        // Setup a present config section with no countries
+        let cfg = ExternalPaymentsConfig {
+            allowed_countries: vec![],
+            default_payment_window_hours: DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS,
+            max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
+        };
+
+        // Validate the empty allowlist
+        let result = cfg.validate();
+
+        // Check startup rejects a configured-but-empty allowlist
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "external_payments.allowed_countries cannot be empty"
+        );
+    }
+
+    #[test]
+    fn test_external_payments_config_rejects_invalid_country_code() {
+        // Setup an allowlist entry that is not an ISO 3166-1 alpha-2 code
+        let cfg = ExternalPaymentsConfig {
+            allowed_countries: vec!["KOR".to_string()],
+            default_payment_window_hours: DEFAULT_EXTERNAL_PAYMENT_WINDOW_HOURS,
+            max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
+        };
+
+        // Validate the invalid country code
+        let result = cfg.validate();
+
+        // Check startup rejects codes that cannot match group.country_code
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "external_payments.allowed_countries contains invalid country code 'KOR'"
+        );
+    }
+
+    #[test]
+    fn test_external_payments_config_rejects_non_positive_window_hours() {
+        // Setup a non-positive default window
+        let cfg = ExternalPaymentsConfig {
+            allowed_countries: vec!["KR".to_string()],
+            default_payment_window_hours: 0,
+            max_payment_window_hours: DEFAULT_MAX_EXTERNAL_PAYMENT_WINDOW_HOURS,
+        };
+
+        // Validate the non-positive window
+        let result = cfg.validate();
+
+        // Check startup rejects a window that cannot schedule a hold
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "external_payments.default_payment_window_hours must be at least 1"
+        );
     }
 
     #[test]
@@ -970,6 +1191,7 @@ mod tests {
                 cookie: None,
                 redirect_hosts: None,
             },
+            external_payments: None,
             meetings: Some(MeetingsConfig {
                 zoom: Some(MeetingsZoomConfig {
                     account_id: "zoom-account-id".to_string(),

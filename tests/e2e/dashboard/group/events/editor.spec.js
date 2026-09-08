@@ -372,6 +372,19 @@ test.describe("group dashboard event editor", () => {
       );
       await expect(organizerGroupPage.locator("#event-public-page-link")).toBeVisible();
       await expect(organizerGroupPage.locator("#publish-event-button")).toBeDisabled();
+
+      // The reloaded editor must still replace the attendees loading placeholder.
+      await waitForActionResponse(
+        organizerGroupPage,
+        () => organizerGroupPage.locator('button[data-section="attendees"]').click(),
+        {
+          method: "GET",
+          status: 200,
+          urlIncludes: `/dashboard/group/events/${eventId}/attendees`,
+        },
+      );
+      await expect(organizerGroupPage.getByRole("table", { name: "Attendees list" })).toBeVisible();
+      await expect(organizerGroupPage.locator("#attendees-loading")).toHaveCount(0);
     } finally {
       await deleteEventFromList(organizerGroupPage, eventId);
     }

@@ -4,6 +4,16 @@ import { initializeGroupSettings } from "/static/js/dashboard/group/settings-for
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
+const loadSettingsTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/dashboard/group/settings_update.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
+const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
+
 describe("dashboard group settings page", () => {
   const renderSettingsForm = ({ account = "", legalName = "" } = {}) => {
     document.body.innerHTML = `
@@ -25,6 +35,40 @@ describe("dashboard group settings page", () => {
 
   afterEach(() => {
     resetDom();
+  });
+
+  it("exposes the external payments eligibility toggle", async () => {
+    // Load the settings template before checking the external payments section.
+    const template = normalizeWhitespace(await loadSettingsTemplate());
+
+    expect(template).to.include("{% if external_payments.configured -%}");
+    expect(template).to.include('title = "External payments"');
+    expect(template).to.include('country-code-field-name="country_code"');
+    expect(template).not.to.include("External payments are not configured for this deployment.");
+    expect(template).to.include("{% if !external_payments.eligible -%}");
+    expect(template).to.include('name="external_payments_enabled"');
+    expect(template).to.include('id="external_payments_enabled"');
+    expect(template).to.include('value="true"');
+    expect(template).to.include('class="sr-only peer"');
+    expect(template).to.include("peer-checked:bg-primary-500");
+    expect(template).to.include("peer-disabled:opacity-70");
+    expect(template).to.include("{% if group.external_payments_enabled %}checked{% endif %}");
+    expect(template).to.include('value="{{ group.external_payments_enabled }}"');
+    expect(template).to.include("cursor-not-allowed");
+    expect(template).to.include("disabled");
+    expect(template).to.include("border-amber-200 bg-amber-50");
+    expect(template).to.include('role="alert"');
+    expect(template).to.include("External payments are not available for groups located in");
+    expect(template).to.include(
+      'class="font-semibold">{{ group.country_name.as_deref().unwrap_or(country_code) }}</span>',
+    );
+    expect(template).to.include("update the location above and save the settings.");
+    expect(template).to.include("save the settings to determine eligibility.");
+    expect(template).not.to.include("operator allowlist");
+    expect(template).not.to.include("Eligibility is updated after the group settings are saved.");
+    expect(template).to.include("Collect ticket payments outside this platform");
+    expect(template).to.include("When enabled, paid events require a payment URL instead of Stripe.");
+    expect(template).to.include("This option cannot be disabled while published paid events are upcoming");
   });
 
   it("requires both fiscal sponsor fields when either one has a value", () => {

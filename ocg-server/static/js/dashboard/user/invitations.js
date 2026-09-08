@@ -14,6 +14,8 @@ const CLAIM_CONFLICT_MESSAGES = {
   "admission-offer-unavailable": "Ticket offer expired or is no longer available.",
   "payment-setup-unavailable":
     "Payment is temporarily unavailable for this ticket offer. Try again before the offer deadline.",
+  "payment-window-unavailable":
+    "The confirmation window for this ticket offer is no longer available. Try again before the offer deadline.",
   "ticket-type-price-unavailable":
     "This ticket offer does not have a current price. Try again before the offer deadline.",
 };
@@ -98,6 +100,14 @@ const handleAfterRequest = (event) => {
     closeModal(target.closest("[data-user-event-offer-dialog]"));
     if (responseRefreshesBody(xhr)) {
       // The server-triggered body refresh owns the replacement UI and feedback.
+      return;
+    }
+
+    if (response?.status === "pending-payment") {
+      showInfoAlert(
+        "Your reservation is awaiting organizer confirmation. Use the payment details shown in this invitation.",
+      );
+      refreshInvitations();
       return;
     }
 

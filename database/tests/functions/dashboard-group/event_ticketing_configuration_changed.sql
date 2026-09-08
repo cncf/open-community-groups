@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ============================================================================
 -- SEED DATA
@@ -72,6 +72,15 @@ select ok(
     'Should detect changed event kind'
 );
 
+-- Should detect changed external payment URL
+select ok(
+    event_ticketing_configuration_changed(
+        (select payload from test_event_before),
+        '{"external_payment_url":"https://pay.example.test/event","kind_id":"in-person","tax_behavior":"inclusive","tax_calculation_mode":"automatic"}'::jsonb
+    ),
+    'Should detect changed external payment URL'
+);
+
 -- Should detect changed payment currency
 select ok(
     event_ticketing_configuration_changed(
@@ -127,6 +136,28 @@ select is(
     ),
     false,
     'Should preserve manual Tax Rate selections omitted from a partial payload'
+);
+
+-- Should preserve external payment fields omitted from a partial payload
+select is(
+    event_ticketing_configuration_changed(
+        (
+            select payload || '{
+                "external_payment_instructions": "Wire the purchase ID.",
+                "external_payment_url": "https://pay.example.test/event",
+                "external_payment_window_hours": 72
+            }'::jsonb
+            from test_event_before
+        ),
+        (
+            select
+                (payload - 'kind')
+                || '{"kind_id":"in-person","tax_behavior":"inclusive","tax_calculation_mode":"automatic"}'::jsonb
+            from test_event_before
+        )
+    ),
+    false,
+    'Should preserve external payment fields omitted from a partial payload'
 );
 
 -- Should detect changed venue data

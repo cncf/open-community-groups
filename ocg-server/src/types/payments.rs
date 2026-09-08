@@ -23,6 +23,27 @@ pub enum EventDiscountType {
     Percentage,
 }
 
+/// Charge model recorded on an event purchase.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize, strum::EnumString)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum EventPurchaseChargeModel {
+    /// Paid purchase collected through a connected-account direct charge.
+    DirectCharge,
+    /// Paid purchase collected outside the platform.
+    External,
+    /// Free purchase completed inside OCG.
+    #[default]
+    OcgFree,
+}
+
+impl EventPurchaseChargeModel {
+    /// Returns whether the purchase is collected outside the platform.
+    pub fn is_external(self) -> bool {
+        matches!(self, Self::External)
+    }
+}
+
 /// Status of a purchase recorded by the platform.
 #[derive(
     Clone,
@@ -172,6 +193,9 @@ pub struct EventDiscountCode {
 pub struct EventPurchaseSummary {
     /// Recorded purchase amount after discounts.
     pub amount_minor: i64,
+    /// Charge model used to collect the purchase.
+    #[serde(default)]
+    pub charge_model: EventPurchaseChargeModel,
     /// Discount amount applied to the purchase.
     pub discount_amount_minor: i64,
     /// Purchase identifier.
@@ -192,6 +216,12 @@ pub struct EventPurchaseSummary {
     pub currency_code: Option<String>,
     /// Discount code used for the purchase.
     pub discount_code: Option<String>,
+    /// Organizer-entered details recorded when an external payment was marked paid.
+    pub external_payment_details: Option<String>,
+    /// Organizer-supplied payment instructions from the event.
+    pub external_payment_instructions: Option<String>,
+    /// Payment URL from the event shown to the attendee.
+    pub external_payment_url: Option<String>,
     /// Time when the payment hold expires.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub hold_expires_at: Option<DateTime<Utc>>,
@@ -208,6 +238,26 @@ pub struct EventPurchaseSummary {
     /// When the purchase was refunded.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub refunded_at: Option<DateTime<Utc>>,
+}
+
+/// Snapshot of an unpaid external purchase shown to attendees.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ExternalPaymentInfo {
+    /// Amount due in minor units.
+    pub amount_minor: i64,
+    /// Currency of the amount due.
+    pub currency_code: String,
+    /// Organizer-confirmation deadline.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub deadline: DateTime<Utc>,
+    /// Stable payment reference used to match the external transfer.
+    pub reference: Uuid,
+    /// Snapshot of the external payment URL.
+    pub url: String,
+
+    /// Snapshot of organizer-supplied payment instructions.
+    pub instructions: Option<String>,
 }
 
 /// Current attendee-facing ticket purchase information.
@@ -345,6 +395,24 @@ pub struct FiscalSponsorSeller {
     pub display_name: String,
     /// Payments provider that owns the seller account.
     pub provider: PaymentProvider,
+}
+
+/// Group-level external-payments eligibility shown on settings and event forms.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct GroupExternalPaymentsContext {
+    /// Whether the operator has configured external payments for this deployment.
+    pub configured: bool,
+    /// Whether the group's country is currently allowlisted.
+    pub eligible: bool,
+    /// Whether the group has opted into external payments.
+    pub enabled: bool,
+
+    /// Group country code used for allowlist matching.
+    pub country_code: Option<String>,
+    /// Default organizer-confirmation window in hours.
+    pub default_payment_window_hours: Option<i32>,
+    /// Maximum organizer-confirmation window in hours.
+    pub max_payment_window_hours: Option<i32>,
 }
 
 /// Group-level payout recipient details.

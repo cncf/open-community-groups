@@ -55,8 +55,23 @@ returns json as $$
             end as registration_answers,
             get_event_registration_questions(c.community_id, e.event_id)
                 as registration_questions,
-            pending_purchase.provider_checkout_url as resume_checkout_url,
-            extract(epoch from e.starts_at)::bigint as starts_at
+            case
+                when pending_purchase.charge_model is distinct from 'external'
+                then pending_purchase.provider_checkout_url
+            end as resume_checkout_url,
+            extract(epoch from e.starts_at)::bigint as starts_at,
+
+            case
+                when pending_purchase.charge_model = 'external'
+                then jsonb_strip_nulls(jsonb_build_object(
+                    'amount_minor', pending_purchase.amount_minor,
+                    'currency_code', pending_purchase.currency_code,
+                    'deadline', extract(epoch from pending_purchase.hold_expires_at)::bigint,
+                    'instructions', e.external_payment_instructions,
+                    'reference', pending_purchase.event_purchase_id,
+                    'url', e.external_payment_url
+                ))
+            end as external_payment
         from admission_offer ao
         join event e using (event_id)
         join "group" g using (group_id)
@@ -107,7 +122,13 @@ returns json as $$
                 end as currency_code
         ) display_price on true
         left join lateral (
-            select ep.provider_checkout_url
+            select
+                ep.amount_minor,
+                ep.charge_model,
+                ep.currency_code,
+                ep.event_purchase_id,
+                ep.hold_expires_at,
+                ep.provider_checkout_url
             from event_purchase ep
             where ep.admission_offer_id = ao.admission_offer_id
             and ep.status = 'pending'

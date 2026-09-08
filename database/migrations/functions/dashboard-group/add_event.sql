@@ -11,6 +11,17 @@ declare
     v_discount_codes jsonb := nullif(p_event->'discount_codes', 'null'::jsonb);
     v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
     v_event_id uuid;
+    v_external_mode boolean := false;
+    v_external_payment_instructions text := nullif(
+        btrim(p_event->>'external_payment_instructions'),
+        ''
+    );
+    v_external_payment_url text := nullif(btrim(p_event->>'external_payment_url'), '');
+    v_external_payment_window_hours int := nullif(
+        p_event->>'external_payment_window_hours',
+        ''
+    )::int;
+    v_group_country_code text;
     v_manual_tax_rate_ids text[] := coalesce(
         jsonb_text_array(p_event->'manual_tax_rate_ids'),
         '{}'::text[]
@@ -46,14 +57,38 @@ begin
     perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
 
     -- Lock group payment state through paid-capable ticket validation and insertion
-    select g.payment_recipient into v_payment_recipient
+    select
+        g.country_code,
+        is_group_external_payments_ready(g.group_id),
+        g.payment_recipient
+    into
+        v_group_country_code,
+        v_external_mode,
+        v_payment_recipient
     from "group" g
     where g.group_id = p_group_id
     for update of g;
 
+    -- Reject a submitted payment URL when the group cannot collect externally
+    if v_external_payment_url is not null and not v_external_mode then
+        raise exception 'external payments are not available for this event';
+    end if;
+
+    -- Normalize external paid events onto organizer-managed tax
+    if v_external_mode and is_event_ticketing_payload_paid_capable(v_ticket_types) then
+        v_manual_tax_rate_ids := '{}'::text[];
+        v_tax_calculation_mode := 'none';
+    -- Clear external fields when the group is not in paid external mode
+    else
+        v_external_payment_instructions := null;
+        v_external_payment_url := null;
+        v_external_payment_window_hours := null;
+    end if;
+
     -- Bind provider validation to the recipient protected by the group lock
     if p_configured_provider is not null
        and is_event_ticketing_payload_paid_capable(v_ticket_types)
+       and not v_external_mode
        and (
            v_payment_validation is null
            or not (v_payment_validation ? 'expected_payment_recipient')
@@ -102,7 +137,14 @@ begin
         v_ticket_types,
         true,
         null,
-        p_event
+        p_event || jsonb_build_object(
+            'external_mode', v_external_mode,
+            'external_payment_url', v_external_payment_url,
+            'external_payment_window_hours', v_external_payment_window_hours,
+            'group_country_code', v_group_country_code,
+            'manual_tax_rate_ids', to_jsonb(v_manual_tax_rate_ids),
+            'tax_calculation_mode', v_tax_calculation_mode
+        )
     );
 
     -- Validate add-specific event and session date rules
@@ -120,6 +162,7 @@ begin
     loop
         v_slug := generate_slug(7);
 
+        -- Attempt the insert with the candidate slug
         begin
             insert into event (
                 group_id,
@@ -143,6 +186,9 @@ begin
                 description_short,
                 ends_at,
                 event_reminder_enabled,
+                external_payment_instructions,
+                external_payment_url,
+                external_payment_window_hours,
                 location,
                 logo_url,
                 luma_url,
@@ -197,13 +243,18 @@ begin
                 nullif(p_event->>'description_short', ''),
                 (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                 coalesce((p_event->>'event_reminder_enabled')::boolean, true),
+                v_external_payment_instructions,
+                v_external_payment_url,
+                v_external_payment_window_hours,
                 jsonb_geography_point(p_event),
                 nullif(p_event->>'logo_url', ''),
                 nullif(p_event->>'luma_url', ''),
                 v_manual_tax_rate_ids,
                 jsonb_text_array(p_event->'meeting_hosts'),
                 case
+                    -- Start requested meetings out of sync so provisioning runs
                     when (p_event->>'meeting_requested')::boolean = true then false
+                    -- Leave unrequested meetings without sync state
                     else null
                 end,
                 nullif(p_event->>'meeting_join_instructions', ''),
@@ -222,7 +273,9 @@ begin
                 (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
                 jsonb_text_array(p_event->'tags'),
                 case
+                    -- Normalize no-tax events onto inclusive display
                     when v_tax_calculation_mode = 'none' then 'inclusive'
+                    -- Keep the submitted display behavior for tax-collecting events
                     else coalesce(nullif(p_event->>'tax_behavior', ''), 'inclusive')
                 end,
                 v_tax_calculation_mode,
@@ -238,12 +291,17 @@ begin
             )
             returning event_id into v_event_id;
 
-            exit; -- Success, exit the loop
-        exception when unique_violation then
-            v_retries := v_retries + 1;
-            if v_retries >= v_max_retries then
-                raise exception 'failed to generate unique slug after % attempts', v_max_retries;
-            end if;
+            -- Stop retrying once the insert succeeds
+            exit;
+        exception
+            -- Retry slug collisions up to the configured limit
+            when unique_violation then
+                v_retries := v_retries + 1;
+
+                -- Give up after exhausting the retry budget
+                if v_retries >= v_max_retries then
+                    raise exception 'failed to generate unique slug after % attempts', v_max_retries;
+                end if;
         end;
     end loop;
 

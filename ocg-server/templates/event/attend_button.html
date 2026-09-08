@@ -7,6 +7,7 @@
 <div id="attendance-container-{{ attendance_instance }}"
      data-attendance-container
      data-canceled="{{ event.canceled }}"
+     data-event-timezone="{{ event.timezone }}"
      data-has-sold-out-ticket-types="{{ event.has_sold_out_visible_ticket_types() }}"
      data-has-visible-ticket-types="{{ event.has_visible_ticket_types() }}"
      data-is-simple-rsvp="{{ event.has_single_free_public_ticket_type() }}"
@@ -51,16 +52,22 @@
   {# End sign in prompt -#}
 
   {# Attend button -#}
-  <button id="attend-btn-{{ attendance_instance }}"
-          data-attendance-role="attend-btn"
-          hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
-          {% if !event.registration_questions.is_empty() -%}
-            hx-include="#registration-answers-input-{{ attendance_instance }}"
-          {% endif -%}
-          hx-swap="none"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
-    {{ attendance::initial_control_content(event = event) -}}
-  </button>
+  <span class="group/external-payment-details relative hidden has-[button:not(.hidden)]:inline-flex">
+    <button id="attend-btn-{{ attendance_instance }}"
+            data-attendance-role="attend-btn"
+            hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
+            {% if !event.registration_questions.is_empty() -%}
+              hx-include="#registration-answers-input-{{ attendance_instance }}"
+            {% endif -%}
+            hx-swap="none"
+            class="hidden group btn-primary-outline relative h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+      {{ attendance::initial_control_content(event = event) -}}
+      <span data-attendance-role="external-payment-details-indicator"
+            class="hidden pointer-events-none absolute -end-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-primary-500"
+            aria-hidden="true"></span>
+    </button>
+    {{ attendance::external_payment_tooltip(attendance_instance = attendance_instance) -}}
+  </span>
   {# End attend button -#}
 
   {# Registration questions modal -#}
@@ -255,7 +262,8 @@
               {% if event.is_paid_capable() -%}
                 <div class="grid gap-4 md:grid-cols-2">
                   <div class="min-w-0">
-                    <label for="discount-code-{{ attendance_instance }}" class="form-label">Discount code</label>
+                    <label for="discount-code-{{ attendance_instance }}"
+                           class="form-label">Discount code</label>
                     <div class="mt-2">
                       <input id="discount-code-{{ attendance_instance }}"
                              data-attendance-role="discount-code-input"
@@ -438,7 +446,7 @@
 
   {# Refund request button and rejection reason -#}
   {% let refund_rejection_tooltip_id -%}refund-rejection-reason-{{ attendance_instance }}{%- endlet %}
-<span class="group/refund-reason relative inline-flex">
+<span class="group/refund-reason relative hidden has-[button:not(.hidden)]:inline-flex">
   <button id="refund-btn-{{ attendance_instance }}"
           data-attendance-role="refund-btn"
           type="button"
@@ -447,7 +455,7 @@
   </button>
   <button type="button"
           data-attendance-role="refund-rejection-trigger"
-          class="hidden absolute -end-1 -top-1 z-10 size-3 rounded-full border-2 border-white bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          class="hidden absolute -end-0.5 -top-0.5 z-10 size-3 rounded-full border-2 border-white bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
           aria-label="View refund rejection reason"
           aria-describedby="{{ refund_rejection_tooltip_id }}"></button>
   <span data-attendance-role="refund-rejection-tooltip"

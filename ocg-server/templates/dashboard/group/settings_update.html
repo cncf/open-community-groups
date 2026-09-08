@@ -186,7 +186,7 @@
 <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
   {# Location search -#}
   <div class="col-span-full">
-    <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(city) = &group.city %}initial-venue-city="{{ city }}"{% endif %}  {% if let Some(state) = &group.state %}initial-state="{{ state }}"{% endif %}  {% if let Some(country_name) = &group.country_name %}initial-country-name="{{ country_name }}"{% endif %}  {% if let Some(country_code) = &group.country_code %}initial-country-code="{{ country_code }}"{% endif %}  {% if let Some(lat) = &group.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &group.longitude %}initial-longitude="{{ lng }}"{% endif %}>
+    <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(city) = &group.city %}initial-venue-city="{{ city }}"{% endif %} {% if let Some(state) = &group.state %}initial-state="{{ state }}"{% endif %} {% if let Some(country_name) = &group.country_name %}initial-country-name="{{ country_name }}"{% endif %} {% if let Some(country_code) = &group.country_code %}initial-country-code="{{ country_code }}"{% endif %} {% if let Some(lat) = &group.latitude %}initial-latitude="{{ lat }}"{% endif %} {% if let Some(lng) = &group.longitude %}initial-longitude="{{ lng }}"{% endif %}>
     </location-search-field>
   </div>
   {# End Location search -#}
@@ -207,7 +207,8 @@
       <input type="hidden" name="payment_recipient[provider]" value="stripe">
 
       <div class="col-span-full lg:col-span-4">
-        <label for="payment_recipient_seller_display_name" class="form-label">Fiscal Sponsor Legal Name</label>
+        <label for="payment_recipient_seller_display_name"
+               class="form-label">Fiscal Sponsor Legal Name</label>
         <div class="mt-2">
           <input type="text"
                  name="payment_recipient[seller_display_name]"
@@ -242,6 +243,64 @@
     </div>
   </div>
   {# End payments section -#}
+{% endif -%}
+
+{% if external_payments.configured -%}
+  {# External payments section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "External payments", description = "Collect ticket payments outside this platform when Stripe Connect is not available.") -}}
+
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      <div class="col-span-full">
+        {% if !external_payments.eligible -%}
+          <label class="inline-flex cursor-not-allowed items-center">
+            <input type="hidden"
+                   name="external_payments_enabled"
+                   value="{{ group.external_payments_enabled }}">
+            <input type="checkbox"
+                   class="sr-only peer"
+                   id="external_payments_enabled"
+                   {% if group.external_payments_enabled %}checked{% endif %}
+                   disabled>
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Collect ticket payments outside this platform</span>
+          </label>
+          <div class="mt-4 w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm/6 text-amber-900"
+               role="alert">
+            {% if let Some(country_code) = &external_payments.country_code -%}
+              External payments are not available for groups located in
+              <span class="font-semibold">{{ group.country_name.as_deref().unwrap_or(country_code) }}</span>.
+              This option is offered in a limited set of countries. If the group's country is
+              incorrect, update the location above and save the settings.
+            {% else -%}
+              External payments are offered in a limited set of countries. Set the group's
+              location above and save the settings to determine eligibility.
+            {% endif -%}
+          </div>
+        {% else -%}
+          <label class="inline-flex cursor-pointer items-center">
+            <input type="hidden" name="external_payments_enabled" value="false">
+            <input type="checkbox"
+                   class="sr-only peer"
+                   id="external_payments_enabled"
+                   name="external_payments_enabled"
+                   value="true"
+                   {% if group.external_payments_enabled %}checked{% endif %}>
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Collect ticket payments outside this platform</span>
+          </label>
+          <p class="form-legend">
+            When enabled, paid events require a payment URL instead of Stripe. This option
+            cannot be disabled while published paid events are upcoming; cancel or unpublish
+            those events first.
+          </p>
+        {% endif -%}
+      </div>
+    </div>
+  </div>
+  {# End external payments section -#}
 {% endif -%}
 
 {# Social links section -#}

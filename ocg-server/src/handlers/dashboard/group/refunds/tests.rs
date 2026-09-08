@@ -156,6 +156,7 @@ async fn test_list_page_renders_filtered_refund_workflows() {
             user_id: Uuid::new_v4(),
             username: "alice".to_string(),
             attempt_count: None,
+            external: false,
             failure_message: None,
             kind: None,
             name: Some("Alice".to_string()),

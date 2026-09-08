@@ -15,6 +15,7 @@ returns json as $$
             'order', gc.order
         ),
         'created_at', floor(extract(epoch from g.created_at)),
+        'external_payments_enabled', g.external_payments_enabled,
         'group_id', g.group_id,
         'members_count', (
             select count(*)

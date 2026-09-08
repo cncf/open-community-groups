@@ -209,6 +209,9 @@ describe("event-selector", () => {
         <option value="">Select currency</option>
         <option value="EUR">EUR</option>
       </select>
+      <input id="external_payment_url" value="https://stale.example.com/pay" />
+      <textarea id="external_payment_instructions">Stale instructions</textarea>
+      <input id="external_payment_window_hours" value="24" />
       <select id="tax_behavior">
         <option value="inclusive" selected>Tax included in ticket price</option>
         <option value="exclusive">Tax added at Checkout</option>
@@ -327,6 +330,9 @@ describe("event-selector", () => {
       meeting_join_url: "https://meet.example.com/cloud-native-malaga",
       meeting_recording_url: "https://video.example.com/old-recording",
       payment_currency_code: "EUR",
+      external_payment_url: "https://pay.example.com/cloud-native-malaga",
+      external_payment_instructions: "Include your registration reference.",
+      external_payment_window_hours: 72,
       manual_tax_rate_ids: ["txr_state", "txr_local"],
       tax_behavior: "exclusive",
       tax_calculation_mode: "manual",
@@ -400,6 +406,13 @@ describe("event-selector", () => {
     expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
     expect(document.getElementById("luma_url")?.value).to.equal("https://luma.com/cloud-native-malaga");
     expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
+    expect(document.getElementById("external_payment_url")?.value).to.equal(
+      "https://pay.example.com/cloud-native-malaga",
+    );
+    expect(document.getElementById("external_payment_instructions")?.value).to.equal(
+      "Include your registration reference.",
+    );
+    expect(document.getElementById("external_payment_window_hours")?.value).to.equal("72");
     expect(document.getElementById("tax_behavior")?.value).to.equal("exclusive");
     expect(document.getElementById("tax_calculation_mode")?.value).to.equal("manual");
     expect(copiedRateIds).to.deep.equal(["txr_state", "txr_local"]);
@@ -477,6 +490,8 @@ describe("event-selector", () => {
       category_name: "Conference",
       kind: "workshop",
       meeting_requested: true,
+      external_payment_instructions: "Must not survive without an external payment URL.",
+      external_payment_window_hours: 12,
       ticket_types: [],
       discount_codes: [],
       photos_urls: [],
@@ -489,6 +504,9 @@ describe("event-selector", () => {
     // Reapplying copied details keeps the form and meeting state in sync.
     expect(document.getElementById("meeting_join_instructions")?.value).to.equal("");
     expect(document.getElementById("meeting_join_url")?.value).to.equal("");
+    expect(document.getElementById("external_payment_url")?.value).to.equal("");
+    expect(document.getElementById("external_payment_instructions")?.value).to.equal("");
+    expect(document.getElementById("external_payment_window_hours")?.value).to.equal("");
     expect(manualMeetingDetails).to.equal(null);
     expect(resetCalls).to.equal(2);
   });

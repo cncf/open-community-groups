@@ -365,6 +365,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::events::publish),
         )
         .route(
+            "/events/{event_id}/purchases/{event_purchase_id}/external-payment",
+            post(dashboard::group::attendees::mark_external_payment),
+        )
+        .route(
             "/events/{event_id}/submissions/{cfs_submission_id}",
             put(dashboard::group::submissions::update),
         )

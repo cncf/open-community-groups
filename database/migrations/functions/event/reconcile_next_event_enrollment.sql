@@ -33,7 +33,17 @@ begin
             from event_purchase ep
             where ep.event_id = e.event_id
             and ep.status = 'pending'
-            and ep.hold_expires_at <= current_timestamp
+            and (
+                ep.hold_expires_at <= current_timestamp
+                or (
+                    ep.charge_model = 'external'
+                    and ep.external_payment_reminder_sent_at is null
+                    and ep.hold_expires_at is not null
+                    and ep.created_at <= ep.hold_expires_at - interval '24 hours'
+                    and ep.hold_expires_at - interval '24 hours' <= current_timestamp
+                    and ep.hold_expires_at > current_timestamp
+                )
+            )
         )
         or (
             g.active = true
@@ -78,7 +88,12 @@ begin
                 and (
                     current_price.amount_minor = 0
                     or (
-                        p_configured_provider is not null
+                        e.external_payment_url is not null
+                        and is_event_external_payments_ready(e.event_id)
+                    )
+                    or (
+                        e.external_payment_url is null
+                        and p_configured_provider is not null
                         and e.payment_currency_code is not null
                         and g.payment_recipient is not null
                         and coalesce(g.payment_recipient->>'provider', '')

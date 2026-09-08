@@ -649,8 +649,8 @@
             {% endif -%}
             data-confirm-text="{% if action == "cancel" %}Cancel event{% else %}Yes{% endif %}"
             data-cancel-text="{% if action == "cancel" %}Keep event{% else %}No{% endif %}"
-            data-series-message="{{ series_message }}"
-            data-single-message="{{ single_message }}"
+            data-series-message="{% if action == "cancel" && event.has_external_payment %}Canceling is permanent. Attendee registrations are canceled immediately. Any external payments already received must be returned by an organizer outside OCG. Which events would you like to cancel?{% else if action == "unpublish" && event.has_external_payment %}Unpublishing expires pending reservations awaiting external payment and tells those attendees not to pay. Confirmed attendees remain registered. Which events would you like to unpublish?{% else %}{{ series_message }}{% endif %}"
+            data-single-message="{% if action == "cancel" && event.has_external_payment %}Cancel this event? This cannot be undone. All attendee registrations will be canceled immediately. Any external payments already received must be returned by an organizer outside OCG.{% else if action == "unpublish" && event.has_external_payment %}Unpublish this event? Pending reservations awaiting external payment will expire and those attendees will be told not to pay. Confirmed attendees will remain registered.{% else %}{{ single_message }}{% endif %}"
             data-success-message="{{ success_message }}"
             data-series-success-message="{{ series_success_message }}"
             data-series-error-message="{{ series_error_message }}"

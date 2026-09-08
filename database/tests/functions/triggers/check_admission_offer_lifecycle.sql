@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -310,6 +310,35 @@ select throws_ok(
     ),
     'admission offer ownership and deadline fields are immutable',
     'Should reject transferring an offer'
+);
+
+-- Should allow extending a checkout-pending offer deadline
+select lives_ok(
+    format(
+        $$
+            update admission_offer
+            set expires_at = current_timestamp + interval '2 hours',
+                updated_at = current_timestamp
+            where admission_offer_id = %L::uuid
+        $$,
+        :'checkoutOfferID'
+    ),
+    'Should allow extending a checkout-pending offer deadline'
+);
+
+-- Should reject shortening a checkout-pending offer deadline
+select throws_ok(
+    format(
+        $$
+            update admission_offer
+            set expires_at = current_timestamp + interval '1 minute',
+                updated_at = current_timestamp
+            where admission_offer_id = %L::uuid
+        $$,
+        :'checkoutOfferID'
+    ),
+    'admission offer ownership and deadline fields are immutable',
+    'Should reject shortening a checkout-pending offer deadline'
 );
 
 -- Should reject snapshot repricing after checkout has started

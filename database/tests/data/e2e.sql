@@ -184,6 +184,16 @@ insert into "group" (
     null,
     null,
     false
+), (
+    '44444444-4444-4444-4444-444444444448',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222221',
+    'External Payments Lab',
+    'external-payments-lab',
+    'Dedicated group for external payment end-to-end coverage.',
+    '22222222-2222-2222-2222-222222222301',
+    null,
+    true
 );
 
 -- Secondary community groups used for cross-community coverage
@@ -226,6 +236,16 @@ insert into "group" (
 update "group"
 set payment_recipient = '{"provider":"stripe","recipient_id":"acct_e2e_alpha","seller_display_name":"E2E Alpha Fiscal Sponsor"}'::jsonb
 where group_id = '44444444-4444-4444-4444-444444444441';
+
+update "group"
+set
+    city = 'New York',
+    country_code = 'US',
+    country_name = 'United States',
+    external_payments_enabled = true,
+    location = ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
+    state = 'New York'
+where group_id = '44444444-4444-4444-4444-444444444448';
 
 -- Social links for the gamma group used by public page breakpoint coverage.
 update "group"
@@ -1461,6 +1481,140 @@ insert into event (
     '[]'::jsonb
 );
 
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, payment_currency_code, published,
+    test_event, starts_at, ends_at, capacity, waitlist_enabled,
+    attendee_approval_required, registration_questions, external_payment_url,
+    external_payment_instructions, external_payment_window_hours, location,
+    venue_address, venue_city, venue_country_code, venue_country_name, venue_name,
+    venue_state_code, venue_state_name, venue_zip_code
+) values (
+    '55555555-5555-5555-5555-555555555924',
+    'External Payment Lifecycle Lab',
+    'external-payment-lifecycle',
+    'External payment event used for registration, confirmation, and refund coverage.',
+    'External payment lifecycle coverage.',
+    'America/New_York',
+    '33333333-3333-3333-3333-333333333331',
+    'hybrid',
+    '44444444-4444-4444-4444-444444444448',
+    'USD',
+    true,
+    true,
+    now() + interval '120 days',
+    now() + interval '120 days 2 hours',
+    8,
+    false,
+    false,
+    '[]'::jsonb,
+    'https://payments.example.com/external-lifecycle',
+    'Include the reservation reference with the bank transfer.',
+    72,
+    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
+    '123 Payment Way',
+    'New York',
+    'US',
+    'United States',
+    'External Payment Hall',
+    'NY',
+    'New York',
+    '10001'
+), (
+    '55555555-5555-5555-5555-555555555925',
+    'External Payment Capacity Lab',
+    'external-payment-capacity',
+    'One-seat external payment event used for capacity race coverage.',
+    'External payment capacity coverage.',
+    'America/New_York',
+    '33333333-3333-3333-3333-333333333331',
+    'hybrid',
+    '44444444-4444-4444-4444-444444444448',
+    'USD',
+    true,
+    true,
+    now() + interval '121 days',
+    now() + interval '121 days 2 hours',
+    1,
+    false,
+    false,
+    '[]'::jsonb,
+    'https://payments.example.com/external-capacity',
+    'Complete payment before the reservation expires.',
+    24,
+    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
+    '123 Payment Way',
+    'New York',
+    'US',
+    'United States',
+    'External Payment Hall',
+    'NY',
+    'New York',
+    '10001'
+), (
+    '55555555-5555-5555-5555-555555555926',
+    'External Payment Invitation Lab',
+    'external-payment-invitation',
+    'Invitation-only external payment event used for offer claim coverage.',
+    'External payment invitation coverage.',
+    'America/New_York',
+    '33333333-3333-3333-3333-333333333331',
+    'hybrid',
+    '44444444-4444-4444-4444-444444444448',
+    'USD',
+    true,
+    true,
+    now() + interval '122 days',
+    now() + interval '122 days 2 hours',
+    2,
+    false,
+    false,
+    '[]'::jsonb,
+    'https://payments.example.com/external-invitation',
+    'Use the invitation reference when sending payment.',
+    48,
+    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
+    '123 Payment Way',
+    'New York',
+    'US',
+    'United States',
+    'External Payment Hall',
+    'NY',
+    'New York',
+    '10001'
+), (
+    '55555555-5555-5555-5555-555555555927',
+    'External Payment Free Ticket Lab',
+    'external-payment-free-ticket-lab',
+    'Free event used to verify copied external payment fields are cleared.',
+    'Free event copy coverage.',
+    'America/New_York',
+    '33333333-3333-3333-3333-333333333331',
+    'hybrid',
+    '44444444-4444-4444-4444-444444444448',
+    null,
+    true,
+    true,
+    now() + interval '123 days',
+    now() + interval '123 days 2 hours',
+    8,
+    false,
+    false,
+    '[]'::jsonb,
+    null,
+    null,
+    null,
+    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
+    '123 Payment Way',
+    'New York',
+    'US',
+    'United States',
+    'External Payment Hall',
+    'NY',
+    'New York',
+    '10001'
+);
+
 update event
 set
     event_kind_id = case
@@ -2333,6 +2487,14 @@ values (
     'admin'
 );
 
+insert into group_team (group_id, user_id, accepted, role)
+values (
+    '44444444-4444-4444-4444-444444444448',
+    '77777777-7777-7777-7777-777777777703',
+    true,
+    'admin'
+);
+
 -- Accepted organizer for the Delta group
 insert into group_team (group_id, user_id, accepted, role)
 values (
@@ -2919,6 +3081,33 @@ values (
     20,
     'Manual tax pass',
     'Paid tier used for unavailable manual Tax Rate coverage.'
+), (
+    '56555555-5555-5555-5555-555555555924',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555924',
+    1,
+    8,
+    'External admission',
+    'Public tier used for the external payment lifecycle.'
+), (
+    '56555555-5555-5555-5555-555555555925',
+    true,
+    'public',
+    '55555555-5555-5555-5555-555555555925',
+    1,
+    1,
+    'External limited admission',
+    'One-seat tier used for external payment capacity races.'
+), (
+    '56555555-5555-5555-5555-555555555926',
+    true,
+    'invitation_only',
+    '55555555-5555-5555-5555-555555555926',
+    1,
+    2,
+    'External invited admission',
+    'Private tier used for external payment invitation claims.'
 );
 
 -- Every other event uses one free General Admission tier
@@ -3795,6 +3984,24 @@ values (
     '56555555-5555-5555-5555-555555555921',
     null,
     null
+), (
+    '57555555-5555-5555-5555-555555555924',
+    1234,
+    '56555555-5555-5555-5555-555555555924',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555925',
+    1000,
+    '56555555-5555-5555-5555-555555555925',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555926',
+    2000,
+    '56555555-5555-5555-5555-555555555926',
+    null,
+    null
 );
 
 -- Default tiers receive one open-ended free price window
@@ -3917,6 +4124,20 @@ values (
     '55555555-5555-5555-5555-555555555917',
     'percentage',
     'Complimentary registration',
+    null,
+    100,
+    null,
+    null,
+    null,
+    null,
+    false
+), (
+    '58555555-5555-5555-5555-555555555924',
+    true,
+    'EXTERNALFREE',
+    '55555555-5555-5555-5555-555555555924',
+    'percentage',
+    'External complimentary registration',
     null,
     100,
     null,

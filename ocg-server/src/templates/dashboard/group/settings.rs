@@ -3,7 +3,10 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::types::group::{GroupCategory, GroupFull, GroupParentOption, GroupRegion};
+use crate::types::{
+    group::{GroupCategory, GroupFull, GroupParentOption, GroupRegion},
+    payments::GroupExternalPaymentsContext,
+};
 
 // Pages templates.
 
@@ -15,6 +18,8 @@ pub(crate) struct UpdatePage {
     pub can_manage_settings: bool,
     /// List of available group categories.
     pub categories: Vec<GroupCategory>,
+    /// Group-level external-payments eligibility and window limits.
+    pub external_payments: GroupExternalPaymentsContext,
     /// Group information.
     pub group: GroupFull,
     /// Whether this group has non-deleted child links.
