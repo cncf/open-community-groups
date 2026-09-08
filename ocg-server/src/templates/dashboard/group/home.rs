@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         dashboard::{
             audit,
             group::{
@@ -51,7 +51,7 @@ pub(crate) struct Page {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 impl Page {

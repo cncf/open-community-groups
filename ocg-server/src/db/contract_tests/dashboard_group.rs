@@ -30,7 +30,7 @@ use crate::{
                 AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
             },
             check_in::CheckInOutcome,
-            events::{Event as EventUpdate, EventsListFilters},
+            events::{EventInput, EventsListFilters},
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
             members::GroupMembersFilters,
             refunds::{FinancialRecoveryKind, GroupRefundStatus, RefundsFilters, RefundsView},
@@ -1736,7 +1736,7 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
         .expect("date should be valid")
         .and_hms_opt(11, 0, 0)
         .expect("time should be valid");
-    let event = EventUpdate {
+    let event = EventInput {
         category_id: event_category_id(),
         description: "A mutation event updated by Rust database contract tests".to_string(),
         kind_id: "virtual".to_string(),

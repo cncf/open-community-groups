@@ -22,7 +22,7 @@ use crate::{
         trim_public_gallery_images,
     },
     router::PUBLIC_SHARED_CACHE_HEADERS,
-    templates::{PageId, auth::User, community},
+    templates::{PageId, auth::UserMenuState, community},
     types::event::EventKind,
 };
 
@@ -85,7 +85,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| community::EventCard { event })
             .collect(),
-        user: User::default(),
+        user: UserMenuState::default(),
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())

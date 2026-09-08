@@ -24,7 +24,7 @@ use crate::{
     router::CACHE_CONTROL_NO_STORE,
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         site::explore::{
             self, render_calendar_event_popover, render_event_popover, render_group_popover,
         },
@@ -57,7 +57,7 @@ pub(crate) async fn page(
         page_id: PageId::SiteExplore,
         path: uri.path().to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
         events_section: None,
         groups_section: None,
     };

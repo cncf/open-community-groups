@@ -4,7 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::{PageId, auth::User, filters, helpers::user_initials},
+    templates::{PageId, auth::UserMenuState, filters, helpers::user_initials},
     types::site::SiteSettings,
 };
 
@@ -21,7 +21,7 @@ pub struct Page {
     /// Site statistics for charts.
     pub stats: SiteStats,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 /// Aggregated site statistics used across charts.

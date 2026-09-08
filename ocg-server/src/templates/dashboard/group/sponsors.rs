@@ -91,7 +91,7 @@ pub(crate) struct GroupSponsorsOutput {
 /// Sponsor input for create/update operations.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct Sponsor {
+pub(crate) struct SponsorInput {
     /// Whether the sponsor is highlighted on the public group page.
     #[serde(default)]
     #[garde(skip)]

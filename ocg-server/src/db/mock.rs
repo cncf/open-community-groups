@@ -56,13 +56,13 @@ mock! {
     impl crate::db::auth::DBAuth for DB {
         async fn activate_pre_registered_user_email_password(
             &self,
-            user_summary: &crate::auth::UserSummary,
+            profile: &crate::auth::ExternalUserProfile,
             verification: &crate::db::auth::EmailVerificationNotification,
         ) -> Result<Option<(crate::auth::User, Uuid)>>;
         async fn activate_pre_registered_user_external_provider(
             &self,
             user_id: &Uuid,
-            user_summary: &crate::auth::UserSummary,
+            profile: &crate::auth::ExternalUserProfile,
         ) -> Result<crate::auth::User>;
         async fn create_session(
             &self,
@@ -98,7 +98,7 @@ mock! {
         ) -> Result<bool>;
         async fn sign_up_user(
             &self,
-            user_summary: &crate::auth::UserSummary,
+            profile: &crate::auth::ExternalUserProfile,
             email_verified: bool,
             verification: Option<crate::db::auth::EmailVerificationNotification>,
         ) -> Result<(crate::auth::User, Option<Uuid>)>;
@@ -109,12 +109,12 @@ mock! {
         async fn update_user_details(
             &self,
             actor_user_id: &Uuid,
-            user: &crate::templates::auth::UserDetails,
+            user: &crate::templates::auth::UserDetailsInput,
         ) -> Result<()>;
         async fn update_user_external_auth(
             &self,
             user_id: &Uuid,
-            user_summary: &crate::auth::UserSummary,
+            profile: &crate::auth::ExternalUserProfile,
         ) -> Result<crate::auth::User>;
         async fn update_user_password(
             &self,
@@ -252,7 +252,7 @@ mock! {
             actor_user_id: Uuid,
             community_id: Uuid,
             group_id: Uuid,
-            group: &crate::templates::dashboard::community::groups::Group,
+            group: &crate::templates::dashboard::community::groups::GroupInput,
         ) -> Result<()>;
     }
 
@@ -276,7 +276,7 @@ mock! {
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
-            group: &crate::templates::dashboard::community::groups::Group,
+            group: &crate::templates::dashboard::community::groups::GroupInput,
         ) -> Result<Uuid>;
         async fn add_group_category(
             &self,
@@ -423,7 +423,7 @@ mock! {
             &self,
             actor_user_id: Uuid,
             group_id: Uuid,
-            sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
+            sponsor: &crate::templates::dashboard::group::sponsors::SponsorInput,
         ) -> Result<Uuid>;
         async fn add_group_team_member(
             &self,
@@ -779,7 +779,7 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             group_sponsor_id: Uuid,
-            sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
+            sponsor: &crate::templates::dashboard::group::sponsors::SponsorInput,
         ) -> Result<()>;
         async fn update_group_sponsor_featured(
             &self,

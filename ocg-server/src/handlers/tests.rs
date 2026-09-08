@@ -42,10 +42,11 @@ use crate::{
             audit::{AuditLogRecord, AuditLogsOutput},
             community::{
                 analytics::{
-                    AttendeesStats, CommunityDashboardStats, CommunityPageViewsStats, EventsStats,
-                    GroupsStats, MembersStats, PageViewsStats as CommunityPageViewsEntry,
+                    CommunityAttendeesStats, CommunityDashboardStats, CommunityMembersStats,
+                    CommunityPageViewsStats, EventsStats, GroupsStats,
+                    PageViewsStats as CommunityPageViewsEntry,
                 },
-                groups::Group,
+                groups::GroupInput,
                 settings::CommunityUpdate,
                 team::CommunityTeamMember,
             },
@@ -55,12 +56,11 @@ use crate::{
                     GroupPageViewsStats, PageViewsStats as GroupPageViewsEntry,
                 },
                 attendees::Attendee,
-                events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
+                events::{CfsSubmissionStatus, EventInput, GroupEvents},
                 home::UserGroupsByCommunity,
                 invitation_requests::InvitationRequest,
                 members::GroupMember,
-                settings::GroupUpdate,
-                sponsors::Sponsor,
+                sponsors::SponsorInput,
                 submissions::{
                     CfsSessionProposal as GroupCfsSessionProposal,
                     CfsSubmission as GroupCfsSubmission,
@@ -459,7 +459,7 @@ pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMembe
 /// Sample community stats used in analytics tests.
 pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
     CommunityDashboardStats {
-        attendees: AttendeesStats {
+        attendees: CommunityAttendeesStats {
             per_month: vec![("2024-01".to_string(), 5)],
             per_month_by_event_category: HashMap::from([(
                 "meetup".to_string(),
@@ -507,7 +507,7 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             total_by_category: vec![("dev".to_string(), 2)],
             total_by_region: vec![],
         },
-        members: MembersStats {
+        members: CommunityMembersStats {
             per_month: vec![("2024-01".to_string(), 8)],
             per_month_by_category: HashMap::new(),
             per_month_by_region: HashMap::new(),
@@ -644,8 +644,8 @@ pub(crate) fn sample_event_cfs_session_proposal(session_proposal_id: Uuid) -> Ev
 }
 
 /// Sample event form payload submitted from the dashboard.
-pub(crate) fn sample_event_form() -> GroupEventForm {
-    GroupEventForm {
+pub(crate) fn sample_event_form() -> EventInput {
+    EventInput {
         category_id: Uuid::new_v4(),
         description: "Event description".to_string(),
         kind_id: "virtual".to_string(),
@@ -882,8 +882,8 @@ pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents
 }
 
 /// Sample group form payload for community dashboard tests.
-pub(crate) fn sample_group_form(category_id: Uuid) -> Group {
-    Group {
+pub(crate) fn sample_group_form(category_id: Uuid) -> GroupInput {
+    GroupInput {
         category_id,
         description: "Group description".to_string(),
         name: "Test Group".to_string(),
@@ -1066,8 +1066,8 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
 }
 
 /// Sample group update payload for dashboard group settings.
-pub(crate) fn sample_group_update() -> GroupUpdate {
-    GroupUpdate {
+pub(crate) fn sample_group_update() -> GroupInput {
+    GroupInput {
         category_id: Uuid::new_v4(),
         description: "Updated description".to_string(),
         name: "Updated Group".to_string(),
@@ -1313,8 +1313,8 @@ pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
 }
 
 /// Sample sponsor form payload used by dashboard group sponsors tests.
-pub(crate) fn sample_sponsor_form() -> Sponsor {
-    Sponsor {
+pub(crate) fn sample_sponsor_form() -> SponsorInput {
+    SponsorInput {
         featured: true,
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Example".to_string(),

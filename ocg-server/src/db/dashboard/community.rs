@@ -15,7 +15,7 @@ use crate::{
             analytics::CommunityDashboardStats,
             event_categories::EventCategoryInput,
             group_categories::GroupCategoryInput,
-            groups::Group,
+            groups::GroupInput,
             regions::RegionInput,
             settings::CommunityUpdate,
             team::{CommunityTeamFilters, CommunityTeamOutput},
@@ -60,7 +60,7 @@ pub(crate) trait DBDashboardCommunity {
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
-        group: &Group,
+        group: &GroupInput,
     ) -> Result<Uuid>;
 
     /// Adds a new group category to the database.
@@ -258,7 +258,7 @@ where
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
-        group: &Group,
+        group: &GroupInput,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
             "select add_group($1::uuid, $2::uuid, $3::jsonb)::uuid",

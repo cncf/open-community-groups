@@ -36,7 +36,7 @@ use crate::{
     },
     templates::{
         self, PageId,
-        auth::{User, UserDetails},
+        auth::{UserDetailsInput, UserMenuState},
         notifications::EmailVerification,
     },
     types::permissions::{CommunityPermission, GroupPermission},
@@ -125,7 +125,7 @@ pub(crate) async fn log_in_page(
         page_id: PageId::LogIn,
         path: LOG_IN_URL.to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
 
         next_url,
     };
@@ -161,7 +161,7 @@ pub(crate) async fn sign_up_page(
         page_id: PageId::SignUp,
         path: SIGN_UP_URL.to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
 
         next_url,
     };
@@ -176,7 +176,7 @@ pub(crate) async fn user_menu_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let template = templates::auth::UserMenuSection {
-        user: User::from_session(auth_session).await?,
+        user: UserMenuState::from_session(auth_session).await?,
     };
 
     Ok(Html(template.render()?))
@@ -355,24 +355,24 @@ pub(crate) async fn sign_up(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
-    Form(mut user_summary): Form<auth::UserSummary>,
+    Form(mut profile): Form<auth::ExternalUserProfile>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Sanitize next url
     let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
 
     // Validate form
-    if let Err(e) = user_summary.validate() {
+    if let Err(e) = profile.validate() {
         messages.error(e.to_string());
         return Ok(get_sign_up_url(next_url.as_deref()).into_response());
     }
 
     // Check if the password has been provided
-    let Some(password) = user_summary.password.take() else {
+    let Some(password) = profile.password.take() else {
         return Ok((StatusCode::BAD_REQUEST, "password not provided").into_response());
     };
 
     // Generate password hash
-    user_summary.password = Some(password_auth::generate_hash(&password));
+    profile.password = Some(password_auth::generate_hash(&password));
 
     // Prepare the required email verification notification before mutating users
     let Ok(verification) = build_email_verification_notification(&db, &server_cfg).await else {
@@ -382,11 +382,11 @@ pub(crate) async fn sign_up(
 
     // Sign up the user, reusing pre-registered invitation placeholders when present
     let sign_up_result = match db
-        .activate_pre_registered_user_email_password(&user_summary, &verification)
+        .activate_pre_registered_user_email_password(&profile, &verification)
         .await
     {
         Ok(Some((user, verification_code))) => Ok((user, Some(verification_code))),
-        Ok(None) => db.sign_up_user(&user_summary, false, Some(verification)).await,
+        Ok(None) => db.sign_up_user(&profile, false, Some(verification)).await,
         Err(err) => Err(err),
     };
     let Ok((_user, email_verification_code)) = sign_up_result else {
@@ -411,7 +411,7 @@ pub(crate) async fn update_user_details(
     CurrentUser(user): CurrentUser,
     messages: Messages,
     State(db): State<DynDB>,
-    ValidatedFormQs(user_data): ValidatedFormQs<UserDetails>,
+    ValidatedFormQs(user_data): ValidatedFormQs<UserDetailsInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update user in database
     let user_id = user.user_id;
@@ -427,7 +427,7 @@ pub(crate) async fn update_user_password(
     mut auth_session: AuthSession,
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    ValidatedForm(mut input): ValidatedForm<templates::auth::UserPassword>,
+    ValidatedForm(mut input): ValidatedForm<templates::auth::UserPasswordInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the old password provided is correct
     let Some(old_password_hash) = db.get_user_password(&user.user_id).await? else {

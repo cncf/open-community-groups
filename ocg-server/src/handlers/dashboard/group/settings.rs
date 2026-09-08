@@ -17,7 +17,7 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     services::payments::{AutomaticTaxReadinessError, DynPaymentsManager},
-    templates::dashboard::group::settings::{self, GroupUpdate},
+    templates::dashboard::{community::groups::GroupInput, group::settings},
     types::{payments::PaymentConfigurationValidation, permissions::GroupPermission},
 };
 
@@ -76,7 +76,7 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(payments_manager): State<DynPaymentsManager>,
-    ValidatedFormQs(mut group_update): ValidatedFormQs<GroupUpdate>,
+    ValidatedFormQs(mut group_update): ValidatedFormQs<GroupInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Normalize provider account fields before comparison, validation, and persistence
     if let Some(recipient) = group_update.payment_recipient.as_mut() {

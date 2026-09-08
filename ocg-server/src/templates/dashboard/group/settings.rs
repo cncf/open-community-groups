@@ -31,8 +31,3 @@ pub(crate) struct UpdatePage {
     /// List of available regions.
     pub regions: Vec<GroupRegion>,
 }
-
-// Types.
-
-/// Group update form data (alias for the Group type from community dashboard).
-pub(crate) use crate::templates::dashboard::community::groups::Group as GroupUpdate;

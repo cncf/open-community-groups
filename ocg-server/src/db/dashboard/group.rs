@@ -26,7 +26,7 @@ use crate::{
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
             members::{GroupMembersFilters, GroupMembersOutput},
             refunds::{RefundsFilters, RefundsOutput},
-            sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
+            sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, SponsorInput},
             submissions::{
                 CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters,
                 CfsSubmissionsOutput,
@@ -110,7 +110,7 @@ pub(crate) trait DBDashboardGroup {
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        sponsor: &Sponsor,
+        sponsor: &SponsorInput,
     ) -> Result<Uuid>;
 
     /// Adds a user to the group team (pending by default).
@@ -571,7 +571,7 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         group_sponsor_id: Uuid,
-        sponsor: &Sponsor,
+        sponsor: &SponsorInput,
     ) -> Result<()>;
 
     /// Updates the featured flag for an existing sponsor.
@@ -721,7 +721,7 @@ where
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        sponsor: &Sponsor,
+        sponsor: &SponsorInput,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
             "select add_group_sponsor($1::uuid, $2::uuid, $3::jsonb)::uuid",
@@ -1790,7 +1790,7 @@ where
         actor_user_id: Uuid,
         group_id: Uuid,
         group_sponsor_id: Uuid,
-        sponsor: &Sponsor,
+        sponsor: &SponsorInput,
     ) -> Result<()> {
         self.execute(
             "select update_group_sponsor($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",

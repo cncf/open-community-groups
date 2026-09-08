@@ -225,7 +225,7 @@ pub(crate) struct CfsSubmissionStatus {
 /// Dashboard discount code payload.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct DiscountCode {
+pub(crate) struct DiscountCodeInput {
     /// Whether the code is currently enabled.
     #[garde(skip)]
     pub active: bool,
@@ -273,7 +273,7 @@ pub(crate) struct DiscountCode {
 /// Event details for dashboard management.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, Validate)]
-pub(crate) struct Event {
+pub(crate) struct EventInput {
     /// Category this event belongs to.
     #[garde(skip)]
     pub category_id: Uuid,
@@ -327,7 +327,7 @@ pub(crate) struct Event {
     pub description_short: Option<String>,
     /// Discount codes configured for the event.
     #[garde(dive)]
-    pub discount_codes: Option<Vec<DiscountCode>>,
+    pub discount_codes: Option<Vec<DiscountCodeInput>>,
     /// Whether the discount codes section was submitted.
     #[garde(skip)]
     pub discount_codes_present: Option<bool>,
@@ -428,13 +428,13 @@ pub(crate) struct Event {
     pub registration_starts_at: Option<NaiveDateTime>,
     /// Event sessions.
     #[garde(dive)]
-    pub sessions: Option<Vec<Session>>,
+    pub sessions: Option<Vec<SessionInput>>,
     /// Event-level speakers.
     #[garde(dive)]
-    pub speakers: Option<Vec<Speaker>>,
+    pub speakers: Option<Vec<SpeakerInput>>,
     /// Event sponsors.
     #[garde(dive)]
-    pub sponsors: Option<Vec<EventSponsor>>,
+    pub sponsors: Option<Vec<EventSponsorInput>>,
     /// Event start time.
     #[garde(skip)]
     pub starts_at: Option<NaiveDateTime>,
@@ -454,7 +454,7 @@ pub(crate) struct Event {
     pub test_event: Option<bool>,
     /// Ticket types configured for the event.
     #[garde(dive)]
-    pub ticket_types: Option<Vec<TicketType>>,
+    pub ticket_types: Option<Vec<TicketTypeInput>>,
     /// Whether the ticket types section was submitted.
     #[garde(skip)]
     pub ticket_types_present: Option<bool>,
@@ -487,7 +487,7 @@ pub(crate) struct Event {
     pub waitlist_enabled: Option<bool>,
 }
 
-impl Event {
+impl EventInput {
     /// Converts the dashboard form payload into the JSON shape used by the database.
     pub(crate) fn to_db_payload(&self) -> anyhow::Result<Value> {
         // Serialize the full event form into a mutable JSON object
@@ -612,7 +612,7 @@ impl Event {
     }
 
     /// Fills in missing identifiers for newly added discount codes.
-    fn normalize_discount_codes(discount_codes: &mut Vec<DiscountCode>) {
+    fn normalize_discount_codes(discount_codes: &mut Vec<DiscountCodeInput>) {
         for discount_code in discount_codes {
             if discount_code.event_discount_code_id.is_none() {
                 discount_code.event_discount_code_id = Some(Uuid::new_v4());
@@ -621,7 +621,7 @@ impl Event {
     }
 
     /// Fills in missing identifiers for newly added ticketing rows.
-    fn normalize_ticket_types(ticket_types: &mut Vec<TicketType>) {
+    fn normalize_ticket_types(ticket_types: &mut Vec<TicketTypeInput>) {
         for ticket_type in ticket_types {
             if ticket_type.event_ticket_type_id.is_none() {
                 ticket_type.event_ticket_type_id = Some(Uuid::new_v4());
@@ -720,7 +720,7 @@ impl EventRecurrencePattern {
 /// Event sponsor information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub struct EventSponsor {
+pub struct EventSponsorInput {
     /// Group sponsor identifier.
     #[garde(skip)]
     pub group_sponsor_id: Uuid,
@@ -764,7 +764,7 @@ pub(crate) enum EventsTab {
 /// Session details within an event.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct Session {
+pub(crate) struct SessionInput {
     /// Type of session (hybrid, in-person, virtual).
     #[garde(skip)]
     pub kind: SessionKind,
@@ -814,12 +814,12 @@ pub(crate) struct Session {
     pub meeting_requested: Option<bool>,
     /// Session speakers.
     #[garde(dive)]
-    pub speakers: Option<Vec<Speaker>>,
+    pub speakers: Option<Vec<SpeakerInput>>,
 }
 
 /// Speaker selection with optional featured flag.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct Speaker {
+pub(crate) struct SpeakerInput {
     /// Whether the speaker is featured.
     #[serde(default)]
     #[garde(skip)]
@@ -832,7 +832,7 @@ pub(crate) struct Speaker {
 /// Dashboard ticket price window payload.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct TicketPriceWindow {
+pub(crate) struct TicketPriceWindowInput {
     /// Price in minor units.
     #[garde(skip)]
     pub amount_minor: i64,
@@ -853,7 +853,7 @@ pub(crate) struct TicketPriceWindow {
 /// Dashboard ticket type payload.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct TicketType {
+pub(crate) struct TicketTypeInput {
     /// Whether the ticket type can currently be selected.
     #[garde(skip)]
     pub active: bool,
@@ -867,7 +867,7 @@ pub(crate) struct TicketType {
     /// Price windows configured for this ticket type.
     #[serde(default)]
     #[garde(dive)]
-    pub price_windows: Vec<TicketPriceWindow>,
+    pub price_windows: Vec<TicketPriceWindowInput>,
     /// Ticket type display name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub title: String,
@@ -923,13 +923,13 @@ mod tests {
     };
 
     use super::{
-        DiscountCode, Event, EventTicketingMode, TicketPriceWindow, TicketType,
+        DiscountCodeInput, EventInput, EventTicketingMode, TicketPriceWindowInput, TicketTypeInput,
         event_ticketing_mode,
     };
 
     #[test]
     fn discount_code_deserialization_keeps_explicit_availability_override_signals() {
-        let discount_code: DiscountCode = serde_qs::from_str(
+        let discount_code: DiscountCodeInput = serde_qs::from_str(
             "active=true&available=12&available_override_active=true&code=EARLY20&kind=percentage&percentage=20&title=Early%20supporter",
         )
         .unwrap();
@@ -940,7 +940,7 @@ mod tests {
 
     #[test]
     fn event_deserialization_accepts_nested_registration_questions() {
-        let event: Event = serde_qs::from_str(
+        let event: EventInput = serde_qs::from_str(
             "\
 category_id=00000000-0000-0000-0000-000000000001&\
 description=Event%20description&\
@@ -968,7 +968,7 @@ registration_questions[0][options][0][label]=Vegetarian",
 
     #[test]
     fn event_deserialization_tracks_empty_manual_tax_rate_selection() {
-        let event: Event = serde_qs::from_str(
+        let event: EventInput = serde_qs::from_str(
             "\
 category_id=00000000-0000-0000-0000-000000000001&\
 description=Event%20description&\
@@ -1176,7 +1176,7 @@ timezone=UTC",
     #[test]
     fn to_db_payload_accepts_new_ticketing_rows_without_ids() {
         let mut event = sample_event();
-        event.discount_codes = Some(vec![DiscountCode {
+        event.discount_codes = Some(vec![DiscountCodeInput {
             active: true,
             code: "EARLY20".to_string(),
             kind: EventDiscountType::Percentage,
@@ -1193,11 +1193,11 @@ timezone=UTC",
             total_available: None,
         }]);
         event.discount_codes_present = Some(true);
-        event.ticket_types = Some(vec![TicketType {
+        event.ticket_types = Some(vec![TicketTypeInput {
             active: true,
             availability: EventTicketTypeAvailability::InvitationOnly,
             order: 1,
-            price_windows: vec![TicketPriceWindow {
+            price_windows: vec![TicketPriceWindowInput {
                 amount_minor: 2500,
 
                 ends_at: None,
@@ -1247,7 +1247,7 @@ timezone=UTC",
     #[test]
     fn to_db_payload_keeps_explicit_discount_availability_override_state() {
         let mut event = sample_event();
-        event.discount_codes = Some(vec![DiscountCode {
+        event.discount_codes = Some(vec![DiscountCodeInput {
             active: true,
             code: "EARLY20".to_string(),
             kind: EventDiscountType::Percentage,
@@ -1277,7 +1277,7 @@ timezone=UTC",
     #[test]
     fn to_db_payload_omits_discount_availability_override_state_when_form_omits_it() {
         let mut event = sample_event();
-        event.discount_codes = Some(vec![DiscountCode {
+        event.discount_codes = Some(vec![DiscountCodeInput {
             active: true,
             code: "EARLY20".to_string(),
             kind: EventDiscountType::Percentage,
@@ -1307,14 +1307,14 @@ timezone=UTC",
     // Helpers.
 
     /// Creates a sample event with required fields for testing.
-    fn sample_event() -> Event {
-        Event {
+    fn sample_event() -> EventInput {
+        EventInput {
             category_id: uuid::Uuid::new_v4(),
             description: "Event description".to_string(),
             kind_id: "virtual".to_string(),
             name: "Sample Event".to_string(),
             timezone: "UTC".to_string(),
-            ..Event::default()
+            ..EventInput::default()
         }
     }
 }

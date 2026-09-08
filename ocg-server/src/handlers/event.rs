@@ -42,7 +42,7 @@ use crate::{
     },
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         event::{CfsModal, Page},
     },
     types::{
@@ -111,7 +111,7 @@ pub(crate) async fn page(
         page_id: PageId::Event,
         path: uri.path().to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
@@ -127,7 +127,7 @@ pub(crate) async fn cfs_modal(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user_id = auth_session.user.as_ref().map(|user| user.user_id);
-    let user = User::from_session(auth_session).await?;
+    let user = UserMenuState::from_session(auth_session).await?;
 
     // Get event details, labels and user's session proposals
     let (event, labels, session_proposals) = tokio::try_join!(
@@ -676,7 +676,7 @@ pub(crate) async fn submit_cfs_submission(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare the authenticated user context
     let user_id = user.user_id;
-    let user = User::from_session(auth_session).await?;
+    let user = UserMenuState::from_session(auth_session).await?;
 
     // Add CFS submission to database
     db.add_cfs_submission(

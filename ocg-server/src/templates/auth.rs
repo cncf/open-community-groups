@@ -37,7 +37,7 @@ pub(crate) struct LogInPage {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 
     /// Next URL to redirect to after login, if any.
     pub next_url: Option<String>,
@@ -58,7 +58,7 @@ pub(crate) struct SignUpPage {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 
     /// Next URL to redirect to after sign up, if any.
     pub next_url: Option<String>,
@@ -73,7 +73,7 @@ pub(crate) struct UpdateUserPage {
     /// List of available timezones.
     pub timezones: Vec<String>,
     /// User details to be updated.
-    pub user: UserDetails,
+    pub user: UserDetailsInput,
 }
 
 /// Template for the user menu section.
@@ -81,52 +81,15 @@ pub(crate) struct UpdateUserPage {
 #[template(path = "auth/user_menu_section.html")]
 pub(crate) struct UserMenuSection {
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 // Types.
 
-/// User information for authentication templates and session state.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub(crate) struct User {
-    /// Whether the user is logged in.
-    pub logged_in: bool,
-    /// Whether the logged-in user has completed their profile.
-    pub profile_complete: bool,
-
-    /// Name of the authentication provider, if any.
-    pub auth_provider: Option<String>,
-    /// Whether the user belongs to any group team.
-    pub belongs_to_any_group_team: Option<bool>,
-    /// Whether the user belongs to their community team.
-    pub belongs_to_community_team: Option<bool>,
-    /// Display name of the user, if any.
-    pub name: Option<String>,
-    /// Username, if any.
-    pub username: Option<String>,
-}
-
-impl User {
-    /// Conversion from `AuthSession` to User for template rendering.
-    pub(crate) async fn from_session(auth_session: AuthSession) -> Result<Self> {
-        let auth_session_user = auth_session.user.as_ref();
-        let user = Self {
-            logged_in: auth_session_user.is_some(),
-            profile_complete: auth_session_user.is_some_and(crate::auth::User::is_profile_complete),
-            auth_provider: auth_session.session.get(AUTH_PROVIDER_KEY).await?,
-            belongs_to_any_group_team: auth_session_user.and_then(|u| u.belongs_to_any_group_team),
-            belongs_to_community_team: auth_session_user.and_then(|u| u.belongs_to_community_team),
-            name: auth_session_user.map(|u| u.name.clone()),
-            username: auth_session_user.map(|u| u.username.clone()),
-        };
-        Ok(user)
-    }
-}
-
 /// User details that can be updated.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct UserDetails {
+pub(crate) struct UserDetailsInput {
     /// User's display name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
     pub name: String,
@@ -178,7 +141,7 @@ pub(crate) struct UserDetails {
     pub website_url: Option<String>,
 }
 
-impl From<crate::auth::User> for UserDetails {
+impl From<crate::auth::User> for UserDetailsInput {
     fn from(user: crate::auth::User) -> Self {
         Self {
             name: user.name,
@@ -201,9 +164,47 @@ impl From<crate::auth::User> for UserDetails {
     }
 }
 
+/// User menu view state derived from the session (login, profile completion,
+/// and team membership flags).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub(crate) struct UserMenuState {
+    /// Whether the user is logged in.
+    pub logged_in: bool,
+    /// Whether the logged-in user has completed their profile.
+    pub profile_complete: bool,
+
+    /// Name of the authentication provider, if any.
+    pub auth_provider: Option<String>,
+    /// Whether the user belongs to any group team.
+    pub belongs_to_any_group_team: Option<bool>,
+    /// Whether the user belongs to their community team.
+    pub belongs_to_community_team: Option<bool>,
+    /// Display name of the user, if any.
+    pub name: Option<String>,
+    /// Username, if any.
+    pub username: Option<String>,
+}
+
+impl UserMenuState {
+    /// Build the user menu state from the current `AuthSession`.
+    pub(crate) async fn from_session(auth_session: AuthSession) -> Result<Self> {
+        let auth_session_user = auth_session.user.as_ref();
+        let user = Self {
+            logged_in: auth_session_user.is_some(),
+            profile_complete: auth_session_user.is_some_and(crate::auth::User::is_profile_complete),
+            auth_provider: auth_session.session.get(AUTH_PROVIDER_KEY).await?,
+            belongs_to_any_group_team: auth_session_user.and_then(|u| u.belongs_to_any_group_team),
+            belongs_to_community_team: auth_session_user.and_then(|u| u.belongs_to_community_team),
+            name: auth_session_user.map(|u| u.name.clone()),
+            username: auth_session_user.map(|u| u.username.clone()),
+        };
+        Ok(user)
+    }
+}
+
 /// Input for updating a user's password.
 #[derive(Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct UserPassword {
+pub(crate) struct UserPasswordInput {
     /// The new password to set.
     #[garde(length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
     pub new_password: String,

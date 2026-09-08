@@ -11,7 +11,7 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
-    templates::{PageId, auth::User, site::not_found::Page},
+    templates::{PageId, auth::UserMenuState, site::not_found::Page},
     types::site::SiteSettings,
 };
 
@@ -40,7 +40,7 @@ pub(crate) fn render(site_settings: SiteSettings) -> Result<Response, HandlerErr
         page_id: PageId::SiteNotFound,
         path: NOT_FOUND_PATH.to_string(),
         site_settings,
-        user: User::default(),
+        user: UserMenuState::default(),
     };
 
     // Prepare response headers

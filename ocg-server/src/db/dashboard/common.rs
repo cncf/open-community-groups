@@ -8,7 +8,8 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgExecutor, templates::dashboard::community::groups::Group, types::group::GroupParentOption,
+    db::PgExecutor, templates::dashboard::community::groups::GroupInput,
+    types::group::GroupParentOption,
 };
 
 /// Common database operations for dashboards.
@@ -37,7 +38,7 @@ pub(crate) trait DBDashboardCommon {
         actor_user_id: Uuid,
         community_id: Uuid,
         group_id: Uuid,
-        group: &Group,
+        group: &GroupInput,
     ) -> Result<()>;
 }
 
@@ -94,7 +95,7 @@ where
         actor_user_id: Uuid,
         community_id: Uuid,
         group_id: Uuid,
-        group: &Group,
+        group: &GroupInput,
     ) -> Result<()> {
         self.execute(
             "select update_group($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",

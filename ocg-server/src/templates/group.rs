@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         filters,
         helpers::{self, user_initials},
     },
@@ -40,7 +40,7 @@ pub(crate) struct Page {
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 impl Page {

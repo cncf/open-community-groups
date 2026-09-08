@@ -20,7 +20,7 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
     router::serde_qs_config,
-    templates::dashboard::community::groups::{self, CommunityGroupsFilters, Group},
+    templates::dashboard::community::groups::{self, CommunityGroupsFilters, GroupInput},
     types::{
         pagination::{self, NavigationLinks},
         permissions::CommunityPermission,
@@ -149,7 +149,7 @@ pub(crate) async fn add(
     session: Session,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
-    ValidatedFormQs(group): ValidatedFormQs<Group>,
+    ValidatedFormQs(group): ValidatedFormQs<GroupInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add group to database
     let group_id = db.add_group(user.user_id, community_id, &group).await?;
@@ -225,7 +225,7 @@ pub(crate) async fn update(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
-    ValidatedFormQs(group): ValidatedFormQs<Group>,
+    ValidatedFormQs(group): ValidatedFormQs<GroupInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update group in database
     db.update_group(user.user_id, community_id, group_id, &group).await?;

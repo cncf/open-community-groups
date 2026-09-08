@@ -103,7 +103,7 @@ crate::impl_pagination_and_raw_query!(CommunityGroupsFilters, limit, offset);
 /// Group details for dashboard management.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct Group {
+pub(crate) struct GroupInput {
     /// Category this group belongs to.
     #[garde(skip)]
     pub category_id: Uuid,

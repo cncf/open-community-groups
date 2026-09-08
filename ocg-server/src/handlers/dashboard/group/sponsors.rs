@@ -19,7 +19,7 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    templates::dashboard::group::sponsors::{self, GroupSponsorsFilters, Sponsor},
+    templates::dashboard::group::sponsors::{self, GroupSponsorsFilters, SponsorInput},
     types::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
@@ -122,7 +122,7 @@ pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    ValidatedForm(sponsor): ValidatedForm<Sponsor>,
+    ValidatedForm(sponsor): ValidatedForm<SponsorInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add sponsor to database
     db.add_group_sponsor(user.user_id, group_id, &sponsor).await?;
@@ -159,7 +159,7 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(group_sponsor_id): Path<Uuid>,
-    ValidatedForm(sponsor): ValidatedForm<Sponsor>,
+    ValidatedForm(sponsor): ValidatedForm<SponsorInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update sponsor in database
     db.update_group_sponsor(user.user_id, group_id, group_sponsor_id, &sponsor)

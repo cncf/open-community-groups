@@ -35,7 +35,7 @@ use crate::{
         payments::{AutomaticTaxReadinessError, DynPaymentsManager},
     },
     templates::dashboard::group::{
-        events::{self, Event, EventsListFilters, EventsTab},
+        events::{self, EventInput, EventsListFilters, EventsTab},
         sponsors::GroupSponsorsFilters,
     },
     types::{
@@ -330,7 +330,7 @@ pub(crate) async fn add(
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
     State(payments_manager): State<DynPaymentsManager>,
-    ValidatedFormQs(event): ValidatedFormQs<Event>,
+    ValidatedFormQs(event): ValidatedFormQs<EventInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare and validate the event payload
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
@@ -718,7 +718,7 @@ pub(crate) async fn update(
     body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Deserialize and validate provided event
-    let event: Event = serde_qs_de
+    let event: EventInput = serde_qs_de
         .deserialize_str(&body)
         .map_err(|e| HandlerError::Deserialization(e.to_string()))?;
     event.validate()?;
@@ -1001,7 +1001,7 @@ fn bind_payment_validation(
 }
 
 /// Builds the database payload for an event form.
-fn build_event_payload(event: &Event) -> Result<serde_json::Value, HandlerError> {
+fn build_event_payload(event: &EventInput) -> Result<serde_json::Value, HandlerError> {
     event
         .to_db_payload()
         .map_err(|err| HandlerError::Deserialization(err.to_string()))
@@ -1074,7 +1074,7 @@ fn event_editor_location_json(event_id: Uuid) -> String {
 }
 
 /// Builds the normalized provider venue from a submitted dashboard event.
-fn event_form_venue(event: &Event) -> TicketVenue {
+fn event_form_venue(event: &EventInput) -> TicketVenue {
     TicketVenue {
         address: event.venue_address.clone().unwrap_or_default(),
         city: event.venue_city.clone().unwrap_or_default(),
@@ -1134,7 +1134,7 @@ async fn validate_group_fiscal_sponsor(
     payments_manager: &DynPaymentsManager,
     community_id: Uuid,
     group_id: Uuid,
-    event: &Event,
+    event: &EventInput,
 ) -> Result<PaymentConfigurationValidation, HandlerError> {
     // Snapshot tax inputs from the event form before contacting the provider
     let jurisdiction = event_form_venue(event).valid_tax_jurisdiction();

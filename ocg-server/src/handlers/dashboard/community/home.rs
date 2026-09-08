@@ -22,7 +22,7 @@ use crate::{
     },
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         dashboard::community::{
             analytics, event_categories, group_categories,
             home::{Content, Page, Tab},
@@ -165,7 +165,7 @@ pub(crate) async fn page(
         path: "/dashboard/community".to_string(),
         selected_community_id: community_id,
         site_settings,
-        user: User::from_session(auth_session).await?,
+        user: UserMenuState::from_session(auth_session).await?,
     };
 
     Ok(Html(page.render()?))

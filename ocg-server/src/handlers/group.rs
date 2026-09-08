@@ -23,7 +23,7 @@ use crate::{
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         group::{self, Page},
         notifications::GroupWelcome,
     },
@@ -93,7 +93,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| group::UpcomingEventCard { event })
             .collect(),
-        user: User::default(),
+        user: UserMenuState::default(),
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())

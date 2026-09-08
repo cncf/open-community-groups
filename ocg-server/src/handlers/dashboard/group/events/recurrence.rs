@@ -10,7 +10,7 @@ use serde_json::{Map, Value, json};
 use uuid::Uuid;
 
 use crate::{
-    templates::dashboard::group::events::{Event, EventRecurrencePattern},
+    templates::dashboard::group::events::{EventInput, EventRecurrencePattern},
     validation::MAX_RECURRING_ADDITIONAL_OCCURRENCES,
 };
 
@@ -36,7 +36,7 @@ pub(super) struct RecurringEventPayloads {
 
 impl RecurringEventPayloads {
     /// Builds recurring event payloads when the event form requests recurrence.
-    pub(super) fn from_event(event: &Event, base_payload: &Value) -> Result<Option<Self>> {
+    pub(super) fn from_event(event: &EventInput, base_payload: &Value) -> Result<Option<Self>> {
         // Validate recurrence settings before generating occurrence payloads
         let Some(recurrence_request) = RecurrenceRequest::from_event(event)? else {
             return Ok(None);
@@ -249,7 +249,7 @@ struct RecurrenceRequest {
 
 impl RecurrenceRequest {
     /// Builds a recurrence request when the submitted form asks for a series.
-    fn from_event(event: &Event) -> Result<Option<Self>> {
+    fn from_event(event: &EventInput) -> Result<Option<Self>> {
         // Skip recurrence processing when the form requests a single event
         let pattern = event.recurrence_pattern.unwrap_or_default();
         if pattern == EventRecurrencePattern::JustOnce {
@@ -569,7 +569,7 @@ mod tests {
     #[test]
     fn from_event_returns_none_for_single_event() {
         // Setup single event form and base payload
-        let event = Event::default();
+        let event = EventInput::default();
         let base_payload = json!({ "starts_at": "2030-01-07T10:00:00" });
 
         // Build recurring payloads
@@ -913,8 +913,8 @@ mod tests {
         additional_occurrences: Option<i32>,
         starts_at: Option<NaiveDateTime>,
         timezone: &str,
-    ) -> Event {
-        Event {
+    ) -> EventInput {
+        EventInput {
             recurrence_additional_occurrences: additional_occurrences,
             recurrence_pattern: Some(pattern),
             starts_at,

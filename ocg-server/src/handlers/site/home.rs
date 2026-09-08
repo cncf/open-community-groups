@@ -12,7 +12,7 @@ use crate::{
     db::DynDB,
     handlers::error::HandlerError,
     router::PUBLIC_SHARED_CACHE_HEADERS,
-    templates::{PageId, auth::User, site::home},
+    templates::{PageId, auth::UserMenuState, site::home},
     types::event::EventKind,
 };
 
@@ -59,7 +59,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| home::EventCard { event })
             .collect(),
-        user: User::default(),
+        user: UserMenuState::default(),
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))

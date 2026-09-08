@@ -11,7 +11,7 @@ use crate::{
     db::BBox,
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         community::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
         filters,
         helpers::user_initials,
@@ -43,7 +43,7 @@ pub(crate) struct Page {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 
     /// Events section data, populated when exploring events.
     pub events_section: Option<EventsSection>,

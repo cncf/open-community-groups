@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     templates::{
         PageId,
-        auth::User,
+        auth::UserMenuState,
         filters,
         helpers::{self, user_initials},
     },
@@ -37,7 +37,7 @@ pub(crate) struct Page {
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 }
 
 impl Page {
@@ -94,7 +94,7 @@ pub(crate) struct CfsModal {
     /// List of session proposals for the current user.
     pub session_proposals: Vec<SessionProposal>,
     /// Authenticated user information.
-    pub user: User,
+    pub user: UserMenuState,
 
     /// Notice message displayed after submissions.
     pub notice: Option<String>,
@@ -195,7 +195,7 @@ mod tests {
             page_id: PageId::Event,
             path: "/test-community/group/test-group/event/test-event".to_string(),
             site_settings: SiteSettings::default(),
-            user: User::default(),
+            user: UserMenuState::default(),
         }
     }
 }

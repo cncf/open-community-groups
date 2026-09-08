@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::group::events::Event as EventUpdate,
+    templates::dashboard::group::events::EventInput,
     types::{
         badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
         payments::{EventTicketType, EventTicketTypeAvailability},
@@ -548,7 +548,7 @@ pub(super) fn group_id() -> Uuid {
 }
 
 /// Returns an event update used by group-level lock contract tests.
-pub(super) fn group_lock_event_update(name: &str, day: u32) -> EventUpdate {
+pub(super) fn group_lock_event_update(name: &str, day: u32) -> EventInput {
     let starts_at = NaiveDate::from_ymd_opt(2099, 8, day)
         .expect("date should be valid")
         .and_hms_opt(10, 0, 0)
@@ -558,7 +558,7 @@ pub(super) fn group_lock_event_update(name: &str, day: u32) -> EventUpdate {
         .and_hms_opt(11, 0, 0)
         .expect("time should be valid");
 
-    EventUpdate {
+    EventInput {
         category_id: event_category_id(),
         description: "An event used by group lock contract tests".to_string(),
         kind_id: "virtual".to_string(),
