@@ -32,7 +32,7 @@ select fx_group(:'groupID', :'communityID', :'groupCategoryID');
 select fx_user(:'user1ID', jsonb_build_object(
     'name', 'Alice',
     'photo_url', 'https://example.com/u1.png',
-    'username', 'alice-list-group-members'
+    'username', 'alice1-list-group-members'
 ));
 select fx_user(:'user2ID', jsonb_build_object(
     'photo_url', 'https://example.com/u2.png',
@@ -74,7 +74,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'members', '[
-            {"created_at": 1704067200, "username": "alice-list-group-members", "company": null, "name": "Alice",
+            {"created_at": 1704067200, "username": "alice1-list-group-members", "company": null, "name": "Alice",
                 "photo_url": "https://example.com/u1.png", "title": null},
             {"created_at": 1704326400, "username": "alice2-list-group-members", "company": null, "name": "Alice",
                 "photo_url": "https://example.com/u4.png", "title": null},
