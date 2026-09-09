@@ -94,7 +94,7 @@ pub(crate) async fn page(
 // Actions handlers.
 
 /// Tracks a community page view.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn track_view(
     headers: HeaderMap,
     State(activity_tracker): State<DynActivityTracker>,

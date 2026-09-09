@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(458);
+select plan(459);
 
 -- ============================================================================
 -- VARIABLES
@@ -521,6 +521,7 @@ select has_function('remind_event_external_payment_holds', array['event', '"grou
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync', array['uuid', 'uuid', 'timestamp with time zone', 'text', 'text']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
+select has_function('release_notification', array['uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
 select has_function('requeue_badge_award_job', array['uuid']::name[]);
 select hasnt_function(

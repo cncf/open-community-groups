@@ -356,6 +356,7 @@
 {{ template "notifications/manual_requeue_notifications.sql" }}
 {{ template "notifications/mark_notification_delivery_unknown.sql" }}
 {{ template "notifications/mark_stale_processing_notifications_unknown.sql" }}
+{{ template "notifications/release_notification.sql" }}
 {{ template "notifications/requeue_notification.sql" }}
 {{ template "notifications/update_notification.sql" }}
 

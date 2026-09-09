@@ -18,6 +18,7 @@ use lettre::{
 };
 #[cfg(test)]
 use mockall::automock;
+use serde::de::DeserializeOwned;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, instrument, warn};
@@ -31,20 +32,17 @@ use crate::{
         claim_loop::{self, ClaimLoopConfig},
         run_worker,
     },
-    templates::{
-        helpers,
-        notifications::{
-            BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
-            EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
-            EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCustom,
-            EventExternalPaymentExpired, EventExternalPaymentPending, EventExternalPaymentReminder,
-            EventInvitation, EventPaidConfigured, EventPublished, EventRefundApproved,
-            EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
-            EventSeriesCanceled, EventSeriesPublished, EventTicketRequestApproved,
-            EventTicketWaitlistOffer, EventWaitlistJoined, EventWaitlistLeft,
-            EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-            SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
-        },
+    templates::notifications::{
+        BadgeAwarded, BadgeRevoked, CfsSubmissionUpdated, CommunityTeamInvitation,
+        EmailVerification, EventAdmissionOfferCanceled, EventAdmissionOfferCreated,
+        EventAdmissionOfferDeclined, EventAttendanceCanceled, EventCanceled, EventCustom,
+        EventExternalPaymentExpired, EventExternalPaymentPending, EventExternalPaymentReminder,
+        EventInvitation, EventPaidConfigured, EventPublished, EventRefundApproved,
+        EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
+        EventSeriesCanceled, EventSeriesPublished, EventTicketRequestApproved,
+        EventTicketWaitlistOffer, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted,
+        EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome, NotificationTemplate,
+        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
     types::{
         event::EventSummary,
@@ -288,15 +286,6 @@ impl DeliveryWorker {
         .await;
     }
 
-    /// Completes a root-relative path with the deployment base URL.
-    ///
-    /// Already-absolute URLs are left unchanged.
-    fn complete_local_url(url: &mut String, base_url: &str) {
-        if url.starts_with('/') {
-            *url = helpers::absolute_url(base_url, url);
-        }
-    }
-
     /// Attempt to deliver a pending notification, if available.
     #[instrument(skip(self), err)]
     async fn deliver_notification(&self) -> Result<bool> {
@@ -316,7 +305,12 @@ impl DeliveryWorker {
                 )
                 .await
             {
-                Ok(()) => self.db.update_notification(&notification, None).await?,
+                Ok(DeliveryOutcome::Delivered) => {
+                    self.db.update_notification(&notification, None).await?;
+                }
+                Ok(DeliveryOutcome::Cancelled) => {
+                    self.db.release_notification(&notification).await?;
+                }
                 Err(err) => self.record_delivery_error(&notification, err).await?,
             },
             Err(err) => {
@@ -338,291 +332,116 @@ impl DeliveryWorker {
             .clone()
             .ok_or_else(|| anyhow!("missing template data"))?;
 
-        let (subject, body) = match notification.kind {
+        match notification.kind {
             NotificationKind::BadgeAwarded => {
-                // Complete deployment-specific URLs after typed deserialization
-                let mut template: BadgeAwarded = serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                template.base_url = base_url.to_string();
-                let base_subject = format!("You earned the {} badge", template.badge.name);
-                let subject =
-                    Self::scoped_subject(&template.badge.issuer.group_name, &base_subject);
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<BadgeAwarded>(template_data, base_url)
             }
             NotificationKind::BadgeRevoked => {
-                let mut template: BadgeRevoked = serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let base_subject = format!("Your {} badge was revoked", template.badge_name);
-                let subject = Self::scoped_subject(&template.group_name, &base_subject);
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<BadgeRevoked>(template_data, base_url)
             }
             NotificationKind::CfsSubmissionUpdated => {
-                let template: CfsSubmissionUpdated = serde_json::from_value(template_data)?;
-                let base_subject = format!("Submission update: {}", template.event.name);
-                let subject = Self::scoped_subject(&template.event.group_name, &base_subject);
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<CfsSubmissionUpdated>(template_data, base_url)
             }
             NotificationKind::CommunityTeamInvitation => {
-                let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(
-                    &template.community_name,
-                    "You have been invited to join a community team",
-                );
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<CommunityTeamInvitation>(template_data, base_url)
             }
             NotificationKind::EmailVerification => {
-                let subject = "Verify your email address".to_string();
-                let template: EmailVerification = serde_json::from_value(template_data)?;
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EmailVerification>(template_data, base_url)
             }
             NotificationKind::EventAdmissionOfferCanceled => {
-                let mut template: EventAdmissionOfferCanceled =
-                    serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject =
-                    Self::scoped_subject(&template.group_name, "Your event offer was canceled");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventAdmissionOfferCanceled>(template_data, base_url)
             }
             NotificationKind::EventAdmissionOfferCreated => {
-                let mut template: EventAdmissionOfferCreated =
-                    serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject =
-                    Self::scoped_subject(&template.group_name, "You have a new event offer");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventAdmissionOfferCreated>(template_data, base_url)
             }
             NotificationKind::EventAdmissionOfferDeclined => {
-                let mut template: EventAdmissionOfferDeclined =
-                    serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject = Self::scoped_subject(&template.group_name, "Event offer declined");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventAdmissionOfferDeclined>(template_data, base_url)
             }
             NotificationKind::EventAttendanceCanceled => {
-                let template: EventAttendanceCanceled = serde_json::from_value(template_data)?;
-                let subject =
-                    Self::scoped_subject(&template.event.group_name, "Attendance canceled");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventAttendanceCanceled>(template_data, base_url)
             }
             NotificationKind::EventCanceled => {
-                let template: EventCanceled = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(&template.event.group_name, "Event canceled");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventCanceled>(template_data, base_url)
             }
             NotificationKind::EventCustom => {
-                let template: EventCustom = serde_json::from_value(template_data)?;
-                let subject = template.subject.clone();
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventCustom>(template_data, base_url)
             }
             NotificationKind::EventExternalPaymentExpired => {
-                let mut template: EventExternalPaymentExpired =
-                    serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject = Self::scoped_subject(
-                    &template.group_name,
-                    if template.do_not_pay {
-                        "Do not send payment for this event"
-                    } else {
-                        "Your payment window expired"
-                    },
-                );
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventExternalPaymentExpired>(template_data, base_url)
             }
             NotificationKind::EventExternalPaymentPending => {
-                let mut template: EventExternalPaymentPending =
-                    serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject =
-                    Self::scoped_subject(&template.group_name, "Complete your event payment");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventExternalPaymentPending>(template_data, base_url)
             }
             NotificationKind::EventExternalPaymentReminder => {
-                let mut template: EventExternalPaymentReminder =
-                    serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject =
-                    Self::scoped_subject(&template.group_name, "Your payment window is closing");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventExternalPaymentReminder>(template_data, base_url)
             }
             NotificationKind::EventInvitation => {
-                let template: EventInvitation = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(
-                    &template.event.group_name,
-                    "You have been invited to an event",
-                );
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventInvitation>(template_data, base_url)
             }
             NotificationKind::EventPaidConfigured => {
-                let template: EventPaidConfigured = serde_json::from_value(template_data)?;
-                let base_subject = if template.event_count == 1 {
-                    "Paid event configured"
-                } else {
-                    "Paid events configured"
-                };
-                let subject = Self::scoped_subject(&template.group_name, base_subject);
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventPaidConfigured>(template_data, base_url)
             }
             NotificationKind::EventPublished => {
-                let template: EventPublished = serde_json::from_value(template_data)?;
-                let subject =
-                    Self::scoped_subject(&template.event.group_name, "New event published");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventPublished>(template_data, base_url)
             }
             NotificationKind::EventRefundApproved => {
-                let template: EventRefundApproved = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(&template.event.group_name, "Refund approved");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventRefundApproved>(template_data, base_url)
             }
             NotificationKind::EventRefundRejected => {
-                let template: EventRefundRejected = serde_json::from_value(template_data)?;
-                let subject =
-                    Self::scoped_subject(&template.event.group_name, "Refund request update");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventRefundRejected>(template_data, base_url)
             }
             NotificationKind::EventRefundRequested => {
-                let template: EventRefundRequested = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(&template.event.group_name, "Refund requested");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventRefundRequested>(template_data, base_url)
             }
             NotificationKind::EventReminder => {
-                let template: EventReminder = serde_json::from_value(template_data)?;
-                let base_subject = format!("Reminder: {} starts in 24 hours", template.event.name);
-                let subject = Self::scoped_subject(&template.event.group_name, &base_subject);
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventReminder>(template_data, base_url)
             }
             NotificationKind::EventRescheduled => {
-                let template: EventRescheduled = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(&template.event.group_name, "Event rescheduled");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventRescheduled>(template_data, base_url)
             }
             NotificationKind::EventSeriesCanceled => {
-                let template: EventSeriesCanceled = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(&template.group_name, "Events canceled");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventSeriesCanceled>(template_data, base_url)
             }
             NotificationKind::EventSeriesPublished => {
-                let template: EventSeriesPublished = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(&template.group_name, "New events published");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventSeriesPublished>(template_data, base_url)
             }
             NotificationKind::EventTicketRequestApproved => {
-                let mut template: EventTicketRequestApproved =
-                    serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject =
-                    Self::scoped_subject(&template.group_name, "Your event request was approved");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventTicketRequestApproved>(template_data, base_url)
             }
             NotificationKind::EventTicketWaitlistOffer => {
-                let mut template: EventTicketWaitlistOffer = serde_json::from_value(template_data)?;
-                Self::complete_local_url(&mut template.dashboard_url, base_url);
-                let subject =
-                    Self::scoped_subject(&template.group_name, "A place is available for you");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventTicketWaitlistOffer>(template_data, base_url)
             }
             NotificationKind::EventWaitlistJoined => {
-                let template: EventWaitlistJoined = serde_json::from_value(template_data)?;
-                let subject =
-                    Self::scoped_subject(&template.event.group_name, "You joined the waiting list");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventWaitlistJoined>(template_data, base_url)
             }
             NotificationKind::EventWaitlistLeft => {
-                let template: EventWaitlistLeft = serde_json::from_value(template_data)?;
-                let subject =
-                    Self::scoped_subject(&template.event.group_name, "You left the waiting list");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventWaitlistLeft>(template_data, base_url)
             }
             NotificationKind::EventWaitlistPromoted => {
-                let template: EventWaitlistPromoted = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(
-                    &template.event.group_name,
-                    "You moved off the waiting list",
-                );
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventWaitlistPromoted>(template_data, base_url)
             }
             NotificationKind::EventWelcome => {
-                let template: EventWelcome = serde_json::from_value(template_data)?;
-                let subject =
-                    Self::scoped_subject(&template.event.group_name, "Welcome to the event");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<EventWelcome>(template_data, base_url)
             }
             NotificationKind::GroupCustom => {
-                let template: GroupCustom = serde_json::from_value(template_data)?;
-                let subject = template.subject.clone();
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<GroupCustom>(template_data, base_url)
             }
             NotificationKind::GroupTeamInvitation => {
-                let template: GroupTeamInvitation = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(
-                    &template.group.name,
-                    "You have been invited to join a group team",
-                );
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<GroupTeamInvitation>(template_data, base_url)
             }
             NotificationKind::GroupWelcome => {
-                let template: GroupWelcome = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(&template.group.name, "Welcome to the group");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<GroupWelcome>(template_data, base_url)
             }
             NotificationKind::SessionProposalCoSpeakerInvitation => {
-                let subject = "Session proposal co-speaker invitation".to_string();
-                let template: SessionProposalCoSpeakerInvitation =
-                    serde_json::from_value(template_data)?;
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<SessionProposalCoSpeakerInvitation>(template_data, base_url)
             }
             NotificationKind::SpeakerSeriesWelcome => {
-                let template: SpeakerSeriesWelcome = serde_json::from_value(template_data)?;
-                let subject = Self::scoped_subject(
-                    &template.group_name,
-                    "You're speaking at upcoming events",
-                );
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<SpeakerSeriesWelcome>(template_data, base_url)
             }
             NotificationKind::SpeakerWelcome => {
-                let template: SpeakerWelcome = serde_json::from_value(template_data)?;
-                let subject =
-                    Self::scoped_subject(&template.event.group_name, "You're speaking at an event");
-                let body = template.render()?;
-                (subject, body)
+                Self::render_template::<SpeakerWelcome>(template_data, base_url)
             }
-        };
-
-        Ok((subject, body))
+        }
     }
 
     /// Records a delivery error according to its safe recovery action.
@@ -654,9 +473,21 @@ impl DeliveryWorker {
         }
     }
 
-    /// Builds an email subject prefixed with its community or group scope.
-    fn scoped_subject(scope: &str, subject: &str) -> String {
-        format!("[{scope}] {subject}")
+    /// Deserializes queued template data into its typed template and renders it.
+    ///
+    /// Returns the email subject and HTML body.
+    fn render_template<T>(
+        template_data: serde_json::Value,
+        base_url: &str,
+    ) -> Result<(String, String)>
+    where
+        T: NotificationTemplate + Template + DeserializeOwned,
+    {
+        // Complete deployment-specific URLs after typed deserialization
+        let mut template: T = serde_json::from_value(template_data)?;
+        template.complete_urls(base_url);
+
+        Ok((template.subject(), template.render()?))
     }
 
     /// Send an email to the specified address with the given subject and body.
@@ -708,17 +539,21 @@ impl DeliveryWorker {
     }
 
     /// Send an email and retry transient transport errors before giving up.
+    ///
+    /// A shutdown request during a retry pause stops the sequence with
+    /// [`DeliveryOutcome::Cancelled`]; the failed attempts before it are not a
+    /// delivery outcome.
     async fn send_email_with_retries(
         &self,
         to_address: &str,
         subject: &str,
         body: String,
         attachments: &[Attachment],
-    ) -> std::result::Result<(), EmailDeliveryError> {
+    ) -> std::result::Result<DeliveryOutcome, EmailDeliveryError> {
         let mut attempt = 1;
         loop {
             match self.send_email(to_address, subject, body.clone(), attachments).await {
-                Ok(()) => return Ok(()),
+                Ok(()) => return Ok(DeliveryOutcome::Delivered),
                 Err(err) if attempt < DELIVERY_SEND_MAX_ATTEMPTS && err.is_retryable() => {
                     warn!(
                         %to_address,
@@ -728,13 +563,31 @@ impl DeliveryWorker {
                         error = %err,
                         "transient notification email delivery error; retrying",
                     );
-                    sleep(PAUSE_ON_DELIVERY_RETRY).await;
+
+                    // Wait for the retry pause unless shutdown is requested first
+                    tokio::select! {
+                        biased;
+                        () = self.cancellation_token.cancelled() => {
+                            return Ok(DeliveryOutcome::Cancelled);
+                        }
+                        () = sleep(PAUSE_ON_DELIVERY_RETRY) => {}
+                    }
                     attempt += 1;
                 }
                 Err(err) => return Err(err),
             }
         }
     }
+}
+
+/// Result of a notification delivery attempt sequence that did not fail.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DeliveryOutcome {
+    /// Shutdown was requested during a retry pause; the claim is released
+    /// without spending delivery budget.
+    Cancelled,
+    /// The email was handed to the transport.
+    Delivered,
 }
 
 /// Trait representing an async email sender used by the notifications workers.
@@ -810,6 +663,9 @@ impl EmailDeliveryError {
         let kind = if err.is_client() {
             SmtpErrorKind::Client
         } else if err.to_string().starts_with("Connection error") {
+            // lettre 0.11.23 exposes no `is_connection()` predicate and keeps its
+            // error `Kind` private, so the connection kind is only observable
+            // through its `Display` prefix ("Connection error")
             SmtpErrorKind::Connection
         } else if err.is_permanent() {
             SmtpErrorKind::Permanent

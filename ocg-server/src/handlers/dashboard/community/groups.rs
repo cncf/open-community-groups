@@ -15,7 +15,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::SELECTED_GROUP_ID_KEY,
+        auth::session_context::SELECTED_GROUP_ID_KEY,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },

@@ -177,7 +177,7 @@ pub(crate) async fn groups_section(
 }
 
 /// Prepares the events result section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_events_result_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
@@ -218,7 +218,7 @@ async fn prepare_events_result_section(
 }
 
 /// Prepares the events section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_events_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
@@ -244,7 +244,7 @@ async fn prepare_events_section(
 }
 
 /// Prepares the groups result section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_groups_result_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,
@@ -281,7 +281,7 @@ async fn prepare_groups_result_section(
 }
 
 /// Prepares groups section template.
-#[instrument(skip(db), err)]
+#[instrument(skip_all, err)]
 async fn prepare_groups_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,

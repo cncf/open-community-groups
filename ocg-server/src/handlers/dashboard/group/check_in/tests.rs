@@ -11,7 +11,8 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::{
-        TestRouterBuilder, assert_html_response, sample_auth_user, sample_session_record,
+        TestRouterBuilder, assert_html_response, expect_authenticated_group_session,
+        expect_group_permission,
     },
     services::notifications::MockNotificationsManager,
     types::{
@@ -29,30 +30,15 @@ async fn test_list_page_returns_group_check_in_fragment() {
     let group_id = Uuid::from_u128(2);
     let session_id = session::Id::default();
     let user_id = Uuid::from_u128(3);
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::CheckInsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::CheckInsWrite,
+    );
     db.expect_list_group_check_in_events()
         .times(1)
         .withf(move |gid| *gid == group_id)
@@ -277,31 +263,16 @@ async fn assert_scan_result(outcome: CheckInOutcome, expected_outcome: &str) {
     let group_id = Uuid::from_u128(4);
     let session_id = session::Id::default();
     let user_id = Uuid::from_u128(5);
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::CheckInsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::CheckInsWrite,
+    );
     db.expect_check_in_attendee_by_code()
         .times(1)
         .withf(move |actor, code, community, event, group| {
@@ -359,22 +330,9 @@ async fn scan_test_router(has_permission: bool) -> (axum::Router, session::Id) {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
 
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
@@ -385,15 +343,13 @@ async fn scan_test_router(has_permission: bool) -> (axum::Router, session::Id) {
         })
         .returning(move |_, _, _, _| Ok(has_permission));
     if !has_permission {
-        db.expect_user_has_group_permission()
-            .times(1)
-            .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == GroupPermission::Read
-            })
-            .returning(|_, _, _, _| Ok(true));
+        expect_group_permission(
+            &mut db,
+            community_id,
+            group_id,
+            user_id,
+            GroupPermission::Read,
+        );
     }
     db.expect_check_in_attendee_by_code().never();
 

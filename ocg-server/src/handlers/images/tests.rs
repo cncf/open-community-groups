@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::{
-        TestRouterBuilder, sample_auth_user, sample_session_record, sample_tracking_server_cfg,
+        TestRouterBuilder, expect_authenticated_session, sample_tracking_server_cfg,
         test_state_with_server_cfg,
     },
     services::{images::MockImageStorage, notifications::MockNotificationsManager},
@@ -626,19 +626,10 @@ async fn test_upload_accepts_exact_open_graph_dimensions() {
     let body = build_multipart_body_with_target(boundary, "open_graph", &png_bytes);
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
 
     // Setup image storage mock
     let expected_file_name_for_mock = expected_file_name.clone();
@@ -697,19 +688,10 @@ async fn test_upload_rejects_missing_referer_when_hotlinking_allowed() {
     let body = build_multipart_body(boundary, PNG_BYTES);
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
 
     // Setup image storage mock
     let mut storage = MockImageStorage::new();
@@ -753,19 +735,10 @@ async fn test_upload_rejects_missing_referer_when_hotlinking_disabled() {
     let body = build_multipart_body(boundary, PNG_BYTES);
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
 
     // Setup image storage mock
     let mut storage = MockImageStorage::new();
@@ -807,19 +780,10 @@ async fn test_upload_rejects_wrong_open_graph_dimensions() {
     let body = build_multipart_body_with_target(boundary, "open_graph", PNG_BYTES);
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
 
     // Setup image storage mock
     let mut storage = MockImageStorage::new();
@@ -868,19 +832,10 @@ async fn test_upload_stores_image_and_returns_url() {
     let body = build_multipart_body(boundary, PNG_BYTES);
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
 
     // Setup image storage mock
     let expected_file_name_for_mock = expected_file_name.clone();

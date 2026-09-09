@@ -17,7 +17,7 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
-        auth::log_out_for_stale_dashboard_context,
+        auth::middleware::log_out_for_stale_dashboard_context,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },

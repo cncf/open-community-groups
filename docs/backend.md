@@ -140,11 +140,15 @@ embed them through the `json` filter for the calendar and map scripts.
 
 Persisted notification payloads are a compatibility contract.
 `templates::notifications::*` structs are stored as `template_data` and read
-back by `DeliveryWorker::prepare_content` after deployment. Moving or
-renaming one of these types must not change its serialized form. Removing a
-field, changing a field's meaning, or evolving an enum requires an explicit
-decision recorded in the PR and, when incompatible, a conversion step in
-`prepare_content`. Fixtures for supported older shapes live in
+back by `DeliveryWorker::prepare_content` after deployment. Each of these
+structs implements `templates::notifications::NotificationTemplate`, which
+owns the email subject and the completion of stored root-relative URLs with
+the deployment base URL; `prepare_content` only maps a `NotificationKind` to
+its struct and renders it through that trait. Moving or renaming one of
+these types must not change its serialized form. Removing a field, changing
+a field's meaning, or evolving an enum requires an explicit decision recorded
+in the PR and, when incompatible, a conversion step in `prepare_content`.
+Fixtures for supported older shapes live in
 `services/notifications/tests.rs` as literal JSON, never built from the
 current constructors, so a breaking change fails a test instead of silently
 updating both sides.
@@ -161,6 +165,8 @@ decide the scope.
 
 Current managers and provider traits:
 
+- `services::badges::BadgesManager` (`SsiBadgesManager`), which signs,
+  caches, and verifies Open Badges credentials with locally configured keys.
 - `services::notifications::NotificationsManager` (`PgNotificationsManager`)
   with the `EmailSender` provider trait.
 - `services::payments::PaymentsManager` (`PgPaymentsManager`) with the
@@ -276,10 +282,9 @@ Pure domain logic (recurrence expansion, eligibility predicates) lives in
 
 Known gaps: several mutation handlers (`handlers/dashboard/group/events.rs`,
 `handlers/event.rs`, `handlers/dashboard/group/attendees.rs`, and others)
-still open transactions and build `db/` operation types themselves;
-`handlers/dashboard/group/events/recurrence.rs` holds domain logic; a few
-handlers use `skip(db)` or `err(Debug)`. These are being migrated; new
-handlers follow the shape above.
+still open transactions and build `db/` operation types themselves, and
+`handlers/dashboard/group/events/recurrence.rs` holds domain logic. These are
+being migrated; new handlers follow the shape above.
 
 ## Test layering
 
@@ -338,13 +343,16 @@ Current behavior and known gaps:
   cancellation-aware iterations, `claim_loop` claims and releases jobs, and
   `BackgroundTasks` tracks spawned workers and waits for all of them on
   shutdown. A worker finishes its in-flight operation before stopping, so a
-  stalled provider call blocks shutdown for as long as it stalls.
+  stalled provider call blocks shutdown for as long as it stalls. The
+  notification delivery worker's pause between send retries is
+  cancellation-aware: a shutdown request during the pause releases the claim
+  through `release_notification` instead of recording a delivery outcome.
 - `BackgroundTasks::spawn` discards the `JoinHandle`, and
   `router::health_check` returns `200` unconditionally. A worker that panics
   or returns early is not observed and does not change the health response.
-- Password verification runs in `tokio::task::spawn_blocking`;
-  `password_auth::generate_hash` on sign-up and password update runs on the
-  async executor, and neither path has a concurrency bound.
+- Password verification and `password_auth::generate_hash` on sign-up and
+  password update run in `tokio::task::spawn_blocking`; neither path has a
+  concurrency bound.
 - The activity tracker is best-effort: `track` awaits capacity on a bounded
   channel, the flusher logs failed writes and drops the affected counters,
   and aggregation keys are not capped.

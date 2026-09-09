@@ -49,6 +49,10 @@ pub(crate) trait DBNotifications {
     async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration)
     -> Result<usize>;
 
+    /// Returns a claimed notification to the pending queue without recording an
+    /// outcome, leaving its delivery attempts and last error unchanged.
+    async fn release_notification(&self, notification: &Notification) -> Result<()>;
+
     /// Requeues a notification after a retryable delivery error.
     async fn requeue_notification(
         &self,
@@ -308,6 +312,23 @@ where
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         Ok(count as usize)
+    }
+
+    /// [`DBNotifications::release_notification`].
+    #[instrument(skip(self, notification), err)]
+    async fn release_notification(&self, notification: &Notification) -> Result<()> {
+        // Return the active claim to the queue so another worker can pick it up
+        let db = self.client().await?;
+        db.execute(
+            "select release_notification($1::uuid, $2::timestamptz);",
+            &[
+                &notification.notification_id,
+                &notification.delivery_claimed_at,
+            ],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBNotifications::requeue_notification`].

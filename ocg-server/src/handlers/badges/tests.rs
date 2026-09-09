@@ -20,7 +20,7 @@ use crate::{
     handlers::tests::{TestRouterBuilder, sample_site_settings},
     router::CACHE_CONTROL_PUBLIC_SHARED,
     services::{
-        badges::{CredentialInput, EmailIdentity},
+        badges::{CredentialInput, EmailIdentity, SsiBadgesManager},
         notifications::MockNotificationsManager,
     },
     types::badges::{
@@ -487,7 +487,7 @@ async fn test_verify_post_flags_stale_email_bound_award_as_superseded() {
     let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
     let badges_manager =
-        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
@@ -602,7 +602,7 @@ async fn test_verify_post_returns_uploaded_award() {
     let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
     let badges_manager =
-        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
@@ -672,7 +672,7 @@ async fn test_verify_post_returns_uploaded_email_bound_award_without_rendering_i
     let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
     let badges_manager =
-        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+        SsiBadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,

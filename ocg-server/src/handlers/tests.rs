@@ -25,7 +25,7 @@ use crate::{
         PaymentsConfig, PaymentsStripeConfig,
     },
     db::{DynDB, dashboard::common::User as DashboardUser, mock::MockDB},
-    handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+    handlers::auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
         images::{DynImageStorage, MockImageStorage},
@@ -1320,7 +1320,7 @@ pub(crate) fn test_state_with_server_cfg(
     let badges_config = server_cfg.badges.as_ref().unwrap_or(&TEST_BADGES_CONFIG);
     router::State {
         activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
-        badges_manager: Arc::new(crate::services::badges::BadgesManager::new(
+        badges_manager: Arc::new(crate::services::badges::SsiBadgesManager::new(
             &server_cfg.base_url,
             badges_config,
         )),

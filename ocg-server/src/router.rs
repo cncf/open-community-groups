@@ -40,7 +40,9 @@ use crate::{
         request_headers_match_site_origin, site,
     },
     services::{
-        badges::BadgesManager, images::DynImageStorage, notifications::DynNotificationsManager,
+        badges::{DynBadgesManager, SsiBadgesManager},
+        images::DynImageStorage,
+        notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
     },
 };
@@ -110,7 +112,7 @@ pub(crate) struct State {
     /// Activity tracker handle.
     pub activity_tracker: DynActivityTracker,
     /// Open Badges credential manager.
-    pub badges_manager: Arc<BadgesManager>,
+    pub badges_manager: DynBadgesManager,
     /// Database handle.
     pub db: DynDB,
     /// Image storage provider handle.
@@ -164,7 +166,7 @@ pub(crate) async fn setup(
     // Setup router state
     let state = State {
         activity_tracker,
-        badges_manager: Arc::new(BadgesManager::new(&server_cfg.base_url, badges_config)),
+        badges_manager: Arc::new(SsiBadgesManager::new(&server_cfg.base_url, badges_config)),
         db: db.clone(),
         image_storage,
         meetings_cfg,

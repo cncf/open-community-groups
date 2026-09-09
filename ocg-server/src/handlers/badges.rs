@@ -1,7 +1,5 @@
 //! Public Open Badges credential, issuer, status, and verification handlers.
 
-use std::sync::Arc;
-
 use askama::Template;
 use axum::{
     Json,
@@ -23,8 +21,8 @@ use crate::{
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::badges::{
-        BadgesManager, BadgesManagerError, CID_CONTEXT_URL, MULTIKEY_CONTEXT_URL,
-        OPEN_BADGES_CONTEXT_URL, png,
+        BadgesManagerError, CID_CONTEXT_URL, DynBadgesManager, MULTIKEY_CONTEXT_URL,
+        OPEN_BADGES_CONTEXT_URL, issuer_name, png,
     },
     templates::badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
 };
@@ -53,7 +51,7 @@ pub(super) const USER_PROFILE_BADGES_LIMIT: usize = 50;
 /// Serve the public credential page or signed JSON-LD representation.
 #[instrument(skip_all, err)]
 pub(crate) async fn credential(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
     Path(user_badge_id): Path<Uuid>,
     headers: HeaderMap,
@@ -116,7 +114,7 @@ pub(crate) async fn verify_page(
 /// Publish a stable group issuer profile.
 #[instrument(skip_all, err)]
 pub(crate) async fn issuer(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Derive every retained verification method for this issuer controller
@@ -136,7 +134,7 @@ pub(crate) async fn issuer(
             "@context": [CID_CONTEXT_URL, OPEN_BADGES_CONTEXT_URL],
             "id": badges_manager.issuer_url(group_id),
             "type": ["Profile"],
-            "name": BadgesManager::issuer_name(group_id),
+            "name": issuer_name(group_id),
             "assertionMethod": assertion_methods,
             "verificationMethod": verification_methods
         })),
@@ -146,7 +144,7 @@ pub(crate) async fn issuer(
 /// Publish one retained issuer verification key as a Multikey document.
 #[instrument(skip_all, err)]
 pub(crate) async fn issuer_key(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     Path((group_id, key_multibase)): Path<(Uuid, String)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Resolve the retained verification method addressed by this key
@@ -173,7 +171,7 @@ pub(crate) async fn issuer_key(
 /// Publish a signed revocation-only Bitstring Status List credential.
 #[instrument(skip_all, err)]
 pub(crate) async fn status_list(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
     Path(badge_status_list_id): Path<Uuid>,
 ) -> Result<Response, HandlerError> {
@@ -229,7 +227,7 @@ pub(crate) async fn user_profile_badges(
 /// Verify one ID, credential URL, or bounded Open Badges PNG.
 #[instrument(skip_all, err)]
 pub(crate) async fn verify(
-    State(badges_manager): State<Arc<BadgesManager>>,
+    State(badges_manager): State<DynBadgesManager>,
     State(db): State<DynDB>,
     uri: Uri,
     mut multipart: Multipart,
@@ -374,7 +372,7 @@ async fn render_verify_page(
 
 /// Resolve and verify one supported form submission without arbitrary dereferencing.
 async fn verify_submission(
-    badges_manager: &BadgesManager,
+    badges_manager: &DynBadgesManager,
     db: &DynDB,
     credential_reference: Option<&str>,
     png_bytes: Option<&[u8]>,

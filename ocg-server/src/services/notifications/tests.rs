@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
@@ -14,10 +14,10 @@ use crate::{
 
 use super::{
     Attachment, DELIVERY_MAX_CLAIMS, DELIVERY_PROCESSING_TIMEOUT, DELIVERY_REQUEUE_BASE_DELAY,
-    DELIVERY_REQUEUE_MAX_DELAY, DELIVERY_SEND_MAX_ATTEMPTS, DeliveryRecoveryWorker, DeliveryWorker,
-    DynEmailSender, EmailDeliveryError, EnqueueWorker, LettreEmailSender, MockEmailSender,
-    NewNotification, Notification, NotificationKind, NotificationsManager, PgNotificationsManager,
-    SmtpErrorKind,
+    DELIVERY_REQUEUE_MAX_DELAY, DELIVERY_SEND_MAX_ATTEMPTS, DeliveryOutcome,
+    DeliveryRecoveryWorker, DeliveryWorker, DynEmailSender, EmailDeliveryError, EnqueueWorker,
+    LettreEmailSender, MockEmailSender, NewNotification, Notification, NotificationKind,
+    NotificationsManager, PgNotificationsManager, SmtpErrorKind,
 };
 
 /// Deployment base URL used by notification rendering tests.
@@ -346,6 +346,67 @@ async fn test_delivery_worker_deliver_notification_records_unknown_send_error() 
     let worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
+        email_sender: es,
+    };
+    let delivered = worker.deliver_notification().await.unwrap();
+
+    // Check result matches expectations
+    assert!(delivered);
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_delivery_worker_deliver_notification_releases_claim_when_cancelled_during_retry_pause()
+ {
+    // Setup identifiers and data structures
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "notify@example.test".to_string(),
+        kind: NotificationKind::EmailVerification,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_email_verification_template_data()),
+    };
+    let notification_id = notification.notification_id;
+
+    // Setup database mock: shutdown is not a delivery outcome
+    let mut db = MockDB::new();
+    db.expect_claim_pending_notification()
+        .times(1)
+        .returning(move || Ok(Some(notification.clone())));
+    db.expect_release_notification()
+        .times(1)
+        .withf(move |notif| notif.notification_id == notification_id)
+        .returning(|_| Ok(()));
+    db.expect_mark_notification_delivery_unknown().never();
+    db.expect_requeue_notification().never();
+    db.expect_update_notification().never();
+    let db: DynDB = Arc::new(db);
+
+    // Setup email sender mock failing once with a retryable error
+    let mut es = MockEmailSender::new();
+    es.expect_send().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EmailDeliveryError::Retryable(anyhow!(
+                "Connection error: smtp unavailable"
+            )))
+        })
+    });
+    let es: DynEmailSender = Arc::new(es);
+
+    // Request shutdown while the worker waits to retry
+    let cancellation_token = CancellationToken::new();
+    let shutdown_token = cancellation_token.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        shutdown_token.cancel();
+    });
+
+    // Setup worker and deliver notification
+    let worker = DeliveryWorker {
+        base_url: "https://example.test".to_string(),
+        cancellation_token,
         cfg: sample_email_config(None),
         db,
         email_sender: es,
@@ -1779,7 +1840,7 @@ async fn test_delivery_worker_send_email_retries_transient_send_error() {
 
     // Setup worker and send email
     let worker = sample_delivery_worker(cfg, es);
-    worker
+    let outcome = worker
         .send_email_with_retries(
             "notify@example.test",
             "Subject line",
@@ -1788,6 +1849,44 @@ async fn test_delivery_worker_send_email_retries_transient_send_error() {
         )
         .await
         .unwrap();
+
+    // Check the retried send completed
+    assert_eq!(outcome, DeliveryOutcome::Delivered);
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_delivery_worker_send_email_returns_cancelled_when_shutdown_interrupts_retry_pause() {
+    // Setup email config and sender mock failing once with a retryable error
+    let cfg = sample_email_config(None);
+    let mut es = MockEmailSender::new();
+    es.expect_send().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EmailDeliveryError::Retryable(anyhow!(
+                "Connection error: smtp unavailable"
+            )))
+        })
+    });
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker whose shutdown is requested during the retry pause
+    let worker = sample_delivery_worker(cfg, es);
+    let shutdown_token = worker.cancellation_token.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        shutdown_token.cancel();
+    });
+
+    // Send email and check the sequence stopped without a delivery outcome
+    let outcome = worker
+        .send_email_with_retries(
+            "notify@example.test",
+            "Subject line",
+            "<p>Body content</p>".to_string(),
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(outcome, DeliveryOutcome::Cancelled);
 }
 
 #[tokio::test]

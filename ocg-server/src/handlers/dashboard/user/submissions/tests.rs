@@ -20,19 +20,10 @@ async fn test_list_page_db_error() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
@@ -67,8 +58,6 @@ async fn test_list_page_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
@@ -85,14 +74,7 @@ async fn test_list_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
@@ -131,8 +113,6 @@ async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let output = crate::types::dashboard::user::submissions::CfsSubmissionsOutput {
         submissions: vec![],
         total: 0,
@@ -140,14 +120,7 @@ async fn test_list_page_with_pagination_params() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
@@ -185,19 +158,10 @@ async fn test_resubmit_db_error() {
     let cfs_submission_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_resubmit_cfs_submission()
         .times(1)
         .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
@@ -232,19 +196,10 @@ async fn test_resubmit_success() {
     let cfs_submission_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_resubmit_cfs_submission()
         .times(1)
         .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
@@ -288,19 +243,10 @@ async fn test_withdraw_db_error() {
     let cfs_submission_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_withdraw_cfs_submission()
         .times(1)
         .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
@@ -335,19 +281,10 @@ async fn test_withdraw_success() {
     let cfs_submission_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_withdraw_cfs_submission()
         .times(1)
         .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)

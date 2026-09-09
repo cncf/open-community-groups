@@ -12,9 +12,12 @@ mod verification;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+#[cfg(test)]
+use mockall::automock;
 use serde_json::{Value, json};
 use ssi_claims_core::{SignatureEnvironment, VerificationParameters};
 use ssi_data_integrity::{
@@ -32,17 +35,67 @@ use crate::{
 use credential::{CredentialCacheKey, required_string};
 use document::CredentialDocument;
 use status::{STATUS_LIST_ENTRIES, STATUS_LIST_TTL_MS, encode_status_list};
-use verification::{
-    VerifiedCredential, VerifiedEmailIdentity, contains_unsupported_identifier, single_proof,
-};
+use verification::{VerifiedEmailIdentity, contains_unsupported_identifier, single_proof};
 
 pub(crate) use award_worker::start_badge_award_workers;
 pub(crate) use contexts::{CID_CONTEXT_URL, MULTIKEY_CONTEXT_URL, OPEN_BADGES_CONTEXT_URL};
 pub(crate) use credential::{CredentialInput, EmailIdentity, rfc3339};
+pub(crate) use verification::VerifiedCredential;
 
-/// Site-wide badge credential manager.
+/// Trait for a badges manager, responsible for issuing, caching, and verifying
+/// Open Badges credentials and their issuer key material.
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub(crate) trait BadgesManager {
+    /// Return a cached signed credential or issue its immutable public representation once.
+    ///
+    /// The proof timestamp is pinned to the award time so the opaque public
+    /// representation stays deterministic across processes and restarts.
+    async fn cached_credential(&self, award: &UserBadge) -> Result<Value>;
+
+    /// Return a cached signed export credential or issue its bound representation once.
+    ///
+    /// The proof timestamp is pinned to the identity binding time so repeated
+    /// downloads yield one deterministic representation per binding, and a
+    /// rebind after an email change supersedes earlier exports.
+    async fn cached_export_credential(
+        &self,
+        award: &UserBadge,
+        identity: &UserBadgeIdentity,
+    ) -> Result<Value>;
+
+    /// Return a cached signed status list or issue one for changed revocation state.
+    async fn cached_status_list(
+        &self,
+        badge_status_list_id: Uuid,
+        group_id: Uuid,
+        revoked_indexes: &[i32],
+        created_at: DateTime<Utc>,
+    ) -> Result<Value>;
+
+    /// Return the stable public issuer profile URL.
+    fn issuer_url(&self, group_id: Uuid) -> String;
+
+    /// Parse and allowlist one local credential URL.
+    fn parse_credential_url(&self, value: &str) -> Result<Uuid>;
+
+    /// Returns one retained issuer-controlled Multikey by its multibase value.
+    fn verification_method(&self, group_id: Uuid, key_multibase: &str) -> Result<Multikey>;
+
+    /// Returns every retained Multikey controlled by a group issuer.
+    fn verification_methods(&self, group_id: Uuid) -> Result<Vec<Multikey>>;
+
+    /// Verifies an OCG credential proof and closed local profile.
+    async fn verify_credential(&self, credential: &Value) -> Result<VerifiedCredential>;
+}
+
+/// Shared trait object for a badges manager.
+pub(crate) type DynBadgesManager = Arc<dyn BadgesManager + Send + Sync>;
+
+/// Badges manager backed by the `ssi` Data Integrity suites and locally
+/// configured issuer keys.
 #[derive(Clone)]
-pub(crate) struct BadgesManager {
+pub(crate) struct SsiBadgesManager {
     /// Canonical public origin without a trailing slash.
     base_url: String,
     /// Signed immutable credential representations.
@@ -53,7 +106,7 @@ pub(crate) struct BadgesManager {
     status_list_cache: status::StatusListCache,
 }
 
-impl BadgesManager {
+impl SsiBadgesManager {
     /// Build the manager from application configuration.
     pub(crate) fn new(base_url: &str, config: &BadgesConfig) -> Self {
         Self {
@@ -62,89 +115,6 @@ impl BadgesManager {
             keys: keys::KeySet::new(config),
             status_list_cache: status::StatusListCache::new(),
         }
-    }
-
-    /// Return a cached signed credential or issue its immutable public representation once.
-    ///
-    /// The proof timestamp is pinned to the award time so the opaque public
-    /// representation stays deterministic across processes and restarts.
-    pub(crate) async fn cached_credential(&self, award: &UserBadge) -> Result<Value> {
-        self.cached_signed_credential(
-            (award.user_badge_id, None),
-            CredentialInput {
-                award,
-                created_at: award.awarded_at,
-                email_identity: None,
-            },
-        )
-        .await
-    }
-
-    /// Return a cached signed export credential or issue its bound representation once.
-    ///
-    /// The proof timestamp is pinned to the identity binding time so repeated
-    /// downloads yield one deterministic representation per binding, and a
-    /// rebind after an email change supersedes earlier exports.
-    pub(crate) async fn cached_export_credential(
-        &self,
-        award: &UserBadge,
-        identity: &UserBadgeIdentity,
-    ) -> Result<Value> {
-        self.cached_signed_credential(
-            (award.user_badge_id, Some(identity.identity_salt.clone())),
-            CredentialInput {
-                award,
-                created_at: identity.identity_bound_at,
-                email_identity: Some(EmailIdentity {
-                    hash: identity.identity_hash.clone(),
-                    salt: identity.identity_salt.clone(),
-                }),
-            },
-        )
-        .await
-    }
-
-    /// Return a cached signed status list or issue one for changed revocation state.
-    pub(crate) async fn cached_status_list(
-        &self,
-        badge_status_list_id: Uuid,
-        group_id: Uuid,
-        revoked_indexes: &[i32],
-        created_at: DateTime<Utc>,
-    ) -> Result<Value> {
-        // Reuse only a proof over the exact current group and revocation state
-        if let Some(credential) = self
-            .status_list_cache
-            .get(badge_status_list_id, group_id, revoked_indexes)
-            .await
-        {
-            return Ok(credential);
-        }
-
-        // Deduplicate cold misses and recheck after any preceding signer finishes
-        let _signing_guard = self.status_list_cache.signing_guard().await;
-        if let Some(credential) = self
-            .status_list_cache
-            .get(badge_status_list_id, group_id, revoked_indexes)
-            .await
-        {
-            return Ok(credential);
-        }
-
-        // Sign changed state and make it available to subsequent requests
-        let credential = self
-            .issue_status_list(badge_status_list_id, group_id, revoked_indexes, created_at)
-            .await?;
-        self.status_list_cache
-            .insert(
-                badge_status_list_id,
-                credential.clone(),
-                group_id,
-                revoked_indexes,
-            )
-            .await;
-
-        Ok(credential)
     }
 
     /// Return the stable public credential URL.
@@ -225,7 +195,7 @@ impl BadgesManager {
             "type": ["VerifiableCredential", "BitstringStatusListCredential"],
             "issuer": {
                 "id": issuer_url,
-                "name": Self::issuer_name(group_id)
+                "name": issuer_name(group_id)
             },
             "validFrom": rfc3339(created_at),
             "credentialSubject": {
@@ -239,21 +209,6 @@ impl BadgesManager {
 
         // Sign the complete status-list credential with the active issuer key
         self.sign_document(document, &issuer_url, created_at).await
-    }
-
-    /// Returns the stable display name for a group issuer profile.
-    pub(crate) fn issuer_name(group_id: Uuid) -> String {
-        format!("Open Community Groups issuer {group_id}")
-    }
-
-    /// Return the stable public issuer profile URL.
-    pub(crate) fn issuer_url(&self, group_id: Uuid) -> String {
-        format!("{}/badges/issuers/{group_id}", self.base_url)
-    }
-
-    /// Parse and allowlist one local credential URL.
-    pub(crate) fn parse_credential_url(&self, value: &str) -> Result<Uuid> {
-        self.parse_local_uuid_url(value, "/badges/credentials/")
     }
 
     /// Parse and allowlist one local issuer URL.
@@ -272,119 +227,6 @@ impl BadgesManager {
             "{}/badges/status-lists/{badge_status_list_id}",
             self.base_url
         )
-    }
-
-    /// Returns one retained issuer-controlled Multikey by its multibase value.
-    pub(crate) fn verification_method(
-        &self,
-        group_id: Uuid,
-        key_multibase: &str,
-    ) -> Result<Multikey> {
-        self.keys
-            .multikey_by_multibase(&self.issuer_url(group_id), key_multibase)
-    }
-
-    /// Returns every retained Multikey controlled by a group issuer.
-    pub(crate) fn verification_methods(&self, group_id: Uuid) -> Result<Vec<Multikey>> {
-        self.keys.multikeys(&self.issuer_url(group_id))
-    }
-
-    /// Verifies an OCG credential proof and closed local profile.
-    pub(crate) async fn verify_credential(&self, credential: &Value) -> Result<VerifiedCredential> {
-        // Validate the closed credential profile and privacy contract
-        if credential.get("@context")
-            != Some(&json!([
-                contexts::VC_CONTEXT_URL,
-                contexts::OPEN_BADGES_CONTEXT_URL
-            ]))
-            || credential.get("type")
-                != Some(&json!(["VerifiableCredential", "OpenBadgeCredential"]))
-            || contains_unsupported_identifier(credential)
-        {
-            return Err(BadgesManagerError::InvalidCredential);
-        }
-
-        // Resolve and bind the opaque credential and subject identifiers
-        let credential_id = required_string(credential, "/id")?;
-        let user_badge_id = self.parse_credential_url(credential_id)?;
-        let subject_id = required_string(credential, "/credentialSubject/id")?;
-        if subject_id != format!("urn:uuid:{user_badge_id}") {
-            return Err(BadgesManagerError::InvalidCredential);
-        }
-
-        // Validate the embedded issuer profile before trusting its identifier
-        let issuer_profile = credential
-            .get("issuer")
-            .and_then(Value::as_object)
-            .ok_or(BadgesManagerError::InvalidCredential)?;
-        if issuer_profile.len() != 3
-            || issuer_profile.get("type") != Some(&json!(["Profile"]))
-            || required_string(credential, "/issuer/name")?.is_empty()
-        {
-            return Err(BadgesManagerError::InvalidCredential);
-        }
-
-        // Verify the issuer identity and credential proof
-        let issuer = required_string(credential, "/issuer/id")?;
-        let group_id = self.parse_issuer_url(issuer)?;
-        self.verify_document(credential, issuer).await?;
-
-        // Parse the signed award timestamp into the application time model
-        let valid_from = DateTime::parse_from_rfc3339(required_string(credential, "/validFrom")?)
-            .map_err(|_| BadgesManagerError::InvalidCredential)?
-            .with_timezone(&Utc);
-
-        // Validate the credential's bounded local status-list reference
-        let status_url = required_string(credential, "/credentialStatus/statusListCredential")?;
-        let status_list_id = self.parse_status_list_url(status_url)?;
-        let status_list_index = required_string(credential, "/credentialStatus/statusListIndex")?;
-        if status_list_index.is_empty()
-            || !status_list_index.bytes().all(|byte| byte.is_ascii_digit())
-            || (status_list_index.len() > 1 && status_list_index.starts_with('0'))
-            || required_string(credential, "/credentialStatus/type")? != "BitstringStatusListEntry"
-            || required_string(credential, "/credentialStatus/id")?
-                != format!("{credential_id}#status")
-            || required_string(credential, "/credentialStatus/statusPurpose")? != "revocation"
-        {
-            return Err(BadgesManagerError::InvalidStatusList);
-        }
-        let status_list_index = status_list_index
-            .parse::<i32>()
-            .map_err(|_| BadgesManagerError::InvalidStatusList)?;
-        let status_list_entries = i32::try_from(STATUS_LIST_ENTRIES)
-            .map_err(|_| BadgesManagerError::InvalidStatusList)?;
-        if !(0..status_list_entries).contains(&status_list_index) {
-            return Err(BadgesManagerError::InvalidStatusList);
-        }
-
-        // Capture the optional exported identity for durable binding comparison
-        let email_identity = credential
-            .pointer("/credentialSubject/identifier/0")
-            .map(|entry| -> Result<VerifiedEmailIdentity> {
-                Ok(VerifiedEmailIdentity {
-                    identity_hash: required_string(entry, "/identityHash")?
-                        .strip_prefix("sha256$")
-                        .ok_or(BadgesManagerError::InvalidCredential)?
-                        .to_string(),
-                    salt: required_string(entry, "/salt")?.to_string(),
-                })
-            })
-            .transpose()?;
-
-        // Return the verified fields needed for local persistence binding
-        Ok(VerifiedCredential {
-            description: required_string(credential, "/credentialSubject/achievement/description")?
-                .to_string(),
-            group_id,
-            issuer: issuer.to_string(),
-            name: required_string(credential, "/credentialSubject/achievement/name")?.to_string(),
-            status_list_id,
-            status_list_index,
-            user_badge_id,
-            valid_from,
-
-            email_identity,
-        })
     }
 
     /// Return a cached signed credential or sign one cold representation for its key.
@@ -519,6 +361,204 @@ impl BadgesManager {
     }
 }
 
+#[async_trait]
+impl BadgesManager for SsiBadgesManager {
+    /// [`BadgesManager::cached_credential`].
+    async fn cached_credential(&self, award: &UserBadge) -> Result<Value> {
+        self.cached_signed_credential(
+            (award.user_badge_id, None),
+            CredentialInput {
+                award,
+                created_at: award.awarded_at,
+                email_identity: None,
+            },
+        )
+        .await
+    }
+
+    /// [`BadgesManager::cached_export_credential`].
+    async fn cached_export_credential(
+        &self,
+        award: &UserBadge,
+        identity: &UserBadgeIdentity,
+    ) -> Result<Value> {
+        self.cached_signed_credential(
+            (award.user_badge_id, Some(identity.identity_salt.clone())),
+            CredentialInput {
+                award,
+                created_at: identity.identity_bound_at,
+                email_identity: Some(EmailIdentity {
+                    hash: identity.identity_hash.clone(),
+                    salt: identity.identity_salt.clone(),
+                }),
+            },
+        )
+        .await
+    }
+
+    /// [`BadgesManager::cached_status_list`].
+    async fn cached_status_list(
+        &self,
+        badge_status_list_id: Uuid,
+        group_id: Uuid,
+        revoked_indexes: &[i32],
+        created_at: DateTime<Utc>,
+    ) -> Result<Value> {
+        // Reuse only a proof over the exact current group and revocation state
+        if let Some(credential) = self
+            .status_list_cache
+            .get(badge_status_list_id, group_id, revoked_indexes)
+            .await
+        {
+            return Ok(credential);
+        }
+
+        // Deduplicate cold misses and recheck after any preceding signer finishes
+        let _signing_guard = self.status_list_cache.signing_guard().await;
+        if let Some(credential) = self
+            .status_list_cache
+            .get(badge_status_list_id, group_id, revoked_indexes)
+            .await
+        {
+            return Ok(credential);
+        }
+
+        // Sign changed state and make it available to subsequent requests
+        let credential = self
+            .issue_status_list(badge_status_list_id, group_id, revoked_indexes, created_at)
+            .await?;
+        self.status_list_cache
+            .insert(
+                badge_status_list_id,
+                credential.clone(),
+                group_id,
+                revoked_indexes,
+            )
+            .await;
+
+        Ok(credential)
+    }
+
+    /// [`BadgesManager::issuer_url`].
+    fn issuer_url(&self, group_id: Uuid) -> String {
+        format!("{}/badges/issuers/{group_id}", self.base_url)
+    }
+
+    /// [`BadgesManager::parse_credential_url`].
+    fn parse_credential_url(&self, value: &str) -> Result<Uuid> {
+        self.parse_local_uuid_url(value, "/badges/credentials/")
+    }
+
+    /// [`BadgesManager::verification_method`].
+    fn verification_method(&self, group_id: Uuid, key_multibase: &str) -> Result<Multikey> {
+        self.keys
+            .multikey_by_multibase(&self.issuer_url(group_id), key_multibase)
+    }
+
+    /// [`BadgesManager::verification_methods`].
+    fn verification_methods(&self, group_id: Uuid) -> Result<Vec<Multikey>> {
+        self.keys.multikeys(&self.issuer_url(group_id))
+    }
+
+    /// [`BadgesManager::verify_credential`].
+    async fn verify_credential(&self, credential: &Value) -> Result<VerifiedCredential> {
+        // Validate the closed credential profile and privacy contract
+        if credential.get("@context")
+            != Some(&json!([
+                contexts::VC_CONTEXT_URL,
+                contexts::OPEN_BADGES_CONTEXT_URL
+            ]))
+            || credential.get("type")
+                != Some(&json!(["VerifiableCredential", "OpenBadgeCredential"]))
+            || contains_unsupported_identifier(credential)
+        {
+            return Err(BadgesManagerError::InvalidCredential);
+        }
+
+        // Resolve and bind the opaque credential and subject identifiers
+        let credential_id = required_string(credential, "/id")?;
+        let user_badge_id = self.parse_credential_url(credential_id)?;
+        let subject_id = required_string(credential, "/credentialSubject/id")?;
+        if subject_id != format!("urn:uuid:{user_badge_id}") {
+            return Err(BadgesManagerError::InvalidCredential);
+        }
+
+        // Validate the embedded issuer profile before trusting its identifier
+        let issuer_profile = credential
+            .get("issuer")
+            .and_then(Value::as_object)
+            .ok_or(BadgesManagerError::InvalidCredential)?;
+        if issuer_profile.len() != 3
+            || issuer_profile.get("type") != Some(&json!(["Profile"]))
+            || required_string(credential, "/issuer/name")?.is_empty()
+        {
+            return Err(BadgesManagerError::InvalidCredential);
+        }
+
+        // Verify the issuer identity and credential proof
+        let issuer = required_string(credential, "/issuer/id")?;
+        let group_id = self.parse_issuer_url(issuer)?;
+        self.verify_document(credential, issuer).await?;
+
+        // Parse the signed award timestamp into the application time model
+        let valid_from = DateTime::parse_from_rfc3339(required_string(credential, "/validFrom")?)
+            .map_err(|_| BadgesManagerError::InvalidCredential)?
+            .with_timezone(&Utc);
+
+        // Validate the credential's bounded local status-list reference
+        let status_url = required_string(credential, "/credentialStatus/statusListCredential")?;
+        let status_list_id = self.parse_status_list_url(status_url)?;
+        let status_list_index = required_string(credential, "/credentialStatus/statusListIndex")?;
+        if status_list_index.is_empty()
+            || !status_list_index.bytes().all(|byte| byte.is_ascii_digit())
+            || (status_list_index.len() > 1 && status_list_index.starts_with('0'))
+            || required_string(credential, "/credentialStatus/type")? != "BitstringStatusListEntry"
+            || required_string(credential, "/credentialStatus/id")?
+                != format!("{credential_id}#status")
+            || required_string(credential, "/credentialStatus/statusPurpose")? != "revocation"
+        {
+            return Err(BadgesManagerError::InvalidStatusList);
+        }
+        let status_list_index = status_list_index
+            .parse::<i32>()
+            .map_err(|_| BadgesManagerError::InvalidStatusList)?;
+        let status_list_entries = i32::try_from(STATUS_LIST_ENTRIES)
+            .map_err(|_| BadgesManagerError::InvalidStatusList)?;
+        if !(0..status_list_entries).contains(&status_list_index) {
+            return Err(BadgesManagerError::InvalidStatusList);
+        }
+
+        // Capture the optional exported identity for durable binding comparison
+        let email_identity = credential
+            .pointer("/credentialSubject/identifier/0")
+            .map(|entry| -> Result<VerifiedEmailIdentity> {
+                Ok(VerifiedEmailIdentity {
+                    identity_hash: required_string(entry, "/identityHash")?
+                        .strip_prefix("sha256$")
+                        .ok_or(BadgesManagerError::InvalidCredential)?
+                        .to_string(),
+                    salt: required_string(entry, "/salt")?.to_string(),
+                })
+            })
+            .transpose()?;
+
+        // Return the verified fields needed for local persistence binding
+        Ok(VerifiedCredential {
+            description: required_string(credential, "/credentialSubject/achievement/description")?
+                .to_string(),
+            group_id,
+            issuer: issuer.to_string(),
+            name: required_string(credential, "/credentialSubject/achievement/name")?.to_string(),
+            status_list_id,
+            status_list_index,
+            user_badge_id,
+            valid_from,
+
+            email_identity,
+        })
+    }
+}
+
 /// Badges manager failures translated into safe handler-level errors.
 #[derive(Debug, Error)]
 pub(crate) enum BadgesManagerError {
@@ -562,3 +602,8 @@ pub(crate) enum BadgesManagerError {
 
 /// Shared badges manager result.
 pub(crate) type Result<T> = std::result::Result<T, BadgesManagerError>;
+
+/// Returns the stable display name for a group issuer profile.
+pub(crate) fn issuer_name(group_id: Uuid) -> String {
+    format!("Open Community Groups issuer {group_id}")
+}

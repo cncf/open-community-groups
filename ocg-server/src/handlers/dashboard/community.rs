@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::{SelectedGroupPolicy, sync_selected_community_and_group},
+        auth::session_context::{SelectedGroupPolicy, sync_selected_community_and_group},
         error::HandlerError,
         extractors::CurrentUser,
     },

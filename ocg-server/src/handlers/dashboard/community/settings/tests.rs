@@ -21,27 +21,12 @@ async fn test_update_page_success() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let community = sample_community_full(community_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -86,26 +71,11 @@ async fn test_update_page_db_error() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -146,23 +116,13 @@ async fn test_update_success() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let update = sample_community_update();
     let expected_display_name = update.display_name.clone();
     let body = serde_qs::to_string(&update).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -210,20 +170,10 @@ async fn test_update_invalid_payload() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
@@ -261,22 +211,12 @@ async fn test_update_db_error() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let update = sample_community_update();
     let body = serde_qs::to_string(&update).unwrap();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {

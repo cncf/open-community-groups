@@ -202,6 +202,12 @@ restarted safely and external calls stay outside transactions:
   `record_event_purchase_credit_note_succeeded`,
   `record_event_purchase_application_fee_adjustment_succeeded`). Stale claims
   are rejected so a delayed worker cannot overwrite a newer attempt.
+- **Release**: a worker interrupted by shutdown between attempts returns its
+  claim to the queue without recording an outcome (`release_notification`):
+  the row goes back to `pending`, becomes claimable immediately, and keeps
+  its `delivery_attempts` and `error`, so a restart does not spend the retry
+  budget or mark the notification `failed` on its last claim. The same stale
+  claim guard applies.
 - **Stale claim recovery**: periodic functions release claims whose worker
   disappeared (`mark_stale_processing_notifications_unknown`,
   `mark_stale_meeting_syncs_unknown`,

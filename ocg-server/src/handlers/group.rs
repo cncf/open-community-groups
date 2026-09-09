@@ -43,7 +43,7 @@ mod tests;
 // Pages handlers.
 
 /// Handler that renders the group home page.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
@@ -124,7 +124,7 @@ fn should_redirect_to_pretty_group_slug(group: &GroupFull, group_slug: &str) -> 
 // Actions handlers.
 
 /// Handler for joining a group.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn join_group(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -176,7 +176,7 @@ pub(crate) async fn join_group(
 }
 
 /// Handler for leaving a group.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn leave_group(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -190,7 +190,7 @@ pub(crate) async fn leave_group(
 }
 
 /// Handler for checking group membership status.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn membership_status(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
@@ -206,7 +206,7 @@ pub(crate) async fn membership_status(
 }
 
 /// Tracks a group page view.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn track_view(
     headers: HeaderMap,
     State(activity_tracker): State<DynActivityTracker>,

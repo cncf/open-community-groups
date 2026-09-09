@@ -18,8 +18,8 @@ use crate::{
 };
 
 use super::{
-    BadgesManager, BadgesManagerError, CredentialInput, EmailIdentity, contexts, png::bake,
-    status::STATUS_LIST_TTL_MS,
+    BadgesManager, BadgesManagerError, CredentialInput, EmailIdentity, SsiBadgesManager, contexts,
+    issuer_name, png::bake, status::STATUS_LIST_TTL_MS,
 };
 
 /// Deterministic group issuer URL used by signed test documents.
@@ -255,7 +255,7 @@ async fn test_status_list_profile_uses_required_ttl_and_revocation_purpose() {
         status["issuer"],
         json!({
             "id": format!("https://badges.example.test/badges/issuers/{group_id}"),
-            "name": BadgesManager::issuer_name(group_id)
+            "name": issuer_name(group_id)
         })
     );
     assert_eq!(status["validFrom"], "2024-02-03T04:05:06.000Z");
@@ -591,8 +591,11 @@ fn credential_status() -> serde_json::Value {
 }
 
 /// Build a badges manager with one active key and retained public keys.
-fn manager(signing_jwk: JWK, verification_keys: Vec<BadgeVerificationKeyConfig>) -> BadgesManager {
-    BadgesManager::new(
+fn manager(
+    signing_jwk: JWK,
+    verification_keys: Vec<BadgeVerificationKeyConfig>,
+) -> SsiBadgesManager {
+    SsiBadgesManager::new(
         "https://badges.example.test",
         &BadgesConfig {
             signing_key: BadgeSigningKeyConfig {
@@ -666,7 +669,7 @@ fn sample_png() -> Vec<u8> {
 }
 
 /// Issue the deterministic signed credential fixture.
-async fn signed_credential(manager: &BadgesManager) -> serde_json::Value {
+async fn signed_credential(manager: &SsiBadgesManager) -> serde_json::Value {
     manager
         .issue_credential(CredentialInput {
             award: &sample_award(),

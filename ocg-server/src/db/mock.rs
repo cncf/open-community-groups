@@ -1194,6 +1194,10 @@ mock! {
             &self,
             timeout: std::time::Duration,
         ) -> Result<usize>;
+        async fn release_notification(
+            &self,
+            notification: &crate::types::notifications::Notification,
+        ) -> Result<()>;
         async fn requeue_notification(
             &self,
             notification: &crate::types::notifications::Notification,

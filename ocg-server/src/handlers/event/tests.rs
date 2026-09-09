@@ -491,21 +491,12 @@ async fn test_cfs_modal_success_authenticated() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event_summary = sample_event_summary(event_id, group_id);
     let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -592,19 +583,10 @@ async fn test_attend_event_capacity_conflict() {
     let event_summary = sample_event_summary(event_id, group_id);
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -697,8 +679,6 @@ async fn test_attend_event_completes_with_registration_answers() {
     }];
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let answers_json = json!({
         "answers": [
             {
@@ -715,14 +695,7 @@ async fn test_attend_event_completes_with_registration_answers() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -832,8 +805,6 @@ async fn test_attend_event_requires_answers_when_waitlist_ticket_becomes_availab
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.has_registration_questions = true;
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -865,14 +836,7 @@ async fn test_attend_event_requires_answers_when_waitlist_ticket_becomes_availab
 
     // Return authoritative availability without creating a checkout hold
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -939,8 +903,6 @@ async fn test_attend_event_resolves_omitted_single_paid_ticket_type() {
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -964,14 +926,7 @@ async fn test_attend_event_resolves_omitted_single_paid_ticket_type() {
 
     // Require the resolved identifier at both database boundaries
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1077,8 +1032,6 @@ async fn test_attend_event_routes_newly_available_ticket_to_checkout() {
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.ticket_types = Some(vec![
         EventTicketType {
@@ -1123,14 +1076,7 @@ async fn test_attend_event_routes_newly_available_ticket_to_checkout() {
 
     // Setup the database boundary through the authoritative paid hold
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1253,19 +1199,10 @@ async fn test_attend_event_sends_waitlist_success_without_registration_answers()
     event_summary.waitlist_enabled = true;
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1356,19 +1293,10 @@ async fn test_attend_event_suppresses_notification_context_errors() {
     event_summary.waitlist_enabled = true;
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1433,19 +1361,10 @@ async fn test_attend_event_validates_inactive_event_before_loading_enrollment_st
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1490,19 +1409,10 @@ async fn test_enrollment_state_success() {
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1574,19 +1484,10 @@ async fn test_enrollment_state_stale_event_returns_none_without_summary_lookup()
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1654,19 +1555,10 @@ async fn test_cancel_checkout_success() {
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1728,19 +1620,10 @@ async fn test_cancel_checkout_returns_internal_server_error_when_db_fails() {
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1783,21 +1666,12 @@ async fn test_leave_event_completes_successfully() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event = sample_event_summary(event_id, group_id);
     let site_settings = sample_site_settings();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1864,20 +1738,11 @@ async fn test_leave_event_drops_waitlist_entry() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event_summary = sample_event_summary(event_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -1943,8 +1808,6 @@ async fn test_leave_event_enqueues_attendance_cancellation_notification() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event_summary = sample_event_summary(event_id, group_id);
     let event_summary_for_notifications = event_summary.clone();
     let site_settings = sample_site_settings();
@@ -1952,14 +1815,7 @@ async fn test_leave_event_enqueues_attendance_cancellation_notification() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2024,19 +1880,10 @@ async fn test_leave_event_rolls_back_when_notification_context_load_fails() {
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2088,19 +1935,10 @@ async fn test_request_refund_success() {
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2151,19 +1989,10 @@ async fn test_request_refund_returns_internal_server_error_when_payments_manager
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2231,8 +2060,6 @@ async fn test_start_checkout_blocks_refund_requested_purchase() {
     let user_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let registration_answers = QuestionnaireAnswers {
         answers: vec![QuestionnaireAnswer {
             question_id,
@@ -2271,14 +2098,7 @@ async fn test_start_checkout_blocks_refund_requested_purchase() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2367,8 +2187,6 @@ async fn test_start_checkout_completes_free_ticket_without_payments_config() {
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = None;
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -2398,14 +2216,7 @@ async fn test_start_checkout_completes_free_ticket_without_payments_config() {
 
     // Prepare the provider-free checkout through the database boundary
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2492,8 +2303,6 @@ async fn test_start_checkout_keeps_active_hold_after_registration_window_closes(
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.registration_ends_at = Some(chrono::Utc::now() - chrono::Duration::hours(1));
@@ -2522,14 +2331,7 @@ async fn test_start_checkout_keeps_active_hold_after_registration_window_closes(
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2618,8 +2420,6 @@ async fn test_start_checkout_keeps_active_hold_when_tickets_are_unavailable() {
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -2643,14 +2443,7 @@ async fn test_start_checkout_keeps_active_hold_when_tickets_are_unavailable() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2737,19 +2530,10 @@ async fn test_start_checkout_rejects_inactive_event_before_ticket_checks() {
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2798,8 +2582,6 @@ async fn test_start_checkout_returns_external_pending_payment() {
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -2833,14 +2615,7 @@ async fn test_start_checkout_returns_external_pending_payment() {
 
     // Prepare the external checkout through the database boundary
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -2928,8 +2703,6 @@ async fn test_start_checkout_returns_sold_out_conflict() {
     let session_id = session::Id::default();
     let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -2953,14 +2726,7 @@ async fn test_start_checkout_returns_sold_out_conflict() {
 
     // Setup checkout preparation to return the committed reconciliation conflict
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -3025,8 +2791,6 @@ async fn test_start_checkout_validates_missing_ticket_type() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -3050,14 +2814,7 @@ async fn test_start_checkout_validates_missing_ticket_type() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -3109,22 +2866,13 @@ async fn test_submit_cfs_submission_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event_summary = sample_event_summary(event_id, group_id);
     let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
     let form_data = format!("session_proposal_id={session_proposal_id}");
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
@@ -3185,20 +2933,11 @@ async fn test_submit_cfs_submission_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let session_proposal_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let form_data = format!("session_proposal_id={session_proposal_id}");
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_community_id_by_name()
         .times(1)
         .withf(|name| name == "test-community")
