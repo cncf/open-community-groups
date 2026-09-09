@@ -7,14 +7,15 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
-    router::serde_qs_config,
+    handlers::{
+        error::HandlerError,
+        extractors::{CurrentUser, ValidatedQuery},
+    },
     templates::dashboard::user::submissions,
     types::{
         dashboard::user::submissions::CfsSubmissionsFilters,
@@ -96,8 +97,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(CfsSubmissionsFilters, submissions::ListPage), HandlerError> {
     // Fetch submissions
-    let filters: CfsSubmissionsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: CfsSubmissionsFilters = ValidatedQuery::parse(raw_query)?;
     let results = db.list_user_cfs_submissions(user_id, &filters).await?;
 
     // Prepare template

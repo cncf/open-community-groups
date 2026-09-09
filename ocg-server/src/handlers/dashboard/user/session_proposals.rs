@@ -7,7 +7,6 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
-use garde::Validate;
 use serde_json::to_value;
 use tracing::{instrument, warn};
 use uuid::Uuid;
@@ -17,9 +16,8 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, ValidatedForm},
+        extractors::{CurrentUser, ValidatedForm, ValidatedQuery},
     },
-    router::serde_qs_config,
     services::notifications::DynNotificationsManager,
     templates::{
         dashboard::user::session_proposals, notifications::SessionProposalCoSpeakerInvitation,
@@ -267,8 +265,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(SessionProposalsFilters, session_proposals::ListPage), HandlerError> {
     // Fetch pending invitations, session proposal levels, and session proposals
-    let filters: SessionProposalsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: SessionProposalsFilters = ValidatedQuery::parse(raw_query)?;
     let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
         db.list_user_pending_session_proposal_co_speaker_invitations(user_id),
         db.list_session_proposal_levels(),

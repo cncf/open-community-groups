@@ -11,7 +11,6 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::{NaiveDate, TimeDelta, Utc};
-use garde::Validate;
 use image::{GenericImageView, ImageFormat, ImageReader, Limits};
 use serde::Deserialize;
 use tracing::instrument;
@@ -21,9 +20,8 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedQuery},
     },
-    router::serde_qs_config,
     services::images::DynImageStorage,
     templates::dashboard::group::badges::{ArtworkPage, AwardsPage, BadgesPage},
     types::{
@@ -417,8 +415,7 @@ pub(crate) async fn prepare_awards_page(
     raw_query: &str,
 ) -> Result<(AwardsFilters, AwardsPage), HandlerError> {
     // Parse and validate the award-history filters
-    let filters: AwardsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: AwardsFilters = ValidatedQuery::parse(raw_query)?;
     let offset = filters.awards_offset.unwrap_or(0);
     if offset > MAX_DATABASE_OFFSET {
         return Err(HandlerError::Rejected(
@@ -479,8 +476,7 @@ pub(crate) async fn prepare_badges_page(
     raw_query: &str,
 ) -> Result<(BadgesFilters, BadgesPage), HandlerError> {
     // Parse and validate the badge-definition filters
-    let filters: BadgesFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: BadgesFilters = ValidatedQuery::parse(raw_query)?;
     let offset = filters.badges_offset.unwrap_or(0);
     if offset > MAX_DATABASE_OFFSET {
         return Err(HandlerError::Rejected(

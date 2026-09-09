@@ -6,7 +6,6 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -14,9 +13,8 @@ use crate::{
     db::{DBExt, DynDB},
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, ValidatedForm},
+        extractors::{CurrentUser, ValidatedForm, ValidatedQuery},
     },
-    router::serde_qs_config,
     services::enrollment::{DynEnrollmentManager, LeaveEventInput},
     templates::dashboard::user::events,
     types::{
@@ -143,8 +141,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(UserEventsFilters, events::ListPage), HandlerError> {
     // Fetch upcoming events
-    let filters: UserEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: UserEventsFilters = ValidatedQuery::parse(raw_query)?;
     let results = db.list_user_events(user_id, &filters).await?;
 
     // Prepare template

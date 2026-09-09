@@ -16,9 +16,10 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
     templates::dashboard::group::sponsors,
     types::{
         dashboard::group::sponsors::{GroupSponsorsFilters, SponsorInput},
@@ -196,8 +197,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(GroupSponsorsFilters, sponsors::ListPage), HandlerError> {
     // Fetch sponsors
-    let filters: GroupSponsorsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: GroupSponsorsFilters = ValidatedQuery::parse(raw_query)?;
     let (can_manage_sponsors, results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,

@@ -881,6 +881,136 @@ async fn test_validated_form_qs_validation_error() {
     assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("name"));
 }
 
+#[tokio::test]
+async fn test_validated_query_success() {
+    // Setup database mock
+    let db: DynDB = Arc::new(MockDB::new());
+
+    // Setup services mocks
+    let is: DynImageStorage = Arc::new(MockImageStorage::new());
+    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+    // Setup router with a handler that uses ValidatedQuery
+    let state = test_state(db, is, nm);
+    let router = Router::new()
+        .route(
+            "/test",
+            get(
+                |ValidatedQuery(query): ValidatedQuery<TestQuery>| async move {
+                    assert_eq!(query.name, "test name");
+                    assert_eq!(query.limit, Some(10));
+                    assert_eq!(
+                        query.tags,
+                        Some(vec!["tag1".to_string(), "tag2".to_string()])
+                    );
+                    StatusCode::OK
+                },
+            ),
+        )
+        .with_state(state);
+
+    // Send valid request with nested array in the query string
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test?name=test+name&limit=10&tags[0]=tag1&tags[1]=tag2")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_validated_query_deserialization_error() {
+    // Setup database mock
+    let db: DynDB = Arc::new(MockDB::new());
+
+    // Setup services mocks
+    let is: DynImageStorage = Arc::new(MockImageStorage::new());
+    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+    // Setup router with a handler that uses ValidatedQuery
+    let state = test_state(db, is, nm);
+    let router = Router::new()
+        .route(
+            "/test",
+            get(|ValidatedQuery(_query): ValidatedQuery<TestQuery>| async move { StatusCode::OK }),
+        )
+        .with_state(state);
+
+    // Send request without the required field (deserialization should fail)
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test?limit=10")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the fixed body hides the parser detail
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(bytes.as_ref(), INVALID_REQUEST_PAYLOAD.as_bytes());
+}
+
+#[tokio::test]
+async fn test_validated_query_validation_error() {
+    // Setup database mock
+    let db: DynDB = Arc::new(MockDB::new());
+
+    // Setup services mocks
+    let is: DynImageStorage = Arc::new(MockImageStorage::new());
+    let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+    // Setup router with a handler that uses ValidatedQuery
+    let state = test_state(db, is, nm);
+    let router = Router::new()
+        .route(
+            "/test",
+            get(|ValidatedQuery(_query): ValidatedQuery<TestQuery>| async move { StatusCode::OK }),
+        )
+        .with_state(state);
+
+    // Send request with an out-of-range limit (validation should fail)
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test?name=test&limit=0")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the garde report is returned
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("limit"));
+}
+
+#[test]
+fn test_validated_query_parse_success() {
+    let query: TestQuery =
+        ValidatedQuery::parse("name=test+name&tags[0]=tag1").expect("query to parse");
+
+    assert_eq!(query.name, "test name");
+    assert_eq!(query.limit, None);
+    assert_eq!(query.tags, Some(vec!["tag1".to_string()]));
+}
+
+#[test]
+fn test_validated_query_parse_deserialization_error() {
+    let err = ValidatedQuery::<TestQuery>::parse("limit=10").expect_err("parse to fail");
+
+    assert!(matches!(err, HandlerError::Deserialization(_)));
+}
+
+#[test]
+fn test_validated_query_parse_validation_error() {
+    let err = ValidatedQuery::<TestQuery>::parse("name=+++").expect_err("parse to fail");
+
+    assert!(matches!(err, HandlerError::Validation(_)));
+}
+
 // Test form structs for validation.
 
 /// Simple test form for `ValidatedForm` tests.
@@ -893,6 +1023,19 @@ struct TestForm {
 /// Complex test form for `ValidatedFormQs` tests.
 #[derive(Debug, Deserialize, garde::Validate)]
 struct TestFormQs {
+    #[garde(custom(crate::validation::trimmed_non_empty))]
+    name: String,
+
+    #[garde(skip)]
+    tags: Option<Vec<String>>,
+}
+
+/// Test query string for `ValidatedQuery` tests.
+#[derive(Debug, Deserialize, garde::Validate)]
+struct TestQuery {
+    #[garde(range(min = 1, max = 100))]
+    limit: Option<usize>,
+
     #[garde(custom(crate::validation::trimmed_non_empty))]
     name: String,
 

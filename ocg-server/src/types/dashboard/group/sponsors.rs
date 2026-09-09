@@ -18,7 +18,7 @@ use crate::{
 
 /// Filter parameters for group sponsors pagination.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct GroupSponsorsFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
@@ -28,6 +28,16 @@ pub(crate) struct GroupSponsorsFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+}
+
+impl Default for GroupSponsorsFilters {
+    /// Matches the defaults applied when deserializing an empty query string.
+    fn default() -> Self {
+        Self {
+            limit: dashboard::default_limit(),
+            offset: dashboard::default_offset(),
+        }
+    }
 }
 
 crate::impl_pagination_and_raw_query!(GroupSponsorsFilters, limit, offset);

@@ -17,9 +17,10 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
     services::notifications::enqueue::enqueue_tracked_group_custom_notification,
     templates::dashboard::group::members,
     types::{
@@ -138,8 +139,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(GroupMembersFilters, members::ListPage), HandlerError> {
     // Fetch group members
-    let filters: GroupMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: GroupMembersFilters = ValidatedQuery::parse(raw_query)?;
     let (can_manage_members, group, results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,

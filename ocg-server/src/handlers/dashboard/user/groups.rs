@@ -6,14 +6,15 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
-    router::serde_qs_config,
+    handlers::{
+        error::HandlerError,
+        extractors::{CurrentUser, ValidatedQuery},
+    },
     templates::dashboard::user::groups,
     types::{
         dashboard::user::groups::UserGroupsFilters,
@@ -84,8 +85,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(UserGroupsFilters, groups::ListPage), HandlerError> {
     // Fetch the user's groups
-    let filters: UserGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: UserGroupsFilters = ValidatedQuery::parse(raw_query)?;
     let results = db.list_user_dashboard_groups(user_id, &filters).await?;
 
     // Prepare the paginated template

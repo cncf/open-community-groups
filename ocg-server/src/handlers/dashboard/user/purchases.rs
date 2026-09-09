@@ -6,14 +6,15 @@ use axum::{
     http::HeaderName,
     response::{Html, IntoResponse, Redirect},
 };
-use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
-    router::serde_qs_config,
+    handlers::{
+        error::HandlerError,
+        extractors::{CurrentUser, ValidatedQuery},
+    },
     services::payments::DynPaymentsManager,
     templates::dashboard::user::purchases,
     types::{
@@ -83,8 +84,7 @@ pub(crate) async fn prepare_list_page(
     user_id: Uuid,
     raw_query: &str,
 ) -> Result<(PurchaseDocumentsFilters, purchases::ListPage), HandlerError> {
-    let filters: PurchaseDocumentsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: PurchaseDocumentsFilters = ValidatedQuery::parse(raw_query)?;
     let results = db.list_user_purchase_documents(user_id, &filters).await?;
     let navigation_links =
         NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;

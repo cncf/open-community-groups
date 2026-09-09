@@ -19,9 +19,10 @@ use crate::{
     handlers::{
         auth::middleware::log_out_for_stale_dashboard_context,
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
     services::notifications::{
         DynNotificationsManager, best_effort::enqueue_group_team_invitation_best_effort,
     },
@@ -202,8 +203,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(GroupTeamFilters, team::ListPage), HandlerError> {
     // Fetch group team members
-    let filters: GroupTeamFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: GroupTeamFilters = ValidatedQuery::parse(raw_query)?;
     let (results, roles, can_award_badges, can_manage_team) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles(),

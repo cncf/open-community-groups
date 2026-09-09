@@ -4,7 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     Json,
-    extract::{Path, RawQuery, State},
+    extract::{Path, State},
     http::{
         StatusCode,
         header::{CONTENT_DISPOSITION, CONTENT_TYPE},
@@ -25,9 +25,9 @@ use crate::{
         error::HandlerError,
         extractors::{
             CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
+            ValidatedQuery,
         },
     },
-    router::serde_qs_config,
     services::{
         enrollment::{
             AcceptInvitationRequestInput, AdmissionAllocationOutcome, DynEnrollmentManager,
@@ -66,13 +66,8 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(filters): ValidatedQuery<AttendeesFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse and validate attendee filters
-    let filters: AttendeesFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters.validate()?;
-
     // Load permissions and attendee context concurrently
     let (
         can_manage_check_ins,

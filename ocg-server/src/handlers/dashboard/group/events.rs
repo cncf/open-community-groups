@@ -18,9 +18,10 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
     services::{
         events::{
             AddEventInput, AutomaticTaxCheckError, DynEventsManager, EventActionInput,
@@ -67,7 +68,7 @@ pub(crate) async fn add_page(
         .as_ref()
         .map(MeetingsConfig::max_participants_by_provider)
         .unwrap_or_default();
-    let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
+    let sponsor_filters = GroupSponsorsFilters::default();
     let (
         can_manage_events,
         categories,
@@ -174,7 +175,7 @@ pub(crate) async fn update_page(
         .as_ref()
         .map(MeetingsConfig::max_participants_by_provider)
         .unwrap_or_default();
-    let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
+    let sponsor_filters = GroupSponsorsFilters::default();
     let (
         can_manage_events,
         event,
@@ -322,11 +323,8 @@ pub(crate) async fn cancel(
     SelectedGroupId(group_id): SelectedGroupId,
     State(events_manager): State<DynEventsManager>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(query): ValidatedQuery<EventActionQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve action scope
-    let query = parse_event_action_query(raw_query.as_deref())?;
-
     // Cancel the event or series with its required notifications
     events_manager
         .cancel(&EventActionInput {
@@ -355,11 +353,8 @@ pub(crate) async fn delete(
     SelectedGroupId(group_id): SelectedGroupId,
     State(events_manager): State<DynEventsManager>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(query): ValidatedQuery<EventActionQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve action scope
-    let query = parse_event_action_query(raw_query.as_deref())?;
-
     // Delete the selected event or the whole linked series
     events_manager
         .delete(&EventActionInput {
@@ -385,11 +380,8 @@ pub(crate) async fn publish(
     SelectedGroupId(group_id): SelectedGroupId,
     State(events_manager): State<DynEventsManager>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(query): ValidatedQuery<EventActionQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve action scope
-    let query = parse_event_action_query(raw_query.as_deref())?;
-
     // Publish the event or series with its validations and notifications
     events_manager
         .publish(&EventActionInput {
@@ -425,11 +417,8 @@ pub(crate) async fn unpublish(
     SelectedGroupId(group_id): SelectedGroupId,
     State(events_manager): State<DynEventsManager>,
     Path(event_id): Path<Uuid>,
-    RawQuery(raw_query): RawQuery,
+    ValidatedQuery(query): ValidatedQuery<EventActionQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve action scope
-    let query = parse_event_action_query(raw_query.as_deref())?;
-
     // Unpublish the selected event or the whole linked series
     events_manager
         .unpublish(&EventActionInput {
@@ -503,13 +492,15 @@ struct AutomaticTaxReadinessResponse {
 }
 
 /// Query parameters accepted by event management actions.
-#[derive(Debug, Default, Deserialize)]
-struct EventActionQuery {
+#[derive(Debug, Default, Deserialize, Validate)]
+pub(crate) struct EventActionQuery {
     /// Optional post-action destination. Only `editor` reloads the event editor.
     #[serde(default, rename = "return")]
+    #[garde(skip)]
     return_to: Option<String>,
     /// Selected action scope.
     #[serde(default)]
+    #[garde(skip)]
     scope: EventActionScope,
 }
 
@@ -557,8 +548,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(EventsListFilters, events::ListPage), HandlerError> {
     // Fetch group's past and upcoming events
-    let filters: EventsListFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: EventsListFilters = ValidatedQuery::parse(raw_query)?;
     let (can_manage_events, events) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -614,9 +604,4 @@ fn event_editor_location_json(event_id: Uuid) -> String {
     format!(
         r##"{{"path":"/dashboard/group/events/{event_id}/update", "target":"#dashboard-content", "push":"false"}}"##
     )
-}
-
-/// Parses dashboard event action query parameters.
-fn parse_event_action_query(raw_query: Option<&str>) -> Result<EventActionQuery, HandlerError> {
-    Ok(serde_qs_config().deserialize_str(raw_query.unwrap_or_default())?)
 }

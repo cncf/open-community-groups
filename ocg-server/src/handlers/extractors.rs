@@ -17,7 +17,7 @@ use crate::{
     auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails, User as AuthUser},
     config::{OAuth2Provider, OidcProvider},
     handlers::error::HandlerError,
-    router,
+    router::{self, serde_qs_config},
 };
 
 #[cfg(test)]
@@ -235,5 +235,51 @@ where
             .map_err(|report| HandlerError::Validation(report).into_response())?;
 
         Ok(ValidatedFormQs(value))
+    }
+}
+
+/// Extractor that deserializes and validates the request query string.
+///
+/// The query string is parsed with `serde_qs`, so nested arrays and maps are
+/// supported. Failures follow the same contract as `ValidatedForm`.
+pub(crate) struct ValidatedQuery<T>(pub T);
+
+impl<T> ValidatedQuery<T>
+where
+    T: DeserializeOwned + Validate,
+    T::Context: Default,
+{
+    /// Deserializes and validates a raw query string outside of extraction.
+    ///
+    /// Shared page preparation helpers that receive the query string from
+    /// several handlers use this so the parsing contract stays in one place.
+    pub(crate) fn parse(raw_query: &str) -> Result<T, HandlerError> {
+        Self::parse_with(&serde_qs_config(), raw_query)
+    }
+
+    /// Deserializes and validates a raw query string with the given config.
+    fn parse_with(config: &serde_qs::Config, raw_query: &str) -> Result<T, HandlerError> {
+        let value: T = config.deserialize_str(raw_query)?;
+        value.validate()?;
+        Ok(value)
+    }
+}
+
+impl<T> FromRequestParts<router::State> for ValidatedQuery<T>
+where
+    T: DeserializeOwned + Validate + Send,
+    T::Context: Default,
+{
+    type Rejection = Response;
+
+    fn from_request_parts(
+        parts: &mut Parts,
+        state: &router::State,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        let raw_query = parts.uri.query().unwrap_or_default();
+        let result = Self::parse_with(&state.serde_qs_de, raw_query)
+            .map(ValidatedQuery)
+            .map_err(IntoResponse::into_response);
+        std::future::ready(result)
     }
 }

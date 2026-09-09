@@ -16,9 +16,10 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedQuery,
+        },
     },
-    router::serde_qs_config,
     services::payments::{CompleteRefundRecoveryInput, DynPaymentsManager, PaymentJobRecovery},
     templates::dashboard::group::refunds,
     types::{
@@ -155,8 +156,7 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(RefundsFilters, refunds::ListPage), HandlerError> {
     // Parse and validate list filters
-    let filters: RefundsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: RefundsFilters = ValidatedQuery::parse(raw_query)?;
 
     // Load refund data and action permissions
     let (can_manage_events, results) = tokio::try_join!(

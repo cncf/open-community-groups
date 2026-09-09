@@ -334,9 +334,9 @@ Rules:
   `AutomaticTaxReadinessError` correctable variants).
 - `Deserialization` carries parser output that is never returned to the
   client. `HandlerError::into_response` logs it and answers with the fixed
-  body. The `ValidatedForm` and `ValidatedFormQs` extractors,
-  `From<serde_qs::Error>`, and `FilterError::Parse` all use this variant;
-  `garde` failures (the extractors' `validate()` step, `FilterError::
+  body. The `ValidatedForm`, `ValidatedFormQs`, and `ValidatedQuery`
+  extractors, `From<serde_qs::Error>`, and `FilterError::Parse` all use this
+  variant; `garde` failures (the extractors' `validate()` step, `FilterError::
   Validation`) keep returning the field-level report through `Validation`.
 - `Auth` carries no payload. Callers that need the underlying cause in logs
   record it before mapping.
@@ -348,10 +348,29 @@ Rules:
 A handler does extraction, delegation, and response shaping, in this order:
 
 1. **Extraction**: path, query, and form data through the typed extractors
-   in `handlers/extractors.rs`: `CurrentUser`, `CommunityId`,
-   `SelectedCommunityId`, `SelectedGroupId`, `ValidatedForm<T>`,
-   `ValidatedFormQs<T>`, `OAuth2`, `Oidc`. Extractors deserialize and run
-   `garde` validation; a handler does not re-validate.
+   in `handlers/extractors.rs`. Extractors deserialize and run `garde`
+   validation; a handler does not re-validate.
+
+   | Extractor | Source | Yields |
+   | --- | --- | --- |
+   | `CurrentUser` | auth session | logged-in `User`, else 401 |
+   | `CommunityId` | `{community}` path parameter | community id, else 404 |
+   | `SelectedCommunityId` | extensions set by middleware | selected community |
+   | `SelectedGroupId` | extensions set by middleware | selected group |
+   | `ValidatedForm<T>` | flat form body | validated `T` |
+   | `ValidatedFormQs<T>` | nested form body (`serde_qs`) | validated `T` |
+   | `ValidatedQuery<T>` | query string (`serde_qs`) | validated `T` |
+   | `OAuth2`, `Oidc` | `{provider}` path and auth backend | provider details |
+
+   A handler that reads the query string for its own use takes
+   `ValidatedQuery<T>`. `RawQuery` remains only where the raw string is
+   forwarded: the dashboard `home` pages hand it to the selected tab's
+   `prepare_*` helper (the tab, and therefore the filter type, is only
+   known at runtime), and the explore handlers hand it to
+   `Search*Filters::new`, which also needs request headers. A shared
+   `prepare_*` helper parses the forwarded string with
+   `ValidatedQuery::<T>::parse`, so the deserialization and validation
+   contract has a single implementation.
 2. **Authorization**: route-level permission middleware in
    `router/dashboard.rs` is the authorization boundary (see the
    authorization rule in `database.md`). A handler only adds checks the
@@ -413,11 +432,14 @@ surface per layer:
   returns 422 with its message, and an internal failure returns 500 with an
   empty body.
 - **Handler DB-failure tests** exist only when they prove something the error
-  contract tests cannot: a failure mapped to a non-500 status, an explicitly
-  asserted suppression of a later side effect (`times(0)` or `.never()` on
-  a flash message, session write, or notification), or an error path outside
-  `HandlerError` (permission middleware, extractors). A handler that
-  propagates a direct `DynDB` read or write with `?` has no per-route
+  contract tests cannot: a failure mapped to a non-500 status, a suppressed
+  later side effect, or an error path outside `HandlerError` (permission
+  middleware, extractors). A mutation handler followed by a side effect
+  (notification enqueue, flash message, session write) keeps one DB-failure
+  test that fails the write and asserts the side effect and its context
+  reads with `.never()`, so the write-then-notify order is asserted rather
+  than inferred from unconfigured mocks. A handler that only propagates a
+  direct `DynDB` read or write with `?` and then responds has no per-route
   `*_db_error` test; `handlers/error/tests.rs::
   test_non_db_anyhow_error_returns_500` proves the mapping once.
 - **Manager and service tests** mock `MockDB` and the provider traits and

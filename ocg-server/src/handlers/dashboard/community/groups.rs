@@ -7,7 +7,6 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use garde::Validate;
 use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
@@ -17,9 +16,8 @@ use crate::{
     handlers::{
         auth::session_context::SELECTED_GROUP_ID_KEY,
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs, ValidatedQuery},
     },
-    router::serde_qs_config,
     templates::dashboard::community::groups,
     types::{
         dashboard::community::groups::{CommunityGroupsFilters, GroupInput},
@@ -253,8 +251,7 @@ pub(crate) async fn prepare_list_page(
     };
 
     // Fetch groups
-    let filters: CommunityGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
+    let filters: CommunityGroupsFilters = ValidatedQuery::parse(raw_query)?;
     let search_filters = SearchGroupsFilters {
         community: vec![community_name],
         include_inactive: Some(true),
