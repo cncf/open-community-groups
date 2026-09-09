@@ -481,43 +481,182 @@ Test counts are reported for information and never decide.
 
 ## Bounded operations and worker health
 
-Rule for new code: every call that leaves the process has a connection
-deadline and a total-operation deadline set at the boundary that owns the
-client, and a timed-out write is classified by whether the external outcome
-is known (a call with a deterministic idempotency key is retryable; one
-without follows the unknown-outcome path such as
-`mark_notification_delivery_unknown` or payment reconciliation, never a blind
-retry). New outbound clients follow the Zoom client
-(`services/meetings/zoom/client.rs`), which is built once with an explicit
-`timeout`.
+Rule: every call that leaves the process has a connection deadline and a
+total-operation deadline set at the boundary that owns the client, and a
+timed-out write is classified by whether the external outcome is known (a call
+with a deterministic idempotency key is retryable; one without follows the
+unknown-outcome path such as `mark_notification_delivery_unknown` or payment
+reconciliation, never a blind retry).
 
-Current behavior and known gaps:
+### Outbound deadlines
 
-- The Stripe client (`services/payments/provider/stripe.rs`) and the GitHub
-  profile and email loaders (`src/auth.rs`) use `reqwest::Client::new()`,
-  which has no connection or request timeout. A provider that accepts the
-  connection and never answers holds the calling task indefinitely.
-- Workers are built on `services/workers.rs`: `run_worker` drives
-  cancellation-aware iterations, `claim_loop` claims and releases jobs, and
-  `BackgroundTasks` tracks spawned workers and waits for all of them on
-  shutdown. A worker finishes its in-flight operation before stopping, so a
-  stalled provider call blocks shutdown for as long as it stalls. The
-  notification delivery worker's pause between send retries is
-  cancellation-aware: a shutdown request during the pause releases the claim
-  through `release_notification` instead of recording a delivery outcome.
-- `BackgroundTasks::spawn` discards the `JoinHandle`, and
-  `router::health_check` returns `200` unconditionally. A worker that panics
-  or returns early is not observed and does not change the health response.
-- Password verification and `password_auth::generate_hash` on sign-up and
-  password update run in `tokio::task::spawn_blocking`; neither path has a
-  concurrency bound.
-- The activity tracker is best-effort: `track` awaits capacity on a bounded
-  channel, the flusher logs failed writes and drops the affected counters,
-  and aggregation keys are not capped.
+Deadlines come from typed configuration under the section that owns the
+client. Every HTTP client is built once through `util::build_http_client`
+from an `HttpClientConfig { connect_timeout_secs, request_timeout_secs }`
+(defaults 10s and 30s, both at least 1); the request deadline covers the whole
+exchange including the response body.
 
-Deadlines, worker exit observation, readiness semantics, and blocking-work
-bounds are documented here as they land, together with the configuration
-that controls them.
+- Stripe API: `payments.http_client`, built in `StripeProvider::new`.
+- Zoom API: `meetings.zoom.http_client`, built in `ZoomClient::new`.
+- `OAuth2` and OIDC token exchange plus the GitHub profile and email loaders:
+  `server.http_client`, built in `AuthnBackend::new`.
+- SMTP: `email.smtp.connect_timeout_secs` bounds session establishment and
+  `email.smtp.send_timeout_secs` bounds one complete delivery attempt, both
+  applied by `LettreEmailSender`.
+- PostgreSQL connection creation: the pool `create` timeout (10s) applied by
+  `db::pool::config_with_defaults`, alongside the `wait` and `recycle`
+  timeouts.
+- PostgreSQL statements: `config_with_defaults` sends
+  `statement_timeout=30000` and `idle_in_transaction_session_timeout=60000` as
+  session startup options unless `db.connection.options` is set. Both are
+  enforced by the server: a statement that exceeds the deadline (including
+  time spent waiting on a lock) is cancelled and its transaction rolled back
+  before the client sees `57014`, and a session left idle inside a transaction
+  is closed. Startup options are the session defaults, so `DISCARD ALL` on
+  recycle keeps them. A path that legitimately needs longer must raise the
+  limit with `set local statement_timeout` inside its own transaction.
+
+Timed-out writes are classified at the boundary:
+
+- Every Stripe write carries a deterministic idempotency key, so a request
+  that hits the deadline surfaces as an error and is retryable: durable
+  payment jobs release their claim through `record_payment_job_failure` and
+  are claimed again; a checkout session retry reuses the same key.
+- An SMTP delivery attempt that exceeds `send_timeout_secs` is
+  `EmailDeliveryError::Unknown` and is recorded through
+  `mark_notification_delivery_unknown`; the message may already have been
+  accepted, so it is never retried blindly. A connection that times out before
+  the session is established is `Retryable`, like any other connection
+  failure.
+- A Zoom meeting creation has no idempotency key, so `ZoomMeetingsProvider`
+  makes the retry itself safe instead: every meeting is created with its
+  `agenda` set to `ocg:event:<event_id>` or `ocg:session:<session_id>`, and
+  before creating, the provider lists the scheduled meetings of every host in
+  `meetings.zoom.host_pool_users` looking for that marker. A match is adopted
+  (updated to the current meeting state and re-read for its join details) and
+  reported with the host that owns it, so a creation whose response was lost
+  never produces a second Zoom meeting. Zoom deletes and updates are
+  idempotent, and `OAuth2`, OIDC, and GitHub calls are reads or the caller
+  retries them as a whole (the login flow); a timeout surfaces as the request
+  failing.
+- A PostgreSQL statement timeout is not an unknown outcome: the server aborts
+  the statement, so the write did not happen. The only ambiguous case is a
+  commit whose acknowledgement is lost on the network, which the durable job
+  claims and stale-claim recovery already cover.
+
+### Workers and shutdown
+
+Workers are built on `services/workers.rs`: `run_worker` drives
+cancellation-aware iterations, `claim_loop` claims and releases jobs, and
+`BackgroundTasks` spawns and observes workers.
+
+- `BackgroundTasks::spawn` takes a worker name (`notifications-delivery`,
+  `payments-jobs`, `activity-flusher`, ...). Several instances may share a
+  name. The worker runs as its own task; a tracked monitor awaits it and
+  records how it ended in the shared `WorkerRegistry`: a return after
+  cancellation or an abort during shutdown is an expected stop, a return
+  before cancellation or a panic is an unexpected exit and is logged with the
+  worker name (and the panic message). Workers are not restarted
+  automatically; a dead worker stays dead until the process restarts, and the
+  error log line is the alert.
+- Worker state is deliberately kept out of the health probe. `/health-check`
+  answers whether the process can serve requests, which background workers do
+  not affect; tying a probe to worker exits would remove serving capacity
+  without healing anything. Worker state is reported through the periodic
+  health log instead.
+- `BackgroundTasks::shutdown` cancels every worker and waits up to
+  `server.shutdown_grace_period_secs` (default 30) for them to finish their
+  in-flight unit; workers still running when the grace period expires are
+  aborted. A job left in `processing` by an aborted worker is recovered by the
+  existing stale-claim recovery workers on the next start. Idle workers stop
+  as soon as they observe cancellation, so an idle shutdown does not consume
+  the grace period. The notification delivery worker's pause between send
+  retries is cancellation-aware: a shutdown request during the pause releases
+  the claim through `release_notification` instead of recording a delivery
+  outcome.
+
+### Signals and identifiers
+
+Operational signals go through tracing, the only telemetry path the server
+has:
+
+- The `queue-health` worker (`services/workers/queue_health.rs`) logs every
+  five minutes: per durable job queue (`badge_award_jobs`, `notifications`,
+  `payment_jobs`), the pending and processing counts and the age of the oldest
+  pending job (read through `get_worker_queue_health`); and per worker name,
+  the running instances and the number of unexpected exits. The meetings and
+  enrollment workers scan domain rows for due work rather than a job table
+  and have no backlog signal.
+- Unexpected worker exits are logged when they happen, with the worker name
+  and the panic message.
+- Notification delivery outcomes are logged with `notification_id`, `kind`,
+  and `outcome` (`retryable`, `terminal`, `unknown`); the terminal and
+  unknown lines are errors.
+- Activity events dropped since the previous flush are logged by the
+  aggregator as a warning.
+- Payment job failures are logged with `payment_job_id` and `attempt_count`
+  when the claim is released.
+
+Stable identifiers make a failure reconstructible across spans: every request
+gets an `x-request-id` (generated when the client sends none, echoed in the
+response) that is a field of the request span; `enqueue_notification` returns
+the identifiers it created and the wrapper logs them with the kind inside the
+enqueue span; the delivery worker logs the same `notification_id` on every
+outcome.
+
+### CPU-heavy work
+
+CPU-bound work runs off the async executor through
+`services::blocking::BlockingExecutor`, which wraps `spawn_blocking` in a
+semaphore sized by `server.max_blocking_concurrency` (default: the host's
+available parallelism, at least 1). Callers await a permit before their
+closure is handed to the blocking pool and the permit is released when the
+closure completes, so a burst cannot saturate the pool. One executor is
+created in `router::setup` and shared by the router state (sign-up and
+password update hashing in `handlers/auth.rs`) and `AuthnBackend` (password
+verification). A panic inside the closure surfaces as an error to the caller.
+
+### Bounded exports
+
+The attendee CSV exports (`handlers/dashboard/group/attendees.rs`) load the
+exported rows and build the file in memory, so their size is bounded
+explicitly rather than streamed. The export requests confirmed attendees only
+with `limit = MAX_ATTENDEES_EXPORT_ROWS` (10,000) and rejects the request with
+`HandlerError::Rejected` when the confirmed total exceeds that bound. The
+supported size was chosen from a measurement at 10,000 rows with long names,
+companies, payment details, and registration answers: the database JSON
+payload is about 13.5 MB, the CSV about 1.9 MB, and process RSS grows by about
+38 MB while the export is built. A new export follows the same pattern: state
+the supported row count, measure memory at that size, and adopt streaming only
+when the measured cost is unacceptable.
+
+### Lossy best-effort pipelines
+
+A best-effort pipeline states whether it is lossy or durable and what
+saturation does to its callers. The activity tracker
+(`src/activity_tracker.rs`) is **deliberately lossy**: page-view analytics
+never delay or fail a request.
+
+- `track` uses `try_send` on a bounded queue (10,000 activities). A full or
+  closed queue drops the activity and increments the shared
+  `ActivityTrackerStats::dropped_events` counter; the call still returns
+  `Ok`.
+- The aggregator caps one batch at `MAX_BATCH_KEYS` (10,000) distinct
+  `(entity, day)` keys across all activity kinds. An activity that would add a
+  key beyond the cap is dropped and counted; activities for keys already in
+  the batch keep aggregating.
+- The aggregator hands batches to the flusher with `try_send` on a single-slot
+  queue. When the flusher is still busy at flush time, the aggregator logs a
+  warning, keeps the batch, and continues merging activities into it until the
+  next flush; it never blocks on the flusher, so a slow database only delays
+  writes instead of stalling the activities queue.
+- The flusher logs a failed database write and drops the affected counters;
+  the remaining counters in the batch and later batches are still written.
+- On shutdown the aggregator drains what is queued and hands the final batch
+  to the flusher; if the flusher is congested, the worker is aborted at the
+  end of the shutdown grace period like any other stalled worker.
+- Drops are reported through tracing: the aggregator logs a warning with the
+  number of activities dropped since the previous flush and the running total.
 
 ## Cached reads and transactions
 

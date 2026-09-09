@@ -187,6 +187,7 @@ mock! {
             &self,
             user_badge_id: Uuid,
         ) -> Result<Option<crate::types::badges::UserBadge>>;
+        async fn get_worker_queue_health(&self) -> Result<crate::types::workers::WorkerQueueHealth>;
         async fn list_timezones(&self) -> Result<Vec<String>>;
         async fn list_user_public_badges(
             &self,

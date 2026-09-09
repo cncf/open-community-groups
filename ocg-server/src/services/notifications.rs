@@ -19,7 +19,7 @@ use lettre::{
 #[cfg(test)]
 use mockall::automock;
 use serde::de::DeserializeOwned;
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, instrument, warn};
 use uuid::Uuid;
@@ -140,7 +140,7 @@ impl PgNotificationsManager {
                 cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
             };
-            background_tasks.spawn(async move {
+            background_tasks.spawn("notifications-enqueue", async move {
                 worker.run().await;
             });
         }
@@ -151,7 +151,7 @@ impl PgNotificationsManager {
                 cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
             };
-            background_tasks.spawn(async move {
+            background_tasks.spawn("notifications-delivery-recovery", async move {
                 worker.run().await;
             });
         }
@@ -165,7 +165,7 @@ impl PgNotificationsManager {
                 db: db.clone(),
                 email_sender: email_sender.clone(),
             };
-            background_tasks.spawn(async move {
+            background_tasks.spawn("notifications-delivery", async move {
                 worker.run().await;
             });
         }
@@ -315,6 +315,13 @@ impl DeliveryWorker {
                 Err(err) => self.record_delivery_error(&notification, err).await?,
             },
             Err(err) => {
+                error!(
+                    notification_id = %notification.notification_id,
+                    kind = %notification.kind,
+                    outcome = "terminal",
+                    error = %err,
+                    "notification content could not be rendered"
+                );
                 self.db
                     .update_notification(&notification, Some(err.to_string()))
                     .await?;
@@ -446,6 +453,9 @@ impl DeliveryWorker {
     }
 
     /// Records a delivery error according to its safe recovery action.
+    ///
+    /// Each outcome is logged with the `notification_id` so it can be
+    /// correlated with the enqueue that created the notification.
     async fn record_delivery_error(
         &self,
         notification: &Notification,
@@ -453,8 +463,17 @@ impl DeliveryWorker {
     ) -> Result<()> {
         // Persist the safest recovery action for the classified delivery failure
         let error = err.to_string();
+        let notification_id = notification.notification_id;
+        let kind = &notification.kind;
         match err {
             EmailDeliveryError::Retryable(_) => {
+                warn!(
+                    %notification_id,
+                    %kind,
+                    outcome = "retryable",
+                    error = %error,
+                    "notification delivery failed; requeued"
+                );
                 self.db
                     .requeue_notification(
                         notification,
@@ -466,9 +485,23 @@ impl DeliveryWorker {
                     .await
             }
             EmailDeliveryError::Terminal(_) => {
+                error!(
+                    %notification_id,
+                    %kind,
+                    outcome = "terminal",
+                    error = %error,
+                    "notification delivery failed permanently"
+                );
                 self.db.update_notification(notification, Some(error)).await
             }
             EmailDeliveryError::Unknown(_) => {
+                error!(
+                    %notification_id,
+                    %kind,
+                    outcome = "unknown",
+                    error = %error,
+                    "notification delivery outcome unknown; manual review required"
+                );
                 self.db.mark_notification_delivery_unknown(notification, &error).await
             }
         }
@@ -603,7 +636,13 @@ pub(crate) trait EmailSender {
 pub(crate) type DynEmailSender = Arc<dyn EmailSender + Send + Sync>;
 
 /// Concrete email sender backed by a Lettre SMTP transport.
+///
+/// The transport applies the configured connection deadline while
+/// establishing the SMTP session; the sender applies the configured delivery
+/// deadline to each complete attempt.
 pub(crate) struct LettreEmailSender {
+    /// Deadline for one complete delivery attempt.
+    send_timeout: Duration,
     /// SMTP transport used to deliver messages.
     transport: AsyncSmtpTransport<Tokio1Executor>,
 }
@@ -616,9 +655,13 @@ impl LettreEmailSender {
                 cfg.smtp.username.clone(),
                 cfg.smtp.password.clone(),
             ))
+            .timeout(Some(cfg.smtp.connect_timeout()))
             .build();
 
-        Ok(Self { transport })
+        Ok(Self {
+            send_timeout: cfg.smtp.send_timeout(),
+            transport,
+        })
     }
 
     /// Create a SMTP transport builder for the configured server.
@@ -637,12 +680,21 @@ impl LettreEmailSender {
 #[async_trait]
 impl EmailSender for LettreEmailSender {
     /// [`EmailSender::send`].
+    ///
+    /// An attempt that exceeds the delivery deadline is classified as
+    /// [`EmailDeliveryError::Unknown`]: the message may already have been
+    /// accepted by the server, so a blind retry could duplicate it.
     async fn send(&self, message: Message) -> std::result::Result<(), EmailDeliveryError> {
-        self.transport
-            .send(message)
-            .await
-            .map_err(EmailDeliveryError::from_smtp)?;
-        Ok(())
+        match timeout(self.send_timeout, self.transport.send(message)).await {
+            Ok(result) => {
+                result.map_err(EmailDeliveryError::from_smtp)?;
+                Ok(())
+            }
+            Err(_) => Err(EmailDeliveryError::Unknown(anyhow!(
+                "smtp delivery attempt exceeded the {}s deadline",
+                self.send_timeout.as_secs()
+            ))),
+        }
     }
 }
 

@@ -20,7 +20,10 @@ use crate::{
     config::HttpServerConfig,
     db::{DynDB, mock::MockDB},
     handlers::{auth::session_context::SELECTED_GROUP_ID_KEY, tests::*},
-    services::{images::MockImageStorage, notifications::MockNotificationsManager},
+    services::{
+        blocking::BlockingExecutor, images::MockImageStorage,
+        notifications::MockNotificationsManager,
+    },
 };
 
 use super::*;
@@ -133,7 +136,9 @@ async fn test_user_has_community_dashboard_permission_allows_request() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -195,7 +200,9 @@ async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selec
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -270,7 +277,9 @@ async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -329,7 +338,9 @@ async fn test_user_has_community_dashboard_permission_redirects_when_context_is_
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -412,7 +423,9 @@ async fn test_user_has_community_dashboard_permission_repairs_missing_context() 
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -504,7 +517,9 @@ async fn test_user_has_community_dashboard_permission_repairs_stale_context_with
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -560,7 +575,9 @@ async fn test_user_has_community_dashboard_permission_returns_error_on_db_failur
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -608,7 +625,9 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/{community_id}/protected",
@@ -664,7 +683,9 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/{community_id}/protected",
@@ -720,7 +741,9 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/{community_id}/protected",
@@ -771,7 +794,9 @@ async fn test_user_has_path_community_permission_allows_request() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/community/{community_id}/select",
@@ -827,7 +852,9 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/community/{community_id}/select",
@@ -883,7 +910,9 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/community/{community_id}/select",
@@ -938,7 +967,9 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/community/{community_id}/select",
@@ -993,7 +1024,9 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route(
             "/{community_id}/protected",
@@ -1054,7 +1087,9 @@ async fn test_user_has_path_group_permission_allows_request() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1103,7 +1138,9 @@ async fn test_user_has_path_group_permission_fetch_redirects_when_selected_commu
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1161,7 +1198,9 @@ async fn test_user_has_path_group_permission_forbidden_when_group_is_outside_sel
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1218,7 +1257,9 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1276,7 +1317,9 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1325,7 +1368,9 @@ async fn test_user_has_path_group_permission_hx_redirects_when_selected_communit
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1379,7 +1424,9 @@ async fn test_user_has_path_group_permission_redirects_when_selected_community_i
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1441,7 +1488,9 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1489,7 +1538,9 @@ async fn test_user_has_selected_community_permission_allows_request() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1544,7 +1595,9 @@ async fn test_user_has_selected_community_permission_forbidden_when_not_logged_i
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1603,7 +1656,9 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1657,7 +1712,9 @@ async fn test_user_has_selected_community_permission_redirects_when_context_is_m
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1740,7 +1797,9 @@ async fn test_user_has_selected_community_permission_repairs_missing_context() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1838,7 +1897,9 @@ async fn test_user_has_selected_community_permission_repairs_stale_context_befor
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1888,7 +1949,9 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -1942,7 +2005,9 @@ async fn test_user_has_selected_group_permission_allows_request() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2015,7 +2080,9 @@ async fn test_user_has_selected_group_permission_fetch_redirects_when_selected_g
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2079,7 +2146,9 @@ async fn test_user_has_selected_group_permission_forbidden_when_not_logged_in() 
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2140,7 +2209,9 @@ async fn test_user_has_selected_group_permission_forbidden_without_permission() 
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2213,7 +2284,9 @@ async fn test_user_has_selected_group_permission_hx_redirects_when_selected_grou
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2272,7 +2345,9 @@ async fn test_user_has_selected_group_permission_redirects_when_context_is_missi
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2350,7 +2425,9 @@ async fn test_user_has_selected_group_permission_redirects_when_selected_group_i
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2428,7 +2505,9 @@ async fn test_user_has_selected_group_permission_repairs_missing_context() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2518,7 +2597,9 @@ async fn test_user_has_selected_group_permission_repairs_stale_context_before_fo
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
@@ -2569,7 +2650,9 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
         nm.clone(),
         &server_cfg,
     );
-    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let auth_layer = crate::auth::setup_layer(&server_cfg, BlockingExecutor::new(1), db.clone())
+        .await
+        .unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(

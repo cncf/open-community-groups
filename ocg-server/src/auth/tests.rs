@@ -10,10 +10,11 @@ use uuid::Uuid;
 
 use crate::{
     config::{
-        OAuth2Config, OAuth2Provider, OAuth2ProviderConfig, OidcConfig, OidcProvider,
-        OidcProviderConfig,
+        HttpClientConfig, OAuth2Config, OAuth2Provider, OAuth2ProviderConfig, OidcConfig,
+        OidcProvider, OidcProviderConfig,
     },
     db::{DynDB, mock::MockDB},
+    services::blocking::BlockingExecutor,
     types::user::{GitHubUserProvider, LinuxFoundationUserProvider, UserProvider},
 };
 
@@ -967,9 +968,18 @@ fn user_session_auth_hash_matches_auth_hash_bytes() {
 // Helpers.
 
 async fn authn_backend(db: DynDB) -> AuthnBackend {
+    let http_client_cfg = HttpClientConfig::default();
     let oidc_cfg: OidcConfig = HashMap::new();
     let oauth2_cfg: OAuth2Config = HashMap::new();
-    AuthnBackend::new(db, &oauth2_cfg, &oidc_cfg).await.unwrap()
+    AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db,
+        &http_client_cfg,
+        &oauth2_cfg,
+        &oidc_cfg,
+    )
+    .await
+    .unwrap()
 }
 
 fn sample_oauth2_provider_config() -> OAuth2ProviderConfig {

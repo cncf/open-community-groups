@@ -1,11 +1,12 @@
--- enqueue_notification inserts notifications, templates, and attachments.
+-- enqueue_notification inserts notifications, templates, and attachments and
+-- returns the identifiers of the notifications created.
 create or replace function enqueue_notification(
     p_kind text,
     p_template_data jsonb,
     p_attachments jsonb,
     p_recipients uuid[]
 )
-returns void as $$
+returns uuid[] as $$
 declare
     v_attachment jsonb;
     v_attachment_id uuid;
@@ -32,8 +33,9 @@ begin
         left join "user" u on u.user_id = recipient_id
         where coalesce(u.optional_notifications_enabled, true) = true;
 
+        -- Nothing to enqueue when every recipient opted out
         if cardinality(v_recipients) = 0 then
-            return;
+            return '{}'::uuid[];
         end if;
     else
         v_recipients := p_recipients;
@@ -80,5 +82,8 @@ begin
         insert into notification_attachment (notification_id, attachment_id)
         select unnest(v_notification_ids), v_attachment_id;
     end loop;
+
+    -- Return the identifiers so callers can correlate enqueue and delivery
+    return v_notification_ids;
 end;
 $$ language plpgsql;

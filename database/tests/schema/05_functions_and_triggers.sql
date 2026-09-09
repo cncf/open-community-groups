@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(459);
+select plan(460);
 
 -- ============================================================================
 -- VARIABLES
@@ -287,6 +287,7 @@ select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]',
 select has_function('get_public_event_full', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_public_user_badge', array['uuid']::name[]);
 select has_function('get_public_user_provider', array['jsonb']::name[]);
+select has_function('get_worker_queue_health', '{}'::name[]);
 select has_function('group_belongs_to_community', array['uuid', 'uuid']::name[]);
 select has_function('group_has_active_subgroups', array['uuid', 'uuid']::name[]);
 select has_function('group_has_child_links', array['uuid', 'uuid']::name[]);

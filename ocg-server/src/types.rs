@@ -17,6 +17,7 @@ pub mod questionnaire;
 pub mod search;
 pub mod site;
 pub mod user;
+pub mod workers;
 
 #[cfg(test)]
 pub(crate) mod tests;

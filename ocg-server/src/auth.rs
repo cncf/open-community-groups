@@ -21,9 +21,13 @@ use tower_sessions::{Expiry, SessionManagerLayer, cookie::SameSite};
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpServerConfig, OAuth2Config, OAuth2Provider, OidcConfig, OidcProvider},
+    config::{
+        HttpClientConfig, HttpServerConfig, OAuth2Config, OAuth2Provider, OidcConfig, OidcProvider,
+    },
     db::DynDB,
+    services::blocking::BlockingExecutor,
     types::user::UserProvider,
+    util::build_http_client,
     validation::{
         MAX_LEN_DISPLAY_NAME, MAX_LEN_S, MIN_PASSWORD_LEN, trimmed_non_empty, trimmed_non_empty_opt,
     },
@@ -47,7 +51,11 @@ pub(crate) const EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR: &str =
 pub(crate) type AuthLayer = AuthManagerLayer<AuthnBackend, SessionStore>;
 
 /// Setup router authentication/authorization layer.
-pub(crate) async fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<AuthLayer> {
+pub(crate) async fn setup_layer(
+    cfg: &HttpServerConfig,
+    blocking_executor: BlockingExecutor,
+    db: DynDB,
+) -> Result<AuthLayer> {
     // Setup session layer
     let session_store = SessionStore::new(db.clone());
     let secure = if let Some(cookie) = &cfg.cookie {
@@ -62,7 +70,14 @@ pub(crate) async fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<Aut
         .with_secure(secure);
 
     // Setup auth layer
-    let authn_backend = AuthnBackend::new(db, &cfg.oauth2, &cfg.oidc).await?;
+    let authn_backend = AuthnBackend::new(
+        blocking_executor,
+        db,
+        &cfg.http_client,
+        &cfg.oauth2,
+        &cfg.oidc,
+    )
+    .await?;
     let auth_layer = AuthManagerLayerBuilder::new(authn_backend, session_layer).build();
 
     Ok(auth_layer)
@@ -139,6 +154,8 @@ impl std::fmt::Debug for SessionStore {
 /// Backend for authenticating users via `OAuth2`, `Oidc`, or password.
 #[derive(Clone)]
 pub(crate) struct AuthnBackend {
+    /// Bounded executor used for password verification.
+    blocking_executor: BlockingExecutor,
     /// Database handle.
     db: DynDB,
     /// HTTP client for making requests to `OAuth2` and `Oidc` providers.
@@ -147,28 +164,47 @@ pub(crate) struct AuthnBackend {
     pub oauth2_providers: OAuth2Providers,
     /// Registered `Oidc` providers.
     pub oidc_providers: OidcProviders,
+    /// HTTP client for provider profile APIs consulted after token exchange.
+    profile_client: reqwest::Client,
 }
 
 impl AuthnBackend {
     /// Create a new `AuthnBackend` instance.
+    ///
+    /// Every outbound client is built once with the configured connection and
+    /// request deadlines so a stalled provider cannot hold a login indefinitely.
     #[allow(unused_mut)]
-    pub async fn new(db: DynDB, oauth2_cfg: &OAuth2Config, oidc_cfg: &OidcConfig) -> Result<Self> {
-        let mut builder =
-            oauth2_reqwest::ClientBuilder::new().redirect(oauth2_reqwest::redirect::Policy::none());
+    pub async fn new(
+        blocking_executor: BlockingExecutor,
+        db: DynDB,
+        http_client_cfg: &HttpClientConfig,
+        oauth2_cfg: &OAuth2Config,
+        oidc_cfg: &OidcConfig,
+    ) -> Result<Self> {
+        // Build the token exchange client used by the OAuth2 and OIDC crates
+        let mut builder = oauth2_reqwest::ClientBuilder::new()
+            .connect_timeout(http_client_cfg.connect_timeout())
+            .redirect(oauth2_reqwest::redirect::Policy::none())
+            .timeout(http_client_cfg.request_timeout());
         #[cfg(test)]
         {
             // macOS sandbox testing workaround
             builder = builder.no_proxy();
         }
         let http_client = builder.build()?;
+
+        // Build the profile client and register the configured providers
+        let profile_client = build_http_client(http_client_cfg)?;
         let oauth2_providers = Self::setup_oauth2_providers(oauth2_cfg)?;
         let oidc_providers = Self::setup_oidc_providers(oidc_cfg, http_client.clone()).await?;
 
         Ok(Self {
+            blocking_executor,
             db,
             http_client,
             oauth2_providers,
             oidc_providers,
+            profile_client,
         })
     }
 
@@ -190,7 +226,8 @@ impl AuthnBackend {
         // Get the user if they exist, otherwise sign them up
         let profile = match creds.provider {
             OAuth2Provider::GitHub => {
-                ExternalUserProfile::from_github_profile(&access_token).await?
+                ExternalUserProfile::from_github_profile(&self.profile_client, &access_token)
+                    .await?
             }
         };
         let user = self.get_or_sign_up_external_user(&profile).await?;
@@ -240,8 +277,10 @@ impl AuthnBackend {
                 return Ok(None);
             };
 
-            // Verify the password
-            if tokio::task::spawn_blocking(move || verify_password(creds.password, &password_hash))
+            // Verify the password within the shared CPU-heavy work bound
+            if self
+                .blocking_executor
+                .run(move || verify_password(creds.password, &password_hash))
                 .await?
                 .is_ok()
             {
@@ -523,7 +562,7 @@ pub(crate) struct ExternalUserProfile {
 
 impl ExternalUserProfile {
     /// Create an `ExternalUserProfile` instance from a GitHub profile.
-    async fn from_github_profile(access_token: &str) -> Result<Self> {
+    async fn from_github_profile(client: &reqwest::Client, access_token: &str) -> Result<Self> {
         // Setup headers for GitHub API requests
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, "open-community-groups".parse()?);
@@ -533,7 +572,7 @@ impl ExternalUserProfile {
         );
 
         // Get user profile from GitHub
-        let profile = reqwest::Client::new()
+        let profile = client
             .get("https://api.github.com/user")
             .headers(headers.clone())
             .send()
@@ -542,7 +581,7 @@ impl ExternalUserProfile {
             .await?;
 
         // Get user emails from GitHub
-        let emails = reqwest::Client::new()
+        let emails = client
             .get("https://api.github.com/user/emails")
             .headers(headers)
             .send()

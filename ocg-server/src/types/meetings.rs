@@ -66,6 +66,18 @@ impl Meeting {
 
         starts_at.checked_add_signed(duration)
     }
+
+    /// Returns the stable reference identifying the owning event or session.
+    ///
+    /// Providers stamp it on the meetings they create so a creation whose
+    /// response was lost can be found again instead of being repeated.
+    pub(crate) fn provider_reference(&self) -> Option<String> {
+        if let Some(event_id) = self.event_id {
+            Some(format!("ocg:event:{event_id}"))
+        } else {
+            self.session_id.map(|session_id| format!("ocg:session:{session_id}"))
+        }
+    }
 }
 
 /// Meeting provider options.
@@ -103,4 +115,43 @@ pub(crate) enum MeetingAutoEndCheckOutcome {
     Error,
     /// Provider meeting no longer exists.
     NotFound,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_provider_reference_prefers_event() {
+        let event_id = Uuid::new_v4();
+        let meeting = Meeting {
+            event_id: Some(event_id),
+            session_id: Some(Uuid::new_v4()),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            meeting.provider_reference(),
+            Some(format!("ocg:event:{event_id}"))
+        );
+    }
+
+    #[test]
+    fn test_provider_reference_uses_session_without_event() {
+        let session_id = Uuid::new_v4();
+        let meeting = Meeting {
+            session_id: Some(session_id),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            meeting.provider_reference(),
+            Some(format!("ocg:session:{session_id}"))
+        );
+    }
+
+    #[test]
+    fn test_provider_reference_is_none_for_orphan_meeting() {
+        assert_eq!(Meeting::default().provider_reference(), None);
+    }
 }

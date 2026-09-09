@@ -46,6 +46,8 @@ use crate::{
     },
 };
 
+use super::MAX_ATTENDEES_EXPORT_ROWS;
+
 #[tokio::test]
 async fn test_accept_invitation_request_returns_conflict_when_queue_has_priority() {
     // Setup identifiers and the conflict outcome
@@ -546,22 +548,11 @@ async fn test_download_csv_success() {
     attendee_without_name.user.username = "anonymous-attendee".to_string();
     attendee_without_name.user.company = None;
     attendee_without_name.user.title = None;
-    let mut pending_invitation = sample_attendee();
-    pending_invitation.user.name = Some("Pending Invite".to_string());
-    pending_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationPending;
-    let mut rejected_invitation = sample_attendee();
-    rejected_invitation.user.name = Some("Rejected Invite".to_string());
-    rejected_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationDeclined;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
-        attendees: vec![
-            attendee,
-            attendee_without_name,
-            pending_invitation,
-            rejected_invitation,
-        ],
-        total: 4,
+        attendees: vec![attendee, attendee_without_name],
+        total: 2,
     };
 
     // Setup database mock
@@ -579,8 +570,9 @@ async fn test_download_csv_success() {
         .withf(move |gid, eid, filters| {
             *gid == group_id
                 && *eid == event_id
-                && filters.limit.is_none()
+                && filters.limit == Some(MAX_ATTENDEES_EXPORT_ROWS)
                 && filters.offset.is_none()
+                && filters.status == Some(AttendeeEnrollmentStatusFilter::Confirmed)
         })
         .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary()
@@ -620,6 +612,65 @@ async fn test_download_csv_success() {
 }
 
 #[tokio::test]
+async fn test_download_csv_rejects_event_above_supported_export_size() {
+    // Setup identifiers and an attendee total above the export bound
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id, group_id);
+    let output = crate::types::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: MAX_ATTENDEES_EXPORT_ROWS + 1,
+        attendees: vec![sample_attendee()],
+        total: MAX_ATTENDEES_EXPORT_ROWS + 1,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, eid, filters| {
+            *gid == group_id && *eid == event_id && filters.limit == Some(MAX_ATTENDEES_EXPORT_ROWS)
+        })
+        .returning(move |_, _, _| Ok(output.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/dashboard/group/events/{event_id}/attendees.csv"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the export is rejected with the supported size
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "attendee export supports up to 10000 confirmed attendees; this event has 10001",
+    );
+}
+
+#[tokio::test]
 #[allow(clippy::too_many_lines)]
 async fn test_download_csv_with_answers_success() {
     // Setup identifiers and data structures
@@ -654,9 +705,6 @@ async fn test_download_csv_with_answers_success() {
     let mut attendee_without_answers = sample_attendee();
     attendee_without_answers.user.name = Some("No Answers".to_string());
     attendee_without_answers.registration_answers = None;
-    let mut pending_invitation = sample_attendee();
-    pending_invitation.user.name = Some("Pending Invite".to_string());
-    pending_invitation.enrollment_status = AttendeeEnrollmentStatus::InvitationPending;
     let event = sample_event_summary(event_id, group_id);
     let registration_questions = vec![
         QuestionnaireQuestion {
@@ -698,8 +746,8 @@ async fn test_download_csv_with_answers_success() {
     ];
     let output = crate::types::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
-        attendees: vec![attendee, attendee_without_answers, pending_invitation],
-        total: 3,
+        attendees: vec![attendee, attendee_without_answers],
+        total: 2,
     };
 
     // Setup database mock
@@ -717,8 +765,9 @@ async fn test_download_csv_with_answers_success() {
         .withf(move |gid, eid, filters| {
             *gid == group_id
                 && *eid == event_id
-                && filters.limit.is_none()
+                && filters.limit == Some(MAX_ATTENDEES_EXPORT_ROWS)
                 && filters.offset.is_none()
+                && filters.status == Some(AttendeeEnrollmentStatusFilter::Confirmed)
         })
         .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary()

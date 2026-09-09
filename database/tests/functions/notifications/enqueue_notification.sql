@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -62,6 +62,37 @@ select results_eq(
         :'userID2'
     ),
     'Should create event-canceled notifications for expected recipients'
+);
+
+-- Should return one identifier per enqueued recipient
+select enqueue_notification(
+    'event-rescheduled',
+    null,
+    '[]'::jsonb,
+    array[:'userID1', :'userID3']::uuid[]
+) as "enqueuedIDs" \gset
+
+select results_eq(
+    format($$select unnest(%L::uuid[]) order by 1$$, :'enqueuedIDs'),
+    $$
+    select notification_id
+    from notification
+    where kind = 'event-rescheduled'
+    order by notification_id
+    $$,
+    'Should return one identifier per enqueued recipient'
+);
+
+-- Should return no identifiers when every recipient opted out
+select is(
+    enqueue_notification(
+        'event-published',
+        null,
+        '[]'::jsonb,
+        array[:'userID2']::uuid[]
+    ),
+    '{}'::uuid[],
+    'Should return no identifiers when every recipient opted out'
 );
 
 -- Should enqueue optional notifications only for recipients who receive them

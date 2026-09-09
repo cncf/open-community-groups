@@ -3,6 +3,9 @@
 /// Open Badges credential service module.
 pub(crate) mod badges;
 
+/// Bounded blocking work execution module.
+pub(crate) mod blocking;
+
 /// Attendee check-in credential service module.
 pub(crate) mod check_in;
 

@@ -31,7 +31,7 @@ pub(crate) fn start_enrollment_workers(
             db: db.clone(),
             payment_provider,
         };
-        background_tasks.spawn(async move {
+        background_tasks.spawn("enrollment", async move {
             worker.run().await;
         });
     }

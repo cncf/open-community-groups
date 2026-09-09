@@ -38,9 +38,7 @@ use crate::{
     },
     templates::dashboard::group::attendees,
     types::{
-        dashboard::group::attendees::{
-            Attendee, AttendeeEnrollmentStatus, AttendeeEnrollmentStatusFilter, AttendeesFilters,
-        },
+        dashboard::group::attendees::{Attendee, AttendeeEnrollmentStatusFilter, AttendeesFilters},
         notifications::EventCustomNotificationInput,
         pagination::{self, NavigationLinks},
         payments::EventPurchaseChargeModel,
@@ -55,6 +53,12 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+
+/// Maximum number of confirmed attendees the CSV exports support.
+///
+/// The export loads every exported row and builds the file in memory; events
+/// above this size are rejected instead of streamed.
+pub(crate) const MAX_ATTENDEES_EXPORT_ROWS: usize = 10_000;
 
 // Pages handlers.
 
@@ -459,12 +463,13 @@ pub(crate) async fn download_csv(
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary and all attendee rows
-    let filters = AttendeesFilters::default();
+    // Fetch event summary and the confirmed attendee rows within the export bound
+    let filters = attendees_export_filters();
     let (event, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
+    reject_oversized_export(search_attendees_results.total)?;
 
     // Build CSV payload without registration question answers
     let csv = build_attendees_csv(&search_attendees_results.attendees, None)?;
@@ -490,13 +495,14 @@ pub(crate) async fn download_csv_with_answers(
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary, registration questions, and all attendee rows
-    let filters = AttendeesFilters::default();
+    // Fetch event summary, registration questions, and the confirmed attendee rows within the export bound
+    let filters = attendees_export_filters();
     let (event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
         db.get_event_registration_questions(community_id, event_id),
         db.search_event_attendees(group_id, event_id, &filters)
     )?;
+    reject_oversized_export(search_attendees_results.total)?;
 
     // Build CSV payload that also includes registration question answers
     let csv = build_attendees_csv(
@@ -621,8 +627,23 @@ fn admission_allocation_response(
     }
 }
 
-/// Builds the CSV payload for confirmed attendees, optionally appending one
+/// Returns the filters used by the attendee CSV exports.
+///
+/// Only confirmed attendees are exported, and the database returns at most
+/// [`MAX_ATTENDEES_EXPORT_ROWS`] of them so the in-memory file stays bounded.
+fn attendees_export_filters() -> AttendeesFilters {
+    AttendeesFilters {
+        limit: Some(MAX_ATTENDEES_EXPORT_ROWS),
+        status: Some(AttendeeEnrollmentStatusFilter::Confirmed),
+        ..AttendeesFilters::default()
+    }
+}
+
+/// Builds the CSV payload for the given attendees, optionally appending one
 /// column per registration question with the attendee's answer.
+///
+/// Callers are expected to pass only confirmed attendees (see
+/// [`attendees_export_filters`]).
 fn build_attendees_csv(
     attendees: &[Attendee],
     registration_questions: Option<&[QuestionnaireQuestion]>,
@@ -649,11 +670,8 @@ fn build_attendees_csv(
     }
     writer.write_record(headers).map_err(anyhow::Error::from)?;
 
-    // Write one row per confirmed attendee
-    for attendee in attendees
-        .iter()
-        .filter(|attendee| attendee.enrollment_status == AttendeeEnrollmentStatus::Confirmed)
-    {
+    // Write one row per attendee
+    for attendee in attendees {
         let mut row = vec![
             attendee
                 .user
@@ -710,4 +728,15 @@ fn csv_payment_method(attendee: &Attendee) -> &'static str {
         Some(EventPurchaseChargeModel::OcgFree) => "Free",
         None => "",
     }
+}
+
+/// Rejects an export whose confirmed attendee count exceeds the supported size.
+fn reject_oversized_export(total: usize) -> Result<(), HandlerError> {
+    if total > MAX_ATTENDEES_EXPORT_ROWS {
+        return Err(HandlerError::Rejected(format!(
+            "attendee export supports up to {MAX_ATTENDEES_EXPORT_ROWS} confirmed attendees; this event has {total}"
+        )));
+    }
+
+    Ok(())
 }

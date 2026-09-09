@@ -15,9 +15,9 @@ use crate::{
 use super::{
     Attachment, DELIVERY_MAX_CLAIMS, DELIVERY_PROCESSING_TIMEOUT, DELIVERY_REQUEUE_BASE_DELAY,
     DELIVERY_REQUEUE_MAX_DELAY, DELIVERY_SEND_MAX_ATTEMPTS, DeliveryOutcome,
-    DeliveryRecoveryWorker, DeliveryWorker, DynEmailSender, EmailDeliveryError, EnqueueWorker,
-    LettreEmailSender, MockEmailSender, NewNotification, Notification, NotificationKind,
-    NotificationsManager, PgNotificationsManager, SmtpErrorKind,
+    DeliveryRecoveryWorker, DeliveryWorker, DynEmailSender, EmailDeliveryError, EmailSender,
+    EnqueueWorker, LettreEmailSender, MockEmailSender, NewNotification, Notification,
+    NotificationKind, NotificationsManager, PgNotificationsManager, SmtpErrorKind,
 };
 
 /// Deployment base URL used by notification rendering tests.
@@ -1967,6 +1967,48 @@ fn test_email_delivery_error_classifies_uncertain_failures_as_unknown() {
     assert_eq!(err.to_string(), "network error: connection reset by peer");
 }
 
+#[tokio::test]
+async fn test_lettre_email_sender_classifies_stalled_delivery_as_unknown() {
+    // Setup an SMTP endpoint that accepts connections and never sends its greeting
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        // Keep every accepted connection open without writing a response
+        let mut connections = Vec::new();
+        loop {
+            let (stream, _) = listener.accept().await.unwrap();
+            connections.push(stream);
+        }
+    });
+
+    // Setup a sender with a one second delivery deadline against that endpoint
+    let mut cfg = sample_email_config(None);
+    cfg.smtp.host = address.ip().to_string();
+    cfg.smtp.port = address.port();
+    cfg.smtp.send_timeout_secs = 1;
+    let sender = LettreEmailSender::new(&cfg).unwrap();
+    let message = lettre::Message::builder()
+        .from("no-reply@example.test".parse().unwrap())
+        .to("user@example.test".parse().unwrap())
+        .subject("Deadline")
+        .body("Hello".to_string())
+        .unwrap();
+
+    // Send the message, bounding the test itself
+    let result = tokio::time::timeout(Duration::from_secs(5), sender.send(message))
+        .await
+        .expect("send to return within the configured deadline");
+    server.abort();
+
+    // Check the stalled attempt follows the unknown-outcome path
+    let err = result.expect_err("stalled server to fail the delivery");
+    assert!(matches!(&err, EmailDeliveryError::Unknown(_)), "{err}");
+    assert_eq!(
+        err.to_string(),
+        "smtp delivery attempt exceeded the 1s deadline"
+    );
+}
+
 #[test]
 fn test_lettre_email_sender_uses_starttls_for_submission_port() {
     // Setup email config
@@ -2047,6 +2089,9 @@ fn sample_email_config(rcpts_whitelist: Option<Vec<String>>) -> EmailConfig {
             password: "pass".to_string(),
             port: 587,
             username: "user".to_string(),
+
+            connect_timeout_secs: 10,
+            send_timeout_secs: 30,
         },
 
         rcpts_whitelist,

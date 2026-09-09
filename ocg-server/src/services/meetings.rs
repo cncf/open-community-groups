@@ -101,6 +101,9 @@ pub(crate) struct MeetingProviderMeeting {
     pub id: String,
     /// Join URL returned to attendees.
     pub join_url: String,
+
+    /// Provider host user that owns the meeting, when the provider reports it.
+    pub host_user_id: Option<String>,
     /// Optional provider-generated meeting password.
     pub password: Option<String>,
 }
@@ -185,7 +188,7 @@ impl MeetingsManager {
                 db: db.clone(),
                 providers: providers.clone(),
             };
-            background_tasks.spawn(async move {
+            background_tasks.spawn("meetings-auto-end", async move {
                 worker.run().await;
             });
         }
@@ -196,7 +199,7 @@ impl MeetingsManager {
                 cancellation_token: background_tasks.cancellation_token(),
                 db: db.clone(),
             };
-            background_tasks.spawn(async move {
+            background_tasks.spawn("meetings-claim-recovery", async move {
                 worker.run().await;
             });
         }
@@ -209,7 +212,7 @@ impl MeetingsManager {
                 providers: providers.clone(),
                 zoom_cfg: zoom_cfg.clone(),
             };
-            background_tasks.spawn(async move {
+            background_tasks.spawn("meetings-sync", async move {
                 worker.run().await;
             });
         }
@@ -489,10 +492,12 @@ impl MeetingsSyncWorker {
         // Call provider to create meeting
         let provider_meeting = provider.create_meeting(&meeting).await?;
 
-        // Update meeting with provider details
+        // Update meeting with provider details, keeping the host that owns the
+        // provider meeting when an earlier interrupted creation was adopted
         let meeting = Meeting {
             join_url: Some(provider_meeting.join_url),
             password: provider_meeting.password,
+            provider_host_user_id: provider_meeting.host_user_id.or(meeting.provider_host_user_id),
             provider_meeting_id: Some(provider_meeting.id),
             ..meeting
         };

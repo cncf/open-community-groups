@@ -34,7 +34,9 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
     },
-    services::notifications::payloads::build_email_verification_notification,
+    services::{
+        blocking::BlockingExecutor, notifications::payloads::build_email_verification_notification,
+    },
     templates::{self, PageId, auth::UserMenuState},
     types::user::{UserDetailsInput, UserPasswordInput},
     validation::{MAX_LEN_S, trimmed_non_empty},
@@ -326,6 +328,7 @@ pub(crate) async fn oidc_redirect(
 #[instrument(skip_all, err)]
 pub(crate) async fn sign_up(
     messages: Messages,
+    State(blocking_executor): State<BlockingExecutor>,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
@@ -345,11 +348,10 @@ pub(crate) async fn sign_up(
         return Ok((StatusCode::BAD_REQUEST, "password not provided").into_response());
     };
 
-    // Generate password hash off the async executor
-    let password_hash =
-        tokio::task::spawn_blocking(move || password_auth::generate_hash(&password))
-            .await
-            .map_err(anyhow::Error::from)?;
+    // Generate password hash within the shared CPU-heavy work bound
+    let password_hash = blocking_executor
+        .run(move || password_auth::generate_hash(&password))
+        .await?;
     profile.password = Some(password_hash);
 
     // Prepare the required email verification notification before mutating users
@@ -405,6 +407,7 @@ pub(crate) async fn update_user_details(
 pub(crate) async fn update_user_password(
     mut auth_session: AuthSession,
     CurrentUser(user): CurrentUser,
+    State(blocking_executor): State<BlockingExecutor>,
     State(db): State<DynDB>,
     ValidatedForm(input): ValidatedForm<UserPasswordInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -412,19 +415,18 @@ pub(crate) async fn update_user_password(
     let Some(old_password_hash) = db.get_user_password(&user.user_id).await? else {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     };
-    if tokio::task::spawn_blocking(move || verify_password(&input.old_password, &old_password_hash))
-        .await
-        .map_err(anyhow::Error::from)?
+    if blocking_executor
+        .run(move || verify_password(&input.old_password, &old_password_hash))
+        .await?
         .is_err()
     {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
-    // Hash the new password off the async executor and update it in database
-    let new_password_hash =
-        tokio::task::spawn_blocking(move || password_auth::generate_hash(&input.new_password))
-            .await
-            .map_err(anyhow::Error::from)?;
+    // Hash the new password within the shared CPU-heavy work bound and update it
+    let new_password_hash = blocking_executor
+        .run(move || password_auth::generate_hash(&input.new_password))
+        .await?;
     db.update_user_password(&user.user_id, &new_password_hash).await?;
 
     // Best-effort invalidate the current session after changing credentials

@@ -155,6 +155,7 @@
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_group_full.sql" }}
 {{ template "common/get_public_user_badge.sql" }}
+{{ template "common/get_worker_queue_health.sql" }}
 {{ template "common/list_event_cfs_labels.sql" }}
 {{ template "common/list_user_public_badges.sql" }}
 {{ template "common/search_events.sql" }}

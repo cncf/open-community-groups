@@ -21,13 +21,14 @@ use crate::{
     activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
     config::{
-        BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig,
-        PaymentsConfig, PaymentsStripeConfig,
+        BadgeSigningKeyConfig, BadgesConfig, HttpClientConfig, HttpServerConfig, MeetingsConfig,
+        MeetingsZoomConfig, PaymentsConfig, PaymentsStripeConfig,
     },
     db::{DynDB, dashboard::common::User as DashboardUser, mock::MockDB},
     handlers::auth::session_context::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
+        blocking::BlockingExecutor,
         enrollment::{DynEnrollmentManager, MockEnrollmentManager},
         events::{DynEventsManager, MockEventsManager},
         images::{DynImageStorage, MockImageStorage},
@@ -901,6 +902,7 @@ pub(crate) fn sample_payments_cfg() -> PaymentsConfig {
         ticket_tax_api_version: "2026-07-29.preview".to_string(),
         webhook_secret: "whsec_test".to_string(),
 
+        http_client: HttpClientConfig::default(),
         platform_fee_bps: 0,
     })
 }
@@ -1227,6 +1229,8 @@ pub(crate) fn sample_zoom_meetings_cfg(secret: &str) -> MeetingsConfig {
             max_participants: 100,
             max_simultaneous_meetings_per_host: 1,
             webhook_secret_token: secret.to_string(),
+
+            http_client: HttpClientConfig::default(),
         }),
     }
 }
@@ -1272,6 +1276,7 @@ pub(crate) fn test_state_with_server_cfg(
             &server_cfg.base_url,
             badges_config,
         )),
+        blocking_executor: BlockingExecutor::new(server_cfg.max_blocking_concurrency()),
         db,
         enrollment_manager: Arc::new(MockEnrollmentManager::new()),
         events_manager: Arc::new(MockEventsManager::new()),

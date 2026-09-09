@@ -25,6 +25,7 @@ use crate::{
         tests::{sample_auth_user, test_state},
     },
     services::{
+        blocking::BlockingExecutor,
         images::{DynImageStorage, MockImageStorage},
         notifications::{DynNotificationsManager, MockNotificationsManager},
     },
@@ -180,9 +181,15 @@ async fn test_current_user_extractor_session_without_user() {
     // Setup auth layer
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
-        .expect("backend setup should succeed");
+    let backend = AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db.clone(),
+        &server_cfg.http_client,
+        &server_cfg.oauth2,
+        &server_cfg.oidc,
+    )
+    .await
+    .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     // Setup router
@@ -256,9 +263,15 @@ async fn test_current_user_extractor_success() {
     // Setup auth layer
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
-        .expect("backend setup should succeed");
+    let backend = AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db.clone(),
+        &server_cfg.http_client,
+        &server_cfg.oauth2,
+        &server_cfg.oidc,
+    )
+    .await
+    .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     // Setup router
@@ -335,9 +348,15 @@ async fn test_oauth2_extractor_success() {
 
     // Setup auth layer with the configured provider
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
-        .expect("backend setup should succeed");
+    let backend = AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db.clone(),
+        &server_cfg.http_client,
+        &server_cfg.oauth2,
+        &server_cfg.oidc,
+    )
+    .await
+    .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     // Setup router
@@ -438,9 +457,15 @@ async fn test_oauth2_extractor_unsupported_provider() {
     // Setup auth layer with an empty set of OAuth2 providers
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
-        .expect("backend setup should succeed");
+    let backend = AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db.clone(),
+        &server_cfg.http_client,
+        &server_cfg.oauth2,
+        &server_cfg.oidc,
+    )
+    .await
+    .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     // Setup router
@@ -534,9 +559,15 @@ async fn test_oidc_extractor_unsupported_provider() {
     // Setup auth layer with an empty set of OIDC providers
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
-        .expect("backend setup should succeed");
+    let backend = AuthnBackend::new(
+        BlockingExecutor::new(1),
+        db.clone(),
+        &server_cfg.http_client,
+        &server_cfg.oauth2,
+        &server_cfg.oidc,
+    )
+    .await
+    .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     // Setup router

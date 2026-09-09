@@ -17,6 +17,7 @@ use crate::{
         search::{
             SearchEventsFilters, SearchEventsOutput, SearchGroupsFilters, SearchGroupsOutput,
         },
+        workers::WorkerQueueHealth,
     },
 };
 
@@ -59,6 +60,9 @@ pub(crate) trait DBCommon {
 
     /// Retrieves one durable public badge credential record.
     async fn get_public_user_badge(&self, user_badge_id: Uuid) -> Result<Option<UserBadge>>;
+
+    /// Retrieves backlog signals for the worker queues.
+    async fn get_worker_queue_health(&self) -> Result<WorkerQueueHealth>;
 
     /// Lists labels configured for an event.
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>>;
@@ -168,6 +172,12 @@ where
     async fn get_public_user_badge(&self, user_badge_id: Uuid) -> Result<Option<UserBadge>> {
         self.fetch_json_opt("select get_public_user_badge($1::uuid)", &[&user_badge_id])
             .await
+    }
+
+    /// [`DBCommon::get_worker_queue_health`].
+    #[instrument(skip(self), err)]
+    async fn get_worker_queue_health(&self) -> Result<WorkerQueueHealth> {
+        self.fetch_json_one("select get_worker_queue_health()", &[]).await
     }
 
     /// [`DBCommon::list_event_cfs_labels`]

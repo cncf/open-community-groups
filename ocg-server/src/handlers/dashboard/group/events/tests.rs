@@ -12,7 +12,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    config::{PaymentsConfig, PaymentsStripeConfig},
+    config::{HttpClientConfig, PaymentsConfig, PaymentsStripeConfig},
     db::mock::MockDB,
     handlers::{error::HandlerError, tests::*},
     services::{
@@ -125,6 +125,7 @@ async fn test_add_page_renders_external_ticketing_without_payment_recipient() {
             ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
+            http_client: HttpClientConfig::default(),
             platform_fee_bps: 0,
         }))
         .build()
@@ -243,6 +244,7 @@ async fn test_add_page_success() {
             ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
+            http_client: HttpClientConfig::default(),
             platform_fee_bps: 0,
         }))
         .build()
@@ -318,6 +320,7 @@ async fn test_list_page_success() {
             ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
+            http_client: HttpClientConfig::default(),
             platform_fee_bps: 0,
         }))
         .build()
@@ -462,6 +465,7 @@ async fn test_update_page_renders_paid_ticket_settings_read_only_after_purchases
             ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
+            http_client: HttpClientConfig::default(),
             platform_fee_bps: 0,
         }))
         .build()
@@ -591,6 +595,7 @@ async fn test_update_page_success() {
             ticket_tax_api_version: "2026-07-29.preview".to_string(),
             webhook_secret: "whsec_test_123".to_string(),
 
+            http_client: HttpClientConfig::default(),
             platform_fee_bps: 0,
         }))
         .build()

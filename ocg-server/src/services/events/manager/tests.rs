@@ -7,7 +7,7 @@ use serde_json::{from_value, json};
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpServerConfig, MeetingsConfig, MeetingsZoomConfig},
+    config::{HttpClientConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig},
     db::mock::MockDB,
     services::{
         events::{
@@ -3145,6 +3145,8 @@ fn sample_zoom_meetings_cfg() -> MeetingsConfig {
             max_participants: 100,
             max_simultaneous_meetings_per_host: 1,
             webhook_secret_token: "test-token".to_string(),
+
+            http_client: HttpClientConfig::default(),
         }),
     }
 }

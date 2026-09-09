@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cached::cached;
 use serde::Serialize;
-use tracing::instrument;
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -163,23 +163,28 @@ where
         // Enqueue notification in database
         let kind = notification.kind.to_string();
         let db = self.client().await?;
-        db.execute(
-            "
-            select enqueue_notification(
-                $1::text,
-                $2::jsonb,
-                $3::jsonb,
-                $4::uuid[]
-            );
-            ",
-            &[
-                &kind,
-                &notification.template_data,
-                &attachments,
-                &notification.recipients,
-            ],
-        )
-        .await?;
+        let row = db
+            .query_one(
+                "
+                select enqueue_notification(
+                    $1::text,
+                    $2::jsonb,
+                    $3::jsonb,
+                    $4::uuid[]
+                ) as notification_ids;
+                ",
+                &[
+                    &kind,
+                    &notification.template_data,
+                    &attachments,
+                    &notification.recipients,
+                ],
+            )
+            .await?;
+
+        // Record the identifiers so delivery failures can be traced back to this enqueue
+        let notification_ids: Vec<Uuid> = row.try_get("notification_ids")?;
+        info!(%kind, ?notification_ids, "notifications enqueued");
 
         Ok(())
     }
